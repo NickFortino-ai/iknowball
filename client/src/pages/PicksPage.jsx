@@ -9,6 +9,7 @@ import { toast } from '../components/ui/Toast'
 
 const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
+  { label: 'MLB', key: 'baseball_mlb' },
   { label: 'NFL', key: 'americanfootball_nfl' },
 ]
 
