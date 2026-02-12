@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import { useProfile, useSportStats } from '../hooks/useProfile'
 import { usePickHistory } from '../hooks/usePicks'
 import { getTier, getNextTier } from '../lib/scoring'
+import { api } from '../lib/api'
+import { useAuthStore } from '../stores/authStore'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import { toast } from '../components/ui/Toast'
 
 function StatusCard({ profile }) {
   const tier = getTier(profile.total_points)
@@ -44,6 +48,73 @@ function StatusCard({ profile }) {
   )
 }
 
+function BioEditor({ currentBio, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [bio, setBio] = useState(currentBio || '')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await onSave(bio)
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs text-text-muted uppercase tracking-wider">Bio</h2>
+          <button
+            onClick={() => setEditing(true)}
+            className="text-xs text-accent hover:underline"
+          >
+            Edit
+          </button>
+        </div>
+        <p className="text-text-secondary text-sm">
+          {currentBio || 'No bio yet — tell people about yourself'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+      <h2 className="text-xs text-text-muted uppercase tracking-wider mb-2">Bio</h2>
+      <textarea
+        value={bio}
+        onChange={(e) => setBio(e.target.value)}
+        maxLength={200}
+        rows={3}
+        className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent resize-none"
+        placeholder="Tell people about yourself..."
+      />
+      <div className="flex items-center justify-between mt-2">
+        <span className="text-xs text-text-muted">{bio.length}/200</span>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setEditing(false); setBio(currentBio || '') }}
+            className="text-xs text-text-muted hover:text-text-primary px-3 py-1"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="text-xs bg-accent hover:bg-accent-hover text-white px-3 py-1 rounded-lg disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SportCard({ stat }) {
   const winRate = stat.total_picks > 0
     ? ((stat.correct_picks / stat.total_picks) * 100).toFixed(0)
@@ -78,9 +149,21 @@ function SportCard({ stat }) {
 }
 
 export default function ProfilePage() {
-  const { data: profile, isLoading: profileLoading } = useProfile()
+  const { data: profile, isLoading: profileLoading, refetch } = useProfile()
   const { data: sportStats, isLoading: statsLoading } = useSportStats()
   const { data: recentPicks, isLoading: picksLoading } = usePickHistory()
+  const fetchProfile = useAuthStore((s) => s.fetchProfile)
+
+  async function handleSaveBio(bio) {
+    try {
+      await api.patch('/users/me', { bio })
+      await refetch()
+      await fetchProfile()
+      toast('Bio updated!', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to save bio', 'error')
+    }
+  }
 
   if (profileLoading) return <LoadingSpinner />
   if (!profile) return null
@@ -90,6 +173,8 @@ export default function ProfilePage() {
       <h1 className="font-display text-3xl mb-6">Profile</h1>
 
       <StatusCard profile={profile} />
+
+      <BioEditor currentBio={profile.bio} onSave={handleSaveBio} />
 
       {!statsLoading && sportStats?.length > 0 && (
         <div className="mb-6">

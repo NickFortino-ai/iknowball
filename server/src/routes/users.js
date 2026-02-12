@@ -13,6 +13,7 @@ const registerSchema = z.object({
 const updateSchema = z.object({
   display_name: z.string().min(1).max(50).optional(),
   avatar_url: z.string().url().optional(),
+  bio: z.string().max(200).optional(),
 })
 
 router.post('/register', requireAuth, validate(registerSchema), async (req, res) => {
@@ -46,6 +47,53 @@ router.post('/register', requireAuth, validate(registerSchema), async (req, res)
   }
 
   res.status(201).json(data)
+})
+
+router.get('/:id/profile', requireAuth, async (req, res) => {
+  const { id } = req.params
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, bio, total_points, tier, created_at')
+    .eq('id', id)
+    .single()
+
+  if (error || !user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  // Get pick record
+  const { data: picks } = await supabase
+    .from('picks')
+    .select('is_correct')
+    .eq('user_id', id)
+    .eq('status', 'settled')
+
+  const wins = picks?.filter((p) => p.is_correct === true).length || 0
+  const losses = picks?.filter((p) => p.is_correct === false).length || 0
+  const pushes = picks?.filter((p) => p.is_correct === null).length || 0
+
+  // Get leaderboard rank
+  const { data: allUsers } = await supabase
+    .from('users')
+    .select('id, total_points')
+    .order('total_points', { ascending: false })
+
+  const rank = allUsers ? allUsers.findIndex((u) => u.id === id) + 1 : null
+
+  // Get sport stats
+  const { data: sportStats } = await supabase
+    .from('user_sport_stats')
+    .select('*, sports(key, name)')
+    .eq('user_id', id)
+
+  res.json({
+    ...user,
+    record: { wins, losses, pushes, total: wins + losses + pushes },
+    rank,
+    total_users: allUsers?.length || 0,
+    sport_stats: sportStats || [],
+  })
 })
 
 router.get('/me', requireAuth, async (req, res) => {

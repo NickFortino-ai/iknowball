@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
+import UserProfileModal from '../components/profile/UserProfileModal'
 
 const tabs = [
   { label: 'Global', scope: 'global', sport: null },
@@ -14,6 +15,7 @@ const tabs = [
 
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState(0)
+  const [selectedUserId, setSelectedUserId] = useState(null)
   const tab = tabs[activeTab]
   const { data: leaders, isLoading } = useLeaderboard(tab.scope, tab.sport)
   const { profile } = useAuth()
@@ -56,7 +58,8 @@ export default function LeaderboardPage() {
             return (
               <div
                 key={user.id}
-                className={`grid grid-cols-[3rem_1fr_auto_auto] gap-4 px-4 py-3 items-center border-b border-border last:border-b-0 ${
+                onClick={() => setSelectedUserId(user.id)}
+                className={`grid grid-cols-[3rem_1fr_auto_auto] gap-4 px-4 py-3 items-center border-b border-border last:border-b-0 cursor-pointer hover:bg-bg-card-hover transition-colors ${
                   isMe ? 'bg-accent/5' : ''
                 }`}
               >
@@ -78,6 +81,11 @@ export default function LeaderboardPage() {
           })}
         </div>
       )}
+
+      <UserProfileModal
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+      />
     </div>
   )
 }
