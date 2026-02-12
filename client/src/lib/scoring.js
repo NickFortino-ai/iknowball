@@ -32,8 +32,7 @@ export function americanToMultiplier(odds) {
 }
 
 export function calculateRiskPoints(odds) {
-  const multiplier = americanToMultiplier(odds)
-  return Math.max(1, Math.round(BASE_RISK_POINTS / multiplier))
+  return BASE_RISK_POINTS
 }
 
 export function calculateRewardPoints(odds) {

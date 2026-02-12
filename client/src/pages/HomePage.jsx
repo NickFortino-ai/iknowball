@@ -43,16 +43,16 @@ export default function HomePage() {
         <h2 className="font-display text-2xl text-center mb-8">How Scoring Works</h2>
         <div className="grid sm:grid-cols-3 gap-4">
           <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
-            <div className="font-display text-3xl text-correct mb-2">+30</div>
-            <div className="text-text-secondary text-sm">Underdogs: low risk, high reward — risk 3, win 30</div>
+            <div className="font-display text-3xl text-correct mb-2">+20</div>
+            <div className="text-text-secondary text-sm">Pick an underdog and win big — risk 10, win 20</div>
           </div>
           <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
-            <div className="font-display text-3xl text-accent mb-2">+5</div>
-            <div className="text-text-secondary text-sm">Favorites: high risk, low reward — risk 20, win 5</div>
+            <div className="font-display text-3xl text-accent mb-2">+4</div>
+            <div className="text-text-secondary text-sm">Pick a favorite for a safe gain — risk 10, win 4</div>
           </div>
           <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
-            <div className="font-display text-3xl text-incorrect mb-2">-$$</div>
-            <div className="text-text-secondary text-sm">Wrong pick? You lose your risk points</div>
+            <div className="font-display text-3xl text-incorrect mb-2">-10</div>
+            <div className="text-text-secondary text-sm">Wrong pick? You lose 10 points every time</div>
           </div>
         </div>
       </div>

@@ -11,13 +11,10 @@ export function americanToMultiplier(odds) {
 }
 
 /**
- * Calculate risk points from American odds.
- * Underdogs risk less, favorites risk more.
- * Risk = base / multiplier
+ * Calculate risk points — flat risk regardless of odds.
  */
 export function calculateRiskPoints(odds) {
-  const multiplier = americanToMultiplier(odds)
-  return Math.max(1, Math.round(BASE_RISK_POINTS / multiplier))
+  return BASE_RISK_POINTS
 }
 
 /**
