@@ -51,6 +51,37 @@ export async function submitPick(userId, gameId, pickedTeam) {
   return data
 }
 
+export async function deletePick(userId, gameId) {
+  const { data: pick } = await supabase
+    .from('picks')
+    .select('id, status')
+    .eq('user_id', userId)
+    .eq('game_id', gameId)
+    .single()
+
+  if (!pick) {
+    const err = new Error('Pick not found')
+    err.status = 404
+    throw err
+  }
+
+  if (pick.status !== 'pending') {
+    const err = new Error('Cannot undo a locked or settled pick')
+    err.status = 400
+    throw err
+  }
+
+  const { error } = await supabase
+    .from('picks')
+    .delete()
+    .eq('id', pick.id)
+
+  if (error) {
+    logger.error({ error }, 'Failed to delete pick')
+    throw error
+  }
+}
+
 export async function getUserPicks(userId, status) {
   let query = supabase
     .from('picks')

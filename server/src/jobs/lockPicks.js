@@ -1,7 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
-import { calculateRewardPoints } from '../utils/scoring.js'
-import { BASE_RISK_POINTS } from '../config/constants.js'
+import { calculateRewardPoints, calculateRiskPoints } from '../utils/scoring.js'
 
 export async function lockPicks() {
   const now = new Date().toISOString()
@@ -38,6 +37,7 @@ export async function lockPicks() {
 
     for (const pick of picks) {
       const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
+      const risk = odds ? calculateRiskPoints(odds) : 0
       const reward = odds ? calculateRewardPoints(odds) : 0
 
       const { error } = await supabase
@@ -45,7 +45,7 @@ export async function lockPicks() {
         .update({
           status: 'locked',
           odds_at_pick: odds,
-          risk_points: BASE_RISK_POINTS,
+          risk_points: risk,
           reward_points: reward,
           updated_at: now,
         })

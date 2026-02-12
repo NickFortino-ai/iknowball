@@ -11,11 +11,21 @@ export function americanToMultiplier(odds) {
 }
 
 /**
+ * Calculate risk points from American odds.
+ * Underdogs risk less, favorites risk more.
+ * Risk = base / multiplier
+ */
+export function calculateRiskPoints(odds) {
+  const multiplier = americanToMultiplier(odds)
+  return Math.max(1, Math.round(BASE_RISK_POINTS / multiplier))
+}
+
+/**
  * Calculate reward points from American odds.
- * Risk is always BASE_RISK_POINTS.
- * Reward = risk * multiplier, rounded to nearest integer.
+ * Underdogs win more, favorites win less.
+ * Reward = base * multiplier
  */
 export function calculateRewardPoints(odds) {
   const multiplier = americanToMultiplier(odds)
-  return Math.round(BASE_RISK_POINTS * multiplier)
+  return Math.max(1, Math.round(BASE_RISK_POINTS * multiplier))
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useMyPicks, useSubmitPick } from '../hooks/usePicks'
+import { useMyPicks, useSubmitPick, useDeletePick } from '../hooks/usePicks'
 import GameCard from '../components/picks/GameCard'
 import BottomBar from '../components/picks/BottomBar'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -20,6 +20,7 @@ export default function PicksPage() {
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming')
   const { data: myPicks, isLoading: picksLoading } = useMyPicks()
   const submitPick = useSubmitPick()
+  const deletePick = useDeletePick()
 
   const picksMap = useMemo(() => {
     if (!myPicks) return {}
@@ -65,6 +66,15 @@ export default function PicksPage() {
     }
   }
 
+  async function handleUndoPick(gameId) {
+    try {
+      await deletePick.mutateAsync(gameId)
+      toast('Pick removed', 'info')
+    } catch (err) {
+      toast(err.message || 'Failed to undo pick', 'error')
+    }
+  }
+
   const dates = Object.keys(grouped)
 
   return (
@@ -102,7 +112,8 @@ export default function PicksPage() {
                   game={game}
                   userPick={picksMap[game.id]}
                   onPick={handlePick}
-                  isSubmitting={submitPick.isPending}
+                  onUndoPick={handleUndoPick}
+                  isSubmitting={submitPick.isPending || deletePick.isPending}
                 />
               ))}
             </div>

@@ -1,4 +1,4 @@
-import { BASE_RISK_POINTS, calculateRewardPoints } from '../../lib/scoring'
+import { calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 
 export default function BottomBar({ picks, games }) {
   if (!picks || Object.keys(picks).length === 0) return null
@@ -17,7 +17,7 @@ export default function BottomBar({ picks, games }) {
     const odds = team === 'home' ? game.home_odds : game.away_odds
     if (!odds) continue
 
-    totalRisk += BASE_RISK_POINTS
+    totalRisk += calculateRiskPoints(odds)
     totalReward += calculateRewardPoints(odds)
 
     if (odds < 0) favCount++

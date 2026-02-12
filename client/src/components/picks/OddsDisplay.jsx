@@ -1,8 +1,9 @@
-import { formatOdds, calculateRewardPoints, BASE_RISK_POINTS } from '../../lib/scoring'
+import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 
 export default function OddsDisplay({ odds, isSelected }) {
   if (!odds) return <span className="text-text-muted text-sm">—</span>
 
+  const risk = calculateRiskPoints(odds)
   const reward = calculateRewardPoints(odds)
   const isFavorite = odds < 0
 
@@ -12,7 +13,7 @@ export default function OddsDisplay({ odds, isSelected }) {
         {formatOdds(odds)}
       </div>
       <div className={`text-xs ${isSelected ? 'text-white/70' : 'text-text-muted'}`}>
-        {isFavorite ? `Risk ${BASE_RISK_POINTS} → Win ${reward}` : `Risk ${BASE_RISK_POINTS} → Win ${reward}`}
+        Risk {risk} → Win {reward}
       </div>
     </div>
   )

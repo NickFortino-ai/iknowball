@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
-import { submitPick, getUserPicks, getUserPickHistory } from '../services/pickService.js'
+import { submitPick, deletePick, getUserPicks, getUserPickHistory } from '../services/pickService.js'
 
 const router = Router()
 
@@ -14,6 +14,11 @@ const submitPickSchema = z.object({
 router.post('/', requireAuth, validate(submitPickSchema), async (req, res) => {
   const pick = await submitPick(req.user.id, req.validated.game_id, req.validated.picked_team)
   res.status(201).json(pick)
+})
+
+router.delete('/:gameId', requireAuth, async (req, res) => {
+  await deletePick(req.user.id, req.params.gameId)
+  res.status(204).end()
 })
 
 router.get('/me', requireAuth, async (req, res) => {

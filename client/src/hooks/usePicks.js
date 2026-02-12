@@ -27,3 +27,14 @@ export function useSubmitPick() {
     },
   })
 }
+
+export function useDeletePick() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (gameId) => api.delete(`/picks/${gameId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['picks'] })
+    },
+  })
+}

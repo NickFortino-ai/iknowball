@@ -31,9 +31,14 @@ export function americanToMultiplier(odds) {
   return 100 / Math.abs(odds)
 }
 
+export function calculateRiskPoints(odds) {
+  const multiplier = americanToMultiplier(odds)
+  return Math.max(1, Math.round(BASE_RISK_POINTS / multiplier))
+}
+
 export function calculateRewardPoints(odds) {
   const multiplier = americanToMultiplier(odds)
-  return Math.round(BASE_RISK_POINTS * multiplier)
+  return Math.max(1, Math.round(BASE_RISK_POINTS * multiplier))
 }
 
 export function formatOdds(odds) {

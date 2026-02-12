@@ -7,7 +7,7 @@ function formatGameTime(dateStr) {
     d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export default function GameCard({ game, userPick, onPick, isSubmitting }) {
+export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
 
@@ -24,6 +24,16 @@ export default function GameCard({ game, userPick, onPick, isSubmitting }) {
     }
     if (userPick.status === 'locked') return 'locked'
     return 'selected'
+  }
+
+  function handleClick(side) {
+    if (!onPick) return
+    // If clicking the same team that's already picked (and still pending), undo it
+    if (userPick?.picked_team === side && userPick?.status === 'pending') {
+      onUndoPick?.(game.id)
+    } else {
+      onPick(game.id, side)
+    }
   }
 
   return (
@@ -48,7 +58,7 @@ export default function GameCard({ game, userPick, onPick, isSubmitting }) {
           odds={game.away_odds}
           state={getButtonState('away')}
           disabled={isLocked || isSubmitting}
-          onClick={() => onPick?.(game.id, 'away')}
+          onClick={() => handleClick('away')}
         />
         <div className="flex items-center text-text-muted text-xs font-semibold">@</div>
         <PickButton
@@ -56,7 +66,7 @@ export default function GameCard({ game, userPick, onPick, isSubmitting }) {
           odds={game.home_odds}
           state={getButtonState('home')}
           disabled={isLocked || isSubmitting}
-          onClick={() => onPick?.(game.id, 'home')}
+          onClick={() => handleClick('home')}
         />
       </div>
 
