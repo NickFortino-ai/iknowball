@@ -7,6 +7,7 @@ import EmptyState from '../components/ui/EmptyState'
 
 const tabs = [
   { label: 'Global', scope: 'global', sport: null },
+  { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
   { label: 'NFL', scope: 'sport', sport: 'americanfootball_nfl' },
 ]
 

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useGames } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick } from '../hooks/usePicks'
 import GameCard from '../components/picks/GameCard'
@@ -7,8 +7,16 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
 
+const sportTabs = [
+  { label: 'NBA', key: 'basketball_nba' },
+  { label: 'NFL', key: 'americanfootball_nfl' },
+]
+
 export default function PicksPage() {
-  const { data: games, isLoading: gamesLoading } = useGames('americanfootball_nfl', 'upcoming')
+  const [activeSport, setActiveSport] = useState(0)
+  const sportKey = sportTabs[activeSport].key
+
+  const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming')
   const { data: myPicks, isLoading: picksLoading } = useMyPicks()
   const submitPick = useSubmitPick()
 
@@ -48,7 +56,6 @@ export default function PicksPage() {
   }, [games])
 
   async function handlePick(gameId, team) {
-    // If already picked this team, toggle off isn't supported (upsert only)
     try {
       await submitPick.mutateAsync({ gameId, pickedTeam: team })
       toast('Pick submitted!', 'success')
@@ -57,15 +64,31 @@ export default function PicksPage() {
     }
   }
 
-  if (gamesLoading || picksLoading) return <LoadingSpinner />
-
   const dates = Object.keys(grouped)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
       <h1 className="font-display text-3xl mb-6">Make Your Picks</h1>
 
-      {dates.length === 0 ? (
+      <div className="flex gap-2 mb-6">
+        {sportTabs.map((tab, i) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveSport(i)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              activeSport === i
+                ? 'bg-accent text-white'
+                : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {gamesLoading || picksLoading ? (
+        <LoadingSpinner />
+      ) : dates.length === 0 ? (
         <EmptyState title="No upcoming games" message="Check back when the season is active" />
       ) : (
         dates.map((date) => (

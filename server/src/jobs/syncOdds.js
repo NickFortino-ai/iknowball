@@ -2,29 +2,27 @@ import { supabase } from '../config/supabase.js'
 import { fetchOdds } from '../services/oddsService.js'
 import { logger } from '../utils/logger.js'
 
-export async function syncOdds() {
-  logger.info('Starting odds sync...')
-
+async function syncSport(sportKey) {
   const { data: sport } = await supabase
     .from('sports')
     .select('id')
-    .eq('key', 'americanfootball_nfl')
+    .eq('key', sportKey)
     .single()
 
   if (!sport) {
-    logger.error('NFL sport not found in database')
-    return
+    logger.warn({ sportKey }, 'Sport not found in database, skipping')
+    return 0
   }
 
   let events
   try {
-    events = await fetchOdds('americanfootball_nfl')
+    events = await fetchOdds(sportKey)
   } catch (err) {
-    logger.error({ err }, 'Failed to fetch odds')
-    return
+    logger.error({ err, sportKey }, 'Failed to fetch odds')
+    return 0
   }
 
-  logger.info({ count: events.length }, 'Fetched events from Odds API')
+  logger.info({ sportKey, count: events.length }, 'Fetched events from Odds API')
 
   let upserted = 0
   for (const event of events) {
@@ -58,5 +56,19 @@ export async function syncOdds() {
     }
   }
 
-  logger.info({ upserted, total: events.length }, 'Odds sync complete')
+  return upserted
+}
+
+export async function syncOdds() {
+  logger.info('Starting odds sync...')
+
+  const sports = ['americanfootball_nfl', 'basketball_nba']
+  let total = 0
+
+  for (const sportKey of sports) {
+    const count = await syncSport(sportKey)
+    total += count
+  }
+
+  logger.info({ total }, 'Odds sync complete')
 }

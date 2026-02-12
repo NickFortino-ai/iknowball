@@ -3,19 +3,17 @@ import { fetchScores } from '../services/oddsService.js'
 import { logger } from '../utils/logger.js'
 import { scoreCompletedGame } from '../services/scoringService.js'
 
-export async function scoreGames() {
-  logger.info('Starting game scoring...')
-
+async function scoreSport(sportKey) {
   let scores
   try {
-    scores = await fetchScores('americanfootball_nfl')
+    scores = await fetchScores(sportKey)
   } catch (err) {
-    logger.error({ err }, 'Failed to fetch scores')
-    return
+    logger.error({ err, sportKey }, 'Failed to fetch scores')
+    return 0
   }
 
   const completedEvents = scores.filter((e) => e.completed)
-  logger.info({ completed: completedEvents.length, total: scores.length }, 'Fetched scores')
+  logger.info({ sportKey, completed: completedEvents.length, total: scores.length }, 'Fetched scores')
 
   let scored = 0
   for (const event of completedEvents) {
@@ -57,5 +55,19 @@ export async function scoreGames() {
     scored++
   }
 
-  logger.info({ scored }, 'Game scoring complete')
+  return scored
+}
+
+export async function scoreGames() {
+  logger.info('Starting game scoring...')
+
+  const sports = ['americanfootball_nfl', 'basketball_nba']
+  let total = 0
+
+  for (const sportKey of sports) {
+    const count = await scoreSport(sportKey)
+    total += count
+  }
+
+  logger.info({ total }, 'Game scoring complete')
 }
