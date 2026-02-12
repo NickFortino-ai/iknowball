@@ -1,0 +1,14 @@
+import 'dotenv/config'
+
+export const env = {
+  PORT: process.env.PORT || 3001,
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+  ODDS_API_KEY: process.env.ODDS_API_KEY,
+  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  ENABLE_ODDS_SYNC: process.env.ENABLE_ODDS_SYNC === 'true',
+  ENABLE_GAME_SCORING: process.env.ENABLE_GAME_SCORING === 'true',
+  ENABLE_PICK_LOCK: process.env.ENABLE_PICK_LOCK === 'true',
+}
