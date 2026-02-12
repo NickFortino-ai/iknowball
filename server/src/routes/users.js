@@ -14,6 +14,8 @@ const updateSchema = z.object({
   display_name: z.string().min(1).max(50).optional(),
   avatar_url: z.string().url().optional(),
   bio: z.string().max(200).optional(),
+  avatar_emoji: z.string().max(4).optional(),
+  sports_interests: z.array(z.string()).max(10).optional(),
 })
 
 router.post('/register', requireAuth, validate(registerSchema), async (req, res) => {
@@ -54,7 +56,7 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, bio, total_points, tier, created_at')
+    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, created_at')
     .eq('id', id)
     .single()
 

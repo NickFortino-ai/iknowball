@@ -43,6 +43,12 @@ export default function Navbar() {
                   <span className="text-sm text-text-secondary hidden sm:inline">{profile.username}</span>
                 </Link>
               )}
+              <Link
+                to="/settings"
+                className={`text-xs transition-colors ${location.pathname === '/settings' ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
+              >
+                Settings
+              </Link>
               <button
                 onClick={signOut}
                 className="text-xs text-text-muted hover:text-text-primary transition-colors"

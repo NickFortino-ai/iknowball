@@ -30,8 +30,8 @@ export default function UserProfileModal({ userId, onClose }) {
           <>
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-bg-primary flex items-center justify-center font-display text-xl text-accent">
-                {(user.display_name || user.username)?.[0]?.toUpperCase()}
+              <div className="w-14 h-14 rounded-full bg-bg-primary flex items-center justify-center text-2xl">
+                {user.avatar_emoji || (user.display_name || user.username)?.[0]?.toUpperCase()}
               </div>
               <div className="min-w-0">
                 <div className="font-display text-xl truncate">{user.display_name || user.username}</div>
@@ -42,6 +42,15 @@ export default function UserProfileModal({ userId, onClose }) {
             {/* Bio */}
             {user.bio && (
               <p className="text-text-secondary text-sm mb-4">{user.bio}</p>
+            )}
+
+            {/* Sports Interests */}
+            {user.sports_interests?.length > 0 && (
+              <div className="flex items-center gap-1.5 mb-4">
+                {user.sports_interests.map((emoji, i) => (
+                  <span key={i} className="text-lg">{emoji}</span>
+                ))}
+              </div>
             )}
 
             {/* Tier + Points + Rank */}
