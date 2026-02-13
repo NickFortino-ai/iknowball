@@ -7,7 +7,7 @@ import { scoreGames } from '../jobs/scoreGames.js'
 const router = Router()
 
 router.get('/', requireAuth, async (req, res) => {
-  const { sport, status } = req.query
+  const { sport, status, days } = req.query
 
   let query = supabase
     .from('games')
@@ -19,6 +19,11 @@ router.get('/', requireAuth, async (req, res) => {
   }
   if (status) {
     query = query.eq('status', status)
+  }
+  if (days) {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() + Number(days))
+    query = query.lte('starts_at', cutoff.toISOString())
   }
 
   const { data, error } = await query
