@@ -13,8 +13,33 @@ const sportTabs = [
   { label: 'NFL', key: 'americanfootball_nfl' },
 ]
 
+function getDateOffset(offset) {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d
+}
+
+function formatDateLabel(offset) {
+  if (offset === 0) return 'Today'
+  if (offset === 1) return 'Tomorrow'
+  return getDateOffset(offset).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function isSameDay(date1, date2) {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  )
+}
+
 export default function PicksPage() {
   const [activeSport, setActiveSport] = useState(0)
+  const [dayOffset, setDayOffset] = useState(0)
   const sportKey = sportTabs[activeSport].key
 
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming')
@@ -42,20 +67,12 @@ export default function PicksPage() {
     return map
   }, [myPicks])
 
-  const grouped = useMemo(() => {
-    if (!games) return {}
-    const groups = {}
-    for (const game of games) {
-      const date = new Date(game.starts_at).toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      })
-      if (!groups[date]) groups[date] = []
-      groups[date].push(game)
-    }
-    return groups
-  }, [games])
+  const selectedDate = getDateOffset(dayOffset)
+
+  const filteredGames = useMemo(() => {
+    if (!games) return []
+    return games.filter((game) => isSameDay(new Date(game.starts_at), selectedDate))
+  }, [games, selectedDate])
 
   async function handlePick(gameId, team) {
     try {
@@ -75,13 +92,11 @@ export default function PicksPage() {
     }
   }
 
-  const dates = Object.keys(grouped)
-
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
       <h1 className="font-display text-3xl mb-6">Make Your Picks</h1>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-4">
         {sportTabs.map((tab, i) => (
           <button
             key={tab.key}
@@ -97,28 +112,47 @@ export default function PicksPage() {
         ))}
       </div>
 
+      {/* Day Navigation */}
+      <div className="flex items-center justify-between bg-bg-card rounded-xl border border-border px-4 py-3 mb-6">
+        <button
+          onClick={() => setDayOffset((d) => Math.max(0, d - 1))}
+          disabled={dayOffset === 0}
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
+        >
+          ‹
+        </button>
+        <div className="text-center">
+          <div className="font-display text-lg">{formatDateLabel(dayOffset)}</div>
+          <div className="text-text-muted text-xs">
+            {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </div>
+        </div>
+        <button
+          onClick={() => setDayOffset((d) => Math.min(2, d + 1))}
+          disabled={dayOffset === 2}
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
+        >
+          ›
+        </button>
+      </div>
+
       {gamesLoading || picksLoading ? (
         <LoadingSpinner />
-      ) : dates.length === 0 ? (
-        <EmptyState title="No upcoming games" message="Check back when the season is active" />
+      ) : filteredGames.length === 0 ? (
+        <EmptyState title="No games" message={`No upcoming games on ${formatDateLabel(dayOffset).toLowerCase()}`} />
       ) : (
-        dates.map((date) => (
-          <div key={date} className="mb-6">
-            <h2 className="font-display text-lg text-text-secondary mb-3">{date}</h2>
-            <div className="space-y-3">
-              {grouped[date].map((game) => (
-                <GameCard
-                  key={game.id}
-                  game={game}
-                  userPick={picksMap[game.id]}
-                  onPick={handlePick}
-                  onUndoPick={handleUndoPick}
-                  isSubmitting={submitPick.isPending || deletePick.isPending}
-                />
-              ))}
-            </div>
-          </div>
-        ))
+        <div className="space-y-3">
+          {filteredGames.map((game) => (
+            <GameCard
+              key={game.id}
+              game={game}
+              userPick={picksMap[game.id]}
+              onPick={handlePick}
+              onUndoPick={handleUndoPick}
+              isSubmitting={submitPick.isPending || deletePick.isPending}
+            />
+          ))}
+        </div>
       )}
 
       <BottomBar picks={pendingPicksMap} games={games} />

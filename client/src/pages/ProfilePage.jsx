@@ -9,7 +9,7 @@ function StatusCard({ profile }) {
   const tier = getTier(profile.total_points)
   const nextTier = getNextTier(profile.total_points)
   const progress = nextTier
-    ? ((Math.max(0, profile.total_points) - tier.minPoints) / (nextTier.minPoints - tier.minPoints)) * 100
+    ? ((profile.total_points - tier.minPoints) / (nextTier.minPoints - tier.minPoints)) * 100
     : 100
 
   return (
@@ -23,7 +23,7 @@ function StatusCard({ profile }) {
       </div>
 
       <div className="text-center mb-4">
-        <div className="font-display text-4xl text-accent">{Math.max(0, profile.total_points)}</div>
+        <div className="font-display text-4xl text-accent">{profile.total_points}</div>
         <div className="text-text-muted text-sm">Total Points</div>
       </div>
 

@@ -9,20 +9,18 @@ export const TIERS = {
 }
 
 export function getTier(points) {
-  const floored = Math.max(0, points)
-  if (floored >= TIERS.GOAT.minPoints) return TIERS.GOAT
-  if (floored >= TIERS.MVP.minPoints) return TIERS.MVP
-  if (floored >= TIERS.ALL_STAR.minPoints) return TIERS.ALL_STAR
-  if (floored >= TIERS.STARTER.minPoints) return TIERS.STARTER
+  if (points >= TIERS.GOAT.minPoints) return TIERS.GOAT
+  if (points >= TIERS.MVP.minPoints) return TIERS.MVP
+  if (points >= TIERS.ALL_STAR.minPoints) return TIERS.ALL_STAR
+  if (points >= TIERS.STARTER.minPoints) return TIERS.STARTER
   return TIERS.ROOKIE
 }
 
 export function getNextTier(points) {
-  const floored = Math.max(0, points)
-  if (floored >= TIERS.GOAT.minPoints) return null
-  if (floored >= TIERS.MVP.minPoints) return TIERS.GOAT
-  if (floored >= TIERS.ALL_STAR.minPoints) return TIERS.MVP
-  if (floored >= TIERS.STARTER.minPoints) return TIERS.ALL_STAR
+  if (points >= TIERS.GOAT.minPoints) return null
+  if (points >= TIERS.MVP.minPoints) return TIERS.GOAT
+  if (points >= TIERS.ALL_STAR.minPoints) return TIERS.MVP
+  if (points >= TIERS.STARTER.minPoints) return TIERS.ALL_STAR
   return TIERS.STARTER
 }
 
