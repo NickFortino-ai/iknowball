@@ -7,6 +7,7 @@ import usersRouter from './routes/users.js'
 import gamesRouter from './routes/games.js'
 import picksRouter from './routes/picks.js'
 import leaderboardRouter from './routes/leaderboard.js'
+import leaguesRouter from './routes/leagues.js'
 
 const app = express()
 
@@ -18,6 +19,7 @@ app.use('/api/users', usersRouter)
 app.use('/api/games', gamesRouter)
 app.use('/api/picks', picksRouter)
 app.use('/api/leaderboard', leaderboardRouter)
+app.use('/api/leagues', leaguesRouter)
 
 app.use(errorHandler)
 

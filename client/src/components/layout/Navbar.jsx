@@ -6,6 +6,7 @@ import TierBadge from '../ui/TierBadge'
 const navLinks = [
   { to: '/picks', label: 'Picks' },
   { to: '/results', label: 'Results' },
+  { to: '/leagues', label: 'Leagues' },
   { to: '/leaderboard', label: 'Board' },
 ]
 

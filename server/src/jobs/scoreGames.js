@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { fetchScores } from '../services/oddsService.js'
 import { logger } from '../utils/logger.js'
 import { scoreCompletedGame } from '../services/scoringService.js'
+import { scoreSurvivorPicks } from '../services/survivorService.js'
 
 async function scoreSport(sportKey) {
   let scores
@@ -52,6 +53,7 @@ async function scoreSport(sportKey) {
     }
 
     await scoreCompletedGame(game.id, winner, game.sport_id)
+    await scoreSurvivorPicks(game.id, winner)
     scored++
   }
 

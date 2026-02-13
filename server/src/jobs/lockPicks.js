@@ -59,7 +59,27 @@ export async function lockPicks() {
     }
   }
 
-  if (locked > 0) {
-    logger.info({ locked, games: gameIds.length }, 'Picks locked')
+  // Lock survivor picks for these games
+  let survivorLocked = 0
+  for (const game of games) {
+    const { data: survivorPicks } = await supabase
+      .from('survivor_picks')
+      .select('id')
+      .eq('game_id', game.id)
+      .eq('status', 'pending')
+
+    if (survivorPicks?.length) {
+      await supabase
+        .from('survivor_picks')
+        .update({ status: 'locked', updated_at: now })
+        .eq('game_id', game.id)
+        .eq('status', 'pending')
+
+      survivorLocked += survivorPicks.length
+    }
+  }
+
+  if (locked > 0 || survivorLocked > 0) {
+    logger.info({ locked, survivorLocked, games: gameIds.length }, 'Picks locked')
   }
 }

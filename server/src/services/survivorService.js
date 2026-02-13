@@ -1,0 +1,335 @@
+import { supabase } from '../config/supabase.js'
+import { logger } from '../utils/logger.js'
+
+export async function submitSurvivorPick(leagueId, userId, weekId, gameId, pickedTeam) {
+  // Verify user is alive
+  const { data: member } = await supabase
+    .from('league_members')
+    .select('is_alive, lives_remaining')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .single()
+
+  if (!member) {
+    const err = new Error('You are not a member of this league')
+    err.status = 403
+    throw err
+  }
+
+  if (!member.is_alive) {
+    const err = new Error('You have been eliminated from this league')
+    err.status = 400
+    throw err
+  }
+
+  // Get game to determine team name
+  const { data: game } = await supabase
+    .from('games')
+    .select('id, status, starts_at, home_team, away_team')
+    .eq('id', gameId)
+    .single()
+
+  if (!game) {
+    const err = new Error('Game not found')
+    err.status = 404
+    throw err
+  }
+
+  if (game.status !== 'upcoming') {
+    const err = new Error('This game has already started')
+    err.status = 400
+    throw err
+  }
+
+  if (new Date(game.starts_at) <= new Date()) {
+    const err = new Error('This game has already started')
+    err.status = 400
+    throw err
+  }
+
+  const teamName = pickedTeam === 'home' ? game.home_team : game.away_team
+
+  // Check if team has been used before in this league
+  const { data: usedPicks } = await supabase
+    .from('survivor_picks')
+    .select('team_name')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .in('status', ['locked', 'survived', 'eliminated'])
+
+  const usedTeams = (usedPicks || []).map((p) => p.team_name)
+  if (usedTeams.includes(teamName)) {
+    const err = new Error(`You have already used ${teamName} in this league`)
+    err.status = 400
+    throw err
+  }
+
+  // Upsert pick for this week
+  const { data, error } = await supabase
+    .from('survivor_picks')
+    .upsert(
+      {
+        league_id: leagueId,
+        user_id: userId,
+        league_week_id: weekId,
+        game_id: gameId,
+        picked_team: pickedTeam,
+        team_name: teamName,
+        status: 'pending',
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'league_id,user_id,league_week_id' }
+    )
+    .select()
+    .single()
+
+  if (error) {
+    logger.error({ error }, 'Failed to submit survivor pick')
+    throw error
+  }
+
+  return data
+}
+
+export async function deleteSurvivorPick(leagueId, userId, weekId) {
+  const { data: pick } = await supabase
+    .from('survivor_picks')
+    .select('id, status')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('league_week_id', weekId)
+    .single()
+
+  if (!pick) {
+    const err = new Error('Pick not found')
+    err.status = 404
+    throw err
+  }
+
+  if (pick.status !== 'pending') {
+    const err = new Error('Cannot undo a locked or settled pick')
+    err.status = 400
+    throw err
+  }
+
+  const { error } = await supabase
+    .from('survivor_picks')
+    .delete()
+    .eq('id', pick.id)
+
+  if (error) throw error
+}
+
+export async function getSurvivorBoard(leagueId) {
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('*, users(id, username, display_name, avatar_emoji)')
+    .eq('league_id', leagueId)
+    .order('is_alive', { ascending: false })
+
+  const { data: picks } = await supabase
+    .from('survivor_picks')
+    .select('*, league_weeks(week_number)')
+    .eq('league_id', leagueId)
+    .order('league_weeks(week_number)', { ascending: true })
+
+  const { data: weeks } = await supabase
+    .from('league_weeks')
+    .select('*')
+    .eq('league_id', leagueId)
+    .order('week_number', { ascending: true })
+
+  // Group picks by user
+  const picksByUser = {}
+  for (const pick of picks || []) {
+    if (!picksByUser[pick.user_id]) picksByUser[pick.user_id] = []
+    picksByUser[pick.user_id].push(pick)
+  }
+
+  return {
+    members: (members || []).map((m) => ({
+      ...m,
+      picks: picksByUser[m.user_id] || [],
+    })),
+    weeks: weeks || [],
+  }
+}
+
+export async function getUsedTeams(leagueId, userId) {
+  const { data, error } = await supabase
+    .from('survivor_picks')
+    .select('team_name, status')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .in('status', ['locked', 'survived', 'eliminated'])
+
+  if (error) throw error
+  return (data || []).map((p) => p.team_name)
+}
+
+export async function scoreSurvivorPicks(gameId, winner) {
+  // Find all locked survivor picks for this game
+  const { data: picks, error } = await supabase
+    .from('survivor_picks')
+    .select('*, leagues(settings)')
+    .eq('game_id', gameId)
+    .eq('status', 'locked')
+
+  if (error) {
+    logger.error({ error, gameId }, 'Failed to fetch survivor picks for scoring')
+    return
+  }
+
+  if (!picks?.length) return
+
+  for (const pick of picks) {
+    if (winner === null) {
+      // Push - treat as survived
+      await supabase
+        .from('survivor_picks')
+        .update({ status: 'survived', updated_at: new Date().toISOString() })
+        .eq('id', pick.id)
+      continue
+    }
+
+    const survived = pick.picked_team === winner
+
+    await supabase
+      .from('survivor_picks')
+      .update({
+        status: survived ? 'survived' : 'eliminated',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pick.id)
+
+    if (!survived) {
+      // Decrement lives
+      const { data: member } = await supabase
+        .from('league_members')
+        .select('lives_remaining')
+        .eq('league_id', pick.league_id)
+        .eq('user_id', pick.user_id)
+        .single()
+
+      const newLives = (member?.lives_remaining || 1) - 1
+
+      if (newLives <= 0) {
+        // Get week number for eliminated_week
+        const { data: week } = await supabase
+          .from('league_weeks')
+          .select('week_number')
+          .eq('id', pick.league_week_id)
+          .single()
+
+        await supabase
+          .from('league_members')
+          .update({
+            is_alive: false,
+            lives_remaining: 0,
+            eliminated_week: week?.week_number || null,
+          })
+          .eq('league_id', pick.league_id)
+          .eq('user_id', pick.user_id)
+      } else {
+        await supabase
+          .from('league_members')
+          .update({ lives_remaining: newLives })
+          .eq('league_id', pick.league_id)
+          .eq('user_id', pick.user_id)
+      }
+    }
+  }
+
+  // Check for winner after processing all picks for each league
+  const leagueIds = [...new Set(picks.map((p) => p.league_id))]
+  for (const leagueId of leagueIds) {
+    await checkSurvivorWinner(leagueId)
+  }
+
+  logger.info({ gameId, picksScored: picks.length }, 'Survivor picks scored')
+}
+
+async function checkSurvivorWinner(leagueId) {
+  const { data: aliveMembers } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+    .eq('is_alive', true)
+
+  if (!aliveMembers) return
+
+  if (aliveMembers.length === 1) {
+    // We have a winner!
+    const winnerId = aliveMembers[0].user_id
+    const { data: league } = await supabase
+      .from('leagues')
+      .select('settings')
+      .eq('id', leagueId)
+      .single()
+
+    const winnerBonus = league?.settings?.winner_bonus || 100
+
+    // Award bonus points
+    const { error } = await supabase.rpc('increment_user_points', {
+      user_row_id: winnerId,
+      points_delta: winnerBonus,
+    })
+
+    if (error) {
+      logger.error({ error, winnerId, leagueId }, 'Failed to award survivor winner bonus')
+    } else {
+      logger.info({ winnerId, leagueId, bonus: winnerBonus }, 'Survivor winner awarded')
+    }
+
+    // Mark league as completed
+    await supabase
+      .from('leagues')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', leagueId)
+  } else if (aliveMembers.length === 0) {
+    // All eliminated in same week — check league settings
+    const { data: league } = await supabase
+      .from('leagues')
+      .select('settings')
+      .eq('id', leagueId)
+      .single()
+
+    if (league?.settings?.all_eliminated_survive) {
+      // Revive all members who were just eliminated this round
+      // Find the most recent eliminated week
+      const { data: eliminated } = await supabase
+        .from('league_members')
+        .select('user_id, eliminated_week')
+        .eq('league_id', leagueId)
+        .eq('is_alive', false)
+        .order('eliminated_week', { ascending: false })
+
+      if (eliminated?.length) {
+        const latestWeek = eliminated[0].eliminated_week
+        const toRevive = eliminated.filter((m) => m.eliminated_week === latestWeek)
+
+        for (const m of toRevive) {
+          await supabase
+            .from('league_members')
+            .update({
+              is_alive: true,
+              lives_remaining: 1,
+              eliminated_week: null,
+            })
+            .eq('league_id', leagueId)
+            .eq('user_id', m.user_id)
+
+          // Also revert the pick status
+          await supabase
+            .from('survivor_picks')
+            .update({ status: 'survived', updated_at: new Date().toISOString() })
+            .eq('league_id', leagueId)
+            .eq('user_id', m.user_id)
+            .eq('status', 'eliminated')
+        }
+
+        logger.info({ leagueId, revived: toRevive.length }, 'All eliminated — all survive rule applied')
+      }
+    }
+  }
+}
