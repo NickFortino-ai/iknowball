@@ -256,19 +256,6 @@ export function useSubmitBracket() {
   })
 }
 
-export function useEnterBracketResult() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ leagueId, matchupId, winner }) =>
-      api.post(`/leagues/${leagueId}/bracket/result`, { matchup_id: matchupId, winner }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'bracket'] })
-      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'standings'] })
-    },
-  })
-}
-
 export function useBracketTemplatesActive(sport) {
   return useQuery({
     queryKey: ['bracketTemplates', 'active', sport],

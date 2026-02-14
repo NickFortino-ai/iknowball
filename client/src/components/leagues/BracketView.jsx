@@ -9,11 +9,10 @@ import { useAuth } from '../../hooks/useAuth'
 import BracketDisplay from './BracketDisplay'
 import BracketPicker from './BracketPicker'
 import BracketStandings from './BracketStandings'
-import BracketResultEntry from './BracketResultEntry'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 
-export default function BracketView({ league, isCommissioner }) {
+export default function BracketView({ league }) {
   const { profile } = useAuth()
   const { data: tournament, isLoading: tournamentLoading } = useBracketTournament(league.id)
   const { data: myEntry } = useBracketEntry(league.id)
@@ -21,7 +20,7 @@ export default function BracketView({ league, isCommissioner }) {
 
   const [showPicker, setShowPicker] = useState(false)
   const [viewingUserId, setViewingUserId] = useState(null)
-  const [viewTab, setViewTab] = useState('bracket') // bracket | standings | results
+  const [viewTab, setViewTab] = useState('bracket') // bracket | standings
 
   const { data: viewedEntry } = useViewBracketEntry(
     league.id,
@@ -103,16 +102,6 @@ export default function BracketView({ league, isCommissioner }) {
         >
           Standings
         </button>
-        {isCommissioner && isLocked && (
-          <button
-            onClick={() => setViewTab('results')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              viewTab === 'results' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-            }`}
-          >
-            Enter Results
-          </button>
-        )}
       </div>
 
       {viewTab === 'bracket' && (
@@ -154,14 +143,6 @@ export default function BracketView({ league, isCommissioner }) {
 
       {viewTab === 'standings' && (
         <BracketStandings entries={entries} />
-      )}
-
-      {viewTab === 'results' && isCommissioner && (
-        <BracketResultEntry
-          league={league}
-          matchups={tournament.matchups}
-          tournament={tournament}
-        />
       )}
     </div>
   )

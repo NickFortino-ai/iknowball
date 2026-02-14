@@ -141,7 +141,7 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Bracket' && league.format === 'bracket' && (
-        <BracketView league={league} isCommissioner={isCommissioner} />
+        <BracketView league={league} />
       )}
     </div>
   )

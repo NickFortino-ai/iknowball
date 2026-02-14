@@ -144,3 +144,30 @@ export function useDeleteBracketTemplate() {
     },
   })
 }
+
+export function useEnterTemplateResult() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ templateId, templateMatchupId, winner }) =>
+      api.post(`/admin/bracket-templates/${templateId}/results`, {
+        template_matchup_id: templateMatchupId,
+        winner,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['adminBracketTemplates', variables.templateId] })
+    },
+  })
+}
+
+export function useUndoTemplateResult() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ templateId, templateMatchupId }) =>
+      api.delete(`/admin/bracket-templates/${templateId}/results/${templateMatchupId}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['adminBracketTemplates', variables.templateId] })
+    },
+  })
+}

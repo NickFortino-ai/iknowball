@@ -18,6 +18,9 @@ import {
   updateTemplate,
   saveTemplateMatchups,
   deleteTemplate,
+  getTemplateResults,
+  enterTemplateResult,
+  undoTemplateResult,
 } from '../services/bracketService.js'
 
 const router = Router()
@@ -118,6 +121,26 @@ router.post('/bracket-templates/:id/matchups', async (req, res) => {
 
 router.delete('/bracket-templates/:id', async (req, res) => {
   await deleteTemplate(req.params.id, req.user.id)
+  res.status(204).end()
+})
+
+// Template Results
+router.get('/bracket-templates/:id/results', async (req, res) => {
+  const results = await getTemplateResults(req.params.id)
+  res.json(results)
+})
+
+router.post('/bracket-templates/:id/results', async (req, res) => {
+  const { template_matchup_id, winner } = req.body
+  if (!template_matchup_id || !winner) {
+    return res.status(400).json({ error: 'template_matchup_id and winner are required' })
+  }
+  const result = await enterTemplateResult(req.params.id, template_matchup_id, winner)
+  res.json(result)
+})
+
+router.delete('/bracket-templates/:id/results/:matchupId', async (req, res) => {
+  await undoTemplateResult(req.params.id, req.params.matchupId)
   res.status(204).end()
 })
 

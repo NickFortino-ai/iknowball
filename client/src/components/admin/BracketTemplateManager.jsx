@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useBracketTemplates, useDeleteBracketTemplate } from '../../hooks/useAdmin'
 import BracketTemplateBuilder from './BracketTemplateBuilder'
+import BracketTemplateResults from './BracketTemplateResults'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
@@ -16,6 +17,7 @@ const SPORT_LABELS = {
 export default function BracketTemplateManager() {
   const [sportFilter, setSportFilter] = useState('')
   const [editingTemplate, setEditingTemplate] = useState(null) // null = list, 'new' = create, id = edit
+  const [resultsTemplate, setResultsTemplate] = useState(null) // template id for entering results
   const { data: templates, isLoading } = useBracketTemplates(sportFilter || undefined)
   const deleteTemplate = useDeleteBracketTemplate()
 
@@ -27,6 +29,15 @@ export default function BracketTemplateManager() {
     } catch (err) {
       toast(err.message || 'Failed to archive template', 'error')
     }
+  }
+
+  if (resultsTemplate) {
+    return (
+      <BracketTemplateResults
+        templateId={resultsTemplate}
+        onClose={() => setResultsTemplate(null)}
+      />
+    )
   }
 
   if (editingTemplate) {
@@ -97,6 +108,12 @@ export default function BracketTemplateManager() {
                   )}
                 </div>
                 <div className="flex gap-1">
+                  <button
+                    onClick={() => setResultsTemplate(t.id)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
+                  >
+                    Results
+                  </button>
                   <button
                     onClick={() => setEditingTemplate(t.id)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-bg-card-hover text-text-secondary hover:text-text-primary transition-colors"

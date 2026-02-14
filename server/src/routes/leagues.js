@@ -39,7 +39,6 @@ import {
   getEntryByUser,
   getAllEntries,
   submitBracket,
-  enterMatchupResult,
   getTemplates,
 } from '../services/bracketService.js'
 
@@ -323,23 +322,6 @@ router.post('/:id/bracket/entry', requireAuth, validate(submitBracketSchema), as
     req.validated.entry_name
   )
   res.status(201).json(result)
-})
-
-const enterResultSchema = z.object({
-  matchup_id: z.string().uuid(),
-  winner: z.enum(['top', 'bottom']),
-})
-
-router.post('/:id/bracket/result', requireAuth, validate(enterResultSchema), async (req, res) => {
-  const tournament = await getTournament(req.params.id)
-  const result = await enterMatchupResult(
-    tournament.id,
-    req.params.id,
-    req.validated.matchup_id,
-    req.validated.winner,
-    req.user.id
-  )
-  res.json(result)
 })
 
 export default router
