@@ -17,6 +17,10 @@ import {
   selectPickemGames,
 } from '../services/leagueService.js'
 import {
+  sendInvitation,
+  getLeagueInvitations,
+} from '../services/invitationService.js'
+import {
   submitSurvivorPick,
   deleteSurvivorPick,
   getSurvivorBoard,
@@ -39,7 +43,7 @@ const router = Router()
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
   format: z.enum(['pickem', 'survivor', 'squares']),
-  sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'all']),
+  sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'all']),
   duration: z.enum(['this_week', 'custom_range', 'full_season', 'playoffs_only']),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
@@ -110,6 +114,24 @@ router.delete('/:id/members/:userId', requireAuth, async (req, res) => {
     await removeMember(req.params.id, req.user.id, req.params.userId)
   }
   res.status(204).end()
+})
+
+// ============================================
+// Invitations
+// ============================================
+
+const sendInviteSchema = z.object({
+  username: z.string().min(1),
+})
+
+router.post('/:id/invitations', requireAuth, validate(sendInviteSchema), async (req, res) => {
+  const invitation = await sendInvitation(req.params.id, req.user.id, req.validated.username)
+  res.status(201).json(invitation)
+})
+
+router.get('/:id/invitations', requireAuth, async (req, res) => {
+  const invitations = await getLeagueInvitations(req.params.id, req.user.id)
+  res.json(invitations)
 })
 
 // ============================================

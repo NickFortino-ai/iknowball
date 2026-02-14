@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useLeague, useLeagueStandings } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
+import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
 import PickemView from '../components/leagues/PickemView'
 import SurvivorView from '../components/leagues/SurvivorView'
 import SquaresView from '../components/leagues/SquaresView'
@@ -24,6 +25,8 @@ const SPORT_LABELS = {
   americanfootball_nfl: 'NFL',
   basketball_nba: 'NBA',
   baseball_mlb: 'MLB',
+  basketball_ncaab: 'NCAAB',
+  americanfootball_ncaaf: 'NCAAF',
   all: 'All Sports',
 }
 
@@ -33,6 +36,7 @@ export default function LeagueDetailPage() {
   const { data: league, isLoading } = useLeague(id)
   const { data: standings } = useLeagueStandings(id)
   const [activeTab, setActiveTab] = useState(0)
+  const [showInviteModal, setShowInviteModal] = useState(false)
 
   if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
   if (!league) return null
@@ -62,23 +66,37 @@ export default function LeagueDetailPage() {
         </div>
       </div>
 
-      {/* Invite Code */}
+      {/* Invite Code & Invite Player */}
       <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs text-text-muted">Invite Code</div>
             <div className="font-display text-xl tracking-widest">{league.invite_code}</div>
           </div>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(league.invite_code)
-            }}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-bg-card-hover text-text-secondary hover:text-text-primary transition-colors"
-          >
-            Copy
-          </button>
+          <div className="flex items-center gap-2">
+            {isCommissioner && (
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+              >
+                Invite Player
+              </button>
+            )}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(league.invite_code)
+              }}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-bg-card-hover text-text-secondary hover:text-text-primary transition-colors"
+            >
+              Copy
+            </button>
+          </div>
         </div>
       </div>
+
+      {showInviteModal && (
+        <InvitePlayerModal leagueId={league.id} onClose={() => setShowInviteModal(false)} />
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">

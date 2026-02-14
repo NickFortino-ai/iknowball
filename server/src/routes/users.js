@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
+import {
+  getMyInvitations,
+  acceptInvitation,
+  declineInvitation,
+} from '../services/invitationService.js'
 
 const router = Router()
 
@@ -122,6 +127,42 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
     total_users: allUsers?.length || 0,
     sport_stats: sportStats || [],
   })
+})
+
+// Search users by username or display name
+router.get('/search', requireAuth, async (req, res) => {
+  const q = req.query.q?.trim()
+  if (!q || q.length < 2) {
+    return res.json([])
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_emoji')
+    .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+    .neq('id', req.user.id)
+    .limit(10)
+
+  if (error) throw error
+  res.json(data || [])
+})
+
+// Get my pending invitations
+router.get('/me/invitations', requireAuth, async (req, res) => {
+  const invitations = await getMyInvitations(req.user.id)
+  res.json(invitations)
+})
+
+// Accept an invitation
+router.post('/me/invitations/:invitationId/accept', requireAuth, async (req, res) => {
+  const result = await acceptInvitation(req.params.invitationId, req.user.id)
+  res.json(result)
+})
+
+// Decline an invitation
+router.post('/me/invitations/:invitationId/decline', requireAuth, async (req, res) => {
+  await declineInvitation(req.params.invitationId, req.user.id)
+  res.status(204).end()
 })
 
 router.get('/me', requireAuth, async (req, res) => {
