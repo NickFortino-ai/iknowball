@@ -79,7 +79,63 @@ export async function lockPicks() {
     }
   }
 
-  if (locked > 0 || survivorLocked > 0) {
-    logger.info({ locked, survivorLocked, games: gameIds.length }, 'Picks locked')
+  // Lock published player props and their pending picks for these games
+  let propsLocked = 0
+  let propPicksLocked = 0
+  for (const game of games) {
+    // Lock published props for this game
+    const { data: props } = await supabase
+      .from('player_props')
+      .select('id, over_odds, under_odds')
+      .eq('game_id', game.id)
+      .eq('status', 'published')
+
+    if (!props?.length) continue
+
+    const propIds = props.map((p) => p.id)
+    await supabase
+      .from('player_props')
+      .update({ status: 'locked', updated_at: now })
+      .in('id', propIds)
+
+    propsLocked += props.length
+
+    // Lock pending prop picks and snapshot odds
+    for (const prop of props) {
+      const { data: propPicks } = await supabase
+        .from('prop_picks')
+        .select('id, picked_side')
+        .eq('prop_id', prop.id)
+        .eq('status', 'pending')
+
+      if (!propPicks?.length) continue
+
+      for (const pick of propPicks) {
+        const odds = pick.picked_side === 'over' ? prop.over_odds : prop.under_odds
+        const risk = odds ? calculateRiskPoints(odds) : 0
+        const reward = odds ? calculateRewardPoints(odds) : 0
+
+        const { error } = await supabase
+          .from('prop_picks')
+          .update({
+            status: 'locked',
+            odds_at_pick: odds,
+            risk_points: risk,
+            reward_points: reward,
+            updated_at: now,
+          })
+          .eq('id', pick.id)
+
+        if (error) {
+          logger.error({ error, pickId: pick.id }, 'Failed to lock prop pick')
+        } else {
+          propPicksLocked++
+        }
+      }
+    }
+  }
+
+  if (locked > 0 || survivorLocked > 0 || propsLocked > 0 || propPicksLocked > 0) {
+    logger.info({ locked, survivorLocked, propsLocked, propPicksLocked, games: gameIds.length }, 'Picks locked')
   }
 }

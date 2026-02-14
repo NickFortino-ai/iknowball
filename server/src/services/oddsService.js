@@ -37,3 +37,12 @@ export async function fetchScores(sportKey = 'americanfootball_nfl') {
     daysFrom: 3,
   })
 }
+
+export async function fetchPlayerProps(sportKey, eventId, markets) {
+  const marketKeys = markets?.length ? markets.join(',') : 'player_points'
+  return fetchFromOddsApi(`/sports/${sportKey}/events/${eventId}/odds`, {
+    regions: 'us',
+    markets: marketKeys,
+    oddsFormat: 'american',
+  })
+}

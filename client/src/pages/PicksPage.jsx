@@ -3,6 +3,7 @@ import { useGames } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick } from '../hooks/usePicks'
 import GameCard from '../components/picks/GameCard'
 import BottomBar from '../components/picks/BottomBar'
+import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
@@ -136,6 +137,10 @@ export default function PicksPage() {
         </button>
       </div>
 
+      {/* Daily Featured Player Prop */}
+      <FeaturedPropSection date={selectedDate} />
+
+      {/* Game Cards */}
       {gamesLoading || picksLoading ? (
         <LoadingSpinner />
       ) : filteredGames.length === 0 ? (

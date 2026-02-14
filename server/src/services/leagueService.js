@@ -473,6 +473,25 @@ export async function getPickemStandings(leagueId) {
 
   const { data: picks } = await picksQuery
 
+  // Also fetch settled prop picks for these users
+  let propPicksQuery = supabase
+    .from('prop_picks')
+    .select('user_id, points_earned, is_correct, player_props!inner(game_id, sport_id, games!inner(starts_at, sports!inner(key)))')
+    .in('user_id', userIds)
+    .eq('status', 'settled')
+
+  if (league.sport !== 'all') {
+    propPicksQuery = propPicksQuery.eq('player_props.games.sports.key', league.sport)
+  }
+  if (league.starts_at) {
+    propPicksQuery = propPicksQuery.gte('player_props.games.starts_at', league.starts_at)
+  }
+  if (league.ends_at) {
+    propPicksQuery = propPicksQuery.lte('player_props.games.starts_at', league.ends_at)
+  }
+
+  const { data: propPicks } = await propPicksQuery
+
   // If games_per_week is set, filter to only selected games
   let validGameIds = null
   if (league.settings?.games_per_week) {
@@ -511,6 +530,15 @@ export async function getPickemStandings(leagueId) {
     s.total_points += pick.points_earned || 0
     s.total_picks++
     if (pick.is_correct) s.correct_picks++
+  }
+
+  // Add prop pick points to standings
+  for (const propPick of propPicks || []) {
+    const s = statsMap[propPick.user_id]
+    if (!s) continue
+    s.total_points += propPick.points_earned || 0
+    s.total_picks++
+    if (propPick.is_correct) s.correct_picks++
   }
 
   const standings = Object.values(statsMap)

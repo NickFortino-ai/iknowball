@@ -1,8 +1,6 @@
 import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
-import { syncOdds } from '../jobs/syncOdds.js'
-import { scoreGames } from '../jobs/scoreGames.js'
 
 const router = Router()
 
@@ -44,17 +42,6 @@ router.get('/:id', requireAuth, async (req, res) => {
   }
 
   res.json(data)
-})
-
-// Dev/admin endpoints
-router.post('/admin/sync-odds', async (req, res) => {
-  await syncOdds()
-  res.json({ message: 'Odds sync complete' })
-})
-
-router.post('/admin/score-games', async (req, res) => {
-  await scoreGames()
-  res.json({ message: 'Game scoring complete' })
 })
 
 export default router

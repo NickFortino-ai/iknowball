@@ -44,6 +44,14 @@ export default function Navbar() {
                   <span className="text-sm text-text-secondary hidden sm:inline">{profile.username}</span>
                 </Link>
               )}
+              {profile?.is_admin && (
+                <Link
+                  to="/admin"
+                  className={`text-xs transition-colors ${location.pathname === '/admin' ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}
+                >
+                  Admin
+                </Link>
+              )}
               <Link
                 to="/settings"
                 className={`text-xs transition-colors ${location.pathname === '/settings' ? 'text-accent' : 'text-text-muted hover:text-text-primary'}`}

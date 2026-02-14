@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "create-admin": "node src/scripts/createAdmin.js"
   },
   "dependencies": {
     "express": "^5.1.0",
