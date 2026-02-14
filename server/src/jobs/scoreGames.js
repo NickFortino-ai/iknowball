@@ -5,6 +5,43 @@ import { scoreCompletedGame } from '../services/scoringService.js'
 import { scoreSurvivorPicks } from '../services/survivorService.js'
 
 async function scoreSport(sportKey) {
+  // Smart gate: only call API if there are games that need scoring
+  const { data: sport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', sportKey)
+    .single()
+
+  if (!sport) {
+    logger.warn({ sportKey }, 'Sport not found in database, skipping scoring')
+    return 0
+  }
+
+  const now = new Date()
+  const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000)
+
+  // Check for live games
+  const { count: liveCount } = await supabase
+    .from('games')
+    .select('id', { count: 'exact', head: true })
+    .eq('sport_id', sport.id)
+    .eq('status', 'live')
+
+  // Check for games that started in the last 6 hours but aren't final yet
+  // (covers timing gaps and long games with overtime/delays)
+  const { count: recentCount } = await supabase
+    .from('games')
+    .select('id', { count: 'exact', head: true })
+    .eq('sport_id', sport.id)
+    .neq('status', 'final')
+    .gte('starts_at', sixHoursAgo.toISOString())
+    .lte('starts_at', now.toISOString())
+
+  if (liveCount === 0 && recentCount === 0) {
+    logger.debug({ sportKey }, 'No live or recently started games, skipping score fetch')
+    return 0
+  }
+
   let scores
   try {
     scores = await fetchScores(sportKey)

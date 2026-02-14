@@ -14,6 +14,49 @@ async function syncSport(sportKey) {
     return 0
   }
 
+  // Smart gate: skip API call if no relevant games
+  const now = new Date()
+  const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+  const sixteenHoursFromNow = new Date(now.getTime() + 16 * 60 * 60 * 1000)
+
+  // If this sport has games in the DB, apply filters.
+  // If zero games exist (first run / new sport), bypass and call API for discovery.
+  const { count: totalGames } = await supabase
+    .from('games')
+    .select('id', { count: 'exact', head: true })
+    .eq('sport_id', sport.id)
+
+  if (totalGames > 0) {
+    // Check 1: Any upcoming games within the next 3 days?
+    const { count: upcomingCount } = await supabase
+      .from('games')
+      .select('id', { count: 'exact', head: true })
+      .eq('sport_id', sport.id)
+      .eq('status', 'upcoming')
+      .gte('starts_at', now.toISOString())
+      .lte('starts_at', threeDaysFromNow.toISOString())
+
+    if (upcomingCount === 0) {
+      logger.debug({ sportKey }, 'No upcoming games within 3 days, skipping odds sync')
+      return 0
+    }
+
+    // Check 2: Any games starting within the next 16 hours?
+    // Avoids syncing during dead hours (e.g. 3 AM) when no one is making picks.
+    const { count: soonCount } = await supabase
+      .from('games')
+      .select('id', { count: 'exact', head: true })
+      .eq('sport_id', sport.id)
+      .eq('status', 'upcoming')
+      .gte('starts_at', now.toISOString())
+      .lte('starts_at', sixteenHoursFromNow.toISOString())
+
+    if (soonCount === 0) {
+      logger.debug({ sportKey }, 'No games starting within 16 hours, skipping odds sync')
+      return 0
+    }
+  }
+
   let events
   try {
     events = await fetchOdds(sportKey)

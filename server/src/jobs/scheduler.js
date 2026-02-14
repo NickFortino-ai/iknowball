@@ -7,10 +7,10 @@ import { lockPicks } from './lockPicks.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
-    cron.schedule('*/15 * * * *', async () => {
+    cron.schedule('*/30 * * * *', async () => {
       try { await syncOdds() } catch (err) { logger.error({ err }, 'Odds sync job failed') }
     })
-    logger.info('Odds sync scheduled: every 15 minutes')
+    logger.info('Odds sync scheduled: every 30 minutes')
   }
 
   if (env.ENABLE_GAME_SCORING) {
