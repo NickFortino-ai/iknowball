@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF4D00" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#FF4D00" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0A0A0F" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFA04D"/>
+      <stop offset="40%" stop-color="#FF4D00"/>
+      <stop offset="100%" stop-color="#CC3D00"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="97" fill="#0A0A0F"/>
+  <circle cx="256" cy="256" r="220" fill="url(#glow)"/>
+  <g transform="translate(130, 72)">
+    <path d="
+      M 0 0
+      L 140 0
+      C 200 0, 240 30, 240 80
+      C 240 120, 218 148, 180 160
+      C 225 172, 252 200, 252 248
+      C 252 310, 208 368, 140 368
+      L 0 368
+      Z
+      M 68 56
+      L 68 148
+      L 130 148
+      C 165 148, 172 120, 172 102
+      C 172 78, 160 56, 130 56
+      Z
+      M 68 204
+      L 68 312
+      L 132 312
+      C 172 312, 184 284, 184 258
+      C 184 232, 172 204, 132 204
+      Z
+    " fill="url(#flame)" fill-rule="evenodd"/>
+  </g>
+</svg>
