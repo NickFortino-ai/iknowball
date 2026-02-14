@@ -11,6 +11,8 @@ const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
   { label: 'MLB', key: 'baseball_mlb' },
   { label: 'NFL', key: 'americanfootball_nfl' },
+  { label: 'NCAAB', key: 'basketball_ncaab' },
+  { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
 
 export default function AdminPage() {

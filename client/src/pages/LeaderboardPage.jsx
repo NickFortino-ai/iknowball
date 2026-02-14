@@ -11,6 +11,8 @@ const tabs = [
   { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
   { label: 'MLB', scope: 'sport', sport: 'baseball_mlb' },
   { label: 'NFL', scope: 'sport', sport: 'americanfootball_nfl' },
+  { label: 'NCAAB', scope: 'sport', sport: 'basketball_ncaab' },
+  { label: 'NCAAF', scope: 'sport', sport: 'americanfootball_ncaaf' },
 ]
 
 export default function LeaderboardPage() {

@@ -100,7 +100,7 @@ async function scoreSport(sportKey) {
 export async function scoreGames() {
   logger.info('Starting game scoring...')
 
-  const sports = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb']
+  const sports = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf']
   let total = 0
 
   for (const sportKey of sports) {

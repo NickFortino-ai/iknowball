@@ -4,22 +4,28 @@ import { formatOdds } from '../../lib/scoring'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
+const NBA_MARKETS = [
+  { key: 'player_points', label: 'Points' },
+  { key: 'player_rebounds', label: 'Rebounds' },
+  { key: 'player_assists', label: 'Assists' },
+  { key: 'player_threes', label: '3-Pointers' },
+  { key: 'player_points_rebounds_assists', label: 'PRA' },
+]
+
+const NFL_MARKETS = [
+  { key: 'player_pass_tds', label: 'Pass TDs' },
+  { key: 'player_pass_yds', label: 'Pass Yds' },
+  { key: 'player_rush_yds', label: 'Rush Yds' },
+  { key: 'player_reception_yds', label: 'Rec Yds' },
+  { key: 'player_receptions', label: 'Receptions' },
+  { key: 'player_anytime_td', label: 'Anytime TD' },
+]
+
 const MARKET_OPTIONS = {
-  basketball_nba: [
-    { key: 'player_points', label: 'Points' },
-    { key: 'player_rebounds', label: 'Rebounds' },
-    { key: 'player_assists', label: 'Assists' },
-    { key: 'player_threes', label: '3-Pointers' },
-    { key: 'player_points_rebounds_assists', label: 'PRA' },
-  ],
-  americanfootball_nfl: [
-    { key: 'player_pass_tds', label: 'Pass TDs' },
-    { key: 'player_pass_yds', label: 'Pass Yds' },
-    { key: 'player_rush_yds', label: 'Rush Yds' },
-    { key: 'player_reception_yds', label: 'Rec Yds' },
-    { key: 'player_receptions', label: 'Receptions' },
-    { key: 'player_anytime_td', label: 'Anytime TD' },
-  ],
+  basketball_nba: NBA_MARKETS,
+  basketball_ncaab: NBA_MARKETS,
+  americanfootball_nfl: NFL_MARKETS,
+  americanfootball_ncaaf: NFL_MARKETS,
   baseball_mlb: [
     { key: 'player_strikeouts', label: 'Strikeouts' },
     { key: 'player_hits', label: 'Hits' },

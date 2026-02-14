@@ -13,6 +13,8 @@ const SPORT_OPTIONS = [
   { value: 'americanfootball_nfl', label: 'NFL' },
   { value: 'basketball_nba', label: 'NBA' },
   { value: 'baseball_mlb', label: 'MLB' },
+  { value: 'basketball_ncaab', label: 'NCAAB' },
+  { value: 'americanfootball_ncaaf', label: 'NCAAF' },
   { value: 'all', label: 'All Sports' },
 ]
 
