@@ -71,27 +71,6 @@ export default function AdminPage() {
     <div className="max-w-4xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-6">Admin Panel</h1>
 
-      {/* System Actions */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-        <h2 className="font-semibold text-sm mb-3">System Actions</h2>
-        <div className="flex gap-3">
-          <button
-            onClick={handleSyncOdds}
-            disabled={syncOdds.isPending}
-            className="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {syncOdds.isPending ? 'Syncing...' : 'Sync Odds'}
-          </button>
-          <button
-            onClick={handleScoreGames}
-            disabled={scoreGames.isPending}
-            className="bg-correct hover:bg-correct/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {scoreGames.isPending ? 'Scoring...' : 'Score Games'}
-          </button>
-        </div>
-      </div>
-
       {/* Featured Props Overview */}
       {featuredProps?.length > 0 && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
@@ -251,6 +230,27 @@ export default function AdminPage() {
               Select a game to manage props
             </div>
           )}
+        </div>
+      </div>
+
+      {/* System Actions — manual overrides, rarely needed */}
+      <div className="bg-bg-card rounded-xl border border-border p-4 mt-8">
+        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Manual Overrides</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={handleSyncOdds}
+            disabled={syncOdds.isPending}
+            className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {syncOdds.isPending ? 'Syncing...' : 'Sync Odds'}
+          </button>
+          <button
+            onClick={handleScoreGames}
+            disabled={scoreGames.isPending}
+            className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {scoreGames.isPending ? 'Scoring...' : 'Score Games'}
+          </button>
         </div>
       </div>
     </div>
