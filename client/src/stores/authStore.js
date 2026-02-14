@@ -43,7 +43,13 @@ export const useAuthStore = create((set, get) => ({
     return data
   },
 
-  signIn: async (email, password) => {
+  signIn: async (identifier, password) => {
+    let email = identifier
+    // If no @ sign, treat as username and resolve to email
+    if (!identifier.includes('@')) {
+      const resolved = await api.post('/users/resolve', { username: identifier })
+      email = resolved.email
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     return data

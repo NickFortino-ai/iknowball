@@ -18,6 +18,32 @@ const updateSchema = z.object({
   sports_interests: z.array(z.string()).max(10).optional(),
 })
 
+// Resolve username to email for login (no auth required)
+router.post('/resolve', async (req, res) => {
+  const { username } = req.body
+  if (!username) {
+    return res.status(400).json({ error: 'username is required' })
+  }
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('username', username)
+    .single()
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  const { data: authUser, error } = await supabase.auth.admin.getUserById(user.id)
+
+  if (error || !authUser?.user?.email) {
+    return res.status(404).json({ error: 'User not found' })
+  }
+
+  res.json({ email: authUser.user.email })
+})
+
 router.post('/register', requireAuth, validate(registerSchema), async (req, res) => {
   const { username } = req.validated
 
