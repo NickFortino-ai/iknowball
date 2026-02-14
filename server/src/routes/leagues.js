@@ -33,6 +33,15 @@ import {
   lockDigits,
   scoreQuarter,
 } from '../services/squaresService.js'
+import {
+  getTournament,
+  getBracketEntry,
+  getEntryByUser,
+  getAllEntries,
+  submitBracket,
+  enterMatchupResult,
+  getTemplates,
+} from '../services/bracketService.js'
 
 const router = Router()
 
@@ -42,7 +51,7 @@ const router = Router()
 
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
-  format: z.enum(['pickem', 'survivor', 'squares']),
+  format: z.enum(['pickem', 'survivor', 'squares', 'bracket']),
   sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'all']),
   duration: z.enum(['this_week', 'custom_range', 'full_season', 'playoffs_only']),
   starts_at: z.string().optional(),
@@ -58,6 +67,8 @@ const createLeagueSchema = z.object({
     squares_per_member: z.number().int().min(1).max(100).optional(),
     assignment_method: z.enum(['self_select', 'random']).optional(),
     points_per_quarter: z.array(z.number().int().min(0)).length(4).optional(),
+    template_id: z.string().uuid().optional(),
+    locks_at: z.string().optional(),
   }).optional(),
 })
 
@@ -69,6 +80,12 @@ router.post('/', requireAuth, validate(createLeagueSchema), async (req, res) => 
 router.get('/', requireAuth, async (req, res) => {
   const leagues = await getMyLeagues(req.user.id)
   res.json(leagues)
+})
+
+// Public bracket templates (for commissioners creating leagues)
+router.get('/bracket-templates/active', requireAuth, async (req, res) => {
+  const templates = await getTemplates({ sport: req.query.sport })
+  res.json(templates)
 })
 
 router.get('/:id', requireAuth, async (req, res) => {
@@ -256,6 +273,71 @@ router.post('/:id/squares/score-quarter', requireAuth, validate(scoreQuarterSche
     req.validated.quarter,
     req.validated.away_score,
     req.validated.home_score
+  )
+  res.json(result)
+})
+
+// ============================================
+// Bracket
+// ============================================
+
+router.get('/:id/bracket/tournament', requireAuth, async (req, res) => {
+  const tournament = await getTournament(req.params.id)
+  res.json(tournament)
+})
+
+router.get('/:id/bracket/entry', requireAuth, async (req, res) => {
+  const tournament = await getTournament(req.params.id)
+  const entry = await getBracketEntry(tournament.id, req.user.id)
+  res.json(entry)
+})
+
+router.get('/:id/bracket/entries', requireAuth, async (req, res) => {
+  const tournament = await getTournament(req.params.id)
+  const entries = await getAllEntries(tournament.id)
+  res.json(entries)
+})
+
+router.get('/:id/bracket/entries/:userId', requireAuth, async (req, res) => {
+  const tournament = await getTournament(req.params.id)
+  const entry = await getEntryByUser(tournament.id, req.params.userId)
+  res.json(entry)
+})
+
+const submitBracketSchema = z.object({
+  picks: z.array(
+    z.object({
+      template_matchup_id: z.string().uuid(),
+      picked_team: z.string().min(1),
+    })
+  ).min(1),
+  entry_name: z.string().max(50).optional(),
+})
+
+router.post('/:id/bracket/entry', requireAuth, validate(submitBracketSchema), async (req, res) => {
+  const tournament = await getTournament(req.params.id)
+  const result = await submitBracket(
+    tournament.id,
+    req.user.id,
+    req.validated.picks,
+    req.validated.entry_name
+  )
+  res.status(201).json(result)
+})
+
+const enterResultSchema = z.object({
+  matchup_id: z.string().uuid(),
+  winner: z.enum(['top', 'bottom']),
+})
+
+router.post('/:id/bracket/result', requireAuth, validate(enterResultSchema), async (req, res) => {
+  const tournament = await getTournament(req.params.id)
+  const result = await enterMatchupResult(
+    tournament.id,
+    req.params.id,
+    req.validated.matchup_id,
+    req.validated.winner,
+    req.user.id
   )
   res.json(result)
 })

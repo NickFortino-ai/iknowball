@@ -7,18 +7,21 @@ import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
 import PickemView from '../components/leagues/PickemView'
 import SurvivorView from '../components/leagues/SurvivorView'
 import SquaresView from '../components/leagues/SquaresView'
+import BracketView from '../components/leagues/BracketView'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 
 const TABS = {
   pickem: ['Standings', 'Members'],
   survivor: ['Board', 'Members'],
   squares: ['Board', 'Members'],
+  bracket: ['Bracket', 'Members'],
 }
 
 const FORMAT_LABELS = {
   pickem: "Pick'em",
   survivor: 'Survivor',
   squares: 'Squares',
+  bracket: 'Bracket',
 }
 
 const SPORT_LABELS = {
@@ -135,6 +138,10 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Board' && league.format === 'squares' && (
         <SquaresView league={league} isCommissioner={isCommissioner} />
+      )}
+
+      {tabs[activeTab] === 'Bracket' && league.format === 'bracket' && (
+        <BracketView league={league} isCommissioner={isCommissioner} />
       )}
     </div>
   )

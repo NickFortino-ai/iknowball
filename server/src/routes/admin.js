@@ -11,6 +11,14 @@ import {
   settleProps,
   getFeaturedProps,
 } from '../services/propService.js'
+import {
+  createTemplate,
+  getTemplates,
+  getTemplateDetails,
+  updateTemplate,
+  saveTemplateMatchups,
+  deleteTemplate,
+} from '../services/bracketService.js'
 
 const router = Router()
 
@@ -69,6 +77,48 @@ router.post('/props/settle', async (req, res) => {
   }
   const results = await settleProps(settlements)
   res.json(results)
+})
+
+// ============================================
+// Bracket Templates
+// ============================================
+
+router.get('/bracket-templates', async (req, res) => {
+  const templates = await getTemplates({ sport: req.query.sport })
+  res.json(templates)
+})
+
+router.get('/bracket-templates/:id', async (req, res) => {
+  const template = await getTemplateDetails(req.params.id)
+  res.json(template)
+})
+
+router.post('/bracket-templates', async (req, res) => {
+  const { name, sport, team_count, description, rounds, regions } = req.body
+  if (!name || !sport || !team_count) {
+    return res.status(400).json({ error: 'name, sport, and team_count are required' })
+  }
+  const template = await createTemplate(req.user.id, { name, sport, team_count, description, rounds, regions })
+  res.status(201).json(template)
+})
+
+router.patch('/bracket-templates/:id', async (req, res) => {
+  const template = await updateTemplate(req.params.id, req.user.id, req.body)
+  res.json(template)
+})
+
+router.post('/bracket-templates/:id/matchups', async (req, res) => {
+  const { matchups } = req.body
+  if (!matchups) {
+    return res.status(400).json({ error: 'matchups array is required' })
+  }
+  const result = await saveTemplateMatchups(req.params.id, req.user.id, matchups)
+  res.json(result)
+})
+
+router.delete('/bracket-templates/:id', async (req, res) => {
+  await deleteTemplate(req.params.id, req.user.id)
+  res.status(204).end()
 })
 
 export default router

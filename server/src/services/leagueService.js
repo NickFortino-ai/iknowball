@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createTournament, getBracketStandings } from './bracketService.js'
 
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -91,6 +92,11 @@ export async function createLeague(userId, data) {
       league_id: league.id,
       game_id: league.settings.game_id,
     })
+  }
+
+  // Create bracket tournament if format is bracket
+  if (league.format === 'bracket' && league.settings?.template_id) {
+    await createTournament(league.id, league.settings.template_id, league.settings.locks_at)
   }
 
   return league
@@ -619,6 +625,10 @@ export async function getLeagueStandings(leagueId, userId) {
 
   if (league.format === 'pickem') {
     return getPickemStandings(leagueId)
+  }
+
+  if (league.format === 'bracket') {
+    return getBracketStandings(leagueId)
   }
 
   // For survivor and squares, return members with relevant data

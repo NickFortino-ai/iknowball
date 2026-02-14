@@ -210,3 +210,68 @@ export function useScoreQuarter() {
     },
   })
 }
+
+// Bracket
+export function useBracketTournament(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'bracket', 'tournament'],
+    queryFn: () => api.get(`/leagues/${leagueId}/bracket/tournament`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useBracketEntry(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'bracket', 'entry'],
+    queryFn: () => api.get(`/leagues/${leagueId}/bracket/entry`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useBracketEntries(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'bracket', 'entries'],
+    queryFn: () => api.get(`/leagues/${leagueId}/bracket/entries`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useViewBracketEntry(leagueId, userId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'bracket', 'entries', userId],
+    queryFn: () => api.get(`/leagues/${leagueId}/bracket/entries/${userId}`),
+    enabled: !!leagueId && !!userId,
+  })
+}
+
+export function useSubmitBracket() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ leagueId, picks, entryName }) =>
+      api.post(`/leagues/${leagueId}/bracket/entry`, { picks, entry_name: entryName }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'bracket'] })
+    },
+  })
+}
+
+export function useEnterBracketResult() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ leagueId, matchupId, winner }) =>
+      api.post(`/leagues/${leagueId}/bracket/result`, { matchup_id: matchupId, winner }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'bracket'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'standings'] })
+    },
+  })
+}
+
+export function useBracketTemplatesActive(sport) {
+  return useQuery({
+    queryKey: ['bracketTemplates', 'active', sport],
+    queryFn: () => api.get(`/leagues/bracket-templates/active${sport ? `?sport=${sport}` : ''}`),
+  })
+}

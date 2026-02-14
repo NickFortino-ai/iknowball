@@ -4,6 +4,7 @@ import { useSyncOdds, useScoreGames, useAdminFeaturedProps, useUnfeatureProp } f
 import { useAuth } from '../hooks/useAuth'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
 import PropSettlePanel from '../components/admin/PropSettlePanel'
+import BracketTemplateManager from '../components/admin/BracketTemplateManager'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 
@@ -17,6 +18,7 @@ const sportTabs = [
 
 export default function AdminPage() {
   const { profile } = useAuth()
+  const [adminSection, setAdminSection] = useState('props') // props | brackets
   const [activeSport, setActiveSport] = useState(0)
   const [selectedGame, setSelectedGame] = useState(null)
   const [activeTab, setActiveTab] = useState('sync') // sync | settle
@@ -71,8 +73,35 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      <h1 className="font-display text-3xl mb-6">Admin Panel</h1>
+      <h1 className="font-display text-3xl mb-4">Admin Panel</h1>
 
+      {/* Top-level section tabs */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setAdminSection('props')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            adminSection === 'props'
+              ? 'bg-accent text-white'
+              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Props Manager
+        </button>
+        <button
+          onClick={() => setAdminSection('brackets')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            adminSection === 'brackets'
+              ? 'bg-accent text-white'
+              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Brackets
+        </button>
+      </div>
+
+      {adminSection === 'brackets' && <BracketTemplateManager />}
+
+      {adminSection === 'props' && <>
       {/* Featured Props Overview */}
       {featuredProps?.length > 0 && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
@@ -255,6 +284,7 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
+      </>}
     </div>
   )
 }

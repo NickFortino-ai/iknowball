@@ -80,3 +80,67 @@ export function useScoreGames() {
     mutationFn: () => api.post('/admin/score-games'),
   })
 }
+
+// Bracket Templates
+export function useBracketTemplates(sport) {
+  return useQuery({
+    queryKey: ['adminBracketTemplates', sport],
+    queryFn: () => api.get(`/admin/bracket-templates${sport ? `?sport=${sport}` : ''}`),
+  })
+}
+
+export function useBracketTemplate(templateId) {
+  return useQuery({
+    queryKey: ['adminBracketTemplates', templateId],
+    queryFn: () => api.get(`/admin/bracket-templates/${templateId}`),
+    enabled: !!templateId,
+  })
+}
+
+export function useCreateBracketTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data) => api.post('/admin/bracket-templates', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminBracketTemplates'] })
+      queryClient.invalidateQueries({ queryKey: ['bracketTemplates'] })
+    },
+  })
+}
+
+export function useUpdateBracketTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ templateId, ...data }) => api.patch(`/admin/bracket-templates/${templateId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminBracketTemplates'] })
+      queryClient.invalidateQueries({ queryKey: ['bracketTemplates'] })
+    },
+  })
+}
+
+export function useSaveBracketTemplateMatchups() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ templateId, matchups }) =>
+      api.post(`/admin/bracket-templates/${templateId}/matchups`, { matchups }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminBracketTemplates'] })
+    },
+  })
+}
+
+export function useDeleteBracketTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (templateId) => api.delete(`/admin/bracket-templates/${templateId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminBracketTemplates'] })
+      queryClient.invalidateQueries({ queryKey: ['bracketTemplates'] })
+    },
+  })
+}

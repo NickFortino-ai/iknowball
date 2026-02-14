@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCreateLeague } from '../hooks/useLeagues'
+import { useCreateLeague, useBracketTemplatesActive } from '../hooks/useLeagues'
 import { toast } from '../components/ui/Toast'
 
 const FORMAT_OPTIONS = [
   { value: 'pickem', label: "Pick'em", description: 'Pick winners against the spread with odds-based scoring' },
   { value: 'survivor', label: 'Survivor', description: 'Pick one team per week — lose and you are eliminated' },
   { value: 'squares', label: 'Squares', description: '10x10 grid tied to a single game with quarter-by-quarter scoring' },
+  { value: 'bracket', label: 'Bracket', description: 'Fill out a tournament bracket with escalating points per round' },
 ]
 
 const SPORT_OPTIONS = [
@@ -37,6 +38,11 @@ export default function CreateLeaguePage() {
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
 
+  // Bracket settings
+  const [templateId, setTemplateId] = useState('')
+  const [locksAt, setLocksAt] = useState('')
+  const { data: bracketTemplates } = useBracketTemplatesActive(sport !== 'all' ? sport : undefined)
+
   // Format-specific settings
   const [gamesPerWeek, setGamesPerWeek] = useState('')
   const [lives, setLives] = useState(1)
@@ -63,6 +69,10 @@ export default function CreateLeaguePage() {
       settings.points_per_quarter = pointsPerQuarter
       if (squaresPerMember) settings.squares_per_member = parseInt(squaresPerMember, 10)
     }
+    if (format === 'bracket') {
+      settings.template_id = templateId
+      settings.locks_at = locksAt
+    }
 
     try {
       const league = await createLeague.mutateAsync({
@@ -82,7 +92,7 @@ export default function CreateLeaguePage() {
     }
   }
 
-  const canSubmit = name && format && sport && duration
+  const canSubmit = name && format && sport && duration && (format !== 'bracket' || (templateId && locksAt))
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -328,6 +338,53 @@ export default function CreateLeaguePage() {
                     />
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {format === 'bracket' && (
+          <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-secondary mb-1">Bracket Settings</h3>
+            <div>
+              <label className="block text-xs text-text-muted mb-2">Tournament Template</label>
+              {bracketTemplates?.length > 0 ? (
+                <div className="space-y-1">
+                  {bracketTemplates.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTemplateId(t.id)}
+                      className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                        templateId === t.id
+                          ? 'border-accent bg-accent/10'
+                          : 'border-border bg-bg-primary hover:bg-bg-card-hover'
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{t.name}</div>
+                      <div className="text-xs text-text-muted mt-0.5">
+                        {t.team_count} teams &middot; {t.rounds?.length || 0} rounds
+                        {t.description && ` — ${t.description}`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-text-muted">
+                  No bracket templates available{sport !== 'all' ? ' for this sport' : ''}. An admin must create one first.
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs text-text-muted mb-1">Bracket Lock Date/Time</label>
+              <input
+                type="datetime-local"
+                value={locksAt}
+                onChange={(e) => setLocksAt(e.target.value)}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+              />
+              <div className="text-[10px] text-text-muted mt-1">
+                Users must submit brackets before this time
               </div>
             </div>
           </div>
