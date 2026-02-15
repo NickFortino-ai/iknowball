@@ -33,7 +33,7 @@ router.post('/resolve', async (req, res) => {
   const { data: user } = await supabase
     .from('users')
     .select('id')
-    .eq('username', username)
+    .ilike('username', username)
     .single()
 
   if (!user) {
@@ -55,7 +55,7 @@ router.post('/register', requireAuth, validate(registerSchema), async (req, res)
   const { data: existing } = await supabase
     .from('users')
     .select('id')
-    .eq('username', username)
+    .ilike('username', username)
     .single()
 
   if (existing) {
