@@ -95,6 +95,28 @@ export default function Navbar() {
     }
   }
 
+  async function handleShare() {
+    const shareData = {
+      title: 'I Know Ball',
+      text: 'Pick winners. Earn points based on Vegas odds. Prove you know ball.',
+      url: window.location.origin,
+    }
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(shareData.url)
+        toast('Link copied to clipboard!', 'success')
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        await navigator.clipboard.writeText(shareData.url)
+        toast('Link copied to clipboard!', 'success')
+      }
+    }
+    setShowMobileMenu(false)
+  }
+
   return (
     <nav className="bg-bg-secondary border-b border-border sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -204,6 +226,12 @@ export default function Navbar() {
                 Settings
               </Link>
               <button
+                onClick={handleShare}
+                className="text-xs text-text-muted hover:text-text-primary transition-colors"
+              >
+                Share
+              </button>
+              <button
                 onClick={signOut}
                 className="text-xs text-text-muted hover:text-text-primary transition-colors"
               >
@@ -276,6 +304,19 @@ export default function Navbar() {
                       </svg>
                       Profile
                     </Link>
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center gap-3 w-full px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                      </svg>
+                      Share IKB
+                    </button>
                     {profile?.is_admin && (
                       <Link
                         to="/admin"
