@@ -267,13 +267,14 @@ export default function Navbar() {
                       Settings
                     </Link>
                     <Link
-                      to="/results"
+                      to="/profile"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
                       </svg>
-                      Results
+                      Profile
                     </Link>
                     {profile?.is_admin && (
                       <Link
