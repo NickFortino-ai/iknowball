@@ -56,6 +56,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         <PickButton
           team={game.away_team}
           odds={game.away_odds}
+          score={isFinal ? game.away_score : null}
           state={getButtonState('away')}
           disabled={isLocked || isSubmitting}
           onClick={() => handleClick('away')}
@@ -64,6 +65,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         <PickButton
           team={game.home_team}
           odds={game.home_odds}
+          score={isFinal ? game.home_score : null}
           state={getButtonState('home')}
           disabled={isLocked || isSubmitting}
           onClick={() => handleClick('home')}

@@ -8,7 +8,7 @@ const stateStyles = {
   incorrect: 'bg-incorrect-muted border-incorrect',
 }
 
-export default function PickButton({ team, odds, state = 'default', onClick, disabled }) {
+export default function PickButton({ team, odds, score, state = 'default', onClick, disabled }) {
   const style = stateStyles[state] || stateStyles.default
 
   return (
@@ -20,7 +20,11 @@ export default function PickButton({ team, odds, state = 'default', onClick, dis
       <div className={`font-semibold text-xs sm:text-sm mb-1 truncate ${state === 'correct' ? 'text-correct' : state === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
         {team}
       </div>
-      <OddsDisplay odds={odds} isSelected={state === 'selected'} />
+      {score != null ? (
+        <div className="text-lg font-display text-text-primary">{score}</div>
+      ) : (
+        <OddsDisplay odds={odds} isSelected={state === 'selected'} />
+      )}
     </button>
   )
 }
