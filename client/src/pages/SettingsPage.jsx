@@ -19,7 +19,7 @@ const sportsInterests = [
   { emoji: '🏒', label: 'Hockey' },
   { emoji: '🎾', label: 'Tennis' },
   { emoji: '⛳', label: 'Golf' },
-  { emoji: '🥊', label: 'Boxing/MMA' },
+  { emoji: '🏓', label: 'Ping Pong' },
 ]
 
 export default function SettingsPage() {
