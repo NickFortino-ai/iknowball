@@ -27,7 +27,7 @@ const navLinks = [
   { to: '/results', label: 'Results' },
   { to: '/leagues', label: 'Leagues' },
   { to: '/leaderboard', label: 'Board' },
-  { to: '/connections', label: 'Crew' },
+  { to: '/connections', label: 'Squad' },
 ]
 
 export default function Navbar() {

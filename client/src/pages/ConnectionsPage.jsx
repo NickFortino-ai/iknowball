@@ -64,7 +64,7 @@ export default function ConnectionsPage() {
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <h1 className="font-display text-3xl mb-6">Crew</h1>
+        <h1 className="font-display text-3xl mb-6">Squad</h1>
         <LoadingSpinner />
       </div>
     )
@@ -72,7 +72,7 @@ export default function ConnectionsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <h1 className="font-display text-3xl mb-6">Crew</h1>
+      <h1 className="font-display text-3xl mb-6">Squad</h1>
 
       {/* Pending Requests */}
       {pending?.length > 0 && (
