@@ -12,6 +12,19 @@ const tiers = [
   { name: 'GOAT', color: 'border-tier-goat text-tier-goat' },
 ]
 
+async function attemptPendingJoin() {
+  const code = localStorage.getItem('pendingInviteCode')
+  if (!code) return null
+  try {
+    const league = await api.post('/leagues/_/join', { invite_code: code })
+    return league
+  } catch {
+    return null
+  } finally {
+    localStorage.removeItem('pendingInviteCode')
+  }
+}
+
 export default function PaymentPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -29,7 +42,9 @@ export default function PaymentPage() {
   // Redirect if already paid
   useEffect(() => {
     if (profile?.is_paid) {
-      navigate('/picks', { replace: true })
+      attemptPendingJoin().then((league) => {
+        navigate(league ? `/leagues/${league.id}` : '/picks', { replace: true })
+      })
     }
   }, [profile, navigate])
 
@@ -53,7 +68,8 @@ export default function PaymentPage() {
         if (is_paid) {
           clearInterval(interval)
           await fetchProfile()
-          navigate('/picks', { replace: true })
+          const league = await attemptPendingJoin()
+          navigate(league ? `/leagues/${league.id}` : '/picks', { replace: true })
         }
       } catch {
         // ignore polling errors
@@ -87,7 +103,8 @@ export default function PaymentPage() {
     try {
       await api.post('/payments/redeem-promo', { code: promoCode })
       await fetchProfile()
-      navigate('/picks', { replace: true })
+      const league = await attemptPendingJoin()
+      navigate(league ? `/leagues/${league.id}` : '/picks', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {

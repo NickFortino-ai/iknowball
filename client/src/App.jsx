@@ -19,6 +19,7 @@ import CreateLeaguePage from './pages/CreateLeaguePage'
 import LeagueDetailPage from './pages/LeagueDetailPage'
 import AdminPage from './pages/AdminPage'
 import PaymentPage from './pages/PaymentPage'
+import JoinPage from './pages/JoinPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/payment" element={<PaymentPage />} />
+        <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/picks" element={<ProtectedRoute><PicksPage /></ProtectedRoute>} />
         <Route path="/results" element={<ProtectedRoute><ResultsPage /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />

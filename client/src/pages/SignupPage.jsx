@@ -29,7 +29,11 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-bg-card rounded-2xl p-8 border border-border">
         <h1 className="font-display text-3xl text-center mb-2">Join the Game</h1>
-        <p className="text-text-secondary text-center mb-8">Create your account and start picking</p>
+        <p className="text-text-secondary text-center mb-8">
+          {localStorage.getItem('pendingInviteCode')
+            ? 'Create your account to join the league'
+            : 'Create your account and start picking'}
+        </p>
 
         {error && (
           <div className="bg-incorrect-muted border border-incorrect rounded-lg p-3 mb-6 text-sm text-incorrect">

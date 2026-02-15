@@ -45,6 +45,31 @@ import {
 const router = Router()
 
 // ============================================
+// Public (unauthenticated) routes
+// ============================================
+
+router.get('/preview/:code', async (req, res) => {
+  const code = req.params.code.toUpperCase()
+  const { data: league, error } = await supabase
+    .from('leagues')
+    .select('id, name, format, sport, status, max_members')
+    .eq('invite_code', code)
+    .single()
+
+  if (error || !league) {
+    return res.status(404).json({ error: 'Invalid invite code' })
+  }
+
+  const { count } = await supabase
+    .from('league_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('league_id', league.id)
+
+  const { id: _, ...preview } = league
+  res.json({ ...preview, member_count: count || 0 })
+})
+
+// ============================================
 // League CRUD
 // ============================================
 

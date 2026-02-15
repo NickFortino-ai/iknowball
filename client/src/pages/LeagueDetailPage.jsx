@@ -9,6 +9,7 @@ import SurvivorView from '../components/leagues/SurvivorView'
 import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import { toast } from '../components/ui/Toast'
 
 const TABS = {
   pickem: ['Standings', 'Members'],
@@ -86,12 +87,22 @@ export default function LeagueDetailPage() {
               </button>
             )}
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(league.invite_code)
+              onClick={async () => {
+                const url = `${window.location.origin}/join/${league.invite_code}`
+                if (navigator.share) {
+                  try {
+                    await navigator.share({ title: `Join ${league.name}`, url })
+                  } catch {
+                    // user cancelled share sheet
+                  }
+                } else {
+                  await navigator.clipboard.writeText(url)
+                  toast('Invite link copied!', 'success')
+                }
               }}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-bg-card-hover text-text-secondary hover:text-text-primary transition-colors"
             >
-              Copy
+              Share
             </button>
           </div>
         </div>
