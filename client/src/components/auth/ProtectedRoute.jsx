@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 
 export default function ProtectedRoute({ children }) {
-  const { session, loading } = useAuthStore()
+  const { session, profile, loading } = useAuthStore()
 
   if (loading) {
     return (
@@ -14,6 +14,19 @@ export default function ProtectedRoute({ children }) {
 
   if (!session) {
     return <Navigate to="/login" replace />
+  }
+
+  // Wait for profile to load before checking payment status
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (!profile.is_paid) {
+    return <Navigate to="/payment" replace />
   }
 
   return children

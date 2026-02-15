@@ -11,4 +11,7 @@ export const env = {
   ENABLE_ODDS_SYNC: process.env.ENABLE_ODDS_SYNC === 'true',
   ENABLE_GAME_SCORING: process.env.ENABLE_GAME_SCORING === 'true',
   ENABLE_PICK_LOCK: process.env.ENABLE_PICK_LOCK === 'true',
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 }

@@ -17,7 +17,7 @@ export default function SignupPage() {
     setLoading(true)
     try {
       await signUp(email, password, username)
-      navigate('/picks')
+      navigate('/payment')
     } catch (err) {
       setError(err.message)
     } finally {
