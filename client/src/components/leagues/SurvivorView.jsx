@@ -13,9 +13,11 @@ const STATUS_STYLES = {
 }
 
 export default function SurvivorView({ league }) {
+  const isDaily = league.settings?.pick_frequency === 'daily'
+  const periodLabel = isDaily ? 'Day' : 'Week'
   const { data: board, isLoading } = useSurvivorBoard(league.id)
   const { data: usedTeams } = useUsedTeams(league.id)
-  const { data: games } = useGames(league.sport === 'all' ? null : league.sport, 'upcoming')
+  const { data: games } = useGames(league.sport === 'all' ? null : league.sport, 'upcoming', isDaily ? 1 : 3)
   const submitPick = useSubmitSurvivorPick()
   const deletePick = useDeleteSurvivorPick()
   const [showPickForm, setShowPickForm] = useState(false)
@@ -75,7 +77,7 @@ export default function SurvivorView({ league }) {
           <div className="font-display text-2xl text-text-primary">
             {currentWeek?.week_number || '—'}
           </div>
-          <div className="text-xs text-text-muted">Week</div>
+          <div className="text-xs text-text-muted">{periodLabel}</div>
         </div>
       </div>
 
@@ -85,7 +87,7 @@ export default function SurvivorView({ league }) {
           onClick={() => setShowPickForm(!showPickForm)}
           className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors mb-4"
         >
-          {showPickForm ? 'Hide Pick Form' : 'Make Week ' + currentWeek.week_number + ' Pick'}
+          {showPickForm ? 'Hide Pick Form' : `Make ${periodLabel} ${currentWeek.week_number} Pick`}
         </button>
       )}
 
@@ -157,7 +159,7 @@ export default function SurvivorView({ league }) {
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                   m.is_alive ? 'bg-correct/20 text-correct' : 'bg-incorrect/20 text-incorrect'
                 }`}>
-                  {m.is_alive ? 'Alive' : `Out Wk ${m.eliminated_week}`}
+                  {m.is_alive ? 'Alive' : `Out ${isDaily ? 'Dy' : 'Wk'} ${m.eliminated_week}`}
                 </span>
               </div>
             </div>
@@ -168,7 +170,7 @@ export default function SurvivorView({ league }) {
                   <span
                     key={p.id}
                     className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${STATUS_STYLES[p.status] || 'bg-bg-primary text-text-muted'}`}
-                    title={`Week ${p.league_weeks?.week_number}: ${p.team_name}`}
+                    title={`${periodLabel} ${p.league_weeks?.week_number}: ${p.team_name}`}
                   >
                     {p.team_name?.split(' ').pop()}
                   </span>

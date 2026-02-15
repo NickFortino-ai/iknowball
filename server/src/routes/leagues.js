@@ -85,6 +85,7 @@ const createLeagueSchema = z.object({
     games_per_week: z.number().int().min(1).optional(),
     lives: z.number().int().min(1).max(2).optional(),
     all_eliminated_survive: z.boolean().optional(),
+    pick_frequency: z.enum(['daily', 'weekly']).optional(),
     winner_bonus: z.number().int().min(0).optional(),
     runner_up_bonus: z.number().int().min(0).optional(),
     game_id: z.string().uuid().optional(),

@@ -19,6 +19,8 @@ const SPORT_OPTIONS = [
   { value: 'all', label: 'All Sports' },
 ]
 
+const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'baseball_mlb', 'all'])
+
 const DURATION_OPTIONS = [
   { value: 'this_week', label: 'This Week Only' },
   { value: 'custom_range', label: 'Custom Date Range' },
@@ -46,6 +48,7 @@ export default function CreateLeaguePage() {
   // Format-specific settings
   const [gamesPerWeek, setGamesPerWeek] = useState('')
   const [lives, setLives] = useState(1)
+  const [pickFrequency, setPickFrequency] = useState('weekly')
   const [allEliminatedSurvive, setAllEliminatedSurvive] = useState(true)
   const [winnerBonus, setWinnerBonus] = useState(100)
   const [assignmentMethod, setAssignmentMethod] = useState('self_select')
@@ -61,6 +64,7 @@ export default function CreateLeaguePage() {
     }
     if (format === 'survivor') {
       settings.lives = lives
+      settings.pick_frequency = pickFrequency
       settings.all_eliminated_survive = allEliminatedSurvive
       settings.winner_bonus = winnerBonus
     }
@@ -142,7 +146,10 @@ export default function CreateLeaguePage() {
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setSport(opt.value)}
+                onClick={() => {
+                  setSport(opt.value)
+                  if (!DAILY_ELIGIBLE_SPORTS.has(opt.value)) setPickFrequency('weekly')
+                }}
                 className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                   sport === opt.value
                     ? 'bg-accent text-white'
@@ -255,8 +262,35 @@ export default function CreateLeaguePage() {
                 ))}
               </div>
             </div>
+            {DAILY_ELIGIBLE_SPORTS.has(sport) && (
+              <div>
+                <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'weekly', label: 'Weekly' },
+                    { value: 'daily', label: 'Daily' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPickFrequency(opt.value)}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        pickFrequency === opt.value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {pickFrequency === 'daily' && (
+                  <div className="text-[10px] text-text-muted mt-1">One pick per day instead of per week</div>
+                )}
+              </div>
+            )}
             <div className="flex items-center justify-between">
-              <label className="text-xs text-text-muted">If all eliminated in same week, all survive</label>
+              <label className="text-xs text-text-muted">
+                If all eliminated in same {pickFrequency === 'daily' ? 'day' : 'week'}, all survive
+              </label>
               <button
                 type="button"
                 onClick={() => setAllEliminatedSurvive(!allEliminatedSurvive)}

@@ -105,34 +105,53 @@ export async function createLeague(userId, data) {
 export async function generateLeagueWeeks(league) {
   if (!league.starts_at || !league.ends_at) return
 
-  const weeks = []
-  let weekNum = 1
+  const isDaily = league.settings?.pick_frequency === 'daily'
+  const periods = []
+  let periodNum = 1
   const current = new Date(league.starts_at)
-
-  // Align to Monday
-  const day = current.getDay()
-  current.setDate(current.getDate() - ((day + 6) % 7))
-  current.setHours(0, 0, 0, 0)
-
   const end = new Date(league.ends_at)
 
-  while (current < end) {
-    const weekEnd = new Date(current)
-    weekEnd.setDate(current.getDate() + 6)
-    weekEnd.setHours(23, 59, 59, 999)
+  if (isDaily) {
+    // Daily mode: one entry per day
+    current.setHours(0, 0, 0, 0)
 
-    weeks.push({
-      league_id: league.id,
-      week_number: weekNum++,
-      starts_at: current.toISOString(),
-      ends_at: weekEnd.toISOString(),
-    })
+    while (current < end) {
+      const dayEnd = new Date(current)
+      dayEnd.setHours(23, 59, 59, 999)
 
-    current.setDate(current.getDate() + 7)
+      periods.push({
+        league_id: league.id,
+        week_number: periodNum++,
+        starts_at: current.toISOString(),
+        ends_at: dayEnd.toISOString(),
+      })
+
+      current.setDate(current.getDate() + 1)
+    }
+  } else {
+    // Weekly mode: align to Monday-Sunday
+    const day = current.getDay()
+    current.setDate(current.getDate() - ((day + 6) % 7))
+    current.setHours(0, 0, 0, 0)
+
+    while (current < end) {
+      const weekEnd = new Date(current)
+      weekEnd.setDate(current.getDate() + 6)
+      weekEnd.setHours(23, 59, 59, 999)
+
+      periods.push({
+        league_id: league.id,
+        week_number: periodNum++,
+        starts_at: current.toISOString(),
+        ends_at: weekEnd.toISOString(),
+      })
+
+      current.setDate(current.getDate() + 7)
+    }
   }
 
-  if (weeks.length > 0) {
-    const { error } = await supabase.from('league_weeks').insert(weeks)
+  if (periods.length > 0) {
+    const { error } = await supabase.from('league_weeks').insert(periods)
     if (error) {
       logger.error({ error, leagueId: league.id }, 'Failed to generate league weeks')
     }
