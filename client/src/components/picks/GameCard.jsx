@@ -63,8 +63,14 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             disabled={isLocked || isSubmitting}
             onClick={() => handleClick('away')}
           />
-          {isFinal && game.away_odds && (
-            <div className="text-center text-xs text-text-muted mt-1">{formatOdds(game.away_odds)}</div>
+          {isFinal && (
+            <div className="text-center text-xs text-text-muted mt-1">
+              {game.away_odds != null
+                ? formatOdds(game.away_odds)
+                : userPick?.picked_team === 'away' && userPick?.odds_at_pick != null
+                  ? formatOdds(userPick.odds_at_pick)
+                  : ''}
+            </div>
           )}
         </div>
         <div className="flex items-center text-text-muted text-xs font-semibold">@</div>
@@ -77,8 +83,14 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             disabled={isLocked || isSubmitting}
             onClick={() => handleClick('home')}
           />
-          {isFinal && game.home_odds && (
-            <div className="text-center text-xs text-text-muted mt-1">{formatOdds(game.home_odds)}</div>
+          {isFinal && (
+            <div className="text-center text-xs text-text-muted mt-1">
+              {game.home_odds != null
+                ? formatOdds(game.home_odds)
+                : userPick?.picked_team === 'home' && userPick?.odds_at_pick != null
+                  ? formatOdds(userPick.odds_at_pick)
+                  : ''}
+            </div>
           )}
         </div>
       </div>
