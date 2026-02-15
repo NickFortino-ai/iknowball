@@ -12,6 +12,7 @@ import leaguesRouter from './routes/leagues.js'
 import adminRouter from './routes/admin.js'
 import propsRouter from './routes/props.js'
 import paymentsRouter from './routes/payments.js'
+import connectionsRouter from './routes/connections.js'
 
 const app = express()
 
@@ -32,6 +33,7 @@ app.use('/api/leagues', leaguesRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/props', propsRouter)
 app.use('/api/payments', paymentsRouter)
+app.use('/api/connections', connectionsRouter)
 
 app.use(errorHandler)
 

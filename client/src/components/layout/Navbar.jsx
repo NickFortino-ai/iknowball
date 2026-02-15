@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useMyInvitations, useAcceptInvitation, useDeclineInvitation } from '../../hooks/useInvitations'
+import { usePendingConnectionRequests, useAcceptConnectionRequest, useDeclineConnectionRequest } from '../../hooks/useConnections'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
 import { toast } from '../ui/Toast'
@@ -26,6 +27,7 @@ const navLinks = [
   { to: '/results', label: 'Results' },
   { to: '/leagues', label: 'Leagues' },
   { to: '/leaderboard', label: 'Board' },
+  { to: '/connections', label: 'Crew' },
 ]
 
 export default function Navbar() {
@@ -41,7 +43,13 @@ export default function Navbar() {
   const acceptInvitation = useAcceptInvitation()
   const declineInvitation = useDeclineInvitation()
 
-  const pendingCount = invitations?.length || 0
+  const { data: pendingConnections } = usePendingConnectionRequests(isAuthenticated)
+  const acceptConnection = useAcceptConnectionRequest()
+  const declineConnection = useDeclineConnectionRequest()
+
+  const inviteCount = invitations?.length || 0
+  const connectionCount = pendingConnections?.length || 0
+  const pendingCount = inviteCount + connectionCount
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -92,6 +100,24 @@ export default function Navbar() {
       toast('Invite declined', 'info')
     } catch (err) {
       toast(err.message || 'Failed to decline invite', 'error')
+    }
+  }
+
+  async function handleAcceptConnection(connectionId) {
+    try {
+      await acceptConnection.mutateAsync(connectionId)
+      toast('Connection accepted!', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to accept', 'error')
+    }
+  }
+
+  async function handleDeclineConnection(connectionId) {
+    try {
+      await declineConnection.mutateAsync(connectionId)
+      toast('Request declined', 'info')
+    } catch (err) {
+      toast(err.message || 'Failed to decline', 'error')
     }
   }
 
@@ -162,20 +188,20 @@ export default function Navbar() {
                   )}
                 </button>
 
-                {/* Invitations Dropdown */}
+                {/* Notifications Dropdown */}
                 {showInvites && (
                   <div className="absolute right-0 top-full mt-2 w-80 bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
                     <div className="px-4 py-3 border-b border-border">
-                      <h3 className="font-semibold text-sm">Invitations</h3>
+                      <h3 className="font-semibold text-sm">Notifications</h3>
                     </div>
 
                     {pendingCount === 0 ? (
                       <div className="px-4 py-6 text-center text-text-muted text-sm">
-                        No pending invitations
+                        No pending notifications
                       </div>
                     ) : (
                       <div className="max-h-80 overflow-y-auto">
-                        {invitations.map((invite) => (
+                        {invitations?.map((invite) => (
                           <div key={invite.id} className="px-4 py-3 border-b border-border last:border-b-0">
                             <div className="text-sm font-medium mb-1">{invite.leagues?.name}</div>
                             <div className="text-xs text-text-muted mb-2">
@@ -192,6 +218,30 @@ export default function Navbar() {
                               <button
                                 onClick={() => handleDecline(invite.id)}
                                 disabled={declineInvitation.isPending}
+                                className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-secondary hover:bg-border transition-colors disabled:opacity-50"
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {pendingConnections?.map((req) => (
+                          <div key={req.id} className="px-4 py-3 border-b border-border last:border-b-0">
+                            <div className="text-sm font-medium mb-1">Connection Request</div>
+                            <div className="text-xs text-text-muted mb-2">
+                              @{req.requester?.username} wants to connect
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleAcceptConnection(req.id)}
+                                disabled={acceptConnection.isPending}
+                                className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleDeclineConnection(req.id)}
+                                disabled={declineConnection.isPending}
                                 className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-secondary hover:bg-border transition-colors disabled:opacity-50"
                               >
                                 Decline
@@ -346,20 +396,20 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Mobile invitations dropdown (shared position) */}
+            {/* Mobile notifications dropdown (shared position) */}
             {showInvites && (
               <div className="absolute right-4 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden md:hidden">
                 <div className="px-4 py-3 border-b border-border">
-                  <h3 className="font-semibold text-sm">Invitations</h3>
+                  <h3 className="font-semibold text-sm">Notifications</h3>
                 </div>
 
                 {pendingCount === 0 ? (
                   <div className="px-4 py-6 text-center text-text-muted text-sm">
-                    No pending invitations
+                    No pending notifications
                   </div>
                 ) : (
                   <div className="max-h-80 overflow-y-auto">
-                    {invitations.map((invite) => (
+                    {invitations?.map((invite) => (
                       <div key={invite.id} className="px-4 py-3 border-b border-border last:border-b-0">
                         <div className="text-sm font-medium mb-1">{invite.leagues?.name}</div>
                         <div className="text-xs text-text-muted mb-2">
@@ -376,6 +426,30 @@ export default function Navbar() {
                           <button
                             onClick={() => handleDecline(invite.id)}
                             disabled={declineInvitation.isPending}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-secondary hover:bg-border transition-colors disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {pendingConnections?.map((req) => (
+                      <div key={req.id} className="px-4 py-3 border-b border-border last:border-b-0">
+                        <div className="text-sm font-medium mb-1">Connection Request</div>
+                        <div className="text-xs text-text-muted mb-2">
+                          @{req.requester?.username} wants to connect
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAcceptConnection(req.id)}
+                            disabled={acceptConnection.isPending}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleDeclineConnection(req.id)}
+                            disabled={declineConnection.isPending}
                             className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-secondary hover:bg-border transition-colors disabled:opacity-50"
                           >
                             Decline

@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { connectLeagueMembers } from './connectionService.js'
 
 export async function sendInvitation(leagueId, senderId, username) {
   // Verify sender is commissioner
@@ -206,6 +207,13 @@ export async function acceptInvitation(invitationId, userId) {
     .from('league_invitations')
     .update({ status: 'accepted' })
     .eq('id', invitationId)
+
+  // Auto-connect with existing league members
+  try {
+    await connectLeagueMembers(userId, invitation.league_id)
+  } catch (err) {
+    logger.error({ err, userId, leagueId: invitation.league_id }, 'Failed to auto-connect league members')
+  }
 
   return { league_id: invitation.league_id }
 }

@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
+import { connectLeagueMembers } from './connectionService.js'
 
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -215,6 +216,13 @@ export async function joinLeague(userId, inviteCode) {
   if (error) {
     logger.error({ error }, 'Failed to join league')
     throw error
+  }
+
+  // Auto-connect with existing league members
+  try {
+    await connectLeagueMembers(userId, league.id)
+  } catch (err) {
+    logger.error({ err, userId, leagueId: league.id }, 'Failed to auto-connect league members')
   }
 
   return league

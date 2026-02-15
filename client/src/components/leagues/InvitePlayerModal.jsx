@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useSearchUsers, useSendInvitation, useLeagueInvitations } from '../../hooks/useInvitations'
+import { useConnections } from '../../hooks/useConnections'
 import { toast } from '../ui/Toast'
 
 const STATUS_STYLES = {
@@ -12,6 +13,7 @@ export default function InvitePlayerModal({ leagueId, onClose }) {
   const [query, setQuery] = useState('')
   const { data: searchResults } = useSearchUsers(query)
   const { data: invitations } = useLeagueInvitations(leagueId)
+  const { data: connections } = useConnections()
   const sendInvitation = useSendInvitation()
 
   async function handleInvite(username) {
@@ -26,6 +28,10 @@ export default function InvitePlayerModal({ leagueId, onClose }) {
 
   const pendingInvites = (invitations || []).filter((i) => i.status === 'pending')
   const pastInvites = (invitations || []).filter((i) => i.status !== 'pending')
+
+  // Filter connections: exclude users already invited (pending/accepted)
+  const invitedUsernames = new Set((invitations || []).map((i) => i.user?.username))
+  const availableConnections = (connections || []).filter((c) => !invitedUsernames.has(c.username))
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
@@ -42,6 +48,36 @@ export default function InvitePlayerModal({ leagueId, onClose }) {
         </button>
 
         <h2 className="font-display text-xl mb-4">Invite Player</h2>
+
+        {/* Your Connections */}
+        {availableConnections.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Your Connections</h3>
+            <div className="space-y-1 mb-3">
+              {availableConnections.map((conn) => (
+                <div
+                  key={conn.user_id}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-full bg-bg-primary flex items-center justify-center text-xs flex-shrink-0">
+                      {conn.avatar_emoji || conn.username[0].toUpperCase()}
+                    </div>
+                    <span className="text-sm truncate">@{conn.username}</span>
+                  </div>
+                  <button
+                    onClick={() => handleInvite(conn.username)}
+                    disabled={sendInvitation.isPending}
+                    className="py-1 px-3 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 flex-shrink-0"
+                  >
+                    Invite
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-border mb-4" />
+          </div>
+        )}
 
         {/* Search Input */}
         <div className="relative mb-4">
