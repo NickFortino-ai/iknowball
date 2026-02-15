@@ -61,9 +61,9 @@ export default function HomePage() {
       {/* Tier Breakdown */}
       <div className="sm:-mx-24">
         <h2 className="font-display text-2xl text-center mb-8">Status Tiers</h2>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
           {tiers.map((tier) => (
-            <div key={tier.name} className={`rounded-xl border-2 p-4 text-center ${tier.color} bg-bg-card ${tier.name === 'GOAT' ? 'col-start-2 sm:col-start-auto' : ''}`}>
+            <div key={tier.name} className={`rounded-xl border-2 p-4 text-center ${tier.color} bg-bg-card`}>
               <div className="font-display text-lg mb-1">{tier.name}</div>
               <div className="text-xs opacity-70 mb-2">{tier.points} pts</div>
               <div className="text-xs text-text-muted">{tier.desc}</div>
