@@ -15,9 +15,9 @@ export default function PickButton({ team, odds, state = 'default', onClick, dis
     <button
       onClick={onClick}
       disabled={disabled || state === 'locked' || state === 'correct' || state === 'incorrect'}
-      className={`flex-1 p-4 rounded-xl border transition-all ${style} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`flex-1 min-w-0 p-4 rounded-xl border transition-all ${style} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
-      <div className={`font-semibold text-sm mb-1 truncate ${state === 'correct' ? 'text-correct' : state === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
+      <div className={`font-semibold text-xs sm:text-sm mb-1 truncate ${state === 'correct' ? 'text-correct' : state === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
         {team}
       </div>
       <OddsDisplay odds={odds} isSelected={state === 'selected'} />

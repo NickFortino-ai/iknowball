@@ -37,7 +37,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
   }
 
   return (
-    <div className="bg-bg-card rounded-2xl border border-border p-4">
+    <div className="bg-bg-card rounded-2xl border border-border p-4 overflow-hidden">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-text-muted uppercase tracking-wider">
           {game.sports?.name || 'NFL'}

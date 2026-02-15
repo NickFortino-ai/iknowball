@@ -9,7 +9,7 @@ export default function OddsDisplay({ odds, isSelected }) {
 
   return (
     <div className="text-center">
-      <div className={`font-bold text-sm ${isSelected ? 'text-white' : ''}`}>
+      <div className={`font-bold text-base md:text-lg ${isSelected ? 'text-white' : ''}`}>
         <span className={isSelected ? '' : 'text-incorrect'}>-{risk}</span>
         <span className={isSelected ? 'text-white/70' : 'text-text-muted'}> → </span>
         <span className={isSelected ? '' : 'text-correct'}>+{reward}</span>
