@@ -30,6 +30,9 @@ export function americanToMultiplier(odds) {
 }
 
 export function calculateRiskPoints(odds) {
+  if (odds < -1000) {
+    return Math.round(Math.abs(odds) / 100)
+  }
   return BASE_RISK_POINTS
 }
 

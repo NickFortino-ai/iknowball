@@ -11,9 +11,14 @@ export function americanToMultiplier(odds) {
 }
 
 /**
- * Calculate risk points — flat risk regardless of odds.
+ * Calculate risk points.
+ * Flat 10 for odds -1000 and closer to even.
+ * For heavy favorites beyond -1000, risk scales: |odds| / 100 rounded.
  */
 export function calculateRiskPoints(odds) {
+  if (odds < -1000) {
+    return Math.round(Math.abs(odds) / 100)
+  }
   return BASE_RISK_POINTS
 }
 
