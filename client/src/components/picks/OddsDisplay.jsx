@@ -9,11 +9,13 @@ export default function OddsDisplay({ odds, isSelected }) {
 
   return (
     <div className="text-center">
-      <div className={`font-semibold text-sm ${isSelected ? 'text-white' : isFavorite ? 'text-accent' : 'text-correct'}`}>
-        {formatOdds(odds)}
+      <div className={`font-bold text-sm ${isSelected ? 'text-white' : ''}`}>
+        <span className={isSelected ? '' : 'text-incorrect'}>-{risk}</span>
+        <span className={isSelected ? 'text-white/70' : 'text-text-muted'}> → </span>
+        <span className={isSelected ? '' : 'text-correct'}>+{reward}</span>
       </div>
       <div className={`text-xs ${isSelected ? 'text-white/70' : 'text-text-muted'}`}>
-        Risk {risk} → Win {reward}
+        {formatOdds(odds)}
       </div>
     </div>
   )
