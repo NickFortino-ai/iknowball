@@ -21,10 +21,10 @@ export default function JoinLeagueModal({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border rounded-2xl w-full max-w-sm p-6"
+        className="relative bg-bg-card border border-border w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6 max-h-[90vh] md:max-h-none"
         onClick={(e) => e.stopPropagation()}
       >
         <button

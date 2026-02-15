@@ -26,12 +26,12 @@ export default function LeaderboardPage() {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-6">Leaderboard</h1>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex overflow-x-auto gap-2 pb-2 mb-6 scrollbar-hide -mx-4 px-4">
         {tabs.map((t, i) => (
           <button
             key={t.label}
             onClick={() => setActiveTab(i)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               activeTab === i
                 ? 'bg-accent text-white'
                 : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -48,7 +48,7 @@ export default function LeaderboardPage() {
         <EmptyState title="No rankings yet" message="Be the first to make picks!" />
       ) : (
         <div className="bg-bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="grid grid-cols-[3rem_1fr_auto_auto] gap-4 px-4 py-3 border-b border-border text-xs text-text-muted uppercase tracking-wider">
+          <div className="grid grid-cols-[3rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 border-b border-border text-xs text-text-muted uppercase tracking-wider">
             <span>#</span>
             <span>Player</span>
             <span>Tier</span>
@@ -61,7 +61,7 @@ export default function LeaderboardPage() {
               <div
                 key={user.id}
                 onClick={() => setSelectedUserId(user.id)}
-                className={`grid grid-cols-[3rem_1fr_auto_auto] gap-4 px-4 py-3 items-center border-b border-border last:border-b-0 cursor-pointer hover:bg-bg-card-hover transition-colors ${
+                className={`grid grid-cols-[3rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center border-b border-border last:border-b-0 cursor-pointer hover:bg-bg-card-hover transition-colors ${
                   isMe ? 'bg-accent/5' : ''
                 }`}
               >

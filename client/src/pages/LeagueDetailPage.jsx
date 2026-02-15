@@ -55,7 +55,7 @@ export default function LeagueDetailPage() {
           &larr; My Leagues
         </Link>
         <h1 className="font-display text-3xl mt-2">{league.name}</h1>
-        <div className="flex items-center gap-3 mt-2">
+        <div className="flex flex-wrap items-center gap-3 mt-2">
           <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
             {FORMAT_LABELS[league.format]}
           </span>
@@ -71,12 +71,12 @@ export default function LeagueDetailPage() {
 
       {/* Invite Code & Invite Player */}
       <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="text-xs text-text-muted">Invite Code</div>
             <div className="font-display text-xl tracking-widest">{league.invite_code}</div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             {isCommissioner && (
               <button
                 onClick={() => setShowInviteModal(true)}

@@ -13,7 +13,7 @@ export default function HomePage() {
   const { isAuthenticated } = useAuth()
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
+    <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
       {/* Hero */}
       <div className="text-center mb-16">
         <h1 className="font-display text-5xl sm:text-7xl text-accent mb-4 tracking-tight">
@@ -23,11 +23,11 @@ export default function HomePage() {
           Pick winners. Earn points based on Vegas odds. Climb the ranks. Prove you know ball.
         </p>
         {!isAuthenticated ? (
-          <div className="flex items-center justify-center gap-3">
-            <Link to="/signup" className="bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to="/signup" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
               Start Picking
             </Link>
-            <Link to="/login" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3 rounded-xl text-lg transition-colors">
+            <Link to="/login" className="w-full sm:w-auto text-center border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3 rounded-xl text-lg transition-colors">
               Sign In
             </Link>
           </div>
@@ -60,7 +60,7 @@ export default function HomePage() {
       {/* Tier Breakdown */}
       <div>
         <h2 className="font-display text-2xl text-center mb-8">Status Tiers</h2>
-        <div className="grid sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
           {tiers.map((tier) => (
             <div key={tier.name} className={`rounded-xl border-2 p-4 text-center ${tier.color} bg-bg-card`}>
               <div className="font-display text-lg mb-1">{tier.name}</div>

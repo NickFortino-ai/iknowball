@@ -111,7 +111,7 @@ export default function SettingsPage() {
         <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
           Profile Icon
         </label>
-        <div className="grid grid-cols-8 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
           {avatarEmojis.map((emoji) => (
             <button
               key={emoji}

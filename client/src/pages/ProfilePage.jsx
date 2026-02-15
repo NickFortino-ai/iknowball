@@ -13,7 +13,7 @@ function StatusCard({ profile }) {
     : 100
 
   return (
-    <div className="bg-bg-card rounded-2xl border border-border p-6 mb-6">
+    <div className="bg-bg-card rounded-2xl border border-border p-4 sm:p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-xl">{profile.display_name || profile.username}</h2>

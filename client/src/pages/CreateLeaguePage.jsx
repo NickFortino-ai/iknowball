@@ -143,7 +143,7 @@ export default function CreateLeaguePage() {
                 key={opt.value}
                 type="button"
                 onClick={() => setSport(opt.value)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                   sport === opt.value
                     ? 'bg-accent text-white'
                     : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'

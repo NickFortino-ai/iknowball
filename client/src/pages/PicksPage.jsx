@@ -96,15 +96,15 @@ export default function PicksPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
+    <div className="max-w-2xl mx-auto px-4 py-6 pb-32">
       <h1 className="font-display text-3xl mb-6">Make Your Picks</h1>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
         {sportTabs.map((tab, i) => (
           <button
             key={tab.key}
             onClick={() => setActiveSport(i)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               activeSport === i
                 ? 'bg-accent text-white'
                 : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -120,7 +120,7 @@ export default function PicksPage() {
         <button
           onClick={() => setDayOffset((d) => Math.max(0, d - 1))}
           disabled={dayOffset === 0}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
+          className="w-11 h-11 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
         >
           ‹
         </button>
@@ -133,7 +133,7 @@ export default function PicksPage() {
         <button
           onClick={() => setDayOffset((d) => Math.min(2, d + 1))}
           disabled={dayOffset === 2}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
+          className="w-11 h-11 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
         >
           ›
         </button>

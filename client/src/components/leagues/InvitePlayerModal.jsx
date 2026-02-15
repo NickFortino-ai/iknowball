@@ -28,10 +28,10 @@ export default function InvitePlayerModal({ leagueId, onClose }) {
   const pastInvites = (invitations || []).filter((i) => i.status !== 'pending')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border rounded-2xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto"
+        className="relative bg-bg-card border border-border w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 max-h-[90vh] md:max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button

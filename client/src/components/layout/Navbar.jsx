@@ -33,7 +33,9 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const [showInvites, setShowInvites] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const dropdownRef = useRef(null)
+  const mobileMenuRef = useRef(null)
 
   const { data: invitations } = useMyInvitations(isAuthenticated)
   const acceptInvitation = useAcceptInvitation()
@@ -54,11 +56,30 @@ export default function Navbar() {
     }
   }, [showInvites])
 
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target)) {
+        setShowMobileMenu(false)
+      }
+    }
+    if (showMobileMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMobileMenu])
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setShowMobileMenu(false)
+  }, [location.pathname])
+
   async function handleAccept(invitationId) {
     try {
       const result = await acceptInvitation.mutateAsync(invitationId)
       toast('Joined league!', 'success')
       setShowInvites(false)
+      setShowMobileMenu(false)
       navigate(`/leagues/${result.league_id}`)
     } catch (err) {
       toast(err.message || 'Failed to accept invite', 'error')
@@ -83,22 +104,25 @@ export default function Navbar() {
 
         {isAuthenticated && (
           <div className="flex items-center gap-1 sm:gap-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  location.pathname === link.to
-                    ? 'bg-accent/10 text-accent'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {/* Desktop nav links — hidden on mobile */}
+            <div className="hidden md:flex items-center gap-1 sm:gap-4">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    location.pathname === link.to
+                      ? 'bg-accent/10 text-accent'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
 
-            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
-              {/* Notification Bell */}
+            <div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-border">
+              {/* Notification Bell — desktop */}
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setShowInvites(!showInvites)}
@@ -186,6 +210,141 @@ export default function Navbar() {
                 Out
               </button>
             </div>
+
+            {/* Mobile: notification bell + hamburger */}
+            <div className="flex items-center gap-1 md:hidden">
+              {/* Notification bell — mobile */}
+              <button
+                onClick={() => { setShowMobileMenu(false); setShowInvites(!showInvites) }}
+                className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                aria-label="Invitations"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {pendingCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-incorrect text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Hamburger */}
+              <div ref={mobileMenuRef}>
+                <button
+                  onClick={() => { setShowInvites(false); setShowMobileMenu(!showMobileMenu) }}
+                  className="p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                  aria-label="Menu"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {showMobileMenu ? (
+                      <>
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </>
+                    ) : (
+                      <>
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                      </>
+                    )}
+                  </svg>
+                </button>
+
+                {/* Mobile dropdown menu */}
+                {showMobileMenu && (
+                  <div className="absolute right-4 top-full mt-1 w-56 bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                    <Link
+                      to="/settings"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                      </svg>
+                      Settings
+                    </Link>
+                    <Link
+                      to="/results"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                      </svg>
+                      Results
+                    </Link>
+                    {profile?.is_admin && (
+                      <Link
+                        to="/admin"
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                        Admin
+                      </Link>
+                    )}
+                    <div className="border-t border-border">
+                      <button
+                        onClick={signOut}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-text-muted hover:text-text-primary hover:bg-bg-card-hover transition-colors"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                          <polyline points="16 17 21 12 16 7" />
+                          <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile invitations dropdown (shared position) */}
+            {showInvites && (
+              <div className="absolute right-4 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden md:hidden">
+                <div className="px-4 py-3 border-b border-border">
+                  <h3 className="font-semibold text-sm">Invitations</h3>
+                </div>
+
+                {pendingCount === 0 ? (
+                  <div className="px-4 py-6 text-center text-text-muted text-sm">
+                    No pending invitations
+                  </div>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    {invitations.map((invite) => (
+                      <div key={invite.id} className="px-4 py-3 border-b border-border last:border-b-0">
+                        <div className="text-sm font-medium mb-1">{invite.leagues?.name}</div>
+                        <div className="text-xs text-text-muted mb-2">
+                          {FORMAT_LABELS[invite.leagues?.format]} · {SPORT_LABELS[invite.leagues?.sport]} · from @{invite.inviter?.username}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAccept(invite.id)}
+                            disabled={acceptInvitation.isPending}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleDecline(invite.id)}
+                            disabled={declineInvitation.isPending}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-secondary hover:bg-border transition-colors disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
