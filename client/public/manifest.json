@@ -1,0 +1,27 @@
+{
+  "name": "I KNOW BALL",
+  "short_name": "I KNOW BALL",
+  "description": "Pick winners. Earn points based on Vegas odds. Climb the ranks.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#FF4D00",
+  "background_color": "#0A0A0F",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
