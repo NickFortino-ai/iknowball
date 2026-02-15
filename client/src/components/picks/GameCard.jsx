@@ -1,4 +1,5 @@
 import PickButton from './PickButton'
+import { formatOdds } from '../../lib/scoring'
 
 function formatGameTime(dateStr) {
   const d = new Date(dateStr)
@@ -44,7 +45,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         </span>
         <span className="text-xs text-text-muted">
           {isFinal
-            ? `Final: ${game.away_score} - ${game.home_score}`
+            ? 'Final'
             : game.status === 'live'
               ? 'LIVE'
               : formatGameTime(game.starts_at)
@@ -53,23 +54,33 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
       </div>
 
       <div className="flex gap-3">
-        <PickButton
-          team={game.away_team}
-          odds={game.away_odds}
-          score={isFinal ? game.away_score : null}
-          state={getButtonState('away')}
-          disabled={isLocked || isSubmitting}
-          onClick={() => handleClick('away')}
-        />
+        <div className="flex-1 min-w-0">
+          <PickButton
+            team={game.away_team}
+            odds={game.away_odds}
+            score={isFinal ? game.away_score : null}
+            state={getButtonState('away')}
+            disabled={isLocked || isSubmitting}
+            onClick={() => handleClick('away')}
+          />
+          {isFinal && game.away_odds && (
+            <div className="text-center text-xs text-text-muted mt-1">{formatOdds(game.away_odds)}</div>
+          )}
+        </div>
         <div className="flex items-center text-text-muted text-xs font-semibold">@</div>
-        <PickButton
-          team={game.home_team}
-          odds={game.home_odds}
-          score={isFinal ? game.home_score : null}
-          state={getButtonState('home')}
-          disabled={isLocked || isSubmitting}
-          onClick={() => handleClick('home')}
-        />
+        <div className="flex-1 min-w-0">
+          <PickButton
+            team={game.home_team}
+            odds={game.home_odds}
+            score={isFinal ? game.home_score : null}
+            state={getButtonState('home')}
+            disabled={isLocked || isSubmitting}
+            onClick={() => handleClick('home')}
+          />
+          {isFinal && game.home_odds && (
+            <div className="text-center text-xs text-text-muted mt-1">{formatOdds(game.home_odds)}</div>
+          )}
+        </div>
       </div>
 
       {userPick?.status === 'settled' && userPick.points_earned !== null && (
