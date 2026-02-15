@@ -1,27 +1,30 @@
 export const BASE_RISK_POINTS = 10
 
 export const TIERS = {
+  LOST: { name: 'Lost', minPoints: -Infinity, color: 'tier-lost' },
   ROOKIE: { name: 'Rookie', minPoints: 0, color: 'tier-rookie' },
-  STARTER: { name: 'Starter', minPoints: 100, color: 'tier-starter' },
-  ALL_STAR: { name: 'All-Star', minPoints: 500, color: 'tier-allstar' },
-  MVP: { name: 'MVP', minPoints: 2000, color: 'tier-mvp' },
-  GOAT: { name: 'GOAT', minPoints: 10000, color: 'tier-goat' },
+  BALLER: { name: 'Baller', minPoints: 100, color: 'tier-baller' },
+  ELITE: { name: 'Elite', minPoints: 500, color: 'tier-elite' },
+  HALL_OF_FAMER: { name: 'Hall of Famer', minPoints: 1000, color: 'tier-hof' },
+  GOAT: { name: 'GOAT', minPoints: 3000, color: 'tier-goat' },
 }
 
 export function getTier(points) {
   if (points >= TIERS.GOAT.minPoints) return TIERS.GOAT
-  if (points >= TIERS.MVP.minPoints) return TIERS.MVP
-  if (points >= TIERS.ALL_STAR.minPoints) return TIERS.ALL_STAR
-  if (points >= TIERS.STARTER.minPoints) return TIERS.STARTER
-  return TIERS.ROOKIE
+  if (points >= TIERS.HALL_OF_FAMER.minPoints) return TIERS.HALL_OF_FAMER
+  if (points >= TIERS.ELITE.minPoints) return TIERS.ELITE
+  if (points >= TIERS.BALLER.minPoints) return TIERS.BALLER
+  if (points >= TIERS.ROOKIE.minPoints) return TIERS.ROOKIE
+  return TIERS.LOST
 }
 
 export function getNextTier(points) {
   if (points >= TIERS.GOAT.minPoints) return null
-  if (points >= TIERS.MVP.minPoints) return TIERS.GOAT
-  if (points >= TIERS.ALL_STAR.minPoints) return TIERS.MVP
-  if (points >= TIERS.STARTER.minPoints) return TIERS.ALL_STAR
-  return TIERS.STARTER
+  if (points >= TIERS.HALL_OF_FAMER.minPoints) return TIERS.GOAT
+  if (points >= TIERS.ELITE.minPoints) return TIERS.HALL_OF_FAMER
+  if (points >= TIERS.BALLER.minPoints) return TIERS.ELITE
+  if (points >= TIERS.ROOKIE.minPoints) return TIERS.BALLER
+  return TIERS.ROOKIE
 }
 
 export function americanToMultiplier(odds) {

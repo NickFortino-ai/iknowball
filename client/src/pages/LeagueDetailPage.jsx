@@ -62,7 +62,7 @@ export default function LeagueDetailPage() {
           <span className="text-xs text-text-muted">{SPORT_LABELS[league.sport]}</span>
           <span className="text-xs text-text-muted">{league.members?.length || 0} members</span>
           {isCommissioner && (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-tier-mvp/20 text-tier-mvp">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">
               Commissioner
             </span>
           )}

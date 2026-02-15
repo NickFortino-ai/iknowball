@@ -1,8 +1,9 @@
 const tierColors = {
+  Lost: 'bg-tier-lost/20 text-tier-lost border-tier-lost/30',
   Rookie: 'bg-tier-rookie/20 text-tier-rookie border-tier-rookie/30',
-  Starter: 'bg-tier-starter/20 text-tier-starter border-tier-starter/30',
-  'All-Star': 'bg-tier-allstar/20 text-tier-allstar border-tier-allstar/30',
-  MVP: 'bg-tier-mvp/20 text-tier-mvp border-tier-mvp/30',
+  Baller: 'bg-tier-baller/20 text-tier-baller border-tier-baller/30',
+  Elite: 'bg-tier-elite/20 text-tier-elite border-tier-elite/30',
+  'Hall of Famer': 'bg-tier-hof/20 text-tier-hof border-tier-hof/30',
   GOAT: 'bg-tier-goat/20 text-tier-goat border-tier-goat/30',
 }
 

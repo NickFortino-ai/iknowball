@@ -41,7 +41,7 @@ export default function LeagueCard({ league }) {
         <span>{SPORT_LABELS[league.sport]}</span>
         <span>{league.member_count} {league.member_count === 1 ? 'member' : 'members'}</span>
         {league.my_role === 'commissioner' && (
-          <span className="font-semibold px-2 py-0.5 rounded bg-tier-mvp/20 text-tier-mvp">Commish</span>
+          <span className="font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">Commish</span>
         )}
       </div>
     </Link>

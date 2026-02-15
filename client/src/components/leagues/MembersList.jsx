@@ -24,7 +24,7 @@ export default function MembersList({ members, commissionerId, leagueId, isCommi
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm truncate">{user.display_name || user.username}</span>
                   {isComm && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-tier-mvp/20 text-tier-mvp flex-shrink-0">
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-tier-hof/20 text-tier-hof flex-shrink-0">
                       Commish
                     </span>
                   )}

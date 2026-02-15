@@ -9,7 +9,7 @@ const STATUS_STYLES = {
   survived: 'bg-correct/20 text-correct',
   eliminated: 'bg-incorrect/20 text-incorrect',
   locked: 'bg-accent/20 text-accent',
-  pending: 'bg-tier-mvp/20 text-tier-mvp',
+  pending: 'bg-tier-hof/20 text-tier-hof',
 }
 
 export default function SurvivorView({ league }) {

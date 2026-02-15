@@ -23,10 +23,11 @@
   --color-border: #2A2A35;
   --color-border-hover: #3A3A45;
 
+  --color-tier-lost: #EF4444;
   --color-tier-rookie: #9CA3AF;
-  --color-tier-starter: #3B82F6;
-  --color-tier-allstar: #8B5CF6;
-  --color-tier-mvp: #F59E0B;
+  --color-tier-baller: #3B82F6;
+  --color-tier-elite: #8B5CF6;
+  --color-tier-hof: #F59E0B;
   --color-tier-goat: #EAB308;
 
   --font-display: 'Oswald', sans-serif;

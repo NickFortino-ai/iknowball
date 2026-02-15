@@ -4,11 +4,12 @@ import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
 
 const tiers = [
-  { name: 'Rookie', points: '0+', color: 'border-tier-rookie text-tier-rookie' },
-  { name: 'Starter', points: '100+', color: 'border-tier-starter text-tier-starter' },
-  { name: 'All-Star', points: '500+', color: 'border-tier-allstar text-tier-allstar' },
-  { name: 'MVP', points: '2,000+', color: 'border-tier-mvp text-tier-mvp' },
-  { name: 'GOAT', points: '10,000+', color: 'border-tier-goat text-tier-goat' },
+  { name: 'Lost', color: 'border-tier-lost text-tier-lost' },
+  { name: 'Rookie', color: 'border-tier-rookie text-tier-rookie' },
+  { name: 'Baller', color: 'border-tier-baller text-tier-baller' },
+  { name: 'Elite', color: 'border-tier-elite text-tier-elite' },
+  { name: 'Hall of Famer', color: 'border-tier-hof text-tier-hof' },
+  { name: 'GOAT', color: 'border-tier-goat text-tier-goat' },
 ]
 
 export default function PaymentPage() {
