@@ -7,6 +7,7 @@ import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
+import InfoTooltip from '../components/ui/InfoTooltip'
 
 const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
@@ -97,7 +98,10 @@ export default function PicksPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-32">
-      <h1 className="font-display text-3xl mb-6">Make Your Picks</h1>
+      <h1 className="font-display text-3xl mb-6">
+        Make Your Picks
+        <InfoTooltip text="Risk → Reward: You risk the red number on every pick. If you're right, you win the green number. If you're wrong, you lose the red number. Higher odds = higher reward but less likely to hit. Example: -10 → +19 means you risk 10 points to win 19 points." />
+      </h1>
 
       <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
         {sportTabs.map((tab, i) => (

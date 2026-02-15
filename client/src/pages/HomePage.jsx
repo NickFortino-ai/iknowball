@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import InfoTooltip from '../components/ui/InfoTooltip'
 
 const tiers = [
   { name: 'Lost', points: '<0', color: 'border-tier-lost text-tier-lost', desc: 'Gone negative' },
@@ -60,7 +61,10 @@ export default function HomePage() {
 
       {/* Tier Breakdown */}
       <div className="sm:-mx-24">
-        <h2 className="font-display text-2xl text-center mb-8">Status Tiers</h2>
+        <h2 className="font-display text-2xl text-center mb-8">
+          Status Tiers
+          <InfoTooltip text="Your status is based on your lifetime point total across all picks and all sports. Every correct pick earns points. Every wrong pick costs points. Climb from Rookie to GOAT." />
+        </h2>
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
           {tiers.map((tier) => (
             <div key={tier.name} className={`rounded-xl border-2 p-4 text-center ${tier.color} bg-bg-card`}>
