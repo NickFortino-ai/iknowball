@@ -487,10 +487,12 @@ export async function getPickemStandings(leagueId) {
 
   const userIds = members.map((m) => m.user_id)
 
+  const useSubmissionOdds = league.settings?.lock_odds_at === 'submission'
+
   // Get picks for these users within the league's date range and sport
   let picksQuery = supabase
     .from('picks')
-    .select('user_id, points_earned, is_correct, games!inner(starts_at, sports!inner(key))')
+    .select('user_id, game_id, points_earned, is_correct, reward_at_submission, risk_at_submission, games!inner(starts_at, sports!inner(key))')
     .in('user_id', userIds)
     .eq('status', 'settled')
 
@@ -509,7 +511,7 @@ export async function getPickemStandings(leagueId) {
   // Also fetch settled prop picks for these users
   let propPicksQuery = supabase
     .from('prop_picks')
-    .select('user_id, points_earned, is_correct, player_props!inner(game_id, sport_id, games!inner(starts_at, sports!inner(key)))')
+    .select('user_id, points_earned, is_correct, reward_at_submission, risk_at_submission, player_props!inner(game_id, sport_id, games!inner(starts_at, sports!inner(key)))')
     .in('user_id', userIds)
     .eq('status', 'settled')
 
@@ -560,7 +562,15 @@ export async function getPickemStandings(leagueId) {
 
     const s = statsMap[pick.user_id]
     if (!s) continue
-    s.total_points += pick.points_earned || 0
+
+    let points = pick.points_earned || 0
+    if (useSubmissionOdds && pick.reward_at_submission != null) {
+      if (pick.is_correct === true) points = pick.reward_at_submission
+      else if (pick.is_correct === false) points = -(pick.risk_at_submission || 0)
+      else points = 0
+    }
+
+    s.total_points += points
     s.total_picks++
     if (pick.is_correct) s.correct_picks++
   }
@@ -569,7 +579,15 @@ export async function getPickemStandings(leagueId) {
   for (const propPick of propPicks || []) {
     const s = statsMap[propPick.user_id]
     if (!s) continue
-    s.total_points += propPick.points_earned || 0
+
+    let points = propPick.points_earned || 0
+    if (useSubmissionOdds && propPick.reward_at_submission != null) {
+      if (propPick.is_correct === true) points = propPick.reward_at_submission
+      else if (propPick.is_correct === false) points = -(propPick.risk_at_submission || 0)
+      else points = 0
+    }
+
+    s.total_points += points
     s.total_picks++
     if (propPick.is_correct) s.correct_picks++
   }

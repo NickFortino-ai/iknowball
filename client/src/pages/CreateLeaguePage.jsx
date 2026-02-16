@@ -17,11 +17,10 @@ const SPORT_OPTIONS = [
   { value: 'basketball_ncaab', label: 'NCAAB' },
   { value: 'americanfootball_ncaaf', label: 'NCAAF' },
   { value: 'basketball_wnba', label: 'WNBA' },
-  { value: 'basketball_wncaab', label: 'WNCAAB' },
   { value: 'all', label: 'All Sports' },
 ]
 
-const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab', 'baseball_mlb', 'all'])
+const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'baseball_mlb', 'all'])
 
 const DURATION_OPTIONS = [
   { value: 'this_week', label: 'This Week Only' },
@@ -48,6 +47,7 @@ export default function CreateLeaguePage() {
   const { data: bracketTemplates } = useBracketTemplatesActive(sport !== 'all' ? sport : undefined)
 
   // Format-specific settings
+  const [lockOddsAt, setLockOddsAt] = useState('game_start')
   const [gamesPerWeek, setGamesPerWeek] = useState('')
   const [lives, setLives] = useState(1)
   const [pickFrequency, setPickFrequency] = useState('weekly')
@@ -61,8 +61,9 @@ export default function CreateLeaguePage() {
     e.preventDefault()
 
     const settings = {}
-    if (format === 'pickem' && gamesPerWeek) {
-      settings.games_per_week = parseInt(gamesPerWeek, 10)
+    if (format === 'pickem') {
+      if (gamesPerWeek) settings.games_per_week = parseInt(gamesPerWeek, 10)
+      if (lockOddsAt !== 'game_start') settings.lock_odds_at = lockOddsAt
     }
     if (format === 'survivor') {
       settings.lives = lives
@@ -226,8 +227,8 @@ export default function CreateLeaguePage() {
 
         {/* Format-specific settings */}
         {format === 'pickem' && (
-          <div className="bg-bg-card rounded-xl border border-border p-4">
-            <h3 className="font-display text-sm text-text-secondary mb-3">Pick'em Settings</h3>
+          <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-secondary mb-1">Pick'em Settings</h3>
             <div>
               <label className="block text-xs text-text-muted mb-1">
                 Games per week <span className="text-text-muted">(leave empty for all games)</span>
@@ -240,6 +241,31 @@ export default function CreateLeaguePage() {
                 min={1}
                 className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
+            </div>
+            <div>
+              <label className="block text-xs text-text-muted mb-2">Lock Odds</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'game_start', label: 'At Game Start' },
+                  { value: 'submission', label: 'At Submission' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setLockOddsAt(opt.value)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      lockOddsAt === opt.value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="text-[10px] text-text-muted mt-1">
+                {lockOddsAt === 'submission'
+                  ? 'Standings use odds from when each pick was submitted'
+                  : 'Standings use odds from when the game starts (default)'}
+              </div>
             </div>
           </div>
         )}

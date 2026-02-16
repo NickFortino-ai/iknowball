@@ -5,6 +5,7 @@ import EmptyState from '../ui/EmptyState'
 
 export default function PickemView({ league, standings }) {
   const gamesPerWeek = league.settings?.games_per_week
+  const useSubmissionOdds = league.settings?.lock_odds_at === 'submission'
 
   return (
     <div>
@@ -13,6 +14,13 @@ export default function PickemView({ league, standings }) {
           <span className="text-xs text-text-muted">Pick </span>
           <span className="text-sm font-semibold text-accent">{gamesPerWeek}</span>
           <span className="text-xs text-text-muted"> games per week</span>
+        </div>
+      )}
+
+      {useSubmissionOdds && (
+        <div className="bg-bg-card rounded-xl border border-border p-3 mb-4 text-center">
+          <span className="text-xs text-text-muted">Odds locked </span>
+          <span className="text-sm font-semibold text-accent">at submission</span>
         </div>
       )}
 

@@ -1,11 +1,12 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
 
 export async function submitPick(userId, gameId, pickedTeam) {
   // Verify game exists and hasn't started
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('id, status, starts_at')
+    .select('id, status, starts_at, home_odds, away_odds')
     .eq('id', gameId)
     .single()
 
@@ -27,6 +28,12 @@ export async function submitPick(userId, gameId, pickedTeam) {
     throw err
   }
 
+  // Snapshot odds at submission time
+  const odds = pickedTeam === 'home' ? game.home_odds : game.away_odds
+  const oddsAtSubmission = odds || null
+  const riskAtSubmission = odds ? calculateRiskPoints(odds) : null
+  const rewardAtSubmission = odds ? calculateRewardPoints(odds) : null
+
   // Upsert pick (user can change pick before lock)
   const { data, error } = await supabase
     .from('picks')
@@ -37,6 +44,9 @@ export async function submitPick(userId, gameId, pickedTeam) {
         picked_team: pickedTeam,
         status: 'pending',
         updated_at: new Date().toISOString(),
+        odds_at_submission: oddsAtSubmission,
+        risk_at_submission: riskAtSubmission,
+        reward_at_submission: rewardAtSubmission,
       },
       { onConflict: 'user_id,game_id' }
     )

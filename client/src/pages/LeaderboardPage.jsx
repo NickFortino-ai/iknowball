@@ -11,7 +11,6 @@ const tabs = [
   { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
   { label: 'NCAAB', scope: 'sport', sport: 'basketball_ncaab' },
   { label: 'WNBA', scope: 'sport', sport: 'basketball_wnba' },
-  { label: 'WNCAAB', scope: 'sport', sport: 'basketball_wncaab' },
   { label: 'MLB', scope: 'sport', sport: 'baseball_mlb' },
   { label: 'NFL', scope: 'sport', sport: 'americanfootball_nfl' },
   { label: 'NCAAF', scope: 'sport', sport: 'americanfootball_ncaaf' },

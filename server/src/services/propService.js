@@ -290,7 +290,7 @@ export async function settleProps(settlements) {
 export async function submitPropPick(userId, propId, pickedSide) {
   const { data: prop, error: propError } = await supabase
     .from('player_props')
-    .select('id, status, game_id, games(starts_at, status)')
+    .select('id, status, game_id, over_odds, under_odds, games(starts_at, status)')
     .eq('id', propId)
     .single()
 
@@ -312,6 +312,12 @@ export async function submitPropPick(userId, propId, pickedSide) {
     throw err
   }
 
+  // Snapshot odds at submission time
+  const odds = pickedSide === 'over' ? prop.over_odds : prop.under_odds
+  const oddsAtSubmission = odds || null
+  const riskAtSubmission = odds ? calculateRiskPoints(odds) : null
+  const rewardAtSubmission = odds ? calculateRewardPoints(odds) : null
+
   const { data, error } = await supabase
     .from('prop_picks')
     .upsert(
@@ -321,6 +327,9 @@ export async function submitPropPick(userId, propId, pickedSide) {
         picked_side: pickedSide,
         status: 'pending',
         updated_at: new Date().toISOString(),
+        odds_at_submission: oddsAtSubmission,
+        risk_at_submission: riskAtSubmission,
+        reward_at_submission: rewardAtSubmission,
       },
       { onConflict: 'user_id,prop_id' }
     )

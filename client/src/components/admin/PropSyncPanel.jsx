@@ -25,7 +25,6 @@ const MARKET_OPTIONS = {
   basketball_nba: NBA_MARKETS,
   basketball_ncaab: NBA_MARKETS,
   basketball_wnba: NBA_MARKETS,
-  basketball_wncaab: NBA_MARKETS,
   americanfootball_nfl: NFL_MARKETS,
   americanfootball_ncaaf: NFL_MARKETS,
   baseball_mlb: [

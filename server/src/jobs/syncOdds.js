@@ -105,7 +105,7 @@ async function syncSport(sportKey) {
 export async function syncOdds() {
   logger.info('Starting odds sync...')
 
-  const sports = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'basketball_wncaab']
+  const sports = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'basketball_wnba']
   let total = 0
 
   for (const sportKey of sports) {

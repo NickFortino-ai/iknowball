@@ -76,7 +76,7 @@ router.get('/preview/:code', async (req, res) => {
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
   format: z.enum(['pickem', 'survivor', 'squares', 'bracket']),
-  sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'basketball_wncaab', 'all']),
+  sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'all']),
   duration: z.enum(['this_week', 'custom_range', 'full_season', 'playoffs_only']),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
@@ -86,6 +86,7 @@ const createLeagueSchema = z.object({
     lives: z.number().int().min(1).max(2).optional(),
     all_eliminated_survive: z.boolean().optional(),
     pick_frequency: z.enum(['daily', 'weekly']).optional(),
+    lock_odds_at: z.enum(['game_start', 'submission']).optional(),
     winner_bonus: z.number().int().min(0).optional(),
     runner_up_bonus: z.number().int().min(0).optional(),
     game_id: z.string().uuid().optional(),

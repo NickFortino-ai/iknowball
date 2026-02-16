@@ -1,16 +1,16 @@
 // Maps Odds API market keys to display labels, grouped by sport
 export const PROP_MARKETS = {
   // NBA
-  player_points: { label: 'Points', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_rebounds: { label: 'Rebounds', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_assists: { label: 'Assists', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_threes: { label: '3-Pointers Made', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_blocks: { label: 'Blocks', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_steals: { label: 'Steals', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_points_rebounds_assists: { label: 'Pts + Reb + Ast', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_points_rebounds: { label: 'Pts + Reb', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_points_assists: { label: 'Pts + Ast', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
-  player_rebounds_assists: { label: 'Reb + Ast', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'basketball_wncaab'] },
+  player_points: { label: 'Points', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_rebounds: { label: 'Rebounds', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_assists: { label: 'Assists', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_threes: { label: '3-Pointers Made', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_blocks: { label: 'Blocks', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_steals: { label: 'Steals', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_points_rebounds_assists: { label: 'Pts + Reb + Ast', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_points_rebounds: { label: 'Pts + Reb', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_points_assists: { label: 'Pts + Ast', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
+  player_rebounds_assists: { label: 'Reb + Ast', sports: ['basketball_nba', 'basketball_ncaab', 'basketball_wnba'] },
 
   // NFL
   player_pass_tds: { label: 'Pass TDs', sports: ['americanfootball_nfl', 'americanfootball_ncaaf'] },
