@@ -16,7 +16,7 @@ async function syncSport(sportKey) {
 
   // Smart gate: skip API call if no relevant games
   const now = new Date()
-  const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
   // If this sport has games in the DB, apply filters.
   // If zero games exist (first run / new sport), bypass and call API for discovery.
@@ -26,17 +26,17 @@ async function syncSport(sportKey) {
     .eq('sport_id', sport.id)
 
   if (totalGames > 0) {
-    // Check: Any upcoming games within the next 3 days?
+    // Check: Any upcoming games within the next 7 days?
     const { count: upcomingCount } = await supabase
       .from('games')
       .select('id', { count: 'exact', head: true })
       .eq('sport_id', sport.id)
       .eq('status', 'upcoming')
       .gte('starts_at', now.toISOString())
-      .lte('starts_at', threeDaysFromNow.toISOString())
+      .lte('starts_at', sevenDaysFromNow.toISOString())
 
     if (upcomingCount === 0) {
-      logger.debug({ sportKey }, 'No upcoming games within 3 days, skipping odds sync')
+      logger.debug({ sportKey }, 'No upcoming games within 7 days, skipping odds sync')
       return 0
     }
   }
