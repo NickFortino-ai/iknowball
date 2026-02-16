@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePickComments, useAddComment, useDeleteComment } from '../../hooks/useSocial'
 import { useAuth } from '../../hooks/useAuth'
+import { toast } from '../ui/Toast'
 
 function timeAgo(dateStr) {
   const seconds = Math.floor((Date.now() - new Date(dateStr)) / 1000)
@@ -27,8 +28,12 @@ export default function PickComments({ pickId }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!text.trim() || !pickId) return
-    await addComment.mutateAsync({ pickId, content: text.trim() })
-    setText('')
+    try {
+      await addComment.mutateAsync({ pickId, content: text.trim() })
+      setText('')
+    } catch (err) {
+      toast(err.message || 'Failed to send comment', 'error')
+    }
   }
 
   return (

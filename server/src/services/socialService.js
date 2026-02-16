@@ -64,17 +64,19 @@ export async function toggleReaction(userId, pickId, reactionType) {
 
   // Notify pick owner on reaction (skip self)
   if (userId !== ownerId) {
-    const { data: actor } = await supabase
-      .from('users')
-      .select('username')
-      .eq('id', userId)
-      .single()
-    const username = actor?.username || 'Someone'
-    createNotification(ownerId, 'reaction', `${username} reacted ${reactionType} to your pick`, {
-      actorId: userId,
-      pickId,
-      reactionType,
-    })
+    try {
+      const { data: actor } = await supabase
+        .from('users')
+        .select('username')
+        .eq('id', userId)
+        .single()
+      const username = actor?.username || 'Someone'
+      await createNotification(ownerId, 'reaction', `${username} reacted ${reactionType} to your pick`, {
+        actorId: userId,
+        pickId,
+        reactionType,
+      })
+    } catch (_) { /* notification is best-effort */ }
   }
 
   return { toggled: 'on' }
@@ -148,11 +150,13 @@ export async function addComment(userId, pickId, content) {
 
   // Notify pick owner on comment (skip self)
   if (userId !== ownerId) {
-    const username = data.users?.username || 'Someone'
-    createNotification(ownerId, 'comment', `${username} commented on your pick`, {
-      actorId: userId,
-      pickId,
-    })
+    try {
+      const username = data.users?.username || 'Someone'
+      await createNotification(ownerId, 'comment', `${username} commented on your pick`, {
+        actorId: userId,
+        pickId,
+      })
+    } catch (_) { /* notification is best-effort */ }
   }
 
   return data
