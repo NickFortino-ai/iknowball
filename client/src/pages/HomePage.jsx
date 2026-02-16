@@ -20,6 +20,7 @@ export default function HomePage() {
       <div className="text-center mb-16">
         <h1 className="font-display text-5xl sm:text-7xl text-accent mb-4 tracking-tight">
           I KNOW BALL
+          <InfoTooltip text="I KNOW BALL is a sports prediction app. Every game has real Vegas odds that determine how many points you win or lose. All your picks are tracked and scored automatically. You can see your global overall rank and your rank for each sport. Compete with friends in leagues, climb the status tiers, and prove you actually know ball." />
         </h1>
         <p className="text-text-secondary text-lg sm:text-xl max-w-lg mx-auto mb-8">
           Pick winners. Earn points based on Vegas odds. Climb the ranks. Prove you know ball.
