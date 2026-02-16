@@ -121,12 +121,35 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
     .select('*, sports(key, name)')
     .eq('user_id', id)
 
+  // Compute per-sport ranks
+  const sportIds = (sportStats || []).map((s) => s.sport_id)
+  let sportRanks = {}
+  if (sportIds.length > 0) {
+    const { data: allSportStats } = await supabase
+      .from('user_sport_stats')
+      .select('user_id, sport_id, total_points')
+      .in('sport_id', sportIds)
+      .order('total_points', { ascending: false })
+
+    for (const sportId of sportIds) {
+      const ranked = (allSportStats || []).filter((s) => s.sport_id === sportId)
+      const pos = ranked.findIndex((s) => s.user_id === id) + 1
+      sportRanks[sportId] = { rank: pos, total: ranked.length }
+    }
+  }
+
+  const enrichedSportStats = (sportStats || []).map((s) => ({
+    ...s,
+    sport_rank: sportRanks[s.sport_id]?.rank || null,
+    sport_total_users: sportRanks[s.sport_id]?.total || null,
+  }))
+
   res.json({
     ...user,
     record: { wins, losses, pushes, total: wins + losses + pushes },
     rank,
     total_users: allUsers?.length || 0,
-    sport_stats: sportStats || [],
+    sport_stats: enrichedSportStats,
   })
 })
 

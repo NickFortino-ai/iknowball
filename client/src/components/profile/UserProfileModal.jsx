@@ -105,6 +105,9 @@ export default function UserProfileModal({ userId, onClose }) {
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
+                        {stat.sport_rank && (
+                          <span className="text-xs text-text-muted">#{stat.sport_rank}/{stat.sport_total_users}</span>
+                        )}
                         <span className="text-xs text-text-muted">Streak: {stat.current_streak}</span>
                         <span className="text-accent font-semibold text-sm">{stat.total_points} pts</span>
                       </div>
