@@ -68,6 +68,18 @@ async function syncSport(sportKey) {
     const homeOutcome = outcomes.find((o) => o.name === event.home_team)
     const awayOutcome = outcomes.find((o) => o.name === event.away_team)
 
+    // Check if game already exists and has started — don't overwrite pre-game odds
+    const { data: existing } = await supabase
+      .from('games')
+      .select('id, status')
+      .eq('external_id', event.id)
+      .maybeSingle()
+
+    if (existing && existing.status !== 'upcoming') {
+      // Game already started or finished — skip to preserve original odds
+      continue
+    }
+
     const { error } = await supabase
       .from('games')
       .upsert(
