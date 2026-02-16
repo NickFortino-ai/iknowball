@@ -1,12 +1,67 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   useBracketTemplate,
   useCreateBracketTemplate,
   useUpdateBracketTemplate,
   useSaveBracketTemplateMatchups,
+  useTeamsForSport,
 } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
+
+function TeamAutocomplete({ value, onChange, placeholder, disabled, teams }) {
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState('')
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const filtered = (teams || []).filter((t) =>
+    t.toLowerCase().includes((filter || value || '').toLowerCase())
+  )
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        type="text"
+        value={value || ''}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setFilter(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
+      />
+      {open && !disabled && filtered.length > 0 && (
+        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+          {filtered.slice(0, 20).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(t)
+                setOpen(false)
+              }}
+              className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-bg-card-hover truncate"
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const SPORT_OPTIONS = [
   { value: 'americanfootball_nfl', label: 'NFL' },
@@ -169,10 +224,11 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   const createTemplate = useCreateBracketTemplate()
   const updateTemplate = useUpdateBracketTemplate()
   const saveMatchups = useSaveBracketTemplateMatchups()
+  const [sport, setSport] = useState(existing?.sport || '')
+  const { data: apiTeams } = useTeamsForSport(sport)
 
   const [step, setStep] = useState(1)
   const [name, setName] = useState(existing?.name || '')
-  const [sport, setSport] = useState(existing?.sport || '')
   const [teamCount, setTeamCount] = useState(existing?.team_count || 64)
   const [description, setDescription] = useState(existing?.description || '')
   const [regions, setRegions] = useState(existing?.regions || [])
@@ -508,25 +564,23 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                           <div className="text-[10px] text-text-muted mb-1">
                             #{m.seed_top} seed
                           </div>
-                          <input
-                            type="text"
+                          <TeamAutocomplete
                             value={m.team_top || ''}
-                            onChange={(e) => updateMatchupTeam(idx, 'team_top', e.target.value)}
+                            onChange={(val) => updateMatchupTeam(idx, 'team_top', val)}
                             placeholder="Team name"
-                            className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                            teams={apiTeams}
                           />
                         </div>
                         <div>
                           <div className="text-[10px] text-text-muted mb-1">
                             #{m.seed_bottom} seed
                           </div>
-                          <input
-                            type="text"
+                          <TeamAutocomplete
                             value={m.team_bottom || ''}
-                            onChange={(e) => updateMatchupTeam(idx, 'team_bottom', e.target.value)}
+                            onChange={(val) => updateMatchupTeam(idx, 'team_bottom', val)}
                             placeholder={m.is_bye ? '(bye)' : 'Team name'}
                             disabled={m.is_bye}
-                            className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
+                            teams={apiTeams}
                           />
                         </div>
                       </div>

@@ -81,6 +81,15 @@ export function useScoreGames() {
   })
 }
 
+// Team names for bracket autocomplete
+export function useTeamsForSport(sport) {
+  return useQuery({
+    queryKey: ['adminTeams', sport],
+    queryFn: () => api.get(`/admin/teams?sport=${sport}`),
+    enabled: !!sport,
+  })
+}
+
 // Bracket Templates
 export function useBracketTemplates(sport) {
   return useQuery({

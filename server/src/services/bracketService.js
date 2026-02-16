@@ -876,6 +876,35 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
 // Standings
 // ============================================
 
+export async function scoreBracketMatchups(homeTeam, awayTeam, winner) {
+  // Find unsettled template matchups where both teams match this game
+  const { data: matchups, error } = await supabase
+    .from('bracket_template_matchups')
+    .select('*, bracket_templates!inner(id, is_active)')
+    .is('winner', null)
+    .not('team_top', 'is', null)
+    .not('team_bottom', 'is', null)
+    .eq('bracket_templates.is_active', true)
+
+  if (error || !matchups?.length) return
+
+  const winningTeam = winner === 'home' ? homeTeam : awayTeam
+
+  for (const matchup of matchups) {
+    const teams = [matchup.team_top, matchup.team_bottom]
+    if (!teams.includes(homeTeam) || !teams.includes(awayTeam)) continue
+
+    const winnerSlot = matchup.team_top === winningTeam ? 'top' : 'bottom'
+
+    try {
+      await enterTemplateResult(matchup.bracket_templates.id, matchup.id, winnerSlot)
+      logger.info({ matchupId: matchup.id, winningTeam, winnerSlot }, 'Auto-settled bracket matchup')
+    } catch (err) {
+      logger.error({ err, matchupId: matchup.id }, 'Failed to auto-settle bracket matchup')
+    }
+  }
+}
+
 export async function getBracketStandings(leagueId) {
   const { data: tournament } = await supabase
     .from('bracket_tournaments')

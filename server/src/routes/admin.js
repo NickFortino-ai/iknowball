@@ -11,6 +11,7 @@ import {
   settleProps,
   getFeaturedProps,
 } from '../services/propService.js'
+import { supabase } from '../config/supabase.js'
 import {
   createTemplate,
   getTemplates,
@@ -80,6 +81,37 @@ router.post('/props/settle', async (req, res) => {
   }
   const results = await settleProps(settlements)
   res.json(results)
+})
+
+// Team names from games (for bracket autocomplete)
+router.get('/teams', async (req, res) => {
+  const { sport } = req.query
+  if (!sport) {
+    return res.status(400).json({ error: 'sport query param is required' })
+  }
+
+  const { data: sportRow } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', sport)
+    .single()
+
+  if (!sportRow) return res.json([])
+
+  const { data: games, error } = await supabase
+    .from('games')
+    .select('home_team, away_team')
+    .eq('sport_id', sportRow.id)
+
+  if (error) return res.json([])
+
+  const teamSet = new Set()
+  for (const g of games || []) {
+    if (g.home_team) teamSet.add(g.home_team)
+    if (g.away_team) teamSet.add(g.away_team)
+  }
+
+  res.json([...teamSet].sort())
 })
 
 // ============================================

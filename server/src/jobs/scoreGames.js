@@ -3,6 +3,7 @@ import { fetchScores } from '../services/oddsService.js'
 import { logger } from '../utils/logger.js'
 import { scoreCompletedGame } from '../services/scoringService.js'
 import { scoreSurvivorPicks } from '../services/survivorService.js'
+import { scoreBracketMatchups } from '../services/bracketService.js'
 
 async function scoreSport(sportKey) {
   // Smart gate: only call API if there are games that need scoring
@@ -91,6 +92,15 @@ async function scoreSport(sportKey) {
 
     await scoreCompletedGame(game.id, winner, game.sport_id)
     await scoreSurvivorPicks(game.id, winner)
+
+    if (winner) {
+      try {
+        await scoreBracketMatchups(game.home_team, game.away_team, winner)
+      } catch (err) {
+        logger.error({ err, gameId: game.id }, 'Failed to auto-settle bracket matchups')
+      }
+    }
+
     scored++
   }
 
