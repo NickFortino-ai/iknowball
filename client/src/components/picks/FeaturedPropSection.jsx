@@ -3,7 +3,7 @@ import { useFeaturedProp, useMyPropPicks, useSubmitPropPick, useDeletePropPick }
 import PropCard from './PropCard'
 import { toast } from '../ui/Toast'
 
-export default function FeaturedPropSection({ date }) {
+export default function FeaturedPropSection({ date, sportKey }) {
   const dateStr = date.toISOString().split('T')[0]
   const { data: prop, isLoading } = useFeaturedProp(dateStr)
   const { data: myPropPicks } = useMyPropPicks()
@@ -16,6 +16,9 @@ export default function FeaturedPropSection({ date }) {
   }, [prop, myPropPicks])
 
   if (isLoading || !prop) return null
+
+  // Only show when viewing the sport this prop belongs to
+  if (sportKey && prop.games?.sports?.key !== sportKey) return null
 
   async function handlePick(propId, side) {
     try {

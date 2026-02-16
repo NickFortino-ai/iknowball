@@ -8,6 +8,7 @@ import UserProfileModal from '../components/profile/UserProfileModal'
 
 const tabs = [
   { label: 'Global', scope: 'global', sport: null },
+  { label: 'Props', scope: 'props', sport: null },
   { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
   { label: 'NCAAB', scope: 'sport', sport: 'basketball_ncaab' },
   { label: 'WNBA', scope: 'sport', sport: 'basketball_wnba' },
@@ -77,7 +78,7 @@ export default function LeaderboardPage() {
                 </div>
                 <TierBadge tier={user.tier} size="xs" />
                 <span className="font-display text-lg text-right">
-                  {tab.scope === 'sport' ? (user.sport_points ?? 0) : (user.total_points ?? 0)}
+                  {tab.scope === 'sport' ? (user.sport_points ?? 0) : tab.scope === 'props' ? (user.prop_points ?? 0) : (user.total_points ?? 0)}
                 </span>
               </div>
             )

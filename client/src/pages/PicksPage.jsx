@@ -145,7 +145,7 @@ export default function PicksPage() {
       </div>
 
       {/* Daily Featured Player Prop */}
-      <FeaturedPropSection date={selectedDate} />
+      <FeaturedPropSection date={selectedDate} sportKey={sportKey} />
 
       {/* Game Cards */}
       {gamesLoading || picksLoading ? (

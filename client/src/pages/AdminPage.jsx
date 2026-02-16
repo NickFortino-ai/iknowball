@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useAdminFeaturedProps, useUnfeatureProp } from '../hooks/useAdmin'
+import { useSyncOdds, useScoreGames, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
-import PropSettlePanel from '../components/admin/PropSettlePanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
@@ -22,12 +21,12 @@ export default function AdminPage() {
   const [adminSection, setAdminSection] = useState('props') // props | brackets
   const [activeSport, setActiveSport] = useState(0)
   const [selectedGame, setSelectedGame] = useState(null)
-  const [activeTab, setActiveTab] = useState('sync') // sync | settle
 
   const sportKey = sportTabs[activeSport].key
-  const { data: games, isLoading: gamesLoading } = useGames(sportKey, null, 7)
+  const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming', 7)
   const { data: featuredProps } = useAdminFeaturedProps()
   const unfeatureProp = useUnfeatureProp()
+  const settleProps = useSettleProps()
 
   const syncOdds = useSyncOdds()
   const scoreGames = useScoreGames()
@@ -68,9 +67,21 @@ export default function AdminPage() {
     }
   }
 
-  const upcomingGames = (games || []).filter((g) => g.status === 'upcoming')
-  const liveGames = (games || []).filter((g) => g.status === 'live')
-  const finalGames = (games || []).filter((g) => g.status === 'final')
+  async function handleSettle(propId, outcome) {
+    try {
+      const results = await settleProps.mutateAsync([{ propId, outcome }])
+      const totalScored = results.reduce((sum, r) => sum + r.scored, 0)
+      toast(`Settled as ${outcome} — scored ${totalScored} picks`, 'success')
+    } catch (err) {
+      toast(err.message || 'Settlement failed', 'error')
+    }
+  }
+
+  const upcomingGames = games || []
+
+  // Split featured props into settleable vs others
+  const settleableFeatured = (featuredProps || []).filter((p) => p.status === 'locked' || p.status === 'published')
+  const otherFeatured = (featuredProps || []).filter((p) => p.status !== 'locked' && p.status !== 'published')
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -103,12 +114,51 @@ export default function AdminPage() {
       {adminSection === 'brackets' && <BracketTemplateManager />}
 
       {adminSection === 'props' && <>
-      {/* Featured Props Overview */}
-      {featuredProps?.length > 0 && (
+      {/* Featured Props — Settle */}
+      {settleableFeatured.length > 0 && (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+          <h2 className="font-semibold text-sm mb-3">Settle Featured Props</h2>
+          <div className="space-y-2">
+            {settleableFeatured.map((prop) => (
+              <div key={prop.id} className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/20">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    {prop.player_name} — {prop.market_label} ({prop.line})
+                  </div>
+                  <div className="text-xs text-text-muted">
+                    {prop.games?.away_team} @ {prop.games?.home_team} — {prop.featured_date}
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  {['over', 'under', 'push'].map((outcome) => (
+                    <button
+                      key={outcome}
+                      onClick={() => handleSettle(prop.id, outcome)}
+                      disabled={settleProps.isPending}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
+                        outcome === 'over'
+                          ? 'bg-correct/20 text-correct hover:bg-correct/30'
+                          : outcome === 'under'
+                            ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
+                            : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
+                      }`}
+                    >
+                      {outcome.charAt(0).toUpperCase() + outcome.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Featured Props — Scheduled / Settled */}
+      {otherFeatured.length > 0 && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
           <h2 className="font-semibold text-sm mb-3">Daily Featured Props</h2>
           <div className="space-y-2">
-            {featuredProps.map((prop) => (
+            {otherFeatured.map((prop) => (
               <div key={prop.id} className="flex items-center gap-3 p-2 rounded-lg bg-correct/5 border border-correct/20">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">
@@ -120,20 +170,17 @@ export default function AdminPage() {
                 </div>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                   prop.status === 'settled' ? 'bg-text-muted/20 text-text-muted' :
-                  prop.status === 'locked' ? 'bg-accent/20 text-accent' :
                   'bg-correct/20 text-correct'
                 }`}>
                   {prop.featured_date}
                 </span>
                 <span className="text-xs text-text-muted">{prop.status}</span>
-                {prop.status === 'published' && (
-                  <button
-                    onClick={() => handleUnfeature(prop.id)}
-                    disabled={unfeatureProp.isPending}
-                    className="text-xs text-incorrect hover:underline"
-                  >
-                    Remove
-                  </button>
+                {prop.outcome && (
+                  <span className={`text-xs font-semibold ${
+                    prop.outcome === 'over' ? 'text-correct' : prop.outcome === 'under' ? 'text-incorrect' : 'text-text-muted'
+                  }`}>
+                    {prop.outcome.toUpperCase()}
+                  </span>
                 )}
               </div>
             ))}
@@ -142,7 +189,7 @@ export default function AdminPage() {
       )}
 
       {/* Props Manager */}
-      <h2 className="font-display text-xl mb-4">Props Manager</h2>
+      <h2 className="font-display text-xl mb-4">Sync & Feature Props</h2>
 
       {/* Sport Tabs */}
       <div className="flex gap-2 mb-4">
@@ -165,61 +212,23 @@ export default function AdminPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Game List */}
+        {/* Game List — upcoming only */}
         <div className="lg:col-span-1">
           {gamesLoading ? (
             <LoadingSpinner />
-          ) : (
-            <div className="space-y-4">
-              {upcomingGames.length > 0 && (
-                <div>
-                  <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Upcoming</h3>
-                  <div className="space-y-1">
-                    {upcomingGames.map((game) => (
-                      <GameListItem
-                        key={game.id}
-                        game={game}
-                        isSelected={selectedGame?.id === game.id}
-                        onClick={() => setSelectedGame(game)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {liveGames.length > 0 && (
-                <div>
-                  <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Live</h3>
-                  <div className="space-y-1">
-                    {liveGames.map((game) => (
-                      <GameListItem
-                        key={game.id}
-                        game={game}
-                        isSelected={selectedGame?.id === game.id}
-                        onClick={() => setSelectedGame(game)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {finalGames.length > 0 && (
-                <div>
-                  <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Final</h3>
-                  <div className="space-y-1">
-                    {finalGames.map((game) => (
-                      <GameListItem
-                        key={game.id}
-                        game={game}
-                        isSelected={selectedGame?.id === game.id}
-                        onClick={() => setSelectedGame(game)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {!upcomingGames.length && !liveGames.length && !finalGames.length && (
-                <div className="text-center text-text-muted text-sm py-8">No games found</div>
-              )}
+          ) : upcomingGames.length > 0 ? (
+            <div className="space-y-1">
+              {upcomingGames.map((game) => (
+                <GameListItem
+                  key={game.id}
+                  game={game}
+                  isSelected={selectedGame?.id === game.id}
+                  onClick={() => setSelectedGame(game)}
+                />
+              ))}
             </div>
+          ) : (
+            <div className="text-center text-text-muted text-sm py-8">No upcoming games</div>
           )}
         </div>
 
@@ -227,39 +236,14 @@ export default function AdminPage() {
         <div className="lg:col-span-2">
           {selectedGame ? (
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-sm">
-                  {selectedGame.away_team} @ {selectedGame.home_team}
-                </h3>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setActiveTab('sync')}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                      activeTab === 'sync' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
-                    }`}
-                  >
-                    Sync & Feature
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('settle')}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                      activeTab === 'settle' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
-                    }`}
-                  >
-                    Settle
-                  </button>
-                </div>
-              </div>
-
-              {activeTab === 'sync' ? (
-                <PropSyncPanel game={selectedGame} sportKey={sportKey} />
-              ) : (
-                <PropSettlePanel game={selectedGame} />
-              )}
+              <h3 className="font-semibold text-sm mb-4">
+                {selectedGame.away_team} @ {selectedGame.home_team}
+              </h3>
+              <PropSyncPanel game={selectedGame} sportKey={sportKey} />
             </div>
           ) : (
             <div className="text-center text-text-muted text-sm py-16">
-              Select a game to manage props
+              Select a game to sync & feature props
             </div>
           )}
         </div>
@@ -310,13 +294,7 @@ function GameListItem({ game, isSelected, onClick }) {
       <div className="text-sm font-medium truncate">
         {game.away_team} @ {game.home_team}
       </div>
-      <div className="text-xs text-text-muted mt-0.5">
-        {game.status === 'final'
-          ? `Final: ${game.away_score} - ${game.home_score}`
-          : game.status === 'live'
-            ? 'LIVE'
-            : time}
-      </div>
+      <div className="text-xs text-text-muted mt-0.5">{time}</div>
     </button>
   )
 }

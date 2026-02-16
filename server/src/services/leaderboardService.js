@@ -12,6 +12,36 @@ export async function getLeaderboard(scope = 'global', sportKey) {
     return data.map((u, i) => ({ ...u, rank: i + 1 }))
   }
 
+  if (scope === 'props') {
+    const { data, error } = await supabase
+      .from('prop_picks')
+      .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, tier)')
+      .eq('status', 'settled')
+
+    if (error) throw error
+
+    const statsMap = {}
+    for (const pick of data || []) {
+      if (!statsMap[pick.user_id]) {
+        statsMap[pick.user_id] = {
+          ...pick.users,
+          prop_points: 0,
+          total_picks: 0,
+          correct_picks: 0,
+        }
+      }
+      const s = statsMap[pick.user_id]
+      s.prop_points += pick.points_earned || 0
+      s.total_picks++
+      if (pick.is_correct) s.correct_picks++
+    }
+
+    return Object.values(statsMap)
+      .sort((a, b) => b.prop_points - a.prop_points)
+      .slice(0, 100)
+      .map((u, i) => ({ ...u, rank: i + 1 }))
+  }
+
   if (scope === 'sport' && sportKey) {
     const { data: sport } = await supabase
       .from('sports')
