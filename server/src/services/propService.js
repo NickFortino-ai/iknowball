@@ -22,7 +22,13 @@ export async function syncPropsForGame(gameId, markets) {
   const eventId = game.external_id
 
   // Fetch props from Odds API
-  const apiData = await fetchPlayerProps(sportKey, eventId, markets)
+  let apiData
+  try {
+    apiData = await fetchPlayerProps(sportKey, eventId, markets)
+  } catch (err) {
+    logger.warn({ err, sportKey, eventId }, 'No player props available from API')
+    return { synced: 0 }
+  }
 
   if (!apiData?.bookmakers?.length) {
     return { synced: 0 }
