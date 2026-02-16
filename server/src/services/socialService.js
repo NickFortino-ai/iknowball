@@ -1,0 +1,166 @@
+import { supabase } from '../config/supabase.js'
+
+async function assertConnected(actorId, pickOwnerId) {
+  // Allow self-reactions
+  if (actorId === pickOwnerId) return
+
+  const user_id_1 = actorId < pickOwnerId ? actorId : pickOwnerId
+  const user_id_2 = actorId < pickOwnerId ? pickOwnerId : actorId
+
+  const { data } = await supabase
+    .from('connections')
+    .select('id')
+    .eq('user_id_1', user_id_1)
+    .eq('user_id_2', user_id_2)
+    .eq('status', 'connected')
+    .single()
+
+  if (!data) {
+    const err = new Error('You must be connected to this user')
+    err.status = 403
+    throw err
+  }
+}
+
+async function getPickOwner(pickId) {
+  const { data } = await supabase
+    .from('picks')
+    .select('user_id')
+    .eq('id', pickId)
+    .single()
+
+  if (!data) {
+    const err = new Error('Pick not found')
+    err.status = 404
+    throw err
+  }
+  return data.user_id
+}
+
+export async function toggleReaction(userId, pickId, reactionType) {
+  const ownerId = await getPickOwner(pickId)
+  await assertConnected(userId, ownerId)
+
+  // Check if reaction already exists
+  const { data: existing } = await supabase
+    .from('pick_reactions')
+    .select('id')
+    .eq('pick_id', pickId)
+    .eq('user_id', userId)
+    .eq('reaction_type', reactionType)
+    .single()
+
+  if (existing) {
+    await supabase.from('pick_reactions').delete().eq('id', existing.id)
+    return { toggled: 'off' }
+  }
+
+  await supabase.from('pick_reactions').insert({
+    pick_id: pickId,
+    user_id: userId,
+    reaction_type: reactionType,
+  })
+  return { toggled: 'on' }
+}
+
+export async function getReactionsForPick(pickId) {
+  const { data, error } = await supabase
+    .from('pick_reactions')
+    .select('reaction_type, user_id, users(username)')
+    .eq('pick_id', pickId)
+
+  if (error) throw error
+
+  // Group by reaction type
+  const grouped = {}
+  for (const row of data || []) {
+    if (!grouped[row.reaction_type]) {
+      grouped[row.reaction_type] = { type: row.reaction_type, count: 0, users: [] }
+    }
+    grouped[row.reaction_type].count++
+    grouped[row.reaction_type].users.push({
+      userId: row.user_id,
+      username: row.users.username,
+    })
+  }
+  return Object.values(grouped)
+}
+
+export async function getReactionsForPicks(pickIds) {
+  if (!pickIds.length) return {}
+
+  const { data, error } = await supabase
+    .from('pick_reactions')
+    .select('pick_id, reaction_type, user_id, users(username)')
+    .in('pick_id', pickIds)
+
+  if (error) throw error
+
+  const result = {}
+  for (const row of data || []) {
+    if (!result[row.pick_id]) result[row.pick_id] = {}
+    if (!result[row.pick_id][row.reaction_type]) {
+      result[row.pick_id][row.reaction_type] = { type: row.reaction_type, count: 0, users: [] }
+    }
+    result[row.pick_id][row.reaction_type].count++
+    result[row.pick_id][row.reaction_type].users.push({
+      userId: row.user_id,
+      username: row.users.username,
+    })
+  }
+
+  // Convert inner objects to arrays
+  const mapped = {}
+  for (const pickId of Object.keys(result)) {
+    mapped[pickId] = Object.values(result[pickId])
+  }
+  return mapped
+}
+
+export async function addComment(userId, pickId, content) {
+  const ownerId = await getPickOwner(pickId)
+  await assertConnected(userId, ownerId)
+
+  const { data, error } = await supabase
+    .from('pick_comments')
+    .insert({ pick_id: pickId, user_id: userId, content })
+    .select('id, content, created_at, user_id, users(username, avatar_emoji)')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function getCommentsForPick(pickId) {
+  const { data, error } = await supabase
+    .from('pick_comments')
+    .select('id, content, created_at, user_id, users(username, avatar_emoji)')
+    .eq('pick_id', pickId)
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}
+
+export async function deleteComment(userId, commentId) {
+  const { data: comment } = await supabase
+    .from('pick_comments')
+    .select('id, user_id')
+    .eq('id', commentId)
+    .single()
+
+  if (!comment) {
+    const err = new Error('Comment not found')
+    err.status = 404
+    throw err
+  }
+
+  if (comment.user_id !== userId) {
+    const err = new Error('You can only delete your own comments')
+    err.status = 403
+    throw err
+  }
+
+  const { error } = await supabase.from('pick_comments').delete().eq('id', commentId)
+  if (error) throw error
+}

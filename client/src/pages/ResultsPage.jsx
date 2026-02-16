@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { usePickHistory } from '../hooks/usePicks'
+import { usePickReactionsBatch } from '../hooks/useSocial'
 import GameCard from '../components/picks/GameCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
@@ -19,14 +20,12 @@ export default function ResultsPage() {
     return { wins, losses, pushes, netPoints, total: picks.length }
   }, [picks])
 
-  const picksMap = useMemo(() => {
-    if (!picks) return {}
-    const map = {}
-    for (const pick of picks) {
-      map[pick.game_id] = pick
-    }
-    return map
+  const settledPickIds = useMemo(() => {
+    if (!picks?.length) return []
+    return picks.filter((p) => p.status === 'settled').map((p) => p.id)
   }, [picks])
+
+  const { data: reactionsBatch } = usePickReactionsBatch(settledPickIds)
 
   if (isLoading) return <LoadingSpinner />
 
@@ -69,6 +68,7 @@ export default function ResultsPage() {
               key={pick.id}
               game={pick.games}
               userPick={pick}
+              reactions={reactionsBatch?.[pick.id]}
             />
           ))}
         </div>

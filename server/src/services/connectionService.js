@@ -301,7 +301,7 @@ export async function getConnectionActivity(userId) {
     // Source 1: Big underdog wins (odds >= +250)
     supabase
       .from('picks')
-      .select('user_id, odds_at_pick, points_earned, updated_at, games(home_team, away_team, picked_team)')
+      .select('id, user_id, odds_at_pick, points_earned, updated_at, games(home_team, away_team, picked_team)')
       .in('user_id', connectedIds)
       .eq('status', 'settled')
       .eq('is_correct', true)
@@ -335,6 +335,7 @@ export async function getConnectionActivity(userId) {
     feed.push({
       type: 'underdog_win',
       userId: pick.user_id,
+      pickId: pick.id,
       username: user.username,
       avatar_emoji: user.avatar_emoji,
       message: `hit a ${odds} pick for +${pick.points_earned} pts`,

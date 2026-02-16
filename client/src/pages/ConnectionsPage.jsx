@@ -13,6 +13,8 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
+import PickReactions from '../components/social/PickReactions'
+import PickComments from '../components/social/PickComments'
 
 const ACTIVITY_EMOJI = {
   underdog_win: '\uD83C\uDFAF',
@@ -233,6 +235,12 @@ export default function ConnectionsPage() {
                     {' '}{item.message}
                   </p>
                 </div>
+                {item.pickId && (
+                  <div className="mt-2 ml-6 space-y-1.5">
+                    <PickReactions pickId={item.pickId} />
+                    <PickComments pickId={item.pickId} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

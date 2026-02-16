@@ -1,5 +1,6 @@
 import PickButton from './PickButton'
 import { formatOdds } from '../../lib/scoring'
+import PickReactions from '../social/PickReactions'
 
 function formatGameTime(dateStr) {
   const d = new Date(dateStr)
@@ -8,7 +9,7 @@ function formatGameTime(dateStr) {
     d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting }) {
+export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
 
@@ -98,6 +99,12 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
       {userPick?.status === 'settled' && userPick.points_earned !== null && (
         <div className={`mt-3 text-center text-sm font-semibold ${userPick.points_earned > 0 ? 'text-correct' : userPick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
           {userPick.points_earned > 0 ? '+' : ''}{userPick.points_earned} pts
+        </div>
+      )}
+
+      {reactions?.length > 0 && (
+        <div className="mt-2">
+          <PickReactions pickId={userPick?.id} compact reactions={reactions} />
         </div>
       )}
     </div>

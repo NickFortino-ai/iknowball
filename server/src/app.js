@@ -13,6 +13,7 @@ import adminRouter from './routes/admin.js'
 import propsRouter from './routes/props.js'
 import paymentsRouter from './routes/payments.js'
 import connectionsRouter from './routes/connections.js'
+import socialRouter from './routes/social.js'
 
 const app = express()
 
@@ -34,6 +35,7 @@ app.use('/api/admin', adminRouter)
 app.use('/api/props', propsRouter)
 app.use('/api/payments', paymentsRouter)
 app.use('/api/connections', connectionsRouter)
+app.use('/api/social', socialRouter)
 
 app.use(errorHandler)
 
