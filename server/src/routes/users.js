@@ -153,6 +153,98 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
   })
 })
 
+// Head-to-head record between current user and another user
+router.get('/:id/head-to-head', requireAuth, async (req, res) => {
+  const myId = req.user.id
+  const theirId = req.params.id
+
+  if (myId === theirId) {
+    return res.json({ wins: 0, losses: 0, ties: 0, total: 0, games: [] })
+  }
+
+  // Verify connection exists
+  const user_id_1 = myId < theirId ? myId : theirId
+  const user_id_2 = myId < theirId ? theirId : myId
+
+  const { data: connection } = await supabase
+    .from('connections')
+    .select('id')
+    .eq('user_id_1', user_id_1)
+    .eq('user_id_2', user_id_2)
+    .eq('status', 'connected')
+    .single()
+
+  if (!connection) {
+    return res.status(403).json({ error: 'You must be connected to view head-to-head' })
+  }
+
+  // Fetch both users' settled picks in parallel
+  const [myPicksResult, theirPicksResult] = await Promise.all([
+    supabase
+      .from('picks')
+      .select('game_id, is_correct, games(home_team, away_team, starts_at, sports(name))')
+      .eq('user_id', myId)
+      .eq('status', 'settled'),
+    supabase
+      .from('picks')
+      .select('game_id, is_correct')
+      .eq('user_id', theirId)
+      .eq('status', 'settled'),
+  ])
+
+  const myPicks = myPicksResult.data || []
+  const theirPicks = theirPicksResult.data || []
+
+  // Build map of their picks by game_id
+  const theirPickMap = {}
+  for (const p of theirPicks) {
+    theirPickMap[p.game_id] = p
+  }
+
+  let wins = 0, losses = 0, ties = 0
+  const games = []
+
+  for (const myPick of myPicks) {
+    const theirPick = theirPickMap[myPick.game_id]
+    if (!theirPick) continue
+
+    // Both picked this game
+    const myCorrect = myPick.is_correct === true
+    const theirCorrect = theirPick.is_correct === true
+
+    let result
+    if (myCorrect && !theirCorrect) {
+      wins++
+      result = 'win'
+    } else if (!myCorrect && theirCorrect) {
+      losses++
+      result = 'loss'
+    } else {
+      ties++
+      result = 'tie'
+    }
+
+    games.push({
+      game_id: myPick.game_id,
+      matchup: `${myPick.games?.away_team} @ ${myPick.games?.home_team}`,
+      sport: myPick.games?.sports?.name,
+      date: myPick.games?.starts_at,
+      result,
+    })
+  }
+
+  // Sort by date desc, limit 20
+  games.sort((a, b) => new Date(b.date) - new Date(a.date))
+
+  res.json({
+    wins,
+    losses,
+    ties,
+    total: wins + losses + ties,
+    games: games.slice(0, 20),
+  })
+})
+
 // Get any user's settled pick history
 router.get('/:id/picks', requireAuth, async (req, res) => {
   const picks = await getPublicPickHistory(req.params.id)

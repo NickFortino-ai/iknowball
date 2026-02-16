@@ -9,6 +9,7 @@ import {
   sendConnectionRequest,
   acceptConnectionRequest,
   declineConnectionRequest,
+  sharePickToSquad,
 } from '../services/connectionService.js'
 
 const router = Router()
@@ -35,6 +36,15 @@ const sendRequestSchema = z.object({
 router.post('/request', requireAuth, validate(sendRequestSchema), async (req, res) => {
   const connection = await sendConnectionRequest(req.user.id, req.validated.username)
   res.status(201).json(connection)
+})
+
+const shareSchema = z.object({
+  pick_id: z.string().uuid(),
+})
+
+router.post('/share', requireAuth, validate(shareSchema), async (req, res) => {
+  const result = await sharePickToSquad(req.user.id, req.validated.pick_id)
+  res.status(201).json(result)
 })
 
 router.post('/:id/accept', requireAuth, async (req, res) => {

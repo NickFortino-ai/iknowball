@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js'
+import { createNotification } from './notificationService.js'
 
 async function assertConnected(actorId, pickOwnerId) {
   // Allow self-reactions
@@ -60,6 +61,22 @@ export async function toggleReaction(userId, pickId, reactionType) {
     user_id: userId,
     reaction_type: reactionType,
   })
+
+  // Notify pick owner on reaction (skip self)
+  if (userId !== ownerId) {
+    const { data: actor } = await supabase
+      .from('users')
+      .select('username')
+      .eq('id', userId)
+      .single()
+    const username = actor?.username || 'Someone'
+    createNotification(ownerId, 'reaction', `${username} reacted ${reactionType} to your pick`, {
+      actorId: userId,
+      pickId,
+      reactionType,
+    })
+  }
+
   return { toggled: 'on' }
 }
 
@@ -128,6 +145,16 @@ export async function addComment(userId, pickId, content) {
     .single()
 
   if (error) throw error
+
+  // Notify pick owner on comment (skip self)
+  if (userId !== ownerId) {
+    const username = data.users?.username || 'Someone'
+    createNotification(ownerId, 'comment', `${username} commented on your pick`, {
+      actorId: userId,
+      pickId,
+    })
+  }
+
   return data
 }
 

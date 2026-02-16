@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useMyInvitations, useAcceptInvitation, useDeclineInvitation } from '../../hooks/useInvitations'
 import { usePendingConnectionRequests, useAcceptConnectionRequest, useDeclineConnectionRequest } from '../../hooks/useConnections'
+import { useNotifications, useUnreadNotificationCount, useMarkAllNotificationsRead } from '../../hooks/useNotifications'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
 import { toast } from '../ui/Toast'
@@ -31,6 +32,17 @@ const navLinks = [
   { to: '/connections', label: 'Squad' },
 ]
 
+function timeAgo(dateStr) {
+  const seconds = Math.floor((Date.now() - new Date(dateStr)) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  const days = Math.floor(hours / 24)
+  return `${days}d`
+}
+
 export default function Navbar() {
   const { isAuthenticated, profile, signOut } = useAuth()
   const location = useLocation()
@@ -48,9 +60,14 @@ export default function Navbar() {
   const acceptConnection = useAcceptConnectionRequest()
   const declineConnection = useDeclineConnectionRequest()
 
+  const { data: notifications } = useNotifications()
+  const { data: unreadData } = useUnreadNotificationCount(isAuthenticated)
+  const markAllRead = useMarkAllNotificationsRead()
+
   const inviteCount = invitations?.length || 0
   const connectionCount = pendingConnections?.length || 0
-  const pendingCount = inviteCount + connectionCount
+  const notificationCount = unreadData?.count || 0
+  const pendingCount = inviteCount + connectionCount + notificationCount
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -170,9 +187,9 @@ export default function Navbar() {
               {/* Notification Bell — desktop */}
               <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={() => setShowInvites(!showInvites)}
+                  onClick={() => { if (!showInvites) markAllRead.mutate(); setShowInvites(!showInvites) }}
                   className="relative p-1.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
-                  aria-label="Invitations"
+                  aria-label="Notifications"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -192,7 +209,7 @@ export default function Navbar() {
                       <h3 className="font-semibold text-sm">Notifications</h3>
                     </div>
 
-                    {pendingCount === 0 ? (
+                    {inviteCount === 0 && connectionCount === 0 && !notifications?.length ? (
                       <div className="px-4 py-6 text-center text-text-muted text-sm">
                         No pending notifications
                       </div>
@@ -246,6 +263,17 @@ export default function Navbar() {
                             </div>
                           </div>
                         ))}
+                        {notifications?.map((n) => (
+                          <div key={n.id} className="px-4 py-3 border-b border-border last:border-b-0">
+                            <div className="flex items-start gap-2">
+                              <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm">{n.message}</div>
+                                <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -290,9 +318,9 @@ export default function Navbar() {
             <div className="flex items-center gap-1 md:hidden">
               {/* Notification bell — mobile */}
               <button
-                onClick={() => { setShowMobileMenu(false); setShowInvites(!showInvites) }}
+                onClick={() => { setShowMobileMenu(false); if (!showInvites) markAllRead.mutate(); setShowInvites(!showInvites) }}
                 className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
-                aria-label="Invitations"
+                aria-label="Notifications"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -400,7 +428,7 @@ export default function Navbar() {
                   <h3 className="font-semibold text-sm">Notifications</h3>
                 </div>
 
-                {pendingCount === 0 ? (
+                {inviteCount === 0 && connectionCount === 0 && !notifications?.length ? (
                   <div className="px-4 py-6 text-center text-text-muted text-sm">
                     No pending notifications
                   </div>
@@ -451,6 +479,17 @@ export default function Navbar() {
                           >
                             Decline
                           </button>
+                        </div>
+                      </div>
+                    ))}
+                    {notifications?.map((n) => (
+                      <div key={n.id} className="px-4 py-3 border-b border-border last:border-b-0">
+                        <div className="flex items-start gap-2">
+                          <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm">{n.message}</div>
+                            <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
+                          </div>
                         </div>
                       </div>
                     ))}

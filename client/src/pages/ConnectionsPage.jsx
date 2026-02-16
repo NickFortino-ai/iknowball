@@ -20,6 +20,7 @@ const ACTIVITY_EMOJI = {
   underdog_win: '\uD83C\uDFAF',
   hot_streak: '\uD83D\uDD25',
   tier_achievement: '\u2B50',
+  pick_share: '\uD83D\uDCE2',
 }
 
 export default function ConnectionsPage() {

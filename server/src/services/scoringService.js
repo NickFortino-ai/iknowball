@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createNotification } from './notificationService.js'
 
 export async function scoreCompletedGame(gameId, winner, sportId) {
   // Get all locked picks for this game
@@ -76,6 +77,40 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
 
       if (statsError) {
         logger.error({ statsError, userId: pick.user_id }, 'Failed to update sport stats')
+      }
+
+      // Record streak events for correct picks
+      if (isCorrect === true) {
+        try {
+          const { data: updatedStats } = await supabase
+            .from('user_sport_stats')
+            .select('current_streak')
+            .eq('user_id', pick.user_id)
+            .eq('sport_id', sportId)
+            .single()
+
+          const streak = updatedStats?.current_streak || 0
+
+          if (streak >= 5) {
+            await supabase.from('streak_events').insert({
+              user_id: pick.user_id,
+              sport_id: sportId,
+              streak_length: streak,
+            })
+
+            // Notify on milestone streaks (5, 10, 15...)
+            if (streak % 5 === 0) {
+              await createNotification(
+                pick.user_id,
+                'streak_milestone',
+                `You're on a ${streak}-game win streak!`,
+                { streak, sportId }
+              )
+            }
+          }
+        } catch (err) {
+          logger.error({ err, userId: pick.user_id }, 'Failed to record streak event')
+        }
       }
     }
   }

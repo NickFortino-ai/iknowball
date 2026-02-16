@@ -1,12 +1,16 @@
-import { useUserProfile, useUserPickHistory } from '../../hooks/useUserProfile'
+import { useUserProfile, useUserPickHistory, useHeadToHead } from '../../hooks/useUserProfile'
+import { useAuth } from '../../hooks/useAuth'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
 
 export default function UserProfileModal({ userId, onClose }) {
+  const { session } = useAuth()
   const { data: user, isLoading } = useUserProfile(userId)
   const { data: picks, isLoading: picksLoading } = useUserPickHistory(userId)
+  const isViewingOther = userId && session?.user?.id !== userId
+  const { data: h2h } = useHeadToHead(isViewingOther ? userId : null)
 
   if (!userId) return null
 
@@ -90,6 +94,30 @@ export default function UserProfileModal({ userId, onClose }) {
                 </div>
               </div>
             </div>
+
+            {/* Head-to-Head */}
+            {h2h && h2h.total > 0 && (
+              <div className="bg-bg-primary rounded-xl p-4 mb-4">
+                <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Head-to-Head</h3>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <div className="font-display text-xl text-correct">{h2h.wins}</div>
+                    <div className="text-xs text-text-muted">Your Wins</div>
+                  </div>
+                  <div>
+                    <div className="font-display text-xl text-incorrect">{h2h.losses}</div>
+                    <div className="text-xs text-text-muted">Their Wins</div>
+                  </div>
+                  <div>
+                    <div className="font-display text-xl text-text-primary">{h2h.ties}</div>
+                    <div className="text-xs text-text-muted">Ties</div>
+                  </div>
+                </div>
+                <div className="text-xs text-text-muted text-center mt-2">
+                  {h2h.total} games in common
+                </div>
+              </div>
+            )}
 
             {/* Sport Breakdown */}
             {user.sport_stats?.length > 0 && (

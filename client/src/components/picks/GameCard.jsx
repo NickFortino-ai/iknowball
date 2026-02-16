@@ -9,7 +9,7 @@ function formatGameTime(dateStr) {
     d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions }) {
+export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
 
@@ -99,6 +99,22 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
       {userPick?.status === 'settled' && userPick.points_earned !== null && (
         <div className={`mt-3 text-center text-sm font-semibold ${userPick.points_earned > 0 ? 'text-correct' : userPick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
           {userPick.points_earned > 0 ? '+' : ''}{userPick.points_earned} pts
+        </div>
+      )}
+
+      {onShare && userPick && (userPick.status === 'pending' || userPick.status === 'locked') && (
+        <div className="mt-3 text-center">
+          <button
+            onClick={() => onShare(userPick.id)}
+            disabled={isShared}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+              isShared
+                ? 'bg-bg-secondary text-text-muted cursor-default'
+                : 'bg-accent/10 text-accent hover:bg-accent/20'
+            }`}
+          >
+            {isShared ? 'Shared to Squad' : 'Share to Squad'}
+          </button>
         </div>
       )}
 

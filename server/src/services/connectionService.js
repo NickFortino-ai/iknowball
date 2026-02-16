@@ -296,8 +296,8 @@ export async function getConnectionActivity(userId) {
     userMap[u.id] = u
   }
 
-  // Query 3 sources in parallel
-  const [underdogWins, hotStreaks, tierAchievements] = await Promise.all([
+  // Query 4 sources in parallel
+  const [underdogWins, streakEvents, tierAchievements, pickShares] = await Promise.all([
     // Source 1: Big underdog wins (odds >= +250)
     supabase
       .from('picks')
@@ -309,12 +309,13 @@ export async function getConnectionActivity(userId) {
       .order('updated_at', { ascending: false })
       .limit(15),
 
-    // Source 2: Hot streaks (current_streak >= 5)
+    // Source 2: Streak events (replaces static hot_streak snapshot)
     supabase
-      .from('user_sport_stats')
-      .select('user_id, current_streak, sport_id, sports(name)')
+      .from('streak_events')
+      .select('user_id, streak_length, created_at, sports(name)')
       .in('user_id', connectedIds)
-      .gte('current_streak', 5),
+      .order('created_at', { ascending: false })
+      .limit(15),
 
     // Source 3: Tier achievements (non-Rookie, updated recently)
     supabase
@@ -323,6 +324,14 @@ export async function getConnectionActivity(userId) {
       .in('id', connectedIds)
       .neq('tier', 'Rookie')
       .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+
+    // Source 4: Pick shares
+    supabase
+      .from('pick_shares')
+      .select('id, pick_id, user_id, created_at, picks(picked_team, odds_at_pick, games(home_team, away_team, starts_at, sports(name)))')
+      .in('user_id', connectedIds)
+      .order('created_at', { ascending: false })
+      .limit(15),
   ])
 
   const feed = []
@@ -343,17 +352,18 @@ export async function getConnectionActivity(userId) {
     })
   }
 
-  // Process hot streaks
-  for (const stat of hotStreaks.data || []) {
-    const user = userMap[stat.user_id]
+  // Process streak events
+  for (const event of streakEvents.data || []) {
+    const user = userMap[event.user_id]
     if (!user) continue
+    const sportName = event.sports?.name || 'a sport'
     feed.push({
       type: 'hot_streak',
-      userId: stat.user_id,
+      userId: event.user_id,
       username: user.username,
       avatar_emoji: user.avatar_emoji,
-      message: `is on a ${stat.current_streak}-game streak`,
-      timestamp: new Date().toISOString(),
+      message: `just extended their streak to ${event.streak_length} in ${sportName}`,
+      timestamp: event.created_at,
     })
   }
 
@@ -371,7 +381,75 @@ export async function getConnectionActivity(userId) {
     })
   }
 
+  // Process pick shares
+  for (const share of pickShares.data || []) {
+    const user = userMap[share.user_id]
+    if (!user || !share.picks) continue
+    const pick = share.picks
+    const team = pick.picked_team === 'home' ? pick.games?.home_team : pick.games?.away_team
+    const odds = pick.odds_at_pick >= 0 ? `+${pick.odds_at_pick}` : pick.odds_at_pick
+    const sportName = pick.games?.sports?.name || ''
+    feed.push({
+      type: 'pick_share',
+      userId: share.user_id,
+      pickId: share.pick_id,
+      username: user.username,
+      avatar_emoji: user.avatar_emoji,
+      message: `is taking ${team} ${odds} in ${sportName}`,
+      timestamp: share.created_at,
+    })
+  }
+
   // Sort by timestamp desc, limit 15
   feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
   return feed.slice(0, 15)
+}
+
+export async function sharePickToSquad(userId, pickId) {
+  // Verify pick exists and belongs to user
+  const { data: pick } = await supabase
+    .from('picks')
+    .select('id, user_id, status')
+    .eq('id', pickId)
+    .single()
+
+  if (!pick) {
+    const err = new Error('Pick not found')
+    err.status = 404
+    throw err
+  }
+
+  if (pick.user_id !== userId) {
+    const err = new Error('You can only share your own picks')
+    err.status = 403
+    throw err
+  }
+
+  if (pick.status === 'settled') {
+    const err = new Error('Cannot share a settled pick')
+    err.status = 400
+    throw err
+  }
+
+  // Check if already shared
+  const { data: existing } = await supabase
+    .from('pick_shares')
+    .select('id')
+    .eq('pick_id', pickId)
+    .single()
+
+  if (existing) {
+    const err = new Error('Pick already shared')
+    err.status = 400
+    throw err
+  }
+
+  const { data, error } = await supabase
+    .from('pick_shares')
+    .insert({ pick_id: pickId, user_id: userId })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
 }

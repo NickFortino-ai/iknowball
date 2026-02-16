@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useGames } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick } from '../hooks/usePicks'
+import { useSharePickToSquad } from '../hooks/useConnections'
 import GameCard from '../components/picks/GameCard'
 import BottomBar from '../components/picks/BottomBar'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
@@ -51,6 +52,8 @@ export default function PicksPage() {
   const { data: myPicks, isLoading: picksLoading } = useMyPicks()
   const submitPick = useSubmitPick()
   const deletePick = useDeletePick()
+  const sharePick = useSharePickToSquad()
+  const [sharedPickIds, setSharedPickIds] = useState(new Set())
 
   const picksMap = useMemo(() => {
     if (!myPicks) return {}
@@ -96,6 +99,19 @@ export default function PicksPage() {
       toast(err.message || 'Failed to undo pick', 'error')
     }
   }
+
+  const handleShare = useCallback(async (pickId) => {
+    try {
+      await sharePick.mutateAsync(pickId)
+      setSharedPickIds((prev) => new Set([...prev, pickId]))
+      toast('Shared to squad!', 'success')
+    } catch (err) {
+      if (err.message?.includes('already shared')) {
+        setSharedPickIds((prev) => new Set([...prev, pickId]))
+      }
+      toast(err.message || 'Failed to share', 'error')
+    }
+  }, [sharePick])
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-32">
@@ -162,6 +178,8 @@ export default function PicksPage() {
               onPick={handlePick}
               onUndoPick={handleUndoPick}
               isSubmitting={submitPick.isPending || deletePick.isPending}
+              onShare={handleShare}
+              isShared={sharedPickIds.has(picksMap[game.id]?.id)}
             />
           ))}
         </div>

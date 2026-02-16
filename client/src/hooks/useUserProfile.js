@@ -16,3 +16,11 @@ export function useUserPickHistory(userId) {
     enabled: !!userId,
   })
 }
+
+export function useHeadToHead(userId) {
+  return useQuery({
+    queryKey: ['users', userId, 'head-to-head'],
+    queryFn: () => api.get(`/users/${userId}/head-to-head`),
+    enabled: !!userId,
+  })
+}

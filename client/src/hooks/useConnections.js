@@ -57,3 +57,14 @@ export function useDeclineConnectionRequest() {
     },
   })
 }
+
+export function useSharePickToSquad() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (pickId) => api.post('/connections/share', { pick_id: pickId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
+    },
+  })
+}
