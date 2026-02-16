@@ -110,3 +110,15 @@ export async function getUserPickHistory(userId) {
   if (error) throw error
   return data
 }
+
+export async function getPublicPickHistory(userId) {
+  const { data, error } = await supabase
+    .from('picks')
+    .select('*, games(*, sports(key, name))')
+    .eq('user_id', userId)
+    .eq('status', 'settled')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}

@@ -8,6 +8,7 @@ import {
   acceptInvitation,
   declineInvitation,
 } from '../services/invitationService.js'
+import { getPublicPickHistory } from '../services/pickService.js'
 
 const router = Router()
 
@@ -127,6 +128,12 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
     total_users: allUsers?.length || 0,
     sport_stats: sportStats || [],
   })
+})
+
+// Get any user's settled pick history
+router.get('/:id/picks', requireAuth, async (req, res) => {
+  const picks = await getPublicPickHistory(req.params.id)
+  res.json(picks)
 })
 
 // Search users by username or display name

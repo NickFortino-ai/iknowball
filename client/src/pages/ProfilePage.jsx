@@ -4,6 +4,7 @@ import { usePickHistory } from '../hooks/usePicks'
 import { getTier, getNextTier } from '../lib/scoring'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import PickHistoryByMonth from '../components/profile/PickHistoryByMonth'
 
 function StatusCard({ profile }) {
   const tier = getTier(profile.total_points)
@@ -119,30 +120,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {!picksLoading && recentPicks?.length > 0 && (
-        <div>
-          <h2 className="font-display text-lg text-text-secondary mb-3">Recent Picks</h2>
-          <div className="space-y-2">
-            {recentPicks.slice(0, 10).map((pick) => (
-              <div key={pick.id} className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate">
-                    {pick.games?.away_team} @ {pick.games?.home_team}
-                  </div>
-                  <div className="text-xs text-text-muted">
-                    Picked: {pick.picked_team === 'home' ? pick.games?.home_team : pick.games?.away_team}
-                  </div>
-                </div>
-                <div className={`font-semibold text-sm ${
-                  pick.points_earned > 0 ? 'text-correct' : pick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
-                }`}>
-                  {pick.points_earned > 0 ? '+' : ''}{pick.points_earned ?? 0}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <PickHistoryByMonth picks={recentPicks} isLoading={picksLoading} />
     </div>
   )
 }

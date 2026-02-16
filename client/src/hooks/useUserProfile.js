@@ -8,3 +8,11 @@ export function useUserProfile(userId) {
     enabled: !!userId,
   })
 }
+
+export function useUserPickHistory(userId) {
+  return useQuery({
+    queryKey: ['users', userId, 'picks'],
+    queryFn: () => api.get(`/users/${userId}/picks`),
+    enabled: !!userId,
+  })
+}

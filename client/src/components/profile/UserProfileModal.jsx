@@ -1,10 +1,12 @@
-import { useUserProfile } from '../../hooks/useUserProfile'
+import { useUserProfile, useUserPickHistory } from '../../hooks/useUserProfile'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import PickHistoryByMonth from './PickHistoryByMonth'
 
 export default function UserProfileModal({ userId, onClose }) {
   const { data: user, isLoading } = useUserProfile(userId)
+  const { data: picks, isLoading: picksLoading } = useUserPickHistory(userId)
 
   if (!userId) return null
 
@@ -91,7 +93,7 @@ export default function UserProfileModal({ userId, onClose }) {
 
             {/* Sport Breakdown */}
             {user.sport_stats?.length > 0 && (
-              <div>
+              <div className="mb-4">
                 <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">By Sport</h3>
                 <div className="space-y-2">
                   {user.sport_stats.map((stat) => (
@@ -111,6 +113,9 @@ export default function UserProfileModal({ userId, onClose }) {
                 </div>
               </div>
             )}
+
+            {/* Pick History */}
+            <PickHistoryByMonth picks={picks} isLoading={picksLoading} />
 
             {/* Member since */}
             <div className="text-text-muted text-xs text-center mt-4">
