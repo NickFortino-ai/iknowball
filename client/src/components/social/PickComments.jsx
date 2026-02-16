@@ -14,8 +14,8 @@ function timeAgo(dateStr) {
   return `${days}d`
 }
 
-export default function PickComments({ pickId }) {
-  const [expanded, setExpanded] = useState(false)
+export default function PickComments({ pickId, initialExpanded = false }) {
+  const [expanded, setExpanded] = useState(initialExpanded)
   const [text, setText] = useState('')
   const { session } = useAuth()
   const currentUserId = session?.user?.id

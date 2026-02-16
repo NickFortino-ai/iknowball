@@ -16,6 +16,14 @@ export function usePickHistory() {
   })
 }
 
+export function usePickById(pickId) {
+  return useQuery({
+    queryKey: ['pick', pickId],
+    queryFn: () => api.get(`/picks/${pickId}`),
+    enabled: !!pickId,
+  })
+}
+
 export function useSubmitPick() {
   const queryClient = useQueryClient()
 

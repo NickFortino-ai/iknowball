@@ -121,6 +121,22 @@ export async function getUserPickHistory(userId) {
   return data
 }
 
+export async function getPickById(pickId) {
+  const { data, error } = await supabase
+    .from('picks')
+    .select('*, games(*, sports(key, name))')
+    .eq('id', pickId)
+    .single()
+
+  if (error || !data) {
+    const err = new Error('Pick not found')
+    err.status = 404
+    throw err
+  }
+
+  return data
+}
+
 export async function getPublicPickHistory(userId) {
   const { data, error } = await supabase
     .from('picks')

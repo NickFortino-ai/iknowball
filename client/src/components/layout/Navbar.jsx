@@ -6,6 +6,7 @@ import { usePendingConnectionRequests, useAcceptConnectionRequest, useDeclineCon
 import { useNotifications, useUnreadNotificationCount, useMarkAllNotificationsRead } from '../../hooks/useNotifications'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
+import PickDetailModal from '../social/PickDetailModal'
 import { toast } from '../ui/Toast'
 
 const SPORT_LABELS = {
@@ -49,6 +50,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const [showInvites, setShowInvites] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [selectedPickId, setSelectedPickId] = useState(null)
   const dropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
 
@@ -158,6 +160,7 @@ export default function Navbar() {
   }
 
   return (
+    <>
     <nav className="bg-bg-secondary border-b border-border sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link to="/" className="font-display text-xl text-accent tracking-tight">
@@ -264,7 +267,11 @@ export default function Navbar() {
                           </div>
                         ))}
                         {notifications?.map((n) => (
-                          <div key={n.id} className="px-4 py-3 border-b border-border last:border-b-0">
+                          <div
+                            key={n.id}
+                            className={`px-4 py-3 border-b border-border last:border-b-0${n.metadata?.pickId ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
+                            onClick={() => { if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) } }}
+                          >
                             <div className="flex items-start gap-2">
                               <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
                               <div className="min-w-0 flex-1">
@@ -483,7 +490,11 @@ export default function Navbar() {
                       </div>
                     ))}
                     {notifications?.map((n) => (
-                      <div key={n.id} className="px-4 py-3 border-b border-border last:border-b-0">
+                      <div
+                        key={n.id}
+                        className={`px-4 py-3 border-b border-border last:border-b-0${n.metadata?.pickId ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
+                        onClick={() => { if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) } }}
+                      >
                         <div className="flex items-start gap-2">
                           <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
                           <div className="min-w-0 flex-1">
@@ -512,5 +523,7 @@ export default function Navbar() {
         )}
       </div>
     </nav>
+    <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
+    </>
   )
 }
