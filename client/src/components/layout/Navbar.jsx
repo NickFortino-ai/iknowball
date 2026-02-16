@@ -123,21 +123,17 @@ export default function Navbar() {
   }
 
   async function handleShare() {
-    const shareData = {
-      title: 'I Know Ball',
-      text: 'Pick winners. Earn points based on Vegas odds. Prove you know ball.',
-      url: window.location.origin,
-    }
+    const url = window.location.origin
     try {
       if (navigator.share) {
-        await navigator.share(shareData)
+        await navigator.share({ title: 'I Know Ball', url })
       } else {
-        await navigator.clipboard.writeText(shareData.url)
+        await navigator.clipboard.writeText(url)
         toast('Link copied to clipboard!', 'success')
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        await navigator.clipboard.writeText(shareData.url)
+        await navigator.clipboard.writeText(url)
         toast('Link copied to clipboard!', 'success')
       }
     }
