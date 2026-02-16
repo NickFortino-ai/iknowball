@@ -18,27 +18,35 @@ async function syncSport(sportKey) {
   const now = new Date()
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
-  // If this sport has games in the DB, apply filters.
-  // If zero games exist (first run / new sport), bypass and call API for discovery.
-  const { count: totalGames } = await supabase
+  // Check: Any upcoming games within the next 7 days?
+  // If none, still call the API once a day to discover new season games.
+  const { count: upcomingCount } = await supabase
     .from('games')
     .select('id', { count: 'exact', head: true })
     .eq('sport_id', sport.id)
+    .eq('status', 'upcoming')
+    .gte('starts_at', now.toISOString())
+    .lte('starts_at', sevenDaysFromNow.toISOString())
 
-  if (totalGames > 0) {
-    // Check: Any upcoming games within the next 7 days?
-    const { count: upcomingCount } = await supabase
+  if (upcomingCount === 0) {
+    // Check when we last synced any game for this sport
+    const { data: lastGame } = await supabase
       .from('games')
-      .select('id', { count: 'exact', head: true })
+      .select('updated_at')
       .eq('sport_id', sport.id)
-      .eq('status', 'upcoming')
-      .gte('starts_at', now.toISOString())
-      .lte('starts_at', sevenDaysFromNow.toISOString())
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
 
-    if (upcomingCount === 0) {
-      logger.debug({ sportKey }, 'No upcoming games within 7 days, skipping odds sync')
+    const lastSync = lastGame ? new Date(lastGame.updated_at) : null
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+
+    if (lastSync && lastSync > oneDayAgo) {
+      logger.debug({ sportKey }, 'No upcoming games within 7 days and synced recently, skipping')
       return 0
     }
+
+    logger.info({ sportKey }, 'No upcoming games within 7 days, checking API for new games')
   }
 
   let events
