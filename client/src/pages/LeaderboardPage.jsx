@@ -9,9 +9,11 @@ import UserProfileModal from '../components/profile/UserProfileModal'
 const tabs = [
   { label: 'Global', scope: 'global', sport: null },
   { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
+  { label: 'NCAAB', scope: 'sport', sport: 'basketball_ncaab' },
+  { label: 'WNBA', scope: 'sport', sport: 'basketball_wnba' },
+  { label: 'WNCAAB', scope: 'sport', sport: 'basketball_wncaab' },
   { label: 'MLB', scope: 'sport', sport: 'baseball_mlb' },
   { label: 'NFL', scope: 'sport', sport: 'americanfootball_nfl' },
-  { label: 'NCAAB', scope: 'sport', sport: 'basketball_ncaab' },
   { label: 'NCAAF', scope: 'sport', sport: 'americanfootball_ncaaf' },
 ]
 

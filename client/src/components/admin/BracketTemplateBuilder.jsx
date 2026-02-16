@@ -14,6 +14,8 @@ const SPORT_OPTIONS = [
   { value: 'baseball_mlb', label: 'MLB' },
   { value: 'basketball_ncaab', label: 'NCAAB' },
   { value: 'americanfootball_ncaaf', label: 'NCAAF' },
+  { value: 'basketball_wnba', label: 'WNBA' },
+  { value: 'basketball_wncaab', label: 'WNCAAB' },
 ]
 
 const TEAM_COUNT_OPTIONS = [4, 8, 16, 32, 64]

@@ -12,6 +12,8 @@ const SPORT_LABELS = {
   baseball_mlb: 'MLB',
   basketball_ncaab: 'NCAAB',
   americanfootball_ncaaf: 'NCAAF',
+  basketball_wnba: 'WNBA',
+  basketball_wncaab: 'WNCAAB',
 }
 
 export default function BracketTemplateManager() {
