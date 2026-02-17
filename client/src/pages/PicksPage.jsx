@@ -122,12 +122,19 @@ export default function PicksPage() {
   }, [games, selectedDate])
 
   useEffect(() => {
+    userChangedDay.current = false
+    setDayOffset(0)
+  }, [activeSport])
+
+  useEffect(() => {
     if (userChangedDay.current) return
     if (!games || gamesLoading) return
-    if (dayOffset !== 0) return
-    const todayGames = games.filter((game) => isSameDay(new Date(game.starts_at), getDateOffset(0)))
-    if (todayGames.length === 0) {
-      setDayOffset(1)
+    for (let d = dayOffset; d <= 2; d++) {
+      const dayGames = games.filter((game) => isSameDay(new Date(game.starts_at), getDateOffset(d)))
+      if (dayGames.length > 0) {
+        if (d !== dayOffset) setDayOffset(d)
+        return
+      }
     }
   }, [games, gamesLoading, dayOffset])
 
