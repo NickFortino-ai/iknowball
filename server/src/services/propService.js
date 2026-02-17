@@ -42,9 +42,9 @@ export async function syncPropsForGame(gameId, markets) {
     for (const outcome of market.outcomes || []) {
       if (!outcome.point && outcome.point !== 0) continue
 
-      const playerName = outcome.name
+      const playerName = outcome.description || outcome.name
       const line = outcome.point
-      const side = outcome.description?.toLowerCase()
+      const side = outcome.name?.toLowerCase()
 
       let row = rows.find(
         (r) => r.player_name === playerName && r.market_key === market.key && r.line === line
