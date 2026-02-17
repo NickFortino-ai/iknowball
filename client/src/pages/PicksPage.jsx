@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useGames, useActiveSports } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick } from '../hooks/usePicks'
 import { useSharePickToSquad } from '../hooks/useConnections'
@@ -46,6 +46,7 @@ function isSameDay(date1, date2) {
 export default function PicksPage() {
   const [activeSport, setActiveSport] = useState(null)
   const [dayOffset, setDayOffset] = useState(0)
+  const userChangedDay = useRef(false)
 
   const { data: activeSportsData } = useActiveSports()
 
@@ -104,6 +105,16 @@ export default function PicksPage() {
     if (!games) return []
     return games.filter((game) => isSameDay(new Date(game.starts_at), selectedDate))
   }, [games, selectedDate])
+
+  useEffect(() => {
+    if (userChangedDay.current) return
+    if (!games || gamesLoading) return
+    if (dayOffset !== 0) return
+    const todayGames = games.filter((game) => isSameDay(new Date(game.starts_at), getDateOffset(0)))
+    if (todayGames.length === 0) {
+      setDayOffset(1)
+    }
+  }, [games, gamesLoading, dayOffset])
 
   async function handlePick(gameId, team) {
     try {
@@ -166,7 +177,7 @@ export default function PicksPage() {
       {/* Day Navigation */}
       <div className="flex items-center justify-between bg-bg-card rounded-xl border border-border px-4 py-3 mb-6">
         <button
-          onClick={() => setDayOffset((d) => Math.max(0, d - 1))}
+          onClick={() => { userChangedDay.current = true; setDayOffset((d) => Math.max(0, d - 1)) }}
           disabled={dayOffset === 0}
           className="w-11 h-11 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
         >
@@ -179,7 +190,7 @@ export default function PicksPage() {
           </div>
         </div>
         <button
-          onClick={() => setDayOffset((d) => Math.min(2, d + 1))}
+          onClick={() => { userChangedDay.current = true; setDayOffset((d) => Math.min(2, d + 1)) }}
           disabled={dayOffset === 2}
           className="w-11 h-11 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
         >
