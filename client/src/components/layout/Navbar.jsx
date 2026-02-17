@@ -145,7 +145,7 @@ export default function Navbar() {
     const url = window.location.origin
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'I Know Ball', url })
+        await navigator.share({ title: 'I KNOW BALL', url })
       } else {
         await navigator.clipboard.writeText(url)
         toast('Link copied to clipboard!', 'success')
