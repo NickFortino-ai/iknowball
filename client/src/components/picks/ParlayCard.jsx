@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { formatOdds } from '../../lib/scoring'
 
-export default function ParlayCard({ parlay }) {
+export default function ParlayCard({ parlay, onDelete }) {
   const [expanded, setExpanded] = useState(false)
 
   const isWon = parlay.is_correct === true
   const isLost = parlay.is_correct === false
   const isPush = parlay.is_correct === null && parlay.status === 'settled'
+  const isPending = parlay.status === 'pending'
+  const isLocked = parlay.status === 'locked'
 
-  const borderColor = isWon ? 'border-correct' : isLost ? 'border-incorrect' : 'border-border'
-  const badgeColor = isWon ? 'bg-correct/20 text-correct' : isLost ? 'bg-incorrect/20 text-incorrect' : 'bg-bg-secondary text-text-muted'
-  const badgeLabel = isWon ? 'Won' : isLost ? 'Lost' : 'Push'
+  const borderColor = isWon ? 'border-correct' : isLost ? 'border-incorrect' : isPending ? 'border-accent/50' : isLocked ? 'border-accent' : 'border-border'
+  const badgeColor = isWon ? 'bg-correct/20 text-correct' : isLost ? 'bg-incorrect/20 text-incorrect' : isPending ? 'bg-accent/20 text-accent' : isLocked ? 'bg-accent/20 text-accent' : 'bg-bg-secondary text-text-muted'
+  const badgeLabel = isWon ? 'Won' : isLost ? 'Lost' : isPending ? 'Pending' : isLocked ? 'Locked' : 'Push'
 
   return (
     <div className={`bg-bg-card rounded-2xl border ${borderColor} overflow-hidden`}>
@@ -30,6 +32,13 @@ export default function ParlayCard({ parlay }) {
           {parlay.points_earned !== null && parlay.points_earned !== 0 && (
             <span className={`text-sm font-semibold ${parlay.points_earned > 0 ? 'text-correct' : 'text-incorrect'}`}>
               {parlay.points_earned > 0 ? '+' : ''}{parlay.points_earned} pts
+            </span>
+          )}
+          {(isPending || isLocked) && (
+            <span className="text-sm text-text-muted">
+              <span className="text-incorrect">-{parlay.risk_points}</span>
+              {' / '}
+              <span className="text-correct">+{parlay.reward_points}</span>
             </span>
           )}
           {isPush && (
@@ -68,6 +77,14 @@ export default function ParlayCard({ parlay }) {
           <div className="text-center text-xs text-text-muted pt-1">
             Combined: {Number(parlay.combined_multiplier).toFixed(2)}x
           </div>
+          {isPending && onDelete && (
+            <button
+              onClick={() => onDelete(parlay.id)}
+              className="w-full mt-1 py-2 rounded-lg text-sm font-semibold text-incorrect bg-incorrect/10 hover:bg-incorrect/20 transition-colors"
+            >
+              Delete Parlay
+            </button>
+          )}
         </div>
       )}
     </div>

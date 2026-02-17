@@ -2,10 +2,12 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useGames, useActiveSports } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick } from '../hooks/usePicks'
 import { useSharePickToSquad } from '../hooks/useConnections'
+import { useMyParlays, useDeleteParlay } from '../hooks/useParlays'
 import { usePickStore } from '../stores/pickStore'
 import GameCard from '../components/picks/GameCard'
 import BottomBar from '../components/picks/BottomBar'
 import ParlaySlip from '../components/picks/ParlaySlip'
+import ParlayCard from '../components/picks/ParlayCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
@@ -80,6 +82,10 @@ export default function PicksPage() {
   const deletePick = useDeletePick()
   const sharePick = useSharePickToSquad()
   const [sharedPickIds, setSharedPickIds] = useState(new Set())
+
+  const { data: activeParlays } = useMyParlays('pending')
+  const { data: lockedParlays } = useMyParlays('locked')
+  const deleteParlay = useDeleteParlay()
 
   const parlayMode = usePickStore((s) => s.parlayMode)
   const setParlayMode = usePickStore((s) => s.setParlayMode)
@@ -163,6 +169,15 @@ export default function PicksPage() {
     }
     return map
   }, [parlayLegs])
+
+  async function handleDeleteParlay(parlayId) {
+    try {
+      await deleteParlay.mutateAsync(parlayId)
+      toast('Parlay deleted', 'info')
+    } catch (err) {
+      toast(err.message || 'Failed to delete parlay', 'error')
+    }
+  }
 
   function handleParlayToggle(gameId, side, game) {
     const existing = parlayLegsMap[gameId]
@@ -248,6 +263,21 @@ export default function PicksPage() {
 
       {/* Daily Featured Player Prop */}
       <FeaturedPropSection date={selectedDate} sportKey={sportKey} />
+
+      {/* My Parlays (visible in parlay mode) */}
+      {parlayMode && (activeParlays?.length > 0 || lockedParlays?.length > 0) && (
+        <div className="mb-6">
+          <h2 className="font-display text-lg text-text-secondary mb-3">My Parlays</h2>
+          <div className="space-y-3">
+            {(lockedParlays || []).map((p) => (
+              <ParlayCard key={p.id} parlay={p} />
+            ))}
+            {(activeParlays || []).map((p) => (
+              <ParlayCard key={p.id} parlay={p} onDelete={handleDeleteParlay} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Game Cards */}
       {gamesLoading || picksLoading ? (
