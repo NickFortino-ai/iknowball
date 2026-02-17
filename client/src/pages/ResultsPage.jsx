@@ -1,18 +1,21 @@
 import { useMemo } from 'react'
 import { usePickHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
+import { usePropPickHistory } from '../hooks/useProps'
 import { usePickReactionsBatch } from '../hooks/useSocial'
 import GameCard from '../components/picks/GameCard'
 import ParlayCard from '../components/picks/ParlayCard'
+import PropCard from '../components/picks/PropCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 
 export default function ResultsPage() {
   const { data: picks, isLoading } = usePickHistory()
   const { data: parlays, isLoading: parlaysLoading } = useParlayHistory()
+  const { data: propPicks, isLoading: propsLoading } = usePropPickHistory()
 
   const weeklyStats = useMemo(() => {
-    if (!picks?.length && !parlays?.length) return null
+    if (!picks?.length && !parlays?.length && !propPicks?.length) return null
     let wins = 0, losses = 0, pushes = 0, netPoints = 0
     for (const pick of (picks || [])) {
       if (pick.is_correct === true) wins++
@@ -26,8 +29,14 @@ export default function ResultsPage() {
       else pushes++
       netPoints += parlay.points_earned || 0
     }
-    return { wins, losses, pushes, netPoints, total: (picks?.length || 0) + (parlays?.length || 0) }
-  }, [picks, parlays])
+    for (const pp of (propPicks || [])) {
+      if (pp.is_correct === true) wins++
+      else if (pp.is_correct === false) losses++
+      else pushes++
+      netPoints += pp.points_earned || 0
+    }
+    return { wins, losses, pushes, netPoints, total: (picks?.length || 0) + (parlays?.length || 0) + (propPicks?.length || 0) }
+  }, [picks, parlays, propPicks])
 
   const settledPickIds = useMemo(() => {
     if (!picks?.length) return []
@@ -36,7 +45,7 @@ export default function ResultsPage() {
 
   const { data: reactionsBatch } = usePickReactionsBatch(settledPickIds)
 
-  if (isLoading || parlaysLoading) return <LoadingSpinner />
+  if (isLoading || parlaysLoading || propsLoading) return <LoadingSpinner />
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -79,11 +88,27 @@ export default function ResultsPage() {
         </>
       )}
 
-      {!picks?.length && !parlays?.length ? (
+      {propPicks?.length > 0 && (
+        <>
+          <h2 className="font-display text-lg text-text-secondary mb-3">Player Props</h2>
+          <div className="space-y-3 mb-6">
+            {propPicks.map((pp) => (
+              <div key={pp.id}>
+                <div className="text-xs text-text-muted mb-1 px-1">
+                  {pp.player_props?.games?.sports?.name} — {pp.player_props?.games?.away_team} @ {pp.player_props?.games?.home_team}
+                </div>
+                <PropCard prop={pp.player_props} pick={pp} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {!picks?.length && !parlays?.length && !propPicks?.length ? (
         <EmptyState title="No results yet" message="Your settled picks will appear here" />
       ) : picks?.length > 0 && (
         <>
-          {parlays?.length > 0 && (
+          {(parlays?.length > 0 || propPicks?.length > 0) && (
             <h2 className="font-display text-lg text-text-secondary mb-3">Straight Picks</h2>
           )}
           <div className="space-y-3">
