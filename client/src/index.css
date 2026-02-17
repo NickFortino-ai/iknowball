@@ -53,4 +53,13 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  .bottom-nav-offset {
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 768px) {
+  .bottom-nav-offset {
+    bottom: 0;
+  }
 }

@@ -37,7 +37,7 @@ export default function ParlaySlip() {
   }
 
   return (
-    <div className="fixed left-0 right-0 bg-bg-secondary border-t border-border z-40 md:bottom-0" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div className="fixed left-0 right-0 bg-bg-secondary border-t border-border z-40 bottom-nav-offset">
       <div className="max-w-2xl mx-auto">
         {/* Collapsed view — always visible */}
         <button
