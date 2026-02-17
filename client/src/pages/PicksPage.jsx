@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react'
-import { useGames } from '../hooks/useGames'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useGames, useActiveSports } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick } from '../hooks/usePicks'
 import { useSharePickToSquad } from '../hooks/useConnections'
 import GameCard from '../components/picks/GameCard'
@@ -11,11 +11,11 @@ import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
 
 const sportTabs = [
-  { label: 'NBA', key: 'basketball_nba' },
   { label: 'NCAAB', key: 'basketball_ncaab' },
-  { label: 'WNBA', key: 'basketball_wnba' },
+  { label: 'NBA', key: 'basketball_nba' },
   { label: 'MLB', key: 'baseball_mlb' },
   { label: 'NFL', key: 'americanfootball_nfl' },
+  { label: 'WNBA', key: 'basketball_wnba' },
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
 
@@ -44,9 +44,32 @@ function isSameDay(date1, date2) {
 }
 
 export default function PicksPage() {
-  const [activeSport, setActiveSport] = useState(0)
+  const [activeSport, setActiveSport] = useState(null)
   const [dayOffset, setDayOffset] = useState(0)
-  const sportKey = sportTabs[activeSport].key
+
+  const { data: activeSportsData } = useActiveSports()
+
+  const activeKeys = useMemo(() => {
+    if (!activeSportsData) return new Set()
+    return new Set(activeSportsData.map((s) => s.key))
+  }, [activeSportsData])
+
+  const sortedTabs = useMemo(() => {
+    return [...sportTabs].sort((a, b) => {
+      const aActive = activeKeys.has(a.key) ? 0 : 1
+      const bActive = activeKeys.has(b.key) ? 0 : 1
+      return aActive - bActive
+    })
+  }, [activeKeys])
+
+  useEffect(() => {
+    if (activeSport !== null) return
+    if (!activeSportsData) return
+    const firstActive = sortedTabs.find((t) => activeKeys.has(t.key))
+    setActiveSport(firstActive ? firstActive.key : sortedTabs[0].key)
+  }, [activeSportsData, sortedTabs, activeKeys, activeSport])
+
+  const sportKey = activeSport || sortedTabs[0].key
 
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming')
   const { data: myPicks, isLoading: picksLoading } = useMyPicks()
@@ -121,19 +144,23 @@ export default function PicksPage() {
       </h1>
 
       <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
-        {sportTabs.map((tab, i) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveSport(i)}
-            className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              activeSport === i
-                ? 'bg-accent text-white'
-                : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {sortedTabs.map((tab) => {
+          const isActive = activeSport === tab.key
+          const hasGames = activeKeys.has(tab.key)
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveSport(tab.key)}
+              className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                isActive
+                  ? 'bg-accent text-white'
+                  : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              }${!hasGames && !isActive ? ' opacity-50' : ''}`}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Day Navigation */}

@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
+export function useActiveSports() {
+  return useQuery({
+    queryKey: ['games', 'active-sports'],
+    queryFn: () => api.get('/games/active-sports'),
+  })
+}
+
 export function useGames(sport, status, days = 3) {
   const params = new URLSearchParams()
   if (sport) params.set('sport', sport)

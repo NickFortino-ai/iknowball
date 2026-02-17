@@ -30,6 +30,30 @@ router.get('/', requireAuth, async (req, res) => {
   res.json(data)
 })
 
+router.get('/active-sports', requireAuth, async (req, res) => {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() + 3)
+
+  const { data, error } = await supabase
+    .from('games')
+    .select('sport_id, sports!inner(key, name)')
+    .eq('status', 'upcoming')
+    .lte('starts_at', cutoff.toISOString())
+
+  if (error) throw error
+
+  const counts = {}
+  for (const game of data) {
+    const key = game.sports.key
+    if (!counts[key]) {
+      counts[key] = { key, name: game.sports.name, count: 0 }
+    }
+    counts[key].count++
+  }
+
+  res.json(Object.values(counts))
+})
+
 router.get('/:id', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('games')
