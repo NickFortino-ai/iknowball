@@ -19,7 +19,7 @@ async function scoreSport(sportKey) {
   }
 
   const now = new Date()
-  const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000)
+  const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000)
 
   // Check for live games
   const { count: liveCount } = await supabase
@@ -28,14 +28,14 @@ async function scoreSport(sportKey) {
     .eq('sport_id', sport.id)
     .eq('status', 'live')
 
-  // Check for games that started in the last 6 hours but aren't final yet
-  // (covers timing gaps and long games with overtime/delays)
+  // Check for games that started in the last 12 hours but aren't final yet
+  // (covers timing gaps, overtime, extra innings, and rain delays)
   const { count: recentCount } = await supabase
     .from('games')
     .select('id', { count: 'exact', head: true })
     .eq('sport_id', sport.id)
     .neq('status', 'final')
-    .gte('starts_at', sixHoursAgo.toISOString())
+    .gte('starts_at', twelveHoursAgo.toISOString())
     .lte('starts_at', now.toISOString())
 
   if (liveCount === 0 && recentCount === 0) {
@@ -90,15 +90,25 @@ async function scoreSport(sportKey) {
       continue
     }
 
-    await scoreCompletedGame(game.id, winner, game.sport_id)
-    await scoreSurvivorPicks(game.id, winner)
+    try {
+      await scoreCompletedGame(game.id, winner, game.sport_id)
+      await scoreSurvivorPicks(game.id, winner)
 
-    if (winner) {
-      try {
-        await scoreBracketMatchups(game.home_team, game.away_team, winner)
-      } catch (err) {
-        logger.error({ err, gameId: game.id }, 'Failed to auto-settle bracket matchups')
+      if (winner) {
+        try {
+          await scoreBracketMatchups(game.home_team, game.away_team, winner)
+        } catch (err) {
+          logger.error({ err, gameId: game.id }, 'Failed to auto-settle bracket matchups')
+        }
       }
+    } catch (err) {
+      // Revert game to live so it gets retried next scoring cycle
+      logger.error({ err, gameId: game.id }, 'Scoring failed, reverting game to live for retry')
+      await supabase
+        .from('games')
+        .update({ status: 'live', updated_at: new Date().toISOString() })
+        .eq('id', game.id)
+      continue
     }
 
     scored++

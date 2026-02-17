@@ -61,7 +61,12 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
         })
 
       if (pointsError) {
-        logger.error({ pointsError, userId: pick.user_id }, 'Failed to update user points')
+        logger.error({ pointsError, userId: pick.user_id, pickId: pick.id }, 'Failed to update user points, reverting pick to locked')
+        await supabase
+          .from('picks')
+          .update({ status: 'locked', is_correct: null, points_earned: null, updated_at: new Date().toISOString() })
+          .eq('id', pick.id)
+        continue
       }
     }
 
