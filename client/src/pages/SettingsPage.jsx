@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
+import { usePushStatus, useSubscribePush, useUnsubscribePush } from '../hooks/usePushNotifications'
 
 const avatarEmojis = [
   '🏀', '🏈', '⚾', '🏆', '🔥', '🎯',
@@ -33,14 +34,55 @@ export default function SettingsPage() {
   const [selectedSports, setSelectedSports] = useState([])
   const [saving, setSaving] = useState(false)
 
+  // Push notification state
+  const { data: pushStatus } = usePushStatus()
+  const subscribePush = useSubscribePush()
+  const unsubscribePush = useUnsubscribePush()
+  const pushSupported = typeof window !== 'undefined' && 'PushManager' in window && 'serviceWorker' in navigator
+  const pushEnabled = pushStatus?.hasSubscriptions || false
+
+  const [pushPrefs, setPushPrefs] = useState({ parlay_result: true, streak_milestone: true })
+
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name || '')
       setBio(profile.bio || '')
       setAvatarEmoji(profile.avatar_emoji || '')
       setSelectedSports(profile.sports_interests || [])
+      if (profile.push_preferences) {
+        setPushPrefs(profile.push_preferences)
+      }
     }
   }, [profile])
+
+  async function handlePushToggle() {
+    try {
+      if (pushEnabled) {
+        await unsubscribePush.mutateAsync()
+        toast('Push notifications disabled', 'success')
+      } else {
+        await subscribePush.mutateAsync()
+        toast('Push notifications enabled!', 'success')
+      }
+    } catch (err) {
+      if (err.message?.includes('denied')) {
+        toast('Notification permission was denied. Enable it in your browser settings.', 'error')
+      } else {
+        toast(err.message || 'Failed to update push notifications', 'error')
+      }
+    }
+  }
+
+  async function handlePushPrefToggle(key) {
+    const updated = { ...pushPrefs, [key]: !pushPrefs[key] }
+    setPushPrefs(updated)
+    try {
+      await api.patch('/users/me', { push_preferences: updated })
+    } catch (err) {
+      setPushPrefs(pushPrefs) // revert on error
+      toast('Failed to update preference', 'error')
+    }
+  }
 
   function toggleSport(emoji) {
     setSelectedSports((prev) =>
@@ -160,6 +202,64 @@ export default function SettingsPage() {
             )
           })}
         </div>
+      </div>
+
+      {/* Push Notifications */}
+      <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+        <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
+          Push Notifications
+        </label>
+
+        {!pushSupported ? (
+          <p className="text-sm text-text-muted">
+            Push notifications are not supported in this browser.
+          </p>
+        ) : (
+          <>
+            {/* Master toggle */}
+            <button
+              onClick={handlePushToggle}
+              disabled={subscribePush.isPending || unsubscribePush.isPending}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-bg-input border border-border hover:border-border-hover transition-colors disabled:opacity-50"
+            >
+              <span className="text-sm text-text-primary">Enable Push Notifications</span>
+              <div className={`w-10 h-6 rounded-full transition-colors flex items-center ${pushEnabled ? 'bg-accent justify-end' : 'bg-border justify-start'}`}>
+                <div className="w-5 h-5 bg-white rounded-full mx-0.5 shadow" />
+              </div>
+            </button>
+
+            {Notification.permission === 'denied' && (
+              <p className="text-xs text-red-400 mt-2">
+                Notifications are blocked. Please enable them in your browser settings.
+              </p>
+            )}
+
+            {/* Per-type toggles */}
+            {pushEnabled && (
+              <div className="mt-3 space-y-2">
+                <button
+                  onClick={() => handlePushPrefToggle('parlay_result')}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-bg-input border border-border hover:border-border-hover transition-colors"
+                >
+                  <span className="text-sm text-text-secondary">Parlay Results</span>
+                  <div className={`w-10 h-6 rounded-full transition-colors flex items-center ${pushPrefs.parlay_result ? 'bg-accent justify-end' : 'bg-border justify-start'}`}>
+                    <div className="w-5 h-5 bg-white rounded-full mx-0.5 shadow" />
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handlePushPrefToggle('streak_milestone')}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-bg-input border border-border hover:border-border-hover transition-colors"
+                >
+                  <span className="text-sm text-text-secondary">Streak Milestones</span>
+                  <div className={`w-10 h-6 rounded-full transition-colors flex items-center ${pushPrefs.streak_milestone ? 'bg-accent justify-end' : 'bg-border justify-start'}`}>
+                    <div className="w-5 h-5 bg-white rounded-full mx-0.5 shadow" />
+                  </div>
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Save */}

@@ -62,3 +62,36 @@ self.addEventListener('fetch', (event) => {
     )
   }
 })
+
+// Push — show browser notification from push payload
+self.addEventListener('push', (event) => {
+  if (!event.data) return
+
+  const { title, body, url } = event.data.json()
+  event.waitUntil(
+    self.registration.showNotification(title || 'I KNOW BALL', {
+      body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: url || '/results' },
+    })
+  )
+})
+
+// Notification click — open or focus the app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = event.notification.data?.url || '/results'
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url)
+          return client.focus()
+        }
+      }
+      return self.clients.openWindow(url)
+    })
+  )
+})

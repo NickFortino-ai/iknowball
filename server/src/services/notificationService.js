@@ -1,5 +1,8 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { sendPushNotification } from './pushService.js'
+
+const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone']
 
 export async function createNotification(userId, type, message, metadata = {}) {
   // Self-notification guard
@@ -14,6 +17,25 @@ export async function createNotification(userId, type, message, metadata = {}) {
   if (error) {
     logger.error({ error, userId, type }, 'Failed to create notification')
     return null
+  }
+
+  // Send web push for eligible notification types
+  if (PUSH_ELIGIBLE_TYPES.includes(type)) {
+    try {
+      const { data: user } = await supabase
+        .from('users')
+        .select('push_preferences')
+        .eq('id', userId)
+        .single()
+
+      const prefs = user?.push_preferences
+      // null preferences = all on; otherwise check the specific type
+      if (!prefs || prefs[type] !== false) {
+        await sendPushNotification(userId, 'I KNOW BALL', message)
+      }
+    } catch (pushError) {
+      logger.error({ error: pushError, userId, type }, 'Failed to send push notification')
+    }
   }
 
   return data

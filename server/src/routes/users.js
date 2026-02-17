@@ -22,6 +22,10 @@ const updateSchema = z.object({
   bio: z.string().max(200).optional(),
   avatar_emoji: z.string().max(4).optional(),
   sports_interests: z.array(z.string()).max(10).optional(),
+  push_preferences: z.object({
+    parlay_result: z.boolean(),
+    streak_milestone: z.boolean(),
+  }).optional(),
 })
 
 // Resolve username to email for login (no auth required)
