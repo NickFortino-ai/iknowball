@@ -9,11 +9,15 @@ function formatGameTime(dateStr) {
     d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared }) {
+export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
 
   function getButtonState(side) {
+    if (parlayMode) {
+      if (parlayPickedTeam === side) return 'selected'
+      return isLocked ? 'locked' : 'default'
+    }
     if (!userPick) return isLocked ? 'locked' : 'default'
     if (userPick.picked_team !== side) {
       if (isFinal) return 'default'
@@ -29,6 +33,10 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
   }
 
   function handleClick(side) {
+    if (parlayMode) {
+      onParlayToggle?.(game.id, side, game)
+      return
+    }
     if (!onPick) return
     // If clicking the same team that's already picked (and still pending), undo it
     if (userPick?.picked_team === side && userPick?.status === 'pending') {
@@ -102,7 +110,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         </div>
       )}
 
-      {onShare && userPick && (userPick.status === 'pending' || userPick.status === 'locked') && (
+      {!parlayMode && onShare && userPick && (userPick.status === 'pending' || userPick.status === 'locked') && (
         <div className="mt-3 text-center">
           <button
             onClick={() => onShare(userPick.id)}

@@ -11,6 +11,7 @@ import leaderboardRouter from './routes/leaderboard.js'
 import leaguesRouter from './routes/leagues.js'
 import adminRouter from './routes/admin.js'
 import propsRouter from './routes/props.js'
+import parlaysRouter from './routes/parlays.js'
 import paymentsRouter from './routes/payments.js'
 import connectionsRouter from './routes/connections.js'
 import socialRouter from './routes/social.js'
@@ -30,6 +31,7 @@ app.use('/api/health', healthRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/games', gamesRouter)
 app.use('/api/picks', picksRouter)
+app.use('/api/parlays', parlaysRouter)
 app.use('/api/leaderboard', leaderboardRouter)
 app.use('/api/leagues', leaguesRouter)
 app.use('/api/admin', adminRouter)

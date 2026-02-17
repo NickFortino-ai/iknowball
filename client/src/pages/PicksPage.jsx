@@ -2,8 +2,10 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useGames, useActiveSports } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick } from '../hooks/usePicks'
 import { useSharePickToSquad } from '../hooks/useConnections'
+import { usePickStore } from '../stores/pickStore'
 import GameCard from '../components/picks/GameCard'
 import BottomBar from '../components/picks/BottomBar'
+import ParlaySlip from '../components/picks/ParlaySlip'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
@@ -79,6 +81,13 @@ export default function PicksPage() {
   const sharePick = useSharePickToSquad()
   const [sharedPickIds, setSharedPickIds] = useState(new Set())
 
+  const parlayMode = usePickStore((s) => s.parlayMode)
+  const setParlayMode = usePickStore((s) => s.setParlayMode)
+  const parlayLegs = usePickStore((s) => s.parlayLegs)
+  const addParlayLeg = usePickStore((s) => s.addParlayLeg)
+  const removeParlayLeg = usePickStore((s) => s.removeParlayLeg)
+  const updateParlayLeg = usePickStore((s) => s.updateParlayLeg)
+
   const picksMap = useMemo(() => {
     if (!myPicks) return {}
     const map = {}
@@ -147,12 +156,51 @@ export default function PicksPage() {
     }
   }, [sharePick])
 
+  const parlayLegsMap = useMemo(() => {
+    const map = {}
+    for (const leg of parlayLegs) {
+      map[leg.gameId] = leg.pickedTeam
+    }
+    return map
+  }, [parlayLegs])
+
+  function handleParlayToggle(gameId, side, game) {
+    const existing = parlayLegsMap[gameId]
+    if (existing === side) {
+      removeParlayLeg(gameId)
+    } else if (existing) {
+      updateParlayLeg(gameId, side)
+    } else {
+      addParlayLeg(gameId, side, game)
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-32">
       <h1 className="font-display text-3xl mb-6">
         Make Your Picks
         <InfoTooltip text="Risk → Reward: You risk the red number on every pick. If you're right, you win the green number. If you're wrong, you lose the red number. Higher odds = higher reward but less likely to hit. Example: -10 → +19 means you risk 10 points to win 19 points." />
       </h1>
+
+      {/* Straight / Parlay toggle */}
+      <div className="flex bg-bg-card rounded-xl border border-border p-1 mb-4">
+        <button
+          onClick={() => setParlayMode(false)}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            !parlayMode ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Straight
+        </button>
+        <button
+          onClick={() => setParlayMode(true)}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            parlayMode ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Parlay
+        </button>
+      </div>
 
       <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
         {sortedTabs.map((tab) => {
@@ -218,12 +266,15 @@ export default function PicksPage() {
               isSubmitting={submitPick.isPending || deletePick.isPending}
               onShare={handleShare}
               isShared={sharedPickIds.has(picksMap[game.id]?.id)}
+              parlayMode={parlayMode}
+              parlayPickedTeam={parlayLegsMap[game.id] || null}
+              onParlayToggle={handleParlayToggle}
             />
           ))}
         </div>
       )}
 
-      <BottomBar picks={pendingPicksMap} games={games} />
+      {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={games} />}
     </div>
   )
 }

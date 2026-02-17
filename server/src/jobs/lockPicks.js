@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
-import { calculateRewardPoints, calculateRiskPoints } from '../utils/scoring.js'
+import { calculateRewardPoints, calculateRiskPoints, americanToMultiplier } from '../utils/scoring.js'
 
 export async function lockPicks() {
   const now = new Date().toISOString()
@@ -135,7 +135,47 @@ export async function lockPicks() {
     }
   }
 
-  if (locked > 0 || survivorLocked > 0 || propsLocked > 0 || propPicksLocked > 0) {
-    logger.info({ locked, survivorLocked, propsLocked, propPicksLocked, games: gameIds.length }, 'Picks locked')
+  // Lock parlay legs for these games
+  let parlayLegsLocked = 0
+  for (const game of games) {
+    const { data: legs } = await supabase
+      .from('parlay_legs')
+      .select('id, picked_team, parlay_id')
+      .eq('game_id', game.id)
+      .eq('status', 'pending')
+
+    if (!legs?.length) continue
+
+    for (const leg of legs) {
+      const odds = leg.picked_team === 'home' ? game.home_odds : game.away_odds
+      const multiplierAtLock = odds ? 1 + americanToMultiplier(odds) : 2
+
+      const { error } = await supabase
+        .from('parlay_legs')
+        .update({
+          status: 'locked',
+          odds_at_lock: odds,
+          multiplier_at_lock: multiplierAtLock,
+          updated_at: now,
+        })
+        .eq('id', leg.id)
+
+      if (error) {
+        logger.error({ error, legId: leg.id }, 'Failed to lock parlay leg')
+      } else {
+        parlayLegsLocked++
+      }
+
+      // Update parent parlay to locked status
+      await supabase
+        .from('parlays')
+        .update({ status: 'locked', updated_at: now })
+        .eq('id', leg.parlay_id)
+        .eq('status', 'pending')
+    }
+  }
+
+  if (locked > 0 || survivorLocked > 0 || propsLocked > 0 || propPicksLocked > 0 || parlayLegsLocked > 0) {
+    logger.info({ locked, survivorLocked, propsLocked, propPicksLocked, parlayLegsLocked, games: gameIds.length }, 'Picks locked')
   }
 }
