@@ -4,6 +4,7 @@ import { requireAdmin } from '../middleware/requireAdmin.js'
 import { syncOdds } from '../jobs/syncOdds.js'
 import { scoreGames } from '../jobs/scoreGames.js'
 import { recalculateAllUserPoints } from '../services/scoringService.js'
+import { sendEmailBlast } from '../services/emailService.js'
 import {
   syncPropsForGame,
   getAllPropsForGame,
@@ -44,6 +45,15 @@ router.post('/score-games', async (req, res) => {
 router.post('/recalculate-points', async (req, res) => {
   const results = await recalculateAllUserPoints()
   res.json({ message: `Recalculated points for ${results.length} users`, corrections: results })
+})
+
+router.post('/email-blast', async (req, res) => {
+  const { subject, body } = req.body
+  if (!subject || !body) {
+    return res.status(400).json({ error: 'subject and body are required' })
+  }
+  const result = await sendEmailBlast(subject, body)
+  res.json(result)
 })
 
 // Props management

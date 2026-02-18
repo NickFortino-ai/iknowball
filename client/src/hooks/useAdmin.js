@@ -87,6 +87,12 @@ export function useRecalculatePoints() {
   })
 }
 
+export function useSendEmailBlast() {
+  return useMutation({
+    mutationFn: ({ subject, body }) => api.post('/admin/email-blast', { subject, body }),
+  })
+}
+
 // Team names for bracket autocomplete
 export function useTeamsForSport(sport) {
   return useQuery({

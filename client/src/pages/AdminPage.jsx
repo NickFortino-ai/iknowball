@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useRecalculatePoints, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useScoreGames, useRecalculatePoints, useSendEmailBlast, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
@@ -18,9 +18,11 @@ const sportTabs = [
 
 export default function AdminPage() {
   const { profile } = useAuth()
-  const [adminSection, setAdminSection] = useState('props') // props | brackets
+  const [adminSection, setAdminSection] = useState('props') // props | brackets | email
   const [activeSport, setActiveSport] = useState(0)
   const [selectedGame, setSelectedGame] = useState(null)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
 
   const sportKey = sportTabs[activeSport].key
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming', 7)
@@ -31,6 +33,7 @@ export default function AdminPage() {
   const syncOdds = useSyncOdds()
   const scoreGames = useScoreGames()
   const recalculatePoints = useRecalculatePoints()
+  const sendEmailBlast = useSendEmailBlast()
 
   if (!profile?.is_admin) {
     return (
@@ -56,6 +59,18 @@ export default function AdminPage() {
       toast('Games scored successfully', 'success')
     } catch (err) {
       toast(err.message || 'Scoring failed', 'error')
+    }
+  }
+
+  async function handleSendEmail() {
+    if (!confirm(`Send this email to ALL users?\n\nSubject: ${emailSubject}`)) return
+    try {
+      const result = await sendEmailBlast.mutateAsync({ subject: emailSubject, body: emailBody })
+      toast(`Email sent to ${result.sent} users${result.failed ? ` (${result.failed} failed)` : ''}`, 'success')
+      setEmailSubject('')
+      setEmailBody('')
+    } catch (err) {
+      toast(err.message || 'Email blast failed', 'error')
     }
   }
 
@@ -119,7 +134,55 @@ export default function AdminPage() {
         >
           Brackets
         </button>
+        <button
+          onClick={() => setAdminSection('email')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            adminSection === 'email'
+              ? 'bg-accent text-white'
+              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Email Blast
+        </button>
       </div>
+
+      {adminSection === 'email' && (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+          <h2 className="font-display text-xl mb-4">Send Email to All Users</h2>
+          <p className="text-text-muted text-sm mb-4">
+            From: admin@iknowball.club
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Subject</label>
+              <input
+                type="text"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Email subject line..."
+                className="w-full bg-bg-primary border border-border rounded-lg px-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Body (HTML supported)</label>
+              <textarea
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                placeholder="Write your email here... HTML tags like <b>, <a>, <p> are supported."
+                rows={10}
+                className="w-full bg-bg-primary border border-border rounded-lg px-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent resize-y"
+              />
+            </div>
+            <button
+              onClick={handleSendEmail}
+              disabled={sendEmailBlast.isPending || !emailSubject.trim() || !emailBody.trim()}
+              className="bg-accent hover:bg-accent/90 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              {sendEmailBlast.isPending ? 'Sending...' : 'Send to All Users'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {adminSection === 'brackets' && <BracketTemplateManager />}
 
