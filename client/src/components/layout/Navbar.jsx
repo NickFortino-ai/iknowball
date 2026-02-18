@@ -64,7 +64,7 @@ export default function Navbar() {
   const acceptConnection = useAcceptConnectionRequest()
   const declineConnection = useDeclineConnectionRequest()
 
-  const { data: notifications } = useNotifications()
+  const { data: notifications } = useNotifications(isAuthenticated)
   const { data: unreadData } = useUnreadNotificationCount(isAuthenticated)
   const markAllRead = useMarkAllNotificationsRead()
 
@@ -178,7 +178,7 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className="bg-bg-secondary border-b border-border sticky top-0 z-50">
+    <nav className="bg-bg-secondary border-b border-border sticky top-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link to="/" className="font-display text-xl text-accent tracking-tight">
           I KNOW BALL

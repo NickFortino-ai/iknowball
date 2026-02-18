@@ -10,14 +10,22 @@ async function getAuthHeaders() {
 
 async function request(path, options = {}) {
   const authHeaders = await getAuthHeaders()
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-      ...options.headers,
-    },
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  let res
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+        ...options.headers,
+      },
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

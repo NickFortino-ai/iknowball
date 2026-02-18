@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
-export function useNotifications() {
+export function useNotifications(enabled = true) {
   return useQuery({
     queryKey: ['notifications'],
     queryFn: () => api.get('/notifications'),
+    enabled,
   })
 }
 

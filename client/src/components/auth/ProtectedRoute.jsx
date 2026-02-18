@@ -1,8 +1,17 @@
+import { useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 
 export default function ProtectedRoute({ children }) {
-  const { session, profile, loading } = useAuthStore()
+  const { session, profile, profileError, loading, fetchProfile } = useAuthStore()
+  const retried = useRef(false)
+
+  useEffect(() => {
+    if (session && !profile && profileError && !retried.current) {
+      retried.current = true
+      fetchProfile()
+    }
+  }, [session, profile, profileError, fetchProfile])
 
   if (loading) {
     return (
@@ -13,6 +22,11 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (!session) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Profile failed to load after retry — redirect to login
+  if (profileError && retried.current) {
     return <Navigate to="/login" replace />
   }
 

@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 export const useAuthStore = create((set, get) => ({
   session: null,
   profile: null,
+  profileError: false,
   loading: true,
 
   initialize: async () => {
@@ -27,10 +28,11 @@ export const useAuthStore = create((set, get) => ({
 
   fetchProfile: async () => {
     try {
+      set({ profileError: false })
       const profile = await api.get('/users/me')
       set({ profile })
     } catch {
-      set({ profile: null })
+      set({ profile: null, profileError: true })
     }
   },
 
