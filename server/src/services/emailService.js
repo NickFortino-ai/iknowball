@@ -23,56 +23,96 @@ function getTransporter() {
   return transporter
 }
 
-export async function getAllUserEmails() {
-  const emails = []
+function encodeToken(userId) {
+  return Buffer.from(userId).toString('base64url')
+}
+
+export function decodeToken(token) {
+  return Buffer.from(token, 'base64url').toString()
+}
+
+function getUnsubscribeUrl(userId) {
+  const token = encodeToken(userId)
+  const baseUrl = env.CORS_ORIGIN.split(',')[0].trim()
+  return `${baseUrl}/unsubscribe?token=${token}`
+}
+
+function appendUnsubscribeFooter(html, userId) {
+  const url = getUnsubscribeUrl(userId)
+  return `${html}<br/><hr style="border:none;border-top:1px solid #333;margin:24px 0 12px"/><p style="font-size:12px;color:#888;text-align:center"><a href="${url}" style="color:#888">Unsubscribe</a> from IKnowBall emails</p>`
+}
+
+export async function getSubscribedUsers() {
+  // Get all user IDs that haven't unsubscribed
+  const { data: subscribedUsers, error: dbError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email_unsubscribed', false)
+
+  if (dbError) throw dbError
+
+  const subscribedIds = new Set((subscribedUsers || []).map((u) => u.id))
+
+  // Get emails from auth for subscribed users
+  const users = []
   let page = 1
   const perPage = 1000
 
   while (true) {
-    const { data: { users }, error } = await supabase.auth.admin.listUsers({ page, perPage })
+    const { data: { users: authUsers }, error } = await supabase.auth.admin.listUsers({ page, perPage })
     if (error) throw error
-    if (!users || users.length === 0) break
+    if (!authUsers || authUsers.length === 0) break
 
-    for (const user of users) {
-      if (user.email) {
-        emails.push(user.email)
+    for (const user of authUsers) {
+      if (user.email && subscribedIds.has(user.id)) {
+        users.push({ id: user.id, email: user.email })
       }
     }
 
-    if (users.length < perPage) break
+    if (authUsers.length < perPage) break
     page++
   }
 
-  return emails
+  return users
 }
 
 export async function sendEmailBlast(subject, body) {
   const transport = getTransporter()
-  const emails = await getAllUserEmails()
+  const users = await getSubscribedUsers()
 
-  logger.info({ count: emails.length }, 'Sending email blast')
+  logger.info({ count: users.length }, 'Sending email blast')
 
   let sent = 0
   let failed = 0
   const errors = []
 
-  for (const email of emails) {
+  for (const user of users) {
     try {
+      const htmlWithFooter = appendUnsubscribeFooter(body, user.id)
       await transport.sendMail({
         from: `"IKnowBall" <${env.SMTP_FROM}>`,
-        to: email,
+        to: user.email,
         subject,
-        html: body,
-        text: body.replace(/<[^>]*>/g, ''),
+        html: htmlWithFooter,
+        text: htmlWithFooter.replace(/<[^>]*>/g, ''),
       })
       sent++
     } catch (err) {
       failed++
-      errors.push({ email, error: err.message })
-      logger.error({ email, error: err.message }, 'Failed to send email')
+      errors.push({ email: user.email, error: err.message })
+      logger.error({ email: user.email, error: err.message }, 'Failed to send email')
     }
   }
 
   logger.info({ sent, failed }, 'Email blast complete')
-  return { total: emails.length, sent, failed, errors }
+  return { total: users.length, sent, failed, errors }
+}
+
+export async function unsubscribeUser(userId) {
+  const { error } = await supabase
+    .from('users')
+    .update({ email_unsubscribed: true })
+    .eq('id', userId)
+
+  if (error) throw error
 }
