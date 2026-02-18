@@ -50,19 +50,18 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
 
   return (
     <div className={`bg-bg-card rounded-2xl border ${pick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-baseline gap-2 min-w-0">
-          <span className="font-semibold text-sm text-text-primary whitespace-nowrap">{prop.player_name}</span>
-          <span className="font-semibold text-sm text-text-primary whitespace-nowrap">{prop.line}</span>
-          <span className="font-semibold text-sm text-text-primary truncate">{prop.market_label}</span>
+      <div className="flex items-center mb-3">
+        <span className="font-semibold text-sm text-text-primary whitespace-nowrap">{prop.player_name}</span>
+        <div className="flex-1 text-center">
+          <span className="font-semibold text-sm text-text-primary">{prop.line} {prop.market_label}</span>
           {isSettled && prop.actual_value !== null && prop.actual_value !== undefined && (
-            <span className="text-xs text-text-muted whitespace-nowrap">
+            <span className="text-xs text-text-muted ml-2">
               Actual: <span className="font-semibold text-accent">{prop.actual_value}</span>
             </span>
           )}
         </div>
         {prop.games && (
-          <span className="text-xs text-text-muted whitespace-nowrap ml-2">
+          <span className="text-xs text-text-muted whitespace-nowrap">
             {abbreviateTeam(prop.games.away_team)} @ {abbreviateTeam(prop.games.home_team)}
           </span>
         )}
