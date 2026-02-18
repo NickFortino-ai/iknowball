@@ -1,4 +1,4 @@
-import { useUserProfile, useUserPickHistory, useHeadToHead } from '../../hooks/useUserProfile'
+import { useUserProfile, useUserPickHistory, useUserParlayHistory, useUserPropPickHistory, useHeadToHead } from '../../hooks/useUserProfile'
 import { useAuth } from '../../hooks/useAuth'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
@@ -9,6 +9,8 @@ export default function UserProfileModal({ userId, onClose }) {
   const { session } = useAuth()
   const { data: user, isLoading } = useUserProfile(userId)
   const { data: picks, isLoading: picksLoading } = useUserPickHistory(userId)
+  const { data: parlays, isLoading: parlaysLoading } = useUserParlayHistory(userId)
+  const { data: propPicks, isLoading: propsLoading } = useUserPropPickHistory(userId)
   const isViewingOther = userId && session?.user?.id !== userId
   const { data: h2h } = useHeadToHead(isViewingOther ? userId : null)
 
@@ -146,7 +148,7 @@ export default function UserProfileModal({ userId, onClose }) {
             )}
 
             {/* Pick History */}
-            <PickHistoryByMonth picks={picks} isLoading={picksLoading} />
+            <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} isLoading={picksLoading || parlaysLoading || propsLoading} />
 
             {/* Member since */}
             <div className="text-text-muted text-xs text-center mt-4">

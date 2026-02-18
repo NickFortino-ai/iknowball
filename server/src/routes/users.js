@@ -100,16 +100,29 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
     return res.status(404).json({ error: 'User not found' })
   }
 
-  // Get pick record
+  // Get pick record (picks + parlays + props)
   const { data: picks } = await supabase
     .from('picks')
     .select('is_correct')
     .eq('user_id', id)
     .eq('status', 'settled')
 
-  const wins = picks?.filter((p) => p.is_correct === true).length || 0
-  const losses = picks?.filter((p) => p.is_correct === false).length || 0
-  const pushes = picks?.filter((p) => p.is_correct === null).length || 0
+  const { data: parlays } = await supabase
+    .from('parlays')
+    .select('is_correct')
+    .eq('user_id', id)
+    .eq('status', 'settled')
+
+  const { data: propPicks } = await supabase
+    .from('prop_picks')
+    .select('is_correct')
+    .eq('user_id', id)
+    .eq('status', 'settled')
+
+  const allSettled = [...(picks || []), ...(parlays || []), ...(propPicks || [])]
+  const wins = allSettled.filter((p) => p.is_correct === true).length
+  const losses = allSettled.filter((p) => p.is_correct === false).length
+  const pushes = allSettled.filter((p) => p.is_correct === null).length
 
   // Get leaderboard rank
   const { data: allUsers } = await supabase
@@ -253,6 +266,32 @@ router.get('/:id/head-to-head', requireAuth, async (req, res) => {
 router.get('/:id/picks', requireAuth, async (req, res) => {
   const picks = await getPublicPickHistory(req.params.id)
   res.json(picks)
+})
+
+// Get any user's settled parlay history
+router.get('/:id/parlays', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('parlays')
+    .select('*, parlay_legs(*, games(*, sports(key, name)))')
+    .eq('user_id', req.params.id)
+    .eq('status', 'settled')
+    .order('updated_at', { ascending: false })
+
+  if (error) throw error
+  res.json(data || [])
+})
+
+// Get any user's settled prop pick history
+router.get('/:id/prop-picks', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('prop_picks')
+    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, sports(key, name)))')
+    .eq('user_id', req.params.id)
+    .eq('status', 'settled')
+    .order('updated_at', { ascending: false })
+
+  if (error) throw error
+  res.json(data || [])
 })
 
 // Search users by username or display name

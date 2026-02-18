@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useProfile, useSportStats } from '../hooks/useProfile'
 import { usePickHistory } from '../hooks/usePicks'
+import { useParlayHistory } from '../hooks/useParlays'
+import { usePropPickHistory } from '../hooks/useProps'
 import { getTier, getNextTier } from '../lib/scoring'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -97,6 +99,8 @@ export default function ProfilePage() {
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: sportStats, isLoading: statsLoading } = useSportStats()
   const { data: recentPicks, isLoading: picksLoading } = usePickHistory()
+  const { data: recentParlays, isLoading: parlaysLoading } = useParlayHistory()
+  const { data: recentProps, isLoading: propsLoading } = usePropPickHistory()
 
   if (profileLoading) return <LoadingSpinner />
   if (!profile) return null
@@ -120,7 +124,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <PickHistoryByMonth picks={recentPicks} isLoading={picksLoading} />
+      <PickHistoryByMonth picks={recentPicks} parlays={recentParlays} propPicks={recentProps} isLoading={picksLoading || parlaysLoading || propsLoading} />
     </div>
   )
 }

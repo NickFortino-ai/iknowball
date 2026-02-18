@@ -1,34 +1,84 @@
 import { useState, useMemo } from 'react'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
-function groupPicksByMonth(picks) {
+function normalizeItems(picks, parlays, propPicks) {
+  const items = []
+
+  for (const pick of (picks || [])) {
+    items.push({
+      id: pick.id,
+      type: 'pick',
+      label: `${pick.games?.away_team} @ ${pick.games?.home_team}`,
+      detail: `Picked: ${pick.picked_team === 'home' ? pick.games?.home_team : pick.games?.away_team}`,
+      date: pick.games?.starts_at,
+      is_correct: pick.is_correct,
+      points_earned: pick.points_earned,
+    })
+  }
+
+  for (const parlay of (parlays || [])) {
+    const legs = parlay.parlay_legs || []
+    const legSummary = legs.map((l) => {
+      const team = l.picked_team === 'home' ? l.games?.home_team : l.games?.away_team
+      return team
+    }).join(', ')
+    items.push({
+      id: parlay.id,
+      type: 'parlay',
+      label: `${parlay.leg_count}-Leg Parlay`,
+      detail: legSummary,
+      date: parlay.updated_at,
+      is_correct: parlay.is_correct,
+      points_earned: parlay.points_earned,
+    })
+  }
+
+  for (const pp of (propPicks || [])) {
+    items.push({
+      id: pp.id,
+      type: 'prop',
+      label: `${pp.player_props?.player_name} — ${pp.player_props?.line} ${pp.player_props?.market_label}`,
+      detail: `Picked: ${pp.picked_side}`,
+      date: pp.player_props?.games?.starts_at || pp.updated_at,
+      is_correct: pp.is_correct,
+      points_earned: pp.points_earned,
+    })
+  }
+
+  return items
+}
+
+function groupByMonth(items) {
   const groups = {}
-  for (const pick of picks) {
-    const date = new Date(pick.games?.starts_at)
+  for (const item of items) {
+    const date = new Date(item.date)
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
     const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     if (!groups[key]) {
-      groups[key] = { key, label, picks: [] }
+      groups[key] = { key, label, items: [] }
     }
-    groups[key].picks.push(pick)
+    groups[key].items.push(item)
   }
   return Object.values(groups).sort((a, b) => b.key.localeCompare(a.key))
 }
 
-function getMonthStats(picks) {
+function getMonthStats(items) {
   let wins = 0
   let losses = 0
   let net = 0
-  for (const pick of picks) {
-    if (pick.is_correct === true) wins++
-    else if (pick.is_correct === false) losses++
-    net += pick.points_earned ?? 0
+  for (const item of items) {
+    if (item.is_correct === true) wins++
+    else if (item.is_correct === false) losses++
+    net += item.points_earned ?? 0
   }
   return { wins, losses, net }
 }
 
-export default function PickHistoryByMonth({ picks, isLoading }) {
-  const months = useMemo(() => (picks?.length ? groupPicksByMonth(picks) : []), [picks])
+export default function PickHistoryByMonth({ picks, parlays, propPicks, isLoading }) {
+  const months = useMemo(() => {
+    const items = normalizeItems(picks, parlays, propPicks)
+    return items.length ? groupByMonth(items) : []
+  }, [picks, parlays, propPicks])
   const [expanded, setExpanded] = useState({})
 
   function isExpanded(key, index) {
@@ -49,7 +99,7 @@ export default function PickHistoryByMonth({ picks, isLoading }) {
     )
   }
 
-  if (!picks?.length) {
+  if (!months.length) {
     return (
       <div className="py-4">
         <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Pick History</h3>
@@ -63,7 +113,7 @@ export default function PickHistoryByMonth({ picks, isLoading }) {
       <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Pick History</h3>
       <div className="space-y-2">
         {months.map((month, index) => {
-          const stats = getMonthStats(month.picks)
+          const stats = getMonthStats(month.items)
           const open = isExpanded(month.key, index)
 
           return (
@@ -90,23 +140,28 @@ export default function PickHistoryByMonth({ picks, isLoading }) {
 
               {open && (
                 <div className="mt-1 space-y-1">
-                  {month.picks.map((pick) => (
+                  {month.items.map((item) => (
                     <div
-                      key={pick.id}
+                      key={`${item.type}-${item.id}`}
                       className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between"
                     >
                       <div className="min-w-0">
                         <div className="text-sm font-semibold truncate">
-                          {pick.games?.away_team} @ {pick.games?.home_team}
+                          {item.type !== 'pick' && (
+                            <span className="text-xs text-text-muted font-normal mr-1.5">
+                              {item.type === 'parlay' ? 'Parlay' : 'Prop'}
+                            </span>
+                          )}
+                          {item.label}
                         </div>
-                        <div className="text-xs text-text-muted">
-                          Picked: {pick.picked_team === 'home' ? pick.games?.home_team : pick.games?.away_team}
+                        <div className="text-xs text-text-muted truncate">
+                          {item.detail}
                         </div>
                       </div>
                       <div className={`font-semibold text-sm shrink-0 ml-3 ${
-                        pick.points_earned > 0 ? 'text-correct' : pick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
+                        item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
                       }`}>
-                        {pick.points_earned > 0 ? '+' : ''}{pick.points_earned ?? 0}
+                        {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
                       </div>
                     </div>
                   ))}

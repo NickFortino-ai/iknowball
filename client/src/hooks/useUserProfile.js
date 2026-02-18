@@ -17,6 +17,22 @@ export function useUserPickHistory(userId) {
   })
 }
 
+export function useUserParlayHistory(userId) {
+  return useQuery({
+    queryKey: ['users', userId, 'parlays'],
+    queryFn: () => api.get(`/users/${userId}/parlays`),
+    enabled: !!userId,
+  })
+}
+
+export function useUserPropPickHistory(userId) {
+  return useQuery({
+    queryKey: ['users', userId, 'prop-picks'],
+    queryFn: () => api.get(`/users/${userId}/prop-picks`),
+    enabled: !!userId,
+  })
+}
+
 export function useHeadToHead(userId) {
   return useQuery({
     queryKey: ['users', userId, 'head-to-head'],
