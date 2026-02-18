@@ -40,7 +40,7 @@ function getDateOptions() {
   for (let i = 0; i < 3; i++) {
     const d = new Date()
     d.setDate(d.getDate() + i)
-    const dateStr = d.toISOString().split('T')[0]
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
     options.push({ date: dateStr, label })
   }
