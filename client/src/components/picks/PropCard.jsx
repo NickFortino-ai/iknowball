@@ -69,11 +69,13 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting 
           </div>
           {prop.over_odds && (
             <div className="text-center">
-              <div className={`font-semibold text-sm ${overState === 'selected' ? 'text-white' : prop.over_odds < 0 ? 'text-accent' : 'text-correct'}`}>
-                {formatOdds(prop.over_odds)}
+              <div className={`font-semibold text-sm ${overState === 'selected' ? 'text-white' : ''}`}>
+                <span className="text-incorrect">-{calculateRiskPoints(prop.over_odds)}</span>
+                <span className={overState === 'selected' ? 'text-white/70' : 'text-text-muted'}> → </span>
+                <span className="text-correct">+{calculateRewardPoints(prop.over_odds)}</span>
               </div>
               <div className={`text-xs ${overState === 'selected' ? 'text-white/70' : 'text-text-muted'}`}>
-                Risk {calculateRiskPoints(prop.over_odds)} → Win {calculateRewardPoints(prop.over_odds)}
+                {formatOdds(prop.over_odds)}
               </div>
             </div>
           )}
@@ -89,11 +91,13 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting 
           </div>
           {prop.under_odds && (
             <div className="text-center">
-              <div className={`font-semibold text-sm ${underState === 'selected' ? 'text-white' : prop.under_odds < 0 ? 'text-accent' : 'text-correct'}`}>
-                {formatOdds(prop.under_odds)}
+              <div className={`font-semibold text-sm ${underState === 'selected' ? 'text-white' : ''}`}>
+                <span className="text-incorrect">-{calculateRiskPoints(prop.under_odds)}</span>
+                <span className={underState === 'selected' ? 'text-white/70' : 'text-text-muted'}> → </span>
+                <span className="text-correct">+{calculateRewardPoints(prop.under_odds)}</span>
               </div>
               <div className={`text-xs ${underState === 'selected' ? 'text-white/70' : 'text-text-muted'}`}>
-                Risk {calculateRiskPoints(prop.under_odds)} → Win {calculateRewardPoints(prop.under_odds)}
+                {formatOdds(prop.under_odds)}
               </div>
             </div>
           )}
