@@ -43,7 +43,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting 
   const underState = getSideState(prop, pick, 'under')
 
   return (
-    <div className="bg-bg-card rounded-2xl border border-border p-4">
+    <div className={`bg-bg-card rounded-2xl border ${pick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4`}>
       <div className="flex items-center justify-between mb-2">
         <span className="font-semibold text-sm text-text-primary">{prop.player_name}</span>
         <span className="text-xs text-text-muted">{prop.market_label}</span>
@@ -103,6 +103,14 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting 
       {pick?.status === 'settled' && pick.points_earned !== null && (
         <div className={`mt-3 text-center text-sm font-semibold ${pick.points_earned > 0 ? 'text-correct' : pick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
           {pick.points_earned > 0 ? '+' : ''}{pick.points_earned} pts
+        </div>
+      )}
+
+      {pick?.status === 'locked' && pick.odds_at_pick != null && (
+        <div className="mt-3 text-center text-sm text-text-muted">
+          <span className="text-incorrect">-{calculateRiskPoints(pick.odds_at_pick)}</span>
+          {' / '}
+          <span className="text-correct">+{calculateRewardPoints(pick.odds_at_pick)}</span>
         </div>
       )}
     </div>

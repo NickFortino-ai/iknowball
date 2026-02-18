@@ -1,5 +1,5 @@
 import PickButton from './PickButton'
-import { formatOdds } from '../../lib/scoring'
+import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 import PickReactions from '../social/PickReactions'
 
 function formatGameTime(dateStr) {
@@ -47,7 +47,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
   }
 
   return (
-    <div className="bg-bg-card rounded-2xl border border-border p-4 overflow-hidden">
+    <div className={`bg-bg-card rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4 overflow-hidden`}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-text-muted uppercase tracking-wider">
           {game.sports?.name || 'NFL'}
@@ -107,6 +107,14 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
       {userPick?.status === 'settled' && userPick.points_earned !== null && (
         <div className={`mt-3 text-center text-sm font-semibold ${userPick.points_earned > 0 ? 'text-correct' : userPick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
           {userPick.points_earned > 0 ? '+' : ''}{userPick.points_earned} pts
+        </div>
+      )}
+
+      {userPick?.status === 'locked' && userPick.odds_at_pick != null && (
+        <div className="mt-3 text-center text-sm text-text-muted">
+          <span className="text-incorrect">-{calculateRiskPoints(userPick.odds_at_pick)}</span>
+          {' / '}
+          <span className="text-correct">+{calculateRewardPoints(userPick.odds_at_pick)}</span>
         </div>
       )}
 

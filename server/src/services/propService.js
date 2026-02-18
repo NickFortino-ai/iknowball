@@ -402,7 +402,7 @@ export async function getUserPropPickHistory(userId) {
     .from('prop_picks')
     .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, sports(key, name)))')
     .eq('user_id', userId)
-    .eq('status', 'settled')
+    .in('status', ['locked', 'settled'])
     .order('updated_at', { ascending: false })
 
   if (error) throw error

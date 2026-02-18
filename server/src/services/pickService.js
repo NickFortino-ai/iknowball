@@ -114,7 +114,7 @@ export async function getUserPickHistory(userId) {
     .from('picks')
     .select('*, games(*, sports(key, name))')
     .eq('user_id', userId)
-    .eq('status', 'settled')
+    .in('status', ['locked', 'settled'])
     .order('updated_at', { ascending: false })
 
   if (error) throw error

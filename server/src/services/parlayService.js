@@ -168,7 +168,7 @@ export async function getUserParlayHistory(userId) {
     .from('parlays')
     .select('*, parlay_legs(*, games(*, sports(key, name)))')
     .eq('user_id', userId)
-    .eq('status', 'settled')
+    .in('status', ['locked', 'settled'])
     .order('updated_at', { ascending: false })
 
   if (error) throw error

@@ -14,34 +14,47 @@ export default function ResultsPage() {
   const { data: parlays, isLoading: parlaysLoading } = useParlayHistory()
   const { data: propPicks, isLoading: propsLoading } = usePropPickHistory()
 
+  const { livePicks, settledPicks, liveParlays, settledParlays, liveProps, settledProps } = useMemo(() => {
+    return {
+      livePicks: (picks || []).filter(p => p.status === 'locked'),
+      settledPicks: (picks || []).filter(p => p.status === 'settled'),
+      liveParlays: (parlays || []).filter(p => p.status === 'locked'),
+      settledParlays: (parlays || []).filter(p => p.status === 'settled'),
+      liveProps: (propPicks || []).filter(p => p.status === 'locked'),
+      settledProps: (propPicks || []).filter(p => p.status === 'settled'),
+    }
+  }, [picks, parlays, propPicks])
+
+  const hasLive = livePicks.length > 0 || liveParlays.length > 0 || liveProps.length > 0
+  const hasSettled = settledPicks.length > 0 || settledParlays.length > 0 || settledProps.length > 0
+
   const weeklyStats = useMemo(() => {
-    if (!picks?.length && !parlays?.length && !propPicks?.length) return null
+    if (!settledPicks.length && !settledParlays.length && !settledProps.length) return null
     let wins = 0, losses = 0, pushes = 0, netPoints = 0
-    for (const pick of (picks || [])) {
+    for (const pick of settledPicks) {
       if (pick.is_correct === true) wins++
       else if (pick.is_correct === false) losses++
       else pushes++
       netPoints += pick.points_earned || 0
     }
-    for (const parlay of (parlays || [])) {
+    for (const parlay of settledParlays) {
       if (parlay.is_correct === true) wins++
       else if (parlay.is_correct === false) losses++
       else pushes++
       netPoints += parlay.points_earned || 0
     }
-    for (const pp of (propPicks || [])) {
+    for (const pp of settledProps) {
       if (pp.is_correct === true) wins++
       else if (pp.is_correct === false) losses++
       else pushes++
       netPoints += pp.points_earned || 0
     }
-    return { wins, losses, pushes, netPoints, total: (picks?.length || 0) + (parlays?.length || 0) + (propPicks?.length || 0) }
-  }, [picks, parlays, propPicks])
+    return { wins, losses, pushes, netPoints, total: settledPicks.length + settledParlays.length + settledProps.length }
+  }, [settledPicks, settledParlays, settledProps])
 
   const settledPickIds = useMemo(() => {
-    if (!picks?.length) return []
-    return picks.filter((p) => p.status === 'settled').map((p) => p.id)
-  }, [picks])
+    return settledPicks.map((p) => p.id)
+  }, [settledPicks])
 
   const { data: reactionsBatch } = usePickReactionsBatch(settledPickIds)
 
@@ -77,22 +90,14 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {parlays?.length > 0 && (
+      {hasLive && (
         <>
-          <h2 className="font-display text-lg text-text-secondary mb-3">Parlays</h2>
+          <h2 className="font-display text-lg text-accent mb-3">Live</h2>
           <div className="space-y-3 mb-6">
-            {parlays.map((parlay) => (
+            {liveParlays.map((parlay) => (
               <ParlayCard key={parlay.id} parlay={parlay} />
             ))}
-          </div>
-        </>
-      )}
-
-      {propPicks?.length > 0 && (
-        <>
-          <h2 className="font-display text-lg text-text-secondary mb-3">Player Props</h2>
-          <div className="space-y-3 mb-6">
-            {propPicks.map((pp) => (
+            {liveProps.map((pp) => (
               <div key={pp.id}>
                 <div className="text-xs text-text-muted mb-1 px-1">
                   {pp.player_props?.games?.sports?.name} — {pp.player_props?.games?.away_team} @ {pp.player_props?.games?.home_team}
@@ -100,27 +105,65 @@ export default function ResultsPage() {
                 <PropCard prop={pp.player_props} pick={pp} />
               </div>
             ))}
-          </div>
-        </>
-      )}
-
-      {!picks?.length && !parlays?.length && !propPicks?.length ? (
-        <EmptyState title="No results yet" message="Your settled picks will appear here" />
-      ) : picks?.length > 0 && (
-        <>
-          {(parlays?.length > 0 || propPicks?.length > 0) && (
-            <h2 className="font-display text-lg text-text-secondary mb-3">Straight Picks</h2>
-          )}
-          <div className="space-y-3">
-            {picks.map((pick) => (
+            {livePicks.map((pick) => (
               <GameCard
                 key={pick.id}
                 game={pick.games}
                 userPick={pick}
-                reactions={reactionsBatch?.[pick.id]}
               />
             ))}
           </div>
+        </>
+      )}
+
+      {!hasLive && !hasSettled ? (
+        <EmptyState title="No results yet" message="Your settled picks will appear here" />
+      ) : hasSettled && (
+        <>
+          {settledParlays.length > 0 && (
+            <>
+              <h2 className="font-display text-lg text-text-secondary mb-3">Parlays</h2>
+              <div className="space-y-3 mb-6">
+                {settledParlays.map((parlay) => (
+                  <ParlayCard key={parlay.id} parlay={parlay} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {settledProps.length > 0 && (
+            <>
+              <h2 className="font-display text-lg text-text-secondary mb-3">Player Props</h2>
+              <div className="space-y-3 mb-6">
+                {settledProps.map((pp) => (
+                  <div key={pp.id}>
+                    <div className="text-xs text-text-muted mb-1 px-1">
+                      {pp.player_props?.games?.sports?.name} — {pp.player_props?.games?.away_team} @ {pp.player_props?.games?.home_team}
+                    </div>
+                    <PropCard prop={pp.player_props} pick={pp} />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {settledPicks.length > 0 && (
+            <>
+              {(settledParlays.length > 0 || settledProps.length > 0) && (
+                <h2 className="font-display text-lg text-text-secondary mb-3">Straight Picks</h2>
+              )}
+              <div className="space-y-3">
+                {settledPicks.map((pick) => (
+                  <GameCard
+                    key={pick.id}
+                    game={pick.games}
+                    userPick={pick}
+                    reactions={reactionsBatch?.[pick.id]}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
