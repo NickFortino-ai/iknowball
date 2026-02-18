@@ -30,7 +30,8 @@ export default function BottomBar({ picks, games }) {
         <div className="flex items-center gap-4">
           <span className="text-text-primary font-semibold">{pickCount} pick{pickCount !== 1 ? 's' : ''}</span>
           <span className="text-text-muted">
-            {favCount}F / {dogCount}D
+            <span className="hidden md:inline">{favCount} {favCount === 1 ? 'Favorite' : 'Favorites'} / {dogCount} {dogCount === 1 ? 'Dog' : 'Dogs'}</span>
+            <span className="md:hidden">{favCount}F / {dogCount}D</span>
           </span>
         </div>
         <div className="flex items-center gap-4">
