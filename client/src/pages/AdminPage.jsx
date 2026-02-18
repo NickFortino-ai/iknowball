@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useScoreGames, useRecalculatePoints, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
@@ -30,6 +30,7 @@ export default function AdminPage() {
 
   const syncOdds = useSyncOdds()
   const scoreGames = useScoreGames()
+  const recalculatePoints = useRecalculatePoints()
 
   if (!profile?.is_admin) {
     return (
@@ -55,6 +56,15 @@ export default function AdminPage() {
       toast('Games scored successfully', 'success')
     } catch (err) {
       toast(err.message || 'Scoring failed', 'error')
+    }
+  }
+
+  async function handleRecalculatePoints() {
+    try {
+      const result = await recalculatePoints.mutateAsync()
+      toast(`Recalculated — ${result.corrections.length} users corrected`, 'success')
+    } catch (err) {
+      toast(err.message || 'Recalculation failed', 'error')
     }
   }
 
@@ -266,6 +276,13 @@ export default function AdminPage() {
             className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {scoreGames.isPending ? 'Scoring...' : 'Score Games'}
+          </button>
+          <button
+            onClick={handleRecalculatePoints}
+            disabled={recalculatePoints.isPending}
+            className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {recalculatePoints.isPending ? 'Recalculating...' : 'Recalculate Points'}
           </button>
         </div>
       </div>

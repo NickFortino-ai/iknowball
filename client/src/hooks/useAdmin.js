@@ -81,6 +81,12 @@ export function useScoreGames() {
   })
 }
 
+export function useRecalculatePoints() {
+  return useMutation({
+    mutationFn: () => api.post('/admin/recalculate-points'),
+  })
+}
+
 // Team names for bracket autocomplete
 export function useTeamsForSport(sport) {
   return useQuery({
