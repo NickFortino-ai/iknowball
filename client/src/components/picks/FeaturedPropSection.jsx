@@ -44,15 +44,13 @@ export default function FeaturedPropSection({ date, sportKey }) {
         <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
         <h2 className="font-display text-lg">Daily Featured Player Prop</h2>
       </div>
-      <div className="text-xs text-text-muted mb-2 px-1">
-        {prop.games?.sports?.name} — {prop.games?.away_team} @ {prop.games?.home_team}
-      </div>
       <PropCard
         prop={prop}
         pick={pick}
         onPick={handlePick}
         onUndoPick={handleUndoPick}
         isSubmitting={submitPick.isPending || deletePick.isPending}
+        compact
       />
     </div>
   )

@@ -98,12 +98,7 @@ export default function ResultsPage() {
               <ParlayCard key={parlay.id} parlay={parlay} />
             ))}
             {liveProps.map((pp) => (
-              <div key={pp.id}>
-                <div className="text-xs text-text-muted mb-1 px-1">
-                  {pp.player_props?.games?.sports?.name} — {pp.player_props?.games?.away_team} @ {pp.player_props?.games?.home_team}
-                </div>
-                <PropCard prop={pp.player_props} pick={pp} />
-              </div>
+              <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
             ))}
             {livePicks.map((pick) => (
               <GameCard
@@ -136,12 +131,7 @@ export default function ResultsPage() {
               <h2 className="font-display text-lg text-text-secondary mb-3">Player Props</h2>
               <div className="space-y-3 mb-6">
                 {settledProps.map((pp) => (
-                  <div key={pp.id}>
-                    <div className="text-xs text-text-muted mb-1 px-1">
-                      {pp.player_props?.games?.sports?.name} — {pp.player_props?.games?.away_team} @ {pp.player_props?.games?.home_team}
-                    </div>
-                    <PropCard prop={pp.player_props} pick={pp} />
-                  </div>
+                  <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
                 ))}
               </div>
             </>

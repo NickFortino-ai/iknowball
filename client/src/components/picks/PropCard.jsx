@@ -26,7 +26,13 @@ function getSideState(prop, pick, side) {
   return 'selected'
 }
 
-export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting }) {
+function abbreviateTeam(name) {
+  const words = name.split(' ')
+  if (words.length <= 2) return words[0].slice(0, 3).toUpperCase()
+  return words.map((w) => w[0]).join('').toUpperCase()
+}
+
+export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting, compact }) {
   const isLocked = prop.status !== 'published'
   const isSettled = prop.status === 'settled'
 
@@ -44,10 +50,18 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting 
 
   return (
     <div className={`bg-bg-card rounded-2xl border ${pick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4`}>
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-1">
         <span className="font-semibold text-sm text-text-primary">{prop.player_name}</span>
         <span className="text-xs text-text-muted">{prop.market_label}</span>
       </div>
+      {prop.games && (
+        <div className="text-xs text-text-muted mb-2">
+          {compact
+            ? `${abbreviateTeam(prop.games.away_team)} @ ${abbreviateTeam(prop.games.home_team)}`
+            : `${prop.games.sports?.name} — ${prop.games.away_team} @ ${prop.games.home_team}`
+          }
+        </div>
+      )}
 
       <div className="text-center text-xs text-text-muted mb-3">
         Line: <span className="font-semibold text-text-secondary">{prop.line}</span>
