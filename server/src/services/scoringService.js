@@ -296,3 +296,92 @@ async function trySettleParlay(parlayId) {
     { parlayId }
   )
 }
+
+export async function recalculateAllUserPoints() {
+  // Sum points_earned from all three settled pick tables per user
+  const { data: pickTotals } = await supabase
+    .from('picks')
+    .select('user_id, points_earned')
+    .eq('status', 'settled')
+    .not('points_earned', 'is', null)
+
+  const { data: parlayTotals } = await supabase
+    .from('parlays')
+    .select('user_id, points_earned')
+    .eq('status', 'settled')
+    .not('points_earned', 'is', null)
+
+  const { data: propTotals } = await supabase
+    .from('prop_picks')
+    .select('user_id, points_earned')
+    .eq('status', 'settled')
+    .not('points_earned', 'is', null)
+
+  // Aggregate per user
+  const userPoints = {}
+  for (const row of [...(pickTotals || []), ...(parlayTotals || []), ...(propTotals || [])]) {
+    userPoints[row.user_id] = (userPoints[row.user_id] || 0) + row.points_earned
+  }
+
+  // Get current stored totals
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, total_points')
+
+  const results = []
+  for (const user of (users || [])) {
+    const correctTotal = userPoints[user.id] || 0
+    if (correctTotal !== user.total_points) {
+      const delta = correctTotal - user.total_points
+      const { error } = await supabase
+        .rpc('increment_user_points', {
+          user_row_id: user.id,
+          points_delta: delta,
+        })
+
+      if (error) {
+        logger.error({ error, userId: user.id }, 'Failed to recalculate user points')
+      } else {
+        results.push({
+          userId: user.id,
+          was: user.total_points,
+          now: correctTotal,
+          delta,
+        })
+        logger.info({ userId: user.id, was: user.total_points, now: correctTotal }, 'Recalculated user points')
+      }
+    }
+  }
+
+  // Recalculate user_sport_stats totals
+  const { data: sportPicks } = await supabase
+    .from('picks')
+    .select('user_id, points_earned, is_correct, games!inner(sport_id)')
+    .eq('status', 'settled')
+    .not('is_correct', 'is', null)
+
+  const sportStats = {}
+  for (const pick of (sportPicks || [])) {
+    const key = `${pick.user_id}:${pick.games.sport_id}`
+    if (!sportStats[key]) {
+      sportStats[key] = { user_id: pick.user_id, sport_id: pick.games.sport_id, total_picks: 0, correct_picks: 0, total_points: 0 }
+    }
+    sportStats[key].total_picks++
+    if (pick.is_correct) sportStats[key].correct_picks++
+    sportStats[key].total_points += pick.points_earned || 0
+  }
+
+  for (const stat of Object.values(sportStats)) {
+    await supabase
+      .from('user_sport_stats')
+      .upsert({
+        user_id: stat.user_id,
+        sport_id: stat.sport_id,
+        total_picks: stat.total_picks,
+        correct_picks: stat.correct_picks,
+        total_points: stat.total_points,
+      }, { onConflict: 'user_id,sport_id' })
+  }
+
+  return results
+}

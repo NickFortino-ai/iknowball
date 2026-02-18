@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { syncOdds } from '../jobs/syncOdds.js'
 import { scoreGames } from '../jobs/scoreGames.js'
+import { recalculateAllUserPoints } from '../services/scoringService.js'
 import {
   syncPropsForGame,
   getAllPropsForGame,
@@ -38,6 +39,11 @@ router.post('/sync-odds', async (req, res) => {
 router.post('/score-games', async (req, res) => {
   await scoreGames()
   res.json({ message: 'Game scoring complete' })
+})
+
+router.post('/recalculate-points', async (req, res) => {
+  const results = await recalculateAllUserPoints()
+  res.json({ message: `Recalculated points for ${results.length} users`, corrections: results })
 })
 
 // Props management

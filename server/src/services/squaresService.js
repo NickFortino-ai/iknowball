@@ -287,21 +287,11 @@ export async function scoreQuarter(leagueId, userId, quarter, awayScore, homeSco
     throw updateError
   }
 
-  // Award points to winner
+  // Squares do not affect the user's global total_points
   if (winnerId) {
     const pointsPerQuarter = league.settings?.points_per_quarter || [25, 25, 25, 50]
     const points = pointsPerQuarter[quarter - 1] || 25
-
-    const { error: pointsError } = await supabase.rpc('increment_user_points', {
-      user_row_id: winnerId,
-      points_delta: points,
-    })
-
-    if (pointsError) {
-      logger.error({ pointsError, winnerId }, 'Failed to award squares points')
-    } else {
-      logger.info({ winnerId, quarter, points, leagueId }, 'Squares quarter points awarded')
-    }
+    logger.info({ winnerId, quarter, points, leagueId }, 'Squares quarter winner determined')
   }
 
   return { quarter, awayScore, homeScore, winningRow, winningCol, winnerId }
