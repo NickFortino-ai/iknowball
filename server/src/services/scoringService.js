@@ -168,11 +168,11 @@ export async function scoreParlayLegs(gameId, winner) {
 async function trySettleParlay(parlayId) {
   const { data: parlay } = await supabase
     .from('parlays')
-    .select('id, user_id, risk_points')
+    .select('id, user_id, risk_points, status')
     .eq('id', parlayId)
     .single()
 
-  if (!parlay) return
+  if (!parlay || parlay.status === 'settled') return
 
   const { data: legs } = await supabase
     .from('parlay_legs')
