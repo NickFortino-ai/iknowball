@@ -15,8 +15,8 @@ import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
 
 const sportTabs = [
-  { label: 'NCAAB', key: 'basketball_ncaab' },
   { label: 'NBA', key: 'basketball_nba' },
+  { label: 'NCAAB', key: 'basketball_ncaab' },
   { label: 'MLB', key: 'baseball_mlb' },
   { label: 'NFL', key: 'americanfootball_nfl' },
   { label: 'WNBA', key: 'basketball_wnba' },
