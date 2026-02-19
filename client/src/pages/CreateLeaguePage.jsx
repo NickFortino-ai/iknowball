@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateLeague, useBracketTemplatesActive } from '../hooks/useLeagues'
+import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 
 const FORMAT_OPTIONS = [
@@ -41,6 +42,11 @@ export default function CreateLeaguePage() {
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
 
+  // Squares game picker
+  const [gameId, setGameId] = useState('')
+  const squaresSport = format === 'squares' && sport && sport !== 'all' ? sport : undefined
+  const { data: squaresGames } = useGames(squaresSport, 'upcoming', 7)
+
   // Bracket settings
   const [templateId, setTemplateId] = useState('')
   const [locksAt, setLocksAt] = useState('')
@@ -73,6 +79,7 @@ export default function CreateLeaguePage() {
       settings.winner_bonus = winnerBonus
     }
     if (format === 'squares') {
+      settings.game_id = gameId
       settings.assignment_method = assignmentMethod
       settings.points_per_quarter = pointsPerQuarter
       if (rowTeamName) settings.row_team_name = rowTeamName
@@ -101,7 +108,9 @@ export default function CreateLeaguePage() {
     }
   }
 
-  const canSubmit = name && format && sport && duration && (format !== 'bracket' || (templateId && locksAt))
+  const canSubmit = name && format && sport && duration
+    && (format !== 'bracket' || (templateId && locksAt))
+    && (format !== 'squares' || gameId)
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -349,6 +358,40 @@ export default function CreateLeaguePage() {
         {format === 'squares' && (
           <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
             <h3 className="font-display text-sm text-text-secondary mb-1">Squares Settings</h3>
+            <div>
+              <label className="block text-xs text-text-muted mb-2">Game</label>
+              {sport === 'all' ? (
+                <div className="text-xs text-text-muted">Select a specific sport above to pick a game.</div>
+              ) : squaresGames?.length > 0 ? (
+                <div className="max-h-60 overflow-y-auto space-y-1">
+                  {squaresGames.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        setGameId(g.id)
+                        setRowTeamName(g.away_team)
+                        setColTeamName(g.home_team)
+                      }}
+                      className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                        gameId === g.id
+                          ? 'border-accent bg-accent/10'
+                          : 'border-border bg-bg-primary hover:bg-bg-card-hover'
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{g.away_team} @ {g.home_team}</div>
+                      <div className="text-xs text-text-muted mt-0.5">
+                        {new Date(g.commence_time).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                        {' '}
+                        {new Date(g.commence_time).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-text-muted">No upcoming games found for this sport.</div>
+              )}
+            </div>
             <div>
               <label className="block text-xs text-text-muted mb-2">Assignment Method</label>
               <div className="flex gap-2">
