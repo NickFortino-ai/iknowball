@@ -17,7 +17,7 @@ export default function LoginPage() {
     try {
       await signIn(identifier, password)
       const pendingCode = localStorage.getItem('pendingInviteCode')
-      navigate(pendingCode ? `/join/${pendingCode}` : '/picks')
+      navigate(pendingCode ? `/join/${pendingCode}` : '/')
     } catch (err) {
       setError(err.message)
     } finally {
