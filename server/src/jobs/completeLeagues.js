@@ -3,7 +3,7 @@ import { logger } from '../utils/logger.js'
 import { getPickemStandings } from '../services/leagueService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 
-const BRACKET_WIN_BONUS = 10
+const BRACKET_WINNER_BONUS = 10
 
 async function getLeagueMemberCount(leagueId) {
   const { count, error } = await supabase
@@ -18,35 +18,25 @@ async function getLeagueMemberCount(leagueId) {
   return count || 1
 }
 
-async function awardLeagueWinner(league, winnerId) {
-  // Pick'em: +1 point per league member; Bracket: flat +10
-  const bonus = league.format === 'pickem'
-    ? await getLeagueMemberCount(league.id)
-    : BRACKET_WIN_BONUS
-
-  // Award global points
+async function awardUserPoints(userId, league, points, label, type) {
   const { error } = await supabase.rpc('increment_user_points', {
-    user_row_id: winnerId,
-    points_delta: bonus,
+    user_row_id: userId,
+    points_delta: points,
   })
 
   if (error) {
-    logger.error({ error, winnerId, leagueId: league.id }, 'Failed to award league winner bonus')
+    logger.error({ error, userId, leagueId: league.id }, 'Failed to award league points')
     return
   }
 
-  // Record bonus_points entry for pick history
   await supabase.from('bonus_points').insert({
-    user_id: winnerId,
+    user_id: userId,
     league_id: league.id,
-    type: 'league_win',
-    label: league.format === 'pickem'
-      ? `Won ${bonus}-person league +${bonus} pts`
-      : `League Winner +${bonus} points`,
-    points: bonus,
+    type,
+    label,
+    points,
   })
 
-  // Award sport stats
   if (league.sport && league.sport !== 'all') {
     const { data: sport } = await supabase
       .from('sports')
@@ -56,15 +46,56 @@ async function awardLeagueWinner(league, winnerId) {
 
     if (sport) {
       await supabase.rpc('update_sport_stats', {
-        p_user_id: winnerId,
+        p_user_id: userId,
         p_sport_id: sport.id,
-        p_is_correct: true,
-        p_points: bonus,
+        p_is_correct: points > 0,
+        p_points: Math.abs(points),
       })
     }
   }
+}
 
-  logger.info({ winnerId, leagueId: league.id, format: league.format, bonus }, 'League winner awarded')
+async function awardPickemWinner(league, winnerId) {
+  const memberCount = await getLeagueMemberCount(league.id)
+
+  await awardUserPoints(winnerId, league, memberCount,
+    `Won ${memberCount}-person league +${memberCount} pts`, 'league_win')
+
+  logger.info({ winnerId, leagueId: league.id, bonus: memberCount }, 'Pickem league winner awarded')
+}
+
+// Bracket: every participant earns/loses points based on finishing position
+// Formula: N + 1 - 2 * rank (plus +10 bonus for 1st place)
+async function awardBracketStandings(league, standings) {
+  const n = standings.length
+  if (n === 0) return
+
+  for (const entry of standings) {
+    const rank = entry.rank
+    const positionPoints = n + 1 - 2 * rank
+    const isWinner = rank === 1
+    const totalPoints = isWinner ? positionPoints + BRACKET_WINNER_BONUS : positionPoints
+
+    let label
+    if (isWinner) {
+      label = `Bracket 1st of ${n} (+${positionPoints} +${BRACKET_WINNER_BONUS} bonus = +${totalPoints})`
+    } else if (totalPoints >= 0) {
+      label = `Bracket ${rank}${ordinal(rank)} of ${n} +${totalPoints} pts`
+    } else {
+      label = `Bracket ${rank}${ordinal(rank)} of ${n} ${totalPoints} pts`
+    }
+
+    await awardUserPoints(entry.user_id, league, totalPoints, label,
+      isWinner ? 'league_win' : 'bracket_finish')
+
+    logger.info({ userId: entry.user_id, leagueId: league.id, rank, totalPoints }, 'Bracket standing awarded')
+  }
+}
+
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return s[(v - 20) % 10] || s[v] || s[0]
 }
 
 export async function completeLeagues() {
@@ -88,22 +119,16 @@ export async function completeLeagues() {
 
   for (const league of leagues) {
     try {
-      let winnerId = null
-
       if (league.format === 'pickem') {
         const standings = await getPickemStandings(league.id)
         if (standings?.length > 0) {
-          winnerId = standings[0].user_id
+          await awardPickemWinner(league, standings[0].user_id)
         }
       } else if (league.format === 'bracket') {
         const standings = await getBracketStandings(league.id)
         if (standings?.length > 0) {
-          winnerId = standings[0].user_id
+          await awardBracketStandings(league, standings)
         }
-      }
-
-      if (winnerId) {
-        await awardLeagueWinner(league, winnerId)
       }
 
       // Mark league as completed
@@ -112,7 +137,7 @@ export async function completeLeagues() {
         .update({ status: 'completed', updated_at: new Date().toISOString() })
         .eq('id', league.id)
 
-      logger.info({ leagueId: league.id, format: league.format, winnerId }, 'League completed')
+      logger.info({ leagueId: league.id, format: league.format }, 'League completed')
     } catch (err) {
       logger.error({ err, leagueId: league.id }, 'Failed to complete league')
     }
