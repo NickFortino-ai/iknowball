@@ -93,6 +93,12 @@ export function useSendEmailBlast() {
   })
 }
 
+export function useSendTargetedEmail() {
+  return useMutation({
+    mutationFn: ({ subject, body, usernames }) => api.post('/admin/email-targeted', { subject, body, usernames }),
+  })
+}
+
 // Futures
 export function useSyncFutures() {
   return useMutation({

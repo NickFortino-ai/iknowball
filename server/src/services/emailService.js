@@ -108,6 +108,77 @@ export async function sendEmailBlast(subject, body) {
   return { total: users.length, sent, failed, errors }
 }
 
+export async function sendTargetedEmail(subject, body, usernames) {
+  const transport = getTransporter()
+
+  // Look up user IDs by username
+  const { data: users, error: dbError } = await supabase
+    .from('users')
+    .select('id, username')
+    .in('username', usernames)
+
+  if (dbError) throw dbError
+  if (!users?.length) return { total: 0, sent: 0, failed: 0, notFound: usernames, errors: [] }
+
+  const foundUsernames = users.map((u) => u.username)
+  const notFound = usernames.filter((u) => !foundUsernames.includes(u))
+
+  // Get emails from auth
+  const userIds = new Set(users.map((u) => u.id))
+  const emailMap = {}
+  let page = 1
+  const perPage = 1000
+
+  while (true) {
+    const { data: { users: authUsers }, error } = await supabase.auth.admin.listUsers({ page, perPage })
+    if (error) throw error
+    if (!authUsers || authUsers.length === 0) break
+
+    for (const authUser of authUsers) {
+      if (authUser.email && userIds.has(authUser.id)) {
+        emailMap[authUser.id] = authUser.email
+      }
+    }
+
+    if (authUsers.length < perPage) break
+    page++
+  }
+
+  logger.info({ count: Object.keys(emailMap).length, usernames: foundUsernames }, 'Sending targeted email')
+
+  let sent = 0
+  let failed = 0
+  const errors = []
+
+  for (const user of users) {
+    const email = emailMap[user.id]
+    if (!email) {
+      failed++
+      errors.push({ username: user.username, error: 'No email found' })
+      continue
+    }
+
+    try {
+      const htmlWithFooter = appendUnsubscribeFooter(body, user.id)
+      await transport.sendMail({
+        from: `"IKnowBall" <${env.SMTP_FROM}>`,
+        to: email,
+        subject,
+        html: htmlWithFooter,
+        text: htmlWithFooter.replace(/<[^>]*>/g, ''),
+      })
+      sent++
+    } catch (err) {
+      failed++
+      errors.push({ username: user.username, error: err.message })
+      logger.error({ username: user.username, error: err.message }, 'Failed to send targeted email')
+    }
+  }
+
+  logger.info({ sent, failed, notFound }, 'Targeted email complete')
+  return { total: users.length, sent, failed, notFound, errors }
+}
+
 export async function sendLeagueInviteEmail(toEmail, leagueName, inviteCode) {
   const transport = getTransporter()
   const baseUrl = env.CORS_ORIGIN.split(',')[0].trim()

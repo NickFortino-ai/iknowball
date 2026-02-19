@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useRecalculatePoints, useSendEmailBlast, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useScoreGames, useRecalculatePoints, useSendEmailBlast, useSendTargetedEmail, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
@@ -24,6 +24,8 @@ export default function AdminPage() {
   const [selectedGame, setSelectedGame] = useState(null)
   const [emailSubject, setEmailSubject] = useState('')
   const [emailBody, setEmailBody] = useState('')
+  const [emailMode, setEmailMode] = useState('all') // 'all' | 'targeted'
+  const [targetUsernames, setTargetUsernames] = useState('')
 
   const sportKey = sportTabs[activeSport].key
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming', 7)
@@ -35,6 +37,7 @@ export default function AdminPage() {
   const scoreGames = useScoreGames()
   const recalculatePoints = useRecalculatePoints()
   const sendEmailBlast = useSendEmailBlast()
+  const sendTargetedEmail = useSendTargetedEmail()
 
   if (!profile?.is_admin) {
     return (
@@ -64,14 +67,32 @@ export default function AdminPage() {
   }
 
   async function handleSendEmail() {
-    if (!confirm(`Send this email to ALL users?\n\nSubject: ${emailSubject}`)) return
-    try {
-      const result = await sendEmailBlast.mutateAsync({ subject: emailSubject, body: emailBody })
-      toast(`Email sent to ${result.sent} users${result.failed ? ` (${result.failed} failed)` : ''}`, 'success')
-      setEmailSubject('')
-      setEmailBody('')
-    } catch (err) {
-      toast(err.message || 'Email blast failed', 'error')
+    if (emailMode === 'targeted') {
+      const usernames = targetUsernames.split(',').map((u) => u.trim()).filter(Boolean)
+      if (!usernames.length) return toast('Enter at least one username', 'error')
+      if (!confirm(`Send this email to ${usernames.length} user(s)?\n\n${usernames.join(', ')}\n\nSubject: ${emailSubject}`)) return
+      try {
+        const result = await sendTargetedEmail.mutateAsync({ subject: emailSubject, body: emailBody, usernames })
+        let msg = `Email sent to ${result.sent} user(s)`
+        if (result.failed) msg += ` (${result.failed} failed)`
+        if (result.notFound?.length) msg += `. Not found: ${result.notFound.join(', ')}`
+        toast(msg, result.sent > 0 ? 'success' : 'error')
+        setEmailSubject('')
+        setEmailBody('')
+        setTargetUsernames('')
+      } catch (err) {
+        toast(err.message || 'Targeted email failed', 'error')
+      }
+    } else {
+      if (!confirm(`Send this email to ALL users?\n\nSubject: ${emailSubject}`)) return
+      try {
+        const result = await sendEmailBlast.mutateAsync({ subject: emailSubject, body: emailBody })
+        toast(`Email sent to ${result.sent} users${result.failed ? ` (${result.failed} failed)` : ''}`, 'success')
+        setEmailSubject('')
+        setEmailBody('')
+      } catch (err) {
+        toast(err.message || 'Email blast failed', 'error')
+      }
     }
   }
 
@@ -159,11 +180,36 @@ export default function AdminPage() {
 
       {adminSection === 'email' && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-          <h2 className="font-display text-xl mb-4">Send Email to All Users</h2>
+          <h2 className="font-display text-xl mb-4">Send Email</h2>
           <p className="text-text-muted text-sm mb-4">
             From: admin@iknowball.club
           </p>
           <div className="space-y-4">
+            <div className="flex bg-bg-primary rounded-lg border border-border p-1">
+              {['all', 'targeted'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setEmailMode(mode)}
+                  className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${
+                    emailMode === mode ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
+                  }`}
+                >
+                  {mode === 'all' ? 'All Users' : 'Targeted'}
+                </button>
+              ))}
+            </div>
+            {emailMode === 'targeted' && (
+              <div>
+                <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Usernames (comma-separated)</label>
+                <input
+                  type="text"
+                  value={targetUsernames}
+                  onChange={(e) => setTargetUsernames(e.target.value)}
+                  placeholder="user1, user2, user3"
+                  className="w-full bg-bg-primary border border-border rounded-lg px-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Subject</label>
               <input
@@ -186,10 +232,14 @@ export default function AdminPage() {
             </div>
             <button
               onClick={handleSendEmail}
-              disabled={sendEmailBlast.isPending || !emailSubject.trim() || !emailBody.trim()}
+              disabled={(sendEmailBlast.isPending || sendTargetedEmail.isPending) || !emailSubject.trim() || !emailBody.trim() || (emailMode === 'targeted' && !targetUsernames.trim())}
               className="bg-accent hover:bg-accent/90 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
             >
-              {sendEmailBlast.isPending ? 'Sending...' : 'Send to All Users'}
+              {(sendEmailBlast.isPending || sendTargetedEmail.isPending)
+                ? 'Sending...'
+                : emailMode === 'targeted'
+                  ? 'Send to Selected Users'
+                  : 'Send to All Users'}
             </button>
           </div>
         </div>

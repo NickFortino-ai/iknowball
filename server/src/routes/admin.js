@@ -4,7 +4,7 @@ import { requireAdmin } from '../middleware/requireAdmin.js'
 import { syncOdds } from '../jobs/syncOdds.js'
 import { scoreGames } from '../jobs/scoreGames.js'
 import { recalculateAllUserPoints } from '../services/scoringService.js'
-import { sendEmailBlast } from '../services/emailService.js'
+import { sendEmailBlast, sendTargetedEmail } from '../services/emailService.js'
 import {
   syncPropsForGame,
   getAllPropsForGame,
@@ -60,6 +60,15 @@ router.post('/email-blast', async (req, res) => {
     return res.status(400).json({ error: 'subject and body are required' })
   }
   const result = await sendEmailBlast(subject, body)
+  res.json(result)
+})
+
+router.post('/email-targeted', async (req, res) => {
+  const { subject, body, usernames } = req.body
+  if (!subject || !body || !usernames?.length) {
+    return res.status(400).json({ error: 'subject, body, and usernames are required' })
+  }
+  const result = await sendTargetedEmail(subject, body, usernames)
   res.json(result)
 })
 
