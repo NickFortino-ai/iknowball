@@ -22,6 +22,7 @@ import PaymentPage from './pages/PaymentPage'
 import JoinPage from './pages/JoinPage'
 import ConnectionsPage from './pages/ConnectionsPage'
 import PrivacyPage from './pages/PrivacyPage'
+import FAQPage from './pages/FAQPage'
 import UnsubscribePage from './pages/UnsubscribePage'
 
 const queryClient = new QueryClient({
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/faq" element={<FAQPage />} />
         <Route path="/unsubscribe" element={<UnsubscribePage />} />
         <Route path="/picks" element={<ProtectedRoute><PicksPage /></ProtectedRoute>} />
         <Route path="/results" element={<ProtectedRoute><ResultsPage /></ProtectedRoute>} />
