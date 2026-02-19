@@ -126,9 +126,15 @@ export default function AdminPage() {
 
   const upcomingGames = games || []
 
-  // Split featured props into settleable vs others
-  const settleableFeatured = (featuredProps || []).filter((p) => p.status === 'locked' || p.status === 'published')
-  const otherFeatured = (featuredProps || []).filter((p) => p.status !== 'locked' && p.status !== 'published')
+  // Build 7-day schedule: map each date to its featured prop (if any)
+  const scheduleDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() + i)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
+    const prop = (featuredProps || []).find((p) => p.featured_date === dateStr) || null
+    return { dateStr, label, prop }
+  })
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -250,79 +256,71 @@ export default function AdminPage() {
       {adminSection === 'futures' && <FuturesAdminPanel />}
 
       {adminSection === 'props' && <>
-      {/* Featured Props — Settle */}
-      {settleableFeatured.length > 0 && (
-        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-          <h2 className="font-semibold text-sm mb-3">Settle Featured Props</h2>
-          <div className="space-y-2">
-            {settleableFeatured.map((prop) => (
-              <div key={prop.id} className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/20">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">
-                    {prop.player_name} — {prop.market_label} ({prop.line})
+      {/* Featured Schedule — 7-day overview */}
+      <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+        <h2 className="font-semibold text-sm mb-3">Featured Schedule</h2>
+        <div className="space-y-1">
+          {scheduleDays.map(({ dateStr, label, prop }) => (
+            <div key={dateStr} className={`flex items-center gap-3 p-2.5 rounded-lg ${
+              prop ? 'bg-accent/5 border border-accent/20' : 'bg-bg-secondary/50'
+            }`}>
+              <div className="w-20 shrink-0 text-xs font-semibold text-text-secondary">{label}</div>
+              {prop ? (
+                <>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {prop.player_name} — {prop.market_label} ({prop.line})
+                    </div>
+                    <div className="text-xs text-text-muted truncate">
+                      {prop.games?.away_team} @ {prop.games?.home_team}
+                    </div>
                   </div>
-                  <div className="text-xs text-text-muted">
-                    {prop.games?.away_team} @ {prop.games?.home_team} — {prop.featured_date}
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  {['over', 'under', 'push'].map((outcome) => (
-                    <button
-                      key={outcome}
-                      onClick={() => handleSettle(prop.id, outcome)}
-                      disabled={settleProps.isPending}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
-                        outcome === 'over'
-                          ? 'bg-correct/20 text-correct hover:bg-correct/30'
-                          : outcome === 'under'
-                            ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
-                            : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
-                      }`}
-                    >
-                      {outcome.charAt(0).toUpperCase() + outcome.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+                  {/* Settle buttons for published/locked */}
+                  {(prop.status === 'published' || prop.status === 'locked') && (
+                    <div className="flex gap-1">
+                      {['over', 'under', 'push'].map((outcome) => (
+                        <button
+                          key={outcome}
+                          onClick={() => handleSettle(prop.id, outcome)}
+                          disabled={settleProps.isPending}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors disabled:opacity-50 ${
+                            outcome === 'over'
+                              ? 'bg-correct/20 text-correct hover:bg-correct/30'
+                              : outcome === 'under'
+                                ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
+                                : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
+                          }`}
+                        >
+                          {outcome.charAt(0).toUpperCase() + outcome.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Outcome badge for settled */}
+                  {prop.outcome && (
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                      prop.outcome === 'over' ? 'bg-correct/20 text-correct'
+                        : prop.outcome === 'under' ? 'bg-incorrect/20 text-incorrect'
+                        : 'bg-text-muted/20 text-text-muted'
+                    }`}>
+                      {prop.outcome.toUpperCase()}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handleUnfeature(prop.id)}
+                    disabled={unfeatureProp.isPending}
+                    className="text-xs text-incorrect hover:underline shrink-0"
+                  >
+                    Unfeature
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-text-muted">—</span>
+              )}
+            </div>
+          ))}
         </div>
-      )}
-
-      {/* Featured Props — Scheduled / Settled */}
-      {otherFeatured.length > 0 && (
-        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-          <h2 className="font-semibold text-sm mb-3">Daily Featured Props</h2>
-          <div className="space-y-2">
-            {otherFeatured.map((prop) => (
-              <div key={prop.id} className="flex items-center gap-3 p-2 rounded-lg bg-correct/5 border border-correct/20">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">
-                    {prop.player_name} — {prop.market_label} ({prop.line})
-                  </div>
-                  <div className="text-xs text-text-muted">
-                    {prop.games?.away_team} @ {prop.games?.home_team} — {prop.games?.sports?.name}
-                  </div>
-                </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                  prop.status === 'settled' ? 'bg-text-muted/20 text-text-muted' :
-                  'bg-correct/20 text-correct'
-                }`}>
-                  {prop.featured_date}
-                </span>
-                <span className="text-xs text-text-muted">{prop.status}</span>
-                {prop.outcome && (
-                  <span className={`text-xs font-semibold ${
-                    prop.outcome === 'over' ? 'text-correct' : prop.outcome === 'under' ? 'text-incorrect' : 'text-text-muted'
-                  }`}>
-                    {prop.outcome.toUpperCase()}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Props Manager */}
       <h2 className="font-display text-xl mb-4">Sync & Feature Props</h2>
