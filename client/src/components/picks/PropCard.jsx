@@ -50,10 +50,11 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
 
   return (
     <div className={`bg-bg-card rounded-2xl border ${pick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4`}>
-      <div className="flex items-center mb-3">
-        <span className="font-semibold text-sm text-text-primary whitespace-nowrap">{prop.player_name}</span>
-        <div className="flex-1 text-center">
-          <span className="font-semibold text-sm text-text-primary">{prop.line} {prop.market_label}</span>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-sm text-text-primary">
+            Will {prop.player_name} go over or under {prop.line} {prop.market_label}?
+          </span>
           {isSettled && prop.actual_value !== null && prop.actual_value !== undefined && (
             <span className="text-xs text-text-muted ml-2">
               Actual: <span className="font-semibold text-accent">{prop.actual_value}</span>
