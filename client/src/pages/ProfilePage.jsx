@@ -115,7 +115,8 @@ export default function ProfilePage() {
 
       {!statsLoading && sportStats?.length > 0 && (
         <div className="mb-6">
-          <h2 className="font-display text-lg text-text-secondary mb-3">Sport Breakdown</h2>
+          <h2 className="font-display text-lg text-text-secondary mb-1">Sport Breakdown</h2>
+          <p className="text-xs text-text-muted mb-3">Straight picks only</p>
           <div className="space-y-3">
             {sportStats.map((stat) => (
               <SportCard key={stat.id} stat={stat} />

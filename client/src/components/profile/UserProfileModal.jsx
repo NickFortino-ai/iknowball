@@ -124,7 +124,8 @@ export default function UserProfileModal({ userId, onClose }) {
             {/* Sport Breakdown */}
             {user.sport_stats?.length > 0 && (
               <div className="mb-4">
-                <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">By Sport</h3>
+                <h3 className="text-xs text-text-muted uppercase tracking-wider mb-1">By Sport</h3>
+                <p className="text-xs text-text-muted mb-3">Straight picks only</p>
                 <div className="space-y-2">
                   {user.sport_stats.map((stat) => (
                     <div key={stat.id} className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">

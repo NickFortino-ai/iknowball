@@ -44,6 +44,10 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
+      {tab.scope === 'sport' && (
+        <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks only</p>
+      )}
+
       {isLoading ? (
         <LoadingSpinner />
       ) : !leaders?.length ? (
