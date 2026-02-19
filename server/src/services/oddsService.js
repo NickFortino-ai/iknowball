@@ -67,27 +67,31 @@ export async function fetchPlayerProps(sportKey, eventId, markets) {
 }
 
 // Futures sport key mapping: parent sport → array of futures sport keys
+// Sourced from The Odds API /v4/sports (has_outrights: true)
 export const FUTURES_SPORT_KEYS = {
   basketball_nba: [
     'basketball_nba_championship_winner',
-    'basketball_nba_mvp',
   ],
   americanfootball_nfl: [
     'americanfootball_nfl_super_bowl_winner',
-    'americanfootball_nfl_mvp',
   ],
   baseball_mlb: [
     'baseball_mlb_world_series_winner',
-    'baseball_mlb_al_cy_young',
-    'baseball_mlb_nl_cy_young',
-    'baseball_mlb_al_mvp',
-    'baseball_mlb_nl_mvp',
   ],
   basketball_ncaab: [
     'basketball_ncaab_championship_winner',
   ],
-  americanfootball_ncaaf: [
-    'americanfootball_ncaaf_championship_winner',
+  icehockey_nhl: [
+    'icehockey_nhl_championship_winner',
+  ],
+  golf: [
+    'golf_masters_tournament_winner',
+    'golf_pga_championship_winner',
+    'golf_the_open_championship_winner',
+    'golf_us_open_winner',
+  ],
+  soccer: [
+    'soccer_fifa_world_cup_winner',
   ],
 }
 
