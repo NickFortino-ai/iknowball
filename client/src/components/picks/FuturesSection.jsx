@@ -37,6 +37,9 @@ export default function FuturesSection({ sportKey }) {
 
   return (
     <div className="space-y-4">
+      <div className="bg-accent/10 border border-accent/20 rounded-xl px-4 py-3 text-sm text-text-secondary">
+        <span className="font-semibold text-accent">Heads up:</span> Futures picks lock immediately and cannot be changed. You get one pick per market — choose wisely.
+      </div>
       {markets.map((market) => (
         <FuturesMarketCard
           key={market.id}
