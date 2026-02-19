@@ -6,6 +6,7 @@ import {
   getMyConnections,
   getPendingRequests,
   getConnectionActivity,
+  getConnectionStatus,
   sendConnectionRequest,
   acceptConnectionRequest,
   declineConnectionRequest,
@@ -27,6 +28,11 @@ router.get('/pending', requireAuth, async (req, res) => {
 router.get('/activity', requireAuth, async (req, res) => {
   const activity = await getConnectionActivity(req.user.id)
   res.json(activity)
+})
+
+router.get('/status/:userId', requireAuth, async (req, res) => {
+  const status = await getConnectionStatus(req.user.id, req.params.userId)
+  res.json(status)
 })
 
 const sendRequestSchema = z.object({

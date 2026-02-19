@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createNotification } from './notificationService.js'
 
 export async function connectUsers(userA, userB, source) {
   // Canonicalize ordering so user_id_1 < user_id_2
@@ -186,7 +187,25 @@ export async function sendConnectionRequest(senderId, username) {
     throw err
   }
 
-  return connectUsers(senderId, recipient.id, 'manual_request')
+  const connection = await connectUsers(senderId, recipient.id, 'manual_request')
+
+  // Get sender username for notification
+  const { data: sender } = await supabase
+    .from('users')
+    .select('username')
+    .eq('id', senderId)
+    .single()
+
+  if (sender) {
+    await createNotification(
+      recipient.id,
+      'connection_request',
+      `@${sender.username} sent you a connection request`,
+      { actorId: senderId, connectionId: connection?.id }
+    )
+  }
+
+  return connection
 }
 
 export async function acceptConnectionRequest(connectionId, userId) {
@@ -403,6 +422,26 @@ export async function getConnectionActivity(userId) {
   // Sort by timestamp desc, limit 15
   feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
   return feed.slice(0, 15)
+}
+
+export async function getConnectionStatus(userId, otherUserId) {
+  const user_id_1 = userId < otherUserId ? userId : otherUserId
+  const user_id_2 = userId < otherUserId ? otherUserId : userId
+
+  const { data } = await supabase
+    .from('connections')
+    .select('status, requested_by')
+    .eq('user_id_1', user_id_1)
+    .eq('user_id_2', user_id_2)
+    .single()
+
+  if (!data) return { status: 'none' }
+
+  if (data.status === 'connected') return { status: 'connected' }
+
+  // Pending — distinguish who sent the request
+  if (data.requested_by === userId) return { status: 'pending_sent' }
+  return { status: 'pending_received' }
 }
 
 export async function sharePickToSquad(userId, pickId) {

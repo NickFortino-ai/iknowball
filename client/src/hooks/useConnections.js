@@ -8,6 +8,14 @@ export function useConnections() {
   })
 }
 
+export function useConnectionStatus(userId) {
+  return useQuery({
+    queryKey: ['connections', 'status', userId],
+    queryFn: () => api.get(`/connections/status/${userId}`),
+    enabled: !!userId,
+  })
+}
+
 export function usePendingConnectionRequests(enabled = true) {
   return useQuery({
     queryKey: ['connections', 'pending'],

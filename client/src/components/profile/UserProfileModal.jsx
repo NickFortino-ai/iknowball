@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { useUserProfile, useUserPickHistory, useUserParlayHistory, useUserPropPickHistory, useUserBonusHistory, useHeadToHead } from '../../hooks/useUserProfile'
 import { useAuth } from '../../hooks/useAuth'
+import { useConnectionStatus, useSendConnectionRequest } from '../../hooks/useConnections'
 import { getTier } from '../../lib/scoring'
+import { toast } from '../ui/Toast'
 import TierBadge from '../ui/TierBadge'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
@@ -14,6 +17,22 @@ export default function UserProfileModal({ userId, onClose }) {
   const { data: bonuses, isLoading: bonusesLoading } = useUserBonusHistory(userId)
   const isViewingOther = userId && session?.user?.id !== userId
   const { data: h2h } = useHeadToHead(isViewingOther ? userId : null)
+  const { data: connectionStatus } = useConnectionStatus(isViewingOther ? userId : null)
+  const sendRequest = useSendConnectionRequest()
+  const [justSent, setJustSent] = useState(false)
+
+  async function handleConnect() {
+    if (!user?.username) return
+    try {
+      await sendRequest.mutateAsync(user.username)
+      setJustSent(true)
+      toast(`Connection request sent to @${user.username}`, 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to send request', 'error')
+    }
+  }
+
+  const connStatus = justSent ? 'pending_sent' : connectionStatus?.status
 
   if (!userId) return null
 
@@ -42,10 +61,29 @@ export default function UserProfileModal({ userId, onClose }) {
               <div className="w-14 h-14 rounded-full bg-bg-primary flex items-center justify-center text-2xl">
                 {user.avatar_emoji || (user.display_name || user.username)?.[0]?.toUpperCase()}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="font-display text-xl truncate">{user.display_name || user.username}</div>
                 <div className="text-text-muted text-sm">@{user.username}</div>
               </div>
+              {isViewingOther && connStatus === 'none' && (
+                <button
+                  onClick={handleConnect}
+                  disabled={sendRequest.isPending}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-full bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
+                >
+                  {sendRequest.isPending ? '...' : 'Connect'}
+                </button>
+              )}
+              {isViewingOther && connStatus === 'pending_sent' && (
+                <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-bg-primary text-text-muted">
+                  Pending
+                </span>
+              )}
+              {isViewingOther && connStatus === 'connected' && (
+                <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-bg-primary text-correct">
+                  Connected
+                </span>
+              )}
             </div>
 
             {/* Bio */}
