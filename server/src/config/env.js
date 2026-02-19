@@ -22,4 +22,5 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS,
   SMTP_FROM: process.env.SMTP_FROM || 'admin@iknowball.club',
   ENABLE_FUTURES_SYNC: process.env.ENABLE_FUTURES_SYNC === 'true',
+  ENABLE_LIVE_SCORES: process.env.ENABLE_LIVE_SCORES === 'true',
 }

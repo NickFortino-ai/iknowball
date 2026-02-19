@@ -18,5 +18,6 @@ export function useGames(sport, status, days = 3) {
   return useQuery({
     queryKey: ['games', sport, status, days],
     queryFn: () => api.get(`/games${qs ? `?${qs}` : ''}`),
+    refetchInterval: 30_000,
   })
 }

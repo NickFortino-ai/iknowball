@@ -5,6 +5,7 @@ import { syncOdds } from './syncOdds.js'
 import { scoreGames } from './scoreGames.js'
 import { lockPicks } from './lockPicks.js'
 import { syncFutures } from './syncFutures.js'
+import { syncLiveScores } from './syncLiveScores.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -33,5 +34,12 @@ export function startScheduler() {
       try { await syncFutures() } catch (err) { logger.error({ err }, 'Futures sync job failed') }
     })
     logger.info('Futures sync scheduled: every 6 hours')
+  }
+
+  if (env.ENABLE_LIVE_SCORES) {
+    cron.schedule('*/1 * * * *', async () => {
+      try { await syncLiveScores() } catch (err) { logger.error({ err }, 'Live scores sync job failed') }
+    })
+    logger.info('Live scores sync scheduled: every 1 minute')
   }
 }

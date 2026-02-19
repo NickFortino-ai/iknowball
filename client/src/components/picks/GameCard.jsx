@@ -9,9 +9,31 @@ function formatGameTime(dateStr) {
     d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
+function formatLiveStatus(game) {
+  const parts = ['LIVE']
+  if (game.period || game.clock) {
+    const sportKey = game.sports?.key || ''
+    let periodLabel = ''
+    if (game.period) {
+      if (sportKey.includes('basketball') || sportKey.includes('football')) {
+        periodLabel = `Q${game.period}`
+      } else if (sportKey.includes('baseball')) {
+        periodLabel = game.period
+      } else {
+        periodLabel = `P${game.period}`
+      }
+    }
+    const detail = [periodLabel, game.clock].filter(Boolean).join(' ')
+    if (detail) parts.push(detail)
+  }
+  return parts.join(' · ')
+}
+
 export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
+  const isLive = game.status === 'live'
+  const hasLiveScores = isLive && game.live_home_score != null
 
   function getButtonState(side) {
     if (parlayMode) {
@@ -55,8 +77,8 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         <span className="text-xs text-text-muted">
           {isFinal
             ? 'Final'
-            : game.status === 'live'
-              ? 'LIVE'
+            : isLive
+              ? formatLiveStatus(game)
               : formatGameTime(game.starts_at)
           }
         </span>
@@ -67,7 +89,8 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
           <PickButton
             team={game.away_team}
             odds={game.away_odds}
-            score={isFinal ? game.away_score : null}
+            score={isFinal ? game.away_score : hasLiveScores ? game.live_away_score : null}
+            isLive={hasLiveScores && !isFinal}
             state={getButtonState('away')}
             disabled={isLocked || isSubmitting}
             onClick={() => handleClick('away')}
@@ -87,7 +110,8 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
           <PickButton
             team={game.home_team}
             odds={game.home_odds}
-            score={isFinal ? game.home_score : null}
+            score={isFinal ? game.home_score : hasLiveScores ? game.live_home_score : null}
+            isLive={hasLiveScores && !isFinal}
             state={getButtonState('home')}
             disabled={isLocked || isSubmitting}
             onClick={() => handleClick('home')}

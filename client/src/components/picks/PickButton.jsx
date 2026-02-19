@@ -8,7 +8,7 @@ const stateStyles = {
   incorrect: 'bg-incorrect-muted border-incorrect',
 }
 
-export default function PickButton({ team, odds, score, state = 'default', onClick, disabled }) {
+export default function PickButton({ team, odds, score, isLive, state = 'default', onClick, disabled }) {
   const style = stateStyles[state] || stateStyles.default
 
   return (
@@ -21,7 +21,7 @@ export default function PickButton({ team, odds, score, state = 'default', onCli
         {team}
       </div>
       {score != null ? (
-        <div className="text-lg font-display text-text-primary">{score}</div>
+        <div className={`text-lg font-display ${isLive ? 'text-accent' : 'text-text-primary'}`}>{score}</div>
       ) : (
         <OddsDisplay odds={odds} isSelected={state === 'selected'} />
       )}
