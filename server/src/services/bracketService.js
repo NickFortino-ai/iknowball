@@ -396,22 +396,23 @@ export async function submitBracket(tournamentId, userId, picks, entryName) {
     matchupMap[m.id] = m
   }
 
-  // For non-bye, non-round-1 matchups: verify the picked team was also picked in a feeder matchup
+  // Validate pick chains: picked team must come from a feeder pick or be a direct team on the matchup
   for (const m of templateMatchups) {
     if (m.is_bye) continue
-    if (m.round_number === 1) continue
+    const feeders = templateMatchups.filter(
+      (f) => f.feeds_into_matchup_id === m.id
+    )
+    if (feeders.length === 0) continue // First-round matchup (no feeders to validate)
 
     const pick = pickMap[m.id]
     if (!pick) continue
 
-    // Find the feeder matchups for this matchup
-    const feeders = templateMatchups.filter(
-      (f) => f.feeds_into_matchup_id === m.id
-    )
-
-    // The picked team must appear as a pick in one of the feeder matchups
+    // The picked team must be picked in a feeder OR be a directly-set team on this matchup
     const pickedInFeeder = feeders.some((f) => pickMap[f.id] === pick)
-    if (!pickedInFeeder) {
+    const directTeams = [m.team_top, m.team_bottom].filter(Boolean)
+    const isDirectTeam = directTeams.includes(pick)
+
+    if (!pickedInFeeder && !isDirectTeam) {
       const err = new Error(`Invalid pick chain: "${pick}" in round ${m.round_number} was not picked as a winner in the previous round`)
       err.status = 400
       throw err

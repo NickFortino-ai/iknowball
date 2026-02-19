@@ -59,23 +59,19 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     return r?.points_per_correct || 0
   }
 
-  // Get the available teams for a matchup (from picks in previous round or from round 1 teams)
+  // Get the available teams for a matchup (from feeder picks or direct team names)
   const getTeamsForMatchup = useCallback((matchup) => {
     const tm = templateMatchupMap[matchup.template_matchup_id]
     if (!tm) return { top: matchup.team_top, bottom: matchup.team_bottom }
 
-    if (matchup.round_number === 1) {
-      return { top: matchup.team_top, bottom: matchup.team_bottom }
-    }
-
-    // Find feeder matchups
+    // Find feeder matchups for each slot
     const feeders = templateMatchups.filter((f) => f.feeds_into_matchup_id === tm.id)
     const topFeeder = feeders.find((f) => f.feeds_into_slot === 'top')
     const bottomFeeder = feeders.find((f) => f.feeds_into_slot === 'bottom')
 
     return {
-      top: topFeeder ? picks[topFeeder.id] || null : matchup.team_top,
-      bottom: bottomFeeder ? picks[bottomFeeder.id] || null : matchup.team_bottom,
+      top: topFeeder ? (picks[topFeeder.id] || null) : matchup.team_top,
+      bottom: bottomFeeder ? (picks[bottomFeeder.id] || null) : matchup.team_bottom,
     }
   }, [picks, templateMatchupMap, templateMatchups])
 

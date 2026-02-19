@@ -72,9 +72,21 @@ const SPORT_OPTIONS = [
   { value: 'basketball_wnba', label: 'WNBA' },
 ]
 
-const TEAM_COUNT_OPTIONS = [4, 8, 16, 32, 64]
+const TEAM_COUNT_OPTIONS = [4, 8, 16, 32, 64, 68]
 
 function generateRounds(teamCount) {
+  if (teamCount === 68) {
+    return [
+      { round_number: 0, name: 'First Four', points_per_correct: 5 },
+      { round_number: 1, name: 'Round of 64', points_per_correct: 10 },
+      { round_number: 2, name: 'Round of 32', points_per_correct: 20 },
+      { round_number: 3, name: 'Sweet 16', points_per_correct: 40 },
+      { round_number: 4, name: 'Elite 8', points_per_correct: 80 },
+      { round_number: 5, name: 'Final Four', points_per_correct: 160 },
+      { round_number: 6, name: 'Championship', points_per_correct: 320 },
+    ]
+  }
+
   const numRounds = Math.log2(teamCount)
   const defaultNames = {
     1: 'Round 1',
@@ -109,14 +121,17 @@ function generateRounds(teamCount) {
 }
 
 function generateMatchups(teamCount, regions, rounds) {
+  const effectiveTeamCount = teamCount === 68 ? 64 : teamCount
   const matchups = []
-  const numRounds = rounds.length
+  // For 68 teams, rounds includes round 0 (First Four) — only generate matchups for rounds 1+
+  const matchupRounds = rounds.filter((r) => r.round_number >= 1)
+  const numRounds = matchupRounds.length
   let position = 0
 
   // Matchups per region per round
   const hasRegions = regions && regions.length > 0
   const regionsToUse = hasRegions ? regions : [null]
-  const teamsPerRegion = teamCount / regionsToUse.length
+  const teamsPerRegion = effectiveTeamCount / regionsToUse.length
   const matchupsPerRegionR1 = teamsPerRegion / 2
 
   // Generate round 1 matchups per region
@@ -249,6 +264,33 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     return []
   })
   const [savedTemplateId, setSavedTemplateId] = useState(templateId)
+  // Play-in slots for 68-team brackets: key = `${matchupIdx}-${'top'|'bottom'}`, value = { team1, team2 }
+  const [playInSlots, setPlayInSlots] = useState({})
+  const playInCount = Object.keys(playInSlots).length
+
+  function togglePlayIn(idx, slot) {
+    const key = `${idx}-${slot}`
+    setPlayInSlots((prev) => {
+      const next = { ...prev }
+      if (next[key]) {
+        delete next[key]
+      } else {
+        next[key] = { team1: '', team2: '' }
+        // Clear the team on the Round 1 matchup when toggling on
+        const updated = [...matchups]
+        updated[idx] = { ...updated[idx], [slot === 'top' ? 'team_top' : 'team_bottom']: '' }
+        setMatchups(updated)
+      }
+      return next
+    })
+  }
+
+  function updatePlayInTeam(key, field, value) {
+    setPlayInSlots((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: value },
+    }))
+  }
 
   function handleAddRegion() {
     if (regionInput.trim() && !regions.includes(regionInput.trim())) {
@@ -264,6 +306,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   function handleGenerateMatchups() {
     const generated = generateMatchups(teamCount, regions, rounds)
     setMatchups(generated)
+    setPlayInSlots({})
     setStep(3)
   }
 
@@ -313,14 +356,50 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   }
 
   async function handleSaveMatchups() {
+    // Validate play-in count for 68-team brackets
+    if (teamCount === 68 && playInCount !== 4) {
+      toast(`Must assign exactly 4 play-in games (currently ${playInCount})`, 'error')
+      return
+    }
+
     let id = savedTemplateId
     if (!id) {
       id = await handleSaveTemplate()
       if (!id) return
     }
 
+    // Build final matchups array, injecting Round 0 play-in matchups
+    let allMatchups = [...matchups]
+
+    if (teamCount === 68) {
+      let playInPosition = 0
+      for (const [key, teams] of Object.entries(playInSlots)) {
+        const [idxStr, slot] = key.split('-')
+        const idx = parseInt(idxStr)
+        const targetMatchup = allMatchups[idx]
+
+        // Clear the play-in slot on the Round 1 matchup (will be filled by winner)
+        targetMatchup[slot === 'top' ? 'team_top' : 'team_bottom'] = null
+
+        // Create Round 0 matchup
+        allMatchups.push({
+          round_number: 0,
+          position: playInPosition++,
+          region: targetMatchup.region,
+          seed_top: targetMatchup[slot === 'top' ? 'seed_top' : 'seed_bottom'],
+          seed_bottom: targetMatchup[slot === 'top' ? 'seed_top' : 'seed_bottom'],
+          team_top: teams.team1,
+          team_bottom: teams.team2,
+          is_bye: false,
+          feeds_into_round: 1,
+          feeds_into_position: targetMatchup.position,
+          feeds_into_slot: slot,
+        })
+      }
+    }
+
     try {
-      await saveMatchups.mutateAsync({ templateId: id, matchups })
+      await saveMatchups.mutateAsync({ templateId: id, matchups: allMatchups })
       toast('Matchups saved!', 'success')
       onClose()
     } catch (err) {
@@ -538,6 +617,14 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             Enter Round 1 teams and seeds. Later rounds auto-populate from bracket structure.
           </div>
 
+          {teamCount === 68 && (
+            <div className={`text-sm font-semibold text-center py-2 rounded-lg ${
+              playInCount === 4 ? 'bg-correct/20 text-correct' : 'bg-accent/20 text-accent'
+            }`}>
+              {playInCount}/4 play-in games assigned
+            </div>
+          )}
+
           {Object.entries(groupedByRegion).map(([regionName, regionMatchups]) => (
             <div key={regionName}>
               {regions.length > 0 && (
@@ -546,6 +633,11 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               <div className="space-y-2">
                 {regionMatchups.map((m) => {
                   const idx = matchups.indexOf(m)
+                  const topPlayInKey = `${idx}-top`
+                  const bottomPlayInKey = `${idx}-bottom`
+                  const topIsPlayIn = !!playInSlots[topPlayInKey]
+                  const bottomIsPlayIn = !!playInSlots[bottomPlayInKey]
+
                   return (
                     <div key={idx} className="bg-bg-card rounded-xl border border-border p-3">
                       <div className="flex items-center gap-2 mb-1">
@@ -560,28 +652,92 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                         </label>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
+                        {/* Top team slot */}
                         <div>
-                          <div className="text-[10px] text-text-muted mb-1">
-                            #{m.seed_top} seed
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="text-[10px] text-text-muted">#{m.seed_top} seed</span>
+                            {teamCount === 68 && !m.is_bye && (
+                              <button
+                                type="button"
+                                onClick={() => togglePlayIn(idx, 'top')}
+                                className={`ml-auto text-[9px] px-1.5 py-0.5 rounded font-semibold transition-colors ${
+                                  topIsPlayIn
+                                    ? 'bg-accent text-white'
+                                    : 'bg-bg-input text-text-muted hover:text-text-secondary'
+                                }`}
+                              >
+                                Play-in
+                              </button>
+                            )}
                           </div>
-                          <TeamAutocomplete
-                            value={m.team_top || ''}
-                            onChange={(val) => updateMatchupTeam(idx, 'team_top', val)}
-                            placeholder="Team name"
-                            teams={apiTeams}
-                          />
+                          {topIsPlayIn ? (
+                            <div className="space-y-1">
+                              <TeamAutocomplete
+                                value={playInSlots[topPlayInKey]?.team1 || ''}
+                                onChange={(val) => updatePlayInTeam(topPlayInKey, 'team1', val)}
+                                placeholder="Play-in team 1"
+                                teams={apiTeams}
+                              />
+                              <div className="text-[9px] text-text-muted text-center">vs</div>
+                              <TeamAutocomplete
+                                value={playInSlots[topPlayInKey]?.team2 || ''}
+                                onChange={(val) => updatePlayInTeam(topPlayInKey, 'team2', val)}
+                                placeholder="Play-in team 2"
+                                teams={apiTeams}
+                              />
+                            </div>
+                          ) : (
+                            <TeamAutocomplete
+                              value={m.team_top || ''}
+                              onChange={(val) => updateMatchupTeam(idx, 'team_top', val)}
+                              placeholder="Team name"
+                              teams={apiTeams}
+                            />
+                          )}
                         </div>
+                        {/* Bottom team slot */}
                         <div>
-                          <div className="text-[10px] text-text-muted mb-1">
-                            #{m.seed_bottom} seed
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="text-[10px] text-text-muted">#{m.seed_bottom} seed</span>
+                            {teamCount === 68 && !m.is_bye && (
+                              <button
+                                type="button"
+                                onClick={() => togglePlayIn(idx, 'bottom')}
+                                className={`ml-auto text-[9px] px-1.5 py-0.5 rounded font-semibold transition-colors ${
+                                  bottomIsPlayIn
+                                    ? 'bg-accent text-white'
+                                    : 'bg-bg-input text-text-muted hover:text-text-secondary'
+                                }`}
+                              >
+                                Play-in
+                              </button>
+                            )}
                           </div>
-                          <TeamAutocomplete
-                            value={m.team_bottom || ''}
-                            onChange={(val) => updateMatchupTeam(idx, 'team_bottom', val)}
-                            placeholder={m.is_bye ? '(bye)' : 'Team name'}
-                            disabled={m.is_bye}
-                            teams={apiTeams}
-                          />
+                          {bottomIsPlayIn ? (
+                            <div className="space-y-1">
+                              <TeamAutocomplete
+                                value={playInSlots[bottomPlayInKey]?.team1 || ''}
+                                onChange={(val) => updatePlayInTeam(bottomPlayInKey, 'team1', val)}
+                                placeholder="Play-in team 1"
+                                teams={apiTeams}
+                              />
+                              <div className="text-[9px] text-text-muted text-center">vs</div>
+                              <TeamAutocomplete
+                                value={playInSlots[bottomPlayInKey]?.team2 || ''}
+                                onChange={(val) => updatePlayInTeam(bottomPlayInKey, 'team2', val)}
+                                placeholder="Play-in team 2"
+                                teams={apiTeams}
+                              />
+                            </div>
+                          ) : (
+                            <TeamAutocomplete
+                              value={m.team_bottom || ''}
+                              onChange={(val) => updateMatchupTeam(idx, 'team_bottom', val)}
+                              placeholder={m.is_bye ? '(bye)' : 'Team name'}
+                              disabled={m.is_bye}
+                              teams={apiTeams}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
