@@ -3,13 +3,31 @@ import { logger } from '../utils/logger.js'
 import { getPickemStandings } from '../services/leagueService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 
-const LEAGUE_WIN_BONUS = 10
+const BRACKET_WIN_BONUS = 10
+
+async function getLeagueMemberCount(leagueId) {
+  const { count, error } = await supabase
+    .from('league_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('league_id', leagueId)
+
+  if (error) {
+    logger.error({ error, leagueId }, 'Failed to count league members')
+    return 1
+  }
+  return count || 1
+}
 
 async function awardLeagueWinner(league, winnerId) {
+  // Pick'em: +1 point per league member; Bracket: flat +10
+  const bonus = league.format === 'pickem'
+    ? await getLeagueMemberCount(league.id)
+    : BRACKET_WIN_BONUS
+
   // Award global points
   const { error } = await supabase.rpc('increment_user_points', {
     user_row_id: winnerId,
-    points_delta: LEAGUE_WIN_BONUS,
+    points_delta: bonus,
   })
 
   if (error) {
@@ -22,8 +40,10 @@ async function awardLeagueWinner(league, winnerId) {
     user_id: winnerId,
     league_id: league.id,
     type: 'league_win',
-    label: 'League Winner +10 points',
-    points: LEAGUE_WIN_BONUS,
+    label: league.format === 'pickem'
+      ? `Won ${bonus}-person league +${bonus} pts`
+      : `League Winner +${bonus} points`,
+    points: bonus,
   })
 
   // Award sport stats
@@ -39,12 +59,12 @@ async function awardLeagueWinner(league, winnerId) {
         p_user_id: winnerId,
         p_sport_id: sport.id,
         p_is_correct: true,
-        p_points: LEAGUE_WIN_BONUS,
+        p_points: bonus,
       })
     }
   }
 
-  logger.info({ winnerId, leagueId: league.id, format: league.format }, 'League winner awarded')
+  logger.info({ winnerId, leagueId: league.id, format: league.format, bonus }, 'League winner awarded')
 }
 
 export async function completeLeagues() {
