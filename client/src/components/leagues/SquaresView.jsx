@@ -5,11 +5,14 @@ import {
   useRandomAssignSquares,
   useLockDigits,
   useScoreQuarter,
+  useUpdateBoardSettings,
 } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
+
+const COST_PER_SQUARE = 10
 
 export default function SquaresView({ league, isCommissioner }) {
   const { data: board, isLoading } = useSquaresBoard(league.id)
@@ -18,11 +21,17 @@ export default function SquaresView({ league, isCommissioner }) {
   const randomAssign = useRandomAssignSquares()
   const lockDigitsM = useLockDigits()
   const scoreQuarterM = useScoreQuarter()
+  const updateSettings = useUpdateBoardSettings()
 
   const [scoreForm, setScoreForm] = useState({ quarter: 1, awayScore: '', homeScore: '' })
+  const [editRowName, setEditRowName] = useState(null)
+  const [editColName, setEditColName] = useState(null)
 
   if (isLoading) return <LoadingSpinner />
   if (!board) return <EmptyState title="No board" message="Board not available" />
+
+  const rowTeamName = board.row_team_name || 'Away'
+  const colTeamName = board.col_team_name || 'Home'
 
   // Build grid
   const grid = Array.from({ length: 10 }, () => Array(10).fill(null))
@@ -75,6 +84,17 @@ export default function SquaresView({ league, isCommissioner }) {
     }
   }
 
+  async function handleSaveTeamName(field, value) {
+    try {
+      await updateSettings.mutateAsync({ leagueId: league.id, [field]: value })
+      toast('Team name updated!', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to update team name', 'error')
+    }
+    if (field === 'row_team_name') setEditRowName(null)
+    else setEditColName(null)
+  }
+
   // Quarter results
   const quarters = [1, 2, 3, 4].map((q) => ({
     quarter: q,
@@ -105,6 +125,81 @@ export default function SquaresView({ league, isCommissioner }) {
       {isCommissioner && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 space-y-3">
           <h3 className="font-display text-sm text-text-secondary">Commissioner Controls</h3>
+
+          {/* Editable team names (before digits locked) */}
+          {!board.digits_locked && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-text-muted mb-1">Row Team</label>
+                {editRowName !== null ? (
+                  <div className="flex gap-1">
+                    <input
+                      type="text"
+                      value={editRowName}
+                      onChange={(e) => setEditRowName(e.target.value)}
+                      maxLength={50}
+                      className="flex-1 bg-bg-input border border-border rounded-lg px-2 py-1.5 text-xs text-text-primary"
+                    />
+                    <button
+                      onClick={() => handleSaveTeamName('row_team_name', editRowName)}
+                      disabled={updateSettings.isPending}
+                      className="px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-accent text-white"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditRowName(null)}
+                      className="px-2 py-1.5 rounded-lg text-[10px] text-text-muted"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setEditRowName(rowTeamName)}
+                    className="text-xs text-accent hover:underline"
+                  >
+                    {rowTeamName}
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className="block text-[10px] text-text-muted mb-1">Column Team</label>
+                {editColName !== null ? (
+                  <div className="flex gap-1">
+                    <input
+                      type="text"
+                      value={editColName}
+                      onChange={(e) => setEditColName(e.target.value)}
+                      maxLength={50}
+                      className="flex-1 bg-bg-input border border-border rounded-lg px-2 py-1.5 text-xs text-text-primary"
+                    />
+                    <button
+                      onClick={() => handleSaveTeamName('col_team_name', editColName)}
+                      disabled={updateSettings.isPending}
+                      className="px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-accent text-white"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditColName(null)}
+                      className="px-2 py-1.5 rounded-lg text-[10px] text-text-muted"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setEditColName(colTeamName)}
+                    className="text-xs text-accent hover:underline"
+                  >
+                    {colTeamName}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2">
             {!isSelfSelect && totalClaimed === 0 && (
               <button
@@ -140,7 +235,7 @@ export default function SquaresView({ league, isCommissioner }) {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] text-text-muted mb-1">{board.games?.away_team}</label>
+                <label className="block text-[10px] text-text-muted mb-1">{rowTeamName}</label>
                 <input
                   type="number"
                   min={0}
@@ -150,7 +245,7 @@ export default function SquaresView({ league, isCommissioner }) {
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-text-muted mb-1">{board.games?.home_team}</label>
+                <label className="block text-[10px] text-text-muted mb-1">{colTeamName}</label>
                 <input
                   type="number"
                   min={0}
@@ -200,6 +295,7 @@ export default function SquaresView({ league, isCommissioner }) {
       <div className="text-xs text-text-muted text-center mb-3">
         {totalClaimed}/100 squares claimed
         {board.digits_locked ? ' — Digits locked' : ''}
+        {' — '}{COST_PER_SQUARE} pts per square
       </div>
 
       {/* Grid */}
@@ -263,14 +359,50 @@ export default function SquaresView({ league, isCommissioner }) {
             </tbody>
           </table>
           {/* Axis labels */}
-          {board.games && (
-            <div className="flex justify-between text-[10px] text-text-muted mt-2 px-8">
-              <span>Rows: {board.games.away_team}</span>
-              <span>Columns: {board.games.home_team}</span>
-            </div>
-          )}
+          <div className="flex justify-between text-[10px] text-text-muted mt-2 px-8">
+            <span>Rows: {rowTeamName}</span>
+            <span>Columns: {colTeamName}</span>
+          </div>
         </div>
       </div>
+
+      {/* Standings */}
+      {board.standings?.length > 0 && (
+        <div className="mt-6">
+          <h3 className="font-display text-sm text-text-secondary mb-3">Standings</h3>
+          <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border text-text-muted">
+                  <th className="text-left py-2 px-3 font-semibold">Player</th>
+                  <th className="text-center py-2 px-1 font-semibold">Squares</th>
+                  <th className="text-center py-2 px-1 font-semibold">Won</th>
+                  <th className="text-right py-2 px-3 font-semibold">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {board.standings.map((s) => (
+                  <tr key={s.user_id} className="border-b border-border last:border-0">
+                    <td className="py-2 px-3 font-semibold">
+                      {s.user?.avatar_emoji && <span className="mr-1">{s.user.avatar_emoji}</span>}
+                      {s.user?.display_name || s.user?.username || 'Unknown'}
+                    </td>
+                    <td className="text-center py-2 px-1 text-text-muted">{s.squares}</td>
+                    <td className="text-center py-2 px-1 text-text-muted">
+                      {s.winnings > 0 ? `+${s.winnings}` : s.winnings}
+                    </td>
+                    <td className={`text-right py-2 px-3 font-semibold ${
+                      s.balance > 0 ? 'text-correct' : s.balance < 0 ? 'text-incorrect' : 'text-text-muted'
+                    }`}>
+                      {s.balance > 0 ? '+' : ''}{s.balance}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -19,7 +19,48 @@ export async function getBoard(leagueId) {
     .select('*, users(id, username, display_name, avatar_emoji)')
     .eq('board_id', board.id)
 
-  return { ...board, claims: claims || [] }
+  // Fetch league settings for points_per_quarter
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('settings')
+    .eq('id', leagueId)
+    .single()
+
+  const pointsPerQuarter = league?.settings?.points_per_quarter || [25, 25, 25, 50]
+  const COST_PER_SQUARE = 10
+  const claimsList = claims || []
+
+  // Compute standings: for each user, sum quarter payouts won minus square costs
+  const userMap = {}
+  for (const claim of claimsList) {
+    const uid = claim.user_id
+    if (!userMap[uid]) {
+      userMap[uid] = {
+        user_id: uid,
+        user: claim.users,
+        squares: 0,
+        winnings: 0,
+      }
+    }
+    userMap[uid].squares++
+  }
+
+  for (let q = 1; q <= 4; q++) {
+    const winnerId = board[`q${q}_winner_id`]
+    if (winnerId && userMap[winnerId]) {
+      userMap[winnerId].winnings += pointsPerQuarter[q - 1] || 0
+    }
+  }
+
+  const standings = Object.values(userMap)
+    .map((u) => ({
+      ...u,
+      cost: u.squares * COST_PER_SQUARE,
+      balance: u.winnings - u.squares * COST_PER_SQUARE,
+    }))
+    .sort((a, b) => b.balance - a.balance)
+
+  return { ...board, claims: claimsList, standings }
 }
 
 export async function claimSquare(leagueId, userId, rowPos, colPos) {
@@ -295,4 +336,54 @@ export async function scoreQuarter(leagueId, userId, quarter, awayScore, homeSco
   }
 
   return { quarter, awayScore, homeScore, winningRow, winningCol, winnerId }
+}
+
+export async function updateBoardSettings(leagueId, userId, { row_team_name, col_team_name }) {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id')
+    .eq('id', leagueId)
+    .single()
+
+  if (!league || league.commissioner_id !== userId) {
+    const err = new Error('Only the commissioner can update board settings')
+    err.status = 403
+    throw err
+  }
+
+  const { data: board } = await supabase
+    .from('squares_boards')
+    .select('id, digits_locked')
+    .eq('league_id', leagueId)
+    .single()
+
+  if (!board) {
+    const err = new Error('Squares board not found')
+    err.status = 404
+    throw err
+  }
+
+  if (board.digits_locked) {
+    const err = new Error('Cannot update team names after digits are locked')
+    err.status = 400
+    throw err
+  }
+
+  const updates = { updated_at: new Date().toISOString() }
+  if (row_team_name !== undefined) updates.row_team_name = row_team_name
+  if (col_team_name !== undefined) updates.col_team_name = col_team_name
+
+  const { data, error } = await supabase
+    .from('squares_boards')
+    .update(updates)
+    .eq('id', board.id)
+    .select()
+    .single()
+
+  if (error) {
+    logger.error({ error }, 'Failed to update board settings')
+    throw error
+  }
+
+  return data
 }

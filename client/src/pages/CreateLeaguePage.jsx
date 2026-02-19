@@ -56,6 +56,8 @@ export default function CreateLeaguePage() {
   const [assignmentMethod, setAssignmentMethod] = useState('self_select')
   const [squaresPerMember, setSquaresPerMember] = useState('')
   const [pointsPerQuarter, setPointsPerQuarter] = useState([25, 25, 25, 50])
+  const [rowTeamName, setRowTeamName] = useState('')
+  const [colTeamName, setColTeamName] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -75,6 +77,8 @@ export default function CreateLeaguePage() {
       settings.assignment_method = assignmentMethod
       settings.points_per_quarter = pointsPerQuarter
       if (squaresPerMember) settings.squares_per_member = parseInt(squaresPerMember, 10)
+      if (rowTeamName) settings.row_team_name = rowTeamName
+      if (colTeamName) settings.col_team_name = colTeamName
     }
     if (format === 'bracket') {
       settings.template_id = templateId
@@ -380,6 +384,30 @@ export default function CreateLeaguePage() {
                 max={100}
                 className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-text-muted mb-1">Row Team Name</label>
+                <input
+                  type="text"
+                  value={rowTeamName}
+                  onChange={(e) => setRowTeamName(e.target.value)}
+                  placeholder="Away"
+                  maxLength={50}
+                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-text-muted mb-1">Column Team Name</label>
+                <input
+                  type="text"
+                  value={colTeamName}
+                  onChange={(e) => setColTeamName(e.target.value)}
+                  placeholder="Home"
+                  maxLength={50}
+                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-xs text-text-muted mb-2">Points per Quarter</label>

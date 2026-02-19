@@ -92,6 +92,8 @@ export async function createLeague(userId, data) {
     await supabase.from('squares_boards').insert({
       league_id: league.id,
       game_id: league.settings.game_id,
+      row_team_name: league.settings.row_team_name || 'Away',
+      col_team_name: league.settings.col_team_name || 'Home',
     })
   }
 

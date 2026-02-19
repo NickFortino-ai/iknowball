@@ -33,6 +33,7 @@ import {
   randomAssignSquares,
   lockDigits,
   scoreQuarter,
+  updateBoardSettings,
 } from '../services/squaresService.js'
 import {
   getTournament,
@@ -94,6 +95,8 @@ const createLeagueSchema = z.object({
     squares_per_member: z.number().int().min(1).max(100).optional(),
     assignment_method: z.enum(['self_select', 'random']).optional(),
     points_per_quarter: z.array(z.number().int().min(0)).length(4).optional(),
+    row_team_name: z.string().min(1).max(50).optional(),
+    col_team_name: z.string().min(1).max(50).optional(),
     template_id: z.string().uuid().optional(),
     locks_at: z.string().optional(),
   }).optional(),
@@ -327,6 +330,16 @@ router.post('/:id/squares/score-quarter', requireAuth, validate(scoreQuarterSche
     req.validated.home_score
   )
   res.json(result)
+})
+
+const updateBoardSettingsSchema = z.object({
+  row_team_name: z.string().min(1).max(50).optional(),
+  col_team_name: z.string().min(1).max(50).optional(),
+})
+
+router.patch('/:id/squares/board', requireAuth, validate(updateBoardSettingsSchema), async (req, res) => {
+  const board = await updateBoardSettings(req.params.id, req.user.id, req.validated)
+  res.json(board)
 })
 
 // ============================================

@@ -211,6 +211,18 @@ export function useScoreQuarter() {
   })
 }
 
+export function useUpdateBoardSettings() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ leagueId, ...settings }) =>
+      api.patch(`/leagues/${leagueId}/squares/board`, settings),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'squares'] })
+    },
+  })
+}
+
 // Bracket
 export function useBracketTournament(leagueId) {
   return useQuery({
