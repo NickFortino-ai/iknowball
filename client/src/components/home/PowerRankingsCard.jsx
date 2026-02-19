@@ -66,7 +66,21 @@ export default function PowerRankingsCard() {
     [recap?.recap_content]
   )
 
-  if (isLoading || !recap) return null
+  if (isLoading) return null
+
+  // Placeholder when no recap exists yet
+  if (!recap) {
+    return (
+      <div className="mb-8">
+        <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
+          <h2 className="font-display text-xl mb-2">WEEKLY POWER RANKINGS</h2>
+          <p className="text-text-secondary text-sm">
+            Power Rankings drop every Monday — make your picks to get featured!
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   const dateRange = formatDateRange(recap.week_start, recap.week_end)
 
