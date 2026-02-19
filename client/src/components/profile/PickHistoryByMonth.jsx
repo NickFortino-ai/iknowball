@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
-function normalizeItems(picks, parlays, propPicks) {
+function normalizeItems(picks, parlays, propPicks, futuresPicks) {
   const items = []
 
   for (const pick of (picks || [])) {
@@ -45,6 +45,18 @@ function normalizeItems(picks, parlays, propPicks) {
     })
   }
 
+  for (const fp of (futuresPicks || [])) {
+    items.push({
+      id: fp.id,
+      type: 'futures',
+      label: fp.futures_markets?.title || 'Futures',
+      detail: `Picked: ${fp.picked_outcome}`,
+      date: fp.updated_at,
+      is_correct: fp.is_correct,
+      points_earned: fp.points_earned,
+    })
+  }
+
   return items
 }
 
@@ -74,11 +86,11 @@ function getMonthStats(items) {
   return { wins, losses, net }
 }
 
-export default function PickHistoryByMonth({ picks, parlays, propPicks, isLoading }) {
+export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, isLoading }) {
   const months = useMemo(() => {
-    const items = normalizeItems(picks, parlays, propPicks)
+    const items = normalizeItems(picks, parlays, propPicks, futuresPicks)
     return items.length ? groupByMonth(items) : []
-  }, [picks, parlays, propPicks])
+  }, [picks, parlays, propPicks, futuresPicks])
   const [expanded, setExpanded] = useState({})
 
   function isExpanded(key, index) {
@@ -149,7 +161,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, isLoadin
                         <div className="text-sm font-semibold truncate">
                           {item.type !== 'pick' && (
                             <span className="text-xs text-text-muted font-normal mr-1.5">
-                              {item.type === 'parlay' ? 'Parlay' : 'Prop'}
+                              {item.type === 'parlay' ? 'Parlay' : item.type === 'futures' ? 'Futures' : 'Prop'}
                             </span>
                           )}
                           {item.label}

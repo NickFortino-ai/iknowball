@@ -65,3 +65,36 @@ export async function fetchPlayerProps(sportKey, eventId, markets) {
     oddsFormat: 'american',
   })
 }
+
+// Futures sport key mapping: parent sport → array of futures sport keys
+export const FUTURES_SPORT_KEYS = {
+  basketball_nba: [
+    'basketball_nba_championship_winner',
+    'basketball_nba_mvp',
+  ],
+  americanfootball_nfl: [
+    'americanfootball_nfl_super_bowl_winner',
+    'americanfootball_nfl_mvp',
+  ],
+  baseball_mlb: [
+    'baseball_mlb_world_series_winner',
+    'baseball_mlb_al_cy_young',
+    'baseball_mlb_nl_cy_young',
+    'baseball_mlb_al_mvp',
+    'baseball_mlb_nl_mvp',
+  ],
+  basketball_ncaab: [
+    'basketball_ncaab_championship_winner',
+  ],
+  americanfootball_ncaaf: [
+    'americanfootball_ncaaf_championship_winner',
+  ],
+}
+
+export async function fetchFuturesOdds(futuresSportKey) {
+  return fetchFromOddsApi(`/sports/${futuresSportKey}/odds`, {
+    regions: 'us',
+    markets: 'outrights',
+    oddsFormat: 'american',
+  })
+}

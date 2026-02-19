@@ -4,6 +4,7 @@ import { logger } from '../utils/logger.js'
 import { syncOdds } from './syncOdds.js'
 import { scoreGames } from './scoreGames.js'
 import { lockPicks } from './lockPicks.js'
+import { syncFutures } from './syncFutures.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -25,5 +26,12 @@ export function startScheduler() {
       try { await lockPicks() } catch (err) { logger.error({ err }, 'Lock picks job failed') }
     })
     logger.info('Pick lock scheduled: every 1 minute')
+  }
+
+  if (env.ENABLE_FUTURES_SYNC) {
+    cron.schedule('0 */6 * * *', async () => {
+      try { await syncFutures() } catch (err) { logger.error({ err }, 'Futures sync job failed') }
+    })
+    logger.info('Futures sync scheduled: every 6 hours')
   }
 }

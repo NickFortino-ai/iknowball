@@ -2,10 +2,12 @@ import { useMemo } from 'react'
 import { usePickHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
 import { usePropPickHistory } from '../hooks/useProps'
+import { useFuturesPickHistory } from '../hooks/useFutures'
 import { usePickReactionsBatch } from '../hooks/useSocial'
 import GameCard from '../components/picks/GameCard'
 import ParlayCard from '../components/picks/ParlayCard'
 import PropCard from '../components/picks/PropCard'
+import FuturesPickCard from '../components/picks/FuturesPickCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 
@@ -13,8 +15,9 @@ export default function ResultsPage() {
   const { data: picks, isLoading } = usePickHistory()
   const { data: parlays, isLoading: parlaysLoading } = useParlayHistory()
   const { data: propPicks, isLoading: propsLoading } = usePropPickHistory()
+  const { data: futuresPicks, isLoading: futuresLoading } = useFuturesPickHistory()
 
-  const { livePicks, settledPicks, liveParlays, settledParlays, liveProps, settledProps } = useMemo(() => {
+  const { livePicks, settledPicks, liveParlays, settledParlays, liveProps, settledProps, liveFutures, settledFutures } = useMemo(() => {
     return {
       livePicks: (picks || []).filter(p => p.status === 'locked'),
       settledPicks: (picks || []).filter(p => p.status === 'settled'),
@@ -22,35 +25,25 @@ export default function ResultsPage() {
       settledParlays: (parlays || []).filter(p => p.status === 'settled'),
       liveProps: (propPicks || []).filter(p => p.status === 'locked'),
       settledProps: (propPicks || []).filter(p => p.status === 'settled'),
+      liveFutures: (futuresPicks || []).filter(p => p.status === 'locked'),
+      settledFutures: (futuresPicks || []).filter(p => p.status === 'settled'),
     }
-  }, [picks, parlays, propPicks])
+  }, [picks, parlays, propPicks, futuresPicks])
 
-  const hasLive = livePicks.length > 0 || liveParlays.length > 0 || liveProps.length > 0
-  const hasSettled = settledPicks.length > 0 || settledParlays.length > 0 || settledProps.length > 0
+  const hasLive = livePicks.length > 0 || liveParlays.length > 0 || liveProps.length > 0 || liveFutures.length > 0
+  const hasSettled = settledPicks.length > 0 || settledParlays.length > 0 || settledProps.length > 0 || settledFutures.length > 0
 
   const weeklyStats = useMemo(() => {
-    if (!settledPicks.length && !settledParlays.length && !settledProps.length) return null
+    if (!settledPicks.length && !settledParlays.length && !settledProps.length && !settledFutures.length) return null
     let wins = 0, losses = 0, pushes = 0, netPoints = 0
-    for (const pick of settledPicks) {
-      if (pick.is_correct === true) wins++
-      else if (pick.is_correct === false) losses++
+    for (const item of [...settledPicks, ...settledParlays, ...settledProps, ...settledFutures]) {
+      if (item.is_correct === true) wins++
+      else if (item.is_correct === false) losses++
       else pushes++
-      netPoints += pick.points_earned || 0
+      netPoints += item.points_earned || 0
     }
-    for (const parlay of settledParlays) {
-      if (parlay.is_correct === true) wins++
-      else if (parlay.is_correct === false) losses++
-      else pushes++
-      netPoints += parlay.points_earned || 0
-    }
-    for (const pp of settledProps) {
-      if (pp.is_correct === true) wins++
-      else if (pp.is_correct === false) losses++
-      else pushes++
-      netPoints += pp.points_earned || 0
-    }
-    return { wins, losses, pushes, netPoints, total: settledPicks.length + settledParlays.length + settledProps.length }
-  }, [settledPicks, settledParlays, settledProps])
+    return { wins, losses, pushes, netPoints, total: settledPicks.length + settledParlays.length + settledProps.length + settledFutures.length }
+  }, [settledPicks, settledParlays, settledProps, settledFutures])
 
   const settledPickIds = useMemo(() => {
     return settledPicks.map((p) => p.id)
@@ -58,7 +51,7 @@ export default function ResultsPage() {
 
   const { data: reactionsBatch } = usePickReactionsBatch(settledPickIds)
 
-  if (isLoading || parlaysLoading || propsLoading) return <LoadingSpinner />
+  if (isLoading || parlaysLoading || propsLoading || futuresLoading) return <LoadingSpinner />
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -94,6 +87,9 @@ export default function ResultsPage() {
         <>
           <h2 className="font-display text-lg text-accent mb-3">Live</h2>
           <div className="space-y-3 mb-6">
+            {liveFutures.map((fp) => (
+              <FuturesPickCard key={fp.id} pick={fp} />
+            ))}
             {liveParlays.map((parlay) => (
               <ParlayCard key={parlay.id} parlay={parlay} />
             ))}
@@ -115,6 +111,17 @@ export default function ResultsPage() {
         <EmptyState title="No results yet" message="Your settled picks will appear here" />
       ) : hasSettled && (
         <>
+          {settledFutures.length > 0 && (
+            <>
+              <h2 className="font-display text-lg text-text-secondary mb-3">Futures</h2>
+              <div className="space-y-3 mb-6">
+                {settledFutures.map((fp) => (
+                  <FuturesPickCard key={fp.id} pick={fp} />
+                ))}
+              </div>
+            </>
+          )}
+
           {settledParlays.length > 0 && (
             <>
               <h2 className="font-display text-lg text-text-secondary mb-3">Parlays</h2>

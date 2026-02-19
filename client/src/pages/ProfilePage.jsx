@@ -3,6 +3,8 @@ import { useProfile, useSportStats } from '../hooks/useProfile'
 import { usePickHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
 import { usePropPickHistory } from '../hooks/useProps'
+import { useMyFuturesPicks, useFuturesPickHistory } from '../hooks/useFutures'
+import FuturesPickCard from '../components/picks/FuturesPickCard'
 import { getTier, getNextTier } from '../lib/scoring'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -101,6 +103,10 @@ export default function ProfilePage() {
   const { data: recentPicks, isLoading: picksLoading } = usePickHistory()
   const { data: recentParlays, isLoading: parlaysLoading } = useParlayHistory()
   const { data: recentProps, isLoading: propsLoading } = usePropPickHistory()
+  const { data: myFutures } = useMyFuturesPicks()
+  const { data: futuresHistory, isLoading: futuresLoading } = useFuturesPickHistory()
+
+  const activeFutures = (myFutures || []).filter((p) => p.status !== 'settled')
 
   if (profileLoading) return <LoadingSpinner />
   if (!profile) return null
@@ -125,7 +131,18 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <PickHistoryByMonth picks={recentPicks} parlays={recentParlays} propPicks={recentProps} isLoading={picksLoading || parlaysLoading || propsLoading} />
+      {activeFutures.length > 0 && (
+        <div className="mb-6">
+          <h2 className="font-display text-lg text-text-secondary mb-3">My Futures</h2>
+          <div className="space-y-3">
+            {activeFutures.map((pick) => (
+              <FuturesPickCard key={pick.id} pick={pick} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <PickHistoryByMonth picks={recentPicks} parlays={recentParlays} propPicks={recentProps} futuresPicks={futuresHistory} isLoading={picksLoading || parlaysLoading || propsLoading || futuresLoading} />
     </div>
   )
 }

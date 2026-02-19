@@ -93,6 +93,44 @@ export function useSendEmailBlast() {
   })
 }
 
+// Futures
+export function useSyncFutures() {
+  return useMutation({
+    mutationFn: () => api.post('/admin/futures/sync-all'),
+  })
+}
+
+export function useAdminFuturesMarkets(sport) {
+  return useQuery({
+    queryKey: ['adminFuturesMarkets', sport],
+    queryFn: () => api.get(`/admin/futures/markets${sport ? `?sport=${sport}` : ''}`),
+  })
+}
+
+export function useCloseFuturesMarket() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (marketId) => api.post(`/admin/futures/markets/${marketId}/close`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminFuturesMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })
+    },
+  })
+}
+
+export function useSettleFuturesMarket() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ marketId, winningOutcome }) =>
+      api.post('/admin/futures/settle', { marketId, winningOutcome }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminFuturesMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresPicks'] })
+    },
+  })
+}
+
 // Team names for bracket autocomplete
 export function useTeamsForSport(sport) {
   return useQuery({

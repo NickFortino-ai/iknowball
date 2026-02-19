@@ -317,9 +317,15 @@ export async function recalculateAllUserPoints() {
     .eq('status', 'settled')
     .not('points_earned', 'is', null)
 
+  const { data: futuresTotals } = await supabase
+    .from('futures_picks')
+    .select('user_id, points_earned')
+    .eq('status', 'settled')
+    .not('points_earned', 'is', null)
+
   // Aggregate per user
   const userPoints = {}
-  for (const row of [...(pickTotals || []), ...(parlayTotals || []), ...(propTotals || [])]) {
+  for (const row of [...(pickTotals || []), ...(parlayTotals || []), ...(propTotals || []), ...(futuresTotals || [])]) {
     userPoints[row.user_id] = (userPoints[row.user_id] || 0) + row.points_earned
   }
 

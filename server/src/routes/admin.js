@@ -25,6 +25,13 @@ import {
   enterTemplateResult,
   undoTemplateResult,
 } from '../services/bracketService.js'
+import {
+  syncFuturesForSport,
+  getFuturesMarkets,
+  closeFuturesMarket,
+  settleFuturesMarket,
+} from '../services/futuresService.js'
+import { FUTURES_SPORT_KEYS } from '../services/oddsService.js'
 
 const router = Router()
 
@@ -190,6 +197,48 @@ router.post('/bracket-templates/:id/results', async (req, res) => {
 router.delete('/bracket-templates/:id/results/:matchupId', async (req, res) => {
   await undoTemplateResult(req.params.id, req.params.matchupId)
   res.status(204).end()
+})
+
+// ============================================
+// Futures
+// ============================================
+
+router.post('/futures/sync', async (req, res) => {
+  const { sportKey } = req.body
+  if (!sportKey) {
+    return res.status(400).json({ error: 'sportKey is required' })
+  }
+  const result = await syncFuturesForSport(sportKey)
+  res.json(result)
+})
+
+router.post('/futures/sync-all', async (req, res) => {
+  const sports = Object.keys(FUTURES_SPORT_KEYS)
+  let total = 0
+  for (const sportKey of sports) {
+    const { synced } = await syncFuturesForSport(sportKey)
+    total += synced
+  }
+  res.json({ synced: total })
+})
+
+router.get('/futures/markets', async (req, res) => {
+  const markets = await getFuturesMarkets(req.query.sport, null)
+  res.json(markets)
+})
+
+router.post('/futures/markets/:marketId/close', async (req, res) => {
+  await closeFuturesMarket(req.params.marketId)
+  res.json({ message: 'Market closed' })
+})
+
+router.post('/futures/settle', async (req, res) => {
+  const { marketId, winningOutcome } = req.body
+  if (!marketId || !winningOutcome) {
+    return res.status(400).json({ error: 'marketId and winningOutcome are required' })
+  }
+  const result = await settleFuturesMarket(marketId, winningOutcome)
+  res.json(result)
 })
 
 export default router

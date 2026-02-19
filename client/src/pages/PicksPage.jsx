@@ -9,6 +9,7 @@ import BottomBar from '../components/picks/BottomBar'
 import ParlaySlip from '../components/picks/ParlaySlip'
 import ParlayCard from '../components/picks/ParlayCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
+import FuturesSection from '../components/picks/FuturesSection'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
@@ -50,6 +51,7 @@ function isSameDay(date1, date2) {
 export default function PicksPage() {
   const [activeSport, setActiveSport] = useState(null)
   const [dayOffset, setDayOffset] = useState(0)
+  const [pickMode, setPickMode] = useState('straight') // straight | parlay | futures
   const userChangedDay = useRef(false)
 
   const { data: activeSportsData } = useActiveSports()
@@ -87,9 +89,9 @@ export default function PicksPage() {
   const { data: lockedParlays } = useMyParlays('locked')
   const deleteParlay = useDeleteParlay()
 
-  const parlayMode = usePickStore((s) => s.parlayMode)
   const setParlayMode = usePickStore((s) => s.setParlayMode)
   const parlayLegs = usePickStore((s) => s.parlayLegs)
+  const parlayMode = pickMode === 'parlay'
   const addParlayLeg = usePickStore((s) => s.addParlayLeg)
   const removeParlayLeg = usePickStore((s) => s.removeParlayLeg)
   const updateParlayLeg = usePickStore((s) => s.updateParlayLeg)
@@ -204,24 +206,23 @@ export default function PicksPage() {
         <InfoTooltip text="Risk → Reward: You risk the red number on every pick. If you're right, you win the green number. If you're wrong, you lose the red number. Higher odds = higher reward but less likely to hit. Example: -10 → +19 means you risk 10 points to win 19 points." />
       </h1>
 
-      {/* Straight / Parlay toggle */}
+      {/* Straight / Parlay / Futures toggle */}
       <div className="flex bg-bg-card rounded-xl border border-border p-1 mb-4">
-        <button
-          onClick={() => setParlayMode(false)}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            !parlayMode ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Straight
-        </button>
-        <button
-          onClick={() => setParlayMode(true)}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            parlayMode ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Parlay
-        </button>
+        {['Straight', 'Parlay', 'Futures'].map((mode) => (
+          <button
+            key={mode}
+            onClick={() => {
+              const m = mode.toLowerCase()
+              setPickMode(m)
+              setParlayMode(m === 'parlay')
+            }}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              pickMode === mode.toLowerCase() ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
+            }`}
+          >
+            {mode}
+          </button>
+        ))}
       </div>
 
       <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
@@ -244,74 +245,80 @@ export default function PicksPage() {
         })}
       </div>
 
-      {/* Day Navigation */}
-      <div className="flex items-center justify-between bg-bg-card rounded-xl border border-border px-4 py-3 mb-6">
-        <button
-          onClick={() => { userChangedDay.current = true; setDayOffset((d) => Math.max(0, d - 1)) }}
-          disabled={dayOffset === 0}
-          className="w-11 h-11 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
-        >
-          ‹
-        </button>
-        <div className="text-center">
-          <div className="font-display text-lg">{formatDateLabel(dayOffset)}</div>
-          <div className="text-text-muted text-xs">
-            {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-          </div>
-        </div>
-        <button
-          onClick={() => { userChangedDay.current = true; setDayOffset((d) => Math.min(2, d + 1)) }}
-          disabled={dayOffset === 2}
-          className="w-11 h-11 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
-        >
-          ›
-        </button>
-      </div>
-
-      {/* Daily Featured Player Prop */}
-      <FeaturedPropSection date={selectedDate} sportKey={sportKey} />
-
-      {/* My Parlays (visible in parlay mode) */}
-      {parlayMode && (activeParlays?.length > 0 || lockedParlays?.length > 0) && (
-        <div className="mb-6">
-          <h2 className="font-display text-lg text-text-secondary mb-3">My Parlays</h2>
-          <div className="space-y-3">
-            {(lockedParlays || []).map((p) => (
-              <ParlayCard key={p.id} parlay={p} />
-            ))}
-            {(activeParlays || []).map((p) => (
-              <ParlayCard key={p.id} parlay={p} onDelete={handleDeleteParlay} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Game Cards */}
-      {gamesLoading || picksLoading ? (
-        <LoadingSpinner />
-      ) : filteredGames.length === 0 ? (
-        <EmptyState title="No games" message={`No upcoming games on ${formatDateLabel(dayOffset).toLowerCase()}`} />
+      {pickMode === 'futures' ? (
+        <FuturesSection sportKey={sportKey} />
       ) : (
-        <div className="space-y-3">
-          {filteredGames.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game}
-              userPick={picksMap[game.id]}
-              onPick={handlePick}
-              onUndoPick={handleUndoPick}
-              isSubmitting={submitPick.isPending || deletePick.isPending}
-              onShare={handleShare}
-              isShared={sharedPickIds.has(picksMap[game.id]?.id)}
-              parlayMode={parlayMode}
-              parlayPickedTeam={parlayLegsMap[game.id] || null}
-              onParlayToggle={handleParlayToggle}
-            />
-          ))}
-        </div>
-      )}
+        <>
+          {/* Day Navigation */}
+          <div className="flex items-center justify-between bg-bg-card rounded-xl border border-border px-4 py-3 mb-6">
+            <button
+              onClick={() => { userChangedDay.current = true; setDayOffset((d) => Math.max(0, d - 1)) }}
+              disabled={dayOffset === 0}
+              className="w-11 h-11 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
+            >
+              ‹
+            </button>
+            <div className="text-center">
+              <div className="font-display text-lg">{formatDateLabel(dayOffset)}</div>
+              <div className="text-text-muted text-xs">
+                {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </div>
+            </div>
+            <button
+              onClick={() => { userChangedDay.current = true; setDayOffset((d) => Math.min(2, d + 1)) }}
+              disabled={dayOffset === 2}
+              className="w-11 h-11 flex items-center justify-center rounded-lg text-lg font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary hover:bg-bg-card-hover"
+            >
+              ›
+            </button>
+          </div>
 
-      {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={games} />}
+          {/* Daily Featured Player Prop */}
+          <FeaturedPropSection date={selectedDate} sportKey={sportKey} />
+
+          {/* My Parlays (visible in parlay mode) */}
+          {parlayMode && (activeParlays?.length > 0 || lockedParlays?.length > 0) && (
+            <div className="mb-6">
+              <h2 className="font-display text-lg text-text-secondary mb-3">My Parlays</h2>
+              <div className="space-y-3">
+                {(lockedParlays || []).map((p) => (
+                  <ParlayCard key={p.id} parlay={p} />
+                ))}
+                {(activeParlays || []).map((p) => (
+                  <ParlayCard key={p.id} parlay={p} onDelete={handleDeleteParlay} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Game Cards */}
+          {gamesLoading || picksLoading ? (
+            <LoadingSpinner />
+          ) : filteredGames.length === 0 ? (
+            <EmptyState title="No games" message={`No upcoming games on ${formatDateLabel(dayOffset).toLowerCase()}`} />
+          ) : (
+            <div className="space-y-3">
+              {filteredGames.map((game) => (
+                <GameCard
+                  key={game.id}
+                  game={game}
+                  userPick={picksMap[game.id]}
+                  onPick={handlePick}
+                  onUndoPick={handleUndoPick}
+                  isSubmitting={submitPick.isPending || deletePick.isPending}
+                  onShare={handleShare}
+                  isShared={sharedPickIds.has(picksMap[game.id]?.id)}
+                  parlayMode={parlayMode}
+                  parlayPickedTeam={parlayLegsMap[game.id] || null}
+                  onParlayToggle={handleParlayToggle}
+                />
+              ))}
+            </div>
+          )}
+
+          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={games} />}
+        </>
+      )}
     </div>
   )
 }

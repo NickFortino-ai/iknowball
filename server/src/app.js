@@ -18,6 +18,7 @@ import socialRouter from './routes/social.js'
 import notificationsRouter from './routes/notifications.js'
 import pushRouter from './routes/push.js'
 import emailRouter from './routes/email.js'
+import futuresRouter from './routes/futures.js'
 
 const app = express()
 
@@ -44,6 +45,7 @@ app.use('/api/social', socialRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/push', pushRouter)
 app.use('/api/email', emailRouter)
+app.use('/api/futures', futuresRouter)
 
 app.use(errorHandler)
 
