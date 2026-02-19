@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useProfile, useSportStats } from '../hooks/useProfile'
-import { usePickHistory } from '../hooks/usePicks'
+import { usePickHistory, useBonusHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
 import { usePropPickHistory } from '../hooks/useProps'
 import { useMyFuturesPicks, useFuturesPickHistory } from '../hooks/useFutures'
@@ -101,6 +101,7 @@ export default function ProfilePage() {
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: sportStats, isLoading: statsLoading } = useSportStats()
   const { data: recentPicks, isLoading: picksLoading } = usePickHistory()
+  const { data: bonuses, isLoading: bonusesLoading } = useBonusHistory()
   const { data: recentParlays, isLoading: parlaysLoading } = useParlayHistory()
   const { data: recentProps, isLoading: propsLoading } = usePropPickHistory()
   const { data: myFutures } = useMyFuturesPicks()
@@ -142,7 +143,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <PickHistoryByMonth picks={recentPicks} parlays={recentParlays} propPicks={recentProps} futuresPicks={futuresHistory} isLoading={picksLoading || parlaysLoading || propsLoading || futuresLoading} />
+      <PickHistoryByMonth picks={recentPicks} parlays={recentParlays} propPicks={recentProps} futuresPicks={futuresHistory} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || futuresLoading || bonusesLoading} />
     </div>
   )
 }

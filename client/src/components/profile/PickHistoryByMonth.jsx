@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
-function normalizeItems(picks, parlays, propPicks, futuresPicks) {
+function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
   const items = []
 
   for (const pick of (picks || [])) {
@@ -57,6 +57,18 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks) {
     })
   }
 
+  for (const bonus of (bonuses || [])) {
+    items.push({
+      id: bonus.id,
+      type: 'bonus',
+      label: bonus.label,
+      detail: '',
+      date: bonus.created_at,
+      is_correct: true,
+      points_earned: bonus.points,
+    })
+  }
+
   return items
 }
 
@@ -86,11 +98,11 @@ function getMonthStats(items) {
   return { wins, losses, net }
 }
 
-export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, isLoading }) {
+export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, bonuses, isLoading }) {
   const months = useMemo(() => {
-    const items = normalizeItems(picks, parlays, propPicks, futuresPicks)
+    const items = normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses)
     return items.length ? groupByMonth(items) : []
-  }, [picks, parlays, propPicks, futuresPicks])
+  }, [picks, parlays, propPicks, futuresPicks, bonuses])
   const [expanded, setExpanded] = useState({})
 
   function isExpanded(key, index) {
@@ -161,7 +173,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                         <div className="text-sm font-semibold truncate">
                           {item.type !== 'pick' && (
                             <span className="text-xs text-text-muted font-normal mr-1.5">
-                              {item.type === 'parlay' ? 'Parlay' : item.type === 'futures' ? 'Futures' : 'Prop'}
+                              {item.type === 'parlay' ? 'Parlay' : item.type === 'futures' ? 'Futures' : item.type === 'bonus' ? 'Bonus' : 'Prop'}
                             </span>
                           )}
                           {item.label}

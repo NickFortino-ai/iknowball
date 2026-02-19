@@ -16,6 +16,13 @@ export function usePickHistory() {
   })
 }
 
+export function useBonusHistory() {
+  return useQuery({
+    queryKey: ['picks', 'bonuses'],
+    queryFn: () => api.get('/picks/me/bonuses'),
+  })
+}
+
 export function usePickById(pickId) {
   return useQuery({
     queryKey: ['pick', pickId],

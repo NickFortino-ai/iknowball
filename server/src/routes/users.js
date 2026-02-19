@@ -294,6 +294,18 @@ router.get('/:id/prop-picks', requireAuth, async (req, res) => {
   res.json(data || [])
 })
 
+// Get any user's bonus points history
+router.get('/:id/bonuses', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('bonus_points')
+    .select('*')
+    .eq('user_id', req.params.id)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  res.json(data || [])
+})
+
 // Search users by username or display name
 router.get('/search', requireAuth, async (req, res) => {
   const q = req.query.q?.trim()

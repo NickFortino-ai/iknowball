@@ -33,6 +33,14 @@ export function useUserPropPickHistory(userId) {
   })
 }
 
+export function useUserBonusHistory(userId) {
+  return useQuery({
+    queryKey: ['users', userId, 'bonuses'],
+    queryFn: () => api.get(`/users/${userId}/bonuses`),
+    enabled: !!userId,
+  })
+}
+
 export function useHeadToHead(userId) {
   return useQuery({
     queryKey: ['users', userId, 'head-to-head'],

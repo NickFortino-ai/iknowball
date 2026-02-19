@@ -6,6 +6,7 @@ import { scoreGames } from './scoreGames.js'
 import { lockPicks } from './lockPicks.js'
 import { syncFutures } from './syncFutures.js'
 import { syncLiveScores } from './syncLiveScores.js'
+import { completeLeagues } from './completeLeagues.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -41,5 +42,13 @@ export function startScheduler() {
       try { await syncLiveScores() } catch (err) { logger.error({ err }, 'Live scores sync job failed') }
     })
     logger.info('Live scores sync scheduled: every 1 minute')
+  }
+
+  // League completion runs alongside game scoring — checks for ended pickem/bracket leagues
+  if (env.ENABLE_GAME_SCORING) {
+    cron.schedule('*/15 * * * *', async () => {
+      try { await completeLeagues() } catch (err) { logger.error({ err }, 'League completion job failed') }
+    })
+    logger.info('League completion scheduled: every 15 minutes')
   }
 }

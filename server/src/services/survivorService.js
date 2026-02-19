@@ -276,17 +276,38 @@ async function checkSurvivorWinner(leagueId) {
     else if (memberCount >= 6) winnerBonus = 20
     else winnerBonus = 10
 
-    // Award bonus to global points
+    const LEAGUE_WIN_BONUS = 10
+    const totalBonus = winnerBonus + LEAGUE_WIN_BONUS
+
+    // Award combined bonus to global points
     const { error } = await supabase.rpc('increment_user_points', {
       user_row_id: winnerId,
-      points_delta: winnerBonus,
+      points_delta: totalBonus,
     })
 
     if (error) {
       logger.error({ error, winnerId, leagueId }, 'Failed to award survivor winner bonus')
     } else {
-      logger.info({ winnerId, leagueId, bonus: winnerBonus, memberCount }, 'Survivor winner awarded')
+      logger.info({ winnerId, leagueId, survivorBonus: winnerBonus, leagueBonus: LEAGUE_WIN_BONUS, memberCount }, 'Survivor winner awarded')
     }
+
+    // Record bonus_points entries for pick history
+    await supabase.from('bonus_points').insert([
+      {
+        user_id: winnerId,
+        league_id: leagueId,
+        type: 'survivor_win',
+        label: `Survivor Pool win +${winnerBonus}`,
+        points: winnerBonus,
+      },
+      {
+        user_id: winnerId,
+        league_id: leagueId,
+        type: 'league_win',
+        label: 'League Winner +10 points',
+        points: LEAGUE_WIN_BONUS,
+      },
+    ])
 
     // Award bonus to sport stats
     const { data: league } = await supabase
@@ -308,7 +329,7 @@ async function checkSurvivorWinner(leagueId) {
             p_user_id: winnerId,
             p_sport_id: sport.id,
             p_is_correct: true,
-            p_points: winnerBonus,
+            p_points: totalBonus,
           })
 
         if (statsError) {

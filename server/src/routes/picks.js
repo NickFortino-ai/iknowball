@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { submitPick, deletePick, getUserPicks, getUserPickHistory, getPickById } from '../services/pickService.js'
+import { supabase } from '../config/supabase.js'
 
 const router = Router()
 
@@ -24,6 +25,17 @@ router.get('/me', requireAuth, async (req, res) => {
 router.get('/me/history', requireAuth, async (req, res) => {
   const picks = await getUserPickHistory(req.user.id)
   res.json(picks)
+})
+
+router.get('/me/bonuses', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('bonus_points')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  res.json(data || [])
 })
 
 router.get('/:pickId', requireAuth, async (req, res) => {
