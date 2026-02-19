@@ -179,6 +179,73 @@ export async function sendTargetedEmail(subject, body, usernames) {
   return { total: users.length, sent, failed, notFound, errors }
 }
 
+export async function sendEmailToUserIds(userIds, buildEmailFn) {
+  const transport = getTransporter()
+
+  // Check which users are subscribed
+  const { data: subscribedUsers, error: dbError } = await supabase
+    .from('users')
+    .select('id')
+    .in('id', userIds)
+    .eq('email_unsubscribed', false)
+
+  if (dbError) throw dbError
+  if (!subscribedUsers?.length) return { total: 0, sent: 0, failed: 0, errors: [] }
+
+  const subscribedIds = new Set(subscribedUsers.map((u) => u.id))
+
+  // Get emails from auth
+  const emailMap = {}
+  let page = 1
+  const perPage = 1000
+
+  while (true) {
+    const { data: { users: authUsers }, error } = await supabase.auth.admin.listUsers({ page, perPage })
+    if (error) throw error
+    if (!authUsers || authUsers.length === 0) break
+
+    for (const authUser of authUsers) {
+      if (authUser.email && subscribedIds.has(authUser.id)) {
+        emailMap[authUser.id] = authUser.email
+      }
+    }
+
+    if (authUsers.length < perPage) break
+    page++
+  }
+
+  logger.info({ count: Object.keys(emailMap).length }, 'Sending recap emails')
+
+  let sent = 0
+  let failed = 0
+  const errors = []
+
+  for (const userId of userIds) {
+    const email = emailMap[userId]
+    if (!email) continue
+
+    try {
+      const { subject, html } = buildEmailFn(userId)
+      const htmlWithFooter = appendUnsubscribeFooter(html, userId)
+      await transport.sendMail({
+        from: `"IKnowBall" <${env.SMTP_FROM}>`,
+        to: email,
+        subject,
+        html: htmlWithFooter,
+        text: htmlWithFooter.replace(/<[^>]*>/g, ''),
+      })
+      sent++
+    } catch (err) {
+      failed++
+      errors.push({ userId, error: err.message })
+      logger.error({ userId, error: err.message }, 'Failed to send email to user')
+    }
+  }
+
+  logger.info({ sent, failed }, 'Recap email send complete')
+  return { total: userIds.length, sent, failed, errors }
+}
+
 export async function sendLeagueInviteEmail(toEmail, leagueName, inviteCode) {
   const transport = getTransporter()
   const baseUrl = env.CORS_ORIGIN.split(',')[0].trim()

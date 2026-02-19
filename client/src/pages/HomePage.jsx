@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
+import PowerRankingsCard from '../components/home/PowerRankingsCard'
+import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 
 const tiers = [
   { name: 'Lost', points: '<0', color: 'border-tier-lost text-tier-lost', desc: 'Gone negative' },
@@ -41,26 +43,38 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* How Scoring Works */}
-      <div className="mb-16">
-        <h2 className="font-display text-2xl text-center mb-8">How Scoring Works</h2>
-        <div className="grid sm:grid-cols-3 gap-4">
-          <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
-            <div className="font-display text-3xl text-correct mb-2">+20</div>
-            <div className="text-text-secondary text-sm">Pick an underdog and win big — risk 10, win 20</div>
+      {/* Logged-in: Power Rankings + Featured Prop */}
+      {isAuthenticated && (
+        <>
+          <PowerRankingsCard />
+          <div className="mb-8">
+            <FeaturedPropSection date={new Date()} />
           </div>
-          <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
-            <div className="font-display text-3xl text-accent mb-2">+4</div>
-            <div className="text-text-secondary text-sm">Pick a favorite for a safe gain — risk 10, win 4</div>
-          </div>
-          <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
-            <div className="font-display text-3xl text-incorrect mb-2">-10</div>
-            <div className="text-text-secondary text-sm">Wrong pick? You lose 10 points every time</div>
+        </>
+      )}
+
+      {/* How Scoring Works — logged-out only */}
+      {!isAuthenticated && (
+        <div className="mb-16">
+          <h2 className="font-display text-2xl text-center mb-8">How Scoring Works</h2>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
+              <div className="font-display text-3xl text-correct mb-2">+20</div>
+              <div className="text-text-secondary text-sm">Pick an underdog and win big — risk 10, win 20</div>
+            </div>
+            <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
+              <div className="font-display text-3xl text-accent mb-2">+4</div>
+              <div className="text-text-secondary text-sm">Pick a favorite for a safe gain — risk 10, win 4</div>
+            </div>
+            <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
+              <div className="font-display text-3xl text-incorrect mb-2">-10</div>
+              <div className="text-text-secondary text-sm">Wrong pick? You lose 10 points every time</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Tier Breakdown */}
+      {/* Tier Breakdown — always shown */}
       <div className="lg:-mx-24">
         <h2 className="font-display text-2xl text-center mb-8">
           Status Tiers

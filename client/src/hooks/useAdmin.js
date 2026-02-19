@@ -236,3 +236,15 @@ export function useUndoTemplateResult() {
     },
   })
 }
+
+// Weekly Recap
+export function useGenerateRecap() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => api.post('/admin/generate-recap'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recaps'] })
+    },
+  })
+}

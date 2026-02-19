@@ -7,6 +7,7 @@ import { lockPicks } from './lockPicks.js'
 import { syncFutures } from './syncFutures.js'
 import { syncLiveScores } from './syncLiveScores.js'
 import { completeLeagues } from './completeLeagues.js'
+import { generateWeeklyRecap } from './generateRecap.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -42,6 +43,13 @@ export function startScheduler() {
       try { await syncLiveScores() } catch (err) { logger.error({ err }, 'Live scores sync job failed') }
     })
     logger.info('Live scores sync scheduled: every 1 minute')
+  }
+
+  if (env.ENABLE_WEEKLY_RECAP) {
+    cron.schedule('0 10 * * 1', async () => {
+      try { await generateWeeklyRecap() } catch (err) { logger.error({ err }, 'Weekly recap job failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('Weekly recap scheduled: Monday at 10:00 AM EST')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues

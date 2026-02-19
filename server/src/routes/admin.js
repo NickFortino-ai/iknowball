@@ -32,6 +32,7 @@ import {
   settleFuturesMarket,
 } from '../services/futuresService.js'
 import { FUTURES_SPORT_KEYS } from '../services/oddsService.js'
+import { generateWeeklyRecap } from '../jobs/generateRecap.js'
 
 const router = Router()
 
@@ -70,6 +71,12 @@ router.post('/email-targeted', async (req, res) => {
   }
   const result = await sendTargetedEmail(subject, body, usernames)
   res.json(result)
+})
+
+// Weekly recap
+router.post('/generate-recap', async (req, res) => {
+  await generateWeeklyRecap()
+  res.json({ message: 'Weekly recap generated' })
 })
 
 // Props management
