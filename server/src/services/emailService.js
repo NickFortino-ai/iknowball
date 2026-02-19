@@ -108,6 +108,38 @@ export async function sendEmailBlast(subject, body) {
   return { total: users.length, sent, failed, errors }
 }
 
+export async function sendLeagueInviteEmail(toEmail, leagueName, inviteCode) {
+  const transport = getTransporter()
+  const baseUrl = env.CORS_ORIGIN.split(',')[0].trim()
+  const inviteUrl = `${baseUrl}/join/${inviteCode}`
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+      <h1 style="font-size: 24px; margin-bottom: 8px;">You've been invited!</h1>
+      <p style="color: #aaa; font-size: 16px; margin-bottom: 24px;">
+        Someone invited you to join <strong>${leagueName}</strong> on I KNOW BALL.
+      </p>
+      <a href="${inviteUrl}"
+         style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+        Join League
+      </a>
+      <p style="color: #888; font-size: 13px; margin-top: 24px;">
+        Or copy this link: <a href="${inviteUrl}" style="color: #f97316;">${inviteUrl}</a>
+      </p>
+    </div>
+  `
+
+  await transport.sendMail({
+    from: `"IKnowBall" <${env.SMTP_FROM}>`,
+    to: toEmail,
+    subject: `You've been invited to join ${leagueName} on I KNOW BALL`,
+    html,
+    text: `You've been invited to join "${leagueName}" on I KNOW BALL!\n\nJoin here: ${inviteUrl}`,
+  })
+
+  logger.info({ to: toEmail, league: leagueName }, 'Sent league invite email')
+}
+
 export async function unsubscribeUser(userId) {
   const { error } = await supabase
     .from('users')

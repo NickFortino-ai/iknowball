@@ -110,7 +110,7 @@ export default function LeagueDetailPage() {
       </div>
 
       {showInviteModal && (
-        <InvitePlayerModal leagueId={league.id} onClose={() => setShowInviteModal(false)} />
+        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} onClose={() => setShowInviteModal(false)} />
       )}
 
       {/* Tabs */}

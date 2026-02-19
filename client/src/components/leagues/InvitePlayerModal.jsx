@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchUsers, useSendInvitation, useLeagueInvitations } from '../../hooks/useInvitations'
+import { useSearchUsers, useSendInvitation, useLeagueInvitations, useSendEmailInvitation } from '../../hooks/useInvitations'
 import { useConnections } from '../../hooks/useConnections'
 import { toast } from '../ui/Toast'
 
@@ -9,12 +9,17 @@ const STATUS_STYLES = {
   declined: 'bg-text-muted/20 text-text-muted',
 }
 
-export default function InvitePlayerModal({ leagueId, onClose }) {
+export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, onClose }) {
   const [query, setQuery] = useState('')
+  const [email, setEmail] = useState('')
+  const [linkCopied, setLinkCopied] = useState(false)
   const { data: searchResults } = useSearchUsers(query)
   const { data: invitations } = useLeagueInvitations(leagueId)
   const { data: connections } = useConnections()
   const sendInvitation = useSendInvitation()
+  const sendEmailInvitation = useSendEmailInvitation()
+
+  const inviteLink = `${window.location.origin}/join/${inviteCode}`
 
   async function handleInvite(username) {
     try {
@@ -24,6 +29,25 @@ export default function InvitePlayerModal({ leagueId, onClose }) {
     } catch (err) {
       toast(err.message || 'Failed to send invite', 'error')
     }
+  }
+
+  async function handleEmailInvite(e) {
+    e.preventDefault()
+    if (!email.trim()) return
+    try {
+      await sendEmailInvitation.mutateAsync({ leagueId, email: email.trim() })
+      toast(`Invite sent to ${email.trim()}`, 'success')
+      setEmail('')
+    } catch (err) {
+      toast(err.message || 'Failed to send email', 'error')
+    }
+  }
+
+  async function handleCopyLink() {
+    await navigator.clipboard.writeText(inviteLink)
+    setLinkCopied(true)
+    toast('Link copied!', 'success')
+    setTimeout(() => setLinkCopied(false), 2000)
   }
 
   const pendingInvites = (invitations || []).filter((i) => i.status === 'pending')
@@ -49,10 +73,53 @@ export default function InvitePlayerModal({ leagueId, onClose }) {
 
         <h2 className="font-display text-xl mb-4">Invite Player</h2>
 
+        {/* Copy Invite Link */}
+        <div className="mb-4">
+          <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Invite Link</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-bg-input border border-border rounded-lg px-3 py-2.5 text-sm text-text-secondary truncate select-all">
+              {inviteLink}
+            </div>
+            <button
+              onClick={handleCopyLink}
+              className="px-3 py-2.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors flex-shrink-0"
+            >
+              {linkCopied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
+
+        <div className="border-t border-border mb-4" />
+
+        {/* Invite by Email */}
+        <div className="mb-4">
+          <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Invite by Email</h3>
+          <form onSubmit={handleEmailInvite} className="flex items-center gap-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="friend@example.com"
+              className="flex-1 bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            />
+            <button
+              type="submit"
+              disabled={!email.trim() || sendEmailInvitation.isPending}
+              className="px-3 py-2.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 flex-shrink-0"
+            >
+              {sendEmailInvitation.isPending ? 'Sending...' : 'Send'}
+            </button>
+          </form>
+        </div>
+
+        <div className="border-t border-border mb-4" />
+
+        {/* Invite by Username */}
+        <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Invite by Username</h3>
+
         {/* Your Connections */}
         {availableConnections.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Your Connections</h3>
             <div className="space-y-1 mb-3">
               {availableConnections.map((conn) => (
                 <div
@@ -75,7 +142,6 @@ export default function InvitePlayerModal({ leagueId, onClose }) {
                 </div>
               ))}
             </div>
-            <div className="border-t border-border mb-4" />
           </div>
         )}
 
@@ -87,7 +153,6 @@ export default function InvitePlayerModal({ leagueId, onClose }) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by username..."
             className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-            autoFocus
           />
 
           {/* Search Results Dropdown */}

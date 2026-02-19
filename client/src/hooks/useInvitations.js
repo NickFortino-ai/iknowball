@@ -54,6 +54,13 @@ export function useSendInvitation() {
   })
 }
 
+export function useSendEmailInvitation() {
+  return useMutation({
+    mutationFn: ({ leagueId, email }) =>
+      api.post(`/leagues/${leagueId}/invitations/email`, { email }),
+  })
+}
+
 export function useLeagueInvitations(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'invitations'],

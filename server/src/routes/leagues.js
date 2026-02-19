@@ -20,6 +20,7 @@ import {
   sendInvitation,
   getLeagueInvitations,
 } from '../services/invitationService.js'
+import { sendLeagueInviteEmail } from '../services/emailService.js'
 import {
   submitSurvivorPick,
   deleteSurvivorPick,
@@ -175,6 +176,31 @@ router.post('/:id/invitations', requireAuth, validate(sendInviteSchema), async (
 router.get('/:id/invitations', requireAuth, async (req, res) => {
   const invitations = await getLeagueInvitations(req.params.id, req.user.id)
   res.json(invitations)
+})
+
+const emailInviteSchema = z.object({
+  email: z.string().email(),
+})
+
+router.post('/:id/invitations/email', requireAuth, validate(emailInviteSchema), async (req, res) => {
+  const { data: league, error: leagueError } = await supabase
+    .from('leagues')
+    .select('commissioner_id, name, invite_code, status')
+    .eq('id', req.params.id)
+    .single()
+
+  if (leagueError || !league) {
+    return res.status(404).json({ error: 'League not found' })
+  }
+  if (league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can send invitations' })
+  }
+  if (league.status !== 'open') {
+    return res.status(400).json({ error: 'This league is no longer accepting members' })
+  }
+
+  await sendLeagueInviteEmail(req.validated.email, league.name, league.invite_code)
+  res.json({ message: 'Invitation email sent' })
 })
 
 // ============================================
