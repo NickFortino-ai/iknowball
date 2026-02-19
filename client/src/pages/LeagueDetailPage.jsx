@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useLeague, useLeagueStandings } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
@@ -37,11 +37,12 @@ const SPORT_LABELS = {
 
 export default function LeagueDetailPage() {
   const { id } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { profile } = useAuth()
   const { data: league, isLoading } = useLeague(id)
   const { data: standings } = useLeagueStandings(id)
   const [activeTab, setActiveTab] = useState(0)
-  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
 
   if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
   if (!league) return null
@@ -110,7 +111,13 @@ export default function LeagueDetailPage() {
       </div>
 
       {showInviteModal && (
-        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} onClose={() => setShowInviteModal(false)} />
+        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} onClose={() => {
+          setShowInviteModal(false)
+          if (searchParams.has('invite')) {
+            searchParams.delete('invite')
+            setSearchParams(searchParams, { replace: true })
+          }
+        }} />
       )}
 
       {/* Tabs */}

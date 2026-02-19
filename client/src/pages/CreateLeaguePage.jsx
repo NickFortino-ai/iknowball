@@ -93,7 +93,7 @@ export default function CreateLeaguePage() {
         settings,
       })
       toast('League created!', 'success')
-      navigate(`/leagues/${league.id}`)
+      navigate(`/leagues/${league.id}?invite=1`)
     } catch (err) {
       toast(err.message || 'Failed to create league', 'error')
     }
