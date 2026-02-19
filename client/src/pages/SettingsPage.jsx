@@ -38,7 +38,7 @@ export default function SettingsPage() {
   const { data: pushStatus } = usePushStatus()
   const subscribePush = useSubscribePush()
   const unsubscribePush = useUnsubscribePush()
-  const pushSupported = typeof window !== 'undefined' && 'PushManager' in window && 'serviceWorker' in navigator
+  const pushSupported = typeof window !== 'undefined' && 'PushManager' in window && 'serviceWorker' in navigator && !!import.meta.env.VITE_VAPID_PUBLIC_KEY
   const pushEnabled = pushStatus?.hasSubscriptions || false
 
   const [pushPrefs, setPushPrefs] = useState({ parlay_result: true, streak_milestone: true })

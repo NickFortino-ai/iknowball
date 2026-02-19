@@ -27,6 +27,10 @@ export function useSubscribePush() {
 
   return useMutation({
     mutationFn: async () => {
+      if (!VAPID_PUBLIC_KEY) {
+        throw new Error('Push notifications are not configured')
+      }
+
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         throw new Error('Notification permission denied')
