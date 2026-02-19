@@ -51,7 +51,7 @@ function isSameDay(date1, date2) {
 export default function PicksPage() {
   const [activeSport, setActiveSport] = useState(null)
   const [dayOffset, setDayOffset] = useState(0)
-  const [pickMode, setPickMode] = useState('straight') // straight | parlay | futures
+  const [isFuturesMode, setIsFuturesMode] = useState(false)
   const userChangedDay = useRef(false)
 
   const { data: activeSportsData } = useActiveSports()
@@ -89,9 +89,9 @@ export default function PicksPage() {
   const { data: lockedParlays } = useMyParlays('locked')
   const deleteParlay = useDeleteParlay()
 
+  const parlayMode = usePickStore((s) => s.parlayMode)
   const setParlayMode = usePickStore((s) => s.setParlayMode)
   const parlayLegs = usePickStore((s) => s.parlayLegs)
-  const parlayMode = pickMode === 'parlay'
   const addParlayLeg = usePickStore((s) => s.addParlayLeg)
   const removeParlayLeg = usePickStore((s) => s.removeParlayLeg)
   const updateParlayLeg = usePickStore((s) => s.updateParlayLeg)
@@ -206,33 +206,34 @@ export default function PicksPage() {
         <InfoTooltip text="Risk → Reward: You risk the red number on every pick. If you're right, you win the green number. If you're wrong, you lose the red number. Higher odds = higher reward but less likely to hit. Example: -10 → +19 means you risk 10 points to win 19 points." />
       </h1>
 
-      {/* Straight / Parlay / Futures toggle */}
-      <div className="flex bg-bg-card rounded-xl border border-border p-1 mb-4">
-        {['Straight', 'Parlay', 'Futures'].map((mode) => (
-          <button
-            key={mode}
-            onClick={() => {
-              const m = mode.toLowerCase()
-              setPickMode(m)
-              setParlayMode(m === 'parlay')
-            }}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              pickMode === mode.toLowerCase() ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
-            }`}
-          >
-            {mode}
-          </button>
-        ))}
-      </div>
+      {/* Straight / Parlay toggle */}
+      {!isFuturesMode && (
+        <div className="flex bg-bg-card rounded-xl border border-border p-1 mb-4">
+          {['Straight', 'Parlay'].map((mode) => {
+            const isActive = mode === 'Parlay' ? parlayMode : !parlayMode
+            return (
+              <button
+                key={mode}
+                onClick={() => setParlayMode(mode === 'Parlay')}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  isActive ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
+                }`}
+              >
+                {mode}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
         {sortedTabs.map((tab) => {
-          const isActive = activeSport === tab.key
+          const isActive = activeSport === tab.key && !isFuturesMode
           const hasGames = activeKeys.has(tab.key)
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveSport(tab.key)}
+              onClick={() => { setActiveSport(tab.key); setIsFuturesMode(false) }}
               className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                 isActive
                   ? 'bg-accent text-white'
@@ -243,10 +244,20 @@ export default function PicksPage() {
             </button>
           )
         })}
+        <button
+          onClick={() => setIsFuturesMode(true)}
+          className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            isFuturesMode
+              ? 'bg-accent text-white'
+              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Futures
+        </button>
       </div>
 
-      {pickMode === 'futures' ? (
-        <FuturesSection sportKey={sportKey} />
+      {isFuturesMode ? (
+        <FuturesSection />
       ) : (
         <>
           {/* Day Navigation */}

@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
 export function useFuturesMarkets(sportKey) {
+  const params = sportKey ? `?sport=${sportKey}&status=active` : '?status=active'
   return useQuery({
-    queryKey: ['futuresMarkets', sportKey],
-    queryFn: () => api.get(`/futures/markets?sport=${sportKey}&status=active`),
-    enabled: !!sportKey,
+    queryKey: ['futuresMarkets', sportKey || 'all'],
+    queryFn: () => api.get(`/futures/markets${params}`),
   })
 }
 
