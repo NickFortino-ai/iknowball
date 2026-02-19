@@ -12,6 +12,9 @@ const SPORT_DISPLAY = {
   basketball_ncaab: 'NCAAB Champion',
   americanfootball_ncaaf: 'NCAAF Champion',
   basketball_wnba: 'WNBA Champion',
+  icehockey_nhl: 'NHL Champion',
+  golf: 'Golf',
+  soccer: 'Soccer',
 }
 
 function sportLabel(key) {
