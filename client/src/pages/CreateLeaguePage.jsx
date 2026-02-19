@@ -6,8 +6,8 @@ import { toast } from '../components/ui/Toast'
 const FORMAT_OPTIONS = [
   { value: 'pickem', label: "Pick'em", description: 'Pick winners against the spread with odds-based scoring' },
   { value: 'survivor', label: 'Survivor', description: 'Pick one team per week — lose and you are eliminated' },
-  { value: 'squares', label: 'Squares', description: '10x10 grid tied to a single game with quarter-by-quarter scoring' },
   { value: 'bracket', label: 'Bracket', description: 'Fill out a tournament bracket with escalating points per round' },
+  { value: 'squares', label: 'Squares', description: '10x10 grid tied to a single game with quarter-by-quarter scoring' },
 ]
 
 const SPORT_OPTIONS = [
