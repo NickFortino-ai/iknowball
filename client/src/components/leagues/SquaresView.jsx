@@ -12,8 +12,6 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 
-const COST_PER_SQUARE = 10
-
 export default function SquaresView({ league, isCommissioner }) {
   const { data: board, isLoading } = useSquaresBoard(league.id)
   const { profile } = useAuth()
@@ -295,7 +293,6 @@ export default function SquaresView({ league, isCommissioner }) {
       <div className="text-xs text-text-muted text-center mb-3">
         {totalClaimed}/100 squares claimed
         {board.digits_locked ? ' — Digits locked' : ''}
-        {' — '}{COST_PER_SQUARE} pts per square
       </div>
 
       {/* Grid */}
@@ -366,38 +363,45 @@ export default function SquaresView({ league, isCommissioner }) {
         </div>
       </div>
 
-      {/* Standings */}
-      {board.standings?.length > 0 && (
+      {/* Squares owned per user */}
+      {totalClaimed > 0 && (
         <div className="mt-6">
-          <h3 className="font-display text-sm text-text-secondary mb-3">Standings</h3>
+          <h3 className="font-display text-sm text-text-secondary mb-3">Squares Owned</h3>
           <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border text-text-muted">
                   <th className="text-left py-2 px-3 font-semibold">Player</th>
                   <th className="text-center py-2 px-1 font-semibold">Squares</th>
-                  <th className="text-center py-2 px-1 font-semibold">Won</th>
-                  <th className="text-right py-2 px-3 font-semibold">Balance</th>
+                  <th className="text-right py-2 px-3 font-semibold">Cost</th>
                 </tr>
               </thead>
               <tbody>
-                {board.standings.map((s) => (
-                  <tr key={s.user_id} className="border-b border-border last:border-0">
-                    <td className="py-2 px-3 font-semibold">
-                      {s.user?.avatar_emoji && <span className="mr-1">{s.user.avatar_emoji}</span>}
-                      {s.user?.display_name || s.user?.username || 'Unknown'}
-                    </td>
-                    <td className="text-center py-2 px-1 text-text-muted">{s.squares}</td>
-                    <td className="text-center py-2 px-1 text-text-muted">
-                      {s.winnings > 0 ? `+${s.winnings}` : s.winnings}
-                    </td>
-                    <td className={`text-right py-2 px-3 font-semibold ${
-                      s.balance > 0 ? 'text-correct' : s.balance < 0 ? 'text-incorrect' : 'text-text-muted'
-                    }`}>
-                      {s.balance > 0 ? '+' : ''}{s.balance}
-                    </td>
-                  </tr>
-                ))}
+                {(() => {
+                  const COST_PER_SQUARE = 10
+                  const userMap = {}
+                  for (const claim of board.claims || []) {
+                    const uid = claim.user_id
+                    if (!userMap[uid]) {
+                      userMap[uid] = { user: claim.users, squares: 0 }
+                    }
+                    userMap[uid].squares++
+                  }
+                  return Object.values(userMap)
+                    .sort((a, b) => b.squares - a.squares)
+                    .map((s) => (
+                      <tr key={s.user?.id} className="border-b border-border last:border-0">
+                        <td className="py-2 px-3 font-semibold">
+                          {s.user?.avatar_emoji && <span className="mr-1">{s.user.avatar_emoji}</span>}
+                          {s.user?.display_name || s.user?.username || 'Unknown'}
+                        </td>
+                        <td className="text-center py-2 px-1 text-text-muted">{s.squares}</td>
+                        <td className="text-right py-2 px-3 text-text-muted">
+                          {s.squares * COST_PER_SQUARE} pts
+                        </td>
+                      </tr>
+                    ))
+                })()}
               </tbody>
             </table>
           </div>

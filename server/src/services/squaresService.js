@@ -19,48 +19,7 @@ export async function getBoard(leagueId) {
     .select('*, users(id, username, display_name, avatar_emoji)')
     .eq('board_id', board.id)
 
-  // Fetch league settings for points_per_quarter
-  const { data: league } = await supabase
-    .from('leagues')
-    .select('settings')
-    .eq('id', leagueId)
-    .single()
-
-  const pointsPerQuarter = league?.settings?.points_per_quarter || [25, 25, 25, 50]
-  const COST_PER_SQUARE = 10
-  const claimsList = claims || []
-
-  // Compute standings: for each user, sum quarter payouts won minus square costs
-  const userMap = {}
-  for (const claim of claimsList) {
-    const uid = claim.user_id
-    if (!userMap[uid]) {
-      userMap[uid] = {
-        user_id: uid,
-        user: claim.users,
-        squares: 0,
-        winnings: 0,
-      }
-    }
-    userMap[uid].squares++
-  }
-
-  for (let q = 1; q <= 4; q++) {
-    const winnerId = board[`q${q}_winner_id`]
-    if (winnerId && userMap[winnerId]) {
-      userMap[winnerId].winnings += pointsPerQuarter[q - 1] || 0
-    }
-  }
-
-  const standings = Object.values(userMap)
-    .map((u) => ({
-      ...u,
-      cost: u.squares * COST_PER_SQUARE,
-      balance: u.winnings - u.squares * COST_PER_SQUARE,
-    }))
-    .sort((a, b) => b.balance - a.balance)
-
-  return { ...board, claims: claimsList, standings }
+  return { ...board, claims: claims || [] }
 }
 
 export async function claimSquare(leagueId, userId, rowPos, colPos) {
@@ -110,21 +69,6 @@ export async function claimSquare(leagueId, userId, rowPos, colPos) {
     const err = new Error('This square is already claimed')
     err.status = 400
     throw err
-  }
-
-  // Check squares per member limit
-  if (settings.squares_per_member) {
-    const { count } = await supabase
-      .from('squares_claims')
-      .select('id', { count: 'exact', head: true })
-      .eq('board_id', board.id)
-      .eq('user_id', userId)
-
-    if (count >= settings.squares_per_member) {
-      const err = new Error(`You can only claim ${settings.squares_per_member} squares`)
-      err.status = 400
-      throw err
-    }
   }
 
   const { data, error } = await supabase

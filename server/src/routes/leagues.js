@@ -92,7 +92,6 @@ const createLeagueSchema = z.object({
     winner_bonus: z.number().int().min(0).optional(),
     runner_up_bonus: z.number().int().min(0).optional(),
     game_id: z.string().uuid().optional(),
-    squares_per_member: z.number().int().min(1).max(100).optional(),
     assignment_method: z.enum(['self_select', 'random']).optional(),
     points_per_quarter: z.array(z.number().int().min(0)).length(4).optional(),
     row_team_name: z.string().min(1).max(50).optional(),

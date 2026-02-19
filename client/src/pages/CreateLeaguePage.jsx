@@ -54,7 +54,6 @@ export default function CreateLeaguePage() {
   const [allEliminatedSurvive, setAllEliminatedSurvive] = useState(true)
   const [winnerBonus, setWinnerBonus] = useState(100)
   const [assignmentMethod, setAssignmentMethod] = useState('self_select')
-  const [squaresPerMember, setSquaresPerMember] = useState('')
   const [pointsPerQuarter, setPointsPerQuarter] = useState([25, 25, 25, 50])
   const [rowTeamName, setRowTeamName] = useState('')
   const [colTeamName, setColTeamName] = useState('')
@@ -76,7 +75,6 @@ export default function CreateLeaguePage() {
     if (format === 'squares') {
       settings.assignment_method = assignmentMethod
       settings.points_per_quarter = pointsPerQuarter
-      if (squaresPerMember) settings.squares_per_member = parseInt(squaresPerMember, 10)
       if (rowTeamName) settings.row_team_name = rowTeamName
       if (colTeamName) settings.col_team_name = colTeamName
     }
@@ -370,20 +368,6 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div>
-              <label className="block text-xs text-text-muted mb-1">
-                Squares per member <span className="text-text-muted">(auto-calculated if empty)</span>
-              </label>
-              <input
-                type="number"
-                value={squaresPerMember}
-                onChange={(e) => setSquaresPerMember(e.target.value)}
-                placeholder="Auto"
-                min={1}
-                max={100}
-                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
