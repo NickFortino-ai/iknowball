@@ -261,15 +261,22 @@ async function checkSurvivorWinner(leagueId) {
   if (aliveMembers.length === 1) {
     // We have a winner!
     const winnerId = aliveMembers[0].user_id
-    const { data: league } = await supabase
-      .from('leagues')
-      .select('settings')
-      .eq('id', leagueId)
-      .single()
 
-    const winnerBonus = league?.settings?.winner_bonus || 100
+    // Get total member count to determine bonus
+    const { count: memberCount } = await supabase
+      .from('league_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', leagueId)
 
-    // Award bonus points
+    let winnerBonus
+    if (memberCount >= 41) winnerBonus = 100
+    else if (memberCount >= 31) winnerBonus = 75
+    else if (memberCount >= 16) winnerBonus = 50
+    else if (memberCount >= 11) winnerBonus = 30
+    else if (memberCount >= 6) winnerBonus = 20
+    else winnerBonus = 10
+
+    // Award bonus to global points
     const { error } = await supabase.rpc('increment_user_points', {
       user_row_id: winnerId,
       points_delta: winnerBonus,
@@ -278,7 +285,36 @@ async function checkSurvivorWinner(leagueId) {
     if (error) {
       logger.error({ error, winnerId, leagueId }, 'Failed to award survivor winner bonus')
     } else {
-      logger.info({ winnerId, leagueId, bonus: winnerBonus }, 'Survivor winner awarded')
+      logger.info({ winnerId, leagueId, bonus: winnerBonus, memberCount }, 'Survivor winner awarded')
+    }
+
+    // Award bonus to sport stats
+    const { data: league } = await supabase
+      .from('leagues')
+      .select('sport')
+      .eq('id', leagueId)
+      .single()
+
+    if (league?.sport && league.sport !== 'all') {
+      const { data: sport } = await supabase
+        .from('sports')
+        .select('id')
+        .eq('key', league.sport)
+        .single()
+
+      if (sport) {
+        const { error: statsError } = await supabase
+          .rpc('update_sport_stats', {
+            p_user_id: winnerId,
+            p_sport_id: sport.id,
+            p_is_correct: true,
+            p_points: winnerBonus,
+          })
+
+        if (statsError) {
+          logger.error({ statsError, winnerId, leagueId }, 'Failed to update sport stats for survivor bonus')
+        }
+      }
     }
 
     // Mark league as completed
