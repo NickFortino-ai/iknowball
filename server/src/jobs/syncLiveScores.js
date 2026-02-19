@@ -9,6 +9,8 @@ const SPORTS = [
   'basketball_ncaab',
   'basketball_wnba',
   'baseball_mlb',
+  'icehockey_nhl',
+  'soccer_usa_mls',
 ]
 
 async function syncSportLiveScores(sportKey) {

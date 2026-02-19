@@ -19,6 +19,10 @@ function formatLiveStatus(game) {
         periodLabel = `Q${game.period}`
       } else if (sportKey.includes('baseball')) {
         periodLabel = game.period
+      } else if (sportKey.includes('hockey')) {
+        periodLabel = `P${game.period}`
+      } else if (sportKey.includes('soccer')) {
+        periodLabel = game.period === '1' ? '1H' : '2H'
       } else {
         periodLabel = `P${game.period}`
       }

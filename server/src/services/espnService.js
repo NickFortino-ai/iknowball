@@ -10,6 +10,8 @@ const SPORT_TO_ESPN = {
   basketball_ncaab: 'basketball/mens-college-basketball',
   basketball_wnba: 'basketball/wnba',
   baseball_mlb: 'baseball/mlb',
+  icehockey_nhl: 'hockey/nhl',
+  soccer_usa_mls: 'soccer/usa.1',
 }
 
 function normalizeTeamName(name) {
