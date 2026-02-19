@@ -94,7 +94,7 @@ Your tier is visible on your profile, the leaderboard, and in every league you j
   },
   {
     q: 'Who built this?',
-    a: 'I KNOW BALL was created by Nick Fortino. Questions, feedback, or feature requests? Email admin@iknowball.club.',
+    a: 'I KNOW BALL was created by Nick Fortino and Desmond Fortino. Questions, feedback, or feature requests? Email admin@iknowball.club.',
   },
 ]
 
