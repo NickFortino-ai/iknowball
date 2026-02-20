@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useUserProfile, useUserPickHistory, useUserParlayHistory, useUserPropPickHistory, useUserBonusHistory, useHeadToHead } from '../../hooks/useUserProfile'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus, useSendConnectionRequest } from '../../hooks/useConnections'
@@ -20,6 +20,11 @@ export default function UserProfileModal({ userId, onClose }) {
   const { data: connectionStatus } = useConnectionStatus(isViewingOther ? userId : null)
   const sendRequest = useSendConnectionRequest()
   const [justSent, setJustSent] = useState(false)
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   async function handleConnect() {
     if (!user?.username) return

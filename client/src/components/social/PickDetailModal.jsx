@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { usePickById } from '../../hooks/usePicks'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickReactions from './PickReactions'
@@ -14,6 +15,12 @@ const SPORT_LABELS = {
 
 export default function PickDetailModal({ pickId, onClose }) {
   const { data: pick, isLoading } = usePickById(pickId)
+
+  useEffect(() => {
+    if (!pickId) return
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [pickId])
 
   if (!pickId) return null
 
