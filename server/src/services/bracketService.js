@@ -906,6 +906,56 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner) {
   }
 }
 
+export async function getUserEntriesForTemplate(templateId, userId, excludeTournamentId) {
+  // Find all tournaments using this template (except the current one)
+  const { data: tournaments, error: tError } = await supabase
+    .from('bracket_tournaments')
+    .select('id, league_id, leagues(name)')
+    .eq('template_id', templateId)
+    .neq('id', excludeTournamentId)
+
+  if (tError || !tournaments?.length) return []
+
+  const tournamentIds = tournaments.map((t) => t.id)
+  const tournamentMap = {}
+  for (const t of tournaments) {
+    tournamentMap[t.id] = t
+  }
+
+  // Get user's entries across those tournaments
+  const { data: entries, error: eError } = await supabase
+    .from('bracket_entries')
+    .select('*')
+    .eq('user_id', userId)
+    .in('tournament_id', tournamentIds)
+
+  if (eError || !entries?.length) return []
+
+  // Get picks for each entry
+  const entryIds = entries.map((e) => e.id)
+  const { data: picks } = await supabase
+    .from('bracket_picks')
+    .select('*')
+    .in('entry_id', entryIds)
+    .order('round_number', { ascending: true })
+    .order('position', { ascending: true })
+
+  const picksByEntry = {}
+  for (const p of picks || []) {
+    if (!picksByEntry[p.entry_id]) picksByEntry[p.entry_id] = []
+    picksByEntry[p.entry_id].push(p)
+  }
+
+  return entries.map((e) => {
+    const t = tournamentMap[e.tournament_id]
+    return {
+      ...e,
+      league_name: t?.leagues?.name || 'Unknown League',
+      picks: picksByEntry[e.id] || [],
+    }
+  })
+}
+
 export async function getBracketStandings(leagueId) {
   const { data: tournament } = await supabase
     .from('bracket_tournaments')

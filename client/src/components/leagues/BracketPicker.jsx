@@ -1,10 +1,12 @@
 import { useState, useMemo, useCallback } from 'react'
-import { useSubmitBracket } from '../../hooks/useLeagues'
+import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 
 export default function BracketPicker({ league, tournament, matchups, existingPicks, onClose }) {
   const submitBracket = useSubmitBracket()
+  const { data: otherEntries } = useMyOtherBracketEntries(league?.id)
   const [entryName, setEntryName] = useState('')
+  const [copiedFrom, setCopiedFrom] = useState(null)
 
   // Template matchups for feeds_into info
   const templateMatchups = useMemo(
@@ -105,6 +107,23 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     }
   }
 
+  // Copy picks from another entry
+  function handleCopyBracket(entry) {
+    const newPicks = {}
+    for (const p of entry.picks) {
+      newPicks[p.template_matchup_id] = p.picked_team
+    }
+    setPicks(newPicks)
+    setCopiedFrom(entry.league_name)
+    toast(`Bracket copied from ${entry.league_name}`, 'success')
+  }
+
+  // Show copy option when user has other entries and hasn't started picking
+  const hasStartedPicking = Object.keys(picks).length > 0
+  const availableEntries = !existingPicks?.length && !hasStartedPicking && !copiedFrom
+    ? (otherEntries || [])
+    : []
+
   // Count filled picks vs total non-bye matchups
   const nonByeMatchups = (matchups || []).filter((m) => {
     const tm = templateMatchupMap[m.template_matchup_id]
@@ -162,6 +181,33 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
           />
         </div>
       </div>
+
+      {/* Copy from existing bracket */}
+      {availableEntries.length > 0 && (
+        <div className="bg-accent/10 border border-accent/30 rounded-xl p-3 mb-4">
+          <p className="text-sm text-text-secondary mb-2">
+            You have {availableEntries.length === 1 ? 'a bracket' : 'brackets'} from another league. Copy picks to get started?
+          </p>
+          <div className="space-y-2">
+            {availableEntries.map((entry) => (
+              <button
+                key={entry.id}
+                onClick={() => handleCopyBracket(entry)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-bg-card rounded-lg border border-border hover:border-accent transition-colors text-sm"
+              >
+                <span className="text-text-primary font-medium truncate">{entry.league_name}</span>
+                <span className="shrink-0 ml-2 text-xs text-accent font-semibold">Use Bracket</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {copiedFrom && (
+        <div className="bg-correct/10 border border-correct/30 rounded-xl px-3 py-2 mb-4 text-sm text-correct text-center">
+          Copied from {copiedFrom} — review and edit before submitting
+        </div>
+      )}
 
       {/* Round tabs (mobile stepper) */}
       <div className="flex gap-1 mb-4 overflow-x-auto">

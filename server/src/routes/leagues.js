@@ -42,6 +42,7 @@ import {
   getAllEntries,
   submitBracket,
   getTemplates,
+  getUserEntriesForTemplate,
 } from '../services/bracketService.js'
 
 const router = Router()
@@ -366,6 +367,16 @@ router.get('/:id/bracket/entries/:userId', requireAuth, async (req, res) => {
   const tournament = await getTournament(req.params.id)
   const entry = await getEntryByUser(tournament.id, req.params.userId)
   res.json(entry)
+})
+
+router.get('/:id/bracket/my-other-entries', requireAuth, async (req, res) => {
+  const tournament = await getTournament(req.params.id)
+  const entries = await getUserEntriesForTemplate(
+    tournament.template_id,
+    req.user.id,
+    tournament.id
+  )
+  res.json(entries)
 })
 
 const submitBracketSchema = z.object({

@@ -256,6 +256,14 @@ export function useViewBracketEntry(leagueId, userId) {
   })
 }
 
+export function useMyOtherBracketEntries(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'bracket', 'my-other-entries'],
+    queryFn: () => api.get(`/leagues/${leagueId}/bracket/my-other-entries`),
+    enabled: !!leagueId,
+  })
+}
+
 export function useSubmitBracket() {
   const queryClient = useQueryClient()
 
