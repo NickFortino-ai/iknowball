@@ -287,7 +287,7 @@ export default function PicksPage() {
           </div>
 
           {/* Daily Featured Player Prop */}
-          <FeaturedPropSection date={selectedDate} sportKey={sportKey} />
+          <FeaturedPropSection date={new Date()} sportKey={sportKey} />
 
           {/* My Parlays (visible in parlay mode) */}
           {parlayMode && (activeParlays?.length > 0 || lockedParlays?.length > 0) && (
