@@ -17,6 +17,9 @@ export default function FeaturedPropSection({ date, sportKey }) {
 
   if (isLoading || !prop) return null
 
+  // Hide settled props on the picks page (like finalized games)
+  if (prop.status === 'settled') return null
+
   // Only show when viewing the sport this prop belongs to
   if (sportKey && prop.games?.sports?.key !== sportKey) return null
 
