@@ -22,9 +22,10 @@ export default function UserProfileModal({ userId, onClose }) {
   const [justSent, setJustSent] = useState(false)
 
   useEffect(() => {
+    if (!userId) return
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
-  }, [])
+  }, [userId])
 
   async function handleConnect() {
     if (!user?.username) return
