@@ -54,7 +54,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
     if (isFinal) {
       return userPick.is_correct ? 'correct' : 'incorrect'
     }
-    if (userPick.status === 'locked') return 'locked'
+    if (userPick.status === 'locked') return 'locked-picked'
     return 'selected'
   }
 
