@@ -15,9 +15,13 @@ export function useGames(sport, status, days = 3) {
   if (days) params.set('days', days)
   const qs = params.toString()
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['games', sport, status, days],
     queryFn: () => api.get(`/games${qs ? `?${qs}` : ''}`),
-    refetchInterval: 30_000,
+    refetchInterval: (query) => {
+      const hasLive = query.state.data?.some((g) => g.status === 'live')
+      return hasLive ? 10_000 : 30_000
+    },
   })
+  return query
 }
