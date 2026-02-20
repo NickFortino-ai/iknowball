@@ -169,19 +169,21 @@ export default function PropSyncPanel({ game, sportKey }) {
             {syncedProps.map((prop) => (
               <div
                 key={prop.id}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-secondary"
+                className="p-2 rounded-lg hover:bg-bg-secondary space-y-2"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{prop.player_name}</div>
-                  <div className="text-xs text-text-muted">
-                    {prop.market_label} — Line {prop.line}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{prop.player_name}</div>
+                    <div className="text-xs text-text-muted">
+                      {prop.market_label} — Line {prop.line}
+                    </div>
+                  </div>
+                  <div className="text-xs text-text-secondary text-right shrink-0">
+                    <div>O {prop.over_odds ? formatOdds(prop.over_odds) : '—'}</div>
+                    <div>U {prop.under_odds ? formatOdds(prop.under_odds) : '—'}</div>
                   </div>
                 </div>
-                <div className="text-xs text-text-secondary text-right mr-2">
-                  <div>O {prop.over_odds ? formatOdds(prop.over_odds) : '—'}</div>
-                  <div>U {prop.under_odds ? formatOdds(prop.under_odds) : '—'}</div>
-                </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {dateOptions.map((opt) => (
                     <button
                       key={opt.date}
