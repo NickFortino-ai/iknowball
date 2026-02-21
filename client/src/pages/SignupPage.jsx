@@ -19,7 +19,11 @@ export default function SignupPage() {
       await signUp(email, password, username)
       navigate('/payment')
     } catch (err) {
-      setError(err.message)
+      if (err.message?.toLowerCase().includes('already registered') || err.message?.toLowerCase().includes('already exists')) {
+        setError('There is already an account associated with this email. For help, send an email to admin@iknowball.club')
+      } else {
+        setError(err.message)
+      }
     } finally {
       setLoading(false)
     }
