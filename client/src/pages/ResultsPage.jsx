@@ -17,7 +17,7 @@ export default function ResultsPage() {
   const { data: propPicks, isLoading: propsLoading } = usePropPickHistory()
   const { data: futuresPicks, isLoading: futuresLoading } = useFuturesPickHistory()
 
-  const { livePicks, settledPicks, liveParlays, settledParlays, liveProps, settledProps, liveFutures, settledFutures } = useMemo(() => {
+  const { livePicks, settledPicks, liveParlays, settledParlays, liveProps, settledProps, settledFutures } = useMemo(() => {
     return {
       livePicks: (picks || []).filter(p => p.status === 'locked'),
       settledPicks: (picks || []).filter(p => p.status === 'settled'),
@@ -25,12 +25,11 @@ export default function ResultsPage() {
       settledParlays: (parlays || []).filter(p => p.status === 'settled'),
       liveProps: (propPicks || []).filter(p => p.status === 'locked'),
       settledProps: (propPicks || []).filter(p => p.status === 'settled'),
-      liveFutures: (futuresPicks || []).filter(p => p.status === 'locked'),
       settledFutures: (futuresPicks || []).filter(p => p.status === 'settled'),
     }
   }, [picks, parlays, propPicks, futuresPicks])
 
-  const hasLive = livePicks.length > 0 || liveParlays.length > 0 || liveProps.length > 0 || liveFutures.length > 0
+  const hasLive = livePicks.length > 0 || liveParlays.length > 0 || liveProps.length > 0
   const hasSettled = settledPicks.length > 0 || settledParlays.length > 0 || settledProps.length > 0 || settledFutures.length > 0
 
   const weeklyStats = useMemo(() => {
@@ -87,9 +86,6 @@ export default function ResultsPage() {
         <>
           <h2 className="font-display text-lg text-accent mb-3">Live</h2>
           <div className="space-y-3 mb-6">
-            {liveFutures.map((fp) => (
-              <FuturesPickCard key={fp.id} pick={fp} />
-            ))}
             {liveParlays.map((parlay) => (
               <ParlayCard key={parlay.id} parlay={parlay} />
             ))}
