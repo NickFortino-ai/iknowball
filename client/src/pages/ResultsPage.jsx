@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, Fragment } from 'react'
 import { usePickHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
 import { usePropPickHistory } from '../hooks/useProps'
@@ -10,6 +10,35 @@ import PropCard from '../components/picks/PropCard'
 import FuturesPickCard from '../components/picks/FuturesPickCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
+
+function getLocalDateKey(dateStr) {
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatDateHeader(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function groupByDate(items, getDate) {
+  const groups = []
+  let currentKey = null
+  let currentItems = []
+  for (const item of items) {
+    const key = getLocalDateKey(getDate(item))
+    if (key !== currentKey) {
+      if (currentItems.length) groups.push({ date: currentKey, items: currentItems })
+      currentKey = key
+      currentItems = [item]
+    } else {
+      currentItems.push(item)
+    }
+  }
+  if (currentItems.length) groups.push({ date: currentKey, items: currentItems })
+  return groups
+}
 
 export default function ResultsPage() {
   const { data: picks, isLoading } = usePickHistory()
@@ -122,8 +151,13 @@ export default function ResultsPage() {
             <>
               <h2 className="font-display text-lg text-text-secondary mb-3">Parlays</h2>
               <div className="space-y-3 mb-6">
-                {settledParlays.map((parlay) => (
-                  <ParlayCard key={parlay.id} parlay={parlay} />
+                {groupByDate(settledParlays, (p) => p.created_at).map(({ date, items }) => (
+                  <Fragment key={date}>
+                    <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                    {items.map((parlay) => (
+                      <ParlayCard key={parlay.id} parlay={parlay} />
+                    ))}
+                  </Fragment>
                 ))}
               </div>
             </>
@@ -133,8 +167,13 @@ export default function ResultsPage() {
             <>
               <h2 className="font-display text-lg text-text-secondary mb-3">Player Props</h2>
               <div className="space-y-3 mb-6">
-                {settledProps.map((pp) => (
-                  <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
+                {groupByDate(settledProps, (p) => p.player_props?.games?.starts_at || p.created_at).map(({ date, items }) => (
+                  <Fragment key={date}>
+                    <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                    {items.map((pp) => (
+                      <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
+                    ))}
+                  </Fragment>
                 ))}
               </div>
             </>
@@ -146,13 +185,18 @@ export default function ResultsPage() {
                 <h2 className="font-display text-lg text-text-secondary mb-3">Straight Picks</h2>
               )}
               <div className="space-y-3">
-                {settledPicks.map((pick) => (
-                  <GameCard
-                    key={pick.id}
-                    game={pick.games}
-                    userPick={pick}
-                    reactions={reactionsBatch?.[pick.id]}
-                  />
+                {groupByDate(settledPicks, (p) => p.games.starts_at).map(({ date, items }) => (
+                  <Fragment key={date}>
+                    <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                    {items.map((pick) => (
+                      <GameCard
+                        key={pick.id}
+                        game={pick.games}
+                        userPick={pick}
+                        reactions={reactionsBatch?.[pick.id]}
+                      />
+                    ))}
+                  </Fragment>
                 ))}
               </div>
             </>
