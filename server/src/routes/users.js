@@ -9,6 +9,7 @@ import {
   declineInvitation,
 } from '../services/invitationService.js'
 import { getPublicPickHistory } from '../services/pickService.js'
+import { getCrowns } from '../services/leaderboardService.js'
 
 const router = Router()
 
@@ -26,6 +27,7 @@ const updateSchema = z.object({
     parlay_result: z.boolean(),
     streak_milestone: z.boolean(),
   }).optional(),
+  title_preference: z.enum(['king', 'queen']).optional(),
 })
 
 // Resolve username to email for login (no auth required)
@@ -92,7 +94,7 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, created_at')
+    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, title_preference, created_at')
     .eq('id', id)
     .single()
 
@@ -161,12 +163,15 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
     sport_total_users: sportRanks[s.sport_id]?.total || null,
   }))
 
+  const crowns = await getCrowns(id)
+
   res.json({
     ...user,
     record: { wins, losses, pushes, total: wins + losses + pushes },
     rank,
     total_users: allUsers?.length || 0,
     sport_stats: enrichedSportStats,
+    crowns,
   })
 })
 

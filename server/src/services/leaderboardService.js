@@ -103,3 +103,36 @@ export async function getLeaderboard(scope = 'global', sportKey) {
 
   return []
 }
+
+export async function getCrowns(userId) {
+  const crowns = []
+
+  // Check global leaderboard
+  const globalBoard = await getLeaderboard('global')
+  if (globalBoard.length > 0 && globalBoard[0].id === userId) {
+    crowns.push('I KNOW BALL')
+  }
+
+  // Check props leaderboard
+  const propsBoard = await getLeaderboard('props')
+  if (propsBoard.length > 0 && propsBoard[0].id === userId) {
+    crowns.push('Props')
+  }
+
+  // Check parlays leaderboard
+  const parlaysBoard = await getLeaderboard('parlays')
+  if (parlaysBoard.length > 0 && parlaysBoard[0].id === userId) {
+    crowns.push('Parlays')
+  }
+
+  // Check each sport leaderboard
+  const { data: sports } = await supabase.from('sports').select('key, name')
+  for (const sport of sports || []) {
+    const sportBoard = await getLeaderboard('sport', sport.key)
+    if (sportBoard.length > 0 && sportBoard[0].id === userId) {
+      crowns.push(sport.name)
+    }
+  }
+
+  return crowns
+}

@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const [bio, setBio] = useState('')
   const [avatarEmoji, setAvatarEmoji] = useState('')
   const [selectedSports, setSelectedSports] = useState([])
+  const [titlePreference, setTitlePreference] = useState('king')
   const [saving, setSaving] = useState(false)
 
   // Push notification state
@@ -49,6 +50,7 @@ export default function SettingsPage() {
       setBio(profile.bio || '')
       setAvatarEmoji(profile.avatar_emoji || '')
       setSelectedSports(profile.sports_interests || [])
+      setTitlePreference(profile.title_preference || 'king')
       if (profile.push_preferences) {
         setPushPrefs(profile.push_preferences)
       }
@@ -100,6 +102,7 @@ export default function SettingsPage() {
         bio,
         avatar_emoji: avatarEmoji,
         sports_interests: selectedSports,
+        title_preference: titlePreference,
       })
       await refetch()
       await fetchProfile()
@@ -174,6 +177,31 @@ export default function SettingsPage() {
             Selected: {avatarEmoji}
           </p>
         )}
+      </div>
+
+      {/* Title Preference */}
+      <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
+        <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
+          Title
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {['king', 'queen'].map((option) => (
+            <button
+              key={option}
+              onClick={() => setTitlePreference(option)}
+              className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                titlePreference === option
+                  ? 'bg-accent/20 border-2 border-accent'
+                  : 'bg-bg-input border border-border hover:border-border-hover'
+              }`}
+            >
+              <span className="text-lg">{option === 'king' ? '🤴' : '👸'}</span>
+              <span className={titlePreference === option ? 'text-accent font-semibold' : 'text-text-secondary'}>
+                {option === 'king' ? 'King' : 'Queen'}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Sports Interests */}

@@ -115,6 +115,27 @@ export default function UserProfileModal({ userId, onClose }) {
               </span>
             </div>
 
+            {/* Crowns */}
+            {user.crowns?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {user.crowns.map((crown) => {
+                  const title = user.title_preference === 'queen' ? 'Queen' : 'King'
+                  const label = crown === 'I KNOW BALL'
+                    ? `${title} of I KNOW BALL`
+                    : `${crown} ${title}`
+                  return (
+                    <span
+                      key={crown}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-accent/15 text-accent text-xs font-semibold"
+                    >
+                      <span>👑</span>
+                      {label}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+
             {/* Pick Record */}
             <div className="bg-bg-primary rounded-xl p-4 mb-4">
               <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Pick Record</h3>
