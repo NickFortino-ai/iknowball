@@ -98,7 +98,7 @@ function getMonthStats(items) {
   return { wins, losses, net }
 }
 
-export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, bonuses, isLoading }) {
+export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, bonuses, isLoading, allCollapsed }) {
   const months = useMemo(() => {
     const items = normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses)
     return items.length ? groupByMonth(items) : []
@@ -107,7 +107,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
 
   function isExpanded(key, index) {
     if (key in expanded) return expanded[key]
-    return index === 0
+    return allCollapsed ? false : index === 0
   }
 
   function toggle(key) {

@@ -215,7 +215,7 @@ export default function UserProfileModal({ userId, onClose }) {
             )}
 
             {/* Pick History */}
-            <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} />
+            <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed />
 
             {/* Member since */}
             <div className="text-text-muted text-xs text-center mt-4">
