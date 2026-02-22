@@ -42,6 +42,36 @@ export async function getLeaderboard(scope = 'global', sportKey) {
       .map((u, i) => ({ ...u, rank: i + 1 }))
   }
 
+  if (scope === 'parlays') {
+    const { data, error } = await supabase
+      .from('parlays')
+      .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, tier)')
+      .eq('status', 'settled')
+
+    if (error) throw error
+
+    const statsMap = {}
+    for (const parlay of data || []) {
+      if (!statsMap[parlay.user_id]) {
+        statsMap[parlay.user_id] = {
+          ...parlay.users,
+          parlay_points: 0,
+          total_parlays: 0,
+          correct_parlays: 0,
+        }
+      }
+      const s = statsMap[parlay.user_id]
+      s.parlay_points += parlay.points_earned || 0
+      s.total_parlays++
+      if (parlay.is_correct) s.correct_parlays++
+    }
+
+    return Object.values(statsMap)
+      .sort((a, b) => b.parlay_points - a.parlay_points)
+      .slice(0, 100)
+      .map((u, i) => ({ ...u, rank: i + 1 }))
+  }
+
   if (scope === 'sport' && sportKey) {
     const { data: sport } = await supabase
       .from('sports')
