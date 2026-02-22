@@ -1,4 +1,4 @@
-import { useMemo, Fragment } from 'react'
+import { useMemo, useState, useCallback, Fragment } from 'react'
 import { usePickHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
 import { usePropPickHistory } from '../hooks/useProps'
@@ -40,7 +40,32 @@ function groupByDate(items, getDate) {
   return groups
 }
 
+function getTodayKey() {
+  const d = new Date()
+  return `results-collapsed-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function loadCollapsed() {
+  try {
+    const key = getTodayKey()
+    const stored = sessionStorage.getItem(key)
+    return stored ? JSON.parse(stored) : {}
+  } catch {
+    return {}
+  }
+}
+
 export default function ResultsPage() {
+  const [collapsed, setCollapsed] = useState(loadCollapsed)
+
+  const toggleSection = useCallback((section) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [section]: !prev[section] }
+      sessionStorage.setItem(getTodayKey(), JSON.stringify(next))
+      return next
+    })
+  }, [])
+
   const { data: picks, isLoading } = usePickHistory()
   const { data: parlays, isLoading: parlaysLoading } = useParlayHistory()
   const { data: propPicks, isLoading: propsLoading } = usePropPickHistory()
@@ -113,22 +138,27 @@ export default function ResultsPage() {
 
       {hasLive && (
         <>
-          <h2 className="font-display text-lg text-accent mb-3">Live</h2>
-          <div className="space-y-3 mb-6">
-            {liveParlays.map((parlay) => (
-              <ParlayCard key={parlay.id} parlay={parlay} />
-            ))}
-            {liveProps.map((pp) => (
-              <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
-            ))}
-            {livePicks.map((pick) => (
-              <GameCard
-                key={pick.id}
-                game={pick.games}
-                userPick={pick}
-              />
-            ))}
-          </div>
+          <button onClick={() => toggleSection('live')} className="flex items-center justify-between w-full mb-3">
+            <h2 className="font-display text-lg text-accent">Live</h2>
+            <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.live ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {!collapsed.live && (
+            <div className="space-y-3 mb-6">
+              {liveParlays.map((parlay) => (
+                <ParlayCard key={parlay.id} parlay={parlay} />
+              ))}
+              {liveProps.map((pp) => (
+                <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
+              ))}
+              {livePicks.map((pick) => (
+                <GameCard
+                  key={pick.id}
+                  game={pick.games}
+                  userPick={pick}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -138,67 +168,85 @@ export default function ResultsPage() {
         <>
           {settledFutures.length > 0 && (
             <>
-              <h2 className="font-display text-lg text-text-secondary mb-3">Futures</h2>
-              <div className="space-y-3 mb-6">
-                {settledFutures.map((fp) => (
-                  <FuturesPickCard key={fp.id} pick={fp} />
-                ))}
-              </div>
+              <button onClick={() => toggleSection('futures')} className="flex items-center justify-between w-full mb-3">
+                <h2 className="font-display text-lg text-text-secondary">Futures</h2>
+                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.futures ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {!collapsed.futures && (
+                <div className="space-y-3 mb-6">
+                  {settledFutures.map((fp) => (
+                    <FuturesPickCard key={fp.id} pick={fp} />
+                  ))}
+                </div>
+              )}
             </>
           )}
 
           {settledParlays.length > 0 && (
             <>
-              <h2 className="font-display text-lg text-text-secondary mb-3">Parlays</h2>
-              <div className="space-y-3 mb-6">
-                {groupByDate(settledParlays, (p) => p.created_at).map(({ date, items }) => (
-                  <Fragment key={date}>
-                    <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
-                    {items.map((parlay) => (
-                      <ParlayCard key={parlay.id} parlay={parlay} />
-                    ))}
-                  </Fragment>
-                ))}
-              </div>
+              <button onClick={() => toggleSection('parlays')} className="flex items-center justify-between w-full mb-3">
+                <h2 className="font-display text-lg text-text-secondary">Parlays</h2>
+                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.parlays ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {!collapsed.parlays && (
+                <div className="space-y-3 mb-6">
+                  {groupByDate(settledParlays, (p) => p.created_at).map(({ date, items }) => (
+                    <Fragment key={date}>
+                      <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                      {items.map((parlay) => (
+                        <ParlayCard key={parlay.id} parlay={parlay} />
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
           {settledProps.length > 0 && (
             <>
-              <h2 className="font-display text-lg text-text-secondary mb-3">Player Props</h2>
-              <div className="space-y-3 mb-6">
-                {groupByDate(settledProps, (p) => p.player_props?.games?.starts_at || p.created_at).map(({ date, items }) => (
-                  <Fragment key={date}>
-                    <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
-                    {items.map((pp) => (
-                      <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
-                    ))}
-                  </Fragment>
-                ))}
-              </div>
+              <button onClick={() => toggleSection('props')} className="flex items-center justify-between w-full mb-3">
+                <h2 className="font-display text-lg text-text-secondary">Player Props</h2>
+                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.props ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {!collapsed.props && (
+                <div className="space-y-3 mb-6">
+                  {groupByDate(settledProps, (p) => p.player_props?.games?.starts_at || p.created_at).map(({ date, items }) => (
+                    <Fragment key={date}>
+                      <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                      {items.map((pp) => (
+                        <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
           {settledPicks.length > 0 && (
             <>
-              {(settledParlays.length > 0 || settledProps.length > 0) && (
-                <h2 className="font-display text-lg text-text-secondary mb-3">Straight Picks</h2>
+              <button onClick={() => toggleSection('picks')} className="flex items-center justify-between w-full mb-3">
+                <h2 className="font-display text-lg text-text-secondary">Straight Picks</h2>
+                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.picks ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {!collapsed.picks && (
+                <div className="space-y-3">
+                  {groupByDate(settledPicks, (p) => p.games.starts_at).map(({ date, items }) => (
+                    <Fragment key={date}>
+                      <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                      {items.map((pick) => (
+                        <GameCard
+                          key={pick.id}
+                          game={pick.games}
+                          userPick={pick}
+                          reactions={reactionsBatch?.[pick.id]}
+                        />
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
               )}
-              <div className="space-y-3">
-                {groupByDate(settledPicks, (p) => p.games.starts_at).map(({ date, items }) => (
-                  <Fragment key={date}>
-                    <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
-                    {items.map((pick) => (
-                      <GameCard
-                        key={pick.id}
-                        game={pick.games}
-                        userPick={pick}
-                        reactions={reactionsBatch?.[pick.id]}
-                      />
-                    ))}
-                  </Fragment>
-                ))}
-              </div>
             </>
           )}
         </>
