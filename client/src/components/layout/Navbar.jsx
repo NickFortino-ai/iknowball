@@ -53,6 +53,7 @@ export default function Navbar() {
   const [showDesktopMenu, setShowDesktopMenu] = useState(false)
   const [selectedPickId, setSelectedPickId] = useState(null)
   const dropdownRef = useRef(null)
+  const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
   const desktopMenuRef = useRef(null)
 
@@ -76,7 +77,10 @@ export default function Navbar() {
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target) &&
+        (!mobileDropdownRef.current || !mobileDropdownRef.current.contains(e.target))
+      ) {
         setShowInvites(false)
       }
     }
@@ -554,7 +558,7 @@ export default function Navbar() {
 
             {/* Mobile notifications dropdown (shared position) */}
             {showInvites && (
-              <div className="absolute right-4 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden md:hidden">
+              <div ref={mobileDropdownRef} className="absolute right-4 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden md:hidden">
                 <div className="px-4 py-3 border-b border-border">
                   <h3 className="font-semibold text-sm">Notifications</h3>
                 </div>
