@@ -5,9 +5,7 @@ const REACTIONS = [
   { type: 'fire', emoji: '\uD83D\uDD25' },
   { type: 'clown', emoji: '\uD83E\uDD21' },
   { type: 'goat', emoji: '\uD83D\uDC10' },
-  { type: 'dead', emoji: '\uD83D\uDC80' },
   { type: 'clap', emoji: '\uD83D\uDC4F' },
-  { type: 'ice', emoji: '\uD83E\uDDCA' },
 ]
 
 export default function PickReactions({ pickId, compact = false, reactions: externalReactions }) {
