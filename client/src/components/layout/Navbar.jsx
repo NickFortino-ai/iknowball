@@ -44,6 +44,22 @@ function timeAgo(dateStr) {
   return `${days}d`
 }
 
+function getNotificationRoute(notification) {
+  if (notification.metadata?.pickId) return null // handled by modal
+  switch (notification.type) {
+    case 'parlay_result':
+    case 'futures_result':
+    case 'streak_milestone':
+      return '/results'
+    case 'connection_request':
+      return '/connections'
+    case 'power_rankings':
+      return '/leaderboard'
+    default:
+      return null
+  }
+}
+
 export default function Navbar() {
   const { isAuthenticated, profile, signOut } = useAuth()
   const location = useLocation()
@@ -287,21 +303,28 @@ export default function Navbar() {
                             </div>
                           </div>
                         ))}
-                        {notifications?.map((n) => (
-                          <div
-                            key={n.id}
-                            className={`px-4 py-3 border-b border-border last:border-b-0${n.metadata?.pickId ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
-                            onClick={() => { if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) } }}
-                          >
-                            <div className="flex items-start gap-2">
-                              <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm">{n.message}</div>
-                                <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
+                        {notifications?.map((n) => {
+                          const route = getNotificationRoute(n)
+                          const tappable = n.metadata?.pickId || route
+                          return (
+                            <div
+                              key={n.id}
+                              className={`px-4 py-3 border-b border-border last:border-b-0${tappable ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
+                              onClick={() => {
+                                if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
+                                else if (route) { navigate(route); setShowInvites(false) }
+                              }}
+                            >
+                              <div className="flex items-start gap-2">
+                                <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm">{n.message}</div>
+                                  <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -617,21 +640,28 @@ export default function Navbar() {
                         </div>
                       </div>
                     ))}
-                    {notifications?.map((n) => (
-                      <div
-                        key={n.id}
-                        className={`px-4 py-3 border-b border-border last:border-b-0${n.metadata?.pickId ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
-                        onClick={() => { if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) } }}
-                      >
-                        <div className="flex items-start gap-2">
-                          <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm">{n.message}</div>
-                            <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
+                    {notifications?.map((n) => {
+                      const route = getNotificationRoute(n)
+                      const tappable = n.metadata?.pickId || route
+                      return (
+                        <div
+                          key={n.id}
+                          className={`px-4 py-3 border-b border-border last:border-b-0${tappable ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
+                          onClick={() => {
+                            if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
+                            else if (route) { navigate(route); setShowInvites(false) }
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm">{n.message}</div>
+                              <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
