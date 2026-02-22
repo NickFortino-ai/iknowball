@@ -649,6 +649,42 @@ export async function selectPickemGames(leagueId, userId, weekId, gameIds) {
   return rows
 }
 
+export async function deleteLeague(leagueId, userId) {
+  const { data: league, error: fetchError } = await supabase
+    .from('leagues')
+    .select('id, commissioner_id, format')
+    .eq('id', leagueId)
+    .single()
+
+  if (fetchError || !league) {
+    const err = new Error('League not found')
+    err.status = 404
+    throw err
+  }
+
+  if (league.commissioner_id !== userId) {
+    const err = new Error('Only the commissioner can delete a league')
+    err.status = 403
+    throw err
+  }
+
+  if (league.format !== 'squares') {
+    const err = new Error('Only squares contests can be deleted')
+    err.status = 400
+    throw err
+  }
+
+  const { error } = await supabase
+    .from('leagues')
+    .delete()
+    .eq('id', leagueId)
+
+  if (error) {
+    logger.error({ error, leagueId }, 'Failed to delete league')
+    throw error
+  }
+}
+
 export async function getLeagueStandings(leagueId, userId) {
   // Verify membership
   const { data: member } = await supabase

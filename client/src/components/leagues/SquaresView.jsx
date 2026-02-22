@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   useSquaresBoard,
   useClaimSquare,
@@ -6,6 +7,7 @@ import {
   useLockDigits,
   useScoreQuarter,
   useUpdateBoardSettings,
+  useDeleteLeague,
 } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -20,10 +22,13 @@ export default function SquaresView({ league, isCommissioner }) {
   const lockDigitsM = useLockDigits()
   const scoreQuarterM = useScoreQuarter()
   const updateSettings = useUpdateBoardSettings()
+  const deleteLeague = useDeleteLeague()
+  const navigate = useNavigate()
 
   const [scoreForm, setScoreForm] = useState({ quarter: 1, awayScore: '', homeScore: '' })
   const [editRowName, setEditRowName] = useState(null)
   const [editColName, setEditColName] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   if (isLoading) return <LoadingSpinner />
   if (!board) return <EmptyState title="No board" message="Board not available" />
@@ -261,6 +266,47 @@ export default function SquaresView({ league, isCommissioner }) {
               </button>
             </form>
           )}
+
+          {/* Delete contest */}
+          <div className="pt-2 border-t border-border mt-1">
+            {!confirmDelete ? (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="text-[11px] text-text-muted hover:text-incorrect transition-colors"
+              >
+                Contest did not run
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[11px] text-incorrect">
+                  This will permanently delete this contest and all its data.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await deleteLeague.mutateAsync(league.id)
+                        toast('Contest deleted', 'success')
+                        navigate('/leagues')
+                      } catch (err) {
+                        toast(err.message || 'Failed to delete contest', 'error')
+                      }
+                    }}
+                    disabled={deleteLeague.isPending}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-incorrect/10 text-incorrect hover:bg-incorrect/20 disabled:opacity-50"
+                  >
+                    Delete Contest
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-2.5 py-1 rounded-lg text-[11px] text-text-muted hover:text-text-secondary"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

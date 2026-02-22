@@ -9,6 +9,7 @@ import {
   getMyLeagues,
   getLeagueDetails,
   updateLeague,
+  deleteLeague,
   getLeagueMembers,
   getLeagueStandings,
   getLeagueWeeks,
@@ -134,6 +135,11 @@ const updateLeagueSchema = z.object({
 router.patch('/:id', requireAuth, validate(updateLeagueSchema), async (req, res) => {
   const league = await updateLeague(req.params.id, req.user.id, req.validated)
   res.json(league)
+})
+
+router.delete('/:id', requireAuth, async (req, res) => {
+  await deleteLeague(req.params.id, req.user.id)
+  res.status(204).end()
 })
 
 // ============================================
