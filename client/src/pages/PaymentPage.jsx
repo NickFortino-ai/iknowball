@@ -25,6 +25,10 @@ async function attemptPendingJoin() {
   }
 }
 
+function isNewUser(profile) {
+  return profile && !profile.bio && !profile.avatar_emoji
+}
+
 export default function PaymentPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -43,7 +47,8 @@ export default function PaymentPage() {
   useEffect(() => {
     if (profile?.is_paid) {
       attemptPendingJoin().then((league) => {
-        navigate(league ? `/leagues/${league.id}` : '/picks', { replace: true })
+        const dest = league ? `/leagues/${league.id}` : isNewUser(profile) ? '/settings' : '/picks'
+        navigate(dest, { replace: true })
       })
     }
   }, [profile, navigate])
@@ -69,7 +74,9 @@ export default function PaymentPage() {
           clearInterval(interval)
           await fetchProfile()
           const league = await attemptPendingJoin()
-          navigate(league ? `/leagues/${league.id}` : '/picks', { replace: true })
+          const updatedProfile = useAuthStore.getState().profile
+          const dest = league ? `/leagues/${league.id}` : isNewUser(updatedProfile) ? '/settings' : '/picks'
+          navigate(dest, { replace: true })
         }
       } catch {
         // ignore polling errors
@@ -104,7 +111,9 @@ export default function PaymentPage() {
       await api.post('/payments/redeem-promo', { code: promoCode })
       await fetchProfile()
       const league = await attemptPendingJoin()
-      navigate(league ? `/leagues/${league.id}` : '/picks', { replace: true })
+      const updatedProfile = useAuthStore.getState().profile
+      const dest = league ? `/leagues/${league.id}` : isNewUser(updatedProfile) ? '/settings' : '/picks'
+      navigate(dest, { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
