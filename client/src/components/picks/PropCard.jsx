@@ -3,6 +3,7 @@ import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../li
 const sideStyles = {
   default: 'bg-bg-card hover:bg-bg-card-hover border-border hover:border-border-hover',
   selected: 'bg-accent/20 border-accent',
+  'locked-selected': 'bg-accent/15 border-accent cursor-not-allowed',
   locked: 'bg-bg-card border-border opacity-60 cursor-not-allowed',
   correct: 'bg-correct-muted border-correct',
   incorrect: 'bg-incorrect-muted border-incorrect',
@@ -22,7 +23,7 @@ function getSideState(prop, pick, side) {
   if (pick.status === 'settled') {
     return pick.is_correct ? 'correct' : 'incorrect'
   }
-  if (pick.status === 'locked') return 'locked'
+  if (pick.status === 'locked') return 'locked-selected'
   return 'selected'
 }
 
