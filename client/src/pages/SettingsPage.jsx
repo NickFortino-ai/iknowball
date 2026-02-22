@@ -181,9 +181,6 @@ export default function SettingsPage() {
 
       {/* Title Preference */}
       <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
-        <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
-          Title
-        </label>
         <div className="grid grid-cols-2 gap-2">
           {['king', 'queen'].map((option) => (
             <button
@@ -195,7 +192,7 @@ export default function SettingsPage() {
                   : 'bg-bg-input border border-border hover:border-border-hover'
               }`}
             >
-              <span className="text-lg">{option === 'king' ? '🤴' : '👸'}</span>
+              <span className="text-lg">{option === 'king' ? '♚' : '♛'}</span>
               <span className={titlePreference === option ? 'text-accent font-semibold' : 'text-text-secondary'}>
                 {option === 'king' ? 'King' : 'Queen'}
               </span>
