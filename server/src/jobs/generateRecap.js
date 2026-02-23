@@ -73,6 +73,7 @@ export async function generateWeeklyRecap() {
     pick_of_week_user_id: weeklyData.pickOfWeekUser?.user_id || null,
     biggest_fall_user_id: weeklyData.biggestFallUser?.user_id || null,
     longest_streak_user_id: weeklyData.longestStreakUser?.user_id || null,
+    crown_holders: weeklyData.currentCrownHolders || null,
   })
 
   if (insertError) {

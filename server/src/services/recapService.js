@@ -3,6 +3,7 @@ import { env } from '../config/env.js'
 import { logger } from '../utils/logger.js'
 import { getTier } from '../config/constants.js'
 import { getPronouns } from '../utils/pronouns.js'
+import { getAllCrownHolders } from './leaderboardService.js'
 
 /**
  * Collect weekly performance data for all users who made picks
@@ -238,14 +239,131 @@ export async function collectWeeklyData(weekStart, weekEnd) {
     }
   }
 
-  return { top5, allUsers: enriched, pickOfWeekUser, biggestFallUser, longestStreakUser }
+  // --- Records broken this week ---
+  const recordsBroken = []
+
+  // Longest streak: check if the all-time best was updated this week
+  const { data: streakRecord } = await supabase
+    .from('user_sport_stats')
+    .select('user_id, best_streak, sports(name), users(display_name, username)')
+    .order('best_streak', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (streakRecord && streakRecord.best_streak > 0) {
+    // Check if any user_sport_stats row with the top best_streak was updated this week
+    const { data: recentStreak } = await supabase
+      .from('user_sport_stats')
+      .select('user_id, best_streak, sports(name), users(display_name, username)')
+      .eq('best_streak', streakRecord.best_streak)
+      .gte('updated_at', startISO)
+      .lte('updated_at', endISO)
+      .limit(1)
+      .maybeSingle()
+
+    if (recentStreak) {
+      recordsBroken.push({
+        record: 'Longest Streak',
+        holder_name: recentStreak.users?.display_name || recentStreak.users?.username || 'Unknown',
+        holder_username: recentStreak.users?.username || 'Unknown',
+        detail: `${recentStreak.best_streak} (${recentStreak.sports?.name || 'Unknown'})`,
+      })
+    }
+  }
+
+  // Biggest parlay win: check if the all-time biggest was settled this week
+  const { data: parlayRecord } = await supabase
+    .from('parlays')
+    .select('user_id, reward_points, risk_points, users(display_name, username)')
+    .eq('is_correct', true).eq('status', 'settled')
+    .order('reward_points', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (parlayRecord && parlayRecord.reward_points > 0) {
+    const { data: recentParlay } = await supabase
+      .from('parlays')
+      .select('user_id, reward_points, risk_points, users(display_name, username)')
+      .eq('is_correct', true).eq('status', 'settled')
+      .eq('reward_points', parlayRecord.reward_points)
+      .gte('updated_at', startISO)
+      .lte('updated_at', endISO)
+      .limit(1)
+      .maybeSingle()
+
+    if (recentParlay) {
+      recordsBroken.push({
+        record: 'Biggest Parlay',
+        holder_name: recentParlay.users?.display_name || recentParlay.users?.username || 'Unknown',
+        holder_username: recentParlay.users?.username || 'Unknown',
+        detail: `${recentParlay.risk_points} → ${recentParlay.reward_points}`,
+      })
+    }
+  }
+
+  // Biggest underdog win: check if the all-time biggest was settled this week
+  const { data: underdogRecord } = await supabase
+    .from('picks')
+    .select('user_id, reward_points, risk_points, odds_at_pick, users(display_name, username)')
+    .eq('is_correct', true).eq('status', 'settled').gt('odds_at_pick', 0)
+    .order('reward_points', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (underdogRecord && underdogRecord.reward_points > 0) {
+    const { data: recentUnderdog } = await supabase
+      .from('picks')
+      .select('user_id, reward_points, risk_points, odds_at_pick, users(display_name, username)')
+      .eq('is_correct', true).eq('status', 'settled').gt('odds_at_pick', 0)
+      .eq('reward_points', underdogRecord.reward_points)
+      .gte('updated_at', startISO)
+      .lte('updated_at', endISO)
+      .limit(1)
+      .maybeSingle()
+
+    if (recentUnderdog) {
+      recordsBroken.push({
+        record: 'Biggest Underdog Win',
+        holder_name: recentUnderdog.users?.display_name || recentUnderdog.users?.username || 'Unknown',
+        holder_username: recentUnderdog.users?.username || 'Unknown',
+        detail: `${recentUnderdog.risk_points} → ${recentUnderdog.reward_points} (+${recentUnderdog.odds_at_pick})`,
+      })
+    }
+  }
+
+  // --- Crown changes ---
+  const currentCrownHolders = await getAllCrownHolders()
+
+  // Get previous week's crown_holders from last recap
+  const { data: prevRecap } = await supabase
+    .from('weekly_recaps')
+    .select('crown_holders')
+    .order('week_start', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const previousCrowns = prevRecap?.crown_holders || {}
+  const crownChanges = []
+
+  for (const [crown, holder] of Object.entries(currentCrownHolders)) {
+    const prevHolderId = previousCrowns[crown]?.id
+    if (prevHolderId && prevHolderId !== holder.id) {
+      crownChanges.push({
+        crown,
+        new_holder: holder.display_name || holder.username,
+        previous_holder: previousCrowns[crown].display_name || previousCrowns[crown].username || 'Unknown',
+      })
+    }
+  }
+
+  return { top5, allUsers: enriched, pickOfWeekUser, biggestFallUser, longestStreakUser, recordsBroken, crownChanges, currentCrownHolders }
 }
 
 /**
  * Call Claude API to generate the weekly headlines narrative.
  */
 export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
-  const { top5, pickOfWeekUser, biggestFallUser, longestStreakUser } = weeklyData
+  const { top5, pickOfWeekUser, biggestFallUser, longestStreakUser, recordsBroken, crownChanges } = weeklyData
 
   const dataPayload = {
     dateRange: `${weekStart} to ${weekEnd}`,
@@ -289,6 +407,8 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
       streak: longestStreakUser.current_streak.length,
       sport: longestStreakUser.current_streak.sport,
     } : null,
+    recordsBroken: recordsBroken || [],
+    crownChanges: crownChanges || [],
   }
 
   const prompt = `You are the voice of I KNOW BALL, a sports prediction app. Write a weekly headlines recap for the top 5 users this week. For each user, write a 1-2 sentence narrative that's fun, competitive, and highlights their boldest picks, biggest wins, or interesting patterns. Be conversational with a little trash talk energy. Also include: Pick of the Week (biggest underdog hit), Biggest Fall (user who lost the most points), and Longest Active Streak. Make it feel like something users would want to screenshot and share.
@@ -310,6 +430,8 @@ Use this exact format:
 **Pick of the Week**: {user} — {description}
 **Biggest Fall**: {user} — {description}
 **Longest Active Streak**: {user} — {description}
+
+If any all-time records were broken this week (provided in recordsBroken), add a "RECORDS BROKEN" section and highlight them prominently. If any crowns (leaderboard #1 spots) changed hands this week (provided in crownChanges), add a "CROWN WATCH" section mentioning the new holder and who they dethroned. Only include these sections if the arrays are non-empty.
 
 Here is the data:
 ${JSON.stringify(dataPayload, null, 2)}`

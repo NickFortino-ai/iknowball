@@ -162,6 +162,39 @@ export async function getRecordHolders(userId) {
   return records
 }
 
+export async function getAllCrownHolders() {
+  const holders = {}
+
+  const globalBoard = await getLeaderboard('global')
+  if (globalBoard.length > 0) {
+    const u = globalBoard[0]
+    holders['I KNOW BALL'] = { id: u.id, display_name: u.display_name, username: u.username }
+  }
+
+  const propsBoard = await getLeaderboard('props')
+  if (propsBoard.length > 0) {
+    const u = propsBoard[0]
+    holders['Props'] = { id: u.id, display_name: u.display_name, username: u.username }
+  }
+
+  const parlaysBoard = await getLeaderboard('parlays')
+  if (parlaysBoard.length > 0) {
+    const u = parlaysBoard[0]
+    holders['Parlays'] = { id: u.id, display_name: u.display_name, username: u.username }
+  }
+
+  const { data: sports } = await supabase.from('sports').select('key, name')
+  for (const sport of sports || []) {
+    const sportBoard = await getLeaderboard('sport', sport.key)
+    if (sportBoard.length > 0) {
+      const u = sportBoard[0]
+      holders[sport.name] = { id: u.id, display_name: u.display_name, username: u.username }
+    }
+  }
+
+  return holders
+}
+
 export async function getCrowns(userId) {
   const crowns = []
 
