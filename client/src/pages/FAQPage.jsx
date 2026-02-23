@@ -77,8 +77,8 @@ Your tier is visible on your profile, the leaderboard, and in every league you j
     a: 'Connections are your network on I KNOW BALL. You\u2019re automatically connected to anyone in your leagues. You can also search for and connect with other users by username. Your connections feed shows notable events \u2014 big underdog hits, new tiers reached, hot streaks, and survivor wins.',
   },
   {
-    q: 'What are the Weekly Power Rankings?',
-    a: 'Every Monday, we publish the top 5 performances of the week with AI-generated narratives, plus Pick of the Week, Biggest Fall, and Longest Active Streak. If you make the Power Rankings, you\u2019ll get an email and an in-app notification. It\u2019s your moment of fame.',
+    q: 'What are the Weekly Headlines?',
+    a: 'Every Monday, we publish the top 5 performances of the week with narratives, plus Pick of the Week, Biggest Fall, and Longest Active Streak. If you make the Weekly Headlines, you\u2019ll get an email and an in-app notification. It\u2019s your moment of fame.',
   },
   {
     q: 'Is my data private?',
