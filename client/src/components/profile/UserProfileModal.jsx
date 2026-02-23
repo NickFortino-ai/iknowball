@@ -138,6 +138,21 @@ export default function UserProfileModal({ userId, onClose }) {
               </div>
             )}
 
+            {/* Records */}
+            {user.records?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {user.records.map((record) => (
+                  <span
+                    key={record.key}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-500/15 text-yellow-500 text-xs font-semibold"
+                  >
+                    <span>🏆</span>
+                    {record.label} — {record.detail}
+                  </span>
+                ))}
+              </div>
+            )}
+
             {/* Pick Record */}
             <div className="bg-bg-primary rounded-xl p-4 mb-4">
               <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Pick Record</h3>

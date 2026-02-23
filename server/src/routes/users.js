@@ -9,7 +9,7 @@ import {
   declineInvitation,
 } from '../services/invitationService.js'
 import { getPublicPickHistory } from '../services/pickService.js'
-import { getCrowns } from '../services/leaderboardService.js'
+import { getCrowns, getRecordHolders } from '../services/leaderboardService.js'
 
 const router = Router()
 
@@ -27,7 +27,7 @@ const updateSchema = z.object({
     parlay_result: z.boolean(),
     streak_milestone: z.boolean(),
   }).optional(),
-  title_preference: z.enum(['king', 'queen']).optional(),
+  title_preference: z.enum(['king', 'queen']).nullable().optional(),
   x_handle: z.string().max(30).nullable().optional(),
   instagram_handle: z.string().max(30).nullable().optional(),
   tiktok_handle: z.string().max(30).nullable().optional(),
@@ -167,7 +167,7 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
     sport_total_users: sportRanks[s.sport_id]?.total || null,
   }))
 
-  const crowns = await getCrowns(id)
+  const [crowns, records] = await Promise.all([getCrowns(id), getRecordHolders(id)])
 
   res.json({
     ...user,
@@ -176,6 +176,7 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
     total_users: allUsers?.length || 0,
     sport_stats: enrichedSportStats,
     crowns,
+    records,
   })
 })
 
