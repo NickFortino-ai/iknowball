@@ -59,6 +59,7 @@ function loadCollapsed() {
 export default function ResultsPage() {
   const [collapsed, setCollapsed] = useState(loadCollapsed)
   const [selectedGame, setSelectedGame] = useState(null)
+  const [selectedPick, setSelectedPick] = useState(null)
 
   const toggleSection = useCallback((section) => {
     setCollapsed((prev) => {
@@ -157,7 +158,7 @@ export default function ResultsPage() {
                   key={pick.id}
                   game={pick.games}
                   userPick={pick}
-                  onCardClick={() => setSelectedGame(pick.games)}
+                  onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
                 />
               ))}
             </div>
@@ -244,7 +245,7 @@ export default function ResultsPage() {
                           game={pick.games}
                           userPick={pick}
                           reactions={reactionsBatch?.[pick.id]}
-                          onCardClick={() => setSelectedGame(pick.games)}
+                          onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
                         />
                       ))}
                     </Fragment>
@@ -255,7 +256,7 @@ export default function ResultsPage() {
           )}
         </>
       )}
-      <GamePicksModal game={selectedGame} onClose={() => setSelectedGame(null)} />
+      <GamePicksModal game={selectedGame} userPick={selectedPick} onClose={() => { setSelectedGame(null); setSelectedPick(null) }} />
     </div>
   )
 }

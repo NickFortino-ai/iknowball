@@ -33,6 +33,10 @@ export default function SettingsPage() {
   const [avatarEmoji, setAvatarEmoji] = useState('')
   const [selectedSports, setSelectedSports] = useState([])
   const [titlePreference, setTitlePreference] = useState('king')
+  const [xHandle, setXHandle] = useState('')
+  const [instagramHandle, setInstagramHandle] = useState('')
+  const [tiktokHandle, setTiktokHandle] = useState('')
+  const [snapchatHandle, setSnapchatHandle] = useState('')
   const [saving, setSaving] = useState(false)
 
   // Push notification state
@@ -51,6 +55,10 @@ export default function SettingsPage() {
       setAvatarEmoji(profile.avatar_emoji || '')
       setSelectedSports(profile.sports_interests || [])
       setTitlePreference(profile.title_preference || 'king')
+      setXHandle(profile.x_handle || '')
+      setInstagramHandle(profile.instagram_handle || '')
+      setTiktokHandle(profile.tiktok_handle || '')
+      setSnapchatHandle(profile.snapchat_handle || '')
       if (profile.push_preferences) {
         setPushPrefs(profile.push_preferences)
       }
@@ -97,12 +105,17 @@ export default function SettingsPage() {
   async function handleSave() {
     setSaving(true)
     try {
+      const strip = (v) => v.replace(/^@/, '').trim() || null
       await api.patch('/users/me', {
         display_name: displayName || undefined,
         bio,
         avatar_emoji: avatarEmoji,
         sports_interests: selectedSports,
         title_preference: titlePreference,
+        x_handle: strip(xHandle),
+        instagram_handle: strip(instagramHandle),
+        tiktok_handle: strip(tiktokHandle),
+        snapchat_handle: strip(snapchatHandle),
       })
       await refetch()
       await fetchProfile()
@@ -226,6 +239,33 @@ export default function SettingsPage() {
               </button>
             )
           })}
+        </div>
+      </div>
+
+      {/* Socials */}
+      <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
+        <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
+          Socials
+        </label>
+        <div className="space-y-3">
+          {[
+            { label: 'X', value: xHandle, set: setXHandle, placeholder: 'username' },
+            { label: 'Instagram', value: instagramHandle, set: setInstagramHandle, placeholder: 'username' },
+            { label: 'TikTok', value: tiktokHandle, set: setTiktokHandle, placeholder: 'username' },
+            { label: 'Snapchat', value: snapchatHandle, set: setSnapchatHandle, placeholder: 'username' },
+          ].map((s) => (
+            <div key={s.label} className="flex items-center gap-3">
+              <span className="text-sm text-text-secondary w-20 shrink-0">{s.label}</span>
+              <input
+                type="text"
+                value={s.value}
+                onChange={(e) => s.set(e.target.value)}
+                maxLength={30}
+                className="flex-1 bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                placeholder={s.placeholder}
+              />
+            </div>
+          ))}
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { toast } from '../ui/Toast'
 import TierBadge from '../ui/TierBadge'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
+import SocialLinks from '../ui/SocialLinks'
 
 export default function UserProfileModal({ userId, onClose }) {
   const { session } = useAuth()
@@ -70,6 +71,7 @@ export default function UserProfileModal({ userId, onClose }) {
               <div className="min-w-0 flex-1">
                 <div className="font-display text-xl truncate">{user.display_name || user.username}</div>
                 <div className="text-text-muted text-sm">@{user.username}</div>
+                <SocialLinks user={user} />
               </div>
               {isViewingOther && connStatus === 'none' && (
                 <button

@@ -9,6 +9,7 @@ import { getTier, getNextTier } from '../lib/scoring'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import PickHistoryByMonth from '../components/profile/PickHistoryByMonth'
+import SocialLinks from '../components/ui/SocialLinks'
 
 function StatusCard({ profile }) {
   const tier = getTier(profile.total_points)
@@ -23,6 +24,7 @@ function StatusCard({ profile }) {
         <div>
           <h2 className="font-display text-xl">{profile.display_name || profile.username}</h2>
           <p className="text-text-muted text-sm">@{profile.username}</p>
+          <SocialLinks user={profile} />
         </div>
         <TierBadge tier={tier.name} size="md" />
       </div>
