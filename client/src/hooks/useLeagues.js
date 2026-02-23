@@ -86,6 +86,18 @@ export function useDeleteLeague() {
   })
 }
 
+export function useCompleteLeague() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/complete`),
+    onSuccess: (_, leagueId) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId] })
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+    },
+  })
+}
+
 export function useLeaveLeague() {
   const queryClient = useQueryClient()
 

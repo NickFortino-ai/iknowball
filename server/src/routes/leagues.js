@@ -142,6 +142,34 @@ router.delete('/:id', requireAuth, async (req, res) => {
   res.status(204).end()
 })
 
+router.post('/:id/complete', requireAuth, async (req, res) => {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id, status')
+    .eq('id', req.params.id)
+    .single()
+
+  if (!league) {
+    return res.status(404).json({ error: 'League not found' })
+  }
+  if (league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can complete a league' })
+  }
+  if (league.status === 'completed') {
+    return res.status(400).json({ error: 'League is already completed' })
+  }
+
+  const { data, error } = await supabase
+    .from('leagues')
+    .update({ status: 'completed', updated_at: new Date().toISOString() })
+    .eq('id', req.params.id)
+    .select()
+    .single()
+
+  if (error) throw error
+  res.json(data)
+})
+
 // ============================================
 // Membership
 // ============================================

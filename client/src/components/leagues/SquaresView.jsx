@@ -8,6 +8,7 @@ import {
   useScoreQuarter,
   useUpdateBoardSettings,
   useDeleteLeague,
+  useCompleteLeague,
 } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -23,6 +24,7 @@ export default function SquaresView({ league, isCommissioner }) {
   const scoreQuarterM = useScoreQuarter()
   const updateSettings = useUpdateBoardSettings()
   const deleteLeague = useDeleteLeague()
+  const completeLeague = useCompleteLeague()
   const navigate = useNavigate()
 
   const [scoreForm, setScoreForm] = useState({ quarter: 1, awayScore: '', homeScore: '' })
@@ -265,6 +267,24 @@ export default function SquaresView({ league, isCommissioner }) {
                 Score
               </button>
             </form>
+          )}
+
+          {/* Mark as complete */}
+          {quarters.every((q) => q.awayScore !== null) && league.status !== 'completed' && (
+            <button
+              onClick={async () => {
+                try {
+                  await completeLeague.mutateAsync(league.id)
+                  toast('Contest marked as complete!', 'success')
+                } catch (err) {
+                  toast(err.message || 'Failed to complete contest', 'error')
+                }
+              }}
+              disabled={completeLeague.isPending}
+              className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-correct/10 text-correct hover:bg-correct/20 disabled:opacity-50 transition-colors"
+            >
+              Mark as Complete
+            </button>
           )}
 
           {/* Delete contest */}
