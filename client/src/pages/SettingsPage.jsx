@@ -206,15 +206,14 @@ export default function SettingsPage() {
 
       {/* Title Preference */}
       <Section label="Title & Pronouns">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {[
             { value: 'king', icon: '♚', label: 'King', pronouns: 'he/him' },
             { value: 'queen', icon: '♛', label: 'Queen', pronouns: 'she/her' },
-            { value: null, icon: '⚡', label: 'None', pronouns: 'they/them' },
           ].map((option) => (
             <button
-              key={option.value ?? 'none'}
-              onClick={() => setTitlePreference(option.value)}
+              key={option.value}
+              onClick={() => setTitlePreference(titlePreference === option.value ? null : option.value)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-sm transition-all ${
                 titlePreference === option.value
                   ? 'bg-accent/20 border-2 border-accent'
