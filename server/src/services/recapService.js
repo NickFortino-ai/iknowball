@@ -242,7 +242,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
 }
 
 /**
- * Call Claude API to generate the power rankings narrative.
+ * Call Claude API to generate the weekly headlines narrative.
  */
 export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
   const { top5, pickOfWeekUser, biggestFallUser, longestStreakUser } = weeklyData
@@ -291,7 +291,7 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
     } : null,
   }
 
-  const prompt = `You are the voice of I KNOW BALL, a sports prediction app. Write a weekly power rankings recap for the top 5 users this week. For each user, write a 1-2 sentence narrative that's fun, competitive, and highlights their boldest picks, biggest wins, or interesting patterns. Be conversational with a little trash talk energy. Also include: Pick of the Week (biggest underdog hit), Biggest Fall (user who lost the most points), and Longest Active Streak. Make it feel like something users would want to screenshot and share.
+  const prompt = `You are the voice of I KNOW BALL, a sports prediction app. Write a weekly headlines recap for the top 5 users this week. For each user, write a 1-2 sentence narrative that's fun, competitive, and highlights their boldest picks, biggest wins, or interesting patterns. Be conversational with a little trash talk energy. Also include: Pick of the Week (biggest underdog hit), Biggest Fall (user who lost the most points), and Longest Active Streak. Make it feel like something users would want to screenshot and share.
 
 Use each user's specified pronouns (provided in their data as "pronouns": "he/him/his", "she/her/her", or "they/them/their") when referring to them in third person.
 

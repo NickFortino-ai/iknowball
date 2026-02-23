@@ -73,9 +73,9 @@ export default function PowerRankingsCard() {
     return (
       <div className="mb-8">
         <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
-          <h2 className="font-display text-xl mb-2">WEEKLY POWER RANKINGS</h2>
+          <h2 className="font-display text-xl mb-2">WEEKLY HEADLINES</h2>
           <p className="text-text-secondary text-sm">
-            Power Rankings drop every Monday — make your picks to get featured!
+            Headlines drop every Monday — make your picks to get featured!
           </p>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function PowerRankingsCard() {
           className="w-full bg-bg-card rounded-2xl border border-border p-4 flex items-center justify-between hover:border-border-hover transition-colors"
         >
           <span className="font-display text-base text-text-primary">
-            See this week's Power Rankings
+            See this week's Headlines
           </span>
           <svg className="w-5 h-5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -108,7 +108,7 @@ export default function PowerRankingsCard() {
       <div className="bg-bg-card rounded-2xl border border-border p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-display text-xl">
-            WEEKLY POWER RANKINGS — {dateRange}
+            WEEKLY HEADLINES — {dateRange}
           </h2>
           {isOlderThan2Days && (
             <button

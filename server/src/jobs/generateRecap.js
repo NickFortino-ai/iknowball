@@ -86,11 +86,11 @@ export async function generateWeeklyRecap() {
       await createNotification(
         userId,
         'power_rankings',
-        'You made the Weekly Power Rankings this week! Check it out.',
+        'You made the Weekly Headlines this week! Check it out.',
         { weekStart: weekStartStr, weekEnd: weekEndStr }
       )
     } catch (err) {
-      logger.error({ err, userId }, 'Failed to send power rankings notification')
+      logger.error({ err, userId }, 'Failed to send headlines notification')
     }
   }
 
@@ -125,16 +125,16 @@ export async function generateWeeklyRecap() {
       const subject = "You're I KNOW BALL Famous!"
       const html = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-          <h1 style="font-size: 24px; margin-bottom: 8px;">Weekly Power Rankings</h1>
+          <h1 style="font-size: 24px; margin-bottom: 8px;">Weekly Headlines</h1>
           <p style="color: #aaa; font-size: 16px; margin-bottom: 24px;">
-            Hey <strong>${name}</strong>, you made this week's Power Rankings on I KNOW BALL!
+            Hey <strong>${name}</strong>, you made this week's Headlines on I KNOW BALL!
           </p>
           <p style="font-size: 15px; color: #ccc; margin-bottom: 24px;">
             ${personalLine}
           </p>
           <a href="${baseUrl}"
              style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
-            See Full Rankings
+            See Full Headlines
           </a>
           <p style="color: #888; font-size: 13px; margin-top: 24px;">
             Keep making picks to hold your spot next week.
