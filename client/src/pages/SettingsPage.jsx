@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useProfile } from '../hooks/useProfile'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
@@ -24,6 +24,27 @@ const sportsInterests = [
   { emoji: '🏓', label: 'Ping Pong' },
 ]
 
+function Section({ label, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="bg-bg-card rounded-xl border border-border mb-4 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-4"
+      >
+        <span className="text-xs text-text-muted uppercase tracking-wider">{label}</span>
+        <svg
+          className={`w-4 h-4 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const { data: profile, isLoading, refetch } = useProfile()
   const fetchProfile = useAuthStore((s) => s.fetchProfile)
@@ -32,7 +53,7 @@ export default function SettingsPage() {
   const [bio, setBio] = useState('')
   const [avatarEmoji, setAvatarEmoji] = useState('')
   const [selectedSports, setSelectedSports] = useState([])
-  const [titlePreference, setTitlePreference] = useState('king')
+  const [titlePreference, setTitlePreference] = useState(null)
   const [xHandle, setXHandle] = useState('')
   const [instagramHandle, setInstagramHandle] = useState('')
   const [tiktokHandle, setTiktokHandle] = useState('')
@@ -54,7 +75,7 @@ export default function SettingsPage() {
       setBio(profile.bio || '')
       setAvatarEmoji(profile.avatar_emoji || '')
       setSelectedSports(profile.sports_interests || [])
-      setTitlePreference(profile.title_preference || 'king')
+      setTitlePreference(profile.title_preference ?? null)
       setXHandle(profile.x_handle || '')
       setInstagramHandle(profile.instagram_handle || '')
       setTiktokHandle(profile.tiktok_handle || '')
@@ -135,10 +156,7 @@ export default function SettingsPage() {
       <h1 className="font-display text-3xl mb-6">Settings</h1>
 
       {/* Display Name */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
-        <label className="block text-xs text-text-muted uppercase tracking-wider mb-2">
-          Display Name
-        </label>
+      <Section label="Display Name">
         <input
           type="text"
           value={displayName}
@@ -147,13 +165,10 @@ export default function SettingsPage() {
           className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
           placeholder="Your display name"
         />
-      </div>
+      </Section>
 
       {/* Bio */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
-        <label className="block text-xs text-text-muted uppercase tracking-wider mb-2">
-          Bio
-        </label>
+      <Section label="Bio">
         <textarea
           value={bio}
           onChange={(e) => setBio(e.target.value)}
@@ -163,13 +178,10 @@ export default function SettingsPage() {
           placeholder="Tell people about yourself..."
         />
         <div className="text-right text-xs text-text-muted mt-1">{bio.length}/200</div>
-      </div>
+      </Section>
 
       {/* Avatar Emoji */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
-        <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
-          Profile Icon
-        </label>
+      <Section label="Profile Icon">
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
           {avatarEmojis.map((emoji) => (
             <button
@@ -190,35 +202,37 @@ export default function SettingsPage() {
             Selected: {avatarEmoji}
           </p>
         )}
-      </div>
+      </Section>
 
       {/* Title Preference */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
-        <div className="grid grid-cols-2 gap-2">
-          {['king', 'queen'].map((option) => (
+      <Section label="Title & Pronouns">
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { value: 'king', icon: '♚', label: 'King', pronouns: 'he/him' },
+            { value: 'queen', icon: '♛', label: 'Queen', pronouns: 'she/her' },
+            { value: null, icon: '⚡', label: 'None', pronouns: 'they/them' },
+          ].map((option) => (
             <button
-              key={option}
-              onClick={() => setTitlePreference(option)}
-              className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                titlePreference === option
+              key={option.value ?? 'none'}
+              onClick={() => setTitlePreference(option.value)}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-sm transition-all ${
+                titlePreference === option.value
                   ? 'bg-accent/20 border-2 border-accent'
                   : 'bg-bg-input border border-border hover:border-border-hover'
               }`}
             >
-              <span className="text-lg">{option === 'king' ? '♚' : '♛'}</span>
-              <span className={titlePreference === option ? 'text-accent font-semibold' : 'text-text-secondary'}>
-                {option === 'king' ? 'King' : 'Queen'}
+              <span className="text-lg">{option.icon}</span>
+              <span className={titlePreference === option.value ? 'text-accent font-semibold' : 'text-text-secondary'}>
+                {option.label}
               </span>
+              <span className="text-xs text-text-muted">{option.pronouns}</span>
             </button>
           ))}
         </div>
-      </div>
+      </Section>
 
       {/* Sports Interests */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-        <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
-          Sports Interests
-        </label>
+      <Section label="Sports Interests">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {sportsInterests.map((sport) => {
             const isSelected = selectedSports.includes(sport.emoji)
@@ -240,13 +254,10 @@ export default function SettingsPage() {
             )
           })}
         </div>
-      </div>
+      </Section>
 
       {/* Socials */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
-        <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
-          Socials
-        </label>
+      <Section label="Socials">
         <div className="space-y-3">
           {[
             { label: 'X', value: xHandle, set: setXHandle, placeholder: 'username' },
@@ -267,14 +278,10 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
-      </div>
+      </Section>
 
       {/* Push Notifications */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-        <label className="block text-xs text-text-muted uppercase tracking-wider mb-3">
-          Push Notifications
-        </label>
-
+      <Section label="Push Notifications">
         {!pushSupported ? (
           <p className="text-sm text-text-muted">
             Push notifications are not supported in this browser.
@@ -325,7 +332,7 @@ export default function SettingsPage() {
             )}
           </>
         )}
-      </div>
+      </Section>
 
       {/* Save */}
       <button

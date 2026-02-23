@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
+import { getPronouns } from '../utils/pronouns.js'
 
 export async function connectUsers(userA, userB, source) {
   // Canonicalize ordering so user_id_1 < user_id_2
@@ -307,7 +308,7 @@ export async function getConnectionActivity(userId) {
   // Get user details for mapping
   const { data: users } = await supabase
     .from('users')
-    .select('id, username, avatar_emoji')
+    .select('id, username, avatar_emoji, title_preference')
     .in('id', connectedIds)
 
   const userMap = {}
@@ -381,7 +382,7 @@ export async function getConnectionActivity(userId) {
       userId: event.user_id,
       username: user.username,
       avatar_emoji: user.avatar_emoji,
-      message: `just extended their streak to ${event.streak_length} in ${sportName}`,
+      message: `just extended ${getPronouns(user.title_preference).possessive} streak to ${event.streak_length} in ${sportName}`,
       timestamp: event.created_at,
     })
   }

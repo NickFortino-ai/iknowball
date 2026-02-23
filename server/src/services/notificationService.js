@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { sendPushNotification } from './pushService.js'
 
-const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'power_rankings']
+const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'power_rankings', 'squares_quarter_win']
 
 export async function createNotification(userId, type, message, metadata = {}) {
   // Self-notification guard
@@ -31,7 +31,8 @@ export async function createNotification(userId, type, message, metadata = {}) {
       const prefs = user?.push_preferences
       // null preferences = all on; otherwise check the specific type
       if (!prefs || prefs[type] !== false) {
-        await sendPushNotification(userId, 'I KNOW BALL', message)
+        const pushUrl = metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
+        await sendPushNotification(userId, 'I KNOW BALL', message, pushUrl)
       }
     } catch (pushError) {
       logger.error({ error: pushError, userId, type }, 'Failed to send push notification')

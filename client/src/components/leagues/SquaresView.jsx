@@ -439,12 +439,24 @@ export default function SquaresView({ league, isCommissioner }) {
                 <tr className="border-b border-border text-text-muted">
                   <th className="text-left py-2 px-3 font-semibold">Player</th>
                   <th className="text-center py-2 px-1 font-semibold">Squares</th>
-                  <th className="text-right py-2 px-3 font-semibold">Cost</th>
+                  <th className="text-right py-2 px-1 font-semibold">Cost</th>
+                  <th className="text-right py-2 px-3 font-semibold">Won</th>
                 </tr>
               </thead>
               <tbody>
                 {(() => {
                   const COST_PER_SQUARE = 10
+                  const totalPot = totalClaimed * COST_PER_SQUARE
+                  const perQuarter = totalPot / 4
+
+                  // Count quarter wins per user
+                  const winMap = {}
+                  for (const q of quarters) {
+                    if (q.winnerId) {
+                      winMap[q.winnerId] = (winMap[q.winnerId] || 0) + 1
+                    }
+                  }
+
                   const userMap = {}
                   for (const claim of board.claims || []) {
                     const uid = claim.user_id
@@ -455,18 +467,25 @@ export default function SquaresView({ league, isCommissioner }) {
                   }
                   return Object.values(userMap)
                     .sort((a, b) => b.squares - a.squares)
-                    .map((s) => (
-                      <tr key={s.user?.id} className="border-b border-border last:border-0">
-                        <td className="py-2 px-3 font-semibold">
-                          {s.user?.avatar_emoji && <span className="mr-1">{s.user.avatar_emoji}</span>}
-                          {s.user?.display_name || s.user?.username || 'Unknown'}
-                        </td>
-                        <td className="text-center py-2 px-1 text-text-muted">{s.squares}</td>
-                        <td className="text-right py-2 px-3 text-text-muted">
-                          {s.squares * COST_PER_SQUARE} pts
-                        </td>
-                      </tr>
-                    ))
+                    .map((s) => {
+                      const qWins = winMap[s.user?.id] || 0
+                      const won = Math.round(qWins * perQuarter)
+                      return (
+                        <tr key={s.user?.id} className="border-b border-border last:border-0">
+                          <td className="py-2 px-3 font-semibold">
+                            {s.user?.avatar_emoji && <span className="mr-1">{s.user.avatar_emoji}</span>}
+                            {s.user?.display_name || s.user?.username || 'Unknown'}
+                          </td>
+                          <td className="text-center py-2 px-1 text-text-muted">{s.squares}</td>
+                          <td className="text-right py-2 px-1 text-text-muted">
+                            {s.squares * COST_PER_SQUARE} pts
+                          </td>
+                          <td className={`text-right py-2 px-3 font-semibold ${won > 0 ? 'text-correct' : 'text-text-muted'}`}>
+                            {won > 0 ? `+${won}` : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })
                 })()}
               </tbody>
             </table>

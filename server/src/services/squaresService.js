@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createNotification } from './notificationService.js'
 
 export async function getBoard(leagueId) {
   const { data: board, error } = await supabase
@@ -211,7 +212,7 @@ export async function lockDigits(leagueId, userId) {
 export async function scoreQuarter(leagueId, userId, quarter, awayScore, homeScore) {
   const { data: league } = await supabase
     .from('leagues')
-    .select('commissioner_id, settings')
+    .select('commissioner_id, settings, name')
     .eq('id', leagueId)
     .single()
 
@@ -274,9 +275,14 @@ export async function scoreQuarter(leagueId, userId, quarter, awayScore, homeSco
 
   // Squares do not affect the user's global total_points
   if (winnerId) {
-    const pointsPerQuarter = league.settings?.points_per_quarter || [25, 25, 25, 50]
-    const points = pointsPerQuarter[quarter - 1] || 25
-    logger.info({ winnerId, quarter, points, leagueId }, 'Squares quarter winner determined')
+    logger.info({ winnerId, quarter, leagueId }, 'Squares quarter winner determined')
+    const contestName = league.name || 'Squares'
+    await createNotification(
+      winnerId,
+      'squares_quarter_win',
+      `You won Q${quarter} in ${contestName}! 🏆`,
+      { leagueId, quarter }
+    )
   }
 
   return { quarter, awayScore, homeScore, winningRow, winningCol, winnerId }

@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { env } from '../config/env.js'
 import { logger } from '../utils/logger.js'
 import { getTier } from '../config/constants.js'
+import { getPronouns } from '../utils/pronouns.js'
 
 /**
  * Collect weekly performance data for all users who made picks
@@ -55,7 +56,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
   // 6. All users for rank calculation
   const { data: allUsers } = await supabase
     .from('users')
-    .select('id, username, display_name, total_points, tier')
+    .select('id, username, display_name, total_points, tier, title_preference')
     .order('total_points', { ascending: false })
 
   // Build per-user aggregation
@@ -187,6 +188,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
       user_id: u.user_id,
       username: info.username || 'Unknown',
       display_name: info.display_name || info.username || 'Unknown',
+      title_preference: info.title_preference || null,
       tier: currentTier,
       weekly_points: weeklyPoints,
       record: { wins: totalWins, losses: allLosses, pushes: u.picks_pushes },
@@ -247,23 +249,28 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
 
   const dataPayload = {
     dateRange: `${weekStart} to ${weekEnd}`,
-    top5: top5.map((u, i) => ({
-      rank: i + 1,
-      name: u.display_name,
-      username: u.username,
-      record: `${u.record.wins}-${u.record.losses}`,
-      weekly_points: u.weekly_points,
-      tier: u.tier,
-      rank_change: u.rank_change,
-      tier_change: u.tier_change,
-      biggest_underdog: u.biggest_underdog,
-      parlays: u.parlays,
-      current_streak: u.current_streak,
-      total_picks: u.total_picks,
-    })),
+    top5: top5.map((u, i) => {
+      const p = getPronouns(u.title_preference)
+      return {
+        rank: i + 1,
+        name: u.display_name,
+        username: u.username,
+        pronouns: `${p.subject}/${p.object}/${p.possessive}`,
+        record: `${u.record.wins}-${u.record.losses}`,
+        weekly_points: u.weekly_points,
+        tier: u.tier,
+        rank_change: u.rank_change,
+        tier_change: u.tier_change,
+        biggest_underdog: u.biggest_underdog,
+        parlays: u.parlays,
+        current_streak: u.current_streak,
+        total_picks: u.total_picks,
+      }
+    }),
     pickOfWeek: pickOfWeekUser ? {
       name: pickOfWeekUser.display_name,
       username: pickOfWeekUser.username,
+      pronouns: `${getPronouns(pickOfWeekUser.title_preference).subject}/${getPronouns(pickOfWeekUser.title_preference).object}/${getPronouns(pickOfWeekUser.title_preference).possessive}`,
       odds: `+${pickOfWeekUser.biggest_underdog.odds}`,
       reward: pickOfWeekUser.biggest_underdog.reward,
       game: pickOfWeekUser.biggest_underdog.game,
@@ -271,18 +278,22 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
     biggestFall: biggestFallUser ? {
       name: biggestFallUser.display_name,
       username: biggestFallUser.username,
+      pronouns: `${getPronouns(biggestFallUser.title_preference).subject}/${getPronouns(biggestFallUser.title_preference).object}/${getPronouns(biggestFallUser.title_preference).possessive}`,
       weekly_points: biggestFallUser.weekly_points,
       record: `${biggestFallUser.record.wins}-${biggestFallUser.record.losses}`,
     } : null,
     longestStreak: longestStreakUser ? {
       name: longestStreakUser.display_name,
       username: longestStreakUser.username,
+      pronouns: `${getPronouns(longestStreakUser.title_preference).subject}/${getPronouns(longestStreakUser.title_preference).object}/${getPronouns(longestStreakUser.title_preference).possessive}`,
       streak: longestStreakUser.current_streak.length,
       sport: longestStreakUser.current_streak.sport,
     } : null,
   }
 
   const prompt = `You are the voice of I KNOW BALL, a sports prediction app. Write a weekly power rankings recap for the top 5 users this week. For each user, write a 1-2 sentence narrative that's fun, competitive, and highlights their boldest picks, biggest wins, or interesting patterns. Be conversational with a little trash talk energy. Also include: Pick of the Week (biggest underdog hit), Biggest Fall (user who lost the most points), and Longest Active Streak. Make it feel like something users would want to screenshot and share.
+
+Use each user's specified pronouns (provided in their data as "pronouns": "he/him/his", "she/her/her", or "they/them/their") when referring to them in third person.
 
 Use this exact format:
 
