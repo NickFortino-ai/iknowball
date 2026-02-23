@@ -24,6 +24,8 @@ import ConnectionsPage from './pages/ConnectionsPage'
 import PrivacyPage from './pages/PrivacyPage'
 import FAQPage from './pages/FAQPage'
 import UnsubscribePage from './pages/UnsubscribePage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +49,8 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
