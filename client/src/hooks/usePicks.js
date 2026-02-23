@@ -31,6 +31,15 @@ export function usePickById(pickId) {
   })
 }
 
+export function useGamePicks(gameId) {
+  return useQuery({
+    queryKey: ['picks', 'game', gameId],
+    queryFn: () => api.get(`/picks/games/${gameId}`),
+    enabled: !!gameId,
+    staleTime: 30_000,
+  })
+}
+
 export function useSubmitPick() {
   const queryClient = useQueryClient()
 

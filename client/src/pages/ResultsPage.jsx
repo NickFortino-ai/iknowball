@@ -10,6 +10,7 @@ import PropCard from '../components/picks/PropCard'
 import FuturesPickCard from '../components/picks/FuturesPickCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
+import GamePicksModal from '../components/results/GamePicksModal'
 
 function getLocalDateKey(dateStr) {
   const d = new Date(dateStr)
@@ -57,6 +58,7 @@ function loadCollapsed() {
 
 export default function ResultsPage() {
   const [collapsed, setCollapsed] = useState(loadCollapsed)
+  const [selectedGame, setSelectedGame] = useState(null)
 
   const toggleSection = useCallback((section) => {
     setCollapsed((prev) => {
@@ -155,6 +157,7 @@ export default function ResultsPage() {
                   key={pick.id}
                   game={pick.games}
                   userPick={pick}
+                  onCardClick={() => setSelectedGame(pick.games)}
                 />
               ))}
             </div>
@@ -241,6 +244,7 @@ export default function ResultsPage() {
                           game={pick.games}
                           userPick={pick}
                           reactions={reactionsBatch?.[pick.id]}
+                          onCardClick={() => setSelectedGame(pick.games)}
                         />
                       ))}
                     </Fragment>
@@ -251,6 +255,7 @@ export default function ResultsPage() {
           )}
         </>
       )}
+      <GamePicksModal game={selectedGame} onClose={() => setSelectedGame(null)} />
     </div>
   )
 }

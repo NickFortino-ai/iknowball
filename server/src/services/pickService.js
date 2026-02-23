@@ -137,6 +137,53 @@ export async function getPickById(pickId) {
   return data
 }
 
+export async function getGamePicksData(userId, gameId) {
+  // Get connected user IDs
+  const { data: connections } = await supabase
+    .from('connections')
+    .select('user_id_1, user_id_2')
+    .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
+    .eq('status', 'connected')
+
+  const connectedIds = (connections || []).map((c) =>
+    c.user_id_1 === userId ? c.user_id_2 : c.user_id_1
+  )
+
+  const [squadResult, homeCount, awayCount] = await Promise.all([
+    // Squad picks (skip if no connections)
+    connectedIds.length > 0
+      ? supabase
+          .from('picks')
+          .select('picked_team, users(id, username, display_name, avatar_emoji)')
+          .eq('game_id', gameId)
+          .in('user_id', connectedIds)
+      : { data: [] },
+    // Total home picks
+    supabase
+      .from('picks')
+      .select('*', { count: 'exact', head: true })
+      .eq('game_id', gameId)
+      .eq('picked_team', 'home'),
+    // Total away picks
+    supabase
+      .from('picks')
+      .select('*', { count: 'exact', head: true })
+      .eq('game_id', gameId)
+      .eq('picked_team', 'away'),
+  ])
+
+  return {
+    squadPicks: (squadResult.data || []).map((p) => ({
+      picked_team: p.picked_team,
+      ...p.users,
+    })),
+    totalCounts: {
+      home: homeCount.count || 0,
+      away: awayCount.count || 0,
+    },
+  }
+}
+
 export async function getPublicPickHistory(userId) {
   const { data, error } = await supabase
     .from('picks')

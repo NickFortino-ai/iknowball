@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
-import { submitPick, deletePick, getUserPicks, getUserPickHistory, getPickById } from '../services/pickService.js'
+import { submitPick, deletePick, getUserPicks, getUserPickHistory, getPickById, getGamePicksData } from '../services/pickService.js'
 import { supabase } from '../config/supabase.js'
 
 const router = Router()
@@ -36,6 +36,11 @@ router.get('/me/bonuses', requireAuth, async (req, res) => {
 
   if (error) throw error
   res.json(data || [])
+})
+
+router.get('/games/:gameId', requireAuth, async (req, res) => {
+  const data = await getGamePicksData(req.user.id, req.params.gameId)
+  res.json(data)
 })
 
 router.get('/:pickId', requireAuth, async (req, res) => {

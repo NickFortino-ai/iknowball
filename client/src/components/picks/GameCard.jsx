@@ -33,7 +33,7 @@ function formatLiveStatus(game) {
   return parts.join(' · ')
 }
 
-export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle }) {
+export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle, onCardClick }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
   const isLive = game.status === 'live'
@@ -58,7 +58,8 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
     return 'selected'
   }
 
-  function handleClick(side) {
+  function handleClick(side, e) {
+    e.stopPropagation()
     if (parlayMode) {
       onParlayToggle?.(game.id, side, game)
       return
@@ -73,7 +74,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
   }
 
   return (
-    <div className={`bg-bg-card rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4 overflow-hidden`}>
+    <div onClick={onCardClick} className={`bg-bg-card rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4 overflow-hidden${onCardClick ? ' cursor-pointer' : ''}`}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-text-muted uppercase tracking-wider">
           {game.sports?.name || 'NFL'}
@@ -97,7 +98,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             isLive={hasLiveScores && !isFinal}
             state={getButtonState('away')}
             disabled={isLocked || isSubmitting}
-            onClick={() => handleClick('away')}
+            onClick={(e) => handleClick('away', e)}
           />
           {isFinal && (
             <div className="text-center text-xs text-text-muted mt-1">
@@ -118,7 +119,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             isLive={hasLiveScores && !isFinal}
             state={getButtonState('home')}
             disabled={isLocked || isSubmitting}
-            onClick={() => handleClick('home')}
+            onClick={(e) => handleClick('home', e)}
           />
           {isFinal && (
             <div className="text-center text-xs text-text-muted mt-1">
@@ -149,7 +150,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
       {!parlayMode && onShare && userPick && (userPick.status === 'pending' || userPick.status === 'locked') && (
         <div className="mt-3 text-center">
           <button
-            onClick={() => onShare(userPick.id)}
+            onClick={(e) => { e.stopPropagation(); onShare(userPick.id) }}
             disabled={isShared}
             className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
               isShared
