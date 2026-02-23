@@ -12,7 +12,7 @@ function parseRecapContent(content) {
   if (!content) return { rankings: [], awards: '' }
 
   const parts = content.split(/^## AWARDS/m)
-  const rankingsRaw = parts[0] || ''
+  const rankingsRaw = (parts[0] || '').replace(/^## RANKINGS\s*/m, '')
   const awardsRaw = parts[1] || ''
 
   // Parse individual rankings
