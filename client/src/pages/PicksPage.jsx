@@ -14,6 +14,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
+import { triggerHaptic } from '../lib/haptics'
 
 const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
@@ -145,6 +146,7 @@ export default function PicksPage() {
   async function handlePick(gameId, team) {
     try {
       await submitPick.mutateAsync({ gameId, pickedTeam: team })
+      triggerHaptic('Light')
       toast('Pick submitted!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to submit pick', 'error')

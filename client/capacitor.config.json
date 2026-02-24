@@ -1,5 +1,13 @@
 {
   "appId": "com.iknowball.app",
   "appName": "I KNOW BALL",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 2000,
+      "backgroundColor": "#111111",
+      "showSpinner": false
+    }
+  }
 }

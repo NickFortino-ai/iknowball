@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useFeaturedProp, useMyPropPicks, useSubmitPropPick, useDeletePropPick } from '../../hooks/useProps'
 import PropCard from './PropCard'
 import { toast } from '../ui/Toast'
+import { triggerHaptic } from '../../lib/haptics'
 
 export default function FeaturedPropSection({ date, sportKey }) {
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -26,6 +27,7 @@ export default function FeaturedPropSection({ date, sportKey }) {
   async function handlePick(propId, side) {
     try {
       await submitPick.mutateAsync({ propId, pickedSide: side })
+      triggerHaptic('Light')
       toast('Prop pick submitted!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to submit prop pick', 'error')

@@ -3,6 +3,7 @@ import { usePickStore } from '../../stores/pickStore'
 import { useCreateParlay } from '../../hooks/useParlays'
 import { americanToMultiplier, formatOdds, BASE_RISK_POINTS } from '../../lib/scoring'
 import { toast } from '../ui/Toast'
+import { triggerHaptic } from '../../lib/haptics'
 
 export default function ParlaySlip() {
   const [expanded, setExpanded] = useState(false)
@@ -29,6 +30,7 @@ export default function ParlaySlip() {
         picked_team: l.pickedTeam,
       }))
       await createParlay.mutateAsync(legs)
+      triggerHaptic('Light')
       clearParlayLegs()
       toast('Parlay locked in!', 'success')
     } catch (err) {

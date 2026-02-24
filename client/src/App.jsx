@@ -26,6 +26,8 @@ import FAQPage from './pages/FAQPage'
 import UnsubscribePage from './pages/UnsubscribePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import { initPushNotifications } from './lib/pushNotifications'
+import { initStatusBar } from './lib/statusBar'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,6 +43,8 @@ function AppRoutes() {
 
   useEffect(() => {
     initialize()
+    initPushNotifications()
+    initStatusBar()
   }, [initialize])
 
   return (
