@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
@@ -46,8 +47,10 @@ function Section({ label, children, defaultOpen = true }) {
 }
 
 export default function SettingsPage() {
+  const navigate = useNavigate()
   const { data: profile, isLoading, refetch } = useProfile()
   const fetchProfile = useAuthStore((s) => s.fetchProfile)
+  const signOut = useAuthStore((s) => s.signOut)
 
   const [displayName, setDisplayName] = useState('')
   const [bio, setBio] = useState('')
@@ -59,6 +62,8 @@ export default function SettingsPage() {
   const [tiktokHandle, setTiktokHandle] = useState('')
   const [snapchatHandle, setSnapchatHandle] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Push notification state
   const { data: pushStatus } = usePushStatus()
@@ -340,6 +345,49 @@ export default function SettingsPage() {
       >
         {saving ? 'Saving...' : 'Save Settings'}
       </button>
+
+      {/* Delete Account */}
+      <div className="mt-12 mb-4 text-center">
+        {!confirmDelete ? (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="text-xs text-text-muted hover:text-incorrect transition-colors"
+          >
+            Delete Account
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-incorrect">
+              This will permanently delete your account and all your data. This cannot be undone.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={async () => {
+                  setDeleting(true)
+                  try {
+                    await api.delete('/users/me')
+                    await signOut()
+                    navigate('/')
+                  } catch (err) {
+                    toast(err.message || 'Failed to delete account', 'error')
+                    setDeleting(false)
+                  }
+                }}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-incorrect/20 text-incorrect hover:bg-incorrect/30 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Permanently Delete'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-4 py-2 rounded-lg text-sm text-text-muted hover:text-text-primary transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

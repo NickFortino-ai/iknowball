@@ -376,6 +376,12 @@ router.get('/me/sports', requireAuth, async (req, res) => {
   res.json(data || [])
 })
 
+router.delete('/me', requireAuth, async (req, res) => {
+  const { error } = await supabase.auth.admin.deleteUser(req.user.id)
+  if (error) throw error
+  res.status(204).end()
+})
+
 router.patch('/me', requireAuth, validate(updateSchema), async (req, res) => {
   const { data, error } = await supabase
     .from('users')
