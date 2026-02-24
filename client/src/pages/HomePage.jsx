@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import PowerRankingsCard from '../components/home/PowerRankingsCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
+import TierUsersModal from '../components/home/TierUsersModal'
 
 const tiers = [
   { name: 'Lost', points: '<0', color: 'border-tier-lost text-tier-lost', desc: 'Gone negative' },
@@ -15,6 +17,7 @@ const tiers = [
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth()
+  const [selectedTier, setSelectedTier] = useState(null)
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
@@ -82,7 +85,11 @@ export default function HomePage() {
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
           {tiers.map((tier) => (
-            <div key={tier.name} className={`rounded-xl border-2 p-4 text-center ${tier.color} bg-bg-card`}>
+            <div
+              key={tier.name}
+              className={`rounded-xl border-2 p-4 text-center ${tier.color} bg-bg-card ${isAuthenticated ? 'cursor-pointer hover:scale-105 hover:shadow-lg transition-transform' : ''}`}
+              onClick={isAuthenticated ? () => setSelectedTier(tier) : undefined}
+            >
               <div className="font-display text-lg mb-1">{tier.name}</div>
               <div className="text-xs opacity-70 mb-2">{tier.points} pts</div>
               <div className="text-xs text-text-muted">{tier.desc}</div>
@@ -90,6 +97,8 @@ export default function HomePage() {
           ))}
         </div>
       </div>
+
+      <TierUsersModal tier={selectedTier} onClose={() => setSelectedTier(null)} />
     </div>
   )
 }

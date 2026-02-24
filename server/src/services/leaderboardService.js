@@ -104,6 +104,23 @@ export async function getLeaderboard(scope = 'global', sportKey) {
   return []
 }
 
+const VALID_TIERS = ['Lost', 'Rookie', 'Baller', 'Elite', 'Hall of Famer', 'GOAT']
+
+export async function getUsersByTier(tierName) {
+  if (!VALID_TIERS.includes(tierName)) {
+    throw Object.assign(new Error(`Invalid tier: ${tierName}`), { status: 400 })
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, total_points, tier')
+    .eq('tier', tierName)
+    .order('total_points', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
 export async function getRecordHolders(userId) {
   const records = []
 
