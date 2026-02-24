@@ -13,6 +13,7 @@ export function usePickHistory() {
   return useQuery({
     queryKey: ['picks', 'history'],
     queryFn: () => api.get('/picks/me/history'),
+    refetchInterval: 60_000,
   })
 }
 

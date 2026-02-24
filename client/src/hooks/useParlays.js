@@ -13,6 +13,7 @@ export function useParlayHistory() {
   return useQuery({
     queryKey: ['parlays', 'history'],
     queryFn: () => api.get('/parlays/me/history'),
+    refetchInterval: 60_000,
   })
 }
 

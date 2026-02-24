@@ -8,5 +8,6 @@ export function useLeaderboard(scope = 'global', sport) {
   return useQuery({
     queryKey: ['leaderboard', scope, sport],
     queryFn: () => api.get(`/leaderboard?${params}`),
+    refetchInterval: 60_000,
   })
 }

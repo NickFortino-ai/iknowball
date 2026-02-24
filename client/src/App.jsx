@@ -29,6 +29,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import HeadlinesArchivePage from './pages/HeadlinesArchivePage'
 import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
+import { useRealtimeGames } from './hooks/useRealtimeGames'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,6 +42,8 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   const initialize = useAuthStore((s) => s.initialize)
+  const isAuthenticated = useAuthStore((s) => !!s.session)
+  useRealtimeGames(isAuthenticated)
 
   useEffect(() => {
     initialize()
