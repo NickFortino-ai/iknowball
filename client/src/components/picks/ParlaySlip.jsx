@@ -63,7 +63,7 @@ export default function ParlaySlip() {
 
         {/* Expanded view — leg details */}
         {expanded && (
-          <div className="px-4 pb-2 space-y-2">
+          <div className="px-4 pb-2 space-y-2 max-h-48 overflow-y-auto">
             {parlayLegs.map((leg) => {
               const odds = leg.pickedTeam === 'home' ? leg.game.home_odds : leg.game.away_odds
               const team = leg.pickedTeam === 'home' ? leg.game.home_team : leg.game.away_team
