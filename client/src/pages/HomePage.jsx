@@ -16,7 +16,7 @@ const tiers = [
 ]
 
 export default function HomePage() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, profile } = useAuth()
   const [selectedTier, setSelectedTier] = useState(null)
 
   return (
@@ -45,6 +45,25 @@ export default function HomePage() {
           </Link>
         )}
       </div>
+
+      {/* Welcome Card — new users only */}
+      {isAuthenticated && profile?.total_points === 0 && (
+        <div className="bg-bg-card rounded-2xl border border-border p-6 mb-8">
+          <h2 className="font-display text-2xl text-accent mb-2">Welcome to I KNOW BALL</h2>
+          <p className="text-text-secondary mb-5">You're in. Here's how to get started:</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link to="/picks" className="bg-accent hover:bg-accent-hover text-white font-semibold px-5 py-2.5 rounded-xl text-center transition-colors">
+              Make Your First Pick
+            </Link>
+            <Link to="/faq" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-5 py-2.5 rounded-xl text-center transition-colors">
+              Read the FAQ
+            </Link>
+            <Link to="/settings" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-5 py-2.5 rounded-xl text-center transition-colors">
+              Set Up Your Profile
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Logged-in: Power Rankings + Featured Prop */}
       {isAuthenticated && (
