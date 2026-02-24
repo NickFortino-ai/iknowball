@@ -125,7 +125,6 @@ export default function PowerRankingsCard() {
           {rankings.map((r) => (
             <div key={r.rank || r.name} className="bg-bg-primary rounded-xl p-4">
               <div className="flex items-baseline gap-3 mb-1">
-                <span className="font-display text-2xl text-accent">#{r.rank}</span>
                 <span className="font-display text-lg">{r.name}</span>
                 <span className="text-text-muted text-sm ml-auto">{r.record}</span>
                 <span className="font-semibold text-accent text-sm">{r.points > 0 ? '+' : ''}{r.points} pts</span>
