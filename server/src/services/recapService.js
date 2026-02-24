@@ -460,6 +460,23 @@ ${JSON.stringify(dataPayload, null, 2)}`
 }
 
 /**
+ * Get all weekly recaps, ordered newest first.
+ */
+export async function getRecapArchive() {
+  const { data, error } = await supabase
+    .from('weekly_recaps')
+    .select('id, week_start, week_end, recap_content, crown_holders, created_at')
+    .order('week_start', { ascending: false })
+
+  if (error) {
+    logger.error({ error }, 'Failed to fetch recap archive')
+    throw error
+  }
+
+  return data || []
+}
+
+/**
  * Get the most recent weekly recap from the database.
  */
 export async function getLatestRecap() {

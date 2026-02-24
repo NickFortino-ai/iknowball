@@ -409,6 +409,18 @@ export default function Navbar() {
                       FAQ
                     </Link>
                     <Link
+                      to="/headlines"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="3" width="20" height="18" rx="2" />
+                        <line x1="6" y1="7" x2="18" y2="7" />
+                        <line x1="6" y1="11" x2="14" y2="11" />
+                        <line x1="6" y1="15" x2="10" y2="15" />
+                      </svg>
+                      Headlines
+                    </Link>
+                    <Link
                       to="/privacy"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
                     >
@@ -538,6 +550,18 @@ export default function Navbar() {
                         <line x1="12" y1="17" x2="12.01" y2="17" />
                       </svg>
                       FAQ
+                    </Link>
+                    <Link
+                      to="/headlines"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="3" width="20" height="18" rx="2" />
+                        <line x1="6" y1="7" x2="18" y2="7" />
+                        <line x1="6" y1="11" x2="14" y2="11" />
+                        <line x1="6" y1="15" x2="10" y2="15" />
+                      </svg>
+                      Headlines
                     </Link>
                     <Link
                       to="/privacy"
