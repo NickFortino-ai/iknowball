@@ -5,9 +5,10 @@ import LeagueCard from '../components/leagues/LeagueCard'
 import JoinLeagueModal from '../components/leagues/JoinLeagueModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
+import ErrorState from '../components/ui/ErrorState'
 
 export default function LeaguesPage() {
-  const { data: leagues, isLoading } = useMyLeagues()
+  const { data: leagues, isLoading, isError, refetch } = useMyLeagues()
   const [showJoinModal, setShowJoinModal] = useState(false)
 
   return (
@@ -32,6 +33,8 @@ export default function LeaguesPage() {
 
       {isLoading ? (
         <LoadingSpinner />
+      ) : isError ? (
+        <ErrorState title="Failed to load leagues" message="Check your connection and try again." onRetry={refetch} />
       ) : !leagues?.length ? (
         <EmptyState
           title="No leagues yet"

@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
+import ErrorState from '../components/ui/ErrorState'
 import UserProfileModal from '../components/profile/UserProfileModal'
 
 const tabs = [
@@ -24,7 +25,7 @@ export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const tab = tabs[activeTab]
-  const { data: leaders, isLoading } = useLeaderboard(tab.scope, tab.sport)
+  const { data: leaders, isLoading, isError, refetch } = useLeaderboard(tab.scope, tab.sport)
   const { profile } = useAuth()
 
   return (
@@ -53,6 +54,8 @@ export default function LeaderboardPage() {
 
       {isLoading ? (
         <LoadingSpinner />
+      ) : isError ? (
+        <ErrorState title="Failed to load rankings" message="Check your connection and try again." onRetry={refetch} />
       ) : !leaders?.length ? (
         <EmptyState title="No rankings yet" message="Be the first to make picks!" />
       ) : (

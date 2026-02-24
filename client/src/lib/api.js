@@ -23,6 +23,12 @@ async function request(path, options = {}) {
         ...options.headers,
       },
     })
+  } catch (err) {
+    clearTimeout(timeoutId)
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.')
+    }
+    throw new Error('No internet connection. Check your network and try again.')
   } finally {
     clearTimeout(timeoutId)
   }
