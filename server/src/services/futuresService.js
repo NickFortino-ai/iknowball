@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { fetchFuturesOdds, FUTURES_SPORT_KEYS } from './oddsService.js'
 import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
 import { createNotification } from './notificationService.js'
+import { checkRecordAfterSettle } from './recordService.js'
 
 export async function syncFuturesForSport(parentSportKey) {
   const futuresKeys = FUTURES_SPORT_KEYS[parentSportKey] || []
@@ -299,6 +300,17 @@ export async function settleFuturesMarket(marketId, winningOutcome) {
       `Your futures pick "${pick.picked_outcome}" ${isCorrect ? 'won' : 'lost'}! (${pointsEarned > 0 ? '+' : ''}${pointsEarned} pts)`,
       { marketId, pickId: pick.id }
     )
+
+    // Check records after futures pick settles
+    try {
+      await checkRecordAfterSettle(pick.user_id, 'futures', {
+        isCorrect,
+        odds: pick.odds_at_submission,
+        sportKey: market.sport_key,
+      })
+    } catch (err) {
+      logger.error({ err, userId: pick.user_id }, 'Record check after futures settle failed')
+    }
 
     scored++
   }

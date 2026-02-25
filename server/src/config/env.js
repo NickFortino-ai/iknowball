@@ -25,4 +25,5 @@ export const env = {
   ENABLE_LIVE_SCORES: process.env.ENABLE_LIVE_SCORES === 'true',
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   ENABLE_WEEKLY_RECAP: process.env.ENABLE_WEEKLY_RECAP === 'true',
+  ENABLE_RECORD_CALC: process.env.ENABLE_RECORD_CALC === 'true',
 }

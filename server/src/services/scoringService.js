@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
+import { checkRecordAfterSettle } from './recordService.js'
 import { BASE_RISK_POINTS } from '../config/constants.js'
 
 export async function scoreCompletedGame(gameId, winner, sportId) {
@@ -118,6 +119,18 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
           logger.error({ err, userId: pick.user_id }, 'Failed to record streak event')
         }
       }
+
+      // Check records after pick settles
+      try {
+        const { data: game } = await supabase.from('games').select('sports(key)').eq('id', gameId).single()
+        await checkRecordAfterSettle(pick.user_id, 'pick', {
+          isCorrect,
+          odds: pick.odds_at_pick,
+          sportKey: game?.sports?.key,
+        })
+      } catch (err) {
+        logger.error({ err, userId: pick.user_id }, 'Record check after pick settle failed')
+      }
     }
   }
 
@@ -223,6 +236,12 @@ async function trySettleParlay(parlayId) {
       `Your ${legs.length}-leg parlay lost (${pointsEarned} pts)`,
       { parlayId }
     )
+
+    try {
+      await checkRecordAfterSettle(parlay.user_id, 'parlay', { isCorrect: false })
+    } catch (err) {
+      logger.error({ err, parlayId }, 'Record check after losing parlay failed')
+    }
     return
   }
 
@@ -295,6 +314,12 @@ async function trySettleParlay(parlayId) {
     `Your ${legs.length}-leg parlay won! (+${pointsEarned} pts)`,
     { parlayId }
   )
+
+  try {
+    await checkRecordAfterSettle(parlay.user_id, 'parlay', { isCorrect: true })
+  } catch (err) {
+    logger.error({ err, parlayId }, 'Record check after winning parlay failed')
+  }
 }
 
 export async function recalculateAllUserPoints() {

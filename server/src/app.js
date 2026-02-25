@@ -20,6 +20,7 @@ import pushRouter from './routes/push.js'
 import emailRouter from './routes/email.js'
 import futuresRouter from './routes/futures.js'
 import recapsRouter from './routes/recaps.js'
+import recordsRouter from './routes/records.js'
 
 const app = express()
 
@@ -48,6 +49,7 @@ app.use('/api/push', pushRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/futures', futuresRouter)
 app.use('/api/recaps', recapsRouter)
+app.use('/api/records', recordsRouter)
 
 app.use(errorHandler)
 

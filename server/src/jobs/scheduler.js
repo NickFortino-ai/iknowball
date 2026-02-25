@@ -8,6 +8,8 @@ import { syncFutures } from './syncFutures.js'
 import { syncLiveScores } from './syncLiveScores.js'
 import { completeLeagues } from './completeLeagues.js'
 import { generateWeeklyRecap } from './generateRecap.js'
+import { snapshotRanks } from './snapshotRanks.js'
+import { recalculateRecords } from './recalculateRecords.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -50,6 +52,20 @@ export function startScheduler() {
       try { await generateWeeklyRecap() } catch (err) { logger.error({ err }, 'Weekly recap job failed') }
     }, { timezone: 'America/New_York' })
     logger.info('Weekly recap scheduled: Monday at 8:00 AM EST (visible to users at 10:00 AM EST)')
+  }
+
+  if (env.ENABLE_RECORD_CALC) {
+    // Snapshot global ranks daily at 3:55 AM EST
+    cron.schedule('55 3 * * *', async () => {
+      try { await snapshotRanks() } catch (err) { logger.error({ err }, 'Rank snapshot job failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('Rank snapshot scheduled: daily at 3:55 AM EST')
+
+    // Recalculate all records daily at 4:00 AM EST
+    cron.schedule('0 4 * * *', async () => {
+      try { await recalculateRecords() } catch (err) { logger.error({ err }, 'Record recalculation job failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('Record recalculation scheduled: daily at 4:00 AM EST')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues

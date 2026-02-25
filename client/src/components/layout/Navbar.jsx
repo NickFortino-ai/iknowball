@@ -62,6 +62,8 @@ function getNotificationRoute(notification) {
       return '/headlines'
     case 'squares_quarter_win':
       return notification.metadata?.leagueId ? `/leagues/${notification.metadata.leagueId}` : null
+    case 'record_broken':
+      return '/records'
     default:
       return null
   }
@@ -504,6 +506,30 @@ export default function Navbar() {
                       Headlines
                     </Link>
                     <Link
+                      to="/records"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7" />
+                        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7" />
+                        <path d="M4 22h16" />
+                        <path d="M10 22V8a4 4 0 0 1 4 0v14" />
+                        <path d="M8 9h8" />
+                        <path d="M8 13h8" />
+                      </svg>
+                      Records
+                    </Link>
+                    <Link
+                      to="/royalty"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 20h20L18 8l-4 4-2-6-2 6-4-4L2 20z" />
+                        <path d="M2 20h20v2H2z" />
+                      </svg>
+                      Royalty
+                    </Link>
+                    <Link
                       to="/privacy"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
                     >
@@ -706,6 +732,30 @@ export default function Navbar() {
                         <line x1="6" y1="15" x2="10" y2="15" />
                       </svg>
                       Headlines
+                    </Link>
+                    <Link
+                      to="/records"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7" />
+                        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7" />
+                        <path d="M4 22h16" />
+                        <path d="M10 22V8a4 4 0 0 1 4 0v14" />
+                        <path d="M8 9h8" />
+                        <path d="M8 13h8" />
+                      </svg>
+                      Records
+                    </Link>
+                    <Link
+                      to="/royalty"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 20h20L18 8l-4 4-2-6-2 6-4-4L2 20z" />
+                        <path d="M2 20h20v2H2z" />
+                      </svg>
+                      Royalty
                     </Link>
                     <Link
                       to="/privacy"

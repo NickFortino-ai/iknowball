@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { fetchPlayerProps } from './oddsService.js'
 import { getMarketLabel } from '../utils/propMarkets.js'
 import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
+import { checkRecordAfterSettle } from './recordService.js'
 
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
@@ -282,6 +283,15 @@ export async function settleProps(settlements) {
 
         if (statsError) {
           logger.error({ statsError, userId: pick.user_id }, 'Failed to update sport stats for prop')
+        }
+      }
+
+      // Check records after prop pick settles
+      if (isCorrect !== null) {
+        try {
+          await checkRecordAfterSettle(pick.user_id, 'prop', { isCorrect })
+        } catch (err) {
+          logger.error({ err, userId: pick.user_id }, 'Record check after prop settle failed')
         }
       }
     }

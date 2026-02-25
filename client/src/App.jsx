@@ -28,6 +28,8 @@ import UnsubscribePage from './pages/UnsubscribePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import HeadlinesArchivePage from './pages/HeadlinesArchivePage'
+import RecordBookPage from './pages/RecordBookPage'
+import RoyaltyPage from './pages/RoyaltyPage'
 import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
 import { useRealtimeGames } from './hooks/useRealtimeGames'
@@ -65,6 +67,8 @@ function AppRoutes() {
         <Route path="/leagues/create" element={<ProtectedRoute><CreateLeaguePage /></ProtectedRoute>} />
         <Route path="/leagues/:id" element={<ProtectedRoute><LeagueDetailPage /></ProtectedRoute>} />
         <Route path="/headlines" element={<ProtectedRoute><HeadlinesArchivePage /></ProtectedRoute>} />
+        <Route path="/records" element={<ProtectedRoute><RecordBookPage /></ProtectedRoute>} />
+        <Route path="/royalty" element={<ProtectedRoute><RoyaltyPage /></ProtectedRoute>} />
         <Route path="/connections" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
       </Routes>
