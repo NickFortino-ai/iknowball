@@ -104,7 +104,7 @@ const TYPE_LABELS = { live: 'Live', pick: 'Picks', parlay: 'Parlays', prop: 'Pro
 function groupByType(items) {
   const groups = {}
   for (const item of items) {
-    const key = item.is_correct === null && item.type !== 'bonus' ? 'live' : item.type
+    const key = item.is_correct === null && item.type !== 'bonus' && item.type !== 'futures' ? 'live' : item.type
     if (!groups[key]) groups[key] = []
     groups[key].push(item)
   }
