@@ -122,61 +122,19 @@ export async function getUsersByTier(tierName) {
 }
 
 export async function getRecordHolders(userId) {
-  const records = []
+  const { data, error } = await supabase
+    .from('records')
+    .select('record_key, display_name, record_value')
+    .eq('record_holder_id', userId)
+    .is('parent_record_key', null)
 
-  const [streakResult, parlayResult, underdogResult] = await Promise.all([
-    // 1. Longest streak
-    supabase.from('user_sport_stats')
-      .select('user_id, best_streak, sports(name)')
-      .order('best_streak', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+  if (error || !data?.length) return []
 
-    // 2. Biggest parlay win
-    supabase.from('parlays')
-      .select('user_id, risk_points, reward_points')
-      .eq('is_correct', true).eq('status', 'settled')
-      .order('reward_points', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-
-    // 3. Biggest underdog win
-    supabase.from('picks')
-      .select('user_id, risk_points, reward_points, odds_at_pick')
-      .eq('is_correct', true).eq('status', 'settled').gt('odds_at_pick', 0)
-      .order('reward_points', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ])
-
-  // Longest streak
-  if (streakResult.data && streakResult.data.user_id === userId) {
-    records.push({
-      key: 'longest_streak',
-      label: 'Longest Streak',
-      detail: `${streakResult.data.best_streak} (${streakResult.data.sports?.name})`,
-    })
-  }
-
-  // Biggest parlay win
-  if (parlayResult.data && parlayResult.data.user_id === userId) {
-    records.push({
-      key: 'biggest_parlay',
-      label: 'Biggest Parlay',
-      detail: `${parlayResult.data.risk_points} → ${parlayResult.data.reward_points}`,
-    })
-  }
-
-  // Biggest underdog win
-  if (underdogResult.data && underdogResult.data.user_id === userId) {
-    records.push({
-      key: 'biggest_underdog',
-      label: 'Biggest Underdog Win',
-      detail: `${underdogResult.data.risk_points} → ${underdogResult.data.reward_points}`,
-    })
-  }
-
-  return records
+  return data.map((r) => ({
+    key: r.record_key,
+    label: r.display_name,
+    value: r.record_value,
+  }))
 }
 
 export async function getAllCrownHolders() {

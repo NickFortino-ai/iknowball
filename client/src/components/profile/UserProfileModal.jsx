@@ -154,7 +154,7 @@ export default function UserProfileModal({ userId, onClose }) {
                     className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-500/15 text-yellow-500 text-xs font-semibold"
                   >
                     <span>🏆</span>
-                    {record.label} — {record.detail}
+                    {record.label} — {record.value}
                   </span>
                 ))}
               </div>
