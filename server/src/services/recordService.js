@@ -712,7 +712,7 @@ export async function getRoyaltyData() {
   // Get global #1
   const { data: globalTop, error: globalErr } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji, tier, total_points, created_at, twitter_handle, instagram_handle')
+    .select('id, username, display_name, avatar_url, avatar_emoji, tier, total_points, created_at, x_handle, instagram_handle')
     .order('total_points', { ascending: false })
     .limit(1)
     .maybeSingle()
