@@ -16,6 +16,22 @@ export function useRecordHistory() {
   })
 }
 
+export function useRecordPick(pickId) {
+  return useQuery({
+    queryKey: ['recordPick', pickId],
+    queryFn: () => api.get(`/records/pick/${pickId}`),
+    enabled: !!pickId,
+  })
+}
+
+export function useRecordParlay(parlayId) {
+  return useQuery({
+    queryKey: ['recordParlay', parlayId],
+    queryFn: () => api.get(`/records/parlay/${parlayId}`),
+    enabled: !!parlayId,
+  })
+}
+
 export function useRoyalty() {
   return useQuery({
     queryKey: ['royalty'],

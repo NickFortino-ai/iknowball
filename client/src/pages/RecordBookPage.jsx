@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useRecords } from '../hooks/useRecords'
+import { useRecords, useRecordPick, useRecordParlay } from '../hooks/useRecords'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 import TierBadge from '../components/ui/TierBadge'
+import GameCard from '../components/picks/GameCard'
+import ParlayCard from '../components/picks/ParlayCard'
 
 const CATEGORY_ORDER = ['streak', 'single_pick', 'percentage', 'efficiency', 'climb']
 
@@ -31,6 +33,14 @@ const CATEGORY_LABELS = {
   percentage: 'Percentages',
   efficiency: 'Efficiency',
   climb: 'Climb',
+}
+
+// Records that can show a detail card when tapped
+const TAPPABLE_PICK_RECORDS = ['biggest_underdog_hit']
+const TAPPABLE_PARLAY_RECORDS = ['biggest_parlay']
+
+function hasDetailCard(recordKey) {
+  return TAPPABLE_PICK_RECORDS.includes(recordKey) || TAPPABLE_PARLAY_RECORDS.includes(recordKey)
 }
 
 function formatRecordValue(record) {
@@ -63,18 +73,51 @@ function formatRecordValue(record) {
   }
 }
 
+function PickDetailCard({ pickId }) {
+  const { data: pick, isLoading } = useRecordPick(pickId)
+  if (isLoading) return <div className="px-4 pb-4"><LoadingSpinner /></div>
+  if (!pick?.games) return null
+  return (
+    <div className="px-4 pb-4">
+      <GameCard game={pick.games} userPick={pick} />
+    </div>
+  )
+}
+
+function ParlayDetailCard({ parlayId }) {
+  const { data: parlay, isLoading } = useRecordParlay(parlayId)
+  if (isLoading) return <div className="px-4 pb-4"><LoadingSpinner /></div>
+  if (!parlay) return null
+  return (
+    <div className="px-4 pb-4">
+      <ParlayCard parlay={parlay} />
+    </div>
+  )
+}
+
 function RecordCard({ record }) {
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
   const holder = record.users
   const hasSubs = record.sub_records?.length > 0
   const hasHolder = holder != null
+  const isTappable = hasHolder && hasDetailCard(record.record_key)
+  const metadata = record.record_metadata || {}
+
+  const handleCardClick = () => {
+    if (hasSubs) {
+      setExpanded(!expanded)
+    } else if (isTappable) {
+      setShowDetail(!showDetail)
+    }
+  }
 
   return (
     <div className="bg-bg-card border border-border rounded-2xl overflow-hidden">
       <div
-        className={`p-4 ${hasSubs ? 'cursor-pointer' : ''}`}
-        onClick={() => hasSubs && setExpanded(!expanded)}
+        className={`p-4 ${hasSubs || isTappable ? 'cursor-pointer' : ''}`}
+        onClick={handleCardClick}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -85,6 +128,15 @@ function RecordCard({ record }) {
                   width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                   className={`text-text-muted transition-transform ${expanded ? 'rotate-180' : ''}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              )}
+              {isTappable && !hasSubs && (
+                <svg
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className={`text-text-muted transition-transform ${showDetail ? 'rotate-180' : ''}`}
                 >
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
@@ -119,6 +171,18 @@ function RecordCard({ record }) {
           </div>
         )}
       </div>
+
+      {/* Detail card for tappable records */}
+      {showDetail && TAPPABLE_PICK_RECORDS.includes(record.record_key) && metadata.pickId && (
+        <div className="border-t border-border">
+          <PickDetailCard pickId={metadata.pickId} />
+        </div>
+      )}
+      {showDetail && TAPPABLE_PARLAY_RECORDS.includes(record.record_key) && metadata.parlayId && (
+        <div className="border-t border-border">
+          <ParlayDetailCard parlayId={metadata.parlayId} />
+        </div>
+      )}
 
       {expanded && hasSubs && (
         <div className="border-t border-border">
