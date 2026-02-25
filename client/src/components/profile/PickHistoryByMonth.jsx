@@ -281,9 +281,11 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                           <span className={`text-xs text-text-muted transition-transform ${typeOpen ? 'rotate-90' : ''}`}>&#9656;</span>
                           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{group.label}</span>
                           <span className="text-xs text-text-muted">{typeStats.wins}W-{typeStats.losses}L</span>
-                          <span className={`text-xs font-semibold ml-auto ${typeStats.net > 0 ? 'text-correct' : typeStats.net < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
-                            {typeStats.net > 0 ? '+' : ''}{typeStats.net}
-                          </span>
+                          {!typeOpen && (
+                            <span className={`text-xs font-semibold ml-auto ${typeStats.net > 0 ? 'text-correct' : typeStats.net < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+                              {typeStats.net > 0 ? '+' : ''}{typeStats.net}
+                            </span>
+                          )}
                         </button>
                         {typeOpen && (
                           <div className="space-y-1">
