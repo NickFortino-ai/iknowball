@@ -19,8 +19,10 @@ router.get('/tier/:tierName', requireAuth, async (req, res) => {
 router.get('/royalty', requireAuth, async (req, res, next) => {
   try {
     const data = await getRoyaltyData()
+    console.log('Royalty response:', JSON.stringify(data, null, 2))
     res.json(data)
   } catch (err) {
+    console.error('Royalty endpoint error:', err)
     next(err)
   }
 })
