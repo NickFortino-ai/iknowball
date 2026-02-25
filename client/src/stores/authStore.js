@@ -1,12 +1,15 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
+import { queryClient } from '../lib/queryClient'
+import { getSavedAccounts, upsertAccount, removeAccount } from '../lib/accountManager'
 
 export const useAuthStore = create((set, get) => ({
   session: null,
   profile: null,
   profileError: false,
   loading: true,
+  switching: false,
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -19,7 +22,18 @@ export const useAuthStore = create((set, get) => ({
     supabase.auth.onAuthStateChange((_event, session) => {
       set({ session })
       if (session) {
-        get().fetchProfile()
+        get().fetchProfile().then(() => {
+          const profile = get().profile
+          if (profile) {
+            upsertAccount({
+              userId: session.user.id,
+              username: profile.username,
+              displayName: profile.display_name || profile.username,
+              avatarEmoji: profile.avatar_emoji || null,
+              refreshToken: session.refresh_token,
+            })
+          }
+        })
       } else {
         set({ profile: null })
       }
@@ -58,7 +72,34 @@ export const useAuthStore = create((set, get) => ({
   },
 
   signOut: async () => {
+    const { session } = get()
+    if (session) {
+      removeAccount(session.user.id)
+    }
     await supabase.auth.signOut()
     set({ session: null, profile: null })
+  },
+
+  switchAccount: async (userId) => {
+    set({ switching: true })
+    try {
+      const accounts = getSavedAccounts()
+      const target = accounts.find((a) => a.userId === userId)
+      if (!target) throw new Error('Account not found')
+
+      const { error } = await supabase.auth.refreshSession({
+        refresh_token: target.refreshToken,
+      })
+
+      if (error) {
+        removeAccount(userId)
+        throw new Error('Session expired. Please log in again.')
+      }
+
+      queryClient.clear()
+      // onAuthStateChange fires automatically → profile fetches → account upserted
+    } finally {
+      set({ switching: false })
+    }
   },
 }))

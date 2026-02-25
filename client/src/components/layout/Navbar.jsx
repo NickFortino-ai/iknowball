@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useAccountSwitcher } from '../../hooks/useAccountSwitcher'
 import { useMyInvitations, useAcceptInvitation, useDeclineInvitation } from '../../hooks/useInvitations'
 import { usePendingConnectionRequests, useAcceptConnectionRequest, useDeclineConnectionRequest } from '../../hooks/useConnections'
 import { useNotifications, useUnreadNotificationCount, useMarkAllNotificationsRead } from '../../hooks/useNotifications'
@@ -68,6 +69,7 @@ function getNotificationRoute(notification) {
 
 export default function Navbar() {
   const { isAuthenticated, profile, signOut } = useAuth()
+  const { savedAccounts, inactiveAccounts, currentUserId, switching, unreadCounts, refreshUnreadCounts, resetFetchState, handleSwitch, handleRemove } = useAccountSwitcher()
   const location = useLocation()
   const navigate = useNavigate()
   const [showInvites, setShowInvites] = useState(false)
@@ -153,6 +155,7 @@ export default function Navbar() {
   useEffect(() => {
     setShowMobileMenu(false)
     setShowDesktopMenu(false)
+    resetFetchState()
   }, [location.pathname])
 
   async function handleAccept(invitationId) {
@@ -359,7 +362,7 @@ export default function Navbar() {
               {/* Desktop hamburger menu */}
               <div className="relative" ref={desktopMenuRef}>
                 <button
-                  onClick={() => { setShowInvites(false); setShowDesktopMenu(!showDesktopMenu) }}
+                  onClick={() => { setShowInvites(false); if (!showDesktopMenu) refreshUnreadCounts(); else resetFetchState(); setShowDesktopMenu(!showDesktopMenu) }}
                   className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                   aria-label="Menu"
                 >
@@ -381,6 +384,69 @@ export default function Navbar() {
 
                 {showDesktopMenu && (
                   <div className="absolute right-0 top-full mt-2 w-56 bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                    {/* Account switcher */}
+                    <div className="border-b border-border">
+                      {/* Active account */}
+                      {profile && (
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <span className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-sm flex-shrink-0">
+                            {profile.avatar_emoji || profile.username?.[0]?.toUpperCase()}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{profile.display_name || profile.username}</div>
+                            <div className="text-xs text-text-muted truncate">@{profile.username}</div>
+                          </div>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-correct flex-shrink-0">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Inactive accounts */}
+                      {inactiveAccounts.map((account) => {
+                        const info = unreadCounts[account.userId]
+                        return (
+                          <div key={account.userId} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-card-hover transition-colors cursor-pointer group" onClick={() => { setShowDesktopMenu(false); handleSwitch(account.userId) }}>
+                            <span className="w-8 h-8 rounded-full bg-bg-secondary flex items-center justify-center text-sm flex-shrink-0">
+                              {account.avatarEmoji || account.username?.[0]?.toUpperCase()}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium truncate">{account.displayName}</div>
+                              <div className="text-xs text-text-muted truncate">@{account.username}</div>
+                            </div>
+                            {info?.error ? (
+                              <span className="text-[10px] text-text-muted italic flex-shrink-0">expired</span>
+                            ) : info?.count > 0 ? (
+                              <span className="w-5 h-5 bg-incorrect text-white text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                                {info.count > 9 ? '9+' : info.count}
+                              </span>
+                            ) : null}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRemove(account.userId) }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-text-muted hover:text-text-primary transition-opacity flex-shrink-0"
+                              aria-label="Remove account"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                        )
+                      })}
+                      <Link
+                        to="/login"
+                        onClick={() => setShowDesktopMenu(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-accent hover:bg-bg-card-hover transition-colors"
+                      >
+                        <span className="w-8 h-8 rounded-full border border-dashed border-accent/50 flex items-center justify-center flex-shrink-0">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                        </span>
+                        Add an existing account
+                      </Link>
+                    </div>
                     <Link
                       to="/settings"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
@@ -501,7 +567,7 @@ export default function Navbar() {
               {/* Hamburger */}
               <div ref={mobileMenuRef}>
                 <button
-                  onClick={() => { setShowInvites(false); setShowMobileMenu(!showMobileMenu) }}
+                  onClick={() => { setShowInvites(false); if (!showMobileMenu) refreshUnreadCounts(); else resetFetchState(); setShowMobileMenu(!showMobileMenu) }}
                   className="p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                   aria-label="Menu"
                 >
@@ -524,6 +590,67 @@ export default function Navbar() {
                 {/* Mobile dropdown menu */}
                 {showMobileMenu && (
                   <div className="absolute right-4 top-full mt-1 w-56 bg-bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                    {/* Account switcher */}
+                    <div className="border-b border-border">
+                      {profile && (
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <span className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-sm flex-shrink-0">
+                            {profile.avatar_emoji || profile.username?.[0]?.toUpperCase()}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{profile.display_name || profile.username}</div>
+                            <div className="text-xs text-text-muted truncate">@{profile.username}</div>
+                          </div>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-correct flex-shrink-0">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                      {inactiveAccounts.map((account) => {
+                        const info = unreadCounts[account.userId]
+                        return (
+                          <div key={account.userId} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-card-hover transition-colors cursor-pointer" onClick={() => { setShowMobileMenu(false); handleSwitch(account.userId) }}>
+                            <span className="w-8 h-8 rounded-full bg-bg-secondary flex items-center justify-center text-sm flex-shrink-0">
+                              {account.avatarEmoji || account.username?.[0]?.toUpperCase()}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium truncate">{account.displayName}</div>
+                              <div className="text-xs text-text-muted truncate">@{account.username}</div>
+                            </div>
+                            {info?.error ? (
+                              <span className="text-[10px] text-text-muted italic flex-shrink-0">expired</span>
+                            ) : info?.count > 0 ? (
+                              <span className="w-5 h-5 bg-incorrect text-white text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                                {info.count > 9 ? '9+' : info.count}
+                              </span>
+                            ) : null}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRemove(account.userId) }}
+                              className="p-1 text-text-muted hover:text-text-primary transition-colors flex-shrink-0"
+                              aria-label="Remove account"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                        )
+                      })}
+                      <Link
+                        to="/login"
+                        onClick={() => setShowMobileMenu(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-accent hover:bg-bg-card-hover transition-colors"
+                      >
+                        <span className="w-8 h-8 rounded-full border border-dashed border-accent/50 flex items-center justify-center flex-shrink-0">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                        </span>
+                        Add an existing account
+                      </Link>
+                    </div>
                     <Link
                       to="/settings"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"

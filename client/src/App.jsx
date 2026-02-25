@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './lib/queryClient'
 import { useAuthStore } from './stores/authStore'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import AppShell from './components/layout/AppShell'
@@ -30,15 +31,6 @@ import HeadlinesArchivePage from './pages/HeadlinesArchivePage'
 import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
 import { useRealtimeGames } from './hooks/useRealtimeGames'
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: 1,
-    },
-  },
-})
 
 function AppRoutes() {
   const initialize = useAuthStore((s) => s.initialize)
