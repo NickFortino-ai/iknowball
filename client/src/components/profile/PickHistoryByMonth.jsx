@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
 function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
@@ -98,12 +98,25 @@ function getMonthStats(items) {
   return { wins, losses, net }
 }
 
+const TYPE_ORDER = ['pick', 'parlay', 'prop', 'futures', 'bonus']
+const TYPE_LABELS = { pick: 'Picks', parlay: 'Parlays', prop: 'Props', futures: 'Futures', bonus: 'Bonuses' }
+
+function groupByType(items) {
+  const groups = {}
+  for (const item of items) {
+    if (!groups[item.type]) groups[item.type] = []
+    groups[item.type].push(item)
+  }
+  return TYPE_ORDER.filter((t) => groups[t]?.length).map((t) => ({ type: t, label: TYPE_LABELS[t], items: groups[t] }))
+}
+
 export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, bonuses, isLoading, allCollapsed, onItemTap }) {
   const months = useMemo(() => {
     const items = normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses)
     return items.length ? groupByMonth(items) : []
   }, [picks, parlays, propPicks, futuresPicks, bonuses])
   const [expanded, setExpanded] = useState({})
+  const [collapsedTypes, setCollapsedTypes] = useState({})
 
   function isExpanded(key, index) {
     if (key in expanded) return expanded[key]
@@ -139,6 +152,8 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
         {months.map((month, index) => {
           const stats = getMonthStats(month.items)
           const open = isExpanded(month.key, index)
+          const today = new Date()
+          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
           return (
             <div key={month.key}>
@@ -163,34 +178,58 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
               </button>
 
               {open && (
-                <div className="mt-1 space-y-1">
-                  {month.items.map((item) => {
-                    const isTappable = onItemTap && item.type === 'pick'
+                <div className="mt-1 space-y-2">
+                  {groupByType(month.items).map((group) => {
+                    const typeKey = `${month.key}-${group.type}`
+                    const typeOpen = collapsedTypes[typeKey] !== false
+                    const typeStats = getMonthStats(group.items)
                     return (
-                    <div
-                      key={`${item.type}-${item.id}`}
-                      className={`bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
-                      onClick={isTappable ? () => onItemTap(item.type, item.id) : undefined}
-                    >
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold truncate">
-                          {item.type !== 'pick' && (
-                            <span className="text-xs text-text-muted font-normal mr-1.5">
-                              {item.type === 'parlay' ? 'Parlay' : item.type === 'futures' ? 'Futures' : item.type === 'bonus' ? 'Bonus' : 'Prop'}
-                            </span>
-                          )}
-                          {item.label}
-                        </div>
-                        <div className="text-xs text-text-muted truncate">
-                          {item.detail}
-                        </div>
+                      <div key={typeKey}>
+                        <button
+                          onClick={() => setCollapsedTypes((prev) => ({ ...prev, [typeKey]: !typeOpen }))}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-left"
+                        >
+                          <span className={`text-xs text-text-muted transition-transform ${typeOpen ? 'rotate-90' : ''}`}>&#9656;</span>
+                          <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">{group.label}</span>
+                          <span className="text-xs text-text-muted">{typeStats.wins}W-{typeStats.losses}L</span>
+                          <span className={`text-xs font-semibold ml-auto ${typeStats.net > 0 ? 'text-correct' : typeStats.net < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+                            {typeStats.net > 0 ? '+' : ''}{typeStats.net}
+                          </span>
+                        </button>
+                        {typeOpen && (
+                          <div className="space-y-1">
+                            {group.items.map((item, itemIdx) => {
+                              const isTappable = onItemTap && item.type === 'pick'
+                              const itemDate = new Date(item.date)
+                              const itemStr = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}-${String(itemDate.getDate()).padStart(2, '0')}`
+                              const isToday = itemStr === todayStr
+                              const prevItem = group.items[itemIdx - 1]
+                              const prevDate = prevItem ? new Date(prevItem.date) : null
+                              const prevIsToday = prevDate ? `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}` === todayStr : false
+                              const showDivider = !isToday && prevIsToday
+                              return (
+                                <Fragment key={`${item.type}-${item.id}`}>
+                                  {showDivider && <hr className="border-t border-white/15 my-1" />}
+                                  <div
+                                    className={`bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
+                                    onClick={isTappable ? () => onItemTap(item.type, item.id) : undefined}
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-semibold truncate">{item.label}</div>
+                                      <div className="text-xs text-text-muted truncate">{item.detail}</div>
+                                    </div>
+                                    <div className={`font-semibold text-sm shrink-0 ml-3 ${
+                                      item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
+                                    }`}>
+                                      {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
+                                    </div>
+                                  </div>
+                                </Fragment>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
-                      <div className={`font-semibold text-sm shrink-0 ml-3 ${
-                        item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
-                      }`}>
-                        {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
-                      </div>
-                    </div>
                     )
                   })}
                 </div>
