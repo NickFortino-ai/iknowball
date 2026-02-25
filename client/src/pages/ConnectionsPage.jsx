@@ -21,6 +21,7 @@ const ACTIVITY_EMOJI = {
   hot_streak: '\uD83D\uDD25',
   tier_achievement: '\u2B50',
   pick_share: '\uD83D\uDCE2',
+  comment: '\uD83D\uDCAC',
 }
 
 export default function ConnectionsPage() {

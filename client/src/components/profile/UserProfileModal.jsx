@@ -8,6 +8,7 @@ import TierBadge from '../ui/TierBadge'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
 import SocialLinks from '../ui/SocialLinks'
+import PickDetailModal from '../social/PickDetailModal'
 
 export default function UserProfileModal({ userId, onClose }) {
   const { session } = useAuth()
@@ -21,6 +22,7 @@ export default function UserProfileModal({ userId, onClose }) {
   const { data: connectionStatus } = useConnectionStatus(isViewingOther ? userId : null)
   const sendRequest = useSendConnectionRequest()
   const [justSent, setJustSent] = useState(false)
+  const [selectedPickId, setSelectedPickId] = useState(null)
 
   useEffect(() => {
     if (!userId) return
@@ -44,6 +46,7 @@ export default function UserProfileModal({ userId, onClose }) {
   if (!userId) return null
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
@@ -232,7 +235,7 @@ export default function UserProfileModal({ userId, onClose }) {
             )}
 
             {/* Pick History */}
-            <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed />
+            <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed onItemTap={(type, id) => { if (type === 'pick') setSelectedPickId(id) }} />
 
             {/* Member since */}
             <div className="text-text-muted text-xs text-center mt-4">
@@ -242,5 +245,7 @@ export default function UserProfileModal({ userId, onClose }) {
         )}
       </div>
     </div>
+    <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
+    </>
   )
 }

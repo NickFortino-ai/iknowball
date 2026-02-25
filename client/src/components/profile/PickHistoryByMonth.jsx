@@ -98,7 +98,7 @@ function getMonthStats(items) {
   return { wins, losses, net }
 }
 
-export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, bonuses, isLoading, allCollapsed }) {
+export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, bonuses, isLoading, allCollapsed, onItemTap }) {
   const months = useMemo(() => {
     const items = normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses)
     return items.length ? groupByMonth(items) : []
@@ -164,10 +164,13 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
 
               {open && (
                 <div className="mt-1 space-y-1">
-                  {month.items.map((item) => (
+                  {month.items.map((item) => {
+                    const isTappable = onItemTap && item.type === 'pick'
+                    return (
                     <div
                       key={`${item.type}-${item.id}`}
-                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between"
+                      className={`bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
+                      onClick={isTappable ? () => onItemTap(item.type, item.id) : undefined}
                     >
                       <div className="min-w-0">
                         <div className="text-sm font-semibold truncate">
@@ -188,7 +191,8 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                         {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

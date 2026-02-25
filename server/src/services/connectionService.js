@@ -317,7 +317,7 @@ export async function getConnectionActivity(userId) {
   }
 
   // Query 4 sources in parallel
-  const [underdogWins, streakEvents, tierAchievements, pickShares] = await Promise.all([
+  const [underdogWins, streakEvents, tierAchievements, pickShares, recentComments] = await Promise.all([
     // Source 1: Big underdog wins (odds >= +250)
     supabase
       .from('picks')
@@ -350,6 +350,15 @@ export async function getConnectionActivity(userId) {
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(picked_team, odds_at_pick, games(home_team, away_team, starts_at, sports(name)))')
       .in('user_id', connectedIds)
+      .order('created_at', { ascending: false })
+      .limit(15),
+
+    // Source 5: Recent comments from connected users
+    supabase
+      .from('pick_comments')
+      .select('id, pick_id, user_id, content, created_at')
+      .in('user_id', connectedIds)
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false })
       .limit(15),
   ])
@@ -418,6 +427,45 @@ export async function getConnectionActivity(userId) {
       message: `is taking ${team} ${odds} in ${sportName}`,
       timestamp: share.created_at,
     })
+  }
+
+  // Process recent comments (batch fetch pick owners)
+  const commentData = recentComments.data || []
+  if (commentData.length > 0) {
+    const commentPickIds = [...new Set(commentData.map((c) => c.pick_id))]
+    const { data: commentPicks } = await supabase
+      .from('picks')
+      .select('id, user_id, users(username)')
+      .in('id', commentPickIds)
+
+    const pickOwnerMap = {}
+    for (const p of commentPicks || []) {
+      pickOwnerMap[p.id] = p
+    }
+
+    for (const comment of commentData) {
+      const user = userMap[comment.user_id]
+      if (!user) continue
+
+      const pick = pickOwnerMap[comment.pick_id]
+      if (!pick) continue
+
+      const ownerName = pick.user_id === comment.user_id
+        ? `${getPronouns(user.title_preference).possessive} own`
+        : pick.users?.username
+          ? `@${pick.users.username}'s`
+          : "a"
+
+      feed.push({
+        type: 'comment',
+        userId: comment.user_id,
+        pickId: comment.pick_id,
+        username: user.username,
+        avatar_emoji: user.avatar_emoji,
+        message: `commented on ${ownerName} pick`,
+        timestamp: comment.created_at,
+      })
+    }
   }
 
   // Sort by timestamp desc, limit 15
