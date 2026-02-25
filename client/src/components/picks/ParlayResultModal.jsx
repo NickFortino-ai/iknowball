@@ -1,11 +1,18 @@
 import { useEffect } from 'react'
 import { useParlay } from '../../hooks/useParlays'
+import { useAuth } from '../../hooks/useAuth'
+import { useConnectionStatus } from '../../hooks/useConnections'
 import { formatOdds } from '../../lib/scoring'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickComments from '../social/PickComments'
 
 export default function ParlayResultModal({ parlayId, onClose }) {
   const { data: parlay, isLoading } = useParlay(parlayId)
+  const { session } = useAuth()
+  const ownerId = parlay?.user_id
+  const isOwn = ownerId && ownerId === session?.user?.id
+  const { data: connData } = useConnectionStatus(!isOwn ? ownerId : null)
+  const canComment = isOwn || connData?.status === 'connected'
 
   useEffect(() => {
     if (!parlayId) return
@@ -97,7 +104,7 @@ export default function ParlayResultModal({ parlayId, onClose }) {
             </div>
 
             {/* Comments */}
-            <PickComments targetType="parlay" targetId={parlayId} initialExpanded />
+            <PickComments targetType="parlay" targetId={parlayId} initialExpanded hideForm={!canComment} />
           </div>
         )}
       </div>

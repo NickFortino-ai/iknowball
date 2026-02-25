@@ -14,7 +14,7 @@ function timeAgo(dateStr) {
   return `${days}d`
 }
 
-export default function PickComments({ pickId, targetType = 'pick', targetId, initialExpanded = false }) {
+export default function PickComments({ pickId, targetType = 'pick', targetId, initialExpanded = false, hideForm = false }) {
   // Support both old (pickId) and new (targetType + targetId) API
   const resolvedType = targetType
   const resolvedId = targetId || pickId
@@ -73,23 +73,25 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, in
             </div>
           ))}
 
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Add a comment..."
-              maxLength={280}
-              className="flex-1 bg-bg-input border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-            />
-            <button
-              type="submit"
-              disabled={!text.trim() || addComment.isPending}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
-            >
-              Send
-            </button>
-          </form>
+          {!hideForm && (
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <input
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Add a comment..."
+                maxLength={280}
+                className="flex-1 bg-bg-input border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+              <button
+                type="submit"
+                disabled={!text.trim() || addComment.isPending}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                Send
+              </button>
+            </form>
+          )}
         </div>
       )}
     </div>

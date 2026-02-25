@@ -1,10 +1,17 @@
 import { useEffect } from 'react'
 import { usePropPick } from '../../hooks/useProps'
+import { useAuth } from '../../hooks/useAuth'
+import { useConnectionStatus } from '../../hooks/useConnections'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickComments from '../social/PickComments'
 
 export default function PropDetailModal({ propPickId, onClose }) {
   const { data: pick, isLoading } = usePropPick(propPickId)
+  const { session } = useAuth()
+  const ownerId = pick?.user_id
+  const isOwn = ownerId && ownerId === session?.user?.id
+  const { data: connData } = useConnectionStatus(!isOwn ? ownerId : null)
+  const canComment = isOwn || connData?.status === 'connected'
 
   useEffect(() => {
     if (!propPickId) return
@@ -69,7 +76,7 @@ export default function PropDetailModal({ propPickId, onClose }) {
             </div>
 
             {/* Comments */}
-            <PickComments targetType="prop" targetId={propPickId} initialExpanded />
+            <PickComments targetType="prop" targetId={propPickId} initialExpanded hideForm={!canComment} />
           </div>
         )}
       </div>

@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { usePickById } from '../../hooks/usePicks'
+import { useAuth } from '../../hooks/useAuth'
+import { useConnectionStatus } from '../../hooks/useConnections'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickReactions from './PickReactions'
 import PickComments from './PickComments'
@@ -15,6 +17,11 @@ const SPORT_LABELS = {
 
 export default function PickDetailModal({ pickId, onClose }) {
   const { data: pick, isLoading } = usePickById(pickId)
+  const { session } = useAuth()
+  const ownerId = pick?.user_id
+  const isOwn = ownerId && ownerId === session?.user?.id
+  const { data: connData } = useConnectionStatus(!isOwn ? ownerId : null)
+  const canComment = isOwn || connData?.status === 'connected'
 
   useEffect(() => {
     if (!pickId) return
@@ -87,7 +94,7 @@ export default function PickDetailModal({ pickId, onClose }) {
             <PickReactions pickId={pickId} />
 
             {/* Comments (pre-expanded) */}
-            <PickComments pickId={pickId} initialExpanded />
+            <PickComments pickId={pickId} initialExpanded hideForm={!canComment} />
           </div>
         )}
       </div>
