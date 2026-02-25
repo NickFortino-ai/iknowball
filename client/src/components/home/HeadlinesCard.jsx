@@ -137,12 +137,14 @@ export default function HeadlinesCard() {
                 Edit
               </button>
             )}
-            {isPastTuesday && !editing && (
+            {!editing && (
               <button
                 onClick={() => setExpanded(false)}
-                className="text-text-muted hover:text-text-primary text-xl leading-none"
+                className="text-text-muted hover:text-text-primary"
               >
-                &times;
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
               </button>
             )}
           </div>
