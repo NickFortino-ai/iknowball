@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useRecapArchive } from '../hooks/useRecaps'
+import { useAuth } from '../hooks/useAuth'
+import { useUpdateRecap } from '../hooks/useAdmin'
+import { toast } from '../components/ui/Toast'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 
 function formatDateRange(weekStart, weekEnd) {
@@ -63,7 +66,12 @@ function getCurrentMonthKey() {
 
 export default function HeadlinesArchivePage() {
   const { data: recaps, isLoading } = useRecapArchive()
+  const { profile } = useAuth()
+  const updateRecap = useUpdateRecap()
   const [expanded, setExpanded] = useState({})
+  const [editingId, setEditingId] = useState(null)
+  const [editContent, setEditContent] = useState('')
+  const isAdmin = profile?.is_admin
 
   const currentMonth = getCurrentMonthKey()
 
@@ -159,36 +167,83 @@ export default function HeadlinesArchivePage() {
                               Latest
                             </span>
                           )}
+                          {isAdmin && editingId !== recap.id && (
+                            <button
+                              onClick={() => {
+                                setEditingId(recap.id)
+                                setEditContent(recap.recap_content)
+                              }}
+                              className="ml-auto text-xs text-accent font-semibold hover:underline"
+                            >
+                              Edit
+                            </button>
+                          )}
                         </div>
 
-                        {/* Rankings */}
-                        <div className="space-y-4 mb-6">
-                          {rankings.map((r) => (
-                            <div key={r.rank || r.name} className="bg-bg-primary rounded-xl p-4">
-                              <div className="flex items-baseline gap-3 mb-1">
-                                <span className="font-display text-2xl text-accent">#{r.rank}</span>
-                                <span className="font-display text-lg">{r.name}</span>
-                                <span className="text-text-muted text-sm ml-auto">{r.record}</span>
-                                <span className="font-semibold text-accent text-sm">{r.points > 0 ? '+' : ''}{r.points} pts</span>
-                              </div>
-                              {r.narrative && (
-                                <p className="text-text-secondary text-sm leading-relaxed">{r.narrative}</p>
-                              )}
+                        {editingId === recap.id ? (
+                          <div>
+                            <textarea
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              className="w-full bg-bg-primary border border-border rounded-xl p-4 text-sm text-text-primary font-mono leading-relaxed resize-y min-h-[200px]"
+                              rows={16}
+                            />
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await updateRecap.mutateAsync({ recapId: recap.id, recap_content: editContent })
+                                    toast.success('Recap updated')
+                                    setEditingId(null)
+                                  } catch {
+                                    toast.error('Failed to update recap')
+                                  }
+                                }}
+                                disabled={updateRecap.isPending}
+                                className="bg-accent text-white text-xs font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
+                              >
+                                {updateRecap.isPending ? 'Saving...' : 'Save'}
+                              </button>
+                              <button
+                                onClick={() => setEditingId(null)}
+                                className="text-text-muted text-xs font-semibold px-4 py-2 rounded-lg hover:text-text-primary"
+                              >
+                                Cancel
+                              </button>
                             </div>
-                          ))}
-                        </div>
-
-                        {/* Awards */}
-                        {awards.length > 0 && (
-                          <div className="border-t border-border pt-4 space-y-2">
-                            {awards.map((award, j) => (
-                              <div key={j} className="text-sm">
-                                <span className="font-semibold text-text-primary">{award.label}</span>
-                                {award.label && ': '}
-                                <span className="text-text-secondary">{award.text}</span>
-                              </div>
-                            ))}
                           </div>
+                        ) : (
+                          <>
+                            {/* Rankings */}
+                            <div className="space-y-4 mb-6">
+                              {rankings.map((r) => (
+                                <div key={r.rank || r.name} className="bg-bg-primary rounded-xl p-4">
+                                  <div className="flex items-baseline gap-3 mb-1">
+                                    <span className="font-display text-2xl text-accent">#{r.rank}</span>
+                                    <span className="font-display text-lg">{r.name}</span>
+                                    <span className="text-text-muted text-sm ml-auto">{r.record}</span>
+                                    <span className="font-semibold text-accent text-sm">{r.points > 0 ? '+' : ''}{r.points} pts</span>
+                                  </div>
+                                  {r.narrative && (
+                                    <p className="text-text-secondary text-sm leading-relaxed">{r.narrative}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Awards */}
+                            {awards.length > 0 && (
+                              <div className="border-t border-border pt-4 space-y-2">
+                                {awards.map((award, j) => (
+                                  <div key={j} className="text-sm">
+                                    <span className="font-semibold text-text-primary">{award.label}</span>
+                                    {award.label && ': '}
+                                    <span className="text-text-secondary">{award.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     )

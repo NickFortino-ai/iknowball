@@ -33,6 +33,7 @@ import {
 } from '../services/futuresService.js'
 import { FUTURES_SPORT_KEYS } from '../services/oddsService.js'
 import { generateWeeklyRecap } from '../jobs/generateRecap.js'
+import { updateRecapContent } from '../services/recapService.js'
 
 const router = Router()
 
@@ -77,6 +78,16 @@ router.post('/email-targeted', async (req, res) => {
 router.post('/generate-recap', async (req, res) => {
   await generateWeeklyRecap()
   res.json({ message: 'Weekly recap generated' })
+})
+
+// Edit recap content
+router.patch('/recaps/:id', async (req, res) => {
+  const { recap_content } = req.body
+  if (!recap_content?.trim()) {
+    return res.status(400).json({ error: 'recap_content is required' })
+  }
+  const updated = await updateRecapContent(req.params.id, recap_content)
+  res.json(updated)
 })
 
 // Props management

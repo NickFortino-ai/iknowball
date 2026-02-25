@@ -1,0 +1,1 @@
+ALTER TABLE weekly_recaps ADD COLUMN IF NOT EXISTS visible_after TIMESTAMPTZ;

@@ -461,12 +461,20 @@ ${JSON.stringify(dataPayload, null, 2)}`
 
 /**
  * Get all weekly recaps, ordered newest first.
+ * Admins see all recaps; regular users only see recaps past their visible_after time.
  */
-export async function getRecapArchive() {
-  const { data, error } = await supabase
+export async function getRecapArchive({ isAdmin = false } = {}) {
+  let query = supabase
     .from('weekly_recaps')
-    .select('id, week_start, week_end, recap_content, crown_holders, created_at')
+    .select('id, week_start, week_end, recap_content, crown_holders, visible_after, created_at')
     .order('week_start', { ascending: false })
+
+  if (!isAdmin) {
+    const now = new Date().toISOString()
+    query = query.or(`visible_after.is.null,visible_after.lte.${now}`)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     logger.error({ error }, 'Failed to fetch recap archive')
@@ -477,15 +485,41 @@ export async function getRecapArchive() {
 }
 
 /**
- * Get the most recent weekly recap from the database.
+ * Update the recap_content of an existing weekly recap.
  */
-export async function getLatestRecap() {
+export async function updateRecapContent(recapId, recapContent) {
   const { data, error } = await supabase
+    .from('weekly_recaps')
+    .update({ recap_content: recapContent })
+    .eq('id', recapId)
+    .select()
+    .single()
+
+  if (error) {
+    logger.error({ error, recapId }, 'Failed to update recap content')
+    throw error
+  }
+
+  return data
+}
+
+/**
+ * Get the most recent weekly recap from the database.
+ * Admins see all recaps; regular users only see recaps past their visible_after time.
+ */
+export async function getLatestRecap({ isAdmin = false } = {}) {
+  let query = supabase
     .from('weekly_recaps')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
+
+  if (!isAdmin) {
+    const now = new Date().toISOString()
+    query = query.or(`visible_after.is.null,visible_after.lte.${now}`)
+  }
+
+  const { data, error } = await query.maybeSingle()
 
   if (error) {
     logger.error({ error }, 'Failed to fetch latest recap')

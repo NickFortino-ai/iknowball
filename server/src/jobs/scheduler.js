@@ -46,10 +46,10 @@ export function startScheduler() {
   }
 
   if (env.ENABLE_WEEKLY_RECAP) {
-    cron.schedule('0 10 * * 1', async () => {
+    cron.schedule('0 8 * * 1', async () => {
       try { await generateWeeklyRecap() } catch (err) { logger.error({ err }, 'Weekly recap job failed') }
     }, { timezone: 'America/New_York' })
-    logger.info('Weekly recap scheduled: Monday at 10:00 AM EST')
+    logger.info('Weekly recap scheduled: Monday at 8:00 AM EST (visible to users at 10:00 AM EST)')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues

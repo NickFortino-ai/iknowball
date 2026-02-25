@@ -64,6 +64,10 @@ export async function generateWeeklyRecap() {
   if (weeklyData.longestStreakUser) featuredSet.add(weeklyData.longestStreakUser.user_id)
   const featuredUserIds = [...featuredSet]
 
+  // Set visible_after to 10:00 AM EST on the current day (2 hours after generation)
+  const visibleAfter = new Date()
+  visibleAfter.setHours(visibleAfter.getHours() + 2)
+
   // Save to DB
   const { error: insertError } = await supabase.from('weekly_recaps').insert({
     week_start: weekStartStr,
@@ -74,6 +78,7 @@ export async function generateWeeklyRecap() {
     biggest_fall_user_id: weeklyData.biggestFallUser?.user_id || null,
     longest_streak_user_id: weeklyData.longestStreakUser?.user_id || null,
     crown_holders: weeklyData.currentCrownHolders || null,
+    visible_after: visibleAfter.toISOString(),
   })
 
   if (insertError) {
