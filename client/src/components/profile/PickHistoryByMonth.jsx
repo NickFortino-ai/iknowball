@@ -102,8 +102,13 @@ const TYPE_ORDER = ['live', 'pick', 'parlay', 'prop', 'futures', 'bonus']
 const TYPE_LABELS = { live: 'Live', pick: 'Picks', parlay: 'Parlays', prop: 'Props', futures: 'Futures', bonus: 'Bonuses' }
 
 function groupByType(items) {
+  const now = new Date()
   const groups = {}
   for (const item of items) {
+    // Unsettled picks/parlays/props whose game hasn't started yet — hide them
+    if (item.is_correct === null && item.type !== 'bonus' && item.type !== 'futures' && new Date(item.date) > now) {
+      continue
+    }
     const key = item.is_correct === null && item.type !== 'bonus' && item.type !== 'futures' ? 'live' : item.type
     if (!groups[key]) groups[key] = []
     groups[key].push(item)
