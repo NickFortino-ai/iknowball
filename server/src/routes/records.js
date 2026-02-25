@@ -56,4 +56,19 @@ router.get('/parlay/:parlayId', requireAuth, async (req, res, next) => {
   }
 })
 
+// GET /api/records/futures-pick/:pickId — fetch a single futures pick with market data
+router.get('/futures-pick/:pickId', requireAuth, async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('futures_picks')
+      .select('*, futures_markets(*)')
+      .eq('id', req.params.pickId)
+      .single()
+    if (error || !data) return res.status(404).json({ error: 'Futures pick not found' })
+    res.json(data)
+  } catch (err) {
+    next(err)
+  }
+})
+
 export default router

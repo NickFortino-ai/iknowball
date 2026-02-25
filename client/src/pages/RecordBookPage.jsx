@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useRecords, useRecordPick, useRecordParlay } from '../hooks/useRecords'
+import { useRecords, useRecordPick, useRecordParlay, useRecordFuturesPick } from '../hooks/useRecords'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 import TierBadge from '../components/ui/TierBadge'
 import GameCard from '../components/picks/GameCard'
 import ParlayCard from '../components/picks/ParlayCard'
+import FuturesPickCard from '../components/picks/FuturesPickCard'
 
 const CATEGORY_ORDER = ['streak', 'single_pick', 'percentage', 'efficiency', 'climb']
 
@@ -38,9 +39,10 @@ const CATEGORY_LABELS = {
 // Records that can show a detail card when tapped
 const TAPPABLE_PICK_RECORDS = ['biggest_underdog_hit']
 const TAPPABLE_PARLAY_RECORDS = ['biggest_parlay']
+const TAPPABLE_FUTURES_RECORDS = ['best_futures_hit']
 
 function hasDetailCard(recordKey) {
-  return TAPPABLE_PICK_RECORDS.includes(recordKey) || TAPPABLE_PARLAY_RECORDS.includes(recordKey)
+  return TAPPABLE_PICK_RECORDS.includes(recordKey) || TAPPABLE_PARLAY_RECORDS.includes(recordKey) || TAPPABLE_FUTURES_RECORDS.includes(recordKey)
 }
 
 function formatRecordValue(record) {
@@ -91,6 +93,17 @@ function ParlayDetailCard({ parlayId }) {
   return (
     <div className="px-4 pb-4">
       <ParlayCard parlay={parlay} />
+    </div>
+  )
+}
+
+function FuturesDetailCard({ pickId }) {
+  const { data: pick, isLoading } = useRecordFuturesPick(pickId)
+  if (isLoading) return <div className="px-4 pb-4"><LoadingSpinner /></div>
+  if (!pick) return null
+  return (
+    <div className="px-4 pb-4">
+      <FuturesPickCard pick={pick} />
     </div>
   )
 }
@@ -181,6 +194,11 @@ function RecordCard({ record }) {
       {showDetail && TAPPABLE_PARLAY_RECORDS.includes(record.record_key) && metadata.parlayId && (
         <div className="border-t border-border">
           <ParlayDetailCard parlayId={metadata.parlayId} />
+        </div>
+      )}
+      {showDetail && TAPPABLE_FUTURES_RECORDS.includes(record.record_key) && metadata.futuresPickId && (
+        <div className="border-t border-border">
+          <FuturesDetailCard pickId={metadata.futuresPickId} />
         </div>
       )}
 

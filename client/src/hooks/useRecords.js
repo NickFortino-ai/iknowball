@@ -32,6 +32,14 @@ export function useRecordParlay(parlayId) {
   })
 }
 
+export function useRecordFuturesPick(pickId) {
+  return useQuery({
+    queryKey: ['recordFuturesPick', pickId],
+    queryFn: () => api.get(`/records/futures-pick/${pickId}`),
+    enabled: !!pickId,
+  })
+}
+
 export function useRoyalty() {
   return useQuery({
     queryKey: ['royalty'],
