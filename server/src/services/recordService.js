@@ -98,19 +98,29 @@ async function updateRecord(key, holderId, value, metadata = {}) {
 
 // Walk settled straight picks per user ordered by game start time, counting consecutive wins
 async function calcLongestWinStreak(sportKey) {
+  // If filtering by sport, resolve sport_id first
+  let sportId = null
+  if (sportKey) {
+    const { data: sport } = await supabase.from('sports').select('id').eq('key', sportKey).single()
+    if (!sport) return null
+    sportId = sport.id
+  }
+
   let query = supabase
     .from('picks')
-    .select('id, user_id, is_correct, games!inner(starts_at, sport_id, sports(key))')
+    .select('id, user_id, is_correct, games!inner(starts_at, sport_id)')
     .eq('status', 'settled')
     .not('is_correct', 'is', null)
-    .order('games(starts_at)', { ascending: true })
 
-  if (sportKey) {
-    query = query.eq('games.sports.key', sportKey)
+  if (sportId) {
+    query = query.eq('games.sport_id', sportId)
   }
 
   const { data: picks, error } = await query
   if (error || !picks?.length) return null
+
+  // Sort by game start time in JS (Supabase nested ordering can be unreliable)
+  picks.sort((a, b) => new Date(a.games.starts_at) - new Date(b.games.starts_at))
 
   // Group by user
   const userPicks = {}
@@ -208,12 +218,14 @@ async function calcLongestParlayStreak() {
 async function calcLongestPropStreak() {
   const { data: picks, error } = await supabase
     .from('prop_picks')
-    .select('id, user_id, is_correct, player_props!inner(games(starts_at))')
+    .select('id, user_id, is_correct, updated_at')
     .eq('status', 'settled')
     .not('is_correct', 'is', null)
-    .order('player_props(games(starts_at))', { ascending: true })
 
   if (error || !picks?.length) return null
+
+  // Sort by updated_at in JS
+  picks.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at))
 
   const userPicks = {}
   for (const p of picks) {
@@ -326,7 +338,7 @@ async function calcBiggestParlay() {
   }
 }
 
-async function calcFewestPicksToGoat() {
+async function calcFewestPicksToTier(tierMinPoints) {
   // Get all settled items across types, ordered chronologically
   const [picksRes, parlaysRes, propsRes, futuresRes] = await Promise.all([
     supabase.from('picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null),
@@ -345,22 +357,22 @@ async function calcFewestPicksToGoat() {
   if (!allItems.length) return null
 
   // Replay each user's items chronologically
-  const userState = {} // { cumPoints, count, reachedGoat }
+  const userState = {} // { cumPoints, count, reached }
   let bestUserId = null
   let bestCount = Infinity
 
   for (const item of allItems) {
     if (!userState[item.user_id]) {
-      userState[item.user_id] = { cumPoints: 0, count: 0, reachedGoat: false }
+      userState[item.user_id] = { cumPoints: 0, count: 0, reached: false }
     }
     const state = userState[item.user_id]
-    if (state.reachedGoat) continue
+    if (state.reached) continue
 
     state.cumPoints += item.points_earned
     state.count++
 
-    if (state.cumPoints >= 3000) {
-      state.reachedGoat = true
+    if (state.cumPoints >= tierMinPoints) {
+      state.reached = true
       if (state.count < bestCount) {
         bestCount = state.count
         bestUserId = item.user_id
@@ -517,7 +529,10 @@ export async function recalculateAllRecords() {
     { key: 'highest_prop_pct', fn: calcHighestPropPct },
     { key: 'biggest_underdog_hit', fn: calcBiggestUnderdogHit },
     { key: 'biggest_parlay', fn: calcBiggestParlay },
-    { key: 'fewest_picks_to_goat', fn: calcFewestPicksToGoat },
+    { key: 'fewest_picks_to_baller', fn: () => calcFewestPicksToTier(100) },
+    { key: 'fewest_picks_to_elite', fn: () => calcFewestPicksToTier(500) },
+    { key: 'fewest_picks_to_hof', fn: () => calcFewestPicksToTier(1000) },
+    { key: 'fewest_picks_to_goat', fn: () => calcFewestPicksToTier(3000) },
     { key: 'biggest_dog_lover', fn: calcBiggestDogLover },
     { key: 'great_climb', fn: calcGreatClimb },
     { key: 'best_futures_hit', fn: () => calcBestFuturesHit(null) },
@@ -570,7 +585,10 @@ export async function checkRecordAfterSettle(userId, type, data = {}) {
       }
       checks.push({ key: 'biggest_dog_lover', fn: calcBiggestDogLover })
       checks.push({ key: 'highest_overall_win_pct', fn: calcHighestOverallWinPct })
-      checks.push({ key: 'fewest_picks_to_goat', fn: calcFewestPicksToGoat })
+      checks.push({ key: 'fewest_picks_to_baller', fn: () => calcFewestPicksToTier(100) })
+      checks.push({ key: 'fewest_picks_to_elite', fn: () => calcFewestPicksToTier(500) })
+      checks.push({ key: 'fewest_picks_to_hof', fn: () => calcFewestPicksToTier(1000) })
+      checks.push({ key: 'fewest_picks_to_goat', fn: () => calcFewestPicksToTier(3000) })
     }
 
     if (type === 'parlay') {
@@ -579,7 +597,10 @@ export async function checkRecordAfterSettle(userId, type, data = {}) {
         checks.push({ key: 'biggest_parlay', fn: calcBiggestParlay })
       }
       checks.push({ key: 'highest_overall_win_pct', fn: calcHighestOverallWinPct })
-      checks.push({ key: 'fewest_picks_to_goat', fn: calcFewestPicksToGoat })
+      checks.push({ key: 'fewest_picks_to_baller', fn: () => calcFewestPicksToTier(100) })
+      checks.push({ key: 'fewest_picks_to_elite', fn: () => calcFewestPicksToTier(500) })
+      checks.push({ key: 'fewest_picks_to_hof', fn: () => calcFewestPicksToTier(1000) })
+      checks.push({ key: 'fewest_picks_to_goat', fn: () => calcFewestPicksToTier(3000) })
     }
 
     if (type === 'prop') {
@@ -588,7 +609,10 @@ export async function checkRecordAfterSettle(userId, type, data = {}) {
       }
       checks.push({ key: 'highest_prop_pct', fn: calcHighestPropPct })
       checks.push({ key: 'highest_overall_win_pct', fn: calcHighestOverallWinPct })
-      checks.push({ key: 'fewest_picks_to_goat', fn: calcFewestPicksToGoat })
+      checks.push({ key: 'fewest_picks_to_baller', fn: () => calcFewestPicksToTier(100) })
+      checks.push({ key: 'fewest_picks_to_elite', fn: () => calcFewestPicksToTier(500) })
+      checks.push({ key: 'fewest_picks_to_hof', fn: () => calcFewestPicksToTier(1000) })
+      checks.push({ key: 'fewest_picks_to_goat', fn: () => calcFewestPicksToTier(3000) })
     }
 
     if (type === 'futures') {
@@ -599,7 +623,10 @@ export async function checkRecordAfterSettle(userId, type, data = {}) {
         }
       }
       checks.push({ key: 'highest_overall_win_pct', fn: calcHighestOverallWinPct })
-      checks.push({ key: 'fewest_picks_to_goat', fn: calcFewestPicksToGoat })
+      checks.push({ key: 'fewest_picks_to_baller', fn: () => calcFewestPicksToTier(100) })
+      checks.push({ key: 'fewest_picks_to_elite', fn: () => calcFewestPicksToTier(500) })
+      checks.push({ key: 'fewest_picks_to_hof', fn: () => calcFewestPicksToTier(1000) })
+      checks.push({ key: 'fewest_picks_to_goat', fn: () => calcFewestPicksToTier(3000) })
     }
 
     for (const { key, fn } of checks) {

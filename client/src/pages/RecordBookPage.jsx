@@ -31,6 +31,9 @@ function formatRecordValue(record) {
       return `+${Math.round((val - 1) * 100)}`
     case 'great_climb':
       return `${val} spots`
+    case 'fewest_picks_to_baller':
+    case 'fewest_picks_to_elite':
+    case 'fewest_picks_to_hof':
     case 'fewest_picks_to_goat':
       return `${val} picks`
     default:
@@ -136,14 +139,16 @@ function RecordCard({ record }) {
 export default function RecordBookPage() {
   const { data: records, isLoading, isError, refetch } = useRecords()
 
-  // Group records by category
+  // Group records by category — only show records that have a holder
   const grouped = {}
   for (const cat of CATEGORY_ORDER) {
     grouped[cat] = []
   }
   for (const record of records || []) {
-    if (grouped[record.category]) {
-      grouped[record.category].push(record)
+    if (grouped[record.category] && record.record_holder_id) {
+      // Also filter sub-records to only those with holders
+      const filtered = { ...record, sub_records: (record.sub_records || []).filter((s) => s.record_holder_id) }
+      grouped[record.category].push(filtered)
     }
   }
 
