@@ -309,11 +309,15 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                                       <div className="text-sm font-semibold truncate">{item.label}</div>
                                       <div className="text-xs text-text-muted truncate">{item.detail}</div>
                                     </div>
-                                    <div className={`font-semibold text-sm shrink-0 ml-3 ${
-                                      item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
-                                    }`}>
-                                      {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
-                                    </div>
+                                    {item.type === 'futures' && item.is_correct === null ? (
+                                      <span className="text-xs font-medium text-text-muted bg-white/5 px-2 py-0.5 rounded ml-3">Pending</span>
+                                    ) : (
+                                      <div className={`font-semibold text-sm shrink-0 ml-3 ${
+                                        item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
+                                      }`}>
+                                        {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
+                                      </div>
+                                    )}
                                   </div>
                                 </Fragment>
                               )
