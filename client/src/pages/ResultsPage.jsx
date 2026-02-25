@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, Fragment } from 'react'
+import { useMemo, useState, useCallback, useEffect, Fragment } from 'react'
 import { usePickHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
 import { usePropPickHistory } from '../hooks/useProps'
@@ -41,14 +41,26 @@ function groupByDate(items, getDate) {
   return groups
 }
 
-function getTodayKey() {
+function getSessionKey() {
   const d = new Date()
   return `results-collapsed-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function useTodayKey() {
+  const [key, setKey] = useState(() => getLocalDateKey(new Date().toISOString()))
+  useEffect(() => {
+    const now = new Date()
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+    const ms = tomorrow - now + 100
+    const timer = setTimeout(() => setKey(getLocalDateKey(new Date().toISOString())), ms)
+    return () => clearTimeout(timer)
+  }, [key])
+  return key
+}
+
 function loadCollapsed() {
   try {
-    const key = getTodayKey()
+    const key = getSessionKey()
     const stored = sessionStorage.getItem(key)
     return stored ? JSON.parse(stored) : {}
   } catch {
@@ -61,10 +73,11 @@ export default function ResultsPage() {
   const [selectedGame, setSelectedGame] = useState(null)
   const [selectedPick, setSelectedPick] = useState(null)
 
-  const toggleSection = useCallback((section) => {
+  const toggleSection = useCallback((section, defaultCollapsed) => {
     setCollapsed((prev) => {
-      const next = { ...prev, [section]: !prev[section] }
-      sessionStorage.setItem(getTodayKey(), JSON.stringify(next))
+      const current = prev[section] !== undefined ? prev[section] : !!defaultCollapsed
+      const next = { ...prev, [section]: !current }
+      sessionStorage.setItem(getSessionKey(), JSON.stringify(next))
       return next
     })
   }, [])
@@ -74,36 +87,46 @@ export default function ResultsPage() {
   const { data: propPicks, isLoading: propsLoading } = usePropPickHistory()
   const { data: futuresPicks, isLoading: futuresLoading } = useFuturesPickHistory()
 
-  const { livePicks, settledPicks, liveParlays, settledParlays, liveProps, settledProps, settledFutures } = useMemo(() => {
+  const todayKey = useTodayKey()
+
+  const { todayPicks, todayParlays, todayProps, olderSettledPicks, olderSettledParlays, olderSettledProps, settledFutures } = useMemo(() => {
+    const allPicks = (picks || []).filter(p => p.status === 'locked' || p.status === 'settled')
+    const allParlays = (parlays || []).filter(p => p.status === 'locked' || p.status === 'settled')
+    const allProps = (propPicks || []).filter(p => p.status === 'locked' || p.status === 'settled')
+
     return {
-      livePicks: (picks || []).filter(p => p.status === 'locked'),
-      settledPicks: (picks || []).filter(p => p.status === 'settled'),
-      liveParlays: (parlays || []).filter(p => p.status === 'locked'),
-      settledParlays: (parlays || []).filter(p => p.status === 'settled'),
-      liveProps: (propPicks || []).filter(p => p.status === 'locked'),
-      settledProps: (propPicks || []).filter(p => p.status === 'settled'),
+      todayPicks: allPicks.filter(p => getLocalDateKey(p.games?.starts_at) === todayKey),
+      todayParlays: allParlays.filter(p => getLocalDateKey(p.created_at) === todayKey),
+      todayProps: allProps.filter(p => getLocalDateKey(p.player_props?.games?.starts_at || p.created_at) === todayKey),
+      olderSettledPicks: allPicks.filter(p => p.status === 'settled' && getLocalDateKey(p.games?.starts_at) !== todayKey),
+      olderSettledParlays: allParlays.filter(p => p.status === 'settled' && getLocalDateKey(p.created_at) !== todayKey),
+      olderSettledProps: allProps.filter(p => p.status === 'settled' && getLocalDateKey(p.player_props?.games?.starts_at || p.created_at) !== todayKey),
       settledFutures: (futuresPicks || []).filter(p => p.status === 'settled'),
     }
-  }, [picks, parlays, propPicks, futuresPicks])
+  }, [picks, parlays, propPicks, futuresPicks, todayKey])
 
-  const hasLive = livePicks.length > 0 || liveParlays.length > 0 || liveProps.length > 0
-  const hasSettled = settledPicks.length > 0 || settledParlays.length > 0 || settledProps.length > 0 || settledFutures.length > 0
+  const hasTodayAction = todayPicks.length > 0 || todayParlays.length > 0 || todayProps.length > 0
+  const hasSettled = olderSettledPicks.length > 0 || olderSettledParlays.length > 0 || olderSettledProps.length > 0 || settledFutures.length > 0
+
+  const allSettledPicks = useMemo(() => [...todayPicks.filter(p => p.status === 'settled'), ...olderSettledPicks], [todayPicks, olderSettledPicks])
+  const allSettledParlays = useMemo(() => [...todayParlays.filter(p => p.status === 'settled'), ...olderSettledParlays], [todayParlays, olderSettledParlays])
+  const allSettledProps = useMemo(() => [...todayProps.filter(p => p.status === 'settled'), ...olderSettledProps], [todayProps, olderSettledProps])
 
   const weeklyStats = useMemo(() => {
-    if (!settledPicks.length && !settledParlays.length && !settledProps.length && !settledFutures.length) return null
+    if (!allSettledPicks.length && !allSettledParlays.length && !allSettledProps.length && !settledFutures.length) return null
     let wins = 0, losses = 0, pushes = 0, netPoints = 0
-    for (const item of [...settledPicks, ...settledParlays, ...settledProps, ...settledFutures]) {
+    for (const item of [...allSettledPicks, ...allSettledParlays, ...allSettledProps, ...settledFutures]) {
       if (item.is_correct === true) wins++
       else if (item.is_correct === false) losses++
       else pushes++
       netPoints += item.points_earned || 0
     }
-    return { wins, losses, pushes, netPoints, total: settledPicks.length + settledParlays.length + settledProps.length + settledFutures.length }
-  }, [settledPicks, settledParlays, settledProps, settledFutures])
+    return { wins, losses, pushes, netPoints, total: allSettledPicks.length + allSettledParlays.length + allSettledProps.length + settledFutures.length }
+  }, [allSettledPicks, allSettledParlays, allSettledProps, settledFutures])
 
   const settledPickIds = useMemo(() => {
-    return settledPicks.map((p) => p.id)
-  }, [settledPicks])
+    return allSettledPicks.map((p) => p.id)
+  }, [allSettledPicks])
 
   const { data: reactionsBatch } = usePickReactionsBatch(settledPickIds)
 
@@ -139,121 +162,134 @@ export default function ResultsPage() {
         </div>
       )}
 
-      {hasLive && (
+      {hasTodayAction && (
         <>
-          <button onClick={() => toggleSection('live')} className="flex items-center justify-between w-full mb-3">
-            <h2 className="font-display text-lg text-accent">Live</h2>
-            <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.live ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          <button onClick={() => toggleSection('today')} className="flex items-center justify-between w-full mb-3">
+            <h2 className="font-display text-lg text-accent">Today's Action</h2>
+            <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.today ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
           </button>
-          {!collapsed.live && (
+          {!collapsed.today && (
             <div className="space-y-3 mb-6">
-              {liveParlays.map((parlay) => (
-                <ParlayCard key={parlay.id} parlay={parlay} />
-              ))}
-              {liveProps.map((pp) => (
-                <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
-              ))}
-              {livePicks.map((pick) => (
+              {todayPicks.map((pick) => (
                 <GameCard
                   key={pick.id}
                   game={pick.games}
                   userPick={pick}
+                  reactions={reactionsBatch?.[pick.id]}
                   onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
                 />
+              ))}
+              {todayParlays.map((parlay) => (
+                <ParlayCard key={parlay.id} parlay={parlay} />
+              ))}
+              {todayProps.map((pp) => (
+                <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
               ))}
             </div>
           )}
         </>
       )}
 
-      {!hasLive && !hasSettled ? (
+      {!hasTodayAction && !hasSettled ? (
         <EmptyState title="No results yet" message="Your settled picks will appear here" />
       ) : hasSettled && (
         <>
-          {settledFutures.length > 0 && (
-            <>
-              <button onClick={() => toggleSection('futures')} className="flex items-center justify-between w-full mb-3">
-                <h2 className="font-display text-lg text-text-secondary">Futures</h2>
-                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.futures ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              {!collapsed.futures && (
-                <div className="space-y-3 mb-6">
-                  {settledFutures.map((fp) => (
-                    <FuturesPickCard key={fp.id} pick={fp} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {settledFutures.length > 0 && (() => {
+            const isCollapsed = collapsed.futures !== undefined ? collapsed.futures : hasTodayAction
+            return (
+              <>
+                <button onClick={() => toggleSection('futures', hasTodayAction)} className="flex items-center justify-between w-full mb-3">
+                  <h2 className="font-display text-lg text-text-secondary">Futures</h2>
+                  <svg className={`w-5 h-5 text-text-muted transition-transform ${isCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {!isCollapsed && (
+                  <div className="space-y-3 mb-6">
+                    {settledFutures.map((fp) => (
+                      <FuturesPickCard key={fp.id} pick={fp} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
-          {settledPicks.length > 0 && (
-            <>
-              <button onClick={() => toggleSection('picks')} className="flex items-center justify-between w-full mb-3">
-                <h2 className="font-display text-lg text-text-secondary">Straight Picks</h2>
-                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.picks ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              {!collapsed.picks && (
-                <div className="space-y-3 mb-6">
-                  {groupByDate(settledPicks, (p) => p.games.starts_at).map(({ date, items }) => (
-                    <Fragment key={date}>
-                      <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
-                      {items.map((pick) => (
-                        <GameCard
-                          key={pick.id}
-                          game={pick.games}
-                          userPick={pick}
-                          reactions={reactionsBatch?.[pick.id]}
-                          onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
-                        />
-                      ))}
-                    </Fragment>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {olderSettledPicks.length > 0 && (() => {
+            const isCollapsed = collapsed.picks !== undefined ? collapsed.picks : hasTodayAction
+            return (
+              <>
+                <button onClick={() => toggleSection('picks', hasTodayAction)} className="flex items-center justify-between w-full mb-3">
+                  <h2 className="font-display text-lg text-text-secondary">Straight Picks</h2>
+                  <svg className={`w-5 h-5 text-text-muted transition-transform ${isCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {!isCollapsed && (
+                  <div className="space-y-3 mb-6">
+                    {groupByDate(olderSettledPicks, (p) => p.games.starts_at).map(({ date, items }) => (
+                      <Fragment key={date}>
+                        <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                        {items.map((pick) => (
+                          <GameCard
+                            key={pick.id}
+                            game={pick.games}
+                            userPick={pick}
+                            reactions={reactionsBatch?.[pick.id]}
+                            onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
+                          />
+                        ))}
+                      </Fragment>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
-          {settledParlays.length > 0 && (
-            <>
-              <button onClick={() => toggleSection('parlays')} className="flex items-center justify-between w-full mb-3">
-                <h2 className="font-display text-lg text-text-secondary">Parlays</h2>
-                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.parlays ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              {!collapsed.parlays && (
-                <div className="space-y-3 mb-6">
-                  {groupByDate(settledParlays, (p) => p.created_at).map(({ date, items }) => (
-                    <Fragment key={date}>
-                      <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
-                      {items.map((parlay) => (
-                        <ParlayCard key={parlay.id} parlay={parlay} />
-                      ))}
-                    </Fragment>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {olderSettledParlays.length > 0 && (() => {
+            const isCollapsed = collapsed.parlays !== undefined ? collapsed.parlays : hasTodayAction
+            return (
+              <>
+                <button onClick={() => toggleSection('parlays', hasTodayAction)} className="flex items-center justify-between w-full mb-3">
+                  <h2 className="font-display text-lg text-text-secondary">Parlays</h2>
+                  <svg className={`w-5 h-5 text-text-muted transition-transform ${isCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {!isCollapsed && (
+                  <div className="space-y-3 mb-6">
+                    {groupByDate(olderSettledParlays, (p) => p.created_at).map(({ date, items }) => (
+                      <Fragment key={date}>
+                        <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                        {items.map((parlay) => (
+                          <ParlayCard key={parlay.id} parlay={parlay} />
+                        ))}
+                      </Fragment>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
-          {settledProps.length > 0 && (
-            <>
-              <button onClick={() => toggleSection('props')} className="flex items-center justify-between w-full mb-3">
-                <h2 className="font-display text-lg text-text-secondary">Player Props</h2>
-                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.props ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              {!collapsed.props && (
-                <div className="space-y-3">
-                  {groupByDate(settledProps, (p) => p.player_props?.games?.starts_at || p.created_at).map(({ date, items }) => (
-                    <Fragment key={date}>
-                      <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
-                      {items.map((pp) => (
-                        <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
-                      ))}
-                    </Fragment>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {olderSettledProps.length > 0 && (() => {
+            const isCollapsed = collapsed.props !== undefined ? collapsed.props : hasTodayAction
+            return (
+              <>
+                <button onClick={() => toggleSection('props', hasTodayAction)} className="flex items-center justify-between w-full mb-3">
+                  <h2 className="font-display text-lg text-text-secondary">Player Props</h2>
+                  <svg className={`w-5 h-5 text-text-muted transition-transform ${isCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {!isCollapsed && (
+                  <div className="space-y-3">
+                    {groupByDate(olderSettledProps, (p) => p.player_props?.games?.starts_at || p.created_at).map(({ date, items }) => (
+                      <Fragment key={date}>
+                        <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                        {items.map((pp) => (
+                          <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
+                        ))}
+                      </Fragment>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </>
       )}
       <GamePicksModal game={selectedGame} userPick={selectedPick} onClose={() => { setSelectedGame(null); setSelectedPick(null) }} />

@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, useEffect, Fragment } from 'react'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
 function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
@@ -111,16 +111,53 @@ function groupByType(items) {
   return TYPE_ORDER.filter((t) => groups[t]?.length).map((t) => ({ type: t, label: TYPE_LABELS[t], items: groups[t] }))
 }
 
+function getLocalDateKey() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function useTodayKey() {
+  const [key, setKey] = useState(getLocalDateKey)
+  useEffect(() => {
+    const now = new Date()
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+    const ms = tomorrow - now + 100
+    const timer = setTimeout(() => setKey(getLocalDateKey()), ms)
+    return () => clearTimeout(timer)
+  }, [key])
+  return key
+}
+
 export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, bonuses, isLoading, allCollapsed, onItemTap }) {
-  const months = useMemo(() => {
+  const todayKey = useTodayKey()
+
+  const { todayItems, months } = useMemo(() => {
     const items = normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses)
-    return items.length ? groupByMonth(items) : []
-  }, [picks, parlays, propPicks, futuresPicks, bonuses])
+    const today = []
+    const older = []
+    for (const item of items) {
+      const d = new Date(item.date)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      if (key === todayKey) {
+        today.push(item)
+      } else {
+        older.push(item)
+      }
+    }
+    today.sort((a, b) => TYPE_ORDER.indexOf(a.type === 'bonus' ? 'bonus' : a.type) - TYPE_ORDER.indexOf(b.type === 'bonus' ? 'bonus' : b.type))
+    return {
+      todayItems: today,
+      months: older.length ? groupByMonth(older) : [],
+    }
+  }, [picks, parlays, propPicks, futuresPicks, bonuses, todayKey])
+
+  const hasTodayAction = todayItems.length > 0
   const [expanded, setExpanded] = useState({})
   const [collapsedTypes, setCollapsedTypes] = useState({})
 
   function isExpanded(key, index) {
     if (key in expanded) return expanded[key]
+    if (hasTodayAction) return false
     return allCollapsed ? false : index === 0
   }
 
@@ -137,7 +174,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
     )
   }
 
-  if (!months.length) {
+  if (!months.length && !hasTodayAction) {
     return (
       <div className="py-4">
         <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Pick History</h3>
@@ -150,6 +187,57 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
     <div>
       <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Pick History</h3>
       <div className="space-y-2">
+        {hasTodayAction && (() => {
+          const todayStats = getMonthStats(todayItems)
+          const todayOpen = expanded['today'] !== false
+          return (
+            <div>
+              <button
+                onClick={() => setExpanded((prev) => ({ ...prev, today: !(prev.today !== false) }))}
+                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs text-accent transition-transform ${todayOpen ? 'rotate-90' : ''}`}>
+                    &#9656;
+                  </span>
+                  <span className="font-semibold text-sm text-accent">Today's Action</span>
+                  <span className="text-text-muted text-xs">
+                    {todayStats.wins}W-{todayStats.losses}L
+                  </span>
+                </div>
+                <span className={`font-semibold text-sm ${
+                  todayStats.net > 0 ? 'text-correct' : todayStats.net < 0 ? 'text-incorrect' : 'text-text-muted'
+                }`}>
+                  {todayStats.net > 0 ? '+' : ''}{todayStats.net} pts
+                </span>
+              </button>
+              {todayOpen && (
+                <div className="mt-1 space-y-1">
+                  {todayItems.map((item) => {
+                    const isTappable = onItemTap && (item.type === 'pick' || item.type === 'parlay' || item.type === 'prop')
+                    return (
+                      <div
+                        key={`${item.type}-${item.id}`}
+                        className={`bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
+                        onClick={isTappable ? () => onItemTap(item.type, item.id) : undefined}
+                      >
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold truncate">{item.label}</div>
+                          <div className="text-xs text-text-muted truncate">{item.detail}</div>
+                        </div>
+                        <div className={`font-semibold text-sm shrink-0 ml-3 ${
+                          item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
+                        }`}>
+                          {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })()}
         {months.map((month, index) => {
           const stats = getMonthStats(month.items)
           const open = isExpanded(month.key, index)

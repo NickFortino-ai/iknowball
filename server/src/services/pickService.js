@@ -189,7 +189,7 @@ export async function getPublicPickHistory(userId) {
     .from('picks')
     .select('*, games(*, sports(key, name))')
     .eq('user_id', userId)
-    .eq('status', 'settled')
+    .in('status', ['locked', 'settled'])
     .order('created_at', { ascending: false })
 
   if (error) throw error
