@@ -28,7 +28,7 @@ function formatRecordValue(record) {
     case 'best_futures_hit':
       return val > 0 ? `+${val}` : `${val}`
     case 'biggest_parlay':
-      return `${Math.round((val - 1) * 100)}x`
+      return `+${Math.round((val - 1) * 100)}`
     case 'great_climb':
       return `${val} spots`
     case 'fewest_picks_to_goat':
