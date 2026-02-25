@@ -98,14 +98,15 @@ function getMonthStats(items) {
   return { wins, losses, net }
 }
 
-const TYPE_ORDER = ['pick', 'parlay', 'prop', 'futures', 'bonus']
-const TYPE_LABELS = { pick: 'Picks', parlay: 'Parlays', prop: 'Props', futures: 'Futures', bonus: 'Bonuses' }
+const TYPE_ORDER = ['live', 'pick', 'parlay', 'prop', 'futures', 'bonus']
+const TYPE_LABELS = { live: 'Live', pick: 'Picks', parlay: 'Parlays', prop: 'Props', futures: 'Futures', bonus: 'Bonuses' }
 
 function groupByType(items) {
   const groups = {}
   for (const item of items) {
-    if (!groups[item.type]) groups[item.type] = []
-    groups[item.type].push(item)
+    const key = item.is_correct === null && item.type !== 'bonus' ? 'live' : item.type
+    if (!groups[key]) groups[key] = []
+    groups[key].push(item)
   }
   return TYPE_ORDER.filter((t) => groups[t]?.length).map((t) => ({ type: t, label: TYPE_LABELS[t], items: groups[t] }))
 }
