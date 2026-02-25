@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
-import PowerRankingsCard from '../components/home/PowerRankingsCard'
+import HeadlinesCard from '../components/home/HeadlinesCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import TierUsersModal from '../components/home/TierUsersModal'
 
@@ -68,7 +68,7 @@ export default function HomePage() {
       {/* Logged-in: Power Rankings + Featured Prop */}
       {isAuthenticated && (
         <>
-          <PowerRankingsCard />
+          <HeadlinesCard />
           <div className="mb-8">
             <FeaturedPropSection date={new Date()} />
           </div>

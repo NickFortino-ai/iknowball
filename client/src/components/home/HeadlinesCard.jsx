@@ -51,7 +51,7 @@ function parseRecapContent(content) {
   return { rankings, awards }
 }
 
-export default function PowerRankingsCard() {
+export default function HeadlinesCard() {
   const { data: recap, isLoading } = useLatestRecap()
   const { profile } = useAuth()
   const updateRecap = useUpdateRecap()
