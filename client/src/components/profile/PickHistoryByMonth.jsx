@@ -199,7 +199,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                         {typeOpen && (
                           <div className="space-y-1">
                             {group.items.map((item, itemIdx) => {
-                              const isTappable = onItemTap && item.type === 'pick'
+                              const isTappable = onItemTap && (item.type === 'pick' || item.type === 'parlay' || item.type === 'prop')
                               const itemDate = new Date(item.date)
                               const itemStr = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}-${String(itemDate.getDate()).padStart(2, '0')}`
                               const isToday = itemStr === todayStr

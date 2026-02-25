@@ -8,6 +8,7 @@ import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
 import PickDetailModal from '../social/PickDetailModal'
 import ParlayResultModal from '../picks/ParlayResultModal'
+import PropDetailModal from '../picks/PropDetailModal'
 import { toast } from '../ui/Toast'
 
 const SPORT_LABELS = {
@@ -48,6 +49,7 @@ function timeAgo(dateStr) {
 function getNotificationRoute(notification) {
   if (notification.metadata?.pickId) return null // handled by modal
   if (notification.metadata?.parlayId) return null // handled by modal
+  if (notification.metadata?.propPickId) return null // handled by modal
   switch (notification.type) {
     case 'parlay_result':
     case 'futures_result':
@@ -73,6 +75,7 @@ export default function Navbar() {
   const [showDesktopMenu, setShowDesktopMenu] = useState(false)
   const [selectedPickId, setSelectedPickId] = useState(null)
   const [selectedParlayId, setSelectedParlayId] = useState(null)
+  const [selectedPropPickId, setSelectedPropPickId] = useState(null)
   const dropdownRef = useRef(null)
   const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
@@ -310,7 +313,7 @@ export default function Navbar() {
                         ))}
                         {notifications?.map((n) => {
                           const route = getNotificationRoute(n)
-                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || route
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || route
                           return (
                             <div
                               key={n.id}
@@ -318,6 +321,7 @@ export default function Navbar() {
                               onClick={() => {
                                 if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                                 else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
+                                else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
                                 else if (route) { navigate(route); setShowInvites(false) }
                               }}
                             >
@@ -672,7 +676,7 @@ export default function Navbar() {
                     ))}
                     {notifications?.map((n) => {
                       const route = getNotificationRoute(n)
-                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || route
+                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || route
                       return (
                         <div
                           key={n.id}
@@ -680,6 +684,7 @@ export default function Navbar() {
                           onClick={() => {
                             if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                             else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
+                            else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
                             else if (route) { navigate(route); setShowInvites(false) }
                           }}
                         >
@@ -714,6 +719,7 @@ export default function Navbar() {
     </nav>
     <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
     <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
+    <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
     </>
   )
 }

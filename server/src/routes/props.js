@@ -6,6 +6,7 @@ import {
   deletePropPick,
   getUserPropPicks,
   getUserPropPickHistory,
+  getPropPickById,
 } from '../services/propService.js'
 
 const router = Router()
@@ -49,6 +50,12 @@ router.get('/picks/me', async (req, res) => {
 router.get('/picks/me/history', async (req, res) => {
   const picks = await getUserPropPickHistory(req.user.id)
   res.json(picks)
+})
+
+// Get a single prop pick by ID (must be after /picks/me routes)
+router.get('/picks/:propPickId', async (req, res) => {
+  const pick = await getPropPickById(req.params.propPickId)
+  res.json(pick)
 })
 
 export default router

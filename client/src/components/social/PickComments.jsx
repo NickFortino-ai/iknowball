@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { usePickComments, useAddComment, useDeleteComment } from '../../hooks/useSocial'
+import { useComments, useAddComment, useDeleteComment } from '../../hooks/useSocial'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 
@@ -14,12 +14,16 @@ function timeAgo(dateStr) {
   return `${days}d`
 }
 
-export default function PickComments({ pickId, initialExpanded = false }) {
+export default function PickComments({ pickId, targetType = 'pick', targetId, initialExpanded = false }) {
+  // Support both old (pickId) and new (targetType + targetId) API
+  const resolvedType = targetType
+  const resolvedId = targetId || pickId
+
   const [expanded, setExpanded] = useState(initialExpanded)
   const [text, setText] = useState('')
   const { session } = useAuth()
   const currentUserId = session?.user?.id
-  const { data: comments } = usePickComments(expanded ? pickId : null)
+  const { data: comments } = useComments(resolvedType, expanded ? resolvedId : null)
   const addComment = useAddComment()
   const deleteComment = useDeleteComment()
 
@@ -27,9 +31,9 @@ export default function PickComments({ pickId, initialExpanded = false }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!text.trim() || !pickId) return
+    if (!text.trim() || !resolvedId) return
     try {
-      await addComment.mutateAsync({ pickId, content: text.trim() })
+      await addComment.mutateAsync({ targetType: resolvedType, targetId: resolvedId, content: text.trim() })
       setText('')
     } catch (err) {
       toast(err.message || 'Failed to send comment', 'error')
@@ -59,7 +63,7 @@ export default function PickComments({ pickId, initialExpanded = false }) {
               </div>
               {c.user_id === currentUserId && (
                 <button
-                  onClick={() => deleteComment.mutate({ commentId: c.id, pickId })}
+                  onClick={() => deleteComment.mutate({ commentId: c.id, targetType: resolvedType, targetId: resolvedId })}
                   className="text-text-muted hover:text-incorrect flex-shrink-0 transition-colors"
                   disabled={deleteComment.isPending}
                 >

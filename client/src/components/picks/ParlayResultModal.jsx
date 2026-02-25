@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useParlay } from '../../hooks/useParlays'
 import { formatOdds } from '../../lib/scoring'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import PickComments from '../social/PickComments'
 
 export default function ParlayResultModal({ parlayId, onClose }) {
   const { data: parlay, isLoading } = useParlay(parlayId)
@@ -94,6 +95,9 @@ export default function ParlayResultModal({ parlayId, onClose }) {
             <div className="text-center text-xs text-text-muted pt-1">
               Combined: {Number(parlay.combined_multiplier).toFixed(2)}x
             </div>
+
+            {/* Comments */}
+            <PickComments targetType="parlay" targetId={parlayId} initialExpanded />
           </div>
         )}
       </div>

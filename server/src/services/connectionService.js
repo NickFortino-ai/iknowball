@@ -355,8 +355,8 @@ export async function getConnectionActivity(userId) {
 
     // Source 5: Recent comments from connected users
     supabase
-      .from('pick_comments')
-      .select('id, pick_id, user_id, content, created_at')
+      .from('comments')
+      .select('id, target_type, target_id, user_id, content, created_at')
       .in('user_id', connectedIds)
       .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false })
@@ -429,42 +429,53 @@ export async function getConnectionActivity(userId) {
     })
   }
 
-  // Process recent comments (batch fetch pick owners)
+  // Process recent comments (batch fetch target owners by type)
   const commentData = recentComments.data || []
   if (commentData.length > 0) {
-    const commentPickIds = [...new Set(commentData.map((c) => c.pick_id))]
-    const { data: commentPicks } = await supabase
-      .from('picks')
-      .select('id, user_id, users(username)')
-      .in('id', commentPickIds)
+    const targetsByType = {}
+    for (const c of commentData) {
+      if (!targetsByType[c.target_type]) targetsByType[c.target_type] = new Set()
+      targetsByType[c.target_type].add(c.target_id)
+    }
 
-    const pickOwnerMap = {}
-    for (const p of commentPicks || []) {
-      pickOwnerMap[p.id] = p
+    const ownerMap = {}
+    const TABLE_MAP = { pick: 'picks', parlay: 'parlays', prop: 'prop_picks' }
+    const LABEL_MAP = { pick: 'pick', parlay: 'parlay', prop: 'prop pick' }
+
+    for (const [type, ids] of Object.entries(targetsByType)) {
+      const { data: rows } = await supabase
+        .from(TABLE_MAP[type])
+        .select('id, user_id, users(username)')
+        .in('id', [...ids])
+      for (const r of rows || []) {
+        ownerMap[`${type}-${r.id}`] = r
+      }
     }
 
     for (const comment of commentData) {
       const user = userMap[comment.user_id]
       if (!user) continue
 
-      const pick = pickOwnerMap[comment.pick_id]
-      if (!pick) continue
+      const target = ownerMap[`${comment.target_type}-${comment.target_id}`]
+      if (!target) continue
 
-      const ownerName = pick.user_id === comment.user_id
+      const label = LABEL_MAP[comment.target_type]
+      const ownerName = target.user_id === comment.user_id
         ? `${getPronouns(user.title_preference).possessive} own`
-        : pick.users?.username
-          ? `@${pick.users.username}'s`
+        : target.users?.username
+          ? `@${target.users.username}'s`
           : "a"
 
-      feed.push({
+      const feedItem = {
         type: 'comment',
         userId: comment.user_id,
-        pickId: comment.pick_id,
         username: user.username,
         avatar_emoji: user.avatar_emoji,
-        message: `commented on ${ownerName} pick`,
+        message: `commented on ${ownerName} ${label}`,
         timestamp: comment.created_at,
-      })
+      }
+      if (comment.target_type === 'pick') feedItem.pickId = comment.target_id
+      feed.push(feedItem)
     }
   }
 

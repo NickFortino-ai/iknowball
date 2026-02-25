@@ -31,11 +31,17 @@ export function usePickReactionsBatch(pickIds) {
   })
 }
 
-export function usePickComments(pickId) {
+const COMMENT_ROUTES = {
+  pick: (id) => `/social/picks/${id}/comments`,
+  parlay: (id) => `/social/parlays/${id}/comments`,
+  prop: (id) => `/social/props/${id}/comments`,
+}
+
+export function useComments(targetType, targetId) {
   return useQuery({
-    queryKey: ['pickComments', pickId],
-    queryFn: () => api.get(`/social/picks/${pickId}/comments`),
-    enabled: !!pickId,
+    queryKey: ['comments', targetType, targetId],
+    queryFn: () => api.get(COMMENT_ROUTES[targetType](targetId)),
+    enabled: !!targetId,
   })
 }
 
@@ -43,10 +49,10 @@ export function useAddComment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ pickId, content }) =>
-      api.post(`/social/picks/${pickId}/comments`, { content }),
-    onSuccess: (_data, { pickId }) => {
-      queryClient.invalidateQueries({ queryKey: ['pickComments', pickId] })
+    mutationFn: ({ targetType, targetId, content }) =>
+      api.post(COMMENT_ROUTES[targetType](targetId), { content }),
+    onSuccess: (_data, { targetType, targetId }) => {
+      queryClient.invalidateQueries({ queryKey: ['comments', targetType, targetId] })
     },
   })
 }
@@ -55,9 +61,14 @@ export function useDeleteComment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ commentId, pickId }) => api.delete(`/social/comments/${commentId}`),
-    onSuccess: (_data, { pickId }) => {
-      queryClient.invalidateQueries({ queryKey: ['pickComments', pickId] })
+    mutationFn: ({ commentId }) => api.delete(`/social/comments/${commentId}`),
+    onSuccess: (_data, { targetType, targetId }) => {
+      queryClient.invalidateQueries({ queryKey: ['comments', targetType, targetId] })
     },
   })
+}
+
+// Backward-compatible aliases
+export function usePickComments(pickId) {
+  return useComments('pick', pickId)
 }

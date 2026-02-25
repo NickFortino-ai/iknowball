@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
+export function usePropPick(propPickId) {
+  return useQuery({
+    queryKey: ['propPicks', propPickId],
+    queryFn: () => api.get(`/props/picks/${propPickId}`),
+    enabled: !!propPickId,
+  })
+}
+
 export function useFeaturedProp(date) {
   return useQuery({
     queryKey: ['featuredProp', date],

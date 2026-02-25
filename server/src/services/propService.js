@@ -381,6 +381,22 @@ export async function deletePropPick(userId, propId) {
   }
 }
 
+export async function getPropPickById(propPickId) {
+  const { data, error } = await supabase
+    .from('prop_picks')
+    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, sports(key, name)))')
+    .eq('id', propPickId)
+    .single()
+
+  if (error || !data) {
+    const err = new Error('Prop pick not found')
+    err.status = 404
+    throw err
+  }
+
+  return data
+}
+
 export async function getUserPropPicks(userId, status) {
   let query = supabase
     .from('prop_picks')

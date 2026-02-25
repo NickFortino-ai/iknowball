@@ -7,7 +7,7 @@ import {
   getReactionsForPick,
   getReactionsForPicks,
   addComment,
-  getCommentsForPick,
+  getComments,
   deleteComment,
 } from '../services/socialService.js'
 
@@ -37,16 +37,40 @@ const commentSchema = z.object({
   content: z.string().min(1).max(280),
 })
 
+// Pick comments
 router.post('/picks/:pickId/comments', requireAuth, validate(commentSchema), async (req, res) => {
-  const comment = await addComment(req.user.id, req.params.pickId, req.validated.content)
+  const comment = await addComment(req.user.id, 'pick', req.params.pickId, req.validated.content)
   res.status(201).json(comment)
 })
 
 router.get('/picks/:pickId/comments', requireAuth, async (req, res) => {
-  const comments = await getCommentsForPick(req.params.pickId)
+  const comments = await getComments('pick', req.params.pickId)
   res.json(comments)
 })
 
+// Parlay comments
+router.post('/parlays/:parlayId/comments', requireAuth, validate(commentSchema), async (req, res) => {
+  const comment = await addComment(req.user.id, 'parlay', req.params.parlayId, req.validated.content)
+  res.status(201).json(comment)
+})
+
+router.get('/parlays/:parlayId/comments', requireAuth, async (req, res) => {
+  const comments = await getComments('parlay', req.params.parlayId)
+  res.json(comments)
+})
+
+// Prop pick comments
+router.post('/props/:propPickId/comments', requireAuth, validate(commentSchema), async (req, res) => {
+  const comment = await addComment(req.user.id, 'prop', req.params.propPickId, req.validated.content)
+  res.status(201).json(comment)
+})
+
+router.get('/props/:propPickId/comments', requireAuth, async (req, res) => {
+  const comments = await getComments('prop', req.params.propPickId)
+  res.json(comments)
+})
+
+// Delete comment (generic — works for any target type)
 router.delete('/comments/:commentId', requireAuth, async (req, res) => {
   await deleteComment(req.user.id, req.params.commentId)
   res.status(204).end()

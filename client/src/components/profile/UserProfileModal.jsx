@@ -9,6 +9,8 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
 import SocialLinks from '../ui/SocialLinks'
 import PickDetailModal from '../social/PickDetailModal'
+import ParlayResultModal from '../picks/ParlayResultModal'
+import PropDetailModal from '../picks/PropDetailModal'
 
 export default function UserProfileModal({ userId, onClose }) {
   const { session } = useAuth()
@@ -23,6 +25,8 @@ export default function UserProfileModal({ userId, onClose }) {
   const sendRequest = useSendConnectionRequest()
   const [justSent, setJustSent] = useState(false)
   const [selectedPickId, setSelectedPickId] = useState(null)
+  const [selectedParlayId, setSelectedParlayId] = useState(null)
+  const [selectedPropPickId, setSelectedPropPickId] = useState(null)
 
   useEffect(() => {
     if (!userId) return
@@ -235,7 +239,11 @@ export default function UserProfileModal({ userId, onClose }) {
             )}
 
             {/* Pick History */}
-            <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed onItemTap={(type, id) => { if (type === 'pick') setSelectedPickId(id) }} />
+            <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed onItemTap={(type, id) => {
+                if (type === 'pick') setSelectedPickId(id)
+                else if (type === 'parlay') setSelectedParlayId(id)
+                else if (type === 'prop') setSelectedPropPickId(id)
+              }} />
 
             {/* Member since */}
             <div className="text-text-muted text-xs text-center mt-4">
@@ -246,6 +254,8 @@ export default function UserProfileModal({ userId, onClose }) {
       </div>
     </div>
     <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
+    <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
+    <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
     </>
   )
 }

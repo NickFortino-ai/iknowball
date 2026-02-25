@@ -1,12 +1,12 @@
 import { supabase } from '../config/supabase.js'
 import { createNotification } from './notificationService.js'
 
-async function assertConnected(actorId, pickOwnerId) {
-  // Allow self-reactions
-  if (actorId === pickOwnerId) return
+async function assertConnected(actorId, ownerId) {
+  // Allow self-interactions
+  if (actorId === ownerId) return
 
-  const user_id_1 = actorId < pickOwnerId ? actorId : pickOwnerId
-  const user_id_2 = actorId < pickOwnerId ? pickOwnerId : actorId
+  const user_id_1 = actorId < ownerId ? actorId : ownerId
+  const user_id_2 = actorId < ownerId ? ownerId : actorId
 
   const { data } = await supabase
     .from('connections')
@@ -23,23 +23,29 @@ async function assertConnected(actorId, pickOwnerId) {
   }
 }
 
-async function getPickOwner(pickId) {
+async function getTargetOwner(targetType, targetId) {
+  const table = targetType === 'pick' ? 'picks'
+    : targetType === 'parlay' ? 'parlays'
+    : 'prop_picks'
+
   const { data } = await supabase
-    .from('picks')
+    .from(table)
     .select('user_id')
-    .eq('id', pickId)
+    .eq('id', targetId)
     .single()
 
   if (!data) {
-    const err = new Error('Pick not found')
+    const err = new Error(`${targetType} not found`)
     err.status = 404
     throw err
   }
   return data.user_id
 }
 
+const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick' }
+
 export async function toggleReaction(userId, pickId, reactionType) {
-  const ownerId = await getPickOwner(pickId)
+  const ownerId = await getTargetOwner('pick', pickId)
   await assertConnected(userId, ownerId)
 
   // Check if reaction already exists
@@ -136,37 +142,40 @@ export async function getReactionsForPicks(pickIds) {
   return mapped
 }
 
-export async function addComment(userId, pickId, content) {
-  const ownerId = await getPickOwner(pickId)
+export async function addComment(userId, targetType, targetId, content) {
+  const ownerId = await getTargetOwner(targetType, targetId)
   await assertConnected(userId, ownerId)
 
   const { data, error } = await supabase
-    .from('pick_comments')
-    .insert({ pick_id: pickId, user_id: userId, content })
+    .from('comments')
+    .insert({ target_type: targetType, target_id: targetId, user_id: userId, content })
     .select('id, content, created_at, user_id, users(username, avatar_emoji)')
     .single()
 
   if (error) throw error
 
-  // Notify pick owner on comment (skip self)
+  // Notify owner on comment (skip self)
   if (userId !== ownerId) {
     try {
+      const label = NOTIFICATION_LABELS[targetType]
       const username = data.users?.username || 'Someone'
-      await createNotification(ownerId, 'comment', `${username} commented on your pick`, {
-        actorId: userId,
-        pickId,
-      })
+      const metadata = { actorId: userId }
+      if (targetType === 'pick') metadata.pickId = targetId
+      else if (targetType === 'parlay') metadata.parlayId = targetId
+      else if (targetType === 'prop') metadata.propPickId = targetId
+      await createNotification(ownerId, 'comment', `${username} commented on your ${label}`, metadata)
     } catch (_) { /* notification is best-effort */ }
   }
 
   return data
 }
 
-export async function getCommentsForPick(pickId) {
+export async function getComments(targetType, targetId) {
   const { data, error } = await supabase
-    .from('pick_comments')
-    .select('id, content, created_at, user_id, users(username, avatar_emoji)')
-    .eq('pick_id', pickId)
+    .from('comments')
+    .select('id, content, created_at, user_id, target_type, target_id, users(username, avatar_emoji)')
+    .eq('target_type', targetType)
+    .eq('target_id', targetId)
     .order('created_at', { ascending: true })
 
   if (error) throw error
@@ -175,7 +184,7 @@ export async function getCommentsForPick(pickId) {
 
 export async function deleteComment(userId, commentId) {
   const { data: comment } = await supabase
-    .from('pick_comments')
+    .from('comments')
     .select('id, user_id')
     .eq('id', commentId)
     .single()
@@ -192,6 +201,6 @@ export async function deleteComment(userId, commentId) {
     throw err
   }
 
-  const { error } = await supabase.from('pick_comments').delete().eq('id', commentId)
+  const { error } = await supabase.from('comments').delete().eq('id', commentId)
   if (error) throw error
 }
