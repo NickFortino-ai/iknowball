@@ -7,6 +7,24 @@ import ErrorState from '../components/ui/ErrorState'
 import TierBadge from '../components/ui/TierBadge'
 
 const CATEGORY_ORDER = ['streak', 'single_pick', 'percentage', 'efficiency', 'climb']
+
+// Display order within each category (lower = higher on list)
+const RECORD_SORT = {
+  longest_win_streak: 0,
+  longest_parlay_streak: 1,
+  longest_prop_streak: 2,
+  biggest_underdog_hit: 0,
+  biggest_parlay: 1,
+  best_futures_hit: 2,
+  highest_prop_pct: 0,
+  biggest_dog_lover: 1,
+  highest_overall_win_pct: 2,
+  fewest_picks_to_baller: 0,
+  fewest_picks_to_elite: 1,
+  fewest_picks_to_hof: 2,
+  fewest_picks_to_goat: 3,
+  great_climb: 0,
+}
 const CATEGORY_LABELS = {
   streak: 'Streaks',
   single_pick: 'Big Hits',
@@ -150,6 +168,10 @@ export default function RecordBookPage() {
       const filtered = { ...record, sub_records: (record.sub_records || []).filter((s) => s.record_holder_id) }
       grouped[record.category].push(filtered)
     }
+  }
+  // Sort records within each category by defined display order
+  for (const cat of CATEGORY_ORDER) {
+    grouped[cat].sort((a, b) => (RECORD_SORT[a.record_key] ?? 99) - (RECORD_SORT[b.record_key] ?? 99))
   }
 
   return (
