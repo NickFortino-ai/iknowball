@@ -87,6 +87,17 @@ export function useRecalculatePoints() {
   })
 }
 
+export function useRecalculateRecords() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post('/admin/recalculate-records'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['records'] })
+      queryClient.invalidateQueries({ queryKey: ['royalty'] })
+    },
+  })
+}
+
 export function useSendEmailBlast() {
   return useMutation({
     mutationFn: ({ subject, body }) => api.post('/admin/email-blast', { subject, body }),

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useRecalculatePoints, useSendEmailBlast, useSendTargetedEmail, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
@@ -36,6 +36,7 @@ export default function AdminPage() {
   const syncOdds = useSyncOdds()
   const scoreGames = useScoreGames()
   const recalculatePoints = useRecalculatePoints()
+  const recalculateRecords = useRecalculateRecords()
   const sendEmailBlast = useSendEmailBlast()
   const sendTargetedEmail = useSendTargetedEmail()
 
@@ -102,6 +103,15 @@ export default function AdminPage() {
       toast(`Recalculated — ${result.corrections.length} users corrected`, 'success')
     } catch (err) {
       toast(err.message || 'Recalculation failed', 'error')
+    }
+  }
+
+  async function handleRecalculateRecords() {
+    try {
+      const result = await recalculateRecords.mutateAsync()
+      toast(`Records recalculated — ${result.updated} updated`, 'success')
+    } catch (err) {
+      toast(err.message || 'Record recalculation failed', 'error')
     }
   }
 
@@ -407,6 +417,13 @@ export default function AdminPage() {
             className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {recalculatePoints.isPending ? 'Recalculating...' : 'Recalculate Points'}
+          </button>
+          <button
+            onClick={handleRecalculateRecords}
+            disabled={recalculateRecords.isPending}
+            className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {recalculateRecords.isPending ? 'Recalculating...' : 'Recalculate Records'}
           </button>
         </div>
       </div>
