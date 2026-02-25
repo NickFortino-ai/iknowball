@@ -80,6 +80,15 @@ export default function Navbar() {
   const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
   const desktopMenuRef = useRef(null)
+  const wasOpenRef = useRef(false)
+
+  // Mark notifications as read when dropdown closes (not when it opens)
+  useEffect(() => {
+    if (wasOpenRef.current && !showInvites) {
+      markAllRead.mutate()
+    }
+    wasOpenRef.current = showInvites
+  }, [showInvites])
 
   const { data: invitations } = useMyInvitations(isAuthenticated)
   const acceptInvitation = useAcceptInvitation()
@@ -235,7 +244,7 @@ export default function Navbar() {
               {/* Notification Bell — desktop */}
               <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={() => { if (!showInvites) markAllRead.mutate(); setShowInvites(!showInvites) }}
+                  onClick={() => setShowInvites(!showInvites)}
                   className="relative p-1.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                   aria-label="Notifications"
                 >
@@ -474,7 +483,7 @@ export default function Navbar() {
             <div className="flex items-center gap-1 md:hidden">
               {/* Notification bell — mobile */}
               <button
-                onClick={() => { setShowMobileMenu(false); if (!showInvites) markAllRead.mutate(); setShowInvites(!showInvites) }}
+                onClick={() => { setShowMobileMenu(false); setShowInvites(!showInvites) }}
                 className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                 aria-label="Notifications"
               >
