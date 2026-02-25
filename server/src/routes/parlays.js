@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
-import { createParlay, deleteParlay, getUserParlays, getUserParlayHistory } from '../services/parlayService.js'
+import { createParlay, deleteParlay, getUserParlays, getUserParlayHistory, getParlayById } from '../services/parlayService.js'
 
 const router = Router()
 
@@ -28,6 +28,11 @@ router.get('/me', requireAuth, async (req, res) => {
 router.get('/me/history', requireAuth, async (req, res) => {
   const parlays = await getUserParlayHistory(req.user.id)
   res.json(parlays)
+})
+
+router.get('/:parlayId', requireAuth, async (req, res) => {
+  const parlay = await getParlayById(req.user.id, req.params.parlayId)
+  res.json(parlay)
 })
 
 router.delete('/:parlayId', requireAuth, async (req, res) => {

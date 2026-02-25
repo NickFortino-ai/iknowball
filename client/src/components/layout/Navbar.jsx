@@ -7,6 +7,7 @@ import { useNotifications, useUnreadNotificationCount, useMarkAllNotificationsRe
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
 import PickDetailModal from '../social/PickDetailModal'
+import ParlayResultModal from '../picks/ParlayResultModal'
 import { toast } from '../ui/Toast'
 
 const SPORT_LABELS = {
@@ -46,6 +47,7 @@ function timeAgo(dateStr) {
 
 function getNotificationRoute(notification) {
   if (notification.metadata?.pickId) return null // handled by modal
+  if (notification.metadata?.parlayId) return null // handled by modal
   switch (notification.type) {
     case 'parlay_result':
     case 'futures_result':
@@ -70,6 +72,7 @@ export default function Navbar() {
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showDesktopMenu, setShowDesktopMenu] = useState(false)
   const [selectedPickId, setSelectedPickId] = useState(null)
+  const [selectedParlayId, setSelectedParlayId] = useState(null)
   const dropdownRef = useRef(null)
   const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
@@ -307,13 +310,14 @@ export default function Navbar() {
                         ))}
                         {notifications?.map((n) => {
                           const route = getNotificationRoute(n)
-                          const tappable = n.metadata?.pickId || route
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || route
                           return (
                             <div
                               key={n.id}
                               className={`px-4 py-3 border-b border-border last:border-b-0${tappable ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
                               onClick={() => {
                                 if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
+                                else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                                 else if (route) { navigate(route); setShowInvites(false) }
                               }}
                             >
@@ -668,13 +672,14 @@ export default function Navbar() {
                     ))}
                     {notifications?.map((n) => {
                       const route = getNotificationRoute(n)
-                      const tappable = n.metadata?.pickId || route
+                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || route
                       return (
                         <div
                           key={n.id}
                           className={`px-4 py-3 border-b border-border last:border-b-0${tappable ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
                           onClick={() => {
                             if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
+                            else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                             else if (route) { navigate(route); setShowInvites(false) }
                           }}
                         >
@@ -708,6 +713,7 @@ export default function Navbar() {
       </div>
     </nav>
     <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
+    <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
     </>
   )
 }

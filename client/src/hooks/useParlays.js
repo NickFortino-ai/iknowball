@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
+export function useParlay(parlayId) {
+  return useQuery({
+    queryKey: ['parlays', parlayId],
+    queryFn: () => api.get(`/parlays/${parlayId}`),
+    enabled: !!parlayId,
+  })
+}
+
 export function useMyParlays(status) {
   const params = status ? `?status=${status}` : ''
   return useQuery({
