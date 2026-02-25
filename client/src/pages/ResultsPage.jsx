@@ -186,6 +186,33 @@ export default function ResultsPage() {
             </>
           )}
 
+          {settledPicks.length > 0 && (
+            <>
+              <button onClick={() => toggleSection('picks')} className="flex items-center justify-between w-full mb-3">
+                <h2 className="font-display text-lg text-text-secondary">Straight Picks</h2>
+                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.picks ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {!collapsed.picks && (
+                <div className="space-y-3 mb-6">
+                  {groupByDate(settledPicks, (p) => p.games.starts_at).map(({ date, items }) => (
+                    <Fragment key={date}>
+                      <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
+                      {items.map((pick) => (
+                        <GameCard
+                          key={pick.id}
+                          game={pick.games}
+                          userPick={pick}
+                          reactions={reactionsBatch?.[pick.id]}
+                          onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
+                        />
+                      ))}
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
           {settledParlays.length > 0 && (
             <>
               <button onClick={() => toggleSection('parlays')} className="flex items-center justify-between w-full mb-3">
@@ -214,39 +241,12 @@ export default function ResultsPage() {
                 <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.props ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
               </button>
               {!collapsed.props && (
-                <div className="space-y-3 mb-6">
+                <div className="space-y-3">
                   {groupByDate(settledProps, (p) => p.player_props?.games?.starts_at || p.created_at).map(({ date, items }) => (
                     <Fragment key={date}>
                       <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
                       {items.map((pp) => (
                         <PropCard key={pp.id} prop={pp.player_props} pick={pp} />
-                      ))}
-                    </Fragment>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {settledPicks.length > 0 && (
-            <>
-              <button onClick={() => toggleSection('picks')} className="flex items-center justify-between w-full mb-3">
-                <h2 className="font-display text-lg text-text-secondary">Straight Picks</h2>
-                <svg className={`w-5 h-5 text-text-muted transition-transform ${collapsed.picks ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              {!collapsed.picks && (
-                <div className="space-y-3">
-                  {groupByDate(settledPicks, (p) => p.games.starts_at).map(({ date, items }) => (
-                    <Fragment key={date}>
-                      <p className="text-xs text-text-muted pt-1">{formatDateHeader(date)}</p>
-                      {items.map((pick) => (
-                        <GameCard
-                          key={pick.id}
-                          game={pick.games}
-                          userPick={pick}
-                          reactions={reactionsBatch?.[pick.id]}
-                          onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
-                        />
                       ))}
                     </Fragment>
                   ))}
