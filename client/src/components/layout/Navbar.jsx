@@ -58,7 +58,7 @@ function getNotificationRoute(notification) {
       return '/results'
     case 'connection_request':
       return '/connections'
-    case 'power_rankings':
+    case 'headlines':
       return '/headlines'
     case 'squares_quarter_win':
       return notification.metadata?.leagueId ? `/leagues/${notification.metadata.leagueId}` : null

@@ -91,7 +91,7 @@ export async function generateWeeklyRecap() {
     try {
       await createNotification(
         userId,
-        'power_rankings',
+        'headlines',
         'You made the Weekly Headlines this week! Check it out.',
         { weekStart: weekStartStr, weekEnd: weekEndStr }
       )
