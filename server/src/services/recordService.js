@@ -718,13 +718,14 @@ export async function getRoyaltyData() {
     .maybeSingle()
 
   // Get sport leaders
-  const { data: sports } = await supabase.from('sports').select('key, name')
+  const { data: sports } = await supabase.from('sports').select('id, key, name')
   const sportCrowns = []
   for (const sport of sports || []) {
     const { data: stats } = await supabase
       .from('user_sport_stats')
       .select('user_id, total_points, users(id, username, display_name, avatar_url, avatar_emoji, tier)')
-      .eq('sport_id', (await supabase.from('sports').select('id').eq('key', sport.key).single()).data?.id)
+      .eq('sport_id', sport.id)
+      .gt('total_points', 0)
       .order('total_points', { ascending: false })
       .limit(1)
       .maybeSingle()
