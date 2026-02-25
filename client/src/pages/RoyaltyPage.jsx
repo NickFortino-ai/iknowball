@@ -104,6 +104,7 @@ function GlobalCrown({ crown }) {
   if (!crown) return null
 
   const holder = crown.holder
+  const title = holder.title_preference === 'queen' ? 'Queen' : 'King'
 
   return (
     <div
@@ -113,7 +114,7 @@ function GlobalCrown({ crown }) {
       <div className="flex justify-center mb-4">
         <CrownSVG size={100} id="global-crown" />
       </div>
-      <h2 className="font-display text-lg text-[#FFD700] mb-4 tracking-wide">The Crown of I KNOW BALL</h2>
+      <h2 className="font-display text-lg text-[#FFD700] mb-4 tracking-wide">The {title} of I KNOW BALL</h2>
 
       <div className="flex justify-center mb-2">
         <span className="w-14 h-14 rounded-full bg-[#FFD700]/10 flex items-center justify-center text-xl border border-[#FFD700]/20">
