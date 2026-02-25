@@ -60,14 +60,21 @@ export default function HeadlinesCard() {
   const [editContent, setEditContent] = useState('')
   const isAdmin = profile?.is_admin
 
-  const isOlderThan2Days = useMemo(() => {
-    if (!recap?.created_at) return false
-    const created = new Date(recap.created_at)
+  const isPastTuesday = useMemo(() => {
+    if (!recap?.visible_after) return false
+    // visible_after is Monday 10 AM EST — collapse after Tuesday 11:59 PM local time
+    const visibleDate = new Date(recap.visible_after)
     const now = new Date()
-    return (now - created) > 2 * 24 * 60 * 60 * 1000
-  }, [recap?.created_at])
+    // Find the Tuesday after visible_after
+    const tuesday = new Date(visibleDate)
+    // visible_after is a Monday, so Tuesday is +1 day
+    tuesday.setDate(tuesday.getDate() + 1)
+    // Set to 11:59 PM local time
+    tuesday.setHours(23, 59, 0, 0)
+    return now > tuesday
+  }, [recap?.visible_after])
 
-  const isExpanded = expanded !== null ? expanded : !isOlderThan2Days
+  const isExpanded = expanded !== null ? expanded : !isPastTuesday
 
   const { rankings, awards } = useMemo(
     () => parseRecapContent(recap?.recap_content),
@@ -130,7 +137,7 @@ export default function HeadlinesCard() {
                 Edit
               </button>
             )}
-            {isOlderThan2Days && !editing && (
+            {isPastTuesday && !editing && (
               <button
                 onClick={() => setExpanded(false)}
                 className="text-text-muted hover:text-text-primary text-xl leading-none"
