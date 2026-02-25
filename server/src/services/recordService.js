@@ -710,18 +710,16 @@ export async function getRecordHistory(limit = 50) {
 
 export async function getRoyaltyData() {
   // Get global #1
-  const { data: globalTop, error: globalErr } = await supabase
+  const { data: globalTop } = await supabase
     .from('users')
     .select('id, username, display_name, avatar_url, avatar_emoji, tier, total_points, created_at, x_handle, instagram_handle, title_preference')
     .order('total_points', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  logger.info({ globalTop: globalTop?.id, globalErr }, 'Royalty: global crown query')
 
   // Get sport leaders
-  const { data: sports, error: sportsErr } = await supabase.from('sports').select('id, key, name')
-  logger.info({ sportCount: sports?.length, sportsErr }, 'Royalty: sports query')
+  const { data: sports } = await supabase.from('sports').select('id, key, name')
   const sportCrowns = []
   for (const sport of sports || []) {
     const { data: stats } = await supabase
