@@ -106,20 +106,22 @@ async function calcLongestWinStreak(sportKey) {
     sportId = sport.id
   }
 
-  let query = supabase
+  const { data: allPicks, error } = await supabase
     .from('picks')
     .select('id, user_id, is_correct, games!inner(starts_at, sport_id)')
     .eq('status', 'settled')
     .not('is_correct', 'is', null)
 
-  if (sportId) {
-    query = query.eq('games.sport_id', sportId)
-  }
+  if (error || !allPicks?.length) return null
 
-  const { data: picks, error } = await query
-  if (error || !picks?.length) return null
+  // Filter by sport in JS (Supabase nested join filters are unreliable)
+  const picks = sportId
+    ? allPicks.filter((p) => p.games.sport_id === sportId)
+    : allPicks
 
-  // Sort by game start time in JS (Supabase nested ordering can be unreliable)
+  if (!picks.length) return null
+
+  // Sort by game start time in JS
   picks.sort((a, b) => new Date(a.games.starts_at) - new Date(b.games.starts_at))
 
   // Group by user
@@ -556,8 +558,28 @@ export async function recalculateAllRecords() {
     try {
       const result = await fn()
       if (result) {
-        const changed = await updateRecord(key, result.holderId, result.value, result.metadata)
-        if (changed) updated++
+        // Force-set the correct value during full recalc
+        await supabase
+          .from('records')
+          .update({
+            record_holder_id: result.holderId,
+            record_value: result.value,
+            record_metadata: result.metadata,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('record_key', key)
+        updated++
+      } else {
+        // Clear records that no longer have a valid result
+        await supabase
+          .from('records')
+          .update({
+            record_holder_id: null,
+            record_value: null,
+            record_metadata: {},
+            updated_at: new Date().toISOString(),
+          })
+          .eq('record_key', key)
       }
     } catch (err) {
       logger.error({ err, key }, 'Record calculator failed')
