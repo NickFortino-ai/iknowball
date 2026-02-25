@@ -34,6 +34,8 @@ import {
 import { FUTURES_SPORT_KEYS } from '../services/oddsService.js'
 import { generateWeeklyRecap } from '../jobs/generateRecap.js'
 import { updateRecapContent } from '../services/recapService.js'
+import { recalculateAllRecords } from '../services/recordService.js'
+import { snapshotRanks } from '../jobs/snapshotRanks.js'
 
 const router = Router()
 
@@ -54,6 +56,12 @@ router.post('/score-games', async (req, res) => {
 router.post('/recalculate-points', async (req, res) => {
   const results = await recalculateAllUserPoints()
   res.json({ message: `Recalculated points for ${results.length} users`, corrections: results })
+})
+
+router.post('/recalculate-records', async (req, res) => {
+  await snapshotRanks()
+  const result = await recalculateAllRecords()
+  res.json({ message: `Record recalculation complete`, ...result })
 })
 
 router.post('/email-blast', async (req, res) => {
