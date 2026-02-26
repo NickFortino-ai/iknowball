@@ -15,7 +15,9 @@ function formatLiveStatus(game) {
     const sportKey = game.sports?.key || ''
     let periodLabel = ''
     if (game.period) {
-      if (sportKey.includes('basketball') || sportKey.includes('football')) {
+      if (sportKey.includes('ncaab')) {
+        periodLabel = `H${game.period}`
+      } else if (sportKey.includes('basketball') || sportKey.includes('football')) {
         periodLabel = `Q${game.period}`
       } else if (sportKey.includes('baseball')) {
         periodLabel = game.period
