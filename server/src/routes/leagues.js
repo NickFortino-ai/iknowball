@@ -29,6 +29,12 @@ import {
   getUsedTeams,
 } from '../services/survivorService.js'
 import {
+  submitLeaguePick,
+  deleteLeaguePick,
+  getLeaguePicks,
+  getLeagueGames,
+} from '../services/leaguePickService.js'
+import {
   getBoard,
   claimSquare,
   randomAssignSquares,
@@ -283,6 +289,45 @@ router.get('/:id/pickem/selections', requireAuth, async (req, res) => {
 
   if (error) throw error
   res.json(data)
+})
+
+// ============================================
+// League Picks (new pick'em system)
+// ============================================
+
+const leaguePickSchema = z.object({
+  week_id: z.string().uuid(),
+  game_id: z.string().uuid(),
+  picked_team: z.enum(['home', 'away']),
+})
+
+router.post('/:id/pickem/picks', requireAuth, validate(leaguePickSchema), async (req, res) => {
+  const result = await submitLeaguePick(
+    req.params.id,
+    req.user.id,
+    req.validated.week_id,
+    req.validated.game_id,
+    req.validated.picked_team
+  )
+  res.status(201).json(result)
+})
+
+router.delete('/:id/pickem/picks/:gameId', requireAuth, async (req, res) => {
+  await deleteLeaguePick(req.params.id, req.user.id, req.params.gameId)
+  res.status(204).end()
+})
+
+router.get('/:id/pickem/picks', requireAuth, async (req, res) => {
+  const picks = await getLeaguePicks(req.params.id, req.user.id, req.query.week_id)
+  res.json(picks)
+})
+
+router.get('/:id/pickem/games', requireAuth, async (req, res) => {
+  if (!req.query.week_id) {
+    return res.status(400).json({ error: 'week_id query parameter is required' })
+  }
+  const games = await getLeagueGames(req.params.id, req.query.week_id)
+  res.json(games)
 })
 
 // ============================================

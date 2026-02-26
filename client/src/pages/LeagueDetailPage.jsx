@@ -11,11 +11,17 @@ import BracketView from '../components/leagues/BracketView'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 
-const TABS = {
-  pickem: ['Standings', 'Members'],
-  survivor: ['Board', 'Members'],
-  squares: ['Board', 'Members'],
-  bracket: ['Bracket', 'Members'],
+function getLeagueTabs(league) {
+  if (league.format === 'pickem' && league.use_league_picks) {
+    return ['Picks', 'Standings', 'Members']
+  }
+  const TABS = {
+    pickem: ['Standings', 'Members'],
+    survivor: ['Board', 'Members'],
+    squares: ['Board', 'Members'],
+    bracket: ['Bracket', 'Members'],
+  }
+  return TABS[league.format] || ['Members']
 }
 
 const FORMAT_LABELS = {
@@ -57,7 +63,7 @@ export default function LeagueDetailPage() {
   if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
   if (!league) return null
 
-  const tabs = TABS[league.format] || ['Members']
+  const tabs = getLeagueTabs(league)
   const isCommissioner = league.commissioner_id === profile?.id
 
   return (
@@ -226,8 +232,12 @@ export default function LeagueDetailPage() {
         />
       )}
 
+      {tabs[activeTab] === 'Picks' && league.format === 'pickem' && league.use_league_picks && (
+        <PickemView league={league} standings={standings} mode="picks" />
+      )}
+
       {tabs[activeTab] === 'Standings' && league.format === 'pickem' && (
-        <PickemView league={league} standings={standings} />
+        <PickemView league={league} standings={standings} mode="standings" />
       )}
 
       {tabs[activeTab] === 'Board' && league.format === 'survivor' && (

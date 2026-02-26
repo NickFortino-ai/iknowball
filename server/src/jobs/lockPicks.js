@@ -79,6 +79,41 @@ export async function lockPicks() {
     }
   }
 
+  // Lock league picks for these games
+  let leaguePicksLocked = 0
+  for (const game of games) {
+    const { data: leaguePicks } = await supabase
+      .from('league_picks')
+      .select('id, picked_team')
+      .eq('game_id', game.id)
+      .eq('status', 'pending')
+
+    if (!leaguePicks?.length) continue
+
+    for (const pick of leaguePicks) {
+      const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
+      const risk = odds ? calculateRiskPoints(odds) : 0
+      const reward = odds ? calculateRewardPoints(odds) : 0
+
+      const { error } = await supabase
+        .from('league_picks')
+        .update({
+          status: 'locked',
+          odds_at_pick: odds,
+          risk_points: risk,
+          reward_points: reward,
+          updated_at: now,
+        })
+        .eq('id', pick.id)
+
+      if (error) {
+        logger.error({ error, pickId: pick.id }, 'Failed to lock league pick')
+      } else {
+        leaguePicksLocked++
+      }
+    }
+  }
+
   // Lock published player props and their pending picks for these games
   let propsLocked = 0
   let propPicksLocked = 0
@@ -175,7 +210,7 @@ export async function lockPicks() {
     }
   }
 
-  if (locked > 0 || survivorLocked > 0 || propsLocked > 0 || propPicksLocked > 0 || parlayLegsLocked > 0) {
-    logger.info({ locked, survivorLocked, propsLocked, propPicksLocked, parlayLegsLocked, games: gameIds.length }, 'Picks locked')
+  if (locked > 0 || survivorLocked > 0 || leaguePicksLocked > 0 || propsLocked > 0 || propPicksLocked > 0 || parlayLegsLocked > 0) {
+    logger.info({ locked, survivorLocked, leaguePicksLocked, propsLocked, propPicksLocked, parlayLegsLocked, games: gameIds.length }, 'Picks locked')
   }
 }

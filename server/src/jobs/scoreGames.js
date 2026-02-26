@@ -3,6 +3,7 @@ import { fetchScores } from '../services/oddsService.js'
 import { logger } from '../utils/logger.js'
 import { scoreCompletedGame, scoreParlayLegs } from '../services/scoringService.js'
 import { scoreSurvivorPicks } from '../services/survivorService.js'
+import { scoreLeaguePicks } from '../services/leaguePickService.js'
 import { scoreBracketMatchups } from '../services/bracketService.js'
 
 async function scoreSport(sportKey) {
@@ -94,6 +95,7 @@ async function scoreSport(sportKey) {
       await scoreCompletedGame(game.id, winner, game.sport_id)
       await scoreParlayLegs(game.id, winner)
       await scoreSurvivorPicks(game.id, winner)
+      await scoreLeaguePicks(game.id, winner)
 
       if (winner) {
         try {

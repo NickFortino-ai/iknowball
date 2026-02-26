@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { getPickemStandings } from '../services/leagueService.js'
+import { getLeaguePickStandings } from '../services/leaguePickService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 
 const BRACKET_WINNER_BONUS = 10
@@ -98,6 +99,28 @@ function ordinal(n) {
   return s[(v - 20) % 10] || s[v] || s[0]
 }
 
+async function awardLeaguePickPoints(league) {
+  const standings = await getLeaguePickStandings(league.id)
+  if (!standings?.length) return
+
+  // Award each user their net points as a bonus_points entry
+  for (const entry of standings) {
+    if (entry.total_points === 0) continue
+
+    await awardUserPoints(entry.user_id, league, entry.total_points,
+      `Earned ${entry.total_points > 0 ? '+' : ''}${entry.total_points} pts in ${league.name}`, 'league_pickem_earned')
+  }
+
+  // Award winner bonus (member count points)
+  const winnerId = standings[0].user_id
+  const memberCount = await getLeagueMemberCount(league.id)
+
+  await awardUserPoints(winnerId, league, memberCount,
+    `Won ${memberCount}-person league +${memberCount} pts`, 'league_win')
+
+  logger.info({ winnerId, leagueId: league.id, bonus: memberCount, members: standings.length }, 'League pick points awarded')
+}
+
 export async function completeLeagues() {
   const now = new Date().toISOString()
 
@@ -120,9 +143,13 @@ export async function completeLeagues() {
   for (const league of leagues) {
     try {
       if (league.format === 'pickem') {
-        const standings = await getPickemStandings(league.id)
-        if (standings?.length > 0) {
-          await awardPickemWinner(league, standings[0].user_id)
+        if (league.use_league_picks) {
+          await awardLeaguePickPoints(league)
+        } else {
+          const standings = await getPickemStandings(league.id)
+          if (standings?.length > 0) {
+            await awardPickemWinner(league, standings[0].user_id)
+          }
         }
       } else if (league.format === 'bracket') {
         const standings = await getBracketStandings(league.id)

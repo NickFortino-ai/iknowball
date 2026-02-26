@@ -130,6 +130,53 @@ export function useSelectPickemGames() {
   })
 }
 
+// League Picks (new pick'em system)
+export function useLeaguePicks(leagueId, weekId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'pickem', 'picks', weekId],
+    queryFn: () => api.get(`/leagues/${leagueId}/pickem/picks${weekId ? `?week_id=${weekId}` : ''}`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useLeagueGames(leagueId, weekId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'pickem', 'games', weekId],
+    queryFn: () => api.get(`/leagues/${leagueId}/pickem/games?week_id=${weekId}`),
+    enabled: !!leagueId && !!weekId,
+  })
+}
+
+export function useSubmitLeaguePick() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ leagueId, weekId, gameId, pickedTeam }) =>
+      api.post(`/leagues/${leagueId}/pickem/picks`, {
+        week_id: weekId,
+        game_id: gameId,
+        picked_team: pickedTeam,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'pickem'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'standings'] })
+    },
+  })
+}
+
+export function useDeleteLeaguePick() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ leagueId, gameId }) =>
+      api.delete(`/leagues/${leagueId}/pickem/picks/${gameId}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'pickem'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'standings'] })
+    },
+  })
+}
+
 // Survivor
 export function useSurvivorBoard(leagueId) {
   return useQuery({

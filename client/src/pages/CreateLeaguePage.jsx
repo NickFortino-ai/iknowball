@@ -70,6 +70,7 @@ export default function CreateLeaguePage() {
     if (format === 'pickem') {
       if (gamesPerWeek) settings.games_per_week = parseInt(gamesPerWeek, 10)
       if (lockOddsAt !== 'game_start') settings.lock_odds_at = lockOddsAt
+      settings.pick_frequency = pickFrequency
     }
     if (format === 'survivor') {
       settings.lives = lives
@@ -238,9 +239,34 @@ export default function CreateLeaguePage() {
         {format === 'pickem' && (
           <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
             <h3 className="font-display text-sm text-text-secondary mb-1">Pick'em Settings</h3>
+            {DAILY_ELIGIBLE_SPORTS.has(sport) && (
+              <div>
+                <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'weekly', label: 'Weekly' },
+                    { value: 'daily', label: 'Daily' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPickFrequency(opt.value)}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        pickFrequency === opt.value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {pickFrequency === 'daily' && (
+                  <div className="text-[10px] text-text-muted mt-1">Periods are days instead of weeks</div>
+                )}
+              </div>
+            )}
             <div>
               <label className="block text-xs text-text-muted mb-1">
-                Games per week <span className="text-text-muted">(leave empty for all games)</span>
+                Games per {pickFrequency === 'daily' ? 'day' : 'week'} <span className="text-text-muted">(leave empty for all games)</span>
               </label>
               <input
                 type="number"

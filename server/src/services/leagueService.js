@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
+import { getLeaguePickStandings } from './leaguePickService.js'
 import { connectLeagueMembers } from './connectionService.js'
 
 function generateInviteCode() {
@@ -67,6 +68,7 @@ export async function createLeague(userId, data) {
       max_members: data.max_members || null,
       commissioner_id: userId,
       settings: data.settings || {},
+      use_league_picks: data.format === 'pickem',
     })
     .select()
     .single()
@@ -706,11 +708,14 @@ export async function getLeagueStandings(leagueId, userId) {
 
   const { data: league } = await supabase
     .from('leagues')
-    .select('format')
+    .select('format, use_league_picks')
     .eq('id', leagueId)
     .single()
 
   if (league.format === 'pickem') {
+    if (league.use_league_picks) {
+      return getLeaguePickStandings(leagueId)
+    }
     return getPickemStandings(leagueId)
   }
 

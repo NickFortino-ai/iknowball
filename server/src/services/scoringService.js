@@ -348,10 +348,18 @@ export async function recalculateAllUserPoints() {
     .eq('status', 'settled')
     .not('points_earned', 'is', null)
 
+  const { data: bonusTotals } = await supabase
+    .from('bonus_points')
+    .select('user_id, points')
+    .not('points', 'is', null)
+
   // Aggregate per user
   const userPoints = {}
   for (const row of [...(pickTotals || []), ...(parlayTotals || []), ...(propTotals || []), ...(futuresTotals || [])]) {
     userPoints[row.user_id] = (userPoints[row.user_id] || 0) + row.points_earned
+  }
+  for (const row of (bonusTotals || [])) {
+    userPoints[row.user_id] = (userPoints[row.user_id] || 0) + row.points
   }
 
   // Get current stored totals
