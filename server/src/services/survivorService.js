@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createNotification } from './notificationService.js'
 
 export async function submitSurvivorPick(leagueId, userId, weekId, gameId, pickedTeam) {
   // Verify user is alive
@@ -187,7 +188,7 @@ export async function scoreSurvivorPicks(gameId, winner) {
   // Find all locked survivor picks for this game
   const { data: picks, error } = await supabase
     .from('survivor_picks')
-    .select('*, leagues(settings)')
+    .select('*, leagues(name, settings), league_weeks(week_number)')
     .eq('game_id', gameId)
     .eq('status', 'locked')
 
@@ -199,12 +200,21 @@ export async function scoreSurvivorPicks(gameId, winner) {
   if (!picks?.length) return
 
   for (const pick of picks) {
+    const isDaily = pick.leagues?.settings?.pick_frequency === 'daily'
+    const periodLabel = isDaily ? 'Day' : 'Week'
+    const periodNum = pick.league_weeks?.week_number || '?'
+    const leagueName = pick.leagues?.name || 'Survivor'
+
     if (winner === null) {
       // Push - treat as survived
       await supabase
         .from('survivor_picks')
         .update({ status: 'survived', updated_at: new Date().toISOString() })
         .eq('id', pick.id)
+
+      await createNotification(pick.user_id, 'survivor_result',
+        `You survived ${periodLabel} ${periodNum} in ${leagueName}!`,
+        { leagueId: pick.league_id })
       continue
     }
 
@@ -217,6 +227,12 @@ export async function scoreSurvivorPicks(gameId, winner) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', pick.id)
+
+    if (survived) {
+      await createNotification(pick.user_id, 'survivor_result',
+        `You survived ${periodLabel} ${periodNum} in ${leagueName}!`,
+        { leagueId: pick.league_id })
+    }
 
     if (!survived) {
       // Decrement lives
@@ -246,12 +262,20 @@ export async function scoreSurvivorPicks(gameId, winner) {
           })
           .eq('league_id', pick.league_id)
           .eq('user_id', pick.user_id)
+
+        await createNotification(pick.user_id, 'survivor_result',
+          `You were eliminated in ${periodLabel} ${periodNum} of ${leagueName}`,
+          { leagueId: pick.league_id })
       } else {
         await supabase
           .from('league_members')
           .update({ lives_remaining: newLives })
           .eq('league_id', pick.league_id)
           .eq('user_id', pick.user_id)
+
+        await createNotification(pick.user_id, 'survivor_result',
+          `You lost a life in ${periodLabel} ${periodNum} of ${leagueName} (${newLives} remaining)`,
+          { leagueId: pick.league_id })
       }
     }
   }

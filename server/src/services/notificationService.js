@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { sendPushNotification } from './pushService.js'
 
-const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'headlines', 'squares_quarter_win', 'record_broken']
+const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'headlines', 'squares_quarter_win', 'record_broken', 'survivor_result']
 
 export async function createNotification(userId, type, message, metadata = {}) {
   // Self-notification guard

@@ -61,6 +61,7 @@ function getNotificationRoute(notification) {
     case 'headlines':
       return '/headlines'
     case 'squares_quarter_win':
+    case 'survivor_result':
       return notification.metadata?.leagueId ? `/leagues/${notification.metadata.leagueId}` : null
     case 'record_broken':
       return '/records'
