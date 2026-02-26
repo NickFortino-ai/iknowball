@@ -15,13 +15,13 @@ function generateInviteCode() {
 
 function getWeekBounds(date) {
   const d = new Date(date)
-  const day = d.getDay()
+  const day = d.getUTCDay()
   const monday = new Date(d)
-  monday.setDate(d.getDate() - ((day + 6) % 7))
-  monday.setHours(0, 0, 0, 0)
+  monday.setUTCDate(d.getUTCDate() - ((day + 6) % 7))
+  monday.setUTCHours(0, 0, 0, 0)
   const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23, 59, 59, 999)
+  sunday.setUTCDate(monday.getUTCDate() + 6)
+  sunday.setUTCHours(23, 59, 59, 999)
   return { start: monday, end: sunday }
 }
 
@@ -61,11 +61,8 @@ export async function createLeague(userId, data) {
     endsAt.setMonth(endsAt.getMonth() + 3)
   }
 
-  // For custom ranges, align to start/end of day local time
-  if (data.duration === 'custom_range') {
-    startsAt.setHours(0, 0, 0, 0)
-    if (endsAt) endsAt.setHours(23, 59, 59, 999)
-  }
+  // For custom ranges, keep noon UTC (safe for all US timezones)
+  // No setHours — parseDate already gives noon which won't shift dates
 
   const { data: league, error } = await supabase
     .from('leagues')
@@ -129,12 +126,12 @@ export async function generateLeagueWeeks(league) {
   const end = new Date(league.ends_at)
 
   if (isDaily) {
-    // Daily mode: one entry per day
-    current.setHours(0, 0, 0, 0)
+    // Daily mode: one entry per day (use UTC to avoid server-timezone shifts)
+    current.setUTCHours(0, 0, 0, 0)
 
     while (current < end) {
       const dayEnd = new Date(current)
-      dayEnd.setHours(23, 59, 59, 999)
+      dayEnd.setUTCHours(23, 59, 59, 999)
 
       periods.push({
         league_id: league.id,
@@ -143,18 +140,18 @@ export async function generateLeagueWeeks(league) {
         ends_at: dayEnd.toISOString(),
       })
 
-      current.setDate(current.getDate() + 1)
+      current.setUTCDate(current.getUTCDate() + 1)
     }
   } else {
-    // Weekly mode: align to Monday-Sunday
-    const day = current.getDay()
-    current.setDate(current.getDate() - ((day + 6) % 7))
-    current.setHours(0, 0, 0, 0)
+    // Weekly mode: align to Monday-Sunday (UTC)
+    const day = current.getUTCDay()
+    current.setUTCDate(current.getUTCDate() - ((day + 6) % 7))
+    current.setUTCHours(0, 0, 0, 0)
 
     while (current < end) {
       const weekEnd = new Date(current)
-      weekEnd.setDate(current.getDate() + 6)
-      weekEnd.setHours(23, 59, 59, 999)
+      weekEnd.setUTCDate(current.getUTCDate() + 6)
+      weekEnd.setUTCHours(23, 59, 59, 999)
 
       periods.push({
         league_id: league.id,
@@ -163,7 +160,7 @@ export async function generateLeagueWeeks(league) {
         ends_at: weekEnd.toISOString(),
       })
 
-      current.setDate(current.getDate() + 7)
+      current.setUTCDate(current.getUTCDate() + 7)
     }
   }
 

@@ -153,7 +153,7 @@ function LeaguePicksView({ league, standings }) {
   function formatWeekLabel(week) {
     if (isDaily) {
       const d = new Date(week.starts_at)
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     }
     return `Wk ${week.week_number}`
   }

@@ -46,7 +46,7 @@ const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'ba
 function toDateInputValue(isoStr) {
   if (!isoStr) return ''
   const d = new Date(isoStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 
 const DURATION_OPTIONS = [
@@ -77,7 +77,7 @@ function LeagueSettingsEditor({ league, updateLeague }) {
     try {
       await updateLeague.mutateAsync({
         leagueId: league.id,
-        [field]: new Date(value + 'T00:00:00').toISOString(),
+        [field]: new Date(value + 'T12:00:00Z').toISOString(),
       })
       toast('Date saved', 'success')
     } catch (err) {
