@@ -86,9 +86,17 @@ export default function SurvivorView({ league }) {
       {currentWeek && (
         <button
           onClick={() => setShowPickForm(!showPickForm)}
-          className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors mb-4"
+          className={`w-full py-3 rounded-xl font-display transition-colors mb-4 ${
+            board.user_has_picked
+              ? 'bg-bg-card-hover text-text-secondary hover:bg-bg-card border border-border'
+              : 'bg-accent text-white hover:bg-accent-hover'
+          }`}
         >
-          {showPickForm ? 'Hide Pick Form' : `Make ${periodLabel} ${currentWeek.week_number} Pick`}
+          {showPickForm
+            ? 'Hide Pick Form'
+            : board.user_has_picked
+              ? `Edit ${periodLabel} ${currentWeek.week_number} Pick`
+              : `Make ${periodLabel} ${currentWeek.week_number} Pick`}
         </button>
       )}
 
