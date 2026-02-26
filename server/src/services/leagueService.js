@@ -39,20 +39,32 @@ export async function createLeague(userId, data) {
   }
 
   // Calculate date range based on duration
-  let startsAt = data.starts_at ? new Date(data.starts_at) : new Date()
-  let endsAt = data.ends_at ? new Date(data.ends_at) : null
+  // Append T12:00:00 to date-only strings to avoid UTC midnight → previous day shift
+  function parseDate(str) {
+    if (!str) return null
+    if (str.length === 10) return new Date(str + 'T12:00:00') // date-only: YYYY-MM-DD
+    return new Date(str)
+  }
+
+  let startsAt = data.starts_at ? parseDate(data.starts_at) : new Date()
+  let endsAt = data.ends_at ? parseDate(data.ends_at) : null
 
   if (data.duration === 'this_week') {
     const bounds = getWeekBounds(new Date())
     startsAt = bounds.start
     endsAt = bounds.end
   } else if (data.duration === 'full_season') {
-    // Set a far-future end date; will be refined later
     endsAt = new Date(startsAt)
     endsAt.setMonth(endsAt.getMonth() + 6)
   } else if (data.duration === 'playoffs_only') {
     endsAt = new Date(startsAt)
     endsAt.setMonth(endsAt.getMonth() + 3)
+  }
+
+  // For custom ranges, align to start/end of day local time
+  if (data.duration === 'custom_range') {
+    startsAt.setHours(0, 0, 0, 0)
+    if (endsAt) endsAt.setHours(23, 59, 59, 999)
   }
 
   const { data: league, error } = await supabase
