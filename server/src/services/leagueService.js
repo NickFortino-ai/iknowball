@@ -674,12 +674,6 @@ export async function deleteLeague(leagueId, userId) {
     throw err
   }
 
-  if (league.format !== 'squares') {
-    const err = new Error('Only squares contests can be deleted')
-    err.status = 400
-    throw err
-  }
-
   const { error } = await supabase
     .from('leagues')
     .delete()

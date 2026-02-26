@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague } from '../hooks/useLeagues'
+import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -45,6 +45,7 @@ export default function LeagueDetailPage() {
   const { id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const { data: league, isLoading } = useLeague(id)
   const { data: standings } = useLeagueStandings(id)
   const [activeTab, setActiveTab] = useState(0)
@@ -53,6 +54,7 @@ export default function LeagueDetailPage() {
   const [noteText, setNoteText] = useState('')
   const noteRef = useRef(null)
   const updateLeague = useUpdateLeague()
+  const deleteLeague = useDeleteLeague()
 
   useEffect(() => {
     if (editingNote && noteRef.current) {
@@ -250,6 +252,28 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Bracket' && league.format === 'bracket' && (
         <BracketView league={league} />
+      )}
+
+      {/* Delete League */}
+      {isCommissioner && (
+        <div className="mt-12 pt-6 border-t border-border">
+          <button
+            onClick={async () => {
+              if (!window.confirm('Are you sure? All data will be erased.')) return
+              try {
+                await deleteLeague.mutateAsync(league.id)
+                toast('League deleted', 'success')
+                navigate('/leagues')
+              } catch (err) {
+                toast(err.message || 'Failed to delete league', 'error')
+              }
+            }}
+            disabled={deleteLeague.isPending}
+            className="text-xs text-text-muted hover:text-incorrect transition-colors disabled:opacity-50"
+          >
+            {deleteLeague.isPending ? 'Deleting...' : 'Delete League'}
+          </button>
+        </div>
       )}
     </div>
   )
