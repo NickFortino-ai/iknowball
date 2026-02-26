@@ -41,6 +41,161 @@ const SPORT_LABELS = {
   all: 'All Sports',
 }
 
+const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'baseball_mlb', 'all'])
+
+function LeagueSettingsEditor({ league, updateLeague }) {
+  const settings = league.settings || {}
+  const isDaily = league.settings?.pick_frequency === 'daily'
+
+  async function save(newSettings) {
+    try {
+      await updateLeague.mutateAsync({
+        leagueId: league.id,
+        settings: { ...settings, ...newSettings },
+      })
+      toast('Settings saved', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to save settings', 'error')
+    }
+  }
+
+  return (
+    <div className="bg-bg-card rounded-xl border border-border p-4 mb-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-display text-sm text-text-secondary">League Settings</h3>
+        <span className="text-[10px] text-text-muted">Editable until first game starts</span>
+      </div>
+
+      {league.format === 'pickem' && (
+        <>
+          {DAILY_ELIGIBLE_SPORTS.has(league.sport) && (
+            <div>
+              <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'weekly', label: 'Weekly' },
+                  { value: 'daily', label: 'Daily' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => save({ pick_frequency: opt.value })}
+                    disabled={updateLeague.isPending}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      (settings.pick_frequency || 'weekly') === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <label className="block text-xs text-text-muted mb-1">
+              Games per {isDaily ? 'day' : 'week'} <span className="text-text-muted">(empty = all)</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                defaultValue={settings.games_per_week || ''}
+                placeholder="All games"
+                min={1}
+                className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                onBlur={(e) => {
+                  const val = e.target.value ? parseInt(e.target.value, 10) : null
+                  if (val !== (settings.games_per_week || null)) {
+                    save({ games_per_week: val })
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-2">Lock Odds</label>
+            <div className="flex gap-2">
+              {[
+                { value: 'game_start', label: 'At Game Start' },
+                { value: 'submission', label: 'At Submission' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => save({ lock_odds_at: opt.value })}
+                  disabled={updateLeague.isPending}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    (settings.lock_odds_at || 'game_start') === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {league.format === 'survivor' && (
+        <>
+          <div>
+            <label className="block text-xs text-text-muted mb-2">Lives</label>
+            <div className="flex gap-2">
+              {[1, 2].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => save({ lives: n })}
+                  disabled={updateLeague.isPending}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    (settings.lives || 1) === n ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                  }`}
+                >
+                  {n} {n === 1 ? 'Life' : 'Lives'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {DAILY_ELIGIBLE_SPORTS.has(league.sport) && (
+            <div>
+              <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'weekly', label: 'Weekly' },
+                  { value: 'daily', label: 'Daily' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => save({ pick_frequency: opt.value })}
+                    disabled={updateLeague.isPending}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      (settings.pick_frequency || 'weekly') === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-text-muted">
+              If all eliminated in same {isDaily ? 'day' : 'week'}, all survive
+            </label>
+            <button
+              onClick={() => save({ all_eliminated_survive: !settings.all_eliminated_survive })}
+              disabled={updateLeague.isPending}
+              className={`w-10 h-6 rounded-full transition-colors ${
+                settings.all_eliminated_survive ? 'bg-accent' : 'bg-bg-primary'
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform mx-1 ${
+                settings.all_eliminated_survive ? 'translate-x-4' : ''
+              }`} />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function LeagueDetailPage() {
   const { id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -206,6 +361,11 @@ export default function LeagueDetailPage() {
           </button>
         </div>
       ) : null}
+
+      {/* Settings (commissioner only, before first game starts) */}
+      {isCommissioner && league.settings_editable && (
+        <LeagueSettingsEditor league={league} updateLeague={updateLeague} />
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">

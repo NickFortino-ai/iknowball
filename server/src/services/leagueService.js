@@ -318,18 +318,50 @@ export async function getLeagueDetails(leagueId, userId) {
     .gte('ends_at', now)
     .single()
 
+  // Check if settings are still editable (commissioner only, pick'em/survivor)
+  let settingsEditable = false
+  if (member.role === 'commissioner' && (league.format === 'pickem' || league.format === 'survivor')) {
+    if (league.status === 'open') {
+      settingsEditable = true
+    } else {
+      const hasLocked = await checkLeagueHasLockedPicks(leagueId, league)
+      settingsEditable = !hasLocked
+    }
+  }
+
   return {
     ...league,
     my_role: member.role,
     members: members || [],
     current_week: currentWeek || null,
+    settings_editable: settingsEditable,
   }
+}
+
+async function checkLeagueHasLockedPicks(leagueId, league) {
+  if (league.format === 'survivor') {
+    const { count } = await supabase
+      .from('survivor_picks')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', leagueId)
+      .in('status', ['locked', 'survived', 'eliminated'])
+    return count > 0
+  }
+  if (league.format === 'pickem' && league.use_league_picks) {
+    const { count } = await supabase
+      .from('league_picks')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', leagueId)
+      .in('status', ['locked', 'settled'])
+    return count > 0
+  }
+  return true // other formats: treat as locked
 }
 
 export async function updateLeague(leagueId, userId, data) {
   const { data: league } = await supabase
     .from('leagues')
-    .select('commissioner_id, status')
+    .select('commissioner_id, status, format, use_league_picks')
     .eq('id', leagueId)
     .single()
 
@@ -347,11 +379,22 @@ export async function updateLeague(leagueId, userId, data) {
 
   // commissioner_note can be updated regardless of league status
   const noteOnly = Object.keys(data).every((k) => k === 'commissioner_note')
+  const settingsOnly = Object.keys(data).every((k) => k === 'settings' || k === 'commissioner_note')
 
   if (!noteOnly && league.status !== 'open') {
-    const err = new Error('Cannot update a league that has already started')
-    err.status = 400
-    throw err
+    // For pick'em and survivor, allow settings edits until the first pick locks
+    if (settingsOnly && (league.format === 'pickem' || league.format === 'survivor')) {
+      const hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)
+      if (hasLockedPicks) {
+        const err = new Error('Cannot update settings — a picked game has already started')
+        err.status = 400
+        throw err
+      }
+    } else {
+      const err = new Error('Cannot update a league that has already started')
+      err.status = 400
+      throw err
+    }
   }
 
   const updates = { updated_at: new Date().toISOString() }
