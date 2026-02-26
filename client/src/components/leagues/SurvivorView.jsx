@@ -173,15 +173,18 @@ export default function SurvivorView({ league }) {
             {/* Pick history */}
             {m.picks?.length > 0 && (
               <div className="flex gap-1 flex-wrap">
-                {m.picks.map((p) => (
-                  <span
-                    key={p.id}
-                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${STATUS_STYLES[p.status] || 'bg-bg-primary text-text-muted'}`}
-                    title={`${periodLabel} ${p.league_weeks?.week_number}: ${p.team_name}`}
-                  >
-                    {p.team_name?.split(' ').pop()}
-                  </span>
-                ))}
+                {m.picks.map((p) => {
+                  const isLocked = p.team_name === 'Locked'
+                  return (
+                    <span
+                      key={p.id}
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isLocked ? 'bg-white/5 text-text-muted italic' : STATUS_STYLES[p.status] || 'bg-bg-primary text-text-muted'}`}
+                      title={isLocked ? `${periodLabel} ${p.league_weeks?.week_number}: Hidden` : `${periodLabel} ${p.league_weeks?.week_number}: ${p.team_name}`}
+                    >
+                      {isLocked ? '???' : p.team_name?.split(' ').pop()}
+                    </span>
+                  )
+                })}
               </div>
             )}
           </div>

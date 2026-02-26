@@ -120,7 +120,7 @@ export async function deleteSurvivorPick(leagueId, userId, weekId) {
   if (error) throw error
 }
 
-export async function getSurvivorBoard(leagueId) {
+export async function getSurvivorBoard(leagueId, requestingUserId) {
   const { data: members } = await supabase
     .from('league_members')
     .select('*, users(id, username, display_name, avatar_emoji)')
@@ -139,11 +139,26 @@ export async function getSurvivorBoard(leagueId) {
     .eq('league_id', leagueId)
     .order('week_number', { ascending: true })
 
-  // Group picks by user
+  // Find current week
+  const now = new Date().toISOString()
+  const currentWeek = (weeks || []).find((w) => w.starts_at <= now && w.ends_at >= now)
+  const currentWeekId = currentWeek?.id
+
+  // Check if requesting user has made their pick for the current week
+  const userHasPicked = currentWeekId && (picks || []).some(
+    (p) => p.user_id === requestingUserId && p.league_week_id === currentWeekId
+  )
+
+  // Group picks by user, hiding current-week picks from others if user hasn't picked
   const picksByUser = {}
   for (const pick of picks || []) {
     if (!picksByUser[pick.user_id]) picksByUser[pick.user_id] = []
-    picksByUser[pick.user_id].push(pick)
+    // Redact other users' current-week picks until requesting user has picked
+    if (!userHasPicked && currentWeekId && pick.league_week_id === currentWeekId && pick.user_id !== requestingUserId) {
+      picksByUser[pick.user_id].push({ ...pick, team_name: 'Locked', game_id: null })
+    } else {
+      picksByUser[pick.user_id].push(pick)
+    }
   }
 
   return {
@@ -152,6 +167,7 @@ export async function getSurvivorBoard(leagueId) {
       picks: picksByUser[m.user_id] || [],
     })),
     weeks: weeks || [],
+    user_has_picked: !!userHasPicked,
   }
 }
 

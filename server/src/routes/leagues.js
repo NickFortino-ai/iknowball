@@ -311,7 +311,7 @@ router.delete('/:id/survivor/picks/:weekId', requireAuth, async (req, res) => {
 })
 
 router.get('/:id/survivor/board', requireAuth, async (req, res) => {
-  const board = await getSurvivorBoard(req.params.id)
+  const board = await getSurvivorBoard(req.params.id, req.user.id)
   res.json(board)
 })
 
