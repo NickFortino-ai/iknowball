@@ -197,22 +197,14 @@ function LeaguePicksView({ league, standings }) {
       ) : (
         <div className="space-y-3">
           {games.map((game) => (
-            <div key={game.id} className="relative">
-              <GameCard
-                game={game}
-                userPick={picksByGame[game.id]}
-                onPick={handlePick}
-                onUndoPick={handleUndoPick}
-                isSubmitting={submitPick.isPending || deletePick.isPending}
-              />
-              {picksByGame[game.id] && (
-                <div className="absolute top-2 right-2">
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-accent/10 text-accent">
-                    League Pick
-                  </span>
-                </div>
-              )}
-            </div>
+            <GameCard
+              key={game.id}
+              game={game}
+              userPick={picksByGame[game.id]}
+              onPick={handlePick}
+              onUndoPick={handleUndoPick}
+              isSubmitting={submitPick.isPending || deletePick.isPending}
+            />
           ))}
         </div>
       )}
