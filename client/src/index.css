@@ -48,6 +48,10 @@
   }
 }
 
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
