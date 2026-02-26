@@ -4,6 +4,7 @@ import { useGames } from '../../hooks/useGames'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
+import { formatOdds } from '../../lib/scoring'
 
 const STATUS_STYLES = {
   survived: 'bg-correct/20 text-correct',
@@ -95,7 +96,7 @@ export default function SurvivorView({ league }) {
       {showPickForm && games?.length > 0 && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
           <h3 className="font-display text-sm text-text-secondary mb-3">Pick a Team</h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto">
+          <div className="space-y-2">
             {games.map((game) => {
               const homeUsed = usedTeamSet.has(game.home_team)
               const awayUsed = usedTeamSet.has(game.away_team)
@@ -112,6 +113,9 @@ export default function SurvivorView({ league }) {
                     }`}
                   >
                     {game.away_team}
+                    {game.away_odds != null && (
+                      <span className="ml-1.5 text-xs font-normal text-text-muted">{formatOdds(game.away_odds)}</span>
+                    )}
                   </button>
                   <span className="text-xs text-text-muted">@</span>
                   <button
@@ -124,6 +128,9 @@ export default function SurvivorView({ league }) {
                     }`}
                   >
                     {game.home_team}
+                    {game.home_odds != null && (
+                      <span className="ml-1.5 text-xs font-normal text-text-muted">{formatOdds(game.home_odds)}</span>
+                    )}
                   </button>
                 </div>
               )
