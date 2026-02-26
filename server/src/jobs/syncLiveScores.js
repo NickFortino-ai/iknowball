@@ -60,9 +60,13 @@ async function syncSportLiveScores(sportKey) {
   if (!espnEvents.length) return 0
 
   let updated = 0
+  const unmatched = []
   for (const game of games) {
     const match = espnEvents.find((e) => matchESPNToGame(e, game))
-    if (!match) continue
+    if (!match) {
+      unmatched.push({ id: game.id, home: game.home_team, away: game.away_team })
+      continue
+    }
 
     if (match.state === 'in') {
       const { error } = await supabase
@@ -83,6 +87,11 @@ async function syncSportLiveScores(sportKey) {
       }
       updated++
     }
+  }
+
+  if (unmatched.length) {
+    const espnTeams = espnEvents.map((e) => `${e.awayTeam} @ ${e.homeTeam}`)
+    logger.info({ sportKey, unmatched, espnTeams }, 'Unmatched games — no ESPN match found')
   }
 
   return updated
