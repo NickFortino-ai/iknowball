@@ -126,12 +126,15 @@ export async function generateLeagueWeeks(league) {
   const end = new Date(league.ends_at)
 
   if (isDaily) {
-    // Daily mode: one entry per day (use UTC to avoid server-timezone shifts)
-    current.setUTCHours(0, 0, 0, 0)
+    // Daily mode: one entry per day
+    // Use 10:00 UTC to 09:59 UTC boundaries (6 AM ET to 5:59 AM ET)
+    // so US evening games land on the correct calendar date
+    current.setUTCHours(10, 0, 0, 0)
 
     while (current < end) {
       const dayEnd = new Date(current)
-      dayEnd.setUTCHours(23, 59, 59, 999)
+      dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
+      dayEnd.setUTCHours(9, 59, 59, 999)
 
       periods.push({
         league_id: league.id,
@@ -143,15 +146,15 @@ export async function generateLeagueWeeks(league) {
       current.setUTCDate(current.getUTCDate() + 1)
     }
   } else {
-    // Weekly mode: align to Monday-Sunday (UTC)
+    // Weekly mode: Monday 10:00 UTC to next Monday 09:59 UTC
     const day = current.getUTCDay()
     current.setUTCDate(current.getUTCDate() - ((day + 6) % 7))
-    current.setUTCHours(0, 0, 0, 0)
+    current.setUTCHours(10, 0, 0, 0)
 
     while (current < end) {
       const weekEnd = new Date(current)
-      weekEnd.setUTCDate(current.getUTCDate() + 6)
-      weekEnd.setUTCHours(23, 59, 59, 999)
+      weekEnd.setUTCDate(current.getUTCDate() + 7)
+      weekEnd.setUTCHours(9, 59, 59, 999)
 
       periods.push({
         league_id: league.id,
