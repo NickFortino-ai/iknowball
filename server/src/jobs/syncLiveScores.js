@@ -64,7 +64,10 @@ async function syncSportLiveScores(sportKey) {
   for (const game of games) {
     const match = espnEvents.find((e) => matchESPNToGame(e, game))
     if (!match) {
-      unmatched.push({ id: game.id, home: game.home_team, away: game.away_team })
+      // Only flag games already marked live — upcoming games won't be on ESPN yet
+      if (game.status === 'live') {
+        unmatched.push({ id: game.id, home: game.home_team, away: game.away_team })
+      }
       continue
     }
 
