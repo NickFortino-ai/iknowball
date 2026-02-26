@@ -18,18 +18,20 @@ const faqs = [
 \u2022 Heavy favorites beyond -1000: The risk increases. A -1500 favorite risks 15 points, a -2000 risks 20. This prevents people from gaming the system with extreme chalk.
 \u2022 Wrong picks: You lose your risk amount (usually 10 points).
 
+League scoring: Pick\u2019em leagues use the same odds-based scoring system, but your picks are made within the league and tracked separately on the league standings. While a league is active, league picks do not affect your global score. When the league ends, your total league points are applied to your global score as a bonus. The league winner also earns an additional bonus. This means leagues are a way to earn extra points on top of your regular picks.
+
 The system is designed so that over time, your score reflects how well you actually know sports \u2014 not how often you pick safe favorites.`,
   },
   {
     q: 'What are leagues?',
-    a: `Leagues let you compete with friends, coworkers, or anyone else. A league commissioner creates the league and invites members. League formats include:
+    a: `Leagues let you compete with friends, coworkers, or anyone else. A league commissioner creates the league, sets the rules, and invites members. League formats include:
 
-\u2022 Pick\u2019em: Everyone picks games each week. Most points at the end wins.
-\u2022 Survivor: Pick one team to win each week. If your team loses, you\u2019re eliminated. You can only pick each team once all season. Last one standing wins.
-\u2022 Brackets: Tournament-style bracket competitions.
-\u2022 Super Bowl Squares: Classic grid game for the big game. Random numbers assigned, winners based on score at the end of each quarter.
+\u2022 Pick\u2019em: Pick games within the league each day or week. The commissioner can set how many picks per period or leave it open. Your league picks are scored using the same odds-based system as regular picks but tracked on a separate league standings board.
+\u2022 Survivor: Pick one team to win each period. If your team loses, you lose a life. Use all your lives and you\u2019re eliminated. You can only pick each team once. Last one standing wins.
+\u2022 Brackets: Tournament-style bracket competitions where you fill out a bracket and earn points for each correct pick.
+\u2022 Squares: Classic grid game for a specific matchup. Random numbers assigned, winners based on score at the end of each quarter.
 
-League winners earn bonus points that count toward their global score.`,
+League picks don\u2019t affect your global score while the league is running \u2014 they\u2019re contained within the league. When the league ends, your total league points are added to your global score as a bonus, and the winner earns an extra bonus on top. So leagues are a way to compete head-to-head with friends while also boosting your overall standing.`,
   },
   {
     q: 'How do I invite friends?',
