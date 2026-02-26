@@ -58,7 +58,6 @@ export default function CreateLeaguePage() {
   const [lives, setLives] = useState(1)
   const [pickFrequency, setPickFrequency] = useState('weekly')
   const [allEliminatedSurvive, setAllEliminatedSurvive] = useState(true)
-  const [winnerBonus, setWinnerBonus] = useState(100)
   const [assignmentMethod, setAssignmentMethod] = useState('self_select')
   const [pointsPerQuarter, setPointsPerQuarter] = useState([25, 25, 25, 50])
   const [rowTeamName, setRowTeamName] = useState('')
@@ -76,7 +75,6 @@ export default function CreateLeaguePage() {
       settings.lives = lives
       settings.pick_frequency = pickFrequency
       settings.all_eliminated_survive = allEliminatedSurvive
-      settings.winner_bonus = winnerBonus
     }
     if (format === 'squares') {
       settings.game_id = gameId
@@ -341,16 +339,6 @@ export default function CreateLeaguePage() {
                   allEliminatedSurvive ? 'translate-x-4' : ''
                 }`} />
               </button>
-            </div>
-            <div>
-              <label className="block text-xs text-text-muted mb-1">Winner bonus points</label>
-              <input
-                type="number"
-                value={winnerBonus}
-                onChange={(e) => setWinnerBonus(parseInt(e.target.value, 10) || 0)}
-                min={0}
-                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
-              />
             </div>
           </div>
         )}
