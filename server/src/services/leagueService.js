@@ -379,7 +379,7 @@ export async function updateLeague(leagueId, userId, data) {
 
   // commissioner_note can be updated regardless of league status
   const noteOnly = Object.keys(data).every((k) => k === 'commissioner_note')
-  const settingsOnly = Object.keys(data).every((k) => k === 'settings' || k === 'commissioner_note')
+  const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at'].includes(k))
 
   if (!noteOnly && league.status !== 'open') {
     // For pick'em and survivor, allow settings edits until the first pick locks

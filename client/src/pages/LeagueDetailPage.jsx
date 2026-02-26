@@ -43,6 +43,12 @@ const SPORT_LABELS = {
 
 const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'baseball_mlb', 'all'])
 
+function toDateInputValue(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function LeagueSettingsEditor({ league, updateLeague }) {
   const settings = league.settings || {}
   const isDaily = league.settings?.pick_frequency === 'daily'
@@ -59,11 +65,46 @@ function LeagueSettingsEditor({ league, updateLeague }) {
     }
   }
 
+  async function saveDate(field, value) {
+    if (!value) return
+    try {
+      await updateLeague.mutateAsync({
+        leagueId: league.id,
+        [field]: new Date(value + 'T00:00:00').toISOString(),
+      })
+      toast('Date saved', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to save date', 'error')
+    }
+  }
+
   return (
     <div className="bg-bg-card rounded-xl border border-border p-4 mb-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-sm text-text-secondary">League Settings</h3>
         <span className="text-[10px] text-text-muted">Editable until first game starts</span>
+      </div>
+
+      {/* Date range */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-text-muted mb-1">Start Date</label>
+          <input
+            type="date"
+            defaultValue={toDateInputValue(league.starts_at)}
+            onBlur={(e) => saveDate('starts_at', e.target.value)}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-text-muted mb-1">End Date</label>
+          <input
+            type="date"
+            defaultValue={toDateInputValue(league.ends_at)}
+            onBlur={(e) => saveDate('ends_at', e.target.value)}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+          />
+        </div>
       </div>
 
       {league.format === 'pickem' && (
