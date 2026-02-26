@@ -31,7 +31,7 @@ router.get('/me/history', requireAuth, async (req, res) => {
 })
 
 router.get('/:parlayId', requireAuth, async (req, res) => {
-  const parlay = await getParlayById(req.user.id, req.params.parlayId)
+  const parlay = await getParlayById(req.params.parlayId)
   res.json(parlay)
 })
 

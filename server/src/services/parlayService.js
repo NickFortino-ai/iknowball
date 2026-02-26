@@ -116,12 +116,11 @@ export async function createParlay(userId, legs) {
   return { ...parlay, parlay_legs: insertedLegs }
 }
 
-export async function getParlayById(userId, parlayId) {
+export async function getParlayById(parlayId) {
   const { data, error } = await supabase
     .from('parlays')
     .select('*, parlay_legs(*, games(*, sports(key, name)))')
     .eq('id', parlayId)
-    .eq('user_id', userId)
     .single()
 
   if (error || !data) {
