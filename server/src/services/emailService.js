@@ -39,7 +39,7 @@ function getUnsubscribeUrl(userId) {
 
 function appendUnsubscribeFooter(html, userId) {
   const url = getUnsubscribeUrl(userId)
-  return `${html}<br/><hr style="border:none;border-top:1px solid #333;margin:24px 0 12px"/><p style="font-size:12px;color:#888;text-align:center"><a href="${url}" style="color:#888">Unsubscribe</a> from IKnowBall emails</p>`
+  return `${html}<br/><hr style="border:none;border-top:1px solid #333;margin:24px 0 12px"/><p style="font-size:12px;color:#888;text-align:center"><a href="${url}" style="color:#888">Unsubscribe</a> from I KNOW BALL emails</p>`
 }
 
 export async function getSubscribedUsers() {
@@ -90,7 +90,7 @@ export async function sendEmailBlast(subject, body) {
     try {
       const htmlWithFooter = appendUnsubscribeFooter(body, user.id)
       await transport.sendMail({
-        from: `"IKnowBall" <${env.SMTP_FROM}>`,
+        from: `"I KNOW BALL" <${env.SMTP_FROM}>`,
         to: user.email,
         subject,
         html: htmlWithFooter,
@@ -161,7 +161,7 @@ export async function sendTargetedEmail(subject, body, usernames) {
     try {
       const htmlWithFooter = appendUnsubscribeFooter(body, user.id)
       await transport.sendMail({
-        from: `"IKnowBall" <${env.SMTP_FROM}>`,
+        from: `"I KNOW BALL" <${env.SMTP_FROM}>`,
         to: email,
         subject,
         html: htmlWithFooter,
@@ -228,7 +228,7 @@ export async function sendEmailToUserIds(userIds, buildEmailFn) {
       const { subject, html } = buildEmailFn(userId)
       const htmlWithFooter = appendUnsubscribeFooter(html, userId)
       await transport.sendMail({
-        from: `"IKnowBall" <${env.SMTP_FROM}>`,
+        from: `"I KNOW BALL" <${env.SMTP_FROM}>`,
         to: email,
         subject,
         html: htmlWithFooter,
@@ -268,7 +268,7 @@ export async function sendLeagueInviteEmail(toEmail, leagueName, inviteCode) {
   `
 
   await transport.sendMail({
-    from: `"IKnowBall" <${env.SMTP_FROM}>`,
+    from: `"I KNOW BALL" <${env.SMTP_FROM}>`,
     to: toEmail,
     subject: `You've been invited to join ${leagueName} on I KNOW BALL`,
     html,

@@ -13,7 +13,7 @@ router.get('/unsubscribe', async (req, res) => {
   try {
     const userId = decodeToken(token)
     await unsubscribeUser(userId)
-    res.json({ message: 'You have been unsubscribed from IKnowBall emails.' })
+    res.json({ message: 'You have been unsubscribed from I KNOW BALL emails.' })
   } catch {
     res.status(400).json({ error: 'Invalid unsubscribe link' })
   }
