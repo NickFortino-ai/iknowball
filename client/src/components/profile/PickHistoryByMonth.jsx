@@ -30,12 +30,16 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
       return team
     }).join(', ')
     const anyLegLive = legs.some((l) => l.games?.status === 'live')
+    const earliestStart = legs.reduce((earliest, l) => {
+      const s = l.games?.starts_at
+      return s && (!earliest || s < earliest) ? s : earliest
+    }, null)
     items.push({
       id: parlay.id,
       type: 'parlay',
       label: `${parlay.leg_count}-Leg Parlay`,
       detail: legSummary,
-      date: parlay.updated_at,
+      date: earliestStart || parlay.updated_at,
       is_correct: parlay.is_correct,
       points_earned: parlay.points_earned,
       game_status: anyLegLive ? 'live' : undefined,
