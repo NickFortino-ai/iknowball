@@ -13,6 +13,7 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
       date: pick.games?.starts_at,
       is_correct: pick.is_correct,
       points_earned: pick.points_earned,
+      is_settled: pick.games?.status === 'settled',
       game_status: pick.games?.status,
       live_home_score: pick.games?.live_home_score,
       live_away_score: pick.games?.live_away_score,
@@ -42,6 +43,7 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
       date: earliestStart || parlay.updated_at,
       is_correct: parlay.is_correct,
       points_earned: parlay.points_earned,
+      is_settled: parlay.status === 'settled',
       game_status: anyLegLive ? 'live' : undefined,
     })
   }
@@ -55,6 +57,7 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
       date: pp.player_props?.games?.starts_at || pp.updated_at,
       is_correct: pp.is_correct,
       points_earned: pp.points_earned,
+      is_settled: pp.player_props?.games?.status === 'settled',
       game_status: pp.player_props?.games?.status,
     })
   }
@@ -119,11 +122,12 @@ function groupByType(items) {
   const now = new Date()
   const groups = {}
   for (const item of items) {
+    const unsettled = item.is_correct === null && !item.is_settled && item.type !== 'bonus' && item.type !== 'futures'
     // Unsettled picks/parlays/props whose game hasn't started yet — hide them
-    if (item.is_correct === null && item.type !== 'bonus' && item.type !== 'futures' && new Date(item.date) > now) {
+    if (unsettled && new Date(item.date) > now) {
       continue
     }
-    const key = item.is_correct === null && item.type !== 'bonus' && item.type !== 'futures' ? 'live' : item.type
+    const key = unsettled ? 'live' : item.type
     if (!groups[key]) groups[key] = []
     groups[key].push(item)
   }
@@ -148,8 +152,8 @@ function useTodayKey() {
 }
 
 function renderItemStatus(item) {
-  // Settled — show points
-  if (item.is_correct !== null) {
+  // Settled (won/lost) or push — show points
+  if (item.is_correct !== null || item.is_settled) {
     return (
       <div className={`font-semibold text-sm shrink-0 ml-3 ${
         item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
@@ -191,8 +195,8 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
       const d = new Date(item.date)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       if (key === todayKey) {
-        // Skip unlocked picks (game hasn't started yet, unsettled)
-        if (item.is_correct === null && item.type !== 'bonus' && item.type !== 'futures' && d > now) {
+        // Skip unlocked picks (game hasn't started yet, unsettled, not a push)
+        if (item.is_correct === null && !item.is_settled && item.type !== 'bonus' && item.type !== 'futures' && d > now) {
           continue
         }
         today.push(item)
