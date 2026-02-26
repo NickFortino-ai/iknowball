@@ -6,14 +6,14 @@ export default function AppShell({ children }) {
   const { isOnline } = useOnlineStatus()
 
   return (
-    <div className="min-h-screen bg-bg-primary text-text-primary font-body">
+    <div className="h-dvh flex flex-col bg-bg-primary text-text-primary font-body overflow-hidden">
       <Navbar />
       {!isOnline && (
-        <div className="bg-incorrect/20 text-incorrect text-center text-sm font-medium py-2 border-b border-incorrect">
+        <div className="bg-incorrect/20 text-incorrect text-center text-sm font-medium py-2 border-b border-incorrect flex-shrink-0">
           You're offline. Check your connection.
         </div>
       )}
-      <main className="pb-14 md:pb-0">{children}</main>
+      <main className="flex-1 overflow-y-auto overscroll-contain">{children}</main>
       <BottomTabBar />
     </div>
   )

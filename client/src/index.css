@@ -35,13 +35,16 @@
 }
 
 @layer base {
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
   body {
     font-family: var(--font-body);
     background-color: var(--color-bg-primary);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
