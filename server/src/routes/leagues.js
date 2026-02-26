@@ -130,6 +130,7 @@ const updateLeagueSchema = z.object({
   settings: z.record(z.any()).optional(),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
+  commissioner_note: z.string().max(1000).nullable().optional(),
 })
 
 router.patch('/:id', requireAuth, validate(updateLeagueSchema), async (req, res) => {

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -43,6 +43,16 @@ export default function LeagueDetailPage() {
   const { data: standings } = useLeagueStandings(id)
   const [activeTab, setActiveTab] = useState(0)
   const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
+  const [editingNote, setEditingNote] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const noteRef = useRef(null)
+  const updateLeague = useUpdateLeague()
+
+  useEffect(() => {
+    if (editingNote && noteRef.current) {
+      noteRef.current.focus()
+    }
+  }, [editingNote])
 
   if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
   if (!league) return null
@@ -119,6 +129,75 @@ export default function LeagueDetailPage() {
           }
         }} />
       )}
+
+      {/* Commissioner's Note */}
+      {editingNote ? (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+          <div className="text-xs font-semibold text-text-muted mb-2">Commissioner's Note</div>
+          <textarea
+            ref={noteRef}
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            maxLength={1000}
+            rows={4}
+            className="w-full bg-bg-surface border border-border rounded-lg p-3 text-sm text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+            placeholder="Write a note for your league members..."
+          />
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-text-muted">{noteText.length}/1000</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditingNote(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await updateLeague.mutateAsync({
+                      leagueId: league.id,
+                      commissioner_note: noteText || null,
+                    })
+                    setEditingNote(false)
+                    toast('Note saved', 'success')
+                  } catch {
+                    toast('Failed to save note', 'error')
+                  }
+                }}
+                disabled={updateLeague.isPending}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                {updateLeague.isPending ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : league.commissioner_note ? (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-text-muted">Commissioner's Note</span>
+            {isCommissioner && (
+              <button
+                onClick={() => { setNoteText(league.commissioner_note); setEditingNote(true) }}
+                className="text-xs text-accent hover:text-accent-hover transition-colors"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-text-secondary whitespace-pre-wrap">{league.commissioner_note}</p>
+        </div>
+      ) : isCommissioner ? (
+        <div className="mb-6">
+          <button
+            onClick={() => { setNoteText(''); setEditingNote(true) }}
+            className="text-xs text-accent hover:text-accent-hover transition-colors"
+          >
+            + Add a note for your league members
+          </button>
+        </div>
+      ) : null}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">

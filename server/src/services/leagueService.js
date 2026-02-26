@@ -343,7 +343,10 @@ export async function updateLeague(leagueId, userId, data) {
     throw err
   }
 
-  if (league.status !== 'open') {
+  // commissioner_note can be updated regardless of league status
+  const noteOnly = Object.keys(data).every((k) => k === 'commissioner_note')
+
+  if (!noteOnly && league.status !== 'open') {
     const err = new Error('Cannot update a league that has already started')
     err.status = 400
     throw err
@@ -355,6 +358,7 @@ export async function updateLeague(leagueId, userId, data) {
   if (data.settings !== undefined) updates.settings = data.settings
   if (data.starts_at !== undefined) updates.starts_at = data.starts_at
   if (data.ends_at !== undefined) updates.ends_at = data.ends_at
+  if (data.commissioner_note !== undefined) updates.commissioner_note = data.commissioner_note
 
   const { data: updated, error } = await supabase
     .from('leagues')
