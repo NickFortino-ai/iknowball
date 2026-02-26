@@ -49,6 +49,13 @@ function toDateInputValue(isoStr) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+const DURATION_OPTIONS = [
+  { value: 'this_week', label: 'This Week' },
+  { value: 'custom_range', label: 'Custom Range' },
+  { value: 'full_season', label: 'Full Season' },
+  { value: 'playoffs_only', label: 'Playoffs Only' },
+]
+
 function LeagueSettingsEditor({ league, updateLeague }) {
   const settings = league.settings || {}
   const isDaily = league.settings?.pick_frequency === 'daily'
@@ -85,27 +92,59 @@ function LeagueSettingsEditor({ league, updateLeague }) {
         <span className="text-[10px] text-text-muted">Editable until first game starts</span>
       </div>
 
-      {/* Date range */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-text-muted mb-1">Start Date</label>
-          <input
-            type="date"
-            defaultValue={toDateInputValue(league.starts_at)}
-            onBlur={(e) => saveDate('starts_at', e.target.value)}
-            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-text-muted mb-1">End Date</label>
-          <input
-            type="date"
-            defaultValue={toDateInputValue(league.ends_at)}
-            onBlur={(e) => saveDate('ends_at', e.target.value)}
-            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
-          />
+      {/* Duration */}
+      <div>
+        <label className="block text-xs text-text-muted mb-2">Duration</label>
+        <div className="grid grid-cols-2 gap-2">
+          {DURATION_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={async () => {
+                try {
+                  await updateLeague.mutateAsync({
+                    leagueId: league.id,
+                    duration: opt.value,
+                    ...(opt.value !== 'custom_range' ? { starts_at: undefined, ends_at: undefined } : {}),
+                  })
+                  toast('Duration saved', 'success')
+                } catch (err) {
+                  toast(err.message || 'Failed to save', 'error')
+                }
+              }}
+              disabled={updateLeague.isPending}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                league.duration === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* Custom date range */}
+      {league.duration === 'custom_range' && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-text-muted mb-1">Start Date</label>
+            <input
+              type="date"
+              defaultValue={toDateInputValue(league.starts_at)}
+              onBlur={(e) => saveDate('starts_at', e.target.value)}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">End Date</label>
+            <input
+              type="date"
+              defaultValue={toDateInputValue(league.ends_at)}
+              onBlur={(e) => saveDate('ends_at', e.target.value)}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+            />
+          </div>
+        </div>
+      )}
 
       {league.format === 'pickem' && (
         <>

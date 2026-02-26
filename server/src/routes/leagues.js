@@ -134,6 +134,7 @@ const updateLeagueSchema = z.object({
   name: z.string().min(1).max(50).optional(),
   max_members: z.number().int().min(2).nullable().optional(),
   settings: z.record(z.any()).optional(),
+  duration: z.enum(['this_week', 'custom_range', 'full_season', 'playoffs_only']).optional(),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
   commissioner_note: z.string().max(1000).nullable().optional(),

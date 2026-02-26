@@ -379,7 +379,7 @@ export async function updateLeague(leagueId, userId, data) {
 
   // commissioner_note can be updated regardless of league status
   const noteOnly = Object.keys(data).every((k) => k === 'commissioner_note')
-  const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at'].includes(k))
+  const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at', 'duration'].includes(k))
 
   if (!noteOnly && league.status !== 'open') {
     // For pick'em and survivor, allow settings edits until the first pick locks
@@ -405,6 +405,31 @@ export async function updateLeague(leagueId, userId, data) {
   if (data.ends_at !== undefined) updates.ends_at = data.ends_at
   if (data.commissioner_note !== undefined) updates.commissioner_note = data.commissioner_note
 
+  // Handle duration change — recalculate date range
+  if (data.duration !== undefined) {
+    updates.duration = data.duration
+    let startsAt = new Date()
+    let endsAt = null
+
+    if (data.duration === 'this_week') {
+      const bounds = getWeekBounds(new Date())
+      startsAt = bounds.start
+      endsAt = bounds.end
+    } else if (data.duration === 'full_season') {
+      endsAt = new Date(startsAt)
+      endsAt.setMonth(endsAt.getMonth() + 6)
+    } else if (data.duration === 'playoffs_only') {
+      endsAt = new Date(startsAt)
+      endsAt.setMonth(endsAt.getMonth() + 3)
+    }
+    // custom_range: keep existing dates (user edits them separately)
+
+    if (data.duration !== 'custom_range') {
+      updates.starts_at = startsAt.toISOString()
+      updates.ends_at = endsAt?.toISOString() || null
+    }
+  }
+
   const { data: updated, error } = await supabase
     .from('leagues')
     .update(updates)
@@ -413,6 +438,14 @@ export async function updateLeague(leagueId, userId, data) {
     .single()
 
   if (error) throw error
+
+  // Regenerate league weeks if dates changed
+  if (updates.starts_at || updates.ends_at || data.duration) {
+    // Delete old weeks (only safe before any picks lock)
+    await supabase.from('league_weeks').delete().eq('league_id', leagueId)
+    await generateLeagueWeeks(updated)
+  }
+
   return updated
 }
 
