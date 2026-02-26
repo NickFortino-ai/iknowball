@@ -13,6 +13,13 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
       date: pick.games?.starts_at,
       is_correct: pick.is_correct,
       points_earned: pick.points_earned,
+      game_status: pick.games?.status,
+      live_home_score: pick.games?.live_home_score,
+      live_away_score: pick.games?.live_away_score,
+      home_score: pick.games?.home_score,
+      away_score: pick.games?.away_score,
+      period: pick.games?.period,
+      clock: pick.games?.clock,
     })
   }
 
@@ -22,6 +29,7 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
       const team = l.picked_team === 'home' ? l.games?.home_team : l.games?.away_team
       return team
     }).join(', ')
+    const anyLegLive = legs.some((l) => l.games?.status === 'live')
     items.push({
       id: parlay.id,
       type: 'parlay',
@@ -30,6 +38,7 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
       date: parlay.updated_at,
       is_correct: parlay.is_correct,
       points_earned: parlay.points_earned,
+      game_status: anyLegLive ? 'live' : undefined,
     })
   }
 
@@ -42,6 +51,7 @@ function normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses) {
       date: pp.player_props?.games?.starts_at || pp.updated_at,
       is_correct: pp.is_correct,
       points_earned: pp.points_earned,
+      game_status: pp.player_props?.games?.status,
     })
   }
 
@@ -133,10 +143,43 @@ function useTodayKey() {
   return key
 }
 
+function renderItemStatus(item) {
+  // Settled — show points
+  if (item.is_correct !== null) {
+    return (
+      <div className={`font-semibold text-sm shrink-0 ml-3 ${
+        item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
+      }`}>
+        {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
+      </div>
+    )
+  }
+  // Futures pending
+  if (item.type === 'futures') {
+    return <span className="text-xs font-medium text-text-muted bg-white/5 px-2 py-0.5 rounded ml-3">Pending</span>
+  }
+  // Live pick with scores
+  if (item.game_status === 'live' && item.type === 'pick' && (item.live_away_score != null || item.live_home_score != null)) {
+    return (
+      <div className="shrink-0 ml-3 text-right">
+        <div className="text-sm font-semibold text-accent">{item.live_away_score ?? 0}-{item.live_home_score ?? 0}</div>
+        <div className="text-[10px] font-bold text-accent uppercase">LIVE</div>
+      </div>
+    )
+  }
+  // Live parlay or prop (no single score)
+  if (item.game_status === 'live') {
+    return <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded ml-3">LIVE</span>
+  }
+  // Fallback for unsettled (shouldn't normally reach here)
+  return <div className="font-semibold text-sm shrink-0 ml-3 text-text-muted">—</div>
+}
+
 export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresPicks, bonuses, isLoading, allCollapsed, onItemTap }) {
   const todayKey = useTodayKey()
 
   const { todayItems, months } = useMemo(() => {
+    const now = new Date()
     const items = normalizeItems(picks, parlays, propPicks, futuresPicks, bonuses)
     const today = []
     const older = []
@@ -144,6 +187,10 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
       const d = new Date(item.date)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       if (key === todayKey) {
+        // Skip unlocked picks (game hasn't started yet, unsettled)
+        if (item.is_correct === null && item.type !== 'bonus' && item.type !== 'futures' && d > now) {
+          continue
+        }
         today.push(item)
       } else {
         older.push(item)
@@ -230,11 +277,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                           <div className="text-sm font-semibold truncate">{item.label}</div>
                           <div className="text-xs text-text-muted truncate">{item.detail}</div>
                         </div>
-                        <div className={`font-semibold text-sm shrink-0 ml-3 ${
-                          item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
-                        }`}>
-                          {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
-                        </div>
+                        {renderItemStatus(item)}
                       </div>
                     )
                   })}
@@ -314,15 +357,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                                       <div className="text-sm font-semibold truncate">{item.label}</div>
                                       <div className="text-xs text-text-muted truncate">{item.detail}</div>
                                     </div>
-                                    {item.type === 'futures' && item.is_correct === null ? (
-                                      <span className="text-xs font-medium text-text-muted bg-white/5 px-2 py-0.5 rounded ml-3">Pending</span>
-                                    ) : (
-                                      <div className={`font-semibold text-sm shrink-0 ml-3 ${
-                                        item.points_earned > 0 ? 'text-correct' : item.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
-                                      }`}>
-                                        {item.points_earned > 0 ? '+' : ''}{item.points_earned ?? 0}
-                                      </div>
-                                    )}
+                                    {renderItemStatus(item)}
                                   </div>
                                 </Fragment>
                               )
