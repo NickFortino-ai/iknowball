@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLatestRecap } from '../../hooks/useRecaps'
 import { useAuth } from '../../hooks/useAuth'
 import { useUpdateRecap } from '../../hooks/useAdmin'
@@ -60,20 +60,27 @@ export default function HeadlinesCard() {
   const [editContent, setEditContent] = useState('')
   const isAdmin = profile?.is_admin
 
-  const isPastTuesday = useMemo(() => {
-    if (!recap?.visible_after) return false
-    // visible_after is Monday 10 AM EST — collapse after Tuesday 11:59 PM local time
+  const [now, setNow] = useState(() => new Date())
+
+  const tuesdayCutoff = useMemo(() => {
+    if (!recap?.visible_after) return null
     const visibleDate = new Date(recap.visible_after)
-    const now = new Date()
-    // Find the Tuesday after visible_after
     const tuesday = new Date(visibleDate)
-    // visible_after is a Monday, so Tuesday is +1 day
     tuesday.setDate(tuesday.getDate() + 1)
-    // Set to 11:59 PM local time
     tuesday.setHours(23, 59, 0, 0)
-    return now > tuesday
+    return tuesday
   }, [recap?.visible_after])
 
+  // Schedule a re-render at the exact cutoff moment
+  useEffect(() => {
+    if (!tuesdayCutoff) return
+    const ms = tuesdayCutoff.getTime() - Date.now()
+    if (ms <= 0) return // already past
+    const timer = setTimeout(() => setNow(new Date()), ms + 500)
+    return () => clearTimeout(timer)
+  }, [tuesdayCutoff])
+
+  const isPastTuesday = tuesdayCutoff ? now > tuesdayCutoff : false
   const isExpanded = expanded !== null ? expanded : !isPastTuesday
 
   const { rankings, awards } = useMemo(
