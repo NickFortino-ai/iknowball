@@ -2,16 +2,16 @@ import { logger } from '../utils/logger.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
-// Map our sport keys to ESPN's {sport}/{league} path
+// Map our sport keys to ESPN's {sport}/{league} path + optional query params
 const SPORT_TO_ESPN = {
-  americanfootball_nfl: 'football/nfl',
-  americanfootball_ncaaf: 'football/college-football',
-  basketball_nba: 'basketball/nba',
-  basketball_ncaab: 'basketball/mens-college-basketball',
-  basketball_wnba: 'basketball/wnba',
-  baseball_mlb: 'baseball/mlb',
-  icehockey_nhl: 'hockey/nhl',
-  soccer_usa_mls: 'soccer/usa.1',
+  americanfootball_nfl: { path: 'football/nfl' },
+  americanfootball_ncaaf: { path: 'football/college-football', params: 'groups=80&limit=500' },
+  basketball_nba: { path: 'basketball/nba' },
+  basketball_ncaab: { path: 'basketball/mens-college-basketball', params: 'groups=50&limit=500' },
+  basketball_wnba: { path: 'basketball/wnba' },
+  baseball_mlb: { path: 'baseball/mlb' },
+  icehockey_nhl: { path: 'hockey/nhl' },
+  soccer_usa_mls: { path: 'soccer/usa.1' },
 }
 
 function normalizeTeamName(name) {
@@ -29,14 +29,16 @@ function teamsMatch(espnName, dbName) {
   const aLast = a.split(/\s+/).pop()
   const bLast = b.split(/\s+/).pop()
   if (aLast.length > 2 && aLast === bLast) return true
+  // Suffix match — e.g. "Lopes" vs "Antelopes", "Jacks" vs "Lumberjacks"
+  if (aLast.length > 2 && bLast.length > 2 && (aLast.endsWith(bLast) || bLast.endsWith(aLast))) return true
   return false
 }
 
 export async function fetchESPNScoreboard(sportKey) {
-  const espnPath = SPORT_TO_ESPN[sportKey]
-  if (!espnPath) return []
+  const sport = SPORT_TO_ESPN[sportKey]
+  if (!sport) return []
 
-  const url = `${ESPN_BASE}/${espnPath}/scoreboard`
+  const url = `${ESPN_BASE}/${sport.path}/scoreboard${sport.params ? `?${sport.params}` : ''}`
 
   let data
   try {
