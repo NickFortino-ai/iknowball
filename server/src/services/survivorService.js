@@ -162,6 +162,18 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     }
   }
 
+  // Compute display period number: skip leading empty periods with no picks
+  const weekIdsWithPicks = new Set((picks || []).map((p) => p.league_week_id))
+  const firstActiveIndex = (weeks || []).findIndex(
+    (w) => weekIdsWithPicks.has(w.id) || w.id === currentWeekId
+  )
+  const currentIndex = currentWeek
+    ? (weeks || []).findIndex((w) => w.id === currentWeek.id)
+    : -1
+  const displayPeriodNumber = firstActiveIndex >= 0 && currentIndex >= 0
+    ? currentIndex - firstActiveIndex + 1
+    : currentWeek?.week_number || null
+
   return {
     members: (members || []).map((m) => ({
       ...m,
@@ -169,6 +181,7 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     })),
     weeks: weeks || [],
     user_has_picked: !!userHasPicked,
+    display_period_number: displayPeriodNumber,
   }
 }
 

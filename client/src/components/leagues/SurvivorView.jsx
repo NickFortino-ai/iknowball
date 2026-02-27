@@ -76,7 +76,7 @@ export default function SurvivorView({ league }) {
         </div>
         <div className="bg-bg-card rounded-xl border border-border p-3 flex-1 text-center">
           <div className="font-display text-2xl text-text-primary">
-            {currentWeek?.week_number || '—'}
+            {board.display_period_number || currentWeek?.week_number || '—'}
           </div>
           <div className="text-xs text-text-muted">{periodLabel}</div>
         </div>
@@ -95,8 +95,8 @@ export default function SurvivorView({ league }) {
           {showPickForm
             ? 'Hide Pick Form'
             : board.user_has_picked
-              ? `Edit ${periodLabel} ${currentWeek.week_number} Pick`
-              : `Make ${periodLabel} ${currentWeek.week_number} Pick`}
+              ? `Edit ${periodLabel} ${board.display_period_number || currentWeek.week_number} Pick`
+              : `Make ${periodLabel} ${board.display_period_number || currentWeek.week_number} Pick`}
         </button>
       )}
 
