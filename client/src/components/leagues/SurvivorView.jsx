@@ -174,7 +174,7 @@ export default function SurvivorView({ league }) {
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                   m.is_alive ? 'bg-correct/20 text-correct' : 'bg-incorrect/20 text-incorrect'
                 }`}>
-                  {m.is_alive ? 'Alive' : `Out ${isDaily ? 'Dy' : 'Wk'} ${m.eliminated_week}`}
+                  {m.is_alive ? 'Alive' : `Out ${isDaily ? 'Day' : 'Wk'} ${m.eliminated_week}`}
                 </span>
               </div>
             </div>
