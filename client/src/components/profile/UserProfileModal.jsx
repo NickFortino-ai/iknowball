@@ -54,15 +54,16 @@ export default function UserProfileModal({ userId, onClose }) {
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 pb-20 md:pb-6 max-h-[95vh] md:max-h-[85vh] overflow-y-auto"
+        className="relative bg-bg-card border border-border w-full md:max-w-md rounded-t-2xl md:rounded-2xl max-h-[90vh] md:max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-xl leading-none"
+          className="sticky top-0 self-end shrink-0 z-10 text-text-muted hover:text-text-primary text-xl leading-none p-4"
         >
           &times;
         </button>
+        <div className="overflow-y-auto px-6 pb-20 md:pb-6 -mt-4">
 
         {isLoading ? (
           <LoadingSpinner />
@@ -251,6 +252,7 @@ export default function UserProfileModal({ userId, onClose }) {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
     <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />

@@ -25,7 +25,7 @@ export default function BottomBar({ picks, games }) {
   }
 
   return (
-    <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border px-4 py-3 z-40">
+    <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border px-4 py-3 z-40">
       <div className="max-w-2xl mx-auto flex items-center justify-between text-sm">
         <div className="flex items-center gap-4">
           <span className="text-text-primary font-semibold">{pickCount} pick{pickCount !== 1 ? 's' : ''}</span>
