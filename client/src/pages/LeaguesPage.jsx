@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useMyLeagues } from '../hooks/useLeagues'
 import LeagueCard from '../components/leagues/LeagueCard'
@@ -10,6 +10,15 @@ import ErrorState from '../components/ui/ErrorState'
 export default function LeaguesPage() {
   const { data: leagues, isLoading, isError, refetch } = useMyLeagues()
   const [showJoinModal, setShowJoinModal] = useState(false)
+  const [showCompleted, setShowCompleted] = useState(false)
+
+  const { active, completed } = useMemo(() => {
+    if (!leagues) return { active: [], completed: [] }
+    return {
+      active: leagues.filter((l) => l.status !== 'completed'),
+      completed: leagues.filter((l) => l.status === 'completed'),
+    }
+  }, [leagues])
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -41,11 +50,44 @@ export default function LeaguesPage() {
           message="Create a league or join one with an invite code"
         />
       ) : (
-        <div className="space-y-3">
-          {leagues.map((league) => (
-            <LeagueCard key={league.id} league={league} />
-          ))}
-        </div>
+        <>
+          {active.length > 0 ? (
+            <div className="space-y-3">
+              {active.map((league) => (
+                <LeagueCard key={league.id} league={league} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No active leagues"
+              message="Create a league or join one with an invite code"
+            />
+          )}
+
+          {completed.length > 0 && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="flex items-center gap-2 text-sm text-text-muted hover:text-text-secondary transition-colors mb-3"
+              >
+                <svg
+                  className={`w-4 h-4 transition-transform ${showCompleted ? 'rotate-90' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                Completed Leagues ({completed.length})
+              </button>
+              {showCompleted && (
+                <div className="space-y-3">
+                  {completed.map((league) => (
+                    <LeagueCard key={league.id} league={league} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {showJoinModal && <JoinLeagueModal onClose={() => setShowJoinModal(false)} />}
