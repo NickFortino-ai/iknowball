@@ -8,6 +8,7 @@ import { syncFutures } from './syncFutures.js'
 import { syncLiveScores } from './syncLiveScores.js'
 import { completeLeagues } from './completeLeagues.js'
 import { generateWeeklyRecap } from './generateRecap.js'
+import { snapshotCrowns } from './snapshotCrowns.js'
 import { snapshotRanks } from './snapshotRanks.js'
 import { recalculateRecords } from './recalculateRecords.js'
 
@@ -55,6 +56,12 @@ export function startScheduler() {
   }
 
   if (env.ENABLE_RECORD_CALC) {
+    // Snapshot crown holders daily at 3:50 AM EST
+    cron.schedule('50 3 * * *', async () => {
+      try { await snapshotCrowns() } catch (err) { logger.error({ err }, 'Crown snapshot job failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('Crown snapshot scheduled: daily at 3:50 AM EST')
+
     // Snapshot global ranks daily at 3:55 AM EST
     cron.schedule('55 3 * * *', async () => {
       try { await snapshotRanks() } catch (err) { logger.error({ err }, 'Rank snapshot job failed') }

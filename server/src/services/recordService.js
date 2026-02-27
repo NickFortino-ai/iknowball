@@ -459,6 +459,70 @@ async function calcGreatClimb() {
   }
 }
 
+async function calcLongestCrownTenure() {
+  const { data: snapshots, error } = await supabase
+    .from('crown_snapshots')
+    .select('scope, user_id, snapshot_date')
+    .order('scope', { ascending: true })
+    .order('snapshot_date', { ascending: true })
+
+  if (error || !snapshots?.length) return null
+
+  let bestUserId = null
+  let bestStreak = 0
+  let bestScope = null
+
+  let currentScope = null
+  let currentUserId = null
+  let currentStreak = 0
+  let lastDate = null
+
+  for (const snap of snapshots) {
+    if (snap.scope !== currentScope) {
+      // Check if previous run was the best
+      if (currentStreak > bestStreak) {
+        bestStreak = currentStreak
+        bestUserId = currentUserId
+        bestScope = currentScope
+      }
+      // Reset for new scope
+      currentScope = snap.scope
+      currentUserId = snap.user_id
+      currentStreak = 1
+      lastDate = snap.snapshot_date
+      continue
+    }
+
+    // Same scope — check if same user and consecutive day
+    const prevDate = new Date(lastDate)
+    const currDate = new Date(snap.snapshot_date)
+    const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24))
+
+    if (snap.user_id === currentUserId && diffDays === 1) {
+      currentStreak++
+    } else {
+      if (currentStreak > bestStreak) {
+        bestStreak = currentStreak
+        bestUserId = currentUserId
+        bestScope = currentScope
+      }
+      currentUserId = snap.user_id
+      currentStreak = 1
+    }
+    lastDate = snap.snapshot_date
+  }
+
+  // Check final run
+  if (currentStreak > bestStreak) {
+    bestStreak = currentStreak
+    bestUserId = currentUserId
+    bestScope = currentScope
+  }
+
+  if (!bestUserId || bestStreak === 0) return null
+  return { holderId: bestUserId, value: bestStreak, metadata: { scope: bestScope } }
+}
+
 async function calcBestFuturesHit(sportKey) {
   let query = supabase
     .from('futures_picks')
@@ -537,6 +601,7 @@ export async function recalculateAllRecords() {
     { key: 'fewest_picks_to_goat', fn: () => calcFewestPicksToTier(3000) },
     { key: 'biggest_dog_lover', fn: calcBiggestDogLover },
     { key: 'great_climb', fn: calcGreatClimb },
+    { key: 'longest_crown_tenure', fn: calcLongestCrownTenure },
     { key: 'best_futures_hit', fn: () => calcBestFuturesHit(null) },
     { key: 'highest_overall_win_pct', fn: calcHighestOverallWinPct },
   ]

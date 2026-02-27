@@ -16,6 +16,7 @@ const RECORD_SORT = {
   longest_win_streak: 0,
   longest_parlay_streak: 1,
   longest_prop_streak: 2,
+  longest_crown_tenure: 3,
   biggest_underdog_hit: 0,
   biggest_parlay: 1,
   best_futures_hit: 2,
@@ -61,6 +62,8 @@ function formatRecordValue(record) {
       return `+${Math.round((val - 1) * 100)}`
     case 'great_climb':
       return `${val} spots`
+    case 'longest_crown_tenure':
+      return `${val} days`
     case 'fewest_picks_to_baller':
     case 'fewest_picks_to_elite':
     case 'fewest_picks_to_hof':
