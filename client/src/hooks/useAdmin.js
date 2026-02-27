@@ -99,14 +99,25 @@ export function useRecalculateRecords() {
 }
 
 export function useSendEmailBlast() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ subject, body }) => api.post('/admin/email-blast', { subject, body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'email-logs'] }),
   })
 }
 
 export function useSendTargetedEmail() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ subject, body, usernames }) => api.post('/admin/email-targeted', { subject, body, usernames }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'email-logs'] }),
+  })
+}
+
+export function useEmailLogs() {
+  return useQuery({
+    queryKey: ['admin', 'email-logs'],
+    queryFn: () => api.get('/admin/email-logs'),
   })
 }
 

@@ -105,6 +105,22 @@ export async function sendEmailBlast(subject, body) {
   }
 
   logger.info({ sent, failed }, 'Email blast complete')
+
+  const sentEmails = users.filter((_, i) => !errors.some((e) => e.email === users[i]?.email)).map((u) => u.email)
+  const failedEmails = errors.map((e) => e.email)
+
+  await supabase.from('email_logs').insert({
+    type: 'blast',
+    subject,
+    body,
+    recipients_requested: users.map((u) => u.email),
+    recipients_sent: sentEmails,
+    recipients_failed: failedEmails,
+    total: users.length,
+    sent,
+    failed,
+  })
+
   return { total: users.length, sent, failed, errors }
 }
 
@@ -176,6 +192,25 @@ export async function sendTargetedEmail(subject, body, usernames) {
   }
 
   logger.info({ sent, failed, notFound }, 'Targeted email complete')
+
+  const sentUsernames = users
+    .filter((u) => emailMap[u.id] && !errors.some((e) => e.username === u.username))
+    .map((u) => u.username)
+  const failedUsernames = errors.map((e) => e.username)
+
+  await supabase.from('email_logs').insert({
+    type: 'targeted',
+    subject,
+    body,
+    recipients_requested: usernames,
+    recipients_sent: sentUsernames,
+    recipients_failed: failedUsernames,
+    recipients_not_found: notFound,
+    total: usernames.length,
+    sent,
+    failed,
+  })
+
   return { total: users.length, sent, failed, notFound, errors }
 }
 

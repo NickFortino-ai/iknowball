@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useEmailLogs, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
@@ -39,6 +39,7 @@ export default function AdminPage() {
   const recalculateRecords = useRecalculateRecords()
   const sendEmailBlast = useSendEmailBlast()
   const sendTargetedEmail = useSendTargetedEmail()
+  const { data: emailLogs } = useEmailLogs()
 
   if (!profile?.is_admin) {
     return (
@@ -194,7 +195,7 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {adminSection === 'email' && (
+      {adminSection === 'email' && (<>
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
           <h2 className="font-display text-xl mb-4">Send Email</h2>
           <p className="text-text-muted text-sm mb-4">
@@ -259,7 +260,58 @@ export default function AdminPage() {
             </button>
           </div>
         </div>
-      )}
+
+        {/* Sent Emails Log */}
+        {emailLogs?.length > 0 && (
+          <div className="bg-bg-card rounded-xl border border-border p-4">
+            <h2 className="font-display text-xl mb-4">Sent Emails</h2>
+            <div className="space-y-3">
+              {emailLogs.map((log) => (
+                <div key={log.id} className="bg-bg-primary rounded-lg p-3 border border-border">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-text-primary truncate">{log.subject}</div>
+                      <div className="text-xs text-text-muted mt-0.5">
+                        {new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded ${
+                      log.type === 'blast' ? 'bg-accent/10 text-accent' : 'bg-blue-500/10 text-blue-400'
+                    }`}>
+                      {log.type === 'blast' ? 'All Users' : 'Targeted'}
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-xs mb-2">
+                    <span className="text-correct">{log.sent} sent</span>
+                    {log.failed > 0 && <span className="text-incorrect">{log.failed} failed</span>}
+                    {log.recipients_not_found?.length > 0 && (
+                      <span className="text-yellow-400">{log.recipients_not_found.length} not found</span>
+                    )}
+                  </div>
+                  {log.recipients_sent?.length > 0 && (
+                    <div className="text-xs text-text-secondary mb-1">
+                      <span className="text-text-muted">Sent to: </span>
+                      {log.recipients_sent.join(', ')}
+                    </div>
+                  )}
+                  {log.recipients_not_found?.length > 0 && (
+                    <div className="text-xs text-yellow-400">
+                      <span className="text-text-muted">Not found: </span>
+                      {log.recipients_not_found.join(', ')}
+                    </div>
+                  )}
+                  {log.recipients_failed?.length > 0 && (
+                    <div className="text-xs text-incorrect">
+                      <span className="text-text-muted">Failed: </span>
+                      {log.recipients_failed.join(', ')}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>)}
 
       {adminSection === 'brackets' && <BracketTemplateManager />}
 

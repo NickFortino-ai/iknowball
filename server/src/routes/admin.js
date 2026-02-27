@@ -82,6 +82,17 @@ router.post('/email-targeted', async (req, res) => {
   res.json(result)
 })
 
+router.get('/email-logs', async (req, res) => {
+  const { data, error } = await supabase
+    .from('email_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) throw error
+  res.json(data)
+})
+
 // Weekly recap
 router.post('/generate-recap', async (req, res) => {
   await generateWeeklyRecap()
