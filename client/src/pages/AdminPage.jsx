@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
 import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useEmailLogs, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
+import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
 import FuturesAdminPanel from '../components/admin/FuturesAdminPanel'
@@ -25,8 +26,10 @@ export default function AdminPage() {
   const [emailSubject, setEmailSubject] = useState('')
   const [emailBody, setEmailBody] = useState('')
   const [emailMode, setEmailMode] = useState('all') // 'all' | 'targeted'
-  const [targetUsernames, setTargetUsernames] = useState('')
+  const [targetUsers, setTargetUsers] = useState([])
+  const [userSearch, setUserSearch] = useState('')
 
+  const { data: userSearchResults } = useSearchUsers(userSearch)
   const sportKey = sportTabs[activeSport].key
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming', 7)
   const { data: featuredProps } = useAdminFeaturedProps()
@@ -70,8 +73,8 @@ export default function AdminPage() {
 
   async function handleSendEmail() {
     if (emailMode === 'targeted') {
-      const usernames = targetUsernames.split(',').map((u) => u.trim()).filter(Boolean)
-      if (!usernames.length) return toast('Enter at least one username', 'error')
+      const usernames = targetUsers.map((u) => u.username)
+      if (!usernames.length) return toast('Select at least one user', 'error')
       if (!confirm(`Send this email to ${usernames.length} user(s)?\n\n${usernames.join(', ')}\n\nSubject: ${emailSubject}`)) return
       try {
         const result = await sendTargetedEmail.mutateAsync({ subject: emailSubject, body: emailBody, usernames })
@@ -81,7 +84,7 @@ export default function AdminPage() {
         toast(msg, result.sent > 0 ? 'success' : 'error')
         setEmailSubject('')
         setEmailBody('')
-        setTargetUsernames('')
+        setTargetUsers([])
       } catch (err) {
         toast(err.message || 'Targeted email failed', 'error')
       }
@@ -217,14 +220,71 @@ export default function AdminPage() {
             </div>
             {emailMode === 'targeted' && (
               <div>
-                <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Usernames (comma-separated)</label>
-                <input
-                  type="text"
-                  value={targetUsernames}
-                  onChange={(e) => setTargetUsernames(e.target.value)}
-                  placeholder="user1, user2, user3"
-                  className="w-full bg-bg-primary border border-border rounded-lg px-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-                />
+                <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Recipients</label>
+                <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 focus-within:border-accent">
+                  {/* Selected user chips */}
+                  <div className="flex flex-wrap gap-1.5 mb-1">
+                    {targetUsers.map((user) => (
+                      <span
+                        key={user.id}
+                        className="inline-flex items-center gap-1 bg-accent/15 text-accent text-xs font-medium pl-1.5 pr-1 py-0.5 rounded-full"
+                      >
+                        <span className="w-4 h-4 rounded-full bg-bg-primary flex items-center justify-center text-[10px] shrink-0">
+                          {user.avatar_emoji || user.username[0].toUpperCase()}
+                        </span>
+                        {user.display_name || user.username}
+                        <button
+                          type="button"
+                          onClick={() => setTargetUsers((prev) => prev.filter((u) => u.id !== user.id))}
+                          className="ml-0.5 hover:text-white transition-colors leading-none text-sm"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  {/* Search input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder={targetUsers.length ? 'Add another user...' : 'Search by username or name...'}
+                      className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none py-1"
+                    />
+                    {/* Dropdown results */}
+                    {userSearch.length >= 2 && userSearchResults?.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden max-h-48 overflow-y-auto">
+                        {userSearchResults
+                          .filter((user) => !targetUsers.some((t) => t.id === user.id))
+                          .map((user) => (
+                            <button
+                              key={user.id}
+                              type="button"
+                              onClick={() => {
+                                setTargetUsers((prev) => [...prev, user])
+                                setUserSearch('')
+                              }}
+                              className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-bg-card-hover transition-colors"
+                            >
+                              <div className="w-7 h-7 rounded-full bg-bg-primary flex items-center justify-center text-xs shrink-0">
+                                {user.avatar_emoji || user.display_name?.[0]?.toUpperCase() || user.username[0].toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium truncate">{user.display_name || user.username}</div>
+                                <div className="text-xs text-text-muted">@{user.username}</div>
+                              </div>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                    {userSearch.length >= 2 && userSearchResults?.length === 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-border rounded-xl shadow-lg z-10 px-4 py-2.5 text-sm text-text-muted">
+                        No users found
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
             <div>
@@ -249,7 +309,7 @@ export default function AdminPage() {
             </div>
             <button
               onClick={handleSendEmail}
-              disabled={(sendEmailBlast.isPending || sendTargetedEmail.isPending) || !emailSubject.trim() || !emailBody.trim() || (emailMode === 'targeted' && !targetUsernames.trim())}
+              disabled={(sendEmailBlast.isPending || sendTargetedEmail.isPending) || !emailSubject.trim() || !emailBody.trim() || (emailMode === 'targeted' && !targetUsers.length)}
               className="bg-accent hover:bg-accent/90 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
             >
               {(sendEmailBlast.isPending || sendTargetedEmail.isPending)
