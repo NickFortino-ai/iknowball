@@ -33,7 +33,7 @@ const navLinks = [
   { to: '/results', label: 'Results' },
   { to: '/leagues', label: 'Leagues' },
   { to: '/leaderboard', label: 'Board' },
-  { to: '/connections', label: 'Squad' },
+  { to: '/hub', label: 'Hub' },
 ]
 
 function timeAgo(dateStr) {
@@ -57,7 +57,7 @@ function getNotificationRoute(notification) {
     case 'streak_milestone':
       return '/results'
     case 'connection_request':
-      return '/connections'
+      return '/hub'
     case 'headlines':
     case 'record_broken':
       return '/hall-of-fame'
@@ -356,7 +356,7 @@ export default function Navbar() {
               </div>
 
               {profile && (
-                <Link to="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <Link to="/hub" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   <TierBadge tier={getTier(profile.total_points).name} size="xs" />
                   <span className="text-sm text-text-secondary hidden sm:inline">{profile.username}</span>
                 </Link>
@@ -449,16 +449,6 @@ export default function Navbar() {
                         Add an existing account
                       </Link>
                     </div>
-                    <Link
-                      to="/profile"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      Profile
-                    </Link>
                     <Link
                       to="/hall-of-fame"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
@@ -655,16 +645,6 @@ export default function Navbar() {
                         Add an existing account
                       </Link>
                     </div>
-                    <Link
-                      to="/profile"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      Profile
-                    </Link>
                     <Link
                       to="/hall-of-fame"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"

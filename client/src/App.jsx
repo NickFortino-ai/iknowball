@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
 import { useAuthStore } from './stores/authStore'
@@ -13,7 +13,7 @@ import SignupPage from './pages/SignupPage'
 import PicksPage from './pages/PicksPage'
 import ResultsPage from './pages/ResultsPage'
 import LeaderboardPage from './pages/LeaderboardPage'
-import ProfilePage from './pages/ProfilePage'
+import HubPage from './pages/HubPage'
 import SettingsPage from './pages/SettingsPage'
 import LeaguesPage from './pages/LeaguesPage'
 import CreateLeaguePage from './pages/CreateLeaguePage'
@@ -21,7 +21,6 @@ import LeagueDetailPage from './pages/LeagueDetailPage'
 import AdminPage from './pages/AdminPage'
 import PaymentPage from './pages/PaymentPage'
 import JoinPage from './pages/JoinPage'
-import ConnectionsPage from './pages/ConnectionsPage'
 import PrivacyPage from './pages/PrivacyPage'
 import FAQPage from './pages/FAQPage'
 import UnsubscribePage from './pages/UnsubscribePage'
@@ -59,13 +58,14 @@ function AppRoutes() {
         <Route path="/picks" element={<ProtectedRoute><PicksPage /></ProtectedRoute>} />
         <Route path="/results" element={<ProtectedRoute><ResultsPage /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/hub" element={<ProtectedRoute><HubPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<Navigate to="/hub" replace />} />
+        <Route path="/connections" element={<Navigate to="/hub" replace />} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/leagues" element={<ProtectedRoute><LeaguesPage /></ProtectedRoute>} />
         <Route path="/leagues/create" element={<ProtectedRoute><CreateLeaguePage /></ProtectedRoute>} />
         <Route path="/leagues/:id" element={<ProtectedRoute><LeagueDetailPage /></ProtectedRoute>} />
         <Route path="/hall-of-fame" element={<ProtectedRoute><HallOfFamePage /></ProtectedRoute>} />
-        <Route path="/connections" element={<ProtectedRoute><ConnectionsPage /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
       </Routes>
     </AppShell>
