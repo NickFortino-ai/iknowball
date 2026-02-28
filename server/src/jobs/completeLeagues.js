@@ -124,6 +124,26 @@ async function awardLeaguePickPoints(league) {
 export async function completeLeagues() {
   const now = new Date().toISOString()
 
+  // Activate open leagues whose start date has passed
+  const { data: openLeagues, error: openErr } = await supabase
+    .from('leagues')
+    .select('id')
+    .eq('status', 'open')
+    .not('starts_at', 'is', null)
+    .lte('starts_at', now)
+
+  if (openErr) {
+    logger.error({ error: openErr }, 'Failed to fetch open leagues for activation')
+  } else if (openLeagues?.length) {
+    for (const league of openLeagues) {
+      await supabase
+        .from('leagues')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', league.id)
+    }
+    logger.info({ count: openLeagues.length }, 'Activated open leagues past start date')
+  }
+
   // Find leagues past their end date that haven't been completed
   const { data: leagues, error } = await supabase
     .from('leagues')
