@@ -61,6 +61,7 @@ export default function SettingsPage() {
   const [instagramHandle, setInstagramHandle] = useState('')
   const [tiktokHandle, setTiktokHandle] = useState('')
   const [snapchatHandle, setSnapchatHandle] = useState('')
+  const [youtubeHandle, setYoutubeHandle] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -85,6 +86,7 @@ export default function SettingsPage() {
       setInstagramHandle(profile.instagram_handle || '')
       setTiktokHandle(profile.tiktok_handle || '')
       setSnapchatHandle(profile.snapchat_handle || '')
+      setYoutubeHandle(profile.youtube_handle || '')
       if (profile.push_preferences) {
         setPushPrefs(profile.push_preferences)
       }
@@ -142,6 +144,7 @@ export default function SettingsPage() {
         instagram_handle: strip(instagramHandle),
         tiktok_handle: strip(tiktokHandle),
         snapchat_handle: strip(snapchatHandle),
+        youtube_handle: strip(youtubeHandle),
       })
       await refetch()
       await fetchProfile()
@@ -266,6 +269,7 @@ export default function SettingsPage() {
             { label: 'X', value: xHandle, set: setXHandle, placeholder: 'username' },
             { label: 'Instagram', value: instagramHandle, set: setInstagramHandle, placeholder: 'username' },
             { label: 'TikTok', value: tiktokHandle, set: setTiktokHandle, placeholder: 'username' },
+            { label: 'YouTube', value: youtubeHandle, set: setYoutubeHandle, placeholder: 'handle' },
             { label: 'Snapchat', value: snapchatHandle, set: setSnapchatHandle, placeholder: 'username' },
           ].map((s) => (
             <div key={s.label} className="flex items-center gap-3">
