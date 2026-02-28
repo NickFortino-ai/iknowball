@@ -239,7 +239,7 @@ function RecordCard({ record }) {
   )
 }
 
-export default function RecordBookPage() {
+export function RecordBookContent() {
   const { data: records, isLoading, isError, refetch } = useRecords()
 
   // Group records by category — only show records that have a holder
@@ -259,37 +259,38 @@ export default function RecordBookPage() {
     grouped[cat].sort((a, b) => (RECORD_SORT[a.record_key] ?? 99) - (RECORD_SORT[b.record_key] ?? 99))
   }
 
+  if (isLoading) return <LoadingSpinner />
+  if (isError) return <ErrorState title="Failed to load records" message="Check your connection and try again." onRetry={refetch} />
+  if (!records?.length) return <EmptyState title="No records yet" message="Records will appear as picks are settled." />
+
+  return (
+    <div className="space-y-8">
+      {CATEGORY_ORDER.map((cat) => {
+        const catRecords = grouped[cat]
+        if (!catRecords?.length) return null
+        return (
+          <div key={cat}>
+            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
+              {CATEGORY_LABELS[cat]}
+            </h2>
+            <div className="space-y-3">
+              {catRecords.map((record) => (
+                <RecordCard key={record.record_key} record={record} />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function RecordBookPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-2">IKB Official Record Book</h1>
       <p className="text-sm text-text-muted mb-6">All-time records across I KNOW BALL</p>
-
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : isError ? (
-        <ErrorState title="Failed to load records" message="Check your connection and try again." onRetry={refetch} />
-      ) : !records?.length ? (
-        <EmptyState title="No records yet" message="Records will appear as picks are settled." />
-      ) : (
-        <div className="space-y-8">
-          {CATEGORY_ORDER.map((cat) => {
-            const catRecords = grouped[cat]
-            if (!catRecords?.length) return null
-            return (
-              <div key={cat}>
-                <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
-                  {CATEGORY_LABELS[cat]}
-                </h2>
-                <div className="space-y-3">
-                  {catRecords.map((record) => (
-                    <RecordCard key={record.record_key} record={record} />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <RecordBookContent />
     </div>
   )
 }

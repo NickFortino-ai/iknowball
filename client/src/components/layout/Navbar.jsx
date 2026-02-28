@@ -59,12 +59,11 @@ function getNotificationRoute(notification) {
     case 'connection_request':
       return '/connections'
     case 'headlines':
-      return '/headlines'
+    case 'record_broken':
+      return '/hall-of-fame'
     case 'squares_quarter_win':
     case 'survivor_result':
       return notification.metadata?.leagueId ? `/leagues/${notification.metadata.leagueId}` : null
-    case 'record_broken':
-      return '/records'
     default:
       return null
   }
@@ -451,7 +450,7 @@ export default function Navbar() {
                       </Link>
                     </div>
                     <Link
-                      to="/records"
+                      to="/hall-of-fame"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -462,17 +461,7 @@ export default function Navbar() {
                         <path d="M8 9h8" />
                         <path d="M8 13h8" />
                       </svg>
-                      Records
-                    </Link>
-                    <Link
-                      to="/royalty"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M2 20h20L18 8l-4 4-2-6-2 6-4-4L2 20z" />
-                        <path d="M2 20h20v2H2z" />
-                      </svg>
-                      Royalty
+                      Hall of Fame
                     </Link>
                     <Link
                       to="/profile"
@@ -497,18 +486,6 @@ export default function Navbar() {
                       </svg>
                       Share IKB
                     </button>
-                    <Link
-                      to="/headlines"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="3" width="20" height="18" rx="2" />
-                        <line x1="6" y1="7" x2="18" y2="7" />
-                        <line x1="6" y1="11" x2="14" y2="11" />
-                        <line x1="6" y1="15" x2="10" y2="15" />
-                      </svg>
-                      Headlines
-                    </Link>
                     <Link
                       to="/faq"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
@@ -679,7 +656,7 @@ export default function Navbar() {
                       </Link>
                     </div>
                     <Link
-                      to="/records"
+                      to="/hall-of-fame"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -690,17 +667,7 @@ export default function Navbar() {
                         <path d="M8 9h8" />
                         <path d="M8 13h8" />
                       </svg>
-                      Records
-                    </Link>
-                    <Link
-                      to="/royalty"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M2 20h20L18 8l-4 4-2-6-2 6-4-4L2 20z" />
-                        <path d="M2 20h20v2H2z" />
-                      </svg>
-                      Royalty
+                      Hall of Fame
                     </Link>
                     <Link
                       to="/profile"
@@ -725,18 +692,6 @@ export default function Navbar() {
                       </svg>
                       Share IKB
                     </button>
-                    <Link
-                      to="/headlines"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="2" y="3" width="20" height="18" rx="2" />
-                        <line x1="6" y1="7" x2="18" y2="7" />
-                        <line x1="6" y1="11" x2="14" y2="11" />
-                        <line x1="6" y1="15" x2="10" y2="15" />
-                      </svg>
-                      Headlines
-                    </Link>
                     <Link
                       to="/faq"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"

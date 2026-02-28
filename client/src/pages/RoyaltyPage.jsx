@@ -163,7 +163,7 @@ function CategoryCrown({ crown, index }) {
   )
 }
 
-export default function RoyaltyPage() {
+export function RoyaltyContent() {
   const { data: royalty, isLoading, isError, refetch } = useRoyalty()
 
   const secondaryCrowns = [
@@ -172,33 +172,34 @@ export default function RoyaltyPage() {
     royalty?.parlayCrown,
   ].filter(Boolean)
 
+  if (isLoading) return <LoadingSpinner />
+  if (isError) return <ErrorState title="Failed to load royalty" message="Check your connection and try again." onRetry={refetch} />
+  if (!royalty?.globalCrown) return <EmptyState title="No crowns yet" message="Crowns will appear once the leaderboard has data." />
+
+  return (
+    <div>
+      <GlobalCrown crown={royalty.globalCrown} />
+
+      {secondaryCrowns.length > 0 && (
+        <>
+          <div className="border-t border-border/50 my-2" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2">
+            {secondaryCrowns.map((crown, i) => (
+              <CategoryCrown key={crown.scope || i} crown={crown} index={i} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+export default function RoyaltyPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-1">IKB Royalty</h1>
       <p className="text-sm text-text-muted mb-2">The #1 on every leaderboard</p>
-
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : isError ? (
-        <ErrorState title="Failed to load royalty" message="Check your connection and try again." onRetry={refetch} />
-      ) : !royalty?.globalCrown ? (
-        <EmptyState title="No crowns yet" message="Crowns will appear once the leaderboard has data." />
-      ) : (
-        <div>
-          <GlobalCrown crown={royalty.globalCrown} />
-
-          {secondaryCrowns.length > 0 && (
-            <>
-              <div className="border-t border-border/50 my-2" />
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2">
-                {secondaryCrowns.map((crown, i) => (
-                  <CategoryCrown key={crown.scope || i} crown={crown} index={i} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      <RoyaltyContent />
     </div>
   )
 }
