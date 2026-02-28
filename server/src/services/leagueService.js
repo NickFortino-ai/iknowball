@@ -46,8 +46,21 @@ export async function createLeague(userId, data) {
     return new Date(str)
   }
 
+  // End dates use end-of-sports-day: next day 10:00 UTC (6 AM ET)
+  // so all US evening/West Coast games on the selected date are included
+  function parseEndDate(str) {
+    if (!str) return null
+    if (str.length === 10) {
+      const d = new Date(str + 'T00:00:00Z')
+      d.setUTCDate(d.getUTCDate() + 1)
+      d.setUTCHours(10, 0, 0, 0)
+      return d
+    }
+    return new Date(str)
+  }
+
   let startsAt = data.starts_at ? parseDate(data.starts_at) : new Date()
-  let endsAt = data.ends_at ? parseDate(data.ends_at) : null
+  let endsAt = data.ends_at ? parseEndDate(data.ends_at) : null
 
   if (data.duration === 'this_week') {
     const bounds = getWeekBounds(new Date())
@@ -414,7 +427,17 @@ export async function updateLeague(leagueId, userId, data) {
   if (data.max_members !== undefined) updates.max_members = data.max_members
   if (data.settings !== undefined) updates.settings = data.settings
   if (data.starts_at !== undefined) updates.starts_at = data.starts_at
-  if (data.ends_at !== undefined) updates.ends_at = data.ends_at
+  if (data.ends_at !== undefined) {
+    // Parse end date to end-of-sports-day if date-only string
+    if (typeof data.ends_at === 'string' && data.ends_at.length === 10) {
+      const d = new Date(data.ends_at + 'T00:00:00Z')
+      d.setUTCDate(d.getUTCDate() + 1)
+      d.setUTCHours(10, 0, 0, 0)
+      updates.ends_at = d.toISOString()
+    } else {
+      updates.ends_at = data.ends_at
+    }
+  }
   if (data.commissioner_note !== undefined) updates.commissioner_note = data.commissioner_note
 
   // Handle duration change — recalculate date range
