@@ -450,6 +450,16 @@ export default function Navbar() {
                       </Link>
                     </div>
                     <Link
+                      to="/profile"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      Profile
+                    </Link>
+                    <Link
                       to="/hall-of-fame"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
                     >
@@ -463,29 +473,6 @@ export default function Navbar() {
                       </svg>
                       Hall of Fame
                     </Link>
-                    <Link
-                      to="/profile"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      Profile
-                    </Link>
-                    <button
-                      onClick={handleShare}
-                      className="flex items-center gap-3 w-full px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="18" cy="5" r="3" />
-                        <circle cx="6" cy="12" r="3" />
-                        <circle cx="18" cy="19" r="3" />
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                      </svg>
-                      Share IKB
-                    </button>
                     <Link
                       to="/faq"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
@@ -510,6 +497,19 @@ export default function Navbar() {
                       </svg>
                       Privacy
                     </Link>
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center gap-3 w-full px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                      </svg>
+                      Share IKB
+                    </button>
                     <Link
                       to="/settings"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
@@ -656,6 +656,16 @@ export default function Navbar() {
                       </Link>
                     </div>
                     <Link
+                      to="/profile"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      Profile
+                    </Link>
+                    <Link
                       to="/hall-of-fame"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
                     >
@@ -669,29 +679,6 @@ export default function Navbar() {
                       </svg>
                       Hall of Fame
                     </Link>
-                    <Link
-                      to="/profile"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      Profile
-                    </Link>
-                    <button
-                      onClick={handleShare}
-                      className="flex items-center gap-3 w-full px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="18" cy="5" r="3" />
-                        <circle cx="6" cy="12" r="3" />
-                        <circle cx="18" cy="19" r="3" />
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                      </svg>
-                      Share IKB
-                    </button>
                     <Link
                       to="/faq"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
@@ -716,6 +703,19 @@ export default function Navbar() {
                       </svg>
                       Privacy
                     </Link>
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center gap-3 w-full px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                      </svg>
+                      Share IKB
+                    </button>
                     <Link
                       to="/settings"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
