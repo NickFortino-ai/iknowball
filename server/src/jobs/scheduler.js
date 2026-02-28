@@ -7,6 +7,7 @@ import { lockPicks } from './lockPicks.js'
 import { syncFutures } from './syncFutures.js'
 import { syncLiveScores } from './syncLiveScores.js'
 import { completeLeagues } from './completeLeagues.js'
+import { autoEliminateMissedPicks } from '../services/survivorService.js'
 import { generateWeeklyRecap } from './generateRecap.js'
 import { snapshotCrowns } from './snapshotCrowns.js'
 import { snapshotRanks } from './snapshotRanks.js'
@@ -81,5 +82,10 @@ export function startScheduler() {
       try { await completeLeagues() } catch (err) { logger.error({ err }, 'League completion job failed') }
     })
     logger.info('League completion scheduled: every 15 minutes')
+
+    cron.schedule('*/15 * * * *', async () => {
+      try { await autoEliminateMissedPicks() } catch (err) { logger.error({ err }, 'Survivor missed picks job failed') }
+    })
+    logger.info('Survivor missed picks scheduled: every 15 minutes')
   }
 }

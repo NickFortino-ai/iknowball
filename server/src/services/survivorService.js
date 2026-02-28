@@ -213,6 +213,16 @@ export async function scoreSurvivorPicks(gameId, winner) {
   if (!picks?.length) return
 
   for (const pick of picks) {
+    // Skip picks for members already eliminated (e.g. by missed pick or earlier game)
+    const { data: memberCheck } = await supabase
+      .from('league_members')
+      .select('is_alive')
+      .eq('league_id', pick.league_id)
+      .eq('user_id', pick.user_id)
+      .single()
+
+    if (memberCheck && !memberCheck.is_alive) continue
+
     const isDaily = pick.leagues?.settings?.pick_frequency === 'daily'
     const periodLabel = isDaily ? 'Day' : 'Week'
     const periodNum = pick.league_weeks?.week_number || '?'
@@ -279,6 +289,14 @@ export async function scoreSurvivorPicks(gameId, winner) {
         await createNotification(pick.user_id, 'survivor_result',
           `You were eliminated in ${periodLabel} ${periodNum} of ${leagueName}`,
           { leagueId: pick.league_id })
+
+        // Delete any pending future picks
+        await supabase
+          .from('survivor_picks')
+          .delete()
+          .eq('league_id', pick.league_id)
+          .eq('user_id', pick.user_id)
+          .eq('status', 'pending')
       } else {
         await supabase
           .from('league_members')
@@ -300,6 +318,147 @@ export async function scoreSurvivorPicks(gameId, winner) {
   }
 
   logger.info({ gameId, picksScored: picks.length }, 'Survivor picks scored')
+}
+
+export async function autoEliminateMissedPicks() {
+  // Find active survivor leagues
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, sport, name, settings')
+    .eq('format', 'survivor')
+    .neq('status', 'completed')
+
+  if (!leagues?.length) return
+
+  const now = new Date().toISOString()
+
+  for (const league of leagues) {
+    const isDaily = league.settings?.pick_frequency === 'daily'
+    const periodLabel = isDaily ? 'Day' : 'Week'
+
+    // Get weeks that have ended and haven't been processed yet
+    const { data: weeks } = await supabase
+      .from('league_weeks')
+      .select('*')
+      .eq('league_id', league.id)
+      .lte('ends_at', now)
+      .eq('missed_picks_processed', false)
+      .order('week_number', { ascending: true })
+
+    if (!weeks?.length) continue
+
+    for (const week of weeks) {
+      // Count games in this period, filtered by sport if not 'all'
+      let gamesQuery = supabase
+        .from('games')
+        .select('id, status')
+        .gte('starts_at', week.starts_at)
+        .lt('starts_at', week.ends_at)
+
+      if (league.sport !== 'all') {
+        const { data: sport } = await supabase
+          .from('sports')
+          .select('id')
+          .eq('key', league.sport)
+          .single()
+
+        if (sport) {
+          gamesQuery = gamesQuery.eq('sport_id', sport.id)
+        }
+      }
+
+      const { data: games } = await gamesQuery
+
+      // No games in this period — nothing to pick, skip
+      if (!games?.length) {
+        await supabase
+          .from('league_weeks')
+          .update({ missed_picks_processed: true })
+          .eq('id', week.id)
+        continue
+      }
+
+      // If any game is NOT final, period is still in progress — skip
+      const allFinal = games.every((g) => g.status === 'final')
+      if (!allFinal) continue
+
+      // Get alive members
+      const { data: aliveMembers } = await supabase
+        .from('league_members')
+        .select('user_id, lives_remaining')
+        .eq('league_id', league.id)
+        .eq('is_alive', true)
+
+      if (!aliveMembers?.length) {
+        await supabase
+          .from('league_weeks')
+          .update({ missed_picks_processed: true })
+          .eq('id', week.id)
+        continue
+      }
+
+      // Get existing picks for this week
+      const { data: existingPicks } = await supabase
+        .from('survivor_picks')
+        .select('user_id')
+        .eq('league_id', league.id)
+        .eq('league_week_id', week.id)
+
+      const pickedUserIds = new Set((existingPicks || []).map((p) => p.user_id))
+
+      // Find alive members with no pick for this week
+      const missedMembers = aliveMembers.filter((m) => !pickedUserIds.has(m.user_id))
+
+      for (const member of missedMembers) {
+        const newLives = (member.lives_remaining || 1) - 1
+
+        if (newLives <= 0) {
+          await supabase
+            .from('league_members')
+            .update({
+              is_alive: false,
+              lives_remaining: 0,
+              eliminated_week: week.week_number,
+            })
+            .eq('league_id', league.id)
+            .eq('user_id', member.user_id)
+
+          await createNotification(member.user_id, 'survivor_result',
+            `You were eliminated in ${periodLabel} ${week.week_number} of ${league.name} (missed pick)`,
+            { leagueId: league.id })
+
+          // Delete any pending future picks
+          await supabase
+            .from('survivor_picks')
+            .delete()
+            .eq('league_id', league.id)
+            .eq('user_id', member.user_id)
+            .eq('status', 'pending')
+        } else {
+          await supabase
+            .from('league_members')
+            .update({ lives_remaining: newLives })
+            .eq('league_id', league.id)
+            .eq('user_id', member.user_id)
+
+          await createNotification(member.user_id, 'survivor_result',
+            `You lost a life in ${periodLabel} ${week.week_number} of ${league.name} (missed pick, ${newLives} remaining)`,
+            { leagueId: league.id })
+        }
+      }
+
+      // Mark week as processed
+      await supabase
+        .from('league_weeks')
+        .update({ missed_picks_processed: true })
+        .eq('id', week.id)
+
+      // Check for winner (handles single survivor + all-eliminated-survive)
+      await checkSurvivorWinner(league.id)
+    }
+  }
+
+  logger.info('Auto-eliminate missed survivor picks completed')
 }
 
 async function checkSurvivorWinner(leagueId) {

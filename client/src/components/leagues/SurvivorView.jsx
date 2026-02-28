@@ -183,11 +183,22 @@ export default function SurvivorView({ league }) {
               <div className="flex gap-1 flex-wrap">
                 {m.picks.map((p) => {
                   const isLocked = p.team_name === 'Locked'
+                  const isPostElimination = !m.is_alive && m.eliminated_week != null && p.league_weeks?.week_number > m.eliminated_week
+                  const chipStyle = isLocked
+                    ? 'bg-white/5 text-text-muted italic'
+                    : isPostElimination
+                      ? 'bg-white/5 text-text-muted opacity-50'
+                      : STATUS_STYLES[p.status] || 'bg-bg-primary text-text-muted'
+                  const tooltip = isLocked
+                    ? `${periodLabel} ${p.league_weeks?.week_number}: Hidden`
+                    : isPostElimination
+                      ? `${periodLabel} ${p.league_weeks?.week_number}: ${p.team_name} (after elimination)`
+                      : `${periodLabel} ${p.league_weeks?.week_number}: ${p.team_name}`
                   return (
                     <span
                       key={p.id}
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isLocked ? 'bg-white/5 text-text-muted italic' : STATUS_STYLES[p.status] || 'bg-bg-primary text-text-muted'}`}
-                      title={isLocked ? `${periodLabel} ${p.league_weeks?.week_number}: Hidden` : `${periodLabel} ${p.league_weeks?.week_number}: ${p.team_name}`}
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${chipStyle}`}
+                      title={tooltip}
                     >
                       {isLocked ? '???' : p.team_name?.split(' ').pop()}
                     </span>
