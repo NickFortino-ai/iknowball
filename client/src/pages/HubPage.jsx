@@ -223,7 +223,7 @@ export default function HubPage() {
           </div>
         ) : (
           <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-            {connections.map((conn) => (
+            {[...connections].sort((a, b) => (b.total_points || 0) - (a.total_points || 0)).map((conn) => (
               <div
                 key={conn.connection_id}
                 onClick={() => setSelectedUserId(conn.user_id)}
