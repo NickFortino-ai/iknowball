@@ -27,7 +27,12 @@ function getSideState(prop, pick, side) {
   return 'selected'
 }
 
+const TEAM_ABBREVS = {
+  'Oklahoma City Thunder': 'OKC',
+}
+
 function abbreviateTeam(name) {
+  if (TEAM_ABBREVS[name]) return TEAM_ABBREVS[name]
   const words = name.split(' ')
   if (words.length <= 2) return words[0].slice(0, 3).toUpperCase()
   return words.map((w) => w[0]).join('').toUpperCase()
