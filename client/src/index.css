@@ -37,7 +37,6 @@
 @layer base {
   html, body, #root {
     height: 100%;
-    overflow: hidden;
   }
   body {
     font-family: var(--font-body);
