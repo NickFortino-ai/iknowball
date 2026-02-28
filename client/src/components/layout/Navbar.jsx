@@ -457,9 +457,8 @@ export default function Navbar() {
                         <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7" />
                         <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7" />
                         <path d="M4 22h16" />
-                        <path d="M10 22V8a4 4 0 0 1 4 0v14" />
-                        <path d="M8 9h8" />
-                        <path d="M8 13h8" />
+                        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 19.24 7 20h10c0-.76-.85-1.25-2.03-1.79C14.47 17.98 14 17.55 14 17v-2.34" />
+                        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
                       </svg>
                       Hall of Fame
                     </Link>
@@ -653,9 +652,8 @@ export default function Navbar() {
                         <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7" />
                         <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7" />
                         <path d="M4 22h16" />
-                        <path d="M10 22V8a4 4 0 0 1 4 0v14" />
-                        <path d="M8 9h8" />
-                        <path d="M8 13h8" />
+                        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 19.24 7 20h10c0-.76-.85-1.25-2.03-1.79C14.47 17.98 14 17.55 14 17v-2.34" />
+                        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
                       </svg>
                       Hall of Fame
                     </Link>
