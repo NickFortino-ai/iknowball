@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { RoyaltyContent } from './RoyaltyPage'
 import { RecordBookContent } from './RecordBookPage'
 import { HeadlinesArchiveContent } from './HeadlinesArchivePage'
@@ -22,7 +23,11 @@ function SectionToggle({ title, open, onToggle }) {
 }
 
 export default function HallOfFamePage() {
-  const [openSections, setOpenSections] = useState({})
+  const [searchParams] = useSearchParams()
+  const section = searchParams.get('section')
+  const [openSections, setOpenSections] = useState(
+    section === 'records' ? { records: true } : { royalty: true }
+  )
 
   function toggle(key) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))

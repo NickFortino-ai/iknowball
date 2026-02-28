@@ -83,6 +83,10 @@ async function updateRecord(key, holderId, value, metadata = {}) {
           <p style="color: #888; font-size: 14px;">
             ${previousValue !== null ? `Previous record: ${previousValue}` : 'This is the first record set!'}
           </p>
+          <a href="${process.env.CLIENT_URL || 'https://iknowball.club'}/hall-of-fame?section=records"
+             style="display: inline-block; margin-top: 24px; padding: 12px 24px; background-color: #4f8cff; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+            View Record Book
+          </a>
         </div>
       `,
     }))

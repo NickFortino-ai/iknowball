@@ -59,8 +59,9 @@ function getNotificationRoute(notification) {
     case 'connection_request':
       return '/hub'
     case 'headlines':
-    case 'record_broken':
       return '/hall-of-fame'
+    case 'record_broken':
+      return '/hall-of-fame?section=records'
     case 'squares_quarter_win':
     case 'survivor_result':
       return notification.metadata?.leagueId ? `/leagues/${notification.metadata.leagueId}` : null

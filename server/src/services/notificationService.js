@@ -31,7 +31,8 @@ export async function createNotification(userId, type, message, metadata = {}) {
       const prefs = user?.push_preferences
       // null preferences = all on; otherwise check the specific type
       if (!prefs || prefs[type] !== false) {
-        const pushUrl = metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
+        const pushUrl = type === 'record_broken' ? '/hall-of-fame?section=records'
+        : metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
         await sendPushNotification(userId, 'I KNOW BALL', message, pushUrl)
       }
     } catch (pushError) {
