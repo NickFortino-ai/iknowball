@@ -49,6 +49,7 @@ export default function HubPage() {
   const { data: profile, isLoading: profileLoading } = useProfile()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState(null)
+  const [squadExpanded, setSquadExpanded] = useState(true)
 
   const { data: connections, isLoading: connectionsLoading } = useConnections()
   const { data: pending } = usePendingConnectionRequests()
@@ -203,14 +204,35 @@ export default function HubPage() {
 
       {/* My Squad */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">
-          My Squad<InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast." /> {connections?.length > 0 && `(${connections.length})`}
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => connections?.length && setSquadExpanded(!squadExpanded)}
+            className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider"
+          >
+            My Squad {connections?.length > 0 && `(${connections.length})`}
+            {connections?.length > 0 && (
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform ${squadExpanded ? 'rotate-180' : ''}`}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            )}
+          </button>
+          <InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast." />
+        </div>
         {!connections?.length ? (
           <div className="bg-bg-card border border-border rounded-xl px-4 py-8 text-center text-text-muted text-sm">
             No connections yet. Join a league or search for friends above!
           </div>
-        ) : (
+        ) : squadExpanded && (
           <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
             {[...connections].sort((a, b) => (b.total_points || 0) - (a.total_points || 0)).map((conn) => (
               <div

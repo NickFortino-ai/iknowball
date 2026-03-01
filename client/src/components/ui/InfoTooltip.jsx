@@ -31,7 +31,7 @@ export default function InfoTooltip({ text }) {
         </svg>
       </button>
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 bg-bg-card border border-border rounded-xl shadow-lg z-50 px-4 py-3 text-sm text-text-secondary leading-relaxed font-sans font-normal tracking-normal text-left">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 bg-bg-card border border-border rounded-xl shadow-lg z-50 px-4 py-3 text-sm text-text-secondary leading-relaxed font-sans font-normal tracking-normal normal-case text-left">
           {text}
         </div>
       )}
