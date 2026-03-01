@@ -2,7 +2,6 @@ import { useState } from 'react'
 import {
   useConnections,
   usePendingConnectionRequests,
-  useConnectionActivity,
   useSendConnectionRequest,
   useAcceptConnectionRequest,
   useDeclineConnectionRequest,
@@ -13,16 +12,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
-import PickReactions from '../components/social/PickReactions'
-import PickComments from '../components/social/PickComments'
-
-const ACTIVITY_EMOJI = {
-  underdog_win: '\uD83C\uDFAF',
-  hot_streak: '\uD83D\uDD25',
-  tier_achievement: '\u2B50',
-  pick_share: '\uD83D\uDCE2',
-  comment: '\uD83D\uDCAC',
-}
+import ActivityFeed from '../components/feed/ActivityFeed'
 
 export default function ConnectionsPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -30,7 +20,6 @@ export default function ConnectionsPage() {
 
   const { data: connections, isLoading } = useConnections()
   const { data: pending } = usePendingConnectionRequests()
-  const { data: activity } = useConnectionActivity()
   const { data: searchResults } = useSearchUsers(searchQuery)
   const sendRequest = useSendConnectionRequest()
   const acceptRequest = useAcceptConnectionRequest()
@@ -214,39 +203,7 @@ export default function ConnectionsPage() {
       {/* Activity Feed */}
       <div>
         <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Recent Activity</h2>
-        {!activity?.length ? (
-          <div className="bg-bg-card border border-border rounded-xl px-4 py-8 text-center text-text-muted text-sm">
-            No recent activity from your connections
-          </div>
-        ) : (
-          <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-            {activity.map((item, i) => (
-              <div
-                key={`${item.type}-${item.userId}-${i}`}
-                className="px-4 py-3 border-b border-border last:border-b-0"
-              >
-                <div className="flex items-start gap-2">
-                  <span className="flex-shrink-0">{ACTIVITY_EMOJI[item.type]}</span>
-                  <p className="text-sm">
-                    <button
-                      onClick={() => setSelectedUserId(item.userId)}
-                      className="font-semibold text-accent hover:underline"
-                    >
-                      {item.username}
-                    </button>
-                    {' '}{item.message}
-                  </p>
-                </div>
-                {item.pickId && (
-                  <div className="mt-2 ml-6 space-y-1.5">
-                    <PickReactions pickId={item.pickId} />
-                    <PickComments pickId={item.pickId} />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <ActivityFeed onUserTap={setSelectedUserId} />
       </div>
 
       <UserProfileModal

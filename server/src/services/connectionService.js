@@ -1,6 +1,5 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
-import { getPronouns } from '../utils/pronouns.js'
 
 export async function connectUsers(userA, userB, source) {
   // Canonicalize ordering so user_id_1 < user_id_2
@@ -291,7 +290,7 @@ export async function getConnectionActivity(userId) {
   // Get user details for mapping
   const { data: users } = await supabase
     .from('users')
-    .select('id, username, avatar_emoji, title_preference')
+    .select('id, username, display_name, avatar_emoji, title_preference')
     .in('id', connectedIds)
 
   const userMap = {}
@@ -299,28 +298,37 @@ export async function getConnectionActivity(userId) {
     userMap[u.id] = u
   }
 
-  // Query 4 sources in parallel
-  const [underdogWins, streakEvents, tierAchievements, pickShares, recentComments] = await Promise.all([
-    // Source 1: Big underdog wins (odds >= +250)
+  // Query 7 sources in parallel
+  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments] = await Promise.all([
+    // Source 1: Notable picks — settled + correct where odds >= 250 OR multiplier > 1
     supabase
       .from('picks')
-      .select('id, user_id, odds_at_pick, points_earned, updated_at, games(home_team, away_team, picked_team)')
+      .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, games(home_team, away_team, sports(name))')
       .in('user_id', connectedIds)
       .eq('status', 'settled')
       .eq('is_correct', true)
-      .gte('odds_at_pick', 250)
+      .or('odds_at_pick.gte.250,multiplier.gt.1')
       .order('updated_at', { ascending: false })
       .limit(15),
 
-    // Source 2: Streak events (replaces static hot_streak snapshot)
+    // Source 2: Settled parlays
+    supabase
+      .from('parlays')
+      .select('id, user_id, leg_count, combined_multiplier, status, is_correct, points_earned, risk_points, reward_points, updated_at, parlay_legs(picked_team, odds_at_submission, status, games(home_team, away_team, sports(name)))')
+      .in('user_id', connectedIds)
+      .eq('status', 'settled')
+      .order('updated_at', { ascending: false })
+      .limit(15),
+
+    // Source 3: Streak events
     supabase
       .from('streak_events')
-      .select('user_id, streak_length, created_at, sports(name)')
+      .select('id, user_id, streak_length, created_at, sports(key, name)')
       .in('user_id', connectedIds)
       .order('created_at', { ascending: false })
       .limit(15),
 
-    // Source 3: Tier achievements (non-Rookie, updated recently)
+    // Source 4: Tier achievements (non-Rookie, updated recently)
     supabase
       .from('users')
       .select('id, tier, updated_at')
@@ -328,15 +336,23 @@ export async function getConnectionActivity(userId) {
       .neq('tier', 'Rookie')
       .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
 
-    // Source 4: Pick shares
+    // Source 5: Record broken
+    supabase
+      .from('record_history')
+      .select('id, record_key, new_holder_id, previous_holder_id, previous_value, new_value, broken_at, records(display_name)')
+      .in('new_holder_id', connectedIds)
+      .order('broken_at', { ascending: false })
+      .limit(10),
+
+    // Source 6: Pick shares
     supabase
       .from('pick_shares')
-      .select('id, pick_id, user_id, created_at, picks(picked_team, odds_at_pick, games(home_team, away_team, starts_at, sports(name)))')
+      .select('id, pick_id, user_id, created_at, picks(picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, games(home_team, away_team, sports(name)))')
       .in('user_id', connectedIds)
       .order('created_at', { ascending: false })
       .limit(15),
 
-    // Source 5: Recent comments from connected users
+    // Source 7: Recent comments from connected users
     supabase
       .from('comments')
       .select('id, target_type, target_id, user_id, content, created_at')
@@ -348,19 +364,72 @@ export async function getConnectionActivity(userId) {
 
   const feed = []
 
-  // Process underdog wins
-  for (const pick of underdogWins.data || []) {
+  function buildPickedTeamName(pickedTeam, game) {
+    return pickedTeam === 'home' ? game?.home_team : game?.away_team
+  }
+
+  // Process notable picks
+  for (const pick of notablePicks.data || []) {
     const user = userMap[pick.user_id]
     if (!user) continue
-    const odds = pick.odds_at_pick >= 0 ? `+${pick.odds_at_pick}` : pick.odds_at_pick
     feed.push({
-      type: 'underdog_win',
+      type: 'pick',
+      id: pick.id,
       userId: pick.user_id,
-      pickId: pick.id,
       username: user.username,
+      display_name: user.display_name,
       avatar_emoji: user.avatar_emoji,
-      message: `hit a ${odds} pick for +${pick.points_earned} pts`,
       timestamp: pick.updated_at,
+      pick: {
+        id: pick.id,
+        picked_team: pick.picked_team,
+        picked_team_name: buildPickedTeamName(pick.picked_team, pick.games),
+        odds_at_pick: pick.odds_at_pick,
+        status: pick.status,
+        is_correct: pick.is_correct,
+        points_earned: pick.points_earned,
+        multiplier: pick.multiplier,
+        risk_points: pick.risk_points,
+        reward_points: pick.reward_points,
+      },
+      game: {
+        home_team: pick.games?.home_team,
+        away_team: pick.games?.away_team,
+        sport_name: pick.games?.sports?.name,
+      },
+    })
+  }
+
+  // Process settled parlays
+  for (const parlay of settledParlays.data || []) {
+    const user = userMap[parlay.user_id]
+    if (!user) continue
+    feed.push({
+      type: 'parlay',
+      id: parlay.id,
+      userId: parlay.user_id,
+      username: user.username,
+      display_name: user.display_name,
+      avatar_emoji: user.avatar_emoji,
+      timestamp: parlay.updated_at,
+      parlay: {
+        id: parlay.id,
+        leg_count: parlay.leg_count,
+        combined_multiplier: parlay.combined_multiplier,
+        status: parlay.status,
+        is_correct: parlay.is_correct,
+        points_earned: parlay.points_earned,
+        risk_points: parlay.risk_points,
+        reward_points: parlay.reward_points,
+        legs: (parlay.parlay_legs || []).map((leg) => ({
+          picked_team_name: buildPickedTeamName(leg.picked_team, leg.games),
+          sport_name: leg.games?.sports?.name,
+          odds: leg.odds_at_submission,
+          status: leg.status,
+          home_team: leg.games?.home_team,
+          away_team: leg.games?.away_team,
+        })),
+      },
     })
   }
 
@@ -368,14 +437,19 @@ export async function getConnectionActivity(userId) {
   for (const event of streakEvents.data || []) {
     const user = userMap[event.user_id]
     if (!user) continue
-    const sportName = event.sports?.name || 'a sport'
     feed.push({
-      type: 'hot_streak',
+      type: 'streak',
+      id: event.id,
       userId: event.user_id,
       username: user.username,
+      display_name: user.display_name,
       avatar_emoji: user.avatar_emoji,
-      message: `just extended ${getPronouns(user.title_preference).possessive} streak to ${event.streak_length} in ${sportName}`,
       timestamp: event.created_at,
+      streak: {
+        id: event.id,
+        streak_length: event.streak_length,
+        sport_name: event.sports?.name,
+      },
     })
   }
 
@@ -384,12 +458,52 @@ export async function getConnectionActivity(userId) {
     const user = userMap[u.id]
     if (!user) continue
     feed.push({
-      type: 'tier_achievement',
+      type: 'tier_up',
+      id: `tier-${u.id}-${u.updated_at}`,
       userId: u.id,
       username: user.username,
+      display_name: user.display_name,
       avatar_emoji: user.avatar_emoji,
-      message: `reached ${u.tier} tier`,
       timestamp: u.updated_at,
+      tier: { name: u.tier },
+    })
+  }
+
+  // Process records broken
+  for (const record of recordsBroken.data || []) {
+    const user = userMap[record.new_holder_id]
+    if (!user) continue
+    // Fetch previous holder username if exists
+    let previous_holder_username = null
+    if (record.previous_holder_id) {
+      const prevUser = userMap[record.previous_holder_id]
+      if (prevUser) {
+        previous_holder_username = prevUser.username
+      } else {
+        const { data: prevUserData } = await supabase
+          .from('users')
+          .select('username')
+          .eq('id', record.previous_holder_id)
+          .single()
+        previous_holder_username = prevUserData?.username
+      }
+    }
+    feed.push({
+      type: 'record',
+      id: record.id,
+      userId: record.new_holder_id,
+      username: user.username,
+      display_name: user.display_name,
+      avatar_emoji: user.avatar_emoji,
+      timestamp: record.broken_at,
+      record: {
+        id: record.id,
+        display_name: record.records?.display_name,
+        new_value: record.new_value,
+        previous_value: record.previous_value,
+        previous_holder_username,
+        record_key: record.record_key,
+      },
     })
   }
 
@@ -398,17 +512,31 @@ export async function getConnectionActivity(userId) {
     const user = userMap[share.user_id]
     if (!user || !share.picks) continue
     const pick = share.picks
-    const team = pick.picked_team === 'home' ? pick.games?.home_team : pick.games?.away_team
-    const odds = pick.odds_at_pick >= 0 ? `+${pick.odds_at_pick}` : pick.odds_at_pick
-    const sportName = pick.games?.sports?.name || ''
     feed.push({
-      type: 'pick_share',
+      type: 'pick',
+      id: share.pick_id,
       userId: share.user_id,
-      pickId: share.pick_id,
       username: user.username,
+      display_name: user.display_name,
       avatar_emoji: user.avatar_emoji,
-      message: `is taking ${team} ${odds} in ${sportName}`,
       timestamp: share.created_at,
+      pick: {
+        id: share.pick_id,
+        picked_team: pick.picked_team,
+        picked_team_name: buildPickedTeamName(pick.picked_team, pick.games),
+        odds_at_pick: pick.odds_at_pick,
+        status: pick.status,
+        is_correct: pick.is_correct,
+        points_earned: pick.points_earned,
+        multiplier: pick.multiplier,
+        risk_points: pick.risk_points,
+        reward_points: pick.reward_points,
+      },
+      game: {
+        home_team: pick.games?.home_team,
+        away_team: pick.games?.away_team,
+        sport_name: pick.games?.sports?.name,
+      },
     })
   }
 
@@ -422,16 +550,26 @@ export async function getConnectionActivity(userId) {
     }
 
     const ownerMap = {}
-    const TABLE_MAP = { pick: 'picks', parlay: 'parlays', prop: 'prop_picks' }
-    const LABEL_MAP = { pick: 'pick', parlay: 'parlay', prop: 'prop pick' }
+    const TABLE_MAP = { pick: 'picks', parlay: 'parlays', prop: 'prop_picks', streak_event: 'streak_events', record_history: 'record_history' }
+    const OWNER_COL = { pick: 'user_id', parlay: 'user_id', prop: 'user_id', streak_event: 'user_id', record_history: 'new_holder_id' }
 
     for (const [type, ids] of Object.entries(targetsByType)) {
+      const table = TABLE_MAP[type]
+      if (!table) continue
+      const ownerCol = OWNER_COL[type]
       const { data: rows } = await supabase
-        .from(TABLE_MAP[type])
-        .select('id, user_id, users(username)')
+        .from(table)
+        .select(`id, ${ownerCol}`)
         .in('id', [...ids])
       for (const r of rows || []) {
-        ownerMap[`${type}-${r.id}`] = r
+        const ownerId = r[ownerCol]
+        // Look up username from connected users or fetch separately
+        let username = userMap[ownerId]?.username
+        if (!username && ownerId) {
+          const { data: ownerUser } = await supabase.from('users').select('username').eq('id', ownerId).single()
+          username = ownerUser?.username
+        }
+        ownerMap[`${type}-${r.id}`] = { user_id: ownerId, username }
       }
     }
 
@@ -440,31 +578,30 @@ export async function getConnectionActivity(userId) {
       if (!user) continue
 
       const target = ownerMap[`${comment.target_type}-${comment.target_id}`]
-      if (!target) continue
+      const ownerUsername = target?.user_id === comment.user_id
+        ? null
+        : target?.username || null
 
-      const label = LABEL_MAP[comment.target_type]
-      const ownerName = target.user_id === comment.user_id
-        ? `${getPronouns(user.title_preference).possessive} own`
-        : target.users?.username
-          ? `@${target.users.username}'s`
-          : "a"
-
-      const feedItem = {
+      feed.push({
         type: 'comment',
+        id: comment.id,
         userId: comment.user_id,
         username: user.username,
+        display_name: user.display_name,
         avatar_emoji: user.avatar_emoji,
-        message: `commented on ${ownerName} ${label}`,
         timestamp: comment.created_at,
-      }
-      if (comment.target_type === 'pick') feedItem.pickId = comment.target_id
-      feed.push(feedItem)
+        comment: {
+          content: comment.content,
+          target_type: comment.target_type,
+          owner_username: ownerUsername,
+        },
+      })
     }
   }
 
-  // Sort by timestamp desc, limit 15
+  // Sort by timestamp desc, limit 30
   feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-  return feed.slice(0, 15)
+  return feed.slice(0, 30)
 }
 
 export async function getConnectionStatus(userId, otherUserId) {

@@ -9,6 +9,8 @@ import {
   addComment,
   getComments,
   deleteComment,
+  toggleFeedReaction,
+  getFeedReactionsBatch,
 } from '../services/socialService.js'
 
 const router = Router()
@@ -70,10 +72,54 @@ router.get('/props/:propPickId/comments', requireAuth, async (req, res) => {
   res.json(comments)
 })
 
+// Streak event comments
+router.post('/streak-events/:streakEventId/comments', requireAuth, validate(commentSchema), async (req, res) => {
+  const comment = await addComment(req.user.id, 'streak_event', req.params.streakEventId, req.validated.content)
+  res.status(201).json(comment)
+})
+
+router.get('/streak-events/:streakEventId/comments', requireAuth, async (req, res) => {
+  const comments = await getComments('streak_event', req.params.streakEventId)
+  res.json(comments)
+})
+
+// Record history comments
+router.post('/records/:recordId/comments', requireAuth, validate(commentSchema), async (req, res) => {
+  const comment = await addComment(req.user.id, 'record_history', req.params.recordId, req.validated.content)
+  res.status(201).json(comment)
+})
+
+router.get('/records/:recordId/comments', requireAuth, async (req, res) => {
+  const comments = await getComments('record_history', req.params.recordId)
+  res.json(comments)
+})
+
 // Delete comment (generic — works for any target type)
 router.delete('/comments/:commentId', requireAuth, async (req, res) => {
   await deleteComment(req.user.id, req.params.commentId)
   res.status(204).end()
+})
+
+// Feed reactions
+const feedReactionSchema = z.object({
+  target_type: z.enum(['pick', 'parlay', 'streak_event', 'record_history']),
+  target_id: z.string().uuid(),
+  reaction_type: z.enum(['fire', 'clown', 'goat', 'clap']),
+})
+
+router.post('/feed/reactions', requireAuth, validate(feedReactionSchema), async (req, res) => {
+  const { target_type, target_id, reaction_type } = req.validated
+  const result = await toggleFeedReaction(req.user.id, target_type, target_id, reaction_type)
+  res.json(result)
+})
+
+router.get('/feed/reactions/batch', requireAuth, async (req, res) => {
+  let items = []
+  try {
+    items = JSON.parse(req.query.items || '[]')
+  } catch (_) { /* ignore parse errors */ }
+  const reactions = await getFeedReactionsBatch(items)
+  res.json(reactions)
 })
 
 export default router

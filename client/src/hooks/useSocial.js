@@ -35,6 +35,8 @@ const COMMENT_ROUTES = {
   pick: (id) => `/social/picks/${id}/comments`,
   parlay: (id) => `/social/parlays/${id}/comments`,
   prop: (id) => `/social/props/${id}/comments`,
+  streak_event: (id) => `/social/streak-events/${id}/comments`,
+  record_history: (id) => `/social/records/${id}/comments`,
 }
 
 export function useComments(targetType, targetId) {
@@ -65,6 +67,33 @@ export function useDeleteComment() {
     onSuccess: (_data, { targetType, targetId }) => {
       queryClient.invalidateQueries({ queryKey: ['comments', targetType, targetId] })
     },
+  })
+}
+
+// --- Feed Reactions ---
+
+export function useToggleFeedReaction() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ targetType, targetId, reactionType }) =>
+      api.post('/social/feed/reactions', {
+        target_type: targetType,
+        target_id: targetId,
+        reaction_type: reactionType,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feedReactionsBatch'] })
+    },
+  })
+}
+
+export function useFeedReactionsBatch(items) {
+  const key = items?.length ? JSON.stringify(items) : ''
+  return useQuery({
+    queryKey: ['feedReactionsBatch', key],
+    queryFn: () => api.get(`/social/feed/reactions/batch?items=${encodeURIComponent(JSON.stringify(items))}`),
+    enabled: !!items?.length,
   })
 }
 

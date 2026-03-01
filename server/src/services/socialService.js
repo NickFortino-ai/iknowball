@@ -24,13 +24,32 @@ async function assertConnected(actorId, ownerId) {
 }
 
 async function getTargetOwner(targetType, targetId) {
-  const table = targetType === 'pick' ? 'picks'
-    : targetType === 'parlay' ? 'parlays'
-    : 'prop_picks'
+  const TABLE_MAP = {
+    pick: 'picks',
+    parlay: 'parlays',
+    prop: 'prop_picks',
+    streak_event: 'streak_events',
+    record_history: 'record_history',
+  }
+  const OWNER_COL = {
+    pick: 'user_id',
+    parlay: 'user_id',
+    prop: 'user_id',
+    streak_event: 'user_id',
+    record_history: 'new_holder_id',
+  }
+
+  const table = TABLE_MAP[targetType]
+  const ownerCol = OWNER_COL[targetType]
+  if (!table) {
+    const err = new Error(`Unknown target type: ${targetType}`)
+    err.status = 400
+    throw err
+  }
 
   const { data } = await supabase
     .from(table)
-    .select('user_id')
+    .select(ownerCol)
     .eq('id', targetId)
     .single()
 
@@ -39,10 +58,10 @@ async function getTargetOwner(targetType, targetId) {
     err.status = 404
     throw err
   }
-  return data.user_id
+  return data[ownerCol]
 }
 
-const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick' }
+const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record' }
 
 export async function toggleReaction(userId, pickId, reactionType) {
   const ownerId = await getTargetOwner('pick', pickId)
@@ -203,4 +222,85 @@ export async function deleteComment(userId, commentId) {
 
   const { error } = await supabase.from('comments').delete().eq('id', commentId)
   if (error) throw error
+}
+
+// --- Feed Reactions ---
+
+export async function toggleFeedReaction(userId, targetType, targetId, reactionType) {
+  const ownerId = await getTargetOwner(targetType, targetId)
+  await assertConnected(userId, ownerId)
+
+  const { data: existing } = await supabase
+    .from('feed_reactions')
+    .select('id')
+    .eq('target_type', targetType)
+    .eq('target_id', targetId)
+    .eq('user_id', userId)
+    .eq('reaction_type', reactionType)
+    .single()
+
+  if (existing) {
+    await supabase.from('feed_reactions').delete().eq('id', existing.id)
+    return { toggled: 'off' }
+  }
+
+  await supabase.from('feed_reactions').insert({
+    target_type: targetType,
+    target_id: targetId,
+    user_id: userId,
+    reaction_type: reactionType,
+  })
+
+  if (userId !== ownerId) {
+    try {
+      const { data: actor } = await supabase
+        .from('users')
+        .select('username')
+        .eq('id', userId)
+        .single()
+      const username = actor?.username || 'Someone'
+      await createNotification(ownerId, 'reaction', `${username} reacted ${reactionType} to your ${targetType.replace('_', ' ')}`, {
+        actorId: userId,
+        targetType,
+        targetId,
+        reactionType,
+      })
+    } catch (_) { /* notification is best-effort */ }
+  }
+
+  return { toggled: 'on' }
+}
+
+export async function getFeedReactionsBatch(items) {
+  if (!items?.length) return {}
+
+  // Build OR filter for all target_type + target_id pairs
+  const orFilter = items.map((i) => `and(target_type.eq.${i.target_type},target_id.eq.${i.target_id})`).join(',')
+
+  const { data, error } = await supabase
+    .from('feed_reactions')
+    .select('target_type, target_id, reaction_type, user_id, users(username)')
+    .or(orFilter)
+
+  if (error) throw error
+
+  const result = {}
+  for (const row of data || []) {
+    const key = `${row.target_type}-${row.target_id}`
+    if (!result[key]) result[key] = {}
+    if (!result[key][row.reaction_type]) {
+      result[key][row.reaction_type] = { type: row.reaction_type, count: 0, users: [] }
+    }
+    result[key][row.reaction_type].count++
+    result[key][row.reaction_type].users.push({
+      userId: row.user_id,
+      username: row.users?.username,
+    })
+  }
+
+  const mapped = {}
+  for (const key of Object.keys(result)) {
+    mapped[key] = Object.values(result[key])
+  }
+  return mapped
 }
