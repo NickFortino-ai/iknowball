@@ -59,6 +59,17 @@ Your tier is visible on your profile, the leaderboard, and in every league you j
     a: 'A parlay lets you combine 2\u20135 picks into one bet. All picks must be correct for the parlay to hit. The risk and reward are multiplied \u2014 bigger upside, bigger downside. If you\u2019re confident in multiple games, parlays let you stack your knowledge for a massive point payout.',
   },
   {
+    q: 'What is the pick multiplier?',
+    a: `The pick multiplier lets you amplify your risk and reward on straight picks in the global competition. If you have at least 20 total points, you can apply a 2x, 3x, or 4x multiplier to any pending straight pick.
+
+\u2022 A 2x multiplier doubles both your risk and reward. A 3x triples them. A 4x quadruples them.
+\u2022 The extra risk from multiplying draws from your total points as a budget. For example, a 2x on a standard 10-point risk pick costs 10 extra points of budget (10 \u00d7 1 = 10 extra). A 3x costs 20 extra, and a 4x costs 30 extra.
+\u2022 Regular 1x picks are always free \u2014 only the extra risk from multiplying requires budget.
+\u2022 You can multiply multiple picks as long as you have enough budget remaining.
+
+The multiplier is only available on straight picks in the global competition. It is not available in leagues, parlays, player props, or futures. To use it, tap the bottom bar on the Picks page to expand it, then toggle "Multiply" on.`,
+  },
+  {
     q: 'What are player props?',
     a: 'Props let you predict individual player performances instead of game outcomes. Things like \u201cWill Anthony Edwards score over 27.5 points?\u201d or \u201cWill Brock Purdy throw over 2.5 touchdowns?\u201d Props test deeper sports knowledge beyond just picking winners. I KNOW BALL features one player prop per day.',
   },
