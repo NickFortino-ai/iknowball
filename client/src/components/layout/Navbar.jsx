@@ -10,6 +10,7 @@ import TierBadge from '../ui/TierBadge'
 import PickDetailModal from '../social/PickDetailModal'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
+import SurvivorWinModal from '../leagues/SurvivorWinModal'
 import { toast } from '../ui/Toast'
 
 const SPORT_LABELS = {
@@ -62,6 +63,8 @@ function getNotificationRoute(notification) {
       return '/hall-of-fame'
     case 'record_broken':
       return '/hall-of-fame?section=records'
+    case 'survivor_win':
+      return null // handled by modal
     case 'squares_quarter_win':
     case 'survivor_result':
       return notification.metadata?.leagueId ? `/leagues/${notification.metadata.leagueId}` : null
@@ -81,6 +84,7 @@ export default function Navbar() {
   const [selectedPickId, setSelectedPickId] = useState(null)
   const [selectedParlayId, setSelectedParlayId] = useState(null)
   const [selectedPropPickId, setSelectedPropPickId] = useState(null)
+  const [survivorWinData, setSurvivorWinData] = useState(null)
   const dropdownRef = useRef(null)
   const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
@@ -328,7 +332,9 @@ export default function Navbar() {
                         ))}
                         {notifications?.map((n) => {
                           const route = getNotificationRoute(n)
-                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || route
+                          const isSurvivorWin = n.type === 'survivor_win'
+                          const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || isSurvivorWin || isSurvivorStreakEnd || route
                           return (
                             <div
                               key={n.id}
@@ -337,11 +343,21 @@ export default function Navbar() {
                                 if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                                 else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                                 else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
+                                else if (isSurvivorWin) {
+                                  if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
+                                  setSurvivorWinData({ mode: 'win', ...n.metadata })
+                                  setShowInvites(false)
+                                }
+                                else if (isSurvivorStreakEnd) {
+                                  if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
+                                  setSurvivorWinData({ mode: 'streak_ended', ...n.metadata })
+                                  setShowInvites(false)
+                                }
                                 else if (route) { navigate(route); setShowInvites(false) }
                               }}
                             >
                               <div className="flex items-start gap-2">
-                                <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
+                                <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : n.type === 'survivor_win' ? '\uD83D\uDC51' : '\uD83C\uDFC6'}</span>
                                 <div className="min-w-0 flex-1">
                                   <div className="text-sm">{n.message}</div>
                                   <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
@@ -797,7 +813,9 @@ export default function Navbar() {
                     ))}
                     {notifications?.map((n) => {
                       const route = getNotificationRoute(n)
-                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || route
+                      const isSurvivorWin = n.type === 'survivor_win'
+                      const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
+                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || isSurvivorWin || isSurvivorStreakEnd || route
                       return (
                         <div
                           key={n.id}
@@ -806,11 +824,21 @@ export default function Navbar() {
                             if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                             else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                             else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
+                            else if (isSurvivorWin) {
+                              if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
+                              setSurvivorWinData({ mode: 'win', ...n.metadata })
+                              setShowInvites(false)
+                            }
+                            else if (isSurvivorStreakEnd) {
+                              if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
+                              setSurvivorWinData({ mode: 'streak_ended', ...n.metadata })
+                              setShowInvites(false)
+                            }
                             else if (route) { navigate(route); setShowInvites(false) }
                           }}
                         >
                           <div className="flex items-start gap-2">
-                            <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : '\uD83C\uDFC6'}</span>
+                            <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : n.type === 'survivor_win' ? '\uD83D\uDC51' : '\uD83C\uDFC6'}</span>
                             <div className="min-w-0 flex-1">
                               <div className="text-sm">{n.message}</div>
                               <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
@@ -841,6 +869,7 @@ export default function Navbar() {
     <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
     <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
     <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
+    <SurvivorWinModal data={survivorWinData} onClose={() => setSurvivorWinData(null)} />
     </>
   )
 }
