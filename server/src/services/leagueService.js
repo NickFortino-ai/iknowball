@@ -599,7 +599,7 @@ export async function getPickemStandings(leagueId) {
 
   const { data: members } = await supabase
     .from('league_members')
-    .select('user_id, users(id, username, display_name, avatar_emoji, tier)')
+    .select('user_id, users(id, username, display_name, avatar_emoji, tier, total_points)')
     .eq('league_id', leagueId)
 
   if (!members?.length) return []
@@ -832,7 +832,7 @@ export async function getLeagueStandings(leagueId, userId) {
   if (league.format === 'survivor') {
     const { data: members } = await supabase
       .from('league_members')
-      .select('*, users(id, username, display_name, avatar_emoji, tier)')
+      .select('*, users(id, username, display_name, avatar_emoji, tier, total_points)')
       .eq('league_id', leagueId)
       .order('is_alive', { ascending: false })
 

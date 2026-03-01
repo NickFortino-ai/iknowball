@@ -301,7 +301,7 @@ export async function getLeaguePickStandings(leagueId) {
 
   const { data: members } = await supabase
     .from('league_members')
-    .select('user_id, users(id, username, display_name, avatar_emoji, tier)')
+    .select('user_id, users(id, username, display_name, avatar_emoji, tier, total_points)')
     .eq('league_id', leagueId)
 
   if (!members?.length) return []
