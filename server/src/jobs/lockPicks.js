@@ -29,16 +29,17 @@ export async function lockPicks() {
   for (const game of games) {
     const { data: picks } = await supabase
       .from('picks')
-      .select('id, picked_team')
+      .select('id, picked_team, multiplier')
       .eq('game_id', game.id)
       .eq('status', 'pending')
 
     if (!picks?.length) continue
 
     for (const pick of picks) {
+      const mult = pick.multiplier || 1
       const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
-      const risk = odds ? calculateRiskPoints(odds) : 0
-      const reward = odds ? calculateRewardPoints(odds) : 0
+      const risk = odds ? calculateRiskPoints(odds) * mult : 0
+      const reward = odds ? calculateRewardPoints(odds) * mult : 0
 
       const { error } = await supabase
         .from('picks')

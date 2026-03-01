@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useGames, useActiveSports } from '../hooks/useGames'
-import { useMyPicks, useSubmitPick, useDeletePick } from '../hooks/usePicks'
+import { useMyPicks, useSubmitPick, useDeletePick, useUpdatePickMultiplier } from '../hooks/usePicks'
 import { useSharePickToSquad } from '../hooks/useConnections'
 import { useMyParlays, useDeleteParlay } from '../hooks/useParlays'
 import { usePickStore } from '../stores/pickStore'
@@ -15,6 +15,7 @@ import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import { triggerHaptic } from '../lib/haptics'
+import { useAuthStore } from '../stores/authStore'
 
 const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
@@ -86,6 +87,8 @@ export default function PicksPage() {
   const submitPick = useSubmitPick()
   const deletePick = useDeletePick()
   const sharePick = useSharePickToSquad()
+  const updateMultiplier = useUpdatePickMultiplier()
+  const profile = useAuthStore((s) => s.profile)
   const [sharedPickIds, setSharedPickIds] = useState(new Set())
 
   const { data: activeParlays } = useMyParlays('pending')
@@ -113,7 +116,7 @@ export default function PicksPage() {
     const map = {}
     for (const pick of myPicks) {
       if (pick.status === 'pending') {
-        map[pick.game_id] = pick.picked_team
+        map[pick.game_id] = pick
       }
     }
     return map
@@ -189,6 +192,15 @@ export default function PicksPage() {
       toast('Parlay deleted', 'info')
     } catch (err) {
       toast(err.message || 'Failed to delete parlay', 'error')
+    }
+  }
+
+  async function handleUpdateMultiplier(gameId, multiplier) {
+    try {
+      await updateMultiplier.mutateAsync({ gameId, multiplier })
+      triggerHaptic('Light')
+    } catch (err) {
+      toast(err.message || 'Failed to update multiplier', 'error')
     }
   }
 
@@ -331,7 +343,7 @@ export default function PicksPage() {
             </div>
           )}
 
-          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={games} />}
+          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={games} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />}
         </>
       )}
     </div>

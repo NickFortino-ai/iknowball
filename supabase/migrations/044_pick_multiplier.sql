@@ -1,0 +1,1 @@
+ALTER TABLE picks ADD COLUMN multiplier INTEGER DEFAULT 1 CHECK (multiplier BETWEEN 1 AND 4);

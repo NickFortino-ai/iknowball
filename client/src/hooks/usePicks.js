@@ -63,3 +63,15 @@ export function useDeletePick() {
     },
   })
 }
+
+export function useUpdatePickMultiplier() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ gameId, multiplier }) =>
+      api.patch('/picks/multiplier', { game_id: gameId, multiplier }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['picks'] })
+    },
+  })
+}

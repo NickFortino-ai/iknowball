@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
 
-export async function submitPick(userId, gameId, pickedTeam) {
+export async function submitPick(userId, gameId, pickedTeam, multiplier = 1) {
   // Verify game exists and hasn't started
   const { data: game, error: gameError } = await supabase
     .from('games')
@@ -28,11 +28,18 @@ export async function submitPick(userId, gameId, pickedTeam) {
     throw err
   }
 
+  // Validate multiplier budget
+  if (multiplier > 1) {
+    await validateMultiplierBudget(userId, gameId, multiplier, game, pickedTeam)
+  }
+
   // Snapshot odds at submission time
   const odds = pickedTeam === 'home' ? game.home_odds : game.away_odds
   const oddsAtSubmission = odds || null
-  const riskAtSubmission = odds ? calculateRiskPoints(odds) : null
-  const rewardAtSubmission = odds ? calculateRewardPoints(odds) : null
+  const baseRisk = odds ? calculateRiskPoints(odds) : null
+  const baseReward = odds ? calculateRewardPoints(odds) : null
+  const riskAtSubmission = baseRisk ? baseRisk * multiplier : null
+  const rewardAtSubmission = baseReward ? baseReward * multiplier : null
 
   // Upsert pick (user can change pick before lock)
   const { data, error } = await supabase
@@ -43,6 +50,7 @@ export async function submitPick(userId, gameId, pickedTeam) {
         game_id: gameId,
         picked_team: pickedTeam,
         status: 'pending',
+        multiplier,
         updated_at: new Date().toISOString(),
         odds_at_submission: oddsAtSubmission,
         risk_at_submission: riskAtSubmission,
@@ -55,6 +63,108 @@ export async function submitPick(userId, gameId, pickedTeam) {
 
   if (error) {
     logger.error({ error }, 'Failed to submit pick')
+    throw error
+  }
+
+  return data
+}
+
+async function validateMultiplierBudget(userId, excludeGameId, multiplier, game, pickedTeam) {
+  // Get user's total_points
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('total_points')
+    .eq('id', userId)
+    .single()
+
+  if (userError || !user) {
+    const err = new Error('User not found')
+    err.status = 404
+    throw err
+  }
+
+  if (user.total_points < 20) {
+    const err = new Error('You need at least 20 points to use multipliers')
+    err.status = 400
+    throw err
+  }
+
+  // Calculate extra cost of this pick
+  const odds = pickedTeam === 'home' ? game.home_odds : game.away_odds
+  const baseRisk = odds ? calculateRiskPoints(odds) : 0
+  const extraCost = baseRisk * (multiplier - 1)
+
+  // Sum extra costs from other pending multiplied picks (excluding current game)
+  const { data: otherPicks, error: picksError } = await supabase
+    .from('picks')
+    .select('risk_at_submission, multiplier')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .gt('multiplier', 1)
+    .neq('game_id', excludeGameId)
+
+  if (picksError) {
+    logger.error({ error: picksError }, 'Failed to check multiplier budget')
+    throw picksError
+  }
+
+  const usedBudget = (otherPicks || []).reduce((sum, p) => {
+    // risk_at_submission already includes multiplier, so base = risk / multiplier
+    const base = p.risk_at_submission / p.multiplier
+    return sum + base * (p.multiplier - 1)
+  }, 0)
+
+  if (usedBudget + extraCost > user.total_points) {
+    const err = new Error('Not enough points budget for this multiplier')
+    err.status = 400
+    throw err
+  }
+}
+
+export async function updatePickMultiplier(userId, gameId, multiplier) {
+  // Fetch the pending pick
+  const { data: pick, error: pickError } = await supabase
+    .from('picks')
+    .select('*, games(id, home_odds, away_odds)')
+    .eq('user_id', userId)
+    .eq('game_id', gameId)
+    .eq('status', 'pending')
+    .single()
+
+  if (pickError || !pick) {
+    const err = new Error('Pending pick not found')
+    err.status = 404
+    throw err
+  }
+
+  const game = pick.games
+
+  // Validate budget if multiplier > 1
+  if (multiplier > 1) {
+    await validateMultiplierBudget(userId, gameId, multiplier, game, pick.picked_team)
+  }
+
+  // Recalculate risk/reward with new multiplier
+  const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
+  const baseRisk = odds ? calculateRiskPoints(odds) : null
+  const baseReward = odds ? calculateRewardPoints(odds) : null
+  const riskAtSubmission = baseRisk ? baseRisk * multiplier : null
+  const rewardAtSubmission = baseReward ? baseReward * multiplier : null
+
+  const { data, error } = await supabase
+    .from('picks')
+    .update({
+      multiplier,
+      risk_at_submission: riskAtSubmission,
+      reward_at_submission: rewardAtSubmission,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', pick.id)
+    .select()
+    .single()
+
+  if (error) {
+    logger.error({ error }, 'Failed to update pick multiplier')
     throw error
   }
 
