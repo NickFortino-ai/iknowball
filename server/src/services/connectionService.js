@@ -1,6 +1,5 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
-import { createNotification } from './notificationService.js'
 import { getPronouns } from '../utils/pronouns.js'
 
 export async function connectUsers(userA, userB, source) {
@@ -112,7 +111,7 @@ export async function getMyConnections(userId) {
       }
     })
     .filter(Boolean)
-    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
 }
 
 export async function getPendingRequests(userId) {
@@ -189,22 +188,6 @@ export async function sendConnectionRequest(senderId, username) {
   }
 
   const connection = await connectUsers(senderId, recipient.id, 'manual_request')
-
-  // Get sender username for notification
-  const { data: sender } = await supabase
-    .from('users')
-    .select('username')
-    .eq('id', senderId)
-    .single()
-
-  if (sender) {
-    await createNotification(
-      recipient.id,
-      'connection_request',
-      `@${sender.username} sent you a connection request`,
-      { actorId: senderId, connectionId: connection?.id }
-    )
-  }
 
   return connection
 }
