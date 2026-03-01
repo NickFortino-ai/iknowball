@@ -92,11 +92,15 @@ Your tier is visible on your profile, the leaderboard, and in every league you j
   },
   {
     q: 'What if I think there\u2019s an error with my score?',
-    a: 'Contact us at admin@iknowball.club. We have admin tools to audit and recalculate scores if something looks off.',
+    a: 'Contact us at <a href="mailto:admin@iknowball.club" class="text-accent hover:underline">admin@iknowball.club</a>. We have admin tools to audit and recalculate scores if something looks off.',
+  },
+  {
+    q: 'How do I report a problem?',
+    a: 'Email us at <a href="mailto:admin@iknowball.club" class="text-accent hover:underline">admin@iknowball.club</a> with a description of the issue and we\'ll look into it.',
   },
   {
     q: 'Who built this?',
-    a: 'I KNOW BALL was created by Nick Fortino and Desmond Fortino. Questions, feedback, or feature requests? Email admin@iknowball.club.',
+    a: 'I KNOW BALL was created by Nick Fortino and Desmond Fortino. Questions, feedback, or feature requests? Email <a href="mailto:admin@iknowball.club" class="text-accent hover:underline">admin@iknowball.club</a>.',
   },
 ]
 
@@ -118,9 +122,7 @@ function FAQItem({ q, a }) {
         </svg>
       </button>
       {open && (
-        <div className="pb-4 text-sm text-text-secondary whitespace-pre-line leading-relaxed">
-          {a}
-        </div>
+        <div className="pb-4 text-sm text-text-secondary whitespace-pre-line leading-relaxed" dangerouslySetInnerHTML={{ __html: a }} />
       )}
     </div>
   )
