@@ -1,9 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
+
+function teamName(fullName) {
+  if (!fullName) return ''
+  const parts = fullName.split(' ')
+  return parts[parts.length - 1]
+}
 
 export default function BottomBar({ picks, games, profile, onUpdateMultiplier }) {
   const [expanded, setExpanded] = useState(false)
   const [multiplyOn, setMultiplyOn] = useState(false)
+
+  // Lock body scroll when expanded on mobile
+  useEffect(() => {
+    if (expanded) {
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = '' }
+    }
+  }, [expanded])
 
   if (!picks || Object.keys(picks).length === 0) return null
 
@@ -105,7 +119,7 @@ export default function BottomBar({ picks, games, profile, onUpdateMultiplier })
         )}
 
         {/* Pick list */}
-        <div className="space-y-2 max-h-60 overflow-y-auto mb-3">
+        <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-hide mb-3">
           {entries.map(([gameId, pick]) => {
             const game = games?.find((g) => g.id === gameId)
             if (!game) return null
@@ -128,11 +142,11 @@ export default function BottomBar({ picks, games, profile, onUpdateMultiplier })
                 {/* Team matchup */}
                 <div className="flex-1 min-w-0 text-sm truncate">
                   <span className={pick.picked_team === 'away' ? 'text-accent font-semibold' : 'text-text-primary'}>
-                    {game.away_team}
+                    {teamName(game.away_team)}
                   </span>
                   <span className="text-text-muted"> vs </span>
                   <span className={pick.picked_team === 'home' ? 'text-accent font-semibold' : 'text-text-primary'}>
-                    {game.home_team}
+                    {teamName(game.home_team)}
                   </span>
                 </div>
 
