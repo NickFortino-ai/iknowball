@@ -361,6 +361,33 @@ export default function SquaresView({ league, isCommissioner }) {
         {board.digits_locked ? ' — Digits locked' : ''}
       </div>
 
+      {/* Guidance banners */}
+      {!board.digits_locked && totalClaimed === 0 && (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 text-center">
+          <p className="text-sm text-text-secondary">
+            {isSelfSelect
+              ? 'Tap an empty square on the grid below to claim it.'
+              : isCommissioner
+                ? 'Use "Random Assign" above to assign squares to all members.'
+                : 'Waiting for the commissioner to assign squares.'}
+          </p>
+        </div>
+      )}
+      {!board.digits_locked && totalClaimed > 0 && !isCommissioner && (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 text-center">
+          <p className="text-sm text-text-secondary">
+            {isSelfSelect
+              ? 'Tap an empty square to claim more, or wait for the commissioner to lock digits.'
+              : 'Waiting for the commissioner to lock digits and start the game.'}
+          </p>
+        </div>
+      )}
+      {board.digits_locked && !quarters.some((q) => q.awayScore !== null) && (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 text-center">
+          <p className="text-sm text-text-secondary">Digits are locked! Watch the game — results will be scored by quarter.</p>
+        </div>
+      )}
+
       {/* Grid */}
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">

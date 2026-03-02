@@ -89,6 +89,14 @@ export default function SurvivorView({ league }) {
         </div>
       </div>
 
+      {/* No active period */}
+      {!currentWeek && (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 text-center">
+          <p className="text-sm text-text-secondary">No active {periodLabel.toLowerCase()} right now.</p>
+          <p className="text-xs text-text-muted mt-1">Picks will be available when the next {periodLabel.toLowerCase()} begins.</p>
+        </div>
+      )}
+
       {/* Make pick button */}
       {currentWeek && (
         <button
