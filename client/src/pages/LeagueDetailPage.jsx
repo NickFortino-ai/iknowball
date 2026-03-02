@@ -56,6 +56,64 @@ const DURATION_OPTIONS = [
   { value: 'playoffs_only', label: 'Playoffs Only' },
 ]
 
+function formatDateRange(startsAt, endsAt) {
+  const opts = { month: 'short', day: 'numeric', timeZone: 'UTC' }
+  const start = startsAt ? new Date(startsAt).toLocaleDateString('en-US', opts) : null
+  const end = endsAt ? new Date(endsAt).toLocaleDateString('en-US', opts) : null
+  if (start && end) return `${start} – ${end}`
+  if (start) return `Starting ${start}`
+  return null
+}
+
+function LeagueConditions({ league }) {
+  const settings = league.settings || {}
+  const isDaily = settings.pick_frequency === 'daily'
+  const items = []
+
+  // Date range
+  const dateRange = formatDateRange(league.starts_at, league.ends_at)
+  if (dateRange) items.push({ label: 'Dates', value: dateRange })
+
+  // Pick frequency
+  if (league.format === 'survivor' || league.format === 'pickem') {
+    items.push({ label: 'Picks', value: isDaily ? 'Daily' : 'Weekly' })
+  }
+
+  // Lives (survivor)
+  if (league.format === 'survivor') {
+    const lives = settings.lives || 1
+    items.push({ label: 'Lives', value: `${lives}` })
+    if (settings.all_eliminated_survive) {
+      items.push({ label: 'Rule', value: `All out same ${isDaily ? 'day' : 'week'} = all survive` })
+    }
+  }
+
+  // Games per week (pickem)
+  if (league.format === 'pickem' && settings.games_per_week) {
+    items.push({ label: `Per ${isDaily ? 'day' : 'week'}`, value: `${settings.games_per_week} games` })
+  }
+
+  // Lock odds (pickem)
+  if (league.format === 'pickem' && settings.lock_odds_at === 'submission') {
+    items.push({ label: 'Odds', value: 'Locked at submission' })
+  }
+
+  if (items.length === 0) return null
+
+  return (
+    <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center gap-2">
+            <span className="text-xs text-text-muted">{item.label}:</span>
+            <span className="text-xs font-semibold text-text-secondary">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function LeagueSettingsEditor({ league, updateLeague }) {
   const settings = league.settings || {}
   const isDaily = league.settings?.pick_frequency === 'daily'
@@ -324,6 +382,9 @@ export default function LeagueDetailPage() {
           )}
         </div>
       </div>
+
+      {/* League Conditions */}
+      <LeagueConditions league={league} />
 
       {/* Invite Code & Invite Player */}
       <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">

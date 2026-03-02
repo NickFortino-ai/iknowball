@@ -333,7 +333,7 @@ export async function getLeagueDetails(leagueId, userId) {
     .eq('league_id', leagueId)
     .order('joined_at', { ascending: true })
 
-  // Get current week
+  // Get current week (active period that covers now)
   const now = new Date().toISOString()
   const { data: currentWeek } = await supabase
     .from('league_weeks')
@@ -341,7 +341,21 @@ export async function getLeagueDetails(leagueId, userId) {
     .eq('league_id', leagueId)
     .lte('starts_at', now)
     .gte('ends_at', now)
-    .single()
+    .maybeSingle()
+
+  // Fallback: if no active period, get the next upcoming one
+  let activeWeek = currentWeek
+  if (!activeWeek) {
+    const { data: nextWeek } = await supabase
+      .from('league_weeks')
+      .select('*')
+      .eq('league_id', leagueId)
+      .gt('starts_at', now)
+      .order('starts_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    activeWeek = nextWeek
+  }
 
   // Check if settings are still editable (commissioner only, pick'em/survivor)
   let settingsEditable = false
@@ -358,7 +372,7 @@ export async function getLeagueDetails(leagueId, userId) {
     ...league,
     my_role: member.role,
     members: members || [],
-    current_week: currentWeek || null,
+    current_week: activeWeek || null,
     settings_editable: settingsEditable,
   }
 }
