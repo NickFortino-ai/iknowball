@@ -96,8 +96,11 @@ export const useAuthStore = create((set, get) => ({
         throw new Error('Session expired. Please log in again.')
       }
 
+      await queryClient.cancelQueries()
       queryClient.clear()
       // onAuthStateChange fires automatically → profile fetches → account upserted
+      // Wait for the new profile to load before clearing switching state
+      await get().fetchProfile()
     } finally {
       set({ switching: false })
     }
