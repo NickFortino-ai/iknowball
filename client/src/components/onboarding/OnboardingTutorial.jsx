@@ -18,7 +18,6 @@ export default function OnboardingTutorial() {
   const [mounted, setMounted] = useState(false)
   const observerRef = useRef(null)
   const timeoutRef = useRef(null)
-  const resizeRef = useRef(null)
 
   // Trigger logic
   useEffect(() => {
@@ -105,7 +104,6 @@ export default function OnboardingTutorial() {
     if (!active || !currentStep?.targetSelector) return
     const handleResize = () => measureTarget()
     window.addEventListener('resize', handleResize)
-    resizeRef.current = handleResize
     return () => window.removeEventListener('resize', handleResize)
   }, [active, currentStep, measureTarget])
 
@@ -152,20 +150,19 @@ export default function OnboardingTutorial() {
   // Tooltip position calculation
   const getTooltipStyle = () => {
     if (isFullscreen) {
+      // Center using inset + margin auto — no transform needed
       return {
         position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        maxWidth: 'min(24rem, calc(100vw - 2rem))',
-        width: '100%',
+        inset: 0,
+        margin: 'auto',
+        width: 'calc(100% - 2rem)',
+        maxWidth: '24rem',
+        height: 'fit-content',
       }
     }
 
-    const isMobile = window.innerWidth < 768
-
-    if (isMobile) {
-      // Bottom-sheet style above BottomTabBar
+    // Mobile: bottom-sheet style above BottomTabBar
+    if (window.innerWidth < 768) {
       return {
         position: 'fixed',
         bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 0.5rem)',
@@ -198,14 +195,20 @@ export default function OnboardingTutorial() {
   return (
     <div
       className={`fixed inset-0 z-[70] transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}
-      style={{ pointerEvents: 'auto' }}
     >
-      {/* SVG overlay with spotlight cutout */}
-      <svg className="fixed inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
-        <defs>
-          <mask id="spotlight-mask">
-            <rect width="100%" height="100%" fill="white" />
-            {targetRect && (
+      {/* Dark overlay — simple div fallback + SVG for spotlight cutout */}
+      {isFullscreen ? (
+        <div className="fixed inset-0 bg-black/75" />
+      ) : (
+        <svg
+          className="fixed inset-0"
+          width="100%"
+          height="100%"
+          style={{ display: 'block' }}
+        >
+          <defs>
+            <mask id="spotlight-mask">
+              <rect x="0" y="0" width="100%" height="100%" fill="white" />
               <rect
                 x={targetRect.x}
                 y={targetRect.y}
@@ -215,33 +218,36 @@ export default function OnboardingTutorial() {
                 ry={targetRect.rx}
                 fill="black"
               />
-            )}
-          </mask>
-        </defs>
-        <rect
-          width="100%"
-          height="100%"
-          fill="rgba(0,0,0,0.75)"
-          mask="url(#spotlight-mask)"
-        />
-      </svg>
+            </mask>
+          </defs>
+          <rect
+            x="0"
+            y="0"
+            width="100%"
+            height="100%"
+            fill="rgba(0,0,0,0.75)"
+            mask="url(#spotlight-mask)"
+          />
+        </svg>
+      )}
 
       {/* Accent border ring around spotlight */}
       {targetRect && (
         <div
-          className="fixed border-2 border-accent/60 rounded-2xl pointer-events-none"
+          className="fixed pointer-events-none"
           style={{
             left: targetRect.x - 1,
             top: targetRect.y - 1,
             width: targetRect.width + 2,
             height: targetRect.height + 2,
             borderRadius: targetRect.rx + 1,
+            border: '2px solid rgba(255, 77, 0, 0.6)',
           }}
         />
       )}
 
-      {/* Click blocker (prevents interacting with underlaying content) */}
-      <div className="fixed inset-0" onClick={(e) => e.stopPropagation()} />
+      {/* Click blocker */}
+      <div className="fixed inset-0" />
 
       {/* Tooltip card */}
       <div
