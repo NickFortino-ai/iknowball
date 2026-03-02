@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect, Fragment } from 'react'
-import { usePickHistory } from '../hooks/usePicks'
+import { usePickHistory, useBonusHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
 import { usePropPickHistory } from '../hooks/useProps'
 import { useFuturesPickHistory } from '../hooks/useFutures'
@@ -94,6 +94,7 @@ export default function ResultsPage() {
   const { data: parlays, isLoading: parlaysLoading } = useParlayHistory()
   const { data: propPicks, isLoading: propsLoading } = usePropPickHistory()
   const { data: futuresPicks, isLoading: futuresLoading } = useFuturesPickHistory()
+  const { data: bonuses } = useBonusHistory()
 
   const todayKey = useTodayKey()
 
@@ -120,17 +121,22 @@ export default function ResultsPage() {
   const allSettledParlays = useMemo(() => [...todayParlays.filter(p => p.status === 'settled'), ...olderSettledParlays], [todayParlays, olderSettledParlays])
   const allSettledProps = useMemo(() => [...todayProps.filter(p => p.status === 'settled'), ...olderSettledProps], [todayProps, olderSettledProps])
 
+  const leaguePoints = useMemo(() => {
+    if (!bonuses?.length) return 0
+    return bonuses.reduce((sum, b) => sum + (b.points || 0), 0)
+  }, [bonuses])
+
   const weeklyStats = useMemo(() => {
-    if (!allSettledPicks.length && !allSettledParlays.length && !allSettledProps.length && !settledFutures.length) return null
-    let wins = 0, losses = 0, pushes = 0, netPoints = 0
+    if (!allSettledPicks.length && !allSettledParlays.length && !allSettledProps.length && !settledFutures.length && !leaguePoints) return null
+    let wins = 0, losses = 0, netPoints = 0
     for (const item of [...allSettledPicks, ...allSettledParlays, ...allSettledProps, ...settledFutures]) {
       if (item.is_correct === true) wins++
       else if (item.is_correct === false) losses++
-      else pushes++
       netPoints += item.points_earned || 0
     }
-    return { wins, losses, pushes, netPoints, total: allSettledPicks.length + allSettledParlays.length + allSettledProps.length + settledFutures.length }
-  }, [allSettledPicks, allSettledParlays, allSettledProps, settledFutures])
+    netPoints += leaguePoints
+    return { wins, losses, leaguePoints, netPoints, total: allSettledPicks.length + allSettledParlays.length + allSettledProps.length + settledFutures.length }
+  }, [allSettledPicks, allSettledParlays, allSettledProps, settledFutures, leaguePoints])
 
   const settledPickIds = useMemo(() => {
     return allSettledPicks.map((p) => p.id)
@@ -157,8 +163,10 @@ export default function ResultsPage() {
               <div className="text-xs text-text-muted">Losses</div>
             </div>
             <div>
-              <div className="font-display text-2xl text-text-secondary">{weeklyStats.pushes}</div>
-              <div className="text-xs text-text-muted">Pushes</div>
+              <div className={`font-display text-2xl ${weeklyStats.leaguePoints > 0 ? 'text-correct' : weeklyStats.leaguePoints < 0 ? 'text-incorrect' : 'text-text-secondary'}`}>
+                {weeklyStats.leaguePoints > 0 ? '+' : ''}{weeklyStats.leaguePoints}
+              </div>
+              <div className="text-xs text-text-muted">Leagues</div>
             </div>
             <div>
               <div className={`font-display text-2xl ${weeklyStats.netPoints >= 0 ? 'text-correct' : 'text-incorrect'}`}>
