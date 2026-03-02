@@ -118,17 +118,15 @@ export async function generateWeeklyRecap() {
       const userData = userDataMap[userId]
       const name = userData?.display_name || userData?.username || 'Baller'
       const rank = userData?.rank
-      const record = userData?.record
-      const points = userData?.weekly_points
 
       let personalLine = ''
       if (rank) {
-        personalLine = `You landed at <strong>#${rank}</strong> after going <strong>${record.wins}-${record.losses}</strong> and earning <strong>${points > 0 ? '+' : ''}${points} points</strong> this week.`
+        personalLine = `You were featured in this week's top 5 rankings. See what the headlines have to say about your week.`
       } else {
-        personalLine = `You earned a special mention in this week's awards section.`
+        personalLine = `You earned a shoutout in this week's awards section. Open the app to see what you won.`
       }
 
-      const subject = "You're I KNOW BALL Famous!"
+      const subject = "You made this week's Headlines"
       const html = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
           <h1 style="font-size: 24px; margin-bottom: 8px;">Weekly Headlines</h1>
@@ -142,9 +140,6 @@ export async function generateWeeklyRecap() {
              style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
             See Full Headlines
           </a>
-          <p style="color: #888; font-size: 13px; margin-top: 24px;">
-            Keep making picks to hold your spot next week.
-          </p>
         </div>
       `
 
