@@ -48,7 +48,7 @@ const ONBOARDING_STEPS = [
     page: '/leagues',
     targetSelector: '[data-onboarding="leagues-actions"]',
     title: 'Compete in Leagues',
-    body: "Create or join leagues to compete with friends. Play Pick'em, Survivor, or Squares formats across different sports.",
+    body: "Create or join leagues to compete with friends. Play Pick'em, Survivor, Squares, or Brackets formats across different sports.",
     position: 'bottom',
   },
   {
