@@ -5,6 +5,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 import TierBadge from '../components/ui/TierBadge'
+import Avatar from '../components/ui/Avatar'
 import GameCard from '../components/picks/GameCard'
 import ParlayCard from '../components/picks/ParlayCard'
 import FuturesPickCard from '../components/picks/FuturesPickCard'
@@ -176,9 +177,7 @@ function RecordCard({ record }) {
             className="flex items-center gap-2 mt-3 pt-3 border-t border-border cursor-pointer hover:opacity-80 transition-opacity"
             onClick={(e) => { e.stopPropagation(); navigate(`/profile?user=${holder.id}`) }}
           >
-            <span className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-xs flex-shrink-0">
-              {holder.avatar_emoji || holder.display_name?.[0]?.toUpperCase() || holder.username?.[0]?.toUpperCase()}
-            </span>
+            <Avatar user={holder} size="md" className="bg-accent/20" />
             <span className="text-sm font-medium text-text-primary">{holder.display_name || holder.username}</span>
             <TierBadge tier={holder.tier} size="xs" />
           </div>
@@ -222,9 +221,7 @@ function RecordCard({ record }) {
                         className="flex items-center gap-1.5 mt-1 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => navigate(`/profile?user=${sub.users.id}`)}
                       >
-                        <span className="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center text-[10px] flex-shrink-0">
-                          {sub.users.avatar_emoji || sub.users.display_name?.[0]?.toUpperCase()}
-                        </span>
+                        <Avatar user={sub.users} size="xs" className="bg-accent/20" />
                         <span className="text-xs text-text-secondary">{sub.users.display_name || sub.users.username}</span>
                       </div>
                     )}

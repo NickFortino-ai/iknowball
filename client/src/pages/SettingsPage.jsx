@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useAuthStore } from '../stores/authStore'
@@ -6,6 +6,8 @@ import { api } from '../lib/api'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import { usePushStatus, useSubscribePush, useUnsubscribePush } from '../hooks/usePushNotifications'
+import { useAvatarUpload } from '../hooks/useAvatarUpload'
+import Avatar from '../components/ui/Avatar'
 
 const avatarEmojis = [
   '🏀', '🏈', '⚾', '🏆', '🔥', '🎯',
@@ -75,6 +77,8 @@ export default function SettingsPage() {
   const pushEnabled = pushStatus?.hasSubscriptions || false
 
   const [pushPrefs, setPushPrefs] = useState({ parlay_result: true, streak_milestone: true })
+  const photoFileRef = useRef(null)
+  const { uploading, uploadAvatar, removeAvatar } = useAvatarUpload()
 
   useEffect(() => {
     if (profile) {
@@ -193,6 +197,40 @@ export default function SettingsPage() {
 
       {/* Avatar Emoji */}
       <Section label="Profile Icon">
+        {/* Photo upload */}
+        <div className="flex items-center gap-4 mb-4 pb-4 border-b border-border">
+          <Avatar user={profile} size="2xl" />
+          <div className="flex gap-2">
+            <button
+              onClick={() => photoFileRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+            >
+              {uploading ? 'Uploading...' : 'Upload Photo'}
+            </button>
+            {profile.avatar_url && (
+              <button
+                onClick={removeAvatar}
+                disabled={uploading}
+                className="px-3 py-2 rounded-lg text-sm font-semibold bg-bg-input border border-border text-text-secondary hover:text-incorrect transition-colors disabled:opacity-50"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <input
+            ref={photoFileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) uploadAvatar(file)
+              e.target.value = ''
+            }}
+          />
+        </div>
+
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
           {avatarEmojis.map((emoji) => (
             <button

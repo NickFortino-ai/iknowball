@@ -17,7 +17,7 @@ export async function getBoard(leagueId) {
 
   const { data: claims } = await supabase
     .from('squares_claims')
-    .select('*, users(id, username, display_name, avatar_emoji)')
+    .select('*, users(id, username, display_name, avatar_url, avatar_emoji)')
     .eq('board_id', board.id)
 
   return { ...board, claims: claims || [] }

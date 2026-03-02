@@ -1,4 +1,5 @@
 import { timeAgo } from '../../lib/time'
+import Avatar from '../ui/Avatar'
 import FeedReactions from './FeedReactions'
 import PickComments from '../social/PickComments'
 
@@ -27,9 +28,9 @@ export default function FeedCardWrapper({
       <div className="px-4 pt-3 pb-2 flex items-center gap-3">
         <button
           onClick={() => onUserTap?.(item.userId)}
-          className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-sm flex-shrink-0 hover:ring-2 hover:ring-accent/30 transition-shadow"
+          className="hover:ring-2 hover:ring-accent/30 transition-shadow rounded-full"
         >
-          {item.avatar_emoji || item.username?.[0]?.toUpperCase()}
+          <Avatar user={{ avatar_url: item.avatar_url, avatar_emoji: item.avatar_emoji, username: item.username, display_name: item.display_name }} size="lg" />
         </button>
         <div className="min-w-0 flex-1">
           <button

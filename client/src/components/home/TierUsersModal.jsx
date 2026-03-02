@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTierUsers } from '../../hooks/useTierUsers'
 import TierBadge from '../ui/TierBadge'
+import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import UserProfileModal from '../profile/UserProfileModal'
 
@@ -61,9 +62,7 @@ export default function TierUsersModal({ tier, onClose }) {
                     onClick={() => setProfileUserId(user.id)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-bg-primary transition-colors text-left"
                   >
-                    <div className="w-9 h-9 rounded-full bg-bg-primary flex items-center justify-center text-sm font-semibold shrink-0">
-                      {(user.display_name || user.username)?.[0]?.toUpperCase()}
-                    </div>
+                    <Avatar user={user} size="xl" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold truncate">{user.display_name || user.username}</div>
                       <div className="text-xs text-text-muted truncate">@{user.username}</div>

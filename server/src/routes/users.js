@@ -19,7 +19,7 @@ const registerSchema = z.object({
 
 const updateSchema = z.object({
   display_name: z.string().min(1).max(50).optional(),
-  avatar_url: z.string().url().optional(),
+  avatar_url: z.string().url().nullable().optional(),
   bio: z.string().max(200).optional(),
   avatar_emoji: z.string().max(4).optional(),
   sports_interests: z.array(z.string()).max(10).optional(),
@@ -328,7 +328,7 @@ router.get('/search', requireAuth, async (req, res) => {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_emoji')
+    .select('id, username, display_name, avatar_url, avatar_emoji')
     .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
     .neq('id', req.user.id)
     .limit(10)

@@ -516,7 +516,7 @@ export async function getEntryByUser(tournamentId, userId) {
 export async function getAllEntries(tournamentId) {
   const { data: entries, error } = await supabase
     .from('bracket_entries')
-    .select('*, users(id, username, display_name, avatar_emoji, tier, total_points)')
+    .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
     .eq('tournament_id', tournamentId)
     .order('total_points', { ascending: false })
 
@@ -967,7 +967,7 @@ export async function getBracketStandings(leagueId) {
 
   const { data: entries } = await supabase
     .from('bracket_entries')
-    .select('*, users(id, username, display_name, avatar_emoji, tier, total_points)')
+    .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
     .eq('tournament_id', tournament.id)
     .order('total_points', { ascending: false })
 

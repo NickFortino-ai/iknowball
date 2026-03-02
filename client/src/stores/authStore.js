@@ -29,6 +29,7 @@ export const useAuthStore = create((set, get) => ({
               userId: session.user.id,
               username: profile.username,
               displayName: profile.display_name || profile.username,
+              avatarUrl: profile.avatar_url || null,
               avatarEmoji: profile.avatar_emoji || null,
               refreshToken: session.refresh_token,
             })

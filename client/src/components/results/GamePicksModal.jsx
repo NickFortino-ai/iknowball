@@ -3,6 +3,7 @@ import { useGamePicks } from '../../hooks/usePicks'
 import { formatOdds } from '../../lib/scoring'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
+import Avatar from '../ui/Avatar'
 
 const BG = '#0A0A0F'
 const CARD_BG = '#141419'
@@ -369,9 +370,7 @@ export default function GamePicksModal({ game, userPick, onClose }) {
                   {[...squadAway, ...squadHome].map((pick) => (
                     <div key={pick.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-sm shrink-0">
-                          {pick.avatar_emoji || (pick.display_name || pick.username)?.[0]?.toUpperCase()}
-                        </span>
+                        <Avatar user={pick} size="lg" />
                         <span className="text-sm font-medium truncate">
                           {pick.display_name || pick.username}
                         </span>

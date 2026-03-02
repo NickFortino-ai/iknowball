@@ -163,7 +163,7 @@ async function getDisplayPeriodNumber(leagueId, rawWeekNumber) {
 export async function getSurvivorBoard(leagueId, requestingUserId) {
   const { data: members } = await supabase
     .from('league_members')
-    .select('*, users(id, username, display_name, avatar_emoji)')
+    .select('*, users(id, username, display_name, avatar_url, avatar_emoji)')
     .eq('league_id', leagueId)
     .order('is_alive', { ascending: false })
 

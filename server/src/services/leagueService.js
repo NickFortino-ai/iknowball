@@ -329,14 +329,14 @@ export async function getLeagueDetails(leagueId, userId) {
   // Get members with user details
   const { data: members } = await supabase
     .from('league_members')
-    .select('*, users(id, username, display_name, avatar_emoji, tier, total_points)')
+    .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
     .eq('league_id', leagueId)
     .order('joined_at', { ascending: true })
 
   // Get pending invitations
   const { data: pendingInvitations } = await supabase
     .from('league_invitations')
-    .select('id, status, created_at, user:invited_user_id(id, username, display_name, avatar_emoji)')
+    .select('id, status, created_at, user:invited_user_id(id, username, display_name, avatar_url, avatar_emoji)')
     .eq('league_id', leagueId)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
@@ -524,7 +524,7 @@ export async function getLeagueMembers(leagueId, userId) {
 
   const { data, error } = await supabase
     .from('league_members')
-    .select('*, users(id, username, display_name, avatar_emoji, tier, total_points)')
+    .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
     .eq('league_id', leagueId)
     .order('joined_at', { ascending: true })
 
@@ -622,7 +622,7 @@ export async function getPickemStandings(leagueId) {
 
   const { data: members } = await supabase
     .from('league_members')
-    .select('user_id, users(id, username, display_name, avatar_emoji, tier, total_points)')
+    .select('user_id, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
     .eq('league_id', leagueId)
 
   if (!members?.length) return []
@@ -871,7 +871,7 @@ export async function getLeagueStandings(leagueId, userId) {
   if (league.format === 'survivor') {
     const { data: members } = await supabase
       .from('league_members')
-      .select('*, users(id, username, display_name, avatar_emoji, tier, total_points)')
+      .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
       .eq('league_id', leagueId)
       .order('is_alive', { ascending: false })
 

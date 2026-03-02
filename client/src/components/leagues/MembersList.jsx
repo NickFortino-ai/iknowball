@@ -1,4 +1,5 @@
 import TierBadge from '../ui/TierBadge'
+import Avatar from '../ui/Avatar'
 import { getTier } from '../../lib/scoring'
 
 export default function MembersList({ members, pendingInvitations, commissionerId, leagueId, isCommissioner }) {
@@ -20,9 +21,7 @@ export default function MembersList({ members, pendingInvitations, commissionerI
             className="bg-bg-card rounded-xl border border-border px-4 py-3 flex items-center justify-between"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-bg-primary flex items-center justify-center text-sm flex-shrink-0">
-                {user.avatar_emoji || user.display_name?.[0]?.toUpperCase() || user.username?.[0]?.toUpperCase()}
-              </div>
+              <Avatar user={user} size="xl" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm truncate">{user.display_name || user.username}</span>
@@ -60,9 +59,7 @@ export default function MembersList({ members, pendingInvitations, commissionerI
                 className="bg-bg-card rounded-xl border border-border/50 px-4 py-3 flex items-center justify-between opacity-60"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-bg-primary flex items-center justify-center text-sm flex-shrink-0">
-                    {user.avatar_emoji || user.display_name?.[0]?.toUpperCase() || user.username?.[0]?.toUpperCase()}
-                  </div>
+                  <Avatar user={user} size="xl" />
                   <div className="min-w-0">
                     <span className="font-semibold text-sm truncate block">{user.display_name || user.username}</span>
                     <div className="text-xs text-text-muted">@{user.username}</div>

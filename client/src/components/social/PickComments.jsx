@@ -3,6 +3,7 @@ import { useComments, useAddComment, useDeleteComment } from '../../hooks/useSoc
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
+import Avatar from '../ui/Avatar'
 
 export default function PickComments({ pickId, targetType = 'pick', targetId, initialExpanded = false, hideForm = false }) {
   // Support both old (pickId) and new (targetType + targetId) API
@@ -43,9 +44,7 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, in
         <div className="mt-2 space-y-2">
           {comments?.map((c) => (
             <div key={c.id} className="flex items-start gap-2 text-xs">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-bg-primary flex items-center justify-center text-[10px]">
-                {c.users?.avatar_emoji || c.users?.username?.[0]?.toUpperCase()}
-              </span>
+              <Avatar user={c.users} size="xs" />
               <div className="min-w-0 flex-1">
                 <span className="font-semibold">{c.users?.username}</span>{' '}
                 <span className="text-text-secondary">{c.content}</span>

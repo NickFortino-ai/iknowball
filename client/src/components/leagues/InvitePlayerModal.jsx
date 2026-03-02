@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchUsers, useSendInvitation, useLeagueInvitations, useSendEmailInvitation } from '../../hooks/useInvitations'
 import { useConnections } from '../../hooks/useConnections'
 import { toast } from '../ui/Toast'
+import Avatar from '../ui/Avatar'
 
 const STATUS_STYLES = {
   pending: 'bg-accent/20 text-accent',
@@ -127,9 +128,7 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, on
                   className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-bg-primary flex items-center justify-center text-xs flex-shrink-0">
-                      {conn.avatar_emoji || conn.username[0].toUpperCase()}
-                    </div>
+                    <Avatar user={conn} size="sm" />
                     <span className="text-sm truncate">@{conn.username}</span>
                   </div>
                   <button
@@ -165,9 +164,7 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, on
                   disabled={sendInvitation.isPending}
                   className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors disabled:opacity-50"
                 >
-                  <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-sm flex-shrink-0">
-                    {user.avatar_emoji || user.display_name?.[0]?.toUpperCase() || user.username[0].toUpperCase()}
-                  </div>
+                  <Avatar user={user} size="lg" />
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{user.display_name || user.username}</div>
                     <div className="text-xs text-text-muted">@{user.username}</div>
@@ -195,9 +192,7 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, on
                   className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-bg-primary flex items-center justify-center text-xs flex-shrink-0">
-                      {invite.user?.avatar_emoji || invite.user?.username?.[0]?.toUpperCase()}
-                    </div>
+                    <Avatar user={invite.user} size="sm" />
                     <span className="text-sm truncate">@{invite.user?.username}</span>
                   </div>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES.pending}`}>
@@ -220,9 +215,7 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, on
                   className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary opacity-60"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-bg-primary flex items-center justify-center text-xs flex-shrink-0">
-                      {invite.user?.avatar_emoji || invite.user?.username?.[0]?.toUpperCase()}
-                    </div>
+                    <Avatar user={invite.user} size="sm" />
                     <span className="text-sm truncate">@{invite.user?.username}</span>
                   </div>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[invite.status]}`}>

@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 import UserProfileModal from '../components/profile/UserProfileModal'
+import Avatar from '../components/ui/Avatar'
 
 const tabs = [
   { label: 'Global', scope: 'global', sport: null },
@@ -80,11 +81,14 @@ export default function LeaderboardPage() {
                 <span className={`font-display text-lg ${user.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>
                   {user.rank}
                 </span>
-                <div className="min-w-0">
-                  <div className={`font-semibold truncate ${isMe ? 'text-accent' : 'text-text-primary'}`}>
-                    {user.display_name || user.username}
+                <div className="flex items-center gap-2 min-w-0">
+                  <Avatar user={user} size="md" />
+                  <div className="min-w-0">
+                    <div className={`font-semibold truncate ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+                      {user.display_name || user.username}
+                    </div>
+                    <div className="text-xs text-text-muted">@{user.username}</div>
                   </div>
-                  <div className="text-xs text-text-muted">@{user.username}</div>
                 </div>
                 <TierBadge tier={user.tier} size="xs" />
                 <span className="font-display text-lg text-right">

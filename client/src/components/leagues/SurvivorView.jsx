@@ -5,6 +5,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
+import Avatar from '../ui/Avatar'
 
 const STATUS_STYLES = {
   survived: 'bg-correct/20 text-correct',
@@ -201,9 +202,7 @@ export default function SurvivorView({ league }) {
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-full bg-bg-primary flex items-center justify-center text-xs flex-shrink-0">
-                  {m.users?.avatar_emoji || m.users?.username?.[0]?.toUpperCase()}
-                </div>
+                <Avatar user={m.users} size="md" />
                 <span className="font-semibold text-sm truncate">
                   {m.users?.display_name || m.users?.username}
                 </span>

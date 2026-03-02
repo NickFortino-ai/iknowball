@@ -4,6 +4,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 import TierBadge from '../components/ui/TierBadge'
+import Avatar from '../components/ui/Avatar'
 
 function CrownSVG({ size = 80, id = 'crown' }) {
   return (
@@ -117,9 +118,7 @@ function GlobalCrown({ crown }) {
       <h2 className="font-display text-lg text-[#FFD700] mb-4 tracking-wide">The {title} of I KNOW BALL</h2>
 
       <div className="flex justify-center mb-2">
-        <span className="w-14 h-14 rounded-full bg-[#FFD700]/10 flex items-center justify-center text-xl border border-[#FFD700]/20">
-          {holder.avatar_emoji || holder.display_name?.[0]?.toUpperCase() || holder.username?.[0]?.toUpperCase()}
-        </span>
+        <Avatar user={holder} size="2xl" className="bg-[#FFD700]/10 border border-[#FFD700]/20" />
       </div>
 
       <div className="font-semibold text-lg text-text-primary group-hover:text-[#FFD700] transition-colors">
@@ -149,9 +148,7 @@ function CategoryCrown({ crown, index }) {
       </div>
       <div className="text-xs font-semibold text-[#DAA520] uppercase tracking-wider mb-2">{crown.scope}</div>
       <div className="flex justify-center mb-1">
-        <span className="w-8 h-8 rounded-full bg-[#FFD700]/10 flex items-center justify-center text-xs border border-[#FFD700]/15">
-          {holder.avatar_emoji || holder.display_name?.[0]?.toUpperCase() || holder.username?.[0]?.toUpperCase()}
-        </span>
+        <Avatar user={holder} size="lg" className="bg-[#FFD700]/10 border border-[#FFD700]/15" />
       </div>
       <div className="text-sm font-medium text-text-primary group-hover:text-[#FFD700] transition-colors truncate">
         {holder.display_name || holder.username}

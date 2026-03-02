@@ -71,7 +71,7 @@ export async function getMyConnections(userId) {
   // Get user details
   const { data: users } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_emoji, total_points, tier, updated_at')
+    .select('id, username, display_name, avatar_url, avatar_emoji, total_points, tier, updated_at')
     .in('id', otherUserIds)
 
   // Get max current_streak per user
@@ -102,7 +102,9 @@ export async function getMyConnections(userId) {
         user_id: otherId,
         username: user.username,
         display_name: user.display_name,
-        avatar_emoji: user.avatar_emoji,
+        avatar_url: user.avatar_url,
+        avatar_url: user.avatar_url,
+      avatar_emoji: user.avatar_emoji,
         total_points: user.total_points,
         tier: user.tier,
         current_streak: streakMap[otherId] || 0,
@@ -128,7 +130,7 @@ export async function getPendingRequests(userId) {
 
   const { data: users } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_emoji')
+    .select('id, username, display_name, avatar_url, avatar_emoji')
     .in('id', requesterIds)
 
   const userMap = {}
@@ -290,7 +292,7 @@ export async function getConnectionActivity(userId) {
   // Get user details for mapping
   const { data: users } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_emoji, title_preference')
+    .select('id, username, display_name, avatar_url, avatar_emoji, title_preference')
     .in('id', connectedIds)
 
   const userMap = {}
@@ -378,6 +380,7 @@ export async function getConnectionActivity(userId) {
       userId: pick.user_id,
       username: user.username,
       display_name: user.display_name,
+      avatar_url: user.avatar_url,
       avatar_emoji: user.avatar_emoji,
       timestamp: pick.updated_at,
       pick: {
@@ -410,6 +413,7 @@ export async function getConnectionActivity(userId) {
       userId: parlay.user_id,
       username: user.username,
       display_name: user.display_name,
+      avatar_url: user.avatar_url,
       avatar_emoji: user.avatar_emoji,
       timestamp: parlay.updated_at,
       parlay: {
@@ -443,6 +447,7 @@ export async function getConnectionActivity(userId) {
       userId: event.user_id,
       username: user.username,
       display_name: user.display_name,
+      avatar_url: user.avatar_url,
       avatar_emoji: user.avatar_emoji,
       timestamp: event.created_at,
       streak: {
@@ -463,6 +468,7 @@ export async function getConnectionActivity(userId) {
       userId: u.id,
       username: user.username,
       display_name: user.display_name,
+      avatar_url: user.avatar_url,
       avatar_emoji: user.avatar_emoji,
       timestamp: u.updated_at,
       tier: { name: u.tier },
@@ -494,6 +500,7 @@ export async function getConnectionActivity(userId) {
       userId: record.new_holder_id,
       username: user.username,
       display_name: user.display_name,
+      avatar_url: user.avatar_url,
       avatar_emoji: user.avatar_emoji,
       timestamp: record.broken_at,
       record: {
@@ -518,6 +525,7 @@ export async function getConnectionActivity(userId) {
       userId: share.user_id,
       username: user.username,
       display_name: user.display_name,
+      avatar_url: user.avatar_url,
       avatar_emoji: user.avatar_emoji,
       timestamp: share.created_at,
       pick: {
@@ -588,7 +596,8 @@ export async function getConnectionActivity(userId) {
         userId: comment.user_id,
         username: user.username,
         display_name: user.display_name,
-        avatar_emoji: user.avatar_emoji,
+        avatar_url: user.avatar_url,
+      avatar_emoji: user.avatar_emoji,
         timestamp: comment.created_at,
         comment: {
           content: comment.content,

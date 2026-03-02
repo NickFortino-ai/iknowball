@@ -264,7 +264,7 @@ export async function getGamePicksData(userId, gameId) {
     connectedIds.length > 0
       ? supabase
           .from('picks')
-          .select('picked_team, users(id, username, display_name, avatar_emoji)')
+          .select('picked_team, users(id, username, display_name, avatar_url, avatar_emoji)')
           .eq('game_id', gameId)
           .in('user_id', connectedIds)
       : { data: [] },

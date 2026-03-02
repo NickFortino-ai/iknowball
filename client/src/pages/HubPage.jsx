@@ -17,6 +17,8 @@ import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import SocialLinks from '../components/ui/SocialLinks'
 import ActivityFeed from '../components/feed/ActivityFeed'
+import Avatar from '../components/ui/Avatar'
+import AvatarUpload from '../components/profile/AvatarUpload'
 
 function MyProfileBanner({ profile, onTap }) {
   const tier = getTier(profile.total_points)
@@ -27,9 +29,7 @@ function MyProfileBanner({ profile, onTap }) {
       className="bg-bg-card border border-border rounded-2xl p-5 mb-6 cursor-pointer hover:bg-bg-card-hover transition-colors"
     >
       <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-accent/15 border border-accent/25 flex items-center justify-center text-2xl flex-shrink-0">
-          {profile.avatar_emoji || profile.display_name?.[0]?.toUpperCase() || profile.username?.[0]?.toUpperCase()}
-        </div>
+        <AvatarUpload user={profile} size="2xl" className="bg-accent/15 border border-accent/25" />
         <div className="min-w-0 flex-1">
           <div className="font-display text-xl truncate">{profile.display_name || profile.username}</div>
           <div className="text-text-muted text-sm">@{profile.username}</div>
@@ -117,9 +117,7 @@ export default function HubPage() {
             {pending.map((req) => (
               <div key={req.id} className="bg-bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-sm flex-shrink-0">
-                    {req.requester?.avatar_emoji || req.requester?.username?.[0]?.toUpperCase()}
-                  </div>
+                  <Avatar user={req.requester} size="lg" />
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">
                       {req.requester?.display_name || req.requester?.username}
@@ -170,9 +168,7 @@ export default function HubPage() {
                     key={user.id}
                     className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-sm flex-shrink-0">
-                      {user.avatar_emoji || user.display_name?.[0]?.toUpperCase() || user.username[0].toUpperCase()}
-                    </div>
+                    <Avatar user={user} size="lg" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium truncate">{user.display_name || user.username}</div>
                       <div className="text-xs text-text-muted">@{user.username}</div>
@@ -240,9 +236,7 @@ export default function HubPage() {
                 onClick={() => setSelectedUserId(conn.user_id)}
                 className="px-4 py-3 flex items-center gap-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-bg-card-hover transition-colors"
               >
-                <div className="w-9 h-9 rounded-full bg-bg-primary flex items-center justify-center text-base flex-shrink-0">
-                  {conn.avatar_emoji || conn.username[0].toUpperCase()}
-                </div>
+                <Avatar user={conn} size="xl" />
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm truncate">{conn.display_name || conn.username}</div>
                   <div className="text-xs text-text-muted">@{conn.username}</div>

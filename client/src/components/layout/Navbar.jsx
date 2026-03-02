@@ -11,6 +11,7 @@ import PickDetailModal from '../social/PickDetailModal'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
 import LeagueWinModal from '../leagues/LeagueWinModal'
+import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
 
@@ -406,9 +407,7 @@ export default function Navbar() {
                       {/* Active account */}
                       {profile && (
                         <div className="flex items-center gap-3 px-4 py-3">
-                          <span className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-sm flex-shrink-0">
-                            {profile.avatar_emoji || profile.username?.[0]?.toUpperCase()}
-                          </span>
+                          <Avatar user={profile} size="lg" className="bg-accent/20" />
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium truncate">{profile.display_name || profile.username}</div>
                             <div className="text-xs text-text-muted truncate">@{profile.username}</div>
@@ -423,9 +422,7 @@ export default function Navbar() {
                         const info = unreadCounts[account.userId]
                         return (
                           <div key={account.userId} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-card-hover transition-colors cursor-pointer group" onClick={() => { setShowDesktopMenu(false); handleSwitch(account.userId) }}>
-                            <span className="w-8 h-8 rounded-full bg-bg-secondary flex items-center justify-center text-sm flex-shrink-0">
-                              {account.avatarEmoji || account.username?.[0]?.toUpperCase()}
-                            </span>
+                            <Avatar user={{ avatar_url: account.avatarUrl, avatar_emoji: account.avatarEmoji, username: account.username }} size="lg" className="bg-bg-secondary" />
                             <div className="min-w-0 flex-1">
                               <div className="text-sm font-medium truncate">{account.displayName}</div>
                               <div className="text-xs text-text-muted truncate">@{account.username}</div>
@@ -603,9 +600,7 @@ export default function Navbar() {
                     <div className="border-b border-border">
                       {profile && (
                         <div className="flex items-center gap-3 px-4 py-3">
-                          <span className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-sm flex-shrink-0">
-                            {profile.avatar_emoji || profile.username?.[0]?.toUpperCase()}
-                          </span>
+                          <Avatar user={profile} size="lg" className="bg-accent/20" />
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium truncate">{profile.display_name || profile.username}</div>
                             <div className="text-xs text-text-muted truncate">@{profile.username}</div>
@@ -619,9 +614,7 @@ export default function Navbar() {
                         const info = unreadCounts[account.userId]
                         return (
                           <div key={account.userId} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-card-hover transition-colors cursor-pointer" onClick={() => { setShowMobileMenu(false); handleSwitch(account.userId) }}>
-                            <span className="w-8 h-8 rounded-full bg-bg-secondary flex items-center justify-center text-sm flex-shrink-0">
-                              {account.avatarEmoji || account.username?.[0]?.toUpperCase()}
-                            </span>
+                            <Avatar user={{ avatar_url: account.avatarUrl, avatar_emoji: account.avatarEmoji, username: account.username }} size="lg" className="bg-bg-secondary" />
                             <div className="min-w-0 flex-1">
                               <div className="text-sm font-medium truncate">{account.displayName}</div>
                               <div className="text-xs text-text-muted truncate">@{account.username}</div>

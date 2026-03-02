@@ -121,7 +121,7 @@ export async function getMyInvitations(userId) {
       status,
       created_at,
       leagues(id, name, format, sport),
-      inviter:invited_by(username, display_name, avatar_emoji)
+      inviter:invited_by(username, display_name, avatar_url, avatar_emoji)
     `)
     .eq('invited_user_id', userId)
     .eq('status', 'pending')
@@ -266,7 +266,7 @@ export async function getLeagueInvitations(leagueId, userId) {
       id,
       status,
       created_at,
-      user:invited_user_id(username, display_name, avatar_emoji)
+      user:invited_user_id(username, display_name, avatar_url, avatar_emoji)
     `)
     .eq('league_id', leagueId)
     .order('created_at', { ascending: false })

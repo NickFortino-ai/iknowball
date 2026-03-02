@@ -168,7 +168,7 @@ export async function addComment(userId, targetType, targetId, content) {
   const { data, error } = await supabase
     .from('comments')
     .insert({ target_type: targetType, target_id: targetId, user_id: userId, content })
-    .select('id, content, created_at, user_id, users(username, avatar_emoji)')
+    .select('id, content, created_at, user_id, users(username, avatar_url, avatar_emoji)')
     .single()
 
   if (error) throw error
@@ -192,7 +192,7 @@ export async function addComment(userId, targetType, targetId, content) {
 export async function getComments(targetType, targetId) {
   const { data, error } = await supabase
     .from('comments')
-    .select('id, content, created_at, user_id, target_type, target_id, users(username, avatar_emoji)')
+    .select('id, content, created_at, user_id, target_type, target_id, users(username, avatar_url, avatar_emoji)')
     .eq('target_type', targetType)
     .eq('target_id', targetId)
     .order('created_at', { ascending: true })

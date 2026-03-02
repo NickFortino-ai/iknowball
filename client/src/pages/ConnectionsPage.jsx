@@ -13,6 +13,7 @@ import UserProfileModal from '../components/profile/UserProfileModal'
 import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import ActivityFeed from '../components/feed/ActivityFeed'
+import Avatar from '../components/ui/Avatar'
 
 export default function ConnectionsPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -76,9 +77,7 @@ export default function ConnectionsPage() {
             {pending.map((req) => (
               <div key={req.id} className="bg-bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-sm flex-shrink-0">
-                    {req.requester?.avatar_emoji || req.requester?.username?.[0]?.toUpperCase()}
-                  </div>
+                  <Avatar user={req.requester} size="lg" />
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">
                       {req.requester?.display_name || req.requester?.username}
@@ -129,9 +128,7 @@ export default function ConnectionsPage() {
                     key={user.id}
                     className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-bg-primary flex items-center justify-center text-sm flex-shrink-0">
-                      {user.avatar_emoji || user.display_name?.[0]?.toUpperCase() || user.username[0].toUpperCase()}
-                    </div>
+                    <Avatar user={user} size="lg" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium truncate">{user.display_name || user.username}</div>
                       <div className="text-xs text-text-muted">@{user.username}</div>
@@ -178,9 +175,7 @@ export default function ConnectionsPage() {
                 onClick={() => setSelectedUserId(conn.user_id)}
                 className="px-4 py-3 flex items-center gap-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-bg-card-hover transition-colors"
               >
-                <div className="w-9 h-9 rounded-full bg-bg-primary flex items-center justify-center text-base flex-shrink-0">
-                  {conn.avatar_emoji || conn.username[0].toUpperCase()}
-                </div>
+                <Avatar user={conn} size="xl" />
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm truncate">{conn.display_name || conn.username}</div>
                   <div className="text-xs text-text-muted">@{conn.username}</div>

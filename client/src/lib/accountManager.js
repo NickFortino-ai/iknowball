@@ -11,10 +11,10 @@ export function getSavedAccounts() {
   }
 }
 
-export function upsertAccount({ userId, username, displayName, avatarEmoji, refreshToken }) {
+export function upsertAccount({ userId, username, displayName, avatarUrl, avatarEmoji, refreshToken }) {
   const accounts = getSavedAccounts()
   const idx = accounts.findIndex((a) => a.userId === userId)
-  const account = { userId, username, displayName, avatarEmoji, refreshToken }
+  const account = { userId, username, displayName, avatarUrl, avatarEmoji, refreshToken }
   if (idx >= 0) {
     accounts[idx] = account
   } else {

@@ -8,6 +8,7 @@ import BracketTemplateManager from '../components/admin/BracketTemplateManager'
 import FuturesAdminPanel from '../components/admin/FuturesAdminPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
+import Avatar from '../components/ui/Avatar'
 
 const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
@@ -267,9 +268,7 @@ export default function AdminPage() {
                               }}
                               className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-bg-card-hover transition-colors"
                             >
-                              <div className="w-7 h-7 rounded-full bg-bg-primary flex items-center justify-center text-xs shrink-0">
-                                {user.avatar_emoji || user.display_name?.[0]?.toUpperCase() || user.username[0].toUpperCase()}
-                              </div>
+                              <Avatar user={user} size="md" />
                               <div className="min-w-0">
                                 <div className="text-sm font-medium truncate">{user.display_name || user.username}</div>
                                 <div className="text-xs text-text-muted">@{user.username}</div>
