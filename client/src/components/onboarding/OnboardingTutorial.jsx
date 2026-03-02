@@ -174,19 +174,34 @@ export default function OnboardingTutorial() {
     }
 
     // Desktop: position near the spotlight
-    const pos = currentStep.position || 'bottom'
+    const preferredPos = currentStep.position || 'bottom'
     const style = {
       position: 'fixed',
       maxWidth: '22rem',
       width: '100%',
     }
 
+    // Estimate tooltip height (~220px) and check if it fits below
+    const tooltipHeight = 220
+    const spaceBelow = window.innerHeight - (targetRect.y + targetRect.height + 12)
+    const spaceAbove = targetRect.y - 12
+
+    // Auto-flip: if preferred is bottom but not enough space, go top (and vice versa)
+    let pos = preferredPos
+    if (pos === 'bottom' && spaceBelow < tooltipHeight && spaceAbove > spaceBelow) {
+      pos = 'top'
+    } else if (pos === 'top' && spaceAbove < tooltipHeight && spaceBelow > spaceAbove) {
+      pos = 'bottom'
+    }
+
+    const leftPos = Math.max(16, Math.min(targetRect.x, window.innerWidth - 368))
+
     if (pos === 'top') {
       style.bottom = `${window.innerHeight - targetRect.y + 12}px`
-      style.left = `${Math.max(16, Math.min(targetRect.x, window.innerWidth - 368))}px`
+      style.left = `${leftPos}px`
     } else {
       style.top = `${targetRect.y + targetRect.height + 12}px`
-      style.left = `${Math.max(16, Math.min(targetRect.x, window.innerWidth - 368))}px`
+      style.left = `${leftPos}px`
     }
 
     return style
