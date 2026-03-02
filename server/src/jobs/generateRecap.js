@@ -121,7 +121,7 @@ export async function generateWeeklyRecap() {
 
       let personalLine = ''
       if (rank) {
-        personalLine = `You were featured in this week's top 5 rankings. See what the headlines have to say about your week.`
+        personalLine = `You were featured in this week's headlines. See what they have to say about your week.`
       } else {
         personalLine = `You earned a shoutout in this week's awards section. Open the app to see what you won.`
       }
