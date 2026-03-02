@@ -298,11 +298,13 @@ export default function UserProfileModal({ userId, onClose }) {
             )}
 
             {/* Pick History */}
-            <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed onItemTap={(type, id) => {
-                if (type === 'pick') setSelectedPickId(id)
-                else if (type === 'parlay') setSelectedParlayId(id)
-                else if (type === 'prop') setSelectedPropPickId(id)
-              }} />
+            <div className="mb-4">
+              <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed onItemTap={(type, id) => {
+                  if (type === 'pick') setSelectedPickId(id)
+                  else if (type === 'parlay') setSelectedParlayId(id)
+                  else if (type === 'prop') setSelectedPropPickId(id)
+                }} />
+            </div>
 
             {/* Event Type Breakdown */}
             <EventTypeBreakdown sportStats={user.sport_stats} parlays={parlays} propPicks={propPicks} bonuses={bonuses} />
