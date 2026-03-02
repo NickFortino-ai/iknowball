@@ -13,11 +13,24 @@ function formatDateRange(weekStart, weekEnd) {
 }
 
 function parseRecapContent(content) {
-  if (!content) return { rankings: [], awards: [] }
+  if (!content) return { rankings: [], awards: [], records: [] }
 
-  const parts = content.split(/^## AWARDS/m)
-  const rankingsRaw = (parts[0] || '').replace(/^## RANKINGS\s*/m, '')
-  const awardsRaw = parts[1] || ''
+  // Split into sections by ## headings
+  const sections = {}
+  let currentKey = '_preamble'
+  for (const line of content.split('\n')) {
+    const headingMatch = line.match(/^## (.+)/)
+    if (headingMatch) {
+      currentKey = headingMatch[1].trim().toUpperCase()
+      sections[currentKey] = ''
+    } else {
+      sections[currentKey] = (sections[currentKey] || '') + line + '\n'
+    }
+  }
+
+  const rankingsRaw = sections['RANKINGS'] || ''
+  const awardsRaw = sections['AWARDS'] || ''
+  const recordsRaw = sections['RECORDS BROKEN'] || ''
 
   const rankBlocks = rankingsRaw.split(/^### /m).filter((b) => b.trim())
   const rankings = rankBlocks.map((block) => {
@@ -39,14 +52,20 @@ function parseRecapContent(content) {
     return { rank: 0, name: headerLine, record: '', points: '', narrative }
   })
 
-  const awardLines = awardsRaw.trim().split('\n').filter((l) => l.trim())
-  const awards = awardLines.map((line) => {
-    const match = line.match(/^\*\*(.+?)\*\*:\s*(.+)$/)
-    if (match) return { label: match[1], text: match[2] }
-    return { label: '', text: line.replace(/^\*\*|\*\*$/g, '').trim() }
-  })
+  function parseBoldLines(raw) {
+    return raw.trim().split('\n').filter((l) => l.trim()).map((line) => {
+      const match = line.match(/^\*\*(.+?)\*\*:?\s*(.*)$/)
+      if (match) return { label: match[1], text: match[2] }
+      const emojiMatch = line.match(/^(.+?)\s*\*\*(.+?)\*\*\s*(.*)$/)
+      if (emojiMatch) return { label: emojiMatch[1] + ' ' + emojiMatch[2], text: emojiMatch[3] }
+      return { label: '', text: line.trim() }
+    })
+  }
 
-  return { rankings, awards }
+  const awards = parseBoldLines(awardsRaw)
+  const records = parseBoldLines(recordsRaw)
+
+  return { rankings, awards, records }
 }
 
 function getMonthKey(weekStart) {
@@ -141,7 +160,7 @@ export function HeadlinesArchiveContent() {
                 {month.recaps.map((recap, i) => {
                   const isLatest = months[0].recaps[0].id === recap.id
                   const dateRange = formatDateRange(recap.week_start, recap.week_end)
-                  const { rankings, awards } = parseRecapContent(recap.recap_content)
+                  const { rankings, awards, records } = parseRecapContent(recap.recap_content)
 
                   return (
                     <div key={recap.id} className="bg-bg-card rounded-2xl border border-border p-6">
@@ -226,6 +245,20 @@ export function HeadlinesArchiveContent() {
                                   <span className="font-semibold text-text-primary">{award.label}</span>
                                   {award.label && ': '}
                                   <span className="text-text-secondary">{award.text}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Records Broken */}
+                          {records.length > 0 && (
+                            <div className="border-t border-border pt-4 mt-4 space-y-2">
+                              <h3 className="font-display text-sm text-text-muted uppercase tracking-wider mb-2">Records Broken</h3>
+                              {records.map((record, j) => (
+                                <div key={j} className="text-sm">
+                                  <span className="font-semibold text-text-primary">{record.label}</span>
+                                  {record.label && ' '}
+                                  <span className="text-text-secondary">{record.text}</span>
                                 </div>
                               ))}
                             </div>

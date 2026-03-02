@@ -12,11 +12,24 @@ function formatDateRange(weekStart, weekEnd) {
 }
 
 function parseRecapContent(content) {
-  if (!content) return { rankings: [], awards: '' }
+  if (!content) return { rankings: [], awards: [], records: [] }
 
-  const parts = content.split(/^## AWARDS/m)
-  const rankingsRaw = (parts[0] || '').replace(/^## RANKINGS\s*/m, '')
-  const awardsRaw = parts[1] || ''
+  // Split into sections by ## headings
+  const sections = {}
+  let currentKey = '_preamble'
+  for (const line of content.split('\n')) {
+    const headingMatch = line.match(/^## (.+)/)
+    if (headingMatch) {
+      currentKey = headingMatch[1].trim().toUpperCase()
+      sections[currentKey] = ''
+    } else {
+      sections[currentKey] = (sections[currentKey] || '') + line + '\n'
+    }
+  }
+
+  const rankingsRaw = sections['RANKINGS'] || ''
+  const awardsRaw = sections['AWARDS'] || ''
+  const recordsRaw = sections['RECORDS BROKEN'] || ''
 
   // Parse individual rankings
   const rankBlocks = rankingsRaw.split(/^### /m).filter((b) => b.trim())
@@ -40,15 +53,22 @@ function parseRecapContent(content) {
     return { rank: 0, name: headerLine, record: '', points: '', narrative }
   })
 
-  // Parse awards section
-  const awardLines = awardsRaw.trim().split('\n').filter((l) => l.trim())
-  const awards = awardLines.map((line) => {
-    const match = line.match(/^\*\*(.+?)\*\*:\s*(.+)$/)
-    if (match) return { label: match[1], text: match[2] }
-    return { label: '', text: line.replace(/^\*\*|\*\*$/g, '').trim() }
-  })
+  // Parse bold-label lines (used for both awards and records)
+  function parseBoldLines(raw) {
+    return raw.trim().split('\n').filter((l) => l.trim()).map((line) => {
+      const match = line.match(/^\*\*(.+?)\*\*:?\s*(.*)$/)
+      if (match) return { label: match[1], text: match[2] }
+      // Handle emoji prefix: "🔥 **Name** text"
+      const emojiMatch = line.match(/^(.+?)\s*\*\*(.+?)\*\*\s*(.*)$/)
+      if (emojiMatch) return { label: emojiMatch[1] + ' ' + emojiMatch[2], text: emojiMatch[3] }
+      return { label: '', text: line.trim() }
+    })
+  }
 
-  return { rankings, awards }
+  const awards = parseBoldLines(awardsRaw)
+  const records = parseBoldLines(recordsRaw)
+
+  return { rankings, awards, records }
 }
 
 export default function HeadlinesCard() {
@@ -83,7 +103,7 @@ export default function HeadlinesCard() {
   const isPastTuesday = tuesdayCutoff ? now > tuesdayCutoff : false
   const isExpanded = expanded !== null ? expanded : !isPastTuesday
 
-  const { rankings, awards } = useMemo(
+  const { rankings, awards, records } = useMemo(
     () => parseRecapContent(recap?.recap_content),
     [recap?.recap_content]
   )
@@ -215,6 +235,20 @@ export default function HeadlinesCard() {
                     <span className="font-semibold text-text-primary">{award.label}</span>
                     {award.label && ': '}
                     <span className="text-text-secondary">{award.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Records Broken */}
+            {records.length > 0 && (
+              <div className="border-t border-border pt-4 mt-4 space-y-2">
+                <h3 className="font-display text-sm text-text-muted uppercase tracking-wider mb-2">Records Broken</h3>
+                {records.map((record, i) => (
+                  <div key={i} className="text-sm">
+                    <span className="font-semibold text-text-primary">{record.label}</span>
+                    {record.label && ' '}
+                    <span className="text-text-secondary">{record.text}</span>
                   </div>
                 ))}
               </div>
