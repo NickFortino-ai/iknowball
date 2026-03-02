@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUserProfile, useUserPickHistory, useUserParlayHistory, useUserPropPickHistory, useUserBonusHistory, useHeadToHead } from '../../hooks/useUserProfile'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus, useSendConnectionRequest } from '../../hooks/useConnections'
+import { useMemo } from 'react'
 import { getTier } from '../../lib/scoring'
 import { toast } from '../ui/Toast'
 import TierBadge from '../ui/TierBadge'
@@ -11,6 +12,90 @@ import SocialLinks from '../ui/SocialLinks'
 import PickDetailModal from '../social/PickDetailModal'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
+
+function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses }) {
+  const parlayStats = useMemo(() => {
+    const settled = (parlays || []).filter((p) => p.status === 'settled')
+    if (!settled.length) return null
+    const wins = settled.filter((p) => p.is_correct === true).length
+    const losses = settled.filter((p) => p.is_correct === false).length
+    const points = settled.reduce((sum, p) => sum + (p.points_earned || 0), 0)
+    return { wins, losses, total: settled.length, points }
+  }, [parlays])
+
+  const propStats = useMemo(() => {
+    const settled = (propPicks || []).filter((p) => p.status === 'settled')
+    if (!settled.length) return null
+    const wins = settled.filter((p) => p.is_correct === true).length
+    const losses = settled.filter((p) => p.is_correct === false).length
+    const points = settled.reduce((sum, p) => sum + (p.points_earned || 0), 0)
+    return { wins, losses, total: settled.length, points }
+  }, [propPicks])
+
+  const leaguePoints = useMemo(() => {
+    if (!bonuses?.length) return 0
+    return bonuses.reduce((sum, b) => sum + (b.points || 0), 0)
+  }, [bonuses])
+
+  const hasAnything = sportStats?.length > 0 || parlayStats || propStats || leaguePoints !== 0
+
+  if (!hasAnything) return null
+
+  return (
+    <div className="mb-4">
+      <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Event Type</h3>
+      <div className="space-y-2">
+        {(sportStats || []).map((stat) => (
+          <div key={stat.id} className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
+            <div>
+              <span className="font-semibold text-sm">{stat.sports?.name}</span>
+              <span className="text-text-muted text-xs ml-2">
+                {stat.correct_picks}W-{stat.total_picks - stat.correct_picks}L
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              {stat.sport_rank && (
+                <span className="text-xs text-text-muted">#{stat.sport_rank}/{stat.sport_total_users}</span>
+              )}
+              <span className="text-xs text-text-muted">Streak: {stat.current_streak}</span>
+              <span className={`font-semibold text-sm ${stat.total_points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{stat.total_points > 0 ? '+' : ''}{stat.total_points} pts</span>
+            </div>
+          </div>
+        ))}
+        {parlayStats && (
+          <div className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
+            <div>
+              <span className="font-semibold text-sm">Parlays</span>
+              <span className="text-text-muted text-xs ml-2">
+                {parlayStats.wins}W-{parlayStats.losses}L
+              </span>
+            </div>
+            <span className={`font-semibold text-sm ${parlayStats.points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{parlayStats.points > 0 ? '+' : ''}{parlayStats.points} pts</span>
+          </div>
+        )}
+        {propStats && (
+          <div className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
+            <div>
+              <span className="font-semibold text-sm">Props</span>
+              <span className="text-text-muted text-xs ml-2">
+                {propStats.wins}W-{propStats.losses}L
+              </span>
+            </div>
+            <span className={`font-semibold text-sm ${propStats.points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{propStats.points > 0 ? '+' : ''}{propStats.points} pts</span>
+          </div>
+        )}
+        {leaguePoints !== 0 && (
+          <div className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
+            <div>
+              <span className="font-semibold text-sm">Leagues</span>
+            </div>
+            <span className={`font-semibold text-sm ${leaguePoints >= 0 ? 'text-correct' : 'text-incorrect'}`}>{leaguePoints > 0 ? '+' : ''}{leaguePoints} pts</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function UserProfileModal({ userId, onClose }) {
   const { session } = useAuth()
@@ -212,39 +297,15 @@ export default function UserProfileModal({ userId, onClose }) {
               </div>
             )}
 
-            {/* Sport Breakdown */}
-            {user.sport_stats?.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-xs text-text-muted uppercase tracking-wider mb-1">By Sport</h3>
-                <p className="text-xs text-text-muted mb-3">Straight picks only</p>
-                <div className="space-y-2">
-                  {user.sport_stats.map((stat) => (
-                    <div key={stat.id} className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
-                      <div>
-                        <span className="font-semibold text-sm">{stat.sports?.name}</span>
-                        <span className="text-text-muted text-xs ml-2">
-                          {stat.correct_picks}W-{stat.total_picks - stat.correct_picks}L
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {stat.sport_rank && (
-                          <span className="text-xs text-text-muted">#{stat.sport_rank}/{stat.sport_total_users}</span>
-                        )}
-                        <span className="text-xs text-text-muted">Streak: {stat.current_streak}</span>
-                        <span className="text-accent font-semibold text-sm">{stat.total_points} pts</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Pick History */}
             <PickHistoryByMonth picks={picks} parlays={parlays} propPicks={propPicks} bonuses={bonuses} isLoading={picksLoading || parlaysLoading || propsLoading || bonusesLoading} allCollapsed onItemTap={(type, id) => {
                 if (type === 'pick') setSelectedPickId(id)
                 else if (type === 'parlay') setSelectedParlayId(id)
                 else if (type === 'prop') setSelectedPropPickId(id)
               }} />
+
+            {/* Event Type Breakdown */}
+            <EventTypeBreakdown sportStats={user.sport_stats} parlays={parlays} propPicks={propPicks} bonuses={bonuses} />
 
             {/* Member since */}
             <div className="text-text-muted text-xs text-center mt-4">
