@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { getPickemStandings } from '../services/leagueService.js'
 import { getLeaguePickStandings } from '../services/leaguePickService.js'
 import { getBracketStandings } from '../services/bracketService.js'
+import { createNotification } from '../services/notificationService.js'
 
 const BRACKET_WINNER_BONUS = 10
 
@@ -62,6 +63,10 @@ async function awardPickemWinner(league, winnerId) {
   await awardUserPoints(winnerId, league, memberCount,
     `Won ${memberCount}-person league +${memberCount} pts`, 'league_win')
 
+  await createNotification(winnerId, 'league_win',
+    `You won the ${league.name} league! +${memberCount} pts`,
+    { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem' })
+
   logger.info({ winnerId, leagueId: league.id, bonus: memberCount }, 'Pickem league winner awarded')
 }
 
@@ -88,6 +93,12 @@ async function awardBracketStandings(league, standings) {
 
     await awardUserPoints(entry.user_id, league, totalPoints, label,
       isWinner ? 'league_win' : 'bracket_finish')
+
+    if (isWinner) {
+      await createNotification(entry.user_id, 'league_win',
+        `You won the ${league.name} bracket! +${totalPoints} pts`,
+        { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: 'bracket' })
+    }
 
     logger.info({ userId: entry.user_id, leagueId: league.id, rank, totalPoints }, 'Bracket standing awarded')
   }
@@ -117,6 +128,10 @@ async function awardLeaguePickPoints(league) {
 
   await awardUserPoints(winnerId, league, memberCount,
     `Won ${memberCount}-person league +${memberCount} pts`, 'league_win')
+
+  await createNotification(winnerId, 'league_win',
+    `You won the ${league.name} league! +${memberCount} pts`,
+    { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem' })
 
   logger.info({ winnerId, leagueId: league.id, bonus: memberCount, members: standings.length }, 'League pick points awarded')
 }

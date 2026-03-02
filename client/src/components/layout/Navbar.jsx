@@ -10,7 +10,7 @@ import TierBadge from '../ui/TierBadge'
 import PickDetailModal from '../social/PickDetailModal'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
-import SurvivorWinModal from '../leagues/SurvivorWinModal'
+import LeagueWinModal from '../leagues/LeagueWinModal'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
 
@@ -54,6 +54,7 @@ function getNotificationRoute(notification) {
     case 'record_broken':
       return '/hall-of-fame?section=records'
     case 'survivor_win':
+    case 'league_win':
       return null // handled by modal
     case 'squares_quarter_win':
     case 'survivor_result':
@@ -74,7 +75,7 @@ export default function Navbar() {
   const [selectedPickId, setSelectedPickId] = useState(null)
   const [selectedParlayId, setSelectedParlayId] = useState(null)
   const [selectedPropPickId, setSelectedPropPickId] = useState(null)
-  const [survivorWinData, setSurvivorWinData] = useState(null)
+  const [leagueWinData, setLeagueWinData] = useState(null)
   const dropdownRef = useRef(null)
   const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
@@ -323,8 +324,9 @@ export default function Navbar() {
                         {notifications?.map((n) => {
                           const route = getNotificationRoute(n)
                           const isSurvivorWin = n.type === 'survivor_win'
+                          const isLeagueWin = n.type === 'league_win'
                           const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
-                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || isSurvivorWin || isSurvivorStreakEnd || route
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || route
                           return (
                             <div
                               key={n.id}
@@ -335,12 +337,17 @@ export default function Navbar() {
                                 else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
                                 else if (isSurvivorWin) {
                                   if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
-                                  setSurvivorWinData({ mode: 'win', ...n.metadata })
+                                  setLeagueWinData({ mode: 'win', ...n.metadata })
+                                  setShowInvites(false)
+                                }
+                                else if (isLeagueWin) {
+                                  if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
+                                  setLeagueWinData({ mode: 'win', ...n.metadata })
                                   setShowInvites(false)
                                 }
                                 else if (isSurvivorStreakEnd) {
                                   if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
-                                  setSurvivorWinData({ mode: 'streak_ended', ...n.metadata })
+                                  setLeagueWinData({ mode: 'streak_ended', ...n.metadata })
                                   setShowInvites(false)
                                 }
                                 else if (route) { navigate(route); setShowInvites(false) }
@@ -806,8 +813,9 @@ export default function Navbar() {
                     {notifications?.map((n) => {
                       const route = getNotificationRoute(n)
                       const isSurvivorWin = n.type === 'survivor_win'
+                      const isLeagueWin = n.type === 'league_win'
                       const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
-                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || isSurvivorWin || isSurvivorStreakEnd || route
+                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || route
                       return (
                         <div
                           key={n.id}
@@ -818,12 +826,17 @@ export default function Navbar() {
                             else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
                             else if (isSurvivorWin) {
                               if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
-                              setSurvivorWinData({ mode: 'win', ...n.metadata })
+                              setLeagueWinData({ mode: 'win', ...n.metadata })
+                              setShowInvites(false)
+                            }
+                            else if (isLeagueWin) {
+                              if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
+                              setLeagueWinData({ mode: 'win', ...n.metadata })
                               setShowInvites(false)
                             }
                             else if (isSurvivorStreakEnd) {
                               if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
-                              setSurvivorWinData({ mode: 'streak_ended', ...n.metadata })
+                              setLeagueWinData({ mode: 'streak_ended', ...n.metadata })
                               setShowInvites(false)
                             }
                             else if (route) { navigate(route); setShowInvites(false) }
@@ -861,7 +874,7 @@ export default function Navbar() {
     <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
     <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
     <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
-    <SurvivorWinModal data={survivorWinData} onClose={() => setSurvivorWinData(null)} />
+    <LeagueWinModal data={leagueWinData} onClose={() => setLeagueWinData(null)} />
     </>
   )
 }

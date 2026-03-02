@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-export default function SurvivorWinModal({ data, onClose }) {
+export default function LeagueWinModal({ data, onClose }) {
   useEffect(() => {
     if (!data) return
     document.body.style.overflow = 'hidden'
@@ -9,9 +9,15 @@ export default function SurvivorWinModal({ data, onClose }) {
 
   if (!data) return null
 
-  const isWin = data.mode === 'win'
-  const glowClass = isWin ? 'parlay-win-glow' : 'survivor-streak-glow'
-  const borderColor = isWin ? 'border-correct' : 'border-accent'
+  // Backward compat: existing survivor_win notifications have no format in metadata
+  const format = data.format || (data.outlasted != null ? 'survivor' : 'pickem')
+  const isSurvivorWin = format === 'survivor' && data.mode === 'win'
+  const isSurvivorStreakEnd = format === 'survivor' && data.mode === 'streak_ended'
+  const isSurvivor = isSurvivorWin || isSurvivorStreakEnd
+  const isBracket = format === 'bracket'
+
+  const glowClass = isSurvivorWin ? 'parlay-win-glow' : isSurvivorStreakEnd ? 'survivor-streak-glow' : 'parlay-win-glow'
+  const borderColor = isSurvivorWin ? 'border-correct' : isSurvivorStreakEnd ? 'border-accent' : 'border-correct'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
@@ -28,7 +34,7 @@ export default function SurvivorWinModal({ data, onClose }) {
         </button>
 
         <div className="text-center space-y-4 py-4">
-          {isWin ? (
+          {isSurvivorWin ? (
             <>
               <div className="text-5xl">{'\uD83D\uDC51'}</div>
               <h2 className="text-2xl font-display font-bold text-correct">Congratulations!</h2>
@@ -51,7 +57,7 @@ export default function SurvivorWinModal({ data, onClose }) {
                 Keep picking to extend your streak!
               </p>
             </>
-          ) : (
+          ) : isSurvivorStreakEnd ? (
             <>
               <div className="text-5xl">{'\uD83C\uDFC6'}</div>
               <h2 className="text-xl font-display font-bold text-text-primary">
@@ -73,6 +79,25 @@ export default function SurvivorWinModal({ data, onClose }) {
               <p className="text-sm text-text-secondary pt-2">
                 {data.leagueName}
               </p>
+            </>
+          ) : (
+            <>
+              <div className="text-5xl">{'\uD83C\uDFC6'}</div>
+              <h2 className="text-2xl font-display font-bold text-correct">Congratulations!</h2>
+              <p className="text-text-secondary">
+                You won the <span className="text-text-primary font-semibold">{data.leagueName}</span> {isBracket ? 'bracket' : 'league'}!
+              </p>
+
+              <div className="flex justify-center gap-6 pt-2">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-correct">+{data.points}</div>
+                  <div className="text-xs text-text-muted">Points Earned</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-text-primary">{data.memberCount}</div>
+                  <div className="text-xs text-text-muted">{isBracket ? 'Entries' : 'League Size'}</div>
+                </div>
+              </div>
             </>
           )}
         </div>
