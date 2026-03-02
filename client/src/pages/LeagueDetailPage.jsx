@@ -374,7 +374,12 @@ export default function LeagueDetailPage() {
             {FORMAT_LABELS[league.format]}
           </span>
           <span className="text-xs text-text-muted">{SPORT_LABELS[league.sport]}</span>
-          <span className="text-xs text-text-muted">{league.members?.length || 0} members</span>
+          <span className="text-xs text-text-muted">
+            {league.members?.length || 0} member{league.members?.length !== 1 ? 's' : ''}
+            {league.pending_invitations?.length > 0 && (
+              <span className="text-text-muted"> + {league.pending_invitations.length} pending</span>
+            )}
+          </span>
           {isCommissioner && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">
               Commissioner
@@ -528,6 +533,7 @@ export default function LeagueDetailPage() {
       {tabs[activeTab] === 'Members' && (
         <MembersList
           members={league.members}
+          pendingInvitations={league.pending_invitations}
           commissionerId={league.commissioner_id}
           leagueId={league.id}
           isCommissioner={isCommissioner}

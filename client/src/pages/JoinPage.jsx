@@ -80,7 +80,7 @@ export default function JoinPage() {
   }
 
   const isFull = league.max_members && league.member_count >= league.max_members
-  const isClosed = league.status !== 'open'
+  const isClosed = league.status === 'completed'
   const isLoggedIn = !!session
   const isPaid = !!profile?.is_paid
 

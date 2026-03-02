@@ -201,7 +201,7 @@ export async function joinLeague(userId, inviteCode) {
     throw err
   }
 
-  if (league.status !== 'open') {
+  if (league.status === 'completed') {
     const err = new Error('This league is no longer accepting members')
     err.status = 400
     throw err
@@ -333,6 +333,14 @@ export async function getLeagueDetails(leagueId, userId) {
     .eq('league_id', leagueId)
     .order('joined_at', { ascending: true })
 
+  // Get pending invitations
+  const { data: pendingInvitations } = await supabase
+    .from('league_invitations')
+    .select('id, status, created_at, user:invited_user_id(id, username, display_name, avatar_emoji)')
+    .eq('league_id', leagueId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+
   // Get current week (active period that covers now)
   const now = new Date().toISOString()
   const { data: currentWeek } = await supabase
@@ -372,6 +380,7 @@ export async function getLeagueDetails(leagueId, userId) {
     ...league,
     my_role: member.role,
     members: members || [],
+    pending_invitations: pendingInvitations || [],
     current_week: activeWeek || null,
     settings_editable: settingsEditable,
   }

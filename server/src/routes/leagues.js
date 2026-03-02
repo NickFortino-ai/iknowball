@@ -240,7 +240,7 @@ router.post('/:id/invitations/email', requireAuth, validate(emailInviteSchema), 
   if (league.commissioner_id !== req.user.id) {
     return res.status(403).json({ error: 'Only the commissioner can send invitations' })
   }
-  if (league.status !== 'open') {
+  if (league.status === 'completed') {
     return res.status(400).json({ error: 'This league is no longer accepting members' })
   }
 

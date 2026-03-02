@@ -22,7 +22,7 @@ export async function sendInvitation(leagueId, senderId, username) {
     throw err
   }
 
-  if (league.status !== 'open') {
+  if (league.status === 'completed') {
     const err = new Error('This league is no longer accepting members')
     err.status = 400
     throw err
@@ -151,7 +151,7 @@ export async function acceptInvitation(invitationId, userId) {
     throw err
   }
 
-  if (invitation.leagues.status !== 'open') {
+  if (invitation.leagues.status === 'completed') {
     const err = new Error('This league is no longer accepting members')
     err.status = 400
     throw err
