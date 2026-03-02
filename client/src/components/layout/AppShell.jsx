@@ -6,7 +6,7 @@ export default function AppShell({ children }) {
   const { isOnline } = useOnlineStatus()
 
   return (
-    <div className="min-h-dvh flex flex-col bg-bg-primary text-text-primary font-body">
+    <div className="h-dvh flex flex-col bg-bg-primary text-text-primary font-body overflow-auto">
       <Navbar />
       {!isOnline && (
         <div className="bg-incorrect/20 text-incorrect text-center text-sm font-medium py-2 border-b border-incorrect flex-shrink-0">
