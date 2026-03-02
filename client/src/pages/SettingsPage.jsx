@@ -62,6 +62,7 @@ export default function SettingsPage() {
   const [tiktokHandle, setTiktokHandle] = useState('')
   const [snapchatHandle, setSnapchatHandle] = useState('')
   const [youtubeHandle, setYoutubeHandle] = useState('')
+  const [venmoHandle, setVenmoHandle] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -87,6 +88,7 @@ export default function SettingsPage() {
       setTiktokHandle(profile.tiktok_handle || '')
       setSnapchatHandle(profile.snapchat_handle || '')
       setYoutubeHandle(profile.youtube_handle || '')
+      setVenmoHandle(profile.venmo_handle || '')
       if (profile.push_preferences) {
         setPushPrefs(profile.push_preferences)
       }
@@ -145,6 +147,7 @@ export default function SettingsPage() {
         tiktok_handle: strip(tiktokHandle),
         snapchat_handle: strip(snapchatHandle),
         youtube_handle: strip(youtubeHandle),
+        venmo_handle: strip(venmoHandle),
       })
       await refetch()
       await fetchProfile()
@@ -271,6 +274,7 @@ export default function SettingsPage() {
             { label: 'TikTok', value: tiktokHandle, set: setTiktokHandle, placeholder: 'username' },
             { label: 'YouTube', value: youtubeHandle, set: setYoutubeHandle, placeholder: 'handle' },
             { label: 'Snapchat', value: snapchatHandle, set: setSnapchatHandle, placeholder: 'username' },
+            { label: 'Venmo', value: venmoHandle, set: setVenmoHandle, placeholder: 'username' },
           ].map((s) => (
             <div key={s.label} className="flex items-center gap-3">
               <span className="text-sm text-text-secondary w-20 shrink-0">{s.label}</span>

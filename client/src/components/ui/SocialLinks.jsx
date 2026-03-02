@@ -44,6 +44,15 @@ const platforms = [
       </svg>
     ),
   },
+  {
+    key: 'venmo_handle',
+    url: (h) => `https://venmo.com/${h}`,
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+        <path d="M19.885 3.24c.644 1.063.933 2.16.933 3.556 0 4.429-3.78 10.178-6.852 14.204H7.6L5.115 3.68l5.694-.54 1.4 11.27c1.302-2.124 2.912-5.47 2.912-7.764 0-1.332-.228-2.236-.594-2.964l5.358-.442z" />
+      </svg>
+    ),
+  },
 ]
 
 export default function SocialLinks({ user }) {
