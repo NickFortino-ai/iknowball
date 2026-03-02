@@ -180,10 +180,10 @@ export function HeadlinesArchiveContent() {
                               onClick={async () => {
                                 try {
                                   await updateRecap.mutateAsync({ recapId: recap.id, recap_content: editContent })
-                                  toast.success('Recap updated')
+                                  toast('Recap updated', 'success')
                                   setEditingId(null)
                                 } catch {
-                                  toast.error('Failed to update recap')
+                                  toast('Failed to update recap', 'error')
                                 }
                               }}
                               disabled={updateRecap.isPending}
