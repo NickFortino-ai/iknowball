@@ -70,9 +70,18 @@ function LeagueConditions({ league }) {
   const isDaily = settings.pick_frequency === 'daily'
   const items = []
 
-  // Date range
-  const dateRange = formatDateRange(league.starts_at, league.ends_at)
-  if (dateRange) items.push({ label: 'Dates', value: dateRange })
+  // Date range / duration
+  const DURATION_LABELS = {
+    full_season: 'Full Season',
+    playoffs_only: 'Playoffs Only',
+  }
+  const durationLabel = DURATION_LABELS[league.duration]
+  if (durationLabel) {
+    items.push({ label: 'Duration', value: durationLabel })
+  } else {
+    const dateRange = formatDateRange(league.starts_at, league.ends_at)
+    if (dateRange) items.push({ label: 'Dates', value: dateRange })
+  }
 
   // Pick frequency
   if (league.format === 'survivor' || league.format === 'pickem') {
