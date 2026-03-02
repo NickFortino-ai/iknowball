@@ -197,7 +197,7 @@ export default function ConnectionsPage() {
 
       {/* Activity Feed */}
       <div>
-        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Recent Activity</h2>
+        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Feed</h2>
         <ActivityFeed onUserTap={setSelectedUserId} />
       </div>
 

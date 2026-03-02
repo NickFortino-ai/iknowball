@@ -98,7 +98,7 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
 
           const streak = updatedStats?.current_streak || 0
 
-          if (streak >= 5) {
+          if (streak >= 3) {
             await supabase.from('streak_events').insert({
               user_id: pick.user_id,
               sport_id: sportId,

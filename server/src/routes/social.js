@@ -94,6 +94,17 @@ router.get('/records/:recordId/comments', requireAuth, async (req, res) => {
   res.json(comments)
 })
 
+// Hot take comments
+router.post('/hot-takes/:hotTakeId/comments', requireAuth, validate(commentSchema), async (req, res) => {
+  const comment = await addComment(req.user.id, 'hot_take', req.params.hotTakeId, req.validated.content)
+  res.status(201).json(comment)
+})
+
+router.get('/hot-takes/:hotTakeId/comments', requireAuth, async (req, res) => {
+  const comments = await getComments('hot_take', req.params.hotTakeId)
+  res.json(comments)
+})
+
 // Delete comment (generic — works for any target type)
 router.delete('/comments/:commentId', requireAuth, async (req, res) => {
   await deleteComment(req.user.id, req.params.commentId)
@@ -102,7 +113,7 @@ router.delete('/comments/:commentId', requireAuth, async (req, res) => {
 
 // Feed reactions
 const feedReactionSchema = z.object({
-  target_type: z.enum(['pick', 'parlay', 'streak_event', 'record_history']),
+  target_type: z.enum(['pick', 'parlay', 'streak_event', 'record_history', 'hot_take']),
   target_id: z.string().uuid(),
   reaction_type: z.enum(['fire', 'clown', 'goat', 'clap']),
 })

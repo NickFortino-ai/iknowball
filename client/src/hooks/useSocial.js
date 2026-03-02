@@ -37,6 +37,7 @@ const COMMENT_ROUTES = {
   prop: (id) => `/social/props/${id}/comments`,
   streak_event: (id) => `/social/streak-events/${id}/comments`,
   record_history: (id) => `/social/records/${id}/comments`,
+  hot_take: (id) => `/social/hot-takes/${id}/comments`,
 }
 
 export function useComments(targetType, targetId) {

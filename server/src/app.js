@@ -21,6 +21,7 @@ import emailRouter from './routes/email.js'
 import futuresRouter from './routes/futures.js'
 import recapsRouter from './routes/recaps.js'
 import recordsRouter from './routes/records.js'
+import hotTakesRouter from './routes/hotTakes.js'
 
 const app = express()
 
@@ -50,6 +51,7 @@ app.use('/api/email', emailRouter)
 app.use('/api/futures', futuresRouter)
 app.use('/api/recaps', recapsRouter)
 app.use('/api/records', recordsRouter)
+app.use('/api/hot-takes', hotTakesRouter)
 
 app.use(errorHandler)
 
