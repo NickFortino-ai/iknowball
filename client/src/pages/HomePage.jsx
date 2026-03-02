@@ -68,10 +68,10 @@ export default function HomePage() {
       {/* Logged-in: Power Rankings + Featured Prop */}
       {isAuthenticated && (
         <>
-          <HeadlinesCard />
           <div className="mb-8">
             <FeaturedPropSection date={new Date()} fallback />
           </div>
+          <HeadlinesCard />
         </>
       )}
 
