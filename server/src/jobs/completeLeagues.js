@@ -57,6 +57,34 @@ async function awardUserPoints(userId, league, points, label, type) {
   }
 }
 
+async function getLeagueMembers(leagueId) {
+  const { data } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+  return data || []
+}
+
+async function getUsername(userId) {
+  const { data } = await supabase
+    .from('users')
+    .select('username, display_name')
+    .eq('id', userId)
+    .single()
+  return data?.display_name || data?.username || 'Someone'
+}
+
+async function notifyLeagueMembers(league, winnerId, winnerName, format) {
+  const members = await getLeagueMembers(league.id)
+  const formatLabel = format === 'bracket' ? 'bracket' : 'league'
+  for (const member of members) {
+    if (member.user_id === winnerId) continue
+    await createNotification(member.user_id, 'league_win',
+      `${winnerName} won the ${league.name} ${formatLabel}!`,
+      { leagueId: league.id, leagueName: league.name, format, isWinner: false })
+  }
+}
+
 async function awardPickemWinner(league, winnerId) {
   const memberCount = await getLeagueMemberCount(league.id)
 
@@ -65,7 +93,10 @@ async function awardPickemWinner(league, winnerId) {
 
   await createNotification(winnerId, 'league_win',
     `You won the ${league.name} league! +${memberCount} pts`,
-    { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem' })
+    { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem', isWinner: true })
+
+  const winnerName = await getUsername(winnerId)
+  await notifyLeagueMembers(league, winnerId, winnerName, 'pickem')
 
   logger.info({ winnerId, leagueId: league.id, bonus: memberCount }, 'Pickem league winner awarded')
 }
@@ -97,7 +128,10 @@ async function awardBracketStandings(league, standings) {
     if (isWinner) {
       await createNotification(entry.user_id, 'league_win',
         `You won the ${league.name} bracket! +${totalPoints} pts`,
-        { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: 'bracket' })
+        { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: 'bracket', isWinner: true })
+
+      const winnerName = entry.users?.display_name || entry.users?.username || 'Someone'
+      await notifyLeagueMembers(league, entry.user_id, winnerName, 'bracket')
     }
 
     logger.info({ userId: entry.user_id, leagueId: league.id, rank, totalPoints }, 'Bracket standing awarded')
@@ -131,7 +165,10 @@ async function awardLeaguePickPoints(league) {
 
   await createNotification(winnerId, 'league_win',
     `You won the ${league.name} league! +${memberCount} pts`,
-    { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem' })
+    { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem', isWinner: true })
+
+  const winnerName = standings[0].users?.display_name || standings[0].users?.username || 'Someone'
+  await notifyLeagueMembers(league, winnerId, winnerName, 'pickem')
 
   logger.info({ winnerId, leagueId: league.id, bonus: memberCount, members: standings.length }, 'League pick points awarded')
 }

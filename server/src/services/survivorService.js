@@ -598,6 +598,27 @@ async function checkSurvivorWinner(leagueId) {
       `You won the ${leagueName} survivor pool! +${winnerBonus} pts`,
       { leagueId, points: winnerBonus, outlasted, leagueName })
 
+    // Notify all other league members
+    const { data: winnerUser } = await supabase
+      .from('users')
+      .select('username, display_name')
+      .eq('id', winnerId)
+      .single()
+    const winnerName = winnerUser?.display_name || winnerUser?.username || 'Someone'
+
+    const { data: allMembers } = await supabase
+      .from('league_members')
+      .select('user_id')
+      .eq('league_id', leagueId)
+    if (allMembers) {
+      for (const member of allMembers) {
+        if (member.user_id === winnerId) continue
+        await createNotification(member.user_id, 'league_win',
+          `${winnerName} won the ${leagueName} survivor pool!`,
+          { leagueId, leagueName, format: 'survivor', isWinner: false })
+      }
+    }
+
   } else if (aliveMembers.length === 1 && bonusExists) {
     // Winner still playing solo — no-op
   } else if (aliveMembers.length === 0 && bonusExists) {

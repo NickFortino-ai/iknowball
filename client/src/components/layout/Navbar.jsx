@@ -342,7 +342,7 @@ export default function Navbar() {
                                 }
                                 else if (isLeagueWin) {
                                   if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
-                                  setLeagueWinData({ mode: 'win', ...n.metadata })
+                                  if (n.metadata?.isWinner !== false) setLeagueWinData({ mode: 'win', ...n.metadata })
                                   setShowInvites(false)
                                 }
                                 else if (isSurvivorStreakEnd) {
@@ -831,7 +831,7 @@ export default function Navbar() {
                             }
                             else if (isLeagueWin) {
                               if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
-                              setLeagueWinData({ mode: 'win', ...n.metadata })
+                              if (n.metadata?.isWinner !== false) setLeagueWinData({ mode: 'win', ...n.metadata })
                               setShowInvites(false)
                             }
                             else if (isSurvivorStreakEnd) {
