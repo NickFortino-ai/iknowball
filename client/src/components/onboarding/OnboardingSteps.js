@@ -55,8 +55,9 @@ const ONBOARDING_STEPS = [
     page: '/hall-of-fame',
     targetSelector: null,
     title: 'Hall of Fame',
-    body: 'See who holds the crown, check out all-time records, and read the weekly headlines recap.',
+    body: 'See who holds the crown, check out all-time records, and read the weekly headlines recap. Scroll around and explore!',
     position: 'center',
+    freeScroll: true,
   },
   {
     page: null,

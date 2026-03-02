@@ -145,10 +145,31 @@ export default function OnboardingTutorial() {
   if (!active) return null
 
   const isFullscreen = !targetRect
+  const isFreeScroll = currentStep.freeScroll === true
   const progressPercent = ((step + 1) / TOTAL_STEPS) * 100
 
   // Tooltip position calculation
   const getTooltipStyle = () => {
+    // Free scroll: card docked to right side on desktop, bottom on mobile
+    if (isFreeScroll) {
+      if (window.innerWidth < 768) {
+        return {
+          position: 'fixed',
+          bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 0.5rem)',
+          left: '1rem',
+          right: '1rem',
+          maxWidth: '24rem',
+          margin: '0 auto',
+        }
+      }
+      return {
+        position: 'fixed',
+        top: '5rem',
+        right: '1rem',
+        width: '20rem',
+      }
+    }
+
     if (isFullscreen) {
       // Center using inset + margin auto — no transform needed
       return {
@@ -210,40 +231,43 @@ export default function OnboardingTutorial() {
   return (
     <div
       className={`fixed inset-0 z-[70] transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}
+      style={{ pointerEvents: isFreeScroll ? 'none' : 'auto' }}
     >
-      {/* Dark overlay — simple div fallback + SVG for spotlight cutout */}
-      {isFullscreen ? (
-        <div className="fixed inset-0 bg-black/75" />
-      ) : (
-        <svg
-          className="fixed inset-0"
-          width="100%"
-          height="100%"
-          style={{ display: 'block' }}
-        >
-          <defs>
-            <mask id="spotlight-mask">
-              <rect x="0" y="0" width="100%" height="100%" fill="white" />
-              <rect
-                x={targetRect.x}
-                y={targetRect.y}
-                width={targetRect.width}
-                height={targetRect.height}
-                rx={targetRect.rx}
-                ry={targetRect.rx}
-                fill="black"
-              />
-            </mask>
-          </defs>
-          <rect
-            x="0"
-            y="0"
+      {/* Dark overlay — skip for freeScroll steps */}
+      {!isFreeScroll && (
+        isFullscreen ? (
+          <div className="fixed inset-0 bg-black/75" />
+        ) : (
+          <svg
+            className="fixed inset-0"
             width="100%"
             height="100%"
-            fill="rgba(0,0,0,0.75)"
-            mask="url(#spotlight-mask)"
-          />
-        </svg>
+            style={{ display: 'block' }}
+          >
+            <defs>
+              <mask id="spotlight-mask">
+                <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                <rect
+                  x={targetRect.x}
+                  y={targetRect.y}
+                  width={targetRect.width}
+                  height={targetRect.height}
+                  rx={targetRect.rx}
+                  ry={targetRect.rx}
+                  fill="black"
+                />
+              </mask>
+            </defs>
+            <rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              fill="rgba(0,0,0,0.75)"
+              mask="url(#spotlight-mask)"
+            />
+          </svg>
+        )
       )}
 
       {/* Accent border ring around spotlight */}
@@ -261,8 +285,8 @@ export default function OnboardingTutorial() {
         />
       )}
 
-      {/* Click blocker */}
-      <div className="fixed inset-0" />
+      {/* Click blocker — skip for freeScroll steps */}
+      {!isFreeScroll && <div className="fixed inset-0" />}
 
       {/* Tooltip card */}
       <div
@@ -272,6 +296,7 @@ export default function OnboardingTutorial() {
         style={{
           ...getTooltipStyle(),
           zIndex: 71,
+          ...(isFreeScroll ? { pointerEvents: 'auto' } : {}),
         }}
       >
         <div className="bg-bg-card border border-border rounded-2xl p-5 shadow-2xl">
