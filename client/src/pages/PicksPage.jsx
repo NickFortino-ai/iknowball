@@ -224,12 +224,13 @@ export default function PicksPage() {
 
       {/* Straight / Parlay toggle */}
       {!isFuturesMode && (
-        <div data-onboarding="parlay-toggle" className="flex bg-bg-card rounded-xl border border-border p-1 mb-4">
+        <div className="flex bg-bg-card rounded-xl border border-border p-1 mb-4">
           {['Straight', 'Parlay'].map((mode) => {
             const isActive = mode === 'Parlay' ? parlayMode : !parlayMode
             return (
               <button
                 key={mode}
+                {...(mode === 'Parlay' ? { 'data-onboarding': 'parlay-toggle' } : {})}
                 onClick={() => setParlayMode(mode === 'Parlay')}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
                   isActive ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'

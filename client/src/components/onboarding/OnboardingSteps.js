@@ -27,6 +27,8 @@ const ONBOARDING_STEPS = [
     title: 'Build Parlays',
     body: 'Switch to Parlay mode to combine multiple picks into one. Hit them all for a bigger payout — miss one and you lose it all.',
     position: 'bottom',
+    borderRadius: 8,
+    padding: 4,
   },
   {
     page: '/picks',
