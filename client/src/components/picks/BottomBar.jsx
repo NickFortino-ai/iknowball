@@ -1,5 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
+
+function isSameDay(date1, date2) {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  )
+}
 
 function teamName(fullName) {
   if (!fullName) return ''
@@ -20,7 +28,15 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
   }, [expanded])
 
   const entries = Object.entries(picks || {})
-  const propEntries = propPicks || []
+  const today = new Date()
+  const propEntries = useMemo(() => {
+    if (!propPicks) return []
+    return propPicks.filter((p) => {
+      const gameStart = p.player_props?.games?.starts_at
+      if (!gameStart) return false
+      return isSameDay(new Date(gameStart), today)
+    })
+  }, [propPicks])
   const totalPickCount = entries.length + propEntries.length
 
   if (totalPickCount === 0) return null
@@ -61,10 +77,10 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
 
   // Add prop picks to totals
   for (const prop of propEntries) {
-    const odds = prop.odds_at_pick
+    const odds = prop.odds_at_submission
     if (!odds) continue
-    totalRisk += prop.risk_points || calculateRiskPoints(odds)
-    totalReward += prop.reward_points || calculateRewardPoints(odds)
+    totalRisk += prop.risk_at_submission || calculateRiskPoints(odds)
+    totalReward += prop.reward_at_submission || calculateRewardPoints(odds)
     if (odds < 0) favCount++
     else dogCount++
   }
@@ -206,8 +222,8 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
             const playerName = playerProp?.player_name || 'Prop'
             const line = playerProp?.line
             const market = playerProp?.market_label || playerProp?.market
-            const risk = prop.risk_points || 0
-            const reward = prop.reward_points || 0
+            const risk = prop.risk_at_submission || 0
+            const reward = prop.reward_at_submission || 0
 
             return (
               <div key={prop.id} className="flex items-center gap-3 py-1.5">
