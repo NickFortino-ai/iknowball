@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useSurvivorBoard, useUsedTeams, useSubmitSurvivorPick, useDeleteSurvivorPick } from '../../hooks/useLeagues'
 import { useGames } from '../../hooks/useGames'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -18,7 +18,7 @@ export default function SurvivorView({ league }) {
   const periodLabel = isDaily ? 'Day' : 'Week'
   const { data: board, isLoading } = useSurvivorBoard(league.id)
   const { data: usedTeams } = useUsedTeams(league.id)
-  const { data: games } = useGames(league.sport === 'all' ? null : league.sport, 'upcoming', isDaily ? 1 : 3)
+  const { data: games } = useGames(league.sport === 'all' ? null : league.sport, 'upcoming', isDaily ? 2 : 3)
   const submitPick = useSubmitSurvivorPick()
   const deletePick = useDeleteSurvivorPick()
   const [showPickForm, setShowPickForm] = useState(false)
@@ -54,6 +54,13 @@ export default function SurvivorView({ league }) {
       toast(err.message || 'Failed to submit pick', 'error')
     }
   }
+
+  // Auto-expand pick form if user hasn't picked yet
+  useEffect(() => {
+    if (board && currentWeek && !board.user_has_picked) {
+      setShowPickForm(true)
+    }
+  }, [board, currentWeek])
 
   if (isLoading) return <LoadingSpinner />
   if (!board) return <EmptyState title="No data" message="Board not available" />
@@ -101,6 +108,11 @@ export default function SurvivorView({ league }) {
       )}
 
       {/* Pick form */}
+      {showPickForm && (!games || games.length === 0) && (
+        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+          <p className="text-sm text-text-muted text-center">No upcoming games available right now. Check back closer to game time.</p>
+        </div>
+      )}
       {showPickForm && games?.length > 0 && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
           <h3 className="font-display text-sm text-text-secondary mb-3">Pick a Team</h3>
