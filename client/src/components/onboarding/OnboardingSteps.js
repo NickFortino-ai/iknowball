@@ -39,10 +39,10 @@ const ONBOARDING_STEPS = [
   },
   {
     page: '/leaderboard',
-    targetSelector: '[data-onboarding="leaderboard"]',
+    targetSelector: null,
     title: 'Climb the Leaderboard',
     body: 'Earn points from your picks to climb tiers — from Rookie all the way to GOAT. See how you stack up against everyone.',
-    position: 'bottom',
+    position: 'center',
   },
   {
     page: '/leagues',
@@ -53,10 +53,10 @@ const ONBOARDING_STEPS = [
   },
   {
     page: '/hall-of-fame',
-    targetSelector: '[data-onboarding="hall-of-fame"]',
+    targetSelector: null,
     title: 'Hall of Fame',
     body: 'See who holds the crown, check out all-time records, and read the weekly headlines recap.',
-    position: 'bottom',
+    position: 'center',
   },
   {
     page: null,
