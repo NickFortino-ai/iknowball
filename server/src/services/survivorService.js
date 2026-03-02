@@ -48,6 +48,17 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
     throw err
   }
 
+  // Determine the correct league week for this game based on its start time
+  const { data: gameWeek } = await supabase
+    .from('league_weeks')
+    .select('id')
+    .eq('league_id', leagueId)
+    .lte('starts_at', game.starts_at)
+    .gte('ends_at', game.starts_at)
+    .maybeSingle()
+
+  const resolvedWeekId = gameWeek?.id || weekId
+
   const teamName = pickedTeam === 'home' ? game.home_team : game.away_team
 
   // Check if team has been used before in this league
@@ -65,14 +76,14 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
     throw err
   }
 
-  // Upsert pick for this week
+  // Upsert pick for the resolved week (based on game date, not client-supplied week)
   const { data, error } = await supabase
     .from('survivor_picks')
     .upsert(
       {
         league_id: leagueId,
         user_id: userId,
-        league_week_id: weekId,
+        league_week_id: resolvedWeekId,
         game_id: gameId,
         picked_team: pickedTeam,
         team_name: teamName,
