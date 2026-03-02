@@ -60,6 +60,14 @@ const ONBOARDING_STEPS = [
     freeScroll: true,
   },
   {
+    page: '/hub',
+    targetSelector: null,
+    title: 'Your Hub',
+    body: "This is your home base. View your profile, manage your connections, and see recent highlights from the people you follow.",
+    position: 'center',
+    freeScroll: true,
+  },
+  {
     page: null,
     targetSelector: '[data-onboarding="hamburger-menu"]',
     title: 'Explore the Menu',
