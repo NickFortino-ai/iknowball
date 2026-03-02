@@ -121,51 +121,74 @@ export default function SurvivorView({ league }) {
           <p className="text-sm text-text-muted text-center">No upcoming games available right now. Check back closer to game time.</p>
         </div>
       )}
-      {showPickForm && games?.length > 0 && (
-        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-          <h3 className="font-display text-sm text-text-secondary mb-3">Pick a Team</h3>
-          <div className="space-y-2">
-            {games.map((game) => {
-              const homeUsed = usedTeamSet.has(game.home_team)
-              const awayUsed = usedTeamSet.has(game.away_team)
+      {showPickForm && games?.length > 0 && (() => {
+        // Group games by date
+        const grouped = games.reduce((acc, game) => {
+          const d = new Date(game.starts_at)
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          if (!acc[key]) acc[key] = []
+          acc[key].push(game)
+          return acc
+        }, {})
+        const dateKeys = Object.keys(grouped).sort()
 
-              return (
-                <div key={game.id} className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePick(game.id, 'away')}
-                    disabled={awayUsed || submitPick.isPending}
-                    className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
-                      awayUsed
-                        ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
-                        : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
-                    }`}
-                  >
-                    {game.away_team}
-                    {game.away_odds != null && (
-                      <span className="ml-1.5 text-xs font-normal text-text-muted">{formatOdds(game.away_odds)}</span>
-                    )}
-                  </button>
-                  <span className="text-xs text-text-muted">@</span>
-                  <button
-                    onClick={() => handlePick(game.id, 'home')}
-                    disabled={homeUsed || submitPick.isPending}
-                    className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
-                      homeUsed
-                        ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
-                        : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
-                    }`}
-                  >
-                    {game.home_team}
-                    {game.home_odds != null && (
-                      <span className="ml-1.5 text-xs font-normal text-text-muted">{formatOdds(game.home_odds)}</span>
-                    )}
-                  </button>
-                </div>
-              )
-            })}
+        return (
+          <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+            <h3 className="font-display text-sm text-text-secondary mb-3">Pick a Team</h3>
+            <div className="space-y-3">
+              {dateKeys.map((dateKey) => {
+                const d = new Date(dateKey + 'T12:00:00')
+                const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                return (
+                  <div key={dateKey}>
+                    <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">{label}</div>
+                    <div className="space-y-2">
+                      {grouped[dateKey].map((game) => {
+                        const homeUsed = usedTeamSet.has(game.home_team)
+                        const awayUsed = usedTeamSet.has(game.away_team)
+
+                        return (
+                          <div key={game.id} className="flex items-center gap-2">
+                            <button
+                              onClick={() => handlePick(game.id, 'away')}
+                              disabled={awayUsed || submitPick.isPending}
+                              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                                awayUsed
+                                  ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
+                                  : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
+                              }`}
+                            >
+                              {game.away_team}
+                              {game.away_odds != null && (
+                                <span className="ml-1.5 text-xs font-normal text-text-muted">{formatOdds(game.away_odds)}</span>
+                              )}
+                            </button>
+                            <span className="text-xs text-text-muted">@</span>
+                            <button
+                              onClick={() => handlePick(game.id, 'home')}
+                              disabled={homeUsed || submitPick.isPending}
+                              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                                homeUsed
+                                  ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
+                                  : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
+                              }`}
+                            >
+                              {game.home_team}
+                              {game.home_odds != null && (
+                                <span className="ml-1.5 text-xs font-normal text-text-muted">{formatOdds(game.home_odds)}</span>
+                              )}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Member board */}
       <div className="space-y-2">
