@@ -85,7 +85,7 @@ export default function PickDetailModal({ pickId, onClose }) {
                 <div className={`text-sm font-semibold mt-2 ${
                   pick.points_earned > 0 ? 'text-correct' : pick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
                 }`}>
-                  {pick.is_correct ? 'W' : 'L'} &middot; {pick.points_earned > 0 ? '+' : ''}{pick.points_earned} pts
+                  {pick.is_correct ? 'W' : 'L'} &middot; {pick.points_earned > 0 ? '+' : ''}{pick.points_earned} pts{pick.multiplier > 1 && ` (${pick.multiplier}x)`}
                 </div>
               )}
             </div>
