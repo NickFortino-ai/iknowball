@@ -72,7 +72,7 @@ const ONBOARDING_STEPS = [
     title: "You're All Set",
     body: "You've got everything you need to start making picks. Good luck — show 'em you know ball.",
     position: 'center',
-    buttonText: 'Start Picking',
+    buttonText: "Let's Go",
   },
 ]
 

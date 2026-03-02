@@ -18,10 +18,13 @@ export default function OnboardingTutorial() {
   const [mounted, setMounted] = useState(false)
   const observerRef = useRef(null)
   const timeoutRef = useRef(null)
+  const returnPathRef = useRef(null)
 
   // Trigger logic
   useEffect(() => {
     if (profile && !profile.has_seen_onboarding && profile.is_paid) {
+      // Remember where the user was so we can return them after the tutorial
+      returnPathRef.current = location.pathname
       setActive(true)
       // Slight delay for mount animation
       requestAnimationFrame(() => setMounted(true))
@@ -109,12 +112,13 @@ export default function OnboardingTutorial() {
 
   const goNext = useCallback(() => {
     if (step >= TOTAL_STEPS - 1) {
-      // Complete
+      // Complete — return to where the user was, or /picks as fallback
+      const returnTo = returnPathRef.current || '/picks'
       setMounted(false)
       setTimeout(() => {
         setActive(false)
         completeOnboarding()
-        navigate('/picks')
+        navigate(returnTo)
       }, 300)
       return
     }
