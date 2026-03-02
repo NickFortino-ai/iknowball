@@ -83,6 +83,7 @@ export default function PicksPage() {
   const sportKey = activeSport || sortedTabs[0].key
 
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming')
+  const { data: allGames } = useGames(null, 'upcoming')
   const { data: myPicks, isLoading: picksLoading } = useMyPicks()
   const submitPick = useSubmitPick()
   const deletePick = useDeletePick()
@@ -345,7 +346,7 @@ export default function PicksPage() {
             </div>
           )}
 
-          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={games} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />}
+          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={allGames} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />}
         </>
       )}
     </div>
