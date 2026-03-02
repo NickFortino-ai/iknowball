@@ -3,6 +3,7 @@ import { useGames, useActiveSports } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick, useUpdatePickMultiplier } from '../hooks/usePicks'
 import { useSharePickToSquad } from '../hooks/useConnections'
 import { useMyParlays, useDeleteParlay } from '../hooks/useParlays'
+import { useMyPropPicks } from '../hooks/useProps'
 import { usePickStore } from '../stores/pickStore'
 import GameCard from '../components/picks/GameCard'
 import BottomBar from '../components/picks/BottomBar'
@@ -92,6 +93,7 @@ export default function PicksPage() {
   const profile = useAuthStore((s) => s.profile)
   const [sharedPickIds, setSharedPickIds] = useState(new Set())
 
+  const { data: pendingPropPicks } = useMyPropPicks('pending')
   const { data: activeParlays } = useMyParlays('pending')
   const { data: lockedParlays } = useMyParlays('locked')
   const deleteParlay = useDeleteParlay()
@@ -346,7 +348,7 @@ export default function PicksPage() {
             </div>
           )}
 
-          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={allGames} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />}
+          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={allGames} propPicks={pendingPropPicks} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />}
         </>
       )}
     </div>

@@ -7,7 +7,7 @@ function teamName(fullName) {
   return parts[parts.length - 1]
 }
 
-export default function BottomBar({ picks, games, profile, onUpdateMultiplier }) {
+export default function BottomBar({ picks, games, propPicks, profile, onUpdateMultiplier }) {
   const [expanded, setExpanded] = useState(false)
   const [multiplyOn, setMultiplyOn] = useState(false)
 
@@ -19,10 +19,12 @@ export default function BottomBar({ picks, games, profile, onUpdateMultiplier })
     }
   }, [expanded])
 
-  if (!picks || Object.keys(picks).length === 0) return null
+  const entries = Object.entries(picks || {})
+  const propEntries = propPicks || []
+  const totalPickCount = entries.length + propEntries.length
 
-  const entries = Object.entries(picks)
-  const pickCount = entries.length
+  if (totalPickCount === 0) return null
+
   const totalPoints = profile?.total_points ?? 0
   const canMultiply = totalPoints >= 20
 
@@ -39,7 +41,7 @@ export default function BottomBar({ picks, games, profile, onUpdateMultiplier })
 
   const remainingBudget = totalPoints - usedBudget
 
-  // Compute totals
+  // Compute totals from straight picks
   let totalRisk = 0
   let totalReward = 0
   let favCount = 0
@@ -57,10 +59,20 @@ export default function BottomBar({ picks, games, profile, onUpdateMultiplier })
     else dogCount++
   }
 
+  // Add prop picks to totals
+  for (const prop of propEntries) {
+    const odds = prop.odds_at_pick
+    if (!odds) continue
+    totalRisk += prop.risk_points || calculateRiskPoints(odds)
+    totalReward += prop.reward_points || calculateRewardPoints(odds)
+    if (odds < 0) favCount++
+    else dogCount++
+  }
+
   const summaryBar = (
     <div className="flex items-center justify-between text-sm">
       <div className="flex items-center gap-4">
-        <span className="text-text-primary font-semibold">{pickCount} pick{pickCount !== 1 ? 's' : ''}</span>
+        <span className="text-text-primary font-semibold">{totalPickCount} pick{totalPickCount !== 1 ? 's' : ''}</span>
         <span className="text-text-muted">
           <span className="hidden md:inline">{favCount} {favCount === 1 ? 'Favorite' : 'Favorites'} / {dogCount} {dogCount === 1 ? 'Dog' : 'Dogs'}</span>
           <span className="md:hidden">{favCount} {favCount === 1 ? 'Fave' : 'Faves'} / {dogCount} {dogCount === 1 ? 'Dog' : 'Dogs'}</span>
@@ -121,6 +133,7 @@ export default function BottomBar({ picks, games, profile, onUpdateMultiplier })
 
         {/* Pick list */}
         <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-hide mb-3">
+          {/* Straight picks */}
           {entries.map(([gameId, pick]) => {
             const game = games?.find((g) => g.id === gameId)
             if (!game) return null
@@ -177,8 +190,39 @@ export default function BottomBar({ picks, games, profile, onUpdateMultiplier })
                 {/* Risk → Reward */}
                 <div className="flex items-center gap-2 text-sm flex-shrink-0">
                   <span className="text-incorrect">{baseRisk * mult}</span>
-                  <span className="text-text-muted">→</span>
+                  <span className="text-text-muted">&rarr;</span>
                   <span className="text-correct">{baseReward * mult}</span>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Prop picks separator + list */}
+          {propEntries.length > 0 && entries.length > 0 && (
+            <div className="border-t border-border/50 my-1" />
+          )}
+          {propEntries.map((prop) => {
+            const playerProp = prop.player_props
+            const playerName = playerProp?.player_name || 'Prop'
+            const line = playerProp?.line
+            const market = playerProp?.market_label || playerProp?.market
+            const risk = prop.risk_points || 0
+            const reward = prop.reward_points || 0
+
+            return (
+              <div key={prop.id} className="flex items-center gap-3 py-1.5">
+                <div className="flex-1 min-w-0 text-sm truncate">
+                  <span className="text-accent font-semibold">{playerName}</span>
+                  <span className="text-text-muted"> {prop.picked_side} {line} </span>
+                  {market && <span className="text-text-muted text-xs">{market}</span>}
+                </div>
+
+                {/* No multiplier squares for props */}
+
+                <div className="flex items-center gap-2 text-sm flex-shrink-0">
+                  <span className="text-incorrect">{risk}</span>
+                  <span className="text-text-muted">&rarr;</span>
+                  <span className="text-correct">{reward}</span>
                 </div>
               </div>
             )
