@@ -18,7 +18,6 @@ import InfoTooltip from '../components/ui/InfoTooltip'
 import SocialLinks from '../components/ui/SocialLinks'
 import ActivityFeed from '../components/feed/ActivityFeed'
 import Avatar from '../components/ui/Avatar'
-import AvatarUpload from '../components/profile/AvatarUpload'
 
 function MyProfileBanner({ profile, onTap }) {
   const tier = getTier(profile.total_points)
@@ -29,7 +28,7 @@ function MyProfileBanner({ profile, onTap }) {
       className="bg-bg-card border border-border rounded-2xl p-5 mb-6 cursor-pointer hover:bg-bg-card-hover transition-colors"
     >
       <div className="flex items-center gap-4">
-        <AvatarUpload user={profile} size="2xl" className="bg-accent/15 border border-accent/25" />
+        <Avatar user={profile} size="2xl" className="bg-accent/15 border border-accent/25" />
         <div className="min-w-0 flex-1">
           <div className="font-display text-xl truncate">{profile.display_name || profile.username}</div>
           <div className="text-text-muted text-sm">@{profile.username}</div>
