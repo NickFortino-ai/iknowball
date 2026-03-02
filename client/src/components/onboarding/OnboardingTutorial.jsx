@@ -34,6 +34,7 @@ export default function OnboardingTutorial() {
   const currentStep = ONBOARDING_STEPS[step]
 
   // Measure target element
+  const scrolledRef = useRef(false)
   const measureTarget = useCallback(() => {
     if (!currentStep?.targetSelector) {
       setTargetRect(null)
@@ -41,6 +42,11 @@ export default function OnboardingTutorial() {
     }
     const el = document.querySelector(currentStep.targetSelector)
     if (el) {
+      // Scroll target into view on first discovery
+      if (!scrolledRef.current) {
+        scrolledRef.current = true
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
       const rect = el.getBoundingClientRect()
       const padding = currentStep.padding ?? 8
       setTargetRect({
@@ -58,6 +64,10 @@ export default function OnboardingTutorial() {
   // Navigate to step's page and find target
   useEffect(() => {
     if (!active) return
+
+    // Clear stale target rect from previous step immediately
+    setTargetRect(null)
+    scrolledRef.current = false
 
     // Clean up previous observers/timeouts
     if (observerRef.current) { observerRef.current.disconnect(); observerRef.current = null }
