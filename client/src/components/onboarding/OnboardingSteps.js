@@ -34,7 +34,7 @@ const ONBOARDING_STEPS = [
     page: '/',
     targetSelector: '[data-onboarding="featured-prop"]',
     title: 'Player Props',
-    body: "Bet on individual player performances — like points, rebounds, or touchdowns. There's a new featured prop every day. You can find it here on the home page or under its sport on the Picks page.",
+    body: "Pick on individual player performances — like points, rebounds, or touchdowns. There's a new featured prop every day. You can find it here on the home page or under its sport on the Picks page.",
     position: 'bottom',
   },
   {

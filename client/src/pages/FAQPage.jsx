@@ -7,7 +7,7 @@ const faqs = [
   },
   {
     q: 'Is this gambling?',
-    a: 'No. I KNOW BALL is not a sportsbook and does not involve real money wagering. You never bet real money on games. The app uses a points-based scoring system for entertainment and bragging rights only. No cash is wagered, won, or distributed through the app. Think of it like fantasy sports \u2014 you\u2019re competing for status, not money.',
+    a: 'No. I KNOW BALL is not a sportsbook and does not involve real money wagering. You never pick with real money on games. The app uses a points-based scoring system for entertainment and bragging rights only. No cash is wagered, won, or distributed through the app. Think of it like fantasy sports \u2014 you\u2019re competing for status, not money.',
   },
   {
     q: 'How does scoring work?',
@@ -56,7 +56,7 @@ Your tier is visible on your profile, the leaderboard, and in every league you j
   },
   {
     q: 'What are parlays?',
-    a: 'A parlay lets you combine 2\u20135 picks into one bet. All picks must be correct for the parlay to hit. The risk and reward are multiplied \u2014 bigger upside, bigger downside. If you\u2019re confident in multiple games, parlays let you stack your knowledge for a massive point payout.',
+    a: 'A parlay lets you combine multiple picks into one. All picks must be correct for the parlay to hit. The risk and reward are multiplied \u2014 bigger upside, bigger downside. If you\u2019re confident in multiple games, parlays let you stack your knowledge for a massive point payout.',
   },
   {
     q: 'What is the pick multiplier?',
