@@ -30,7 +30,6 @@ export const usePickStore = create((set, get) => ({
 
   addParlayLeg: (gameId, pickedTeam, game) => {
     const { parlayLegs } = get()
-    if (parlayLegs.length >= 5) return
     if (parlayLegs.some((l) => l.gameId === gameId)) return
     set({ parlayLegs: [...parlayLegs, { gameId, pickedTeam, game }] })
   },

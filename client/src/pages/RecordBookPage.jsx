@@ -19,7 +19,8 @@ const RECORD_SORT = {
   longest_crown_tenure: 3,
   biggest_underdog_hit: 0,
   biggest_parlay: 1,
-  best_futures_hit: 2,
+  most_parlay_legs: 2,
+  best_futures_hit: 3,
   highest_prop_pct: 0,
   biggest_dog_lover: 1,
   highest_overall_win_pct: 2,
@@ -39,7 +40,7 @@ const CATEGORY_LABELS = {
 
 // Records that can show a detail card when tapped
 const TAPPABLE_PICK_RECORDS = ['biggest_underdog_hit']
-const TAPPABLE_PARLAY_RECORDS = ['biggest_parlay']
+const TAPPABLE_PARLAY_RECORDS = ['biggest_parlay', 'most_parlay_legs']
 const TAPPABLE_FUTURES_RECORDS = ['best_futures_hit']
 
 function hasDetailCard(recordKey) {
@@ -62,6 +63,8 @@ function formatRecordValue(record) {
       return `+${Math.round((val - 1) * 100)}`
     case 'great_climb':
       return `${val} spots`
+    case 'most_parlay_legs':
+      return `${val} legs`
     case 'longest_crown_tenure':
       return `${val} days`
     case 'fewest_picks_to_baller':

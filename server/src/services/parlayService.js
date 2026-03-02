@@ -5,8 +5,8 @@ import { BASE_RISK_POINTS } from '../config/constants.js'
 
 export async function createParlay(userId, legs) {
   // Validate leg count
-  if (legs.length < 2 || legs.length > 5) {
-    const err = new Error('Parlays must have between 2 and 5 legs')
+  if (legs.length < 2) {
+    const err = new Error('Parlays must have at least 2 legs')
     err.status = 400
     throw err
   }

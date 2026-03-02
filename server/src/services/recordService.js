@@ -344,6 +344,24 @@ async function calcBiggestParlay() {
   }
 }
 
+async function calcMostParlayLegs() {
+  const { data: parlay, error } = await supabase
+    .from('parlays')
+    .select('id, user_id, leg_count')
+    .eq('status', 'settled')
+    .eq('is_correct', true)
+    .order('leg_count', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !parlay) return null
+  return {
+    holderId: parlay.user_id,
+    value: parlay.leg_count,
+    metadata: { parlayId: parlay.id },
+  }
+}
+
 async function calcFewestPicksToTier(tierMinPoints) {
   // Get all settled items across types, ordered chronologically
   const [picksRes, parlaysRes, propsRes, futuresRes] = await Promise.all([
@@ -599,6 +617,7 @@ export async function recalculateAllRecords() {
     { key: 'highest_prop_pct', fn: calcHighestPropPct },
     { key: 'biggest_underdog_hit', fn: calcBiggestUnderdogHit },
     { key: 'biggest_parlay', fn: calcBiggestParlay },
+    { key: 'most_parlay_legs', fn: calcMostParlayLegs },
     { key: 'fewest_picks_to_baller', fn: () => calcFewestPicksToTier(100) },
     { key: 'fewest_picks_to_elite', fn: () => calcFewestPicksToTier(500) },
     { key: 'fewest_picks_to_hof', fn: () => calcFewestPicksToTier(1000) },
@@ -686,6 +705,7 @@ export async function checkRecordAfterSettle(userId, type, data = {}) {
       if (data.isCorrect) {
         checks.push({ key: 'longest_parlay_streak', fn: calcLongestParlayStreak })
         checks.push({ key: 'biggest_parlay', fn: calcBiggestParlay })
+        checks.push({ key: 'most_parlay_legs', fn: calcMostParlayLegs })
       }
       checks.push({ key: 'highest_overall_win_pct', fn: calcHighestOverallWinPct })
       checks.push({ key: 'fewest_picks_to_baller', fn: () => calcFewestPicksToTier(100) })
