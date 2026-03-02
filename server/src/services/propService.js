@@ -164,7 +164,7 @@ export async function unfeatureProp(propId) {
   return data
 }
 
-export async function getFeaturedProp(date) {
+export async function getFeaturedProp(date, { fallback = false } = {}) {
   const { data, error } = await supabase
     .from('player_props')
     .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
@@ -173,6 +173,22 @@ export async function getFeaturedProp(date) {
     .maybeSingle()
 
   if (error) throw error
+
+  // If fallback enabled and today's prop is settled or missing, return next upcoming prop
+  if (fallback && (!data || data.status === 'settled')) {
+    const { data: nextProp, error: nextError } = await supabase
+      .from('player_props')
+      .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
+      .gt('featured_date', date)
+      .in('status', ['published', 'locked'])
+      .order('featured_date', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (nextError) throw nextError
+    return nextProp || null
+  }
+
   return data || null
 }
 

@@ -4,9 +4,9 @@ import PropCard from './PropCard'
 import { toast } from '../ui/Toast'
 import { triggerHaptic } from '../../lib/haptics'
 
-export default function FeaturedPropSection({ date, sportKey }) {
+export default function FeaturedPropSection({ date, sportKey, fallback = false }) {
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-  const { data: prop, isLoading } = useFeaturedProp(dateStr)
+  const { data: prop, isLoading } = useFeaturedProp(dateStr, { fallback })
   const { data: myPropPicks } = useMyPropPicks()
   const submitPick = useSubmitPropPick()
   const deletePick = useDeletePropPick()

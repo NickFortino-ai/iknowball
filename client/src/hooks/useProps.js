@@ -9,10 +9,10 @@ export function usePropPick(propPickId) {
   })
 }
 
-export function useFeaturedProp(date) {
+export function useFeaturedProp(date, { fallback = false } = {}) {
   return useQuery({
-    queryKey: ['featuredProp', date],
-    queryFn: () => api.get(`/props/featured?date=${date}`),
+    queryKey: ['featuredProp', date, fallback],
+    queryFn: () => api.get(`/props/featured?date=${date}${fallback ? '&fallback=true' : ''}`),
     enabled: !!date,
   })
 }

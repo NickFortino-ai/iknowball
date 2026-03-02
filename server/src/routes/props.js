@@ -15,11 +15,11 @@ router.use(requireAuth)
 
 // Get featured prop for a specific date
 router.get('/featured', async (req, res) => {
-  const { date } = req.query
+  const { date, fallback } = req.query
   if (!date) {
     return res.status(400).json({ error: 'date query parameter is required' })
   }
-  const prop = await getFeaturedProp(date)
+  const prop = await getFeaturedProp(date, { fallback: fallback === 'true' })
   res.json(prop)
 })
 

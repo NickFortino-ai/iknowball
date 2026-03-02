@@ -70,7 +70,7 @@ export default function HomePage() {
         <>
           <HeadlinesCard />
           <div className="mb-8">
-            <FeaturedPropSection date={new Date()} />
+            <FeaturedPropSection date={new Date()} fallback />
           </div>
         </>
       )}
