@@ -24,7 +24,7 @@ export default function LeaguesPage() {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="font-display text-3xl">My Leagues</h1>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div data-onboarding="leagues-actions" className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => setShowJoinModal(true)}
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors border border-border"

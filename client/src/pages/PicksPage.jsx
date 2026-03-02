@@ -224,7 +224,7 @@ export default function PicksPage() {
 
       {/* Straight / Parlay toggle */}
       {!isFuturesMode && (
-        <div className="flex bg-bg-card rounded-xl border border-border p-1 mb-4">
+        <div data-onboarding="parlay-toggle" className="flex bg-bg-card rounded-xl border border-border p-1 mb-4">
           {['Straight', 'Parlay'].map((mode) => {
             const isActive = mode === 'Parlay' ? parlayMode : !parlayMode
             return (
@@ -325,10 +325,11 @@ export default function PicksPage() {
             <EmptyState title="No games" message={`No upcoming games on ${formatDateLabel(dayOffset).toLowerCase()}`} />
           ) : (
             <div className="space-y-3">
-              {filteredGames.map((game) => (
+              {filteredGames.map((game, index) => (
                 <GameCard
                   key={game.id}
                   game={game}
+                  isFirstCard={index === 0}
                   userPick={picksMap[game.id]}
                   onPick={handlePick}
                   onUndoPick={handleUndoPick}

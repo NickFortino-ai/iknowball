@@ -34,7 +34,7 @@ export default function HallOfFamePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div data-onboarding="hall-of-fame" className="max-w-2xl mx-auto px-4 py-6">
       <div className="text-center mb-6">
         <h1 className="font-display text-3xl">I KNOW BALL</h1>
         <h2 className="font-display text-xl text-text-secondary">HALL OF FAME</h2>

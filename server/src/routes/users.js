@@ -33,6 +33,7 @@ const updateSchema = z.object({
   tiktok_handle: z.string().max(30).nullable().optional(),
   snapchat_handle: z.string().max(30).nullable().optional(),
   youtube_handle: z.string().max(50).nullable().optional(),
+  has_seen_onboarding: z.boolean().optional(),
 })
 
 // Resolve username to email for login (no auth required)

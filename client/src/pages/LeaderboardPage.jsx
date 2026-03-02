@@ -59,7 +59,7 @@ export default function LeaderboardPage() {
       ) : !leaders?.length ? (
         <EmptyState title="No rankings yet" message="Be the first to make picks!" />
       ) : (
-        <div className="bg-bg-card rounded-2xl border border-border overflow-hidden">
+        <div data-onboarding="leaderboard" className="bg-bg-card rounded-2xl border border-border overflow-hidden">
           <div className="grid grid-cols-[3rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 border-b border-border text-xs text-text-muted uppercase tracking-wider">
             <span>#</span>
             <span>Player</span>

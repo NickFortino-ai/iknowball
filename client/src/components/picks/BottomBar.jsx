@@ -76,6 +76,7 @@ export default function BottomBar({ picks, games, profile, onUpdateMultiplier })
   if (!expanded) {
     return (
       <div
+        data-onboarding="bottom-bar"
         className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border px-4 py-3 z-40 cursor-pointer"
         onClick={() => setExpanded(true)}
       >

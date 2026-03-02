@@ -371,6 +371,7 @@ export default function Navbar() {
               {/* Desktop hamburger menu */}
               <div className="relative" ref={desktopMenuRef}>
                 <button
+                  data-onboarding="hamburger-menu"
                   onClick={() => { setShowInvites(false); if (!showDesktopMenu) refreshUnreadCounts(); else resetFetchState(); setShowDesktopMenu(!showDesktopMenu) }}
                   className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                   aria-label="Menu"
@@ -567,6 +568,7 @@ export default function Navbar() {
               {/* Hamburger */}
               <div ref={mobileMenuRef}>
                 <button
+                  data-onboarding="hamburger-menu"
                   onClick={() => { setShowInvites(false); if (!showMobileMenu) refreshUnreadCounts(); else resetFetchState(); setShowMobileMenu(!showMobileMenu) }}
                   className="p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                   aria-label="Menu"

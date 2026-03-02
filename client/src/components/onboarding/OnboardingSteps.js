@@ -1,0 +1,76 @@
+const ONBOARDING_STEPS = [
+  {
+    page: null,
+    targetSelector: null,
+    title: 'Welcome to I KNOW BALL',
+    body: "Let's take a quick tour so you can start making picks and climbing the leaderboard.",
+    position: 'center',
+    buttonText: "Let's Go",
+  },
+  {
+    page: '/picks',
+    targetSelector: '[data-onboarding="game-card"]',
+    title: 'Pick Your Winners',
+    body: 'Tap a team to pick them. You risk points (red) on every pick — get it right and you win the reward (green). Higher odds = bigger payoff.',
+    position: 'bottom',
+  },
+  {
+    page: '/picks',
+    targetSelector: '[data-onboarding="bottom-bar"]',
+    title: 'Multiply Your Picks',
+    body: "Once you've built up points, you can 2x, 3x, or 4x your risk and reward on any pick. Tap here to expand your pick slip.",
+    position: 'top',
+  },
+  {
+    page: '/picks',
+    targetSelector: '[data-onboarding="parlay-toggle"]',
+    title: 'Build Parlays',
+    body: 'Switch to Parlay mode to combine multiple picks into one. Hit them all for a bigger payout — miss one and you lose it all.',
+    position: 'bottom',
+  },
+  {
+    page: '/picks',
+    targetSelector: '[data-onboarding="featured-prop"]',
+    title: 'Player Props',
+    body: "Bet on individual player performances — like points, rebounds, or touchdowns. There's a new featured prop every day.",
+    position: 'bottom',
+  },
+  {
+    page: '/leaderboard',
+    targetSelector: '[data-onboarding="leaderboard"]',
+    title: 'Climb the Leaderboard',
+    body: 'Earn points from your picks to climb tiers — from Rookie all the way to GOAT. See how you stack up against everyone.',
+    position: 'bottom',
+  },
+  {
+    page: '/leagues',
+    targetSelector: '[data-onboarding="leagues-actions"]',
+    title: 'Compete in Leagues',
+    body: "Create or join leagues to compete with friends. Play Pick'em, Survivor, or Squares formats across different sports.",
+    position: 'bottom',
+  },
+  {
+    page: '/hall-of-fame',
+    targetSelector: '[data-onboarding="hall-of-fame"]',
+    title: 'Hall of Fame',
+    body: 'See who holds the crown, check out all-time records, and read the weekly headlines recap.',
+    position: 'bottom',
+  },
+  {
+    page: null,
+    targetSelector: '[data-onboarding="hamburger-menu"]',
+    title: 'Explore the Menu',
+    body: 'Access your settings, FAQ, Hall of Fame, and more from the menu. You can also switch between accounts here.',
+    position: 'bottom',
+  },
+  {
+    page: null,
+    targetSelector: null,
+    title: "You're All Set",
+    body: "You've got everything you need to start making picks. Good luck — show 'em you know ball.",
+    position: 'center',
+    buttonText: 'Start Picking',
+  },
+]
+
+export default ONBOARDING_STEPS

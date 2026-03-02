@@ -27,6 +27,7 @@ import UnsubscribePage from './pages/UnsubscribePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import HallOfFamePage from './pages/HallOfFamePage'
+import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
 import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
 import { useRealtimeGames } from './hooks/useRealtimeGames'
@@ -78,6 +79,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AppRoutes />
+          <OnboardingTutorial />
           <ToastContainer />
         </BrowserRouter>
       </QueryClientProvider>

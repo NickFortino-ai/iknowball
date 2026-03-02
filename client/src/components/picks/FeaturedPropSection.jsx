@@ -44,7 +44,7 @@ export default function FeaturedPropSection({ date, sportKey }) {
   }
 
   return (
-    <div className="mb-6">
+    <div data-onboarding="featured-prop" className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
         <h2 className="font-display text-lg">Daily Featured Player Prop</h2>

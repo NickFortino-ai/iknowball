@@ -80,6 +80,17 @@ export const useAuthStore = create((set, get) => ({
     set({ session: null, profile: null })
   },
 
+  completeOnboarding: async () => {
+    try {
+      await api.patch('/users/me', { has_seen_onboarding: true })
+      set((state) => ({
+        profile: state.profile ? { ...state.profile, has_seen_onboarding: true } : null,
+      }))
+    } catch {
+      // Silent fail — user sees tutorial again next visit
+    }
+  },
+
   switchAccount: async (userId) => {
     set({ switching: true })
     try {
