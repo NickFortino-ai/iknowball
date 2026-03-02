@@ -102,12 +102,16 @@ export default function OnboardingTutorial() {
     }
   }, [active, step, location.pathname, navigate, measureTarget])
 
-  // Re-measure on resize
+  // Continuously re-measure target position (handles layout shifts from async content)
   useEffect(() => {
     if (!active || !currentStep?.targetSelector) return
-    const handleResize = () => measureTarget()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    let rafId
+    const tick = () => {
+      measureTarget()
+      rafId = requestAnimationFrame(tick)
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
   }, [active, currentStep, measureTarget])
 
   const goNext = useCallback(() => {
