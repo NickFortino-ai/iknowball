@@ -792,7 +792,7 @@ export async function selectPickemGames(leagueId, userId, weekId, gameIds) {
 export async function deleteLeague(leagueId, userId) {
   const { data: league, error: fetchError } = await supabase
     .from('leagues')
-    .select('id, commissioner_id, format')
+    .select('id, name, commissioner_id, format')
     .eq('id', leagueId)
     .single()
 
@@ -808,6 +808,13 @@ export async function deleteLeague(leagueId, userId) {
     throw err
   }
 
+  // Get members to notify (exclude commissioner)
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+    .neq('user_id', userId)
+
   const { error } = await supabase
     .from('leagues')
     .delete()
@@ -816,6 +823,15 @@ export async function deleteLeague(leagueId, userId) {
   if (error) {
     logger.error({ error, leagueId }, 'Failed to delete league')
     throw error
+  }
+
+  // Notify members after deletion
+  if (members?.length) {
+    const { createNotification } = await import('./notificationService.js')
+    for (const m of members) {
+      await createNotification(m.user_id, 'league_deleted',
+        `The league "${league.name}" has been deleted by the commissioner.`)
+    }
   }
 }
 
