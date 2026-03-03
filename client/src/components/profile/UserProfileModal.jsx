@@ -271,6 +271,7 @@ export default function UserProfileModal({ userId, onClose }) {
   const [selectedPickId, setSelectedPickId] = useState(null)
   const [selectedParlayId, setSelectedParlayId] = useState(null)
   const [selectedPropPickId, setSelectedPropPickId] = useState(null)
+  const [showAllHotTakes, setShowAllHotTakes] = useState(false)
 
   useEffect(() => {
     if (!userId) return
@@ -484,7 +485,7 @@ export default function UserProfileModal({ userId, onClose }) {
               <div className="mb-4">
                 <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Hot Takes</h3>
                 <div className="space-y-2">
-                  {hotTakes.map((take) => (
+                  {(showAllHotTakes ? hotTakes : hotTakes.slice(0, 1)).map((take) => (
                     <div
                       key={take.id}
                       className="bg-bg-primary rounded-lg border-l-4 border-l-accent px-4 py-3"
@@ -513,6 +514,14 @@ export default function UserProfileModal({ userId, onClose }) {
                       </div>
                     </div>
                   ))}
+                  {!showAllHotTakes && hotTakes.length > 1 && (
+                    <button
+                      onClick={() => setShowAllHotTakes(true)}
+                      className="w-full text-center text-xs text-text-muted hover:text-text-secondary py-1"
+                    >
+                      Show all {hotTakes.length} hot takes
+                    </button>
+                  )}
                 </div>
               </div>
             )}
