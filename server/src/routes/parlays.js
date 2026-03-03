@@ -12,7 +12,7 @@ const createParlaySchema = z.object({
       game_id: z.string().uuid(),
       picked_team: z.enum(['home', 'away']),
     })
-  ).min(2).max(5),
+  ).min(2),
 })
 
 router.post('/', requireAuth, validate(createParlaySchema), async (req, res) => {
