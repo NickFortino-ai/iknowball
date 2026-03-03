@@ -188,6 +188,79 @@ export async function generateLeagueWeeks(league) {
   }
 }
 
+async function extendLeagueWeeks(league) {
+  if (!league.starts_at || !league.ends_at) return
+
+  // Get existing weeks to find where to start appending
+  const { data: existingWeeks } = await supabase
+    .from('league_weeks')
+    .select('*')
+    .eq('league_id', league.id)
+    .order('week_number', { ascending: false })
+    .limit(1)
+
+  const lastWeek = existingWeeks?.[0]
+  if (!lastWeek) {
+    // No existing weeks, generate from scratch
+    await generateLeagueWeeks(league)
+    return
+  }
+
+  const isDaily = league.settings?.pick_frequency === 'daily'
+  const end = new Date(league.ends_at)
+  const periods = []
+  let periodNum = lastWeek.week_number + 1
+  const current = new Date(lastWeek.ends_at)
+  // Move past the last week's end
+  current.setUTCMilliseconds(current.getUTCMilliseconds() + 1)
+
+  if (isDaily) {
+    current.setUTCHours(10, 0, 0, 0)
+    while (current < end) {
+      const dayEnd = new Date(current)
+      dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
+      dayEnd.setUTCHours(9, 59, 59, 999)
+
+      periods.push({
+        league_id: league.id,
+        week_number: periodNum++,
+        starts_at: current.toISOString(),
+        ends_at: dayEnd.toISOString(),
+      })
+
+      current.setUTCDate(current.getUTCDate() + 1)
+    }
+  } else {
+    // Align to next Monday 10:00 UTC
+    const day = current.getUTCDay()
+    const daysToMonday = (8 - day) % 7 || 7
+    current.setUTCDate(current.getUTCDate() + daysToMonday)
+    current.setUTCHours(10, 0, 0, 0)
+
+    while (current < end) {
+      const weekEnd = new Date(current)
+      weekEnd.setUTCDate(current.getUTCDate() + 7)
+      weekEnd.setUTCHours(9, 59, 59, 999)
+
+      periods.push({
+        league_id: league.id,
+        week_number: periodNum++,
+        starts_at: current.toISOString(),
+        ends_at: weekEnd.toISOString(),
+      })
+
+      current.setUTCDate(current.getUTCDate() + 7)
+    }
+  }
+
+  if (periods.length > 0) {
+    const { error } = await supabase.from('league_weeks').insert(periods)
+    if (error) {
+      logger.error({ error, leagueId: league.id }, 'Failed to extend league weeks')
+    }
+  }
+}
+
 export async function joinLeague(userId, inviteCode) {
   const { data: league, error: leagueError } = await supabase
     .from('leagues')
@@ -365,14 +438,14 @@ export async function getLeagueDetails(leagueId, userId) {
     activeWeek = nextWeek
   }
 
-  // Check if settings are still editable (commissioner only, pick'em/survivor)
+  // Commissioner of pick'em/survivor can always see settings editor
+  // has_locked_picks tells the frontend which settings to disable
   let settingsEditable = false
+  let hasLockedPicks = false
   if (member.role === 'commissioner' && (league.format === 'pickem' || league.format === 'survivor')) {
-    if (league.status === 'open') {
-      settingsEditable = true
-    } else {
-      const hasLocked = await checkLeagueHasLockedPicks(leagueId, league)
-      settingsEditable = !hasLocked
+    settingsEditable = true
+    if (league.status !== 'open') {
+      hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)
     }
   }
 
@@ -383,6 +456,7 @@ export async function getLeagueDetails(leagueId, userId) {
     pending_invitations: pendingInvitations || [],
     current_week: activeWeek || null,
     settings_editable: settingsEditable,
+    has_locked_picks: hasLockedPicks,
   }
 }
 
@@ -409,7 +483,7 @@ async function checkLeagueHasLockedPicks(leagueId, league) {
 export async function updateLeague(leagueId, userId, data) {
   const { data: league } = await supabase
     .from('leagues')
-    .select('commissioner_id, status, format, use_league_picks')
+    .select('commissioner_id, status, format, use_league_picks, settings, starts_at')
     .eq('id', leagueId)
     .single()
 
@@ -425,18 +499,32 @@ export async function updateLeague(leagueId, userId, data) {
     throw err
   }
 
-  // commissioner_note can be updated regardless of league status
+  // commissioner_note can always be updated
   const noteOnly = Object.keys(data).every((k) => k === 'commissioner_note')
-  const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at', 'duration'].includes(k))
+  const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at', 'duration', 'name', 'max_members'].includes(k))
 
   if (!noteOnly && league.status !== 'open') {
-    // For pick'em and survivor, allow settings edits until the first pick locks
     if (settingsOnly && (league.format === 'pickem' || league.format === 'survivor')) {
       const hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)
       if (hasLockedPicks) {
-        const err = new Error('Cannot update settings — a picked game has already started')
-        err.status = 400
-        throw err
+        // Per-setting validation: block only dangerous changes
+        const dangerousSettings = ['pick_frequency', 'lives']
+        if (data.settings) {
+          const currentSettings = league.settings || {}
+          for (const key of dangerousSettings) {
+            if (data.settings[key] !== undefined && data.settings[key] !== (currentSettings[key] ?? (key === 'lives' ? 1 : 'weekly'))) {
+              const err = new Error(`Cannot change ${key === 'lives' ? 'lives' : 'pick frequency'} after picks have locked`)
+              err.status = 400
+              throw err
+            }
+          }
+        }
+        // Block starts_at changes after picks lock
+        if (data.starts_at !== undefined) {
+          const err = new Error('Cannot change start date after picks have locked')
+          err.status = 400
+          throw err
+        }
       }
     } else {
       const err = new Error('Cannot update a league that has already started')
@@ -464,14 +552,16 @@ export async function updateLeague(leagueId, userId, data) {
   if (data.commissioner_note !== undefined) updates.commissioner_note = data.commissioner_note
 
   // Handle duration change — recalculate date range
+  // When picks are locked, preserve existing starts_at (only extend ends_at)
   if (data.duration !== undefined) {
     updates.duration = data.duration
-    let startsAt = new Date()
+    const hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)
+    let startsAt = hasLockedPicks ? new Date(league.starts_at) : new Date()
     let endsAt = null
 
     if (data.duration === 'this_week') {
       const bounds = getWeekBounds(new Date())
-      startsAt = bounds.start
+      if (!hasLockedPicks) startsAt = bounds.start
       endsAt = bounds.end
     } else if (data.duration === 'full_season') {
       endsAt = new Date(startsAt)
@@ -483,7 +573,7 @@ export async function updateLeague(leagueId, userId, data) {
     // custom_range: keep existing dates (user edits them separately)
 
     if (data.duration !== 'custom_range') {
-      updates.starts_at = startsAt.toISOString()
+      if (!hasLockedPicks) updates.starts_at = startsAt.toISOString()
       updates.ends_at = endsAt?.toISOString() || null
     }
   }
@@ -499,9 +589,15 @@ export async function updateLeague(leagueId, userId, data) {
 
   // Regenerate league weeks if dates changed
   if (updates.starts_at || updates.ends_at || data.duration) {
-    // Delete old weeks (only safe before any picks lock)
-    await supabase.from('league_weeks').delete().eq('league_id', leagueId)
-    await generateLeagueWeeks(updated)
+    const hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)
+    if (hasLockedPicks) {
+      // Don't delete existing weeks — would cascade-delete picks
+      // Instead, extend with new weeks after the last existing one
+      await extendLeagueWeeks(updated)
+    } else {
+      await supabase.from('league_weeks').delete().eq('league_id', leagueId)
+      await generateLeagueWeeks(updated)
+    }
   }
 
   return updated

@@ -123,7 +123,7 @@ function LeagueConditions({ league }) {
   )
 }
 
-function LeagueSettingsEditor({ league, updateLeague }) {
+function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
   const settings = league.settings || {}
   const isDaily = league.settings?.pick_frequency === 'daily'
 
@@ -156,7 +156,11 @@ function LeagueSettingsEditor({ league, updateLeague }) {
     <div className="bg-bg-card rounded-xl border border-border p-4 mb-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-sm text-text-secondary">League Settings</h3>
-        <span className="text-[10px] text-text-muted">Editable until first game starts</span>
+        {hasLockedPicks ? (
+          <span className="text-[10px] text-text-muted">Some settings locked</span>
+        ) : (
+          <span className="text-[10px] text-text-muted">Editable until first game starts</span>
+        )}
       </div>
 
       {/* Duration */}
@@ -193,12 +197,16 @@ function LeagueSettingsEditor({ league, updateLeague }) {
       {league.duration === 'custom_range' && (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-text-muted mb-1">Start Date</label>
+            <label className="block text-xs text-text-muted mb-1">
+              Start Date
+              {hasLockedPicks && <span className="ml-1 italic">Locked</span>}
+            </label>
             <input
               type="date"
               defaultValue={toDateInputValue(league.starts_at)}
               onBlur={(e) => saveDate('starts_at', e.target.value)}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+              disabled={hasLockedPicks}
+              className={`w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </div>
           <div>
@@ -217,7 +225,10 @@ function LeagueSettingsEditor({ league, updateLeague }) {
         <>
           {DAILY_ELIGIBLE_SPORTS.has(league.sport) && (
             <div>
-              <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+              <label className="block text-xs text-text-muted mb-2">
+                Pick Frequency
+                {hasLockedPicks && <span className="ml-2 text-text-muted italic">Locked — picks exist</span>}
+              </label>
               <div className="flex gap-2">
                 {[
                   { value: 'weekly', label: 'Weekly' },
@@ -226,10 +237,10 @@ function LeagueSettingsEditor({ league, updateLeague }) {
                   <button
                     key={opt.value}
                     onClick={() => save({ pick_frequency: opt.value })}
-                    disabled={updateLeague.isPending}
+                    disabled={updateLeague.isPending || hasLockedPicks}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                       (settings.pick_frequency || 'weekly') === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
-                    }`}
+                    } ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {opt.label}
                   </button>
@@ -283,16 +294,19 @@ function LeagueSettingsEditor({ league, updateLeague }) {
       {league.format === 'survivor' && (
         <>
           <div>
-            <label className="block text-xs text-text-muted mb-2">Lives</label>
+            <label className="block text-xs text-text-muted mb-2">
+              Lives
+              {hasLockedPicks && <span className="ml-2 text-text-muted italic">Locked — picks exist</span>}
+            </label>
             <div className="flex gap-2">
               {[1, 2].map((n) => (
                 <button
                   key={n}
                   onClick={() => save({ lives: n })}
-                  disabled={updateLeague.isPending}
+                  disabled={updateLeague.isPending || hasLockedPicks}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     (settings.lives || 1) === n ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
-                  }`}
+                  } ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {n} {n === 1 ? 'Life' : 'Lives'}
                 </button>
@@ -301,7 +315,10 @@ function LeagueSettingsEditor({ league, updateLeague }) {
           </div>
           {DAILY_ELIGIBLE_SPORTS.has(league.sport) && (
             <div>
-              <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+              <label className="block text-xs text-text-muted mb-2">
+                Pick Frequency
+                {hasLockedPicks && <span className="ml-2 text-text-muted italic">Locked — picks exist</span>}
+              </label>
               <div className="flex gap-2">
                 {[
                   { value: 'weekly', label: 'Weekly' },
@@ -310,10 +327,10 @@ function LeagueSettingsEditor({ league, updateLeague }) {
                   <button
                     key={opt.value}
                     onClick={() => save({ pick_frequency: opt.value })}
-                    disabled={updateLeague.isPending}
+                    disabled={updateLeague.isPending || hasLockedPicks}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                       (settings.pick_frequency || 'weekly') === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
-                    }`}
+                    } ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {opt.label}
                   </button>
@@ -516,9 +533,9 @@ export default function LeagueDetailPage() {
         </div>
       ) : null}
 
-      {/* Settings (commissioner only, before first game starts) */}
+      {/* Settings (commissioner only) */}
       {isCommissioner && league.settings_editable && (
-        <LeagueSettingsEditor league={league} updateLeague={updateLeague} />
+        <LeagueSettingsEditor league={league} updateLeague={updateLeague} hasLockedPicks={league.has_locked_picks} />
       )}
 
       {/* Tabs */}
