@@ -18,6 +18,7 @@ export default function FeedReactions({ targetType, targetId, reactions = [] }) 
     reactionMap[r.type] = {
       count: r.count,
       hasReacted: r.users?.some((u) => u.userId === currentUserId) || false,
+      users: r.users || [],
     }
   }
 
@@ -32,12 +33,16 @@ export default function FeedReactions({ targetType, targetId, reactions = [] }) 
         const info = reactionMap[r.type]
         const hasReacted = info?.hasReacted
         const count = info?.count || 0
+        const tooltip = count > 0
+          ? info.users.map((u) => u.displayName || u.username).join(', ')
+          : undefined
 
         return (
           <button
             key={r.type}
             onClick={(e) => { e.stopPropagation(); handleToggle(r.type) }}
             disabled={toggleReaction.isPending}
+            title={tooltip}
             className={`inline-flex items-center gap-0.5 text-xs rounded-full px-2 py-1 transition-colors disabled:opacity-50 ${
               hasReacted
                 ? 'bg-accent/20 border border-accent/40'

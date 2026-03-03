@@ -281,7 +281,7 @@ export async function getFeedReactionsBatch(items) {
 
   const { data, error } = await supabase
     .from('feed_reactions')
-    .select('target_type, target_id, reaction_type, user_id, users(username)')
+    .select('target_type, target_id, reaction_type, user_id, users(username, display_name)')
     .or(orFilter)
 
   if (error) throw error
@@ -297,6 +297,7 @@ export async function getFeedReactionsBatch(items) {
     result[key][row.reaction_type].users.push({
       userId: row.user_id,
       username: row.users?.username,
+      displayName: row.users?.display_name,
     })
   }
 
