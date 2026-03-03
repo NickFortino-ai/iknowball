@@ -4,7 +4,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
   if (scope === 'global') {
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, display_name, avatar_url, total_points, tier')
+      .select('id, username, display_name, avatar_url, avatar_emoji, total_points, tier')
       .order('total_points', { ascending: false })
       .limit(100)
 
@@ -15,7 +15,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
   if (scope === 'props') {
     const { data, error } = await supabase
       .from('prop_picks')
-      .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, tier)')
+      .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
       .eq('status', 'settled')
 
     if (error) throw error
@@ -45,7 +45,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
   if (scope === 'parlays') {
     const { data, error } = await supabase
       .from('parlays')
-      .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, tier)')
+      .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
       .eq('status', 'settled')
 
     if (error) throw error
@@ -83,7 +83,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
 
     const { data, error } = await supabase
       .from('user_sport_stats')
-      .select('*, users(id, username, display_name, avatar_url, tier)')
+      .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier)')
       .eq('sport_id', sport.id)
       .order('total_points', { ascending: false })
       .limit(100)
@@ -113,7 +113,7 @@ export async function getUsersByTier(tierName) {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, total_points, tier')
+    .select('id, username, display_name, avatar_url, avatar_emoji, total_points, tier')
     .eq('tier', tierName)
     .order('total_points', { ascending: false })
 
