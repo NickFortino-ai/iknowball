@@ -10,7 +10,6 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
 import SocialLinks from '../ui/SocialLinks'
 import Avatar from '../ui/Avatar'
-import AvatarUpload from './AvatarUpload'
 import PickDetailModal from '../social/PickDetailModal'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
@@ -314,11 +313,7 @@ export default function UserProfileModal({ userId, onClose }) {
           <>
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
-              {isViewingOther ? (
-                <Avatar user={user} size="2xl" />
-              ) : (
-                <AvatarUpload user={user} size="2xl" />
-              )}
+              <Avatar user={user} size="2xl" />
               <div className="min-w-0 flex-1">
                 <div className="font-display text-xl truncate">{user.display_name || user.username}</div>
                 <div className="text-text-muted text-sm">@{user.username}</div>
