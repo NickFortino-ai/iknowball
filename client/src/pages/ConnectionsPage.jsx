@@ -59,7 +59,7 @@ export default function ConnectionsPage() {
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <h1 className="font-display text-3xl mb-6">Squad<InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast." /></h1>
+        <h1 className="font-display text-3xl mb-6">Squad<InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast. The 🔥 indicates an active win streak." /></h1>
         <LoadingSpinner />
       </div>
     )
@@ -67,7 +67,7 @@ export default function ConnectionsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <h1 className="font-display text-3xl mb-6">Squad<InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast." /></h1>
+      <h1 className="font-display text-3xl mb-6">Squad<InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast. The 🔥 indicates an active win streak." /></h1>
 
       {/* Pending Requests */}
       {pending?.length > 0 && (
