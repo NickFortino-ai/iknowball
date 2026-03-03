@@ -740,6 +740,69 @@ export async function getConnectionActivity(userId) {
     }
   }
 
+  // Compute cumulative h2h records
+  const h2hItems = feed.filter(f => f.type === 'head_to_head')
+  if (h2hItems.length > 0) {
+    const pairSet = new Set()
+    const h2hUserIds = new Set()
+    for (const item of h2hItems) {
+      const a = item.matchup.userA.userId
+      const b = item.matchup.userB.userId
+      h2hUserIds.add(a)
+      h2hUserIds.add(b)
+      pairSet.add([a, b].sort().join('-'))
+    }
+
+    const { data: allH2hPicks } = await supabase
+      .from('picks')
+      .select('user_id, game_id, picked_team, is_correct')
+      .in('user_id', [...h2hUserIds])
+      .eq('status', 'settled')
+
+    if (allH2hPicks?.length) {
+      const picksByGame = {}
+      for (const p of allH2hPicks) {
+        if (!p.game_id) continue
+        if (!picksByGame[p.game_id]) picksByGame[p.game_id] = []
+        picksByGame[p.game_id].push(p)
+      }
+
+      // Tally wins for each pair across all games
+      const records = {}
+      for (const picks of Object.values(picksByGame)) {
+        const home = picks.filter(p => p.picked_team === 'home')
+        const away = picks.filter(p => p.picked_team === 'away')
+        for (const h of home) {
+          for (const a of away) {
+            if (h.user_id === a.user_id) continue
+            const key = [h.user_id, a.user_id].sort().join('-')
+            if (!pairSet.has(key)) continue
+            if (!records[key]) records[key] = {}
+            if (h.is_correct) {
+              records[key][h.user_id] = (records[key][h.user_id] || 0) + 1
+            }
+            if (a.is_correct) {
+              records[key][a.user_id] = (records[key][a.user_id] || 0) + 1
+            }
+          }
+        }
+      }
+
+      for (const item of h2hItems) {
+        const a = item.matchup.userA.userId
+        const b = item.matchup.userB.userId
+        const key = [a, b].sort().join('-')
+        const rec = records[key]
+        if (rec) {
+          item.matchup.record = {
+            userAWins: rec[a] || 0,
+            userBWins: rec[b] || 0,
+          }
+        }
+      }
+    }
+  }
+
   // Process hot takes
   for (const take of hotTakes.data || []) {
     const user = userMap[take.user_id]

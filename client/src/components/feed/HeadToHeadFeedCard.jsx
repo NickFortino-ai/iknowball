@@ -1,9 +1,56 @@
 import { timeAgo } from '../../lib/time'
 import Avatar from '../ui/Avatar'
 
+function shortName(fullName) {
+  if (!fullName) return ''
+  const words = fullName.trim().split(/\s+/)
+  return words[words.length - 1]
+}
+
 export default function HeadToHeadFeedCard({ item, onUserTap }) {
   const { matchup, game } = item
-  const { userA, userB } = matchup
+  const { userA, userB, record } = matchup
+
+  const aWon = userA.is_correct
+  const bWon = userB.is_correct
+  const winner = aWon ? userA : bWon ? userB : null
+  const loser = aWon ? userB : bWon ? userA : null
+
+  const name = (u) => u.display_name || u.username
+
+  // Narrative text
+  let narrative
+  if (winner) {
+    narrative = `${name(winner)} beats ${name(loser)} head to head in their ${shortName(winner.picked_team_name)} vs ${shortName(loser.picked_team_name)} pick.`
+  } else {
+    narrative = `${name(userA)} and ${name(userB)} both missed on ${shortName(userA.picked_team_name)} vs ${shortName(userB.picked_team_name)}.`
+  }
+
+  // Record line
+  let recordLine = null
+  if (record) {
+    if (winner) {
+      const wWins = winner === userA ? record.userAWins : record.userBWins
+      const lWins = winner === userA ? record.userBWins : record.userAWins
+      if (wWins > lWins) {
+        recordLine = `${name(winner)} is up ${wWins}-${lWins} against ${name(loser)} head to head!`
+      } else if (wWins < lWins) {
+        recordLine = `${name(winner)} won this one, but is still ${wWins}-${lWins} against ${name(loser)} head to head.`
+      } else {
+        recordLine = `${name(winner)} and ${name(loser)} are now tied ${wWins}-${lWins} head to head.`
+      }
+    } else {
+      const aW = record.userAWins
+      const bW = record.userBWins
+      if (aW !== bW) {
+        const leader = aW > bW ? userA : userB
+        const trailer = aW > bW ? userB : userA
+        recordLine = `${name(leader)} leads ${Math.max(aW, bW)}-${Math.min(aW, bW)} against ${name(trailer)} head to head.`
+      } else {
+        recordLine = `${name(userA)} and ${name(userB)} are tied ${aW}-${bW} head to head.`
+      }
+    }
+  }
 
   return (
     <div className="bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 border-l-accent">
@@ -18,20 +65,18 @@ export default function HeadToHeadFeedCard({ item, onUserTap }) {
         <span className="text-xs text-text-muted">{timeAgo(item.timestamp)}</span>
       </div>
 
-      {/* Matchup line */}
-      <div className="px-4 pb-1 text-xs text-text-secondary">
-        {game.away_team} @ {game.home_team}
+      {/* Narrative */}
+      <div className="px-4 pb-2">
+        <p className="text-sm text-text-primary">{narrative}</p>
+        {recordLine && (
+          <p className="text-sm text-text-muted mt-1">{recordLine}</p>
+        )}
       </div>
 
-      {/* Two-user layout */}
+      {/* Game cards */}
       <div className="px-4 pb-4 flex items-center gap-2">
-        {/* User A */}
         <UserSide user={userA} onUserTap={onUserTap} />
-
-        {/* VS */}
         <div className="flex-shrink-0 text-xs font-bold text-text-muted px-1">VS</div>
-
-        {/* User B */}
         <UserSide user={userB} onUserTap={onUserTap} />
       </div>
     </div>
