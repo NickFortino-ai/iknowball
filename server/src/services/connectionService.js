@@ -339,7 +339,7 @@ export async function getConnectionActivity(userId) {
       .from('users')
       .select('id, tier, updated_at')
       .in('id', connectedIds)
-      .neq('tier', 'Rookie')
+      .not('tier', 'in', '("Rookie","Lost")')
       .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
 
     // Source 5: Record broken
