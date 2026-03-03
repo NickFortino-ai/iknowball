@@ -178,7 +178,7 @@ export async function scoreParlayLegs(gameId, winner) {
   logger.info({ gameId, legsScored: legs.length, winner }, 'Parlay legs scored')
 }
 
-async function trySettleParlay(parlayId) {
+export async function trySettleParlay(parlayId) {
   const { data: parlay } = await supabase
     .from('parlays')
     .select('id, user_id, risk_points, status')

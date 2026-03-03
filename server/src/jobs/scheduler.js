@@ -12,6 +12,7 @@ import { generateWeeklyRecap } from './generateRecap.js'
 import { snapshotCrowns } from './snapshotCrowns.js'
 import { snapshotRanks } from './snapshotRanks.js'
 import { recalculateRecords } from './recalculateRecords.js'
+import { settleStuckParlays } from './settleStuckParlays.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -87,5 +88,10 @@ export function startScheduler() {
       try { await autoEliminateMissedPicks() } catch (err) { logger.error({ err }, 'Survivor missed picks job failed') }
     })
     logger.info('Survivor missed picks scheduled: every 15 minutes')
+
+    cron.schedule('*/30 * * * *', async () => {
+      try { await settleStuckParlays() } catch (err) { logger.error({ err }, 'Stuck parlay cleanup job failed') }
+    })
+    logger.info('Stuck parlay cleanup scheduled: every 30 minutes')
   }
 }
