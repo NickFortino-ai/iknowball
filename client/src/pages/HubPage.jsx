@@ -221,7 +221,7 @@ export default function HubPage() {
               </svg>
             )}
           </button>
-          <InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast." />
+          <InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast. The 🔥 you see in this list indicates an active win streak." />
         </div>
         {!connections?.length ? (
           <div className="bg-bg-card border border-border rounded-xl px-4 py-8 text-center text-text-muted text-sm">
