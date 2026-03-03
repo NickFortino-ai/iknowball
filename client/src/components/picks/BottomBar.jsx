@@ -37,9 +37,7 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
       return isSameDay(new Date(gameStart), today)
     })
   }, [propPicks])
-  const totalPickCount = entries.length + propEntries.length
-
-  if (totalPickCount === 0) return null
+  if (entries.length === 0 && propEntries.length === 0) return null
 
   const totalPoints = profile?.total_points ?? 0
   const canMultiply = totalPoints >= 20
@@ -84,6 +82,9 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
     if (odds < 0) favCount++
     else dogCount++
   }
+
+  const totalPickCount = favCount + dogCount
+  if (totalPickCount === 0) return null
 
   const summaryBar = (
     <div className="flex items-center justify-between text-sm">
