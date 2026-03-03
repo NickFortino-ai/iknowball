@@ -124,6 +124,7 @@ function LeagueConditions({ league }) {
 }
 
 function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
+  const [expanded, setExpanded] = useState(false)
   const settings = league.settings || {}
   const isDaily = league.settings?.pick_frequency === 'daily'
 
@@ -153,15 +154,21 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
   }
 
   return (
-    <div className="bg-bg-card rounded-xl border border-border p-4 mb-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center justify-between w-full"
+      >
         <h3 className="font-display text-sm text-text-secondary">League Settings</h3>
-        {hasLockedPicks ? (
-          <span className="text-[10px] text-text-muted">Some settings locked</span>
-        ) : (
-          <span className="text-[10px] text-text-muted">Editable until first game starts</span>
-        )}
-      </div>
+        <div className="flex items-center gap-2">
+          {hasLockedPicks && <span className="text-[10px] text-text-muted">Some settings locked</span>}
+          <svg className={`w-4 h-4 text-text-muted transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+
+      {!expanded ? null : <div className="space-y-4 mt-4">
 
       {/* Duration */}
       <div>
@@ -356,6 +363,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           </div>
         </>
       )}
+      </div>}
     </div>
   )
 }
