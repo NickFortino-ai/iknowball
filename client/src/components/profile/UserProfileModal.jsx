@@ -15,7 +15,9 @@ import PickDetailModal from '../social/PickDetailModal'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
 
-function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses }) {
+function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, onItemTap }) {
+  const [expanded, setExpanded] = useState({})
+
   const parlayStats = useMemo(() => {
     const settled = (parlays || []).filter((p) => p.status === 'settled')
     if (!settled.length) return null
@@ -39,61 +41,213 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses }) {
     return bonuses.reduce((sum, b) => sum + (b.points || 0), 0)
   }, [bonuses])
 
+  const settledPicksBySport = useMemo(() => {
+    const map = {}
+    for (const pick of (picks || [])) {
+      if (pick.games?.status !== 'settled') continue
+      const key = pick.games?.sports?.key
+      if (!key) continue
+      if (!map[key]) map[key] = []
+      map[key].push(pick)
+    }
+    // Sort each sport's picks by game start time descending
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => new Date(b.games?.starts_at) - new Date(a.games?.starts_at))
+    }
+    return map
+  }, [picks])
+
+  const settledParlays = useMemo(() => {
+    return (parlays || [])
+      .filter((p) => p.status === 'settled')
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+  }, [parlays])
+
+  const settledProps = useMemo(() => {
+    return (propPicks || [])
+      .filter((p) => p.status === 'settled')
+      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+  }, [propPicks])
+
   const hasAnything = sportStats?.length > 0 || parlayStats || propStats || leaguePoints !== 0
 
   if (!hasAnything) return null
+
+  function toggle(key) {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  function renderItemPoints(points) {
+    return (
+      <div className={`font-semibold text-sm shrink-0 ml-3 ${
+        points > 0 ? 'text-correct' : points < 0 ? 'text-incorrect' : 'text-text-muted'
+      }`}>
+        {points > 0 ? '+' : ''}{points ?? 0}
+      </div>
+    )
+  }
 
   return (
     <div className="mb-4">
       <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Event Type</h3>
       <div className="space-y-2">
-        {(sportStats || []).map((stat) => (
-          <div key={stat.id} className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
-            <div>
-              <span className="font-semibold text-sm">{stat.sports?.name}</span>
-              <span className="text-text-muted text-xs ml-2">
-                {stat.correct_picks}W-{stat.total_picks - stat.correct_picks}L
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              {stat.sport_rank && (
-                <span className="text-xs text-text-muted">#{stat.sport_rank}/{stat.sport_total_users}</span>
+        {(sportStats || []).map((stat) => {
+          const key = stat.sports?.key
+          const isOpen = expanded[key]
+          const sportPicks = (settledPicksBySport[key] || []).slice(0, 10)
+          return (
+            <div key={stat.id}>
+              <button
+                onClick={() => toggle(key)}
+                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
+                  <span className="font-semibold text-sm">{stat.sports?.name}</span>
+                  <span className="text-text-muted text-xs">
+                    {stat.correct_picks}W-{stat.total_picks - stat.correct_picks}L
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {stat.sport_rank && (
+                    <span className="text-xs text-text-muted">#{stat.sport_rank}/{stat.sport_total_users}</span>
+                  )}
+                  <span className="text-xs text-text-muted">Streak: {stat.current_streak}</span>
+                  <span className={`font-semibold text-sm ${stat.total_points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{stat.total_points > 0 ? '+' : ''}{stat.total_points} pts</span>
+                </div>
+              </button>
+              {isOpen && sportPicks.length > 0 && (
+                <div className="mt-1 space-y-1">
+                  {sportPicks.map((pick) => (
+                    <div
+                      key={pick.id}
+                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
+                      onClick={() => onItemTap?.('pick', pick.id)}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold truncate">{pick.games?.away_team} @ {pick.games?.home_team}</div>
+                        <div className="text-xs text-text-muted truncate">Picked: {pick.picked_team === 'home' ? pick.games?.home_team : pick.games?.away_team}</div>
+                      </div>
+                      {renderItemPoints(pick.points_earned)}
+                    </div>
+                  ))}
+                </div>
               )}
-              <span className="text-xs text-text-muted">Streak: {stat.current_streak}</span>
-              <span className={`font-semibold text-sm ${stat.total_points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{stat.total_points > 0 ? '+' : ''}{stat.total_points} pts</span>
             </div>
-          </div>
-        ))}
-        {parlayStats && (
-          <div className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
+          )
+        })}
+        {parlayStats && (() => {
+          const isOpen = expanded['parlays']
+          const items = settledParlays.slice(0, 10)
+          return (
             <div>
-              <span className="font-semibold text-sm">Parlays</span>
-              <span className="text-text-muted text-xs ml-2">
-                {parlayStats.wins}W-{parlayStats.losses}L
-              </span>
+              <button
+                onClick={() => toggle('parlays')}
+                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
+                  <span className="font-semibold text-sm">Parlays</span>
+                  <span className="text-text-muted text-xs">
+                    {parlayStats.wins}W-{parlayStats.losses}L
+                  </span>
+                </div>
+                <span className={`font-semibold text-sm ${parlayStats.points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{parlayStats.points > 0 ? '+' : ''}{parlayStats.points} pts</span>
+              </button>
+              {isOpen && items.length > 0 && (
+                <div className="mt-1 space-y-1">
+                  {items.map((parlay) => {
+                    const legs = parlay.parlay_legs || []
+                    const legSummary = legs.map((l) => l.picked_team === 'home' ? l.games?.home_team : l.games?.away_team).join(', ')
+                    return (
+                      <div
+                        key={parlay.id}
+                        className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
+                        onClick={() => onItemTap?.('parlay', parlay.id)}
+                      >
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold truncate">{parlay.leg_count}-Leg Parlay</div>
+                          <div className="text-xs text-text-muted truncate">{legSummary}</div>
+                        </div>
+                        {renderItemPoints(parlay.points_earned)}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-            <span className={`font-semibold text-sm ${parlayStats.points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{parlayStats.points > 0 ? '+' : ''}{parlayStats.points} pts</span>
-          </div>
-        )}
-        {propStats && (
-          <div className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
+          )
+        })()}
+        {propStats && (() => {
+          const isOpen = expanded['props']
+          const items = settledProps.slice(0, 10)
+          return (
             <div>
-              <span className="font-semibold text-sm">Props</span>
-              <span className="text-text-muted text-xs ml-2">
-                {propStats.wins}W-{propStats.losses}L
-              </span>
+              <button
+                onClick={() => toggle('props')}
+                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
+                  <span className="font-semibold text-sm">Props</span>
+                  <span className="text-text-muted text-xs">
+                    {propStats.wins}W-{propStats.losses}L
+                  </span>
+                </div>
+                <span className={`font-semibold text-sm ${propStats.points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{propStats.points > 0 ? '+' : ''}{propStats.points} pts</span>
+              </button>
+              {isOpen && items.length > 0 && (
+                <div className="mt-1 space-y-1">
+                  {items.map((pp) => (
+                    <div
+                      key={pp.id}
+                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
+                      onClick={() => onItemTap?.('prop', pp.id)}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold truncate">{pp.player_props?.player_name} — {pp.player_props?.line} {pp.player_props?.market_label}</div>
+                        <div className="text-xs text-text-muted truncate">Picked: {pp.picked_side}</div>
+                      </div>
+                      {renderItemPoints(pp.points_earned)}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <span className={`font-semibold text-sm ${propStats.points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{propStats.points > 0 ? '+' : ''}{propStats.points} pts</span>
-          </div>
-        )}
-        {leaguePoints !== 0 && (
-          <div className="bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between">
+          )
+        })()}
+        {leaguePoints !== 0 && (() => {
+          const isOpen = expanded['leagues']
+          return (
             <div>
-              <span className="font-semibold text-sm">Leagues</span>
+              <button
+                onClick={() => toggle('leagues')}
+                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
+                  <span className="font-semibold text-sm">Leagues</span>
+                </div>
+                <span className={`font-semibold text-sm ${leaguePoints >= 0 ? 'text-correct' : 'text-incorrect'}`}>{leaguePoints > 0 ? '+' : ''}{leaguePoints} pts</span>
+              </button>
+              {isOpen && bonuses?.length > 0 && (
+                <div className="mt-1 space-y-1">
+                  {bonuses.map((bonus) => (
+                    <div
+                      key={bonus.id}
+                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold truncate">{bonus.label}</div>
+                      </div>
+                      {renderItemPoints(bonus.points)}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <span className={`font-semibold text-sm ${leaguePoints >= 0 ? 'text-correct' : 'text-incorrect'}`}>{leaguePoints > 0 ? '+' : ''}{leaguePoints} pts</span>
-          </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )
@@ -311,7 +465,11 @@ export default function UserProfileModal({ userId, onClose }) {
             </div>
 
             {/* Event Type Breakdown */}
-            <EventTypeBreakdown sportStats={user.sport_stats} parlays={parlays} propPicks={propPicks} bonuses={bonuses} />
+            <EventTypeBreakdown sportStats={user.sport_stats} parlays={parlays} propPicks={propPicks} bonuses={bonuses} picks={picks} onItemTap={(type, id) => {
+                  if (type === 'pick') setSelectedPickId(id)
+                  else if (type === 'parlay') setSelectedParlayId(id)
+                  else if (type === 'prop') setSelectedPropPickId(id)
+                }} />
 
             {/* Member since */}
             <div className="text-text-muted text-xs text-center mt-4">
