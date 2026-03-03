@@ -1,5 +1,7 @@
 import { timeAgo } from '../../lib/time'
 import Avatar from '../ui/Avatar'
+import FeedReactions from './FeedReactions'
+import PickComments from '../social/PickComments'
 
 function shortName(fullName) {
   if (!fullName) return ''
@@ -7,7 +9,7 @@ function shortName(fullName) {
   return words[words.length - 1]
 }
 
-export default function HeadToHeadFeedCard({ item, onUserTap }) {
+export default function HeadToHeadFeedCard({ item, reactions, onUserTap }) {
   const { matchup, game } = item
   const { userA, userB, record } = matchup
 
@@ -74,11 +76,19 @@ export default function HeadToHeadFeedCard({ item, onUserTap }) {
       </div>
 
       {/* Game cards */}
-      <div className="px-4 pb-4 flex items-center gap-2">
+      <div className="px-4 pb-3 flex items-center gap-2">
         <UserSide user={userA} onUserTap={onUserTap} />
         <div className="flex-shrink-0 text-xs font-bold text-text-muted px-1">VS</div>
         <UserSide user={userB} onUserTap={onUserTap} />
       </div>
+
+      {/* Reactions + comments */}
+      {item.pickId && (
+        <div className="px-4 pb-3 space-y-1.5">
+          <FeedReactions targetType="head_to_head" targetId={item.pickId} reactions={reactions} />
+          <PickComments targetType="head_to_head" targetId={item.pickId} commentCount={item.commentCount} />
+        </div>
+      )}
     </div>
   )
 }

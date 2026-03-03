@@ -10,16 +10,18 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
   const [expanded, setExpanded] = useState(false)
   const { parlay } = item
   const won = parlay.is_correct
-  const borderColor = won ? 'green' : 'red'
+  const isDramatic = won && parlay.leg_count >= 4
 
   return (
     <FeedCardWrapper
       item={item}
-      borderColor={borderColor}
+      borderColor={won ? 'green' : 'red'}
       targetType="parlay"
       targetId={parlay.id}
       reactions={reactions}
       onUserTap={onUserTap}
+      commentCount={item.commentCount}
+      cardClassName={isDramatic ? 'parlay-win-glow' : ''}
     >
       {/* Collapsed view */}
       <button
@@ -27,7 +29,9 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
         className="w-full flex items-center justify-between"
       >
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{parlay.leg_count}-Leg Parlay</span>
+          <span className={`font-semibold ${isDramatic ? 'text-base' : 'text-sm'}`}>
+            {parlay.leg_count}-Leg Parlay
+          </span>
           <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
             won ? 'bg-correct/20 text-correct' : 'bg-incorrect/20 text-incorrect'
           }`}>
@@ -35,9 +39,14 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`font-bold text-sm ${won ? 'text-correct' : 'text-incorrect'}`}>
-            {won ? `+${parlay.points_earned}` : `-${parlay.risk_points}`}
+          <span className={`font-bold text-correct ${isDramatic ? 'text-lg' : 'text-sm'}`}>
+            {won ? `+${parlay.points_earned}` : ''}
           </span>
+          {!won && (
+            <span className="font-bold text-sm text-incorrect">
+              -{parlay.risk_points}
+            </span>
+          )}
           <svg
             width="14"
             height="14"
@@ -54,6 +63,13 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
         </div>
       </button>
 
+      {/* Total odds for dramatic wins */}
+      {isDramatic && parlay.combined_multiplier && (
+        <div className="mt-1 text-xs text-text-muted">
+          {parlay.combined_multiplier}x combined multiplier
+        </div>
+      )}
+
       {/* Expanded legs */}
       {expanded && (
         <div className="mt-3 space-y-2">
@@ -69,7 +85,7 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
               >
                 <div className="min-w-0 flex-1">
                   <span className="text-text-muted">{leg.sport_name}</span>
-                  <span className="mx-1 text-text-muted">·</span>
+                  <span className="mx-1 text-text-muted">&middot;</span>
                   <span className="font-medium">{leg.picked_team_name}</span>
                   <span className="text-text-muted ml-1">{formatOdds(leg.odds)}</span>
                 </div>
@@ -81,7 +97,7 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
               </div>
             )
           })}
-          {parlay.combined_multiplier && (
+          {parlay.combined_multiplier && !isDramatic && (
             <div className="text-xs text-text-muted text-right">
               Combined: {parlay.combined_multiplier}x
             </div>

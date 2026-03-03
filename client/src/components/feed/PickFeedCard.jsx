@@ -17,6 +17,7 @@ export default function PickFeedCard({ item, reactions, onUserTap }) {
       targetId={pick.id}
       reactions={reactions}
       onUserTap={onUserTap}
+      commentCount={item.commentCount}
     >
       {/* Sport tag */}
       {game.sport_name && (

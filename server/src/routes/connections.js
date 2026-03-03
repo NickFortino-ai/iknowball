@@ -26,7 +26,8 @@ router.get('/pending', requireAuth, async (req, res) => {
 })
 
 router.get('/activity', requireAuth, async (req, res) => {
-  const activity = await getConnectionActivity(req.user.id)
+  const before = req.query.before || null
+  const activity = await getConnectionActivity(req.user.id, before)
   res.json(activity)
 })
 

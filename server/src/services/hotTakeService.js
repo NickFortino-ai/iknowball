@@ -2,10 +2,10 @@ import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { createNotification } from './notificationService.js'
 
-export async function createHotTake(userId, content, teamTag) {
+export async function createHotTake(userId, content, teamTag, imageUrl) {
   const { data, error } = await supabase
     .from('hot_takes')
-    .insert({ user_id: userId, content, team_tag: teamTag || null })
+    .insert({ user_id: userId, content, team_tag: teamTag || null, image_url: imageUrl || null })
     .select()
     .single()
 

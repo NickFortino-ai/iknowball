@@ -9,6 +9,7 @@ const BORDER_COLORS = {
   orange: 'border-l-orange-400',
   accent: 'border-l-accent',
   gold: 'border-l-yellow-500',
+  purple: 'border-l-purple-500',
 }
 
 export default function FeedCardWrapper({
@@ -17,13 +18,15 @@ export default function FeedCardWrapper({
   targetType,
   targetId,
   reactions,
+  commentCount,
   onUserTap,
+  cardClassName = '',
   children,
 }) {
   const borderClass = BORDER_COLORS[borderColor] || 'border-l-transparent'
 
   return (
-    <div className={`bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 ${borderClass}`}>
+    <div className={`bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 ${borderClass} ${cardClassName}`}>
       {/* Header: avatar + name + timestamp */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-3">
         <button
@@ -53,7 +56,7 @@ export default function FeedCardWrapper({
       {targetType && targetId && (
         <div className="px-4 pb-3 space-y-1.5">
           <FeedReactions targetType={targetType} targetId={targetId} reactions={reactions} />
-          <PickComments targetType={targetType} targetId={targetId} />
+          <PickComments targetType={targetType} targetId={targetId} commentCount={commentCount} />
         </div>
       )}
     </div>

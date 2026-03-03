@@ -1,13 +1,20 @@
 import FeedCardWrapper from './FeedCardWrapper'
 
-function getFlameSize(length) {
-  if (length >= 7) return 'text-3xl'
-  if (length >= 4) return 'text-2xl'
-  return 'text-xl'
+function getStreakTier(length) {
+  if (length >= 10) return 'legendary'
+  if (length >= 5) return 'hot'
+  return 'normal'
 }
 
 export default function StreakFeedCard({ item, reactions, onUserTap }) {
   const { streak } = item
+  const tier = getStreakTier(streak.streak_length)
+
+  const cardClass = tier === 'legendary'
+    ? 'streak-fire-glow bg-orange-500/5'
+    : tier === 'hot'
+    ? 'bg-orange-500/5'
+    : ''
 
   return (
     <FeedCardWrapper
@@ -17,13 +24,17 @@ export default function StreakFeedCard({ item, reactions, onUserTap }) {
       targetId={streak.id}
       reactions={reactions}
       onUserTap={onUserTap}
+      commentCount={item.commentCount}
+      cardClassName={cardClass}
     >
       <div className="flex items-center gap-3">
-        <span className={getFlameSize(streak.streak_length)}>
+        <span className={tier === 'legendary' ? 'text-4xl' : tier === 'hot' ? 'text-3xl' : 'text-xl'}>
           {'\uD83D\uDD25'}
         </span>
         <div>
-          <div className="font-bold text-lg text-orange-400">
+          <div className={`font-bold text-orange-400 ${
+            tier === 'legendary' ? 'text-2xl' : tier === 'hot' ? 'text-xl' : 'text-lg'
+          }`}>
             {streak.streak_length} Win Streak
           </div>
           <div className="text-xs text-text-muted">

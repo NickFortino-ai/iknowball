@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
 export function useConnections() {
@@ -26,9 +26,14 @@ export function usePendingConnectionRequests(enabled = true) {
 }
 
 export function useConnectionActivity() {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['connections', 'activity'],
-    queryFn: () => api.get('/connections/activity'),
+    queryFn: ({ pageParam }) => {
+      const params = pageParam ? `?before=${encodeURIComponent(pageParam)}` : ''
+      return api.get(`/connections/activity${params}`)
+    },
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
   })
 }
 

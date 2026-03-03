@@ -11,6 +11,7 @@ export default function RecordFeedCard({ item, reactions, onUserTap }) {
       targetId={record.id}
       reactions={reactions}
       onUserTap={onUserTap}
+      commentCount={item.commentCount}
     >
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xl">{'\uD83C\uDFC6'}</span>

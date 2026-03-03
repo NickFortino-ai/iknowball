@@ -9,10 +9,11 @@ const router = Router()
 const hotTakeSchema = z.object({
   content: z.string().min(1).max(280),
   team_tag: z.string().max(50).optional(),
+  image_url: z.string().url().optional(),
 })
 
 router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
-  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tag)
+  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tag, req.validated.image_url)
   res.status(201).json(hotTake)
 })
 

@@ -275,7 +275,7 @@ export async function declineConnectionRequest(connectionId, userId) {
   if (error) throw error
 }
 
-export async function getConnectionActivity(userId) {
+export async function getConnectionActivity(userId, before) {
   // Get connected user IDs
   const { data: connections } = await supabase
     .from('connections')
@@ -283,7 +283,7 @@ export async function getConnectionActivity(userId) {
     .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
     .eq('status', 'connected')
 
-  if (!connections?.length) return []
+  if (!connections?.length) return { items: [], nextCursor: null }
 
   const connectedIds = connections.map((c) =>
     c.user_id_1 === userId ? c.user_id_2 : c.user_id_1
@@ -305,91 +305,96 @@ export async function getConnectionActivity(userId) {
 
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Query 9 sources in parallel
+  // Helper to conditionally add cursor filter
+  function applyBefore(query, col) {
+    return before ? query.lt(col, before) : query
+  }
+
+  // Query 10 sources in parallel
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders] = await Promise.all([
     // Source 1: Notable picks — settled where (correct AND odds >= 200) OR (multiplier >= 3)
-    supabase
+    applyBefore(supabase
       .from('picks')
       .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, sports(name))')
       .in('user_id', connectedIds)
       .eq('status', 'settled')
-      .or('and(is_correct.eq.true,odds_at_pick.gte.200),multiplier.gte.3')
+      .or('and(is_correct.eq.true,odds_at_pick.gte.200),multiplier.gte.3'), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(20),
 
     // Source 2: Settled parlays (won + bad beats only, filtered in processing)
-    supabase
+    applyBefore(supabase
       .from('parlays')
       .select('id, user_id, leg_count, combined_multiplier, status, is_correct, points_earned, risk_points, reward_points, updated_at, parlay_legs(picked_team, odds_at_submission, status, games(home_team, away_team, sports(name)))')
       .in('user_id', connectedIds)
-      .eq('status', 'settled')
+      .eq('status', 'settled'), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(20),
 
     // Source 3: Streak events (filtered to thresholds in processing)
-    supabase
+    applyBefore(supabase
       .from('streak_events')
       .select('id, user_id, streak_length, created_at, sports(key, name)')
-      .in('user_id', connectedIds)
+      .in('user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(20),
 
     // Source 4: Tier achievements (non-Rookie, updated recently)
-    supabase
+    applyBefore(supabase
       .from('users')
-      .select('id, tier, updated_at')
+      .select('id, tier, total_points, updated_at')
       .in('id', connectedIds)
       .not('tier', 'in', '("Rookie","Lost")')
-      .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+      .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()), 'updated_at'),
 
     // Source 5: Record broken
-    supabase
+    applyBefore(supabase
       .from('record_history')
       .select('id, record_key, new_holder_id, previous_holder_id, previous_value, new_value, broken_at, records(display_name)')
-      .in('new_holder_id', connectedIds)
+      .in('new_holder_id', connectedIds), 'broken_at')
       .order('broken_at', { ascending: false })
       .limit(10),
 
     // Source 6: Pick shares
-    supabase
+    applyBefore(supabase
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, games(home_team, away_team, sports(name)))')
-      .in('user_id', connectedIds)
+      .in('user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
 
     // Source 7: Recent comments from connected users
-    supabase
+    applyBefore(supabase
       .from('comments')
       .select('id, target_type, target_id, user_id, content, created_at')
       .in('user_id', connectedIds)
-      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
 
     // Source 8: H2H — all settled picks from squad in last 3 days
-    supabase
+    applyBefore(supabase
       .from('picks')
       .select('id, user_id, picked_team, game_id, is_correct, odds_at_pick, points_earned, risk_points, multiplier, updated_at, games(home_team, away_team, sports(name))')
       .in('user_id', allIds)
       .eq('status', 'settled')
-      .gte('updated_at', threeDaysAgo)
+      .gte('updated_at', threeDaysAgo), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(100),
 
     // Source 9: Hot takes
-    supabase
+    applyBefore(supabase
       .from('hot_takes')
-      .select('id, user_id, content, team_tag, created_at')
-      .in('user_id', allIds)
+      .select('id, user_id, content, team_tag, image_url, created_at')
+      .in('user_id', allIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
 
     // Source 10: Hot take reminders
-    supabase
+    applyBefore(supabase
       .from('hot_take_reminders')
       .select('id, reminder_user_id, hot_take_id, created_at, hot_takes(id, user_id, content, team_tag, created_at)')
-      .in('reminder_user_id', allIds)
+      .in('reminder_user_id', allIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
   ])
@@ -533,7 +538,7 @@ export async function getConnectionActivity(userId) {
 
   // Process tier achievements — dedup to highest tier per user
   const tierByUser = {}
-  const TIER_ORDER = { 'Rookie': 0, 'Bench': 1, 'Starter': 2, 'All-Star': 3, 'MVP': 4, 'GOAT': 5 }
+  const TIER_ORDER = { 'Rookie': 0, 'Baller': 1, 'Elite': 2, 'Hall of Famer': 3, 'GOAT': 4 }
   for (const u of tierAchievements.data || []) {
     const existing = tierByUser[u.id]
     if (!existing || (TIER_ORDER[u.tier] || 0) > (TIER_ORDER[existing.tier] || 0)) {
@@ -549,7 +554,7 @@ export async function getConnectionActivity(userId) {
       userId: u.id,
       ...buildUserFields(user),
       timestamp: u.updated_at,
-      tier: { name: u.tier },
+      tier: { name: u.tier, total_points: u.total_points },
     })
   }
 
@@ -707,6 +712,7 @@ export async function getConnectionActivity(userId) {
           feed.push({
             type: 'head_to_head',
             id: `h2h-${pairKey}`,
+            pickId: home.id,
             userId: home.user_id,
             timestamp: home.updated_at > away.updated_at ? home.updated_at : away.updated_at,
             game: {
@@ -817,6 +823,7 @@ export async function getConnectionActivity(userId) {
         id: take.id,
         content: take.content,
         team_tag: take.team_tag,
+        image_url: take.image_url,
       },
     })
   }
@@ -857,9 +864,79 @@ export async function getConnectionActivity(userId) {
     })
   }
 
-  // Sort by timestamp desc, limit 50
+  // Sort by timestamp desc, paginate
+  const PAGE_SIZE = 30
   feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-  return feed.slice(0, 50)
+  const page = feed.slice(0, PAGE_SIZE)
+
+  // Batch fetch comment counts for feed items that have reaction targets
+  const commentTargets = []
+  for (const item of page) {
+    if (item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
+      commentTargets.push({ target_type: 'pick', target_id: item.pick.id })
+    } else if (item.type === 'parlay' || item.type === 'bad_beat') {
+      commentTargets.push({ target_type: 'parlay', target_id: item.parlay.id })
+    } else if (item.type === 'streak') {
+      commentTargets.push({ target_type: 'streak_event', target_id: item.streak.id })
+    } else if (item.type === 'record') {
+      commentTargets.push({ target_type: 'record_history', target_id: item.record.id })
+    } else if (item.type === 'hot_take') {
+      commentTargets.push({ target_type: 'hot_take', target_id: item.hot_take.id })
+    } else if (item.type === 'head_to_head' && item.pickId) {
+      commentTargets.push({ target_type: 'head_to_head', target_id: item.pickId })
+    }
+  }
+
+  const commentCountMap = {}
+  if (commentTargets.length > 0) {
+    // Group by target_type for batched queries
+    const byType = {}
+    for (const t of commentTargets) {
+      if (!byType[t.target_type]) byType[t.target_type] = []
+      byType[t.target_type].push(t.target_id)
+    }
+    const countQueries = Object.entries(byType).map(([type, ids]) =>
+      supabase
+        .from('comments')
+        .select('target_type, target_id', { count: 'exact', head: false })
+        .eq('target_type', type)
+        .in('target_id', ids)
+    )
+    const countResults = await Promise.all(countQueries)
+
+    // Build counts from result rows — group manually since we can't GROUP BY in PostgREST
+    for (const result of countResults) {
+      for (const row of result.data || []) {
+        const key = `${row.target_type}-${row.target_id}`
+        commentCountMap[key] = (commentCountMap[key] || 0) + 1
+      }
+    }
+  }
+
+  // Attach comment counts to feed items
+  for (const item of page) {
+    let key = null
+    if (item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
+      key = `pick-${item.pick.id}`
+    } else if (item.type === 'parlay' || item.type === 'bad_beat') {
+      key = `parlay-${item.parlay.id}`
+    } else if (item.type === 'streak') {
+      key = `streak_event-${item.streak.id}`
+    } else if (item.type === 'record') {
+      key = `record_history-${item.record.id}`
+    } else if (item.type === 'hot_take') {
+      key = `hot_take-${item.hot_take.id}`
+    } else if (item.type === 'head_to_head' && item.pickId) {
+      key = `head_to_head-${item.pickId}`
+    }
+    item.commentCount = key ? (commentCountMap[key] || 0) : 0
+  }
+
+  const nextCursor = page.length === PAGE_SIZE && feed.length > PAGE_SIZE
+    ? page[page.length - 1].timestamp
+    : null
+
+  return { items: page, nextCursor }
 }
 
 export async function getConnectionStatus(userId, otherUserId) {

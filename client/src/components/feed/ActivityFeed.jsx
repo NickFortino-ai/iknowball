@@ -15,9 +15,22 @@ import HotTakeFeedCard from './HotTakeFeedCard'
 import HotTakeReminderFeedCard from './HotTakeReminderFeedCard'
 import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
+import FeedSkeleton from './FeedSkeleton'
 
 export default function ActivityFeed({ onUserTap }) {
-  const { data: activity } = useConnectionActivity()
+  const {
+    data,
+    isLoading,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useConnectionActivity()
+
+  // Flatten all pages into a single list
+  const activity = useMemo(() => {
+    if (!data?.pages) return []
+    return data.pages.flatMap((page) => page.items || [])
+  }, [data])
 
   // Build reaction targets for batch query
   const reactionTargets = useMemo(() => {
@@ -33,6 +46,9 @@ export default function ActivityFeed({ onUserTap }) {
       else if (item.type === 'streak') targets.push({ target_type: 'streak_event', target_id: item.streak.id })
       else if (item.type === 'record') targets.push({ target_type: 'record_history', target_id: item.record.id })
       else if (item.type === 'hot_take') targets.push({ target_type: 'hot_take', target_id: item.hot_take.id })
+      else if (item.type === 'head_to_head' && item.pickId) {
+        targets.push({ target_type: 'head_to_head', target_id: item.pickId })
+      }
     }
     return targets
   }, [activity])
@@ -69,16 +85,23 @@ export default function ActivityFeed({ onUserTap }) {
       {/* Hot Take Composer */}
       <HotTakeComposer />
 
-      {/* Feed */}
-      {!activity?.length ? (
-        <div className="bg-bg-card border border-border rounded-xl px-4 py-8 text-center text-text-muted text-sm">
-          No recent activity from your squad
+      {/* Loading skeleton */}
+      {isLoading ? (
+        <FeedSkeleton />
+      ) : !activity?.length ? (
+        /* Empty state */
+        <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
+          <div className="text-2xl mb-2">{'\uD83D\uDC4B'}</div>
+          <div className="text-sm text-text-primary font-medium mb-1">Your feed is empty</div>
+          <div className="text-xs text-text-muted">
+            Connect with other users to see their activity here.
+          </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {groupedItems.map((group) => (
-            <div key={group.dateKey}>
-              <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2 px-1">
+        <div>
+          {groupedItems.map((group, groupIdx) => (
+            <div key={group.dateKey} className={groupIdx > 0 ? 'mt-6' : ''}>
+              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-2 px-1">
                 {group.label}
               </h3>
               <div className="space-y-3">
@@ -93,6 +116,19 @@ export default function ActivityFeed({ onUserTap }) {
               </div>
             </div>
           ))}
+
+          {/* Load more */}
+          {hasNextPage && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="text-sm text-accent hover:text-accent-hover font-medium px-4 py-2 rounded-lg bg-bg-card border border-border hover:border-accent/30 transition-colors disabled:opacity-50"
+              >
+                {isFetchingNextPage ? 'Loading...' : 'Load more'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -161,7 +197,13 @@ function FeedCard({ item, getReactions, onUserTap }) {
         />
       )
     case 'head_to_head':
-      return <HeadToHeadFeedCard item={item} onUserTap={onUserTap} />
+      return (
+        <HeadToHeadFeedCard
+          item={item}
+          reactions={getReactions('head_to_head', item.pickId)}
+          onUserTap={onUserTap}
+        />
+      )
     case 'hot_take':
       return (
         <HotTakeFeedCard
@@ -199,7 +241,7 @@ function CommentFeedCard({ item, onUserTap }) {
         Commented on {ownerText} {targetLabel}
       </div>
       <div className="mt-1 text-sm text-text-primary bg-bg-secondary rounded-lg px-3 py-2 italic">
-        "{comment.content}"
+        &ldquo;{comment.content}&rdquo;
       </div>
     </FeedCardWrapper>
   )

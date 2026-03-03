@@ -17,11 +17,12 @@ export default function BadBeatFeedCard({ item, reactions, onUserTap }) {
       targetId={parlay.id}
       reactions={reactions}
       onUserTap={onUserTap}
+      commentCount={item.commentCount}
     >
       {/* Banner */}
       <div className="mb-2 bg-incorrect/10 border border-incorrect/30 rounded-lg px-3 py-2 text-center">
         <span className="text-incorrect font-bold text-sm">
-          BAD BEAT &mdash; {wonLegs} of {parlay.leg_count} legs hit
+          {'\uD83D\uDC80'} BAD BEAT &mdash; {wonLegs} of {parlay.leg_count} legs hit
         </span>
       </div>
 
@@ -34,13 +35,15 @@ export default function BadBeatFeedCard({ item, reactions, onUserTap }) {
             <div
               key={i}
               className={`flex items-center justify-between text-xs px-2 py-1.5 rounded ${
-                legLost ? 'bg-incorrect/15 border border-incorrect/30' : 'bg-bg-secondary'
+                legLost ? 'bg-incorrect/15 border border-incorrect/30' : 'bg-bg-primary'
               }`}
             >
               <div className="min-w-0 flex-1">
                 <span className="text-text-muted">{leg.sport_name}</span>
                 <span className="mx-1 text-text-muted">&middot;</span>
-                <span className="font-medium">{leg.picked_team_name}</span>
+                <span className={`font-medium ${legLost ? 'line-through text-text-muted' : ''}`}>
+                  {leg.picked_team_name}
+                </span>
                 <span className="text-text-muted ml-1">{formatOdds(leg.odds)}</span>
               </div>
               <span className={`ml-2 font-bold flex-shrink-0 ${
@@ -53,9 +56,9 @@ export default function BadBeatFeedCard({ item, reactions, onUserTap }) {
         })}
       </div>
 
-      {/* Risk */}
-      <div className="mt-2 text-xs text-text-muted text-right">
-        Risked {parlay.risk_points} pts &middot; Would have won {parlay.reward_points} pts
+      {/* Would have won — prominent */}
+      <div className="mt-2 text-sm text-text-secondary text-center font-medium">
+        Would have won <span className="text-correct">{parlay.reward_points} pts</span>
       </div>
     </FeedCardWrapper>
   )
