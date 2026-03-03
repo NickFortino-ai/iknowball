@@ -478,8 +478,8 @@ export default function LeagueDetailPage() {
                     })
                     setEditingNote(false)
                     toast('Note saved', 'success')
-                  } catch {
-                    toast('Failed to save note', 'error')
+                  } catch (err) {
+                    toast(err.message || 'Failed to save note', 'error')
                   }
                 }}
                 disabled={updateLeague.isPending}
