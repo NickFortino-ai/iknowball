@@ -12,6 +12,7 @@ import MultiplierFeedCard from './MultiplierFeedCard'
 import BadBeatFeedCard from './BadBeatFeedCard'
 import HeadToHeadFeedCard from './HeadToHeadFeedCard'
 import HotTakeFeedCard from './HotTakeFeedCard'
+import HotTakeReminderFeedCard from './HotTakeReminderFeedCard'
 import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
 
@@ -169,6 +170,8 @@ function FeedCard({ item, getReactions, onUserTap }) {
           onUserTap={onUserTap}
         />
       )
+    case 'hot_take_reminder':
+      return <HotTakeReminderFeedCard item={item} onUserTap={onUserTap} />
     case 'comment':
       return <CommentFeedCard item={item} onUserTap={onUserTap} />
     default:

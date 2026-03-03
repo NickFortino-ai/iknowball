@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { createNotification } from './notificationService.js'
 
-async function assertConnected(actorId, ownerId) {
+export async function assertConnected(actorId, ownerId) {
   // Allow self-interactions
   if (actorId === ownerId) return
 

@@ -49,6 +49,7 @@ function getNotificationRoute(notification) {
     case 'streak_milestone':
       return '/results'
     case 'connection_request':
+    case 'hot_take_reminder':
       return '/hub'
     case 'headlines':
       return '/hall-of-fame'

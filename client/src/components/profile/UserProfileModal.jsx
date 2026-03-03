@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useUserProfile, useUserPickHistory, useUserParlayHistory, useUserPropPickHistory, useUserBonusHistory, useHeadToHead } from '../../hooks/useUserProfile'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus, useSendConnectionRequest } from '../../hooks/useConnections'
+import { useUserHotTakes, useRemindHotTake } from '../../hooks/useHotTakes'
+import { timeAgo } from '../../lib/time'
 import { useMemo } from 'react'
 import { getTier } from '../../lib/scoring'
 import { toast } from '../ui/Toast'
@@ -264,6 +266,8 @@ export default function UserProfileModal({ userId, onClose }) {
   const { data: connectionStatus } = useConnectionStatus(isViewingOther ? userId : null)
   const sendRequest = useSendConnectionRequest()
   const [justSent, setJustSent] = useState(false)
+  const { data: hotTakes } = useUserHotTakes(userId)
+  const remindHotTake = useRemindHotTake()
   const [selectedPickId, setSelectedPickId] = useState(null)
   const [selectedParlayId, setSelectedParlayId] = useState(null)
   const [selectedPropPickId, setSelectedPropPickId] = useState(null)
@@ -282,6 +286,15 @@ export default function UserProfileModal({ userId, onClose }) {
       toast(`Connection request sent to @${user.username}`, 'success')
     } catch (err) {
       toast(err.message || 'Failed to send request', 'error')
+    }
+  }
+
+  async function handleRemind(hotTakeId) {
+    try {
+      await remindHotTake.mutateAsync(hotTakeId)
+      toast('Reminder posted to the feed', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to remind', 'error')
     }
   }
 
@@ -465,6 +478,44 @@ export default function UserProfileModal({ userId, onClose }) {
                   else if (type === 'parlay') setSelectedParlayId(id)
                   else if (type === 'prop') setSelectedPropPickId(id)
                 }} />
+
+            {/* Hot Takes */}
+            {hotTakes?.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Hot Takes</h3>
+                <div className="space-y-2">
+                  {hotTakes.map((take) => (
+                    <div
+                      key={take.id}
+                      className="bg-bg-primary rounded-lg border-l-4 border-l-accent px-4 py-3"
+                    >
+                      <div className="text-sm text-text-primary leading-relaxed">
+                        &ldquo;{take.content}&rdquo;
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-2">
+                          {take.team_tag && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full">
+                              {take.team_tag}
+                            </span>
+                          )}
+                          <span className="text-xs text-text-muted">{timeAgo(take.created_at)}</span>
+                        </div>
+                        {isViewingOther && connStatus === 'connected' && (
+                          <button
+                            onClick={() => handleRemind(take.id)}
+                            disabled={remindHotTake.isPending}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-50 transition-colors"
+                          >
+                            Remind
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Member since */}
             <div className="text-text-muted text-xs text-center mt-4">

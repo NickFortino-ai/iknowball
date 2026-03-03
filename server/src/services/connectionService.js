@@ -306,7 +306,7 @@ export async function getConnectionActivity(userId) {
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
 
   // Query 9 sources in parallel
-  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes] = await Promise.all([
+  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders] = await Promise.all([
     // Source 1: Notable picks — settled where (correct AND odds >= 200) OR (multiplier >= 3)
     supabase
       .from('picks')
@@ -382,6 +382,14 @@ export async function getConnectionActivity(userId) {
       .from('hot_takes')
       .select('id, user_id, content, team_tag, created_at')
       .in('user_id', allIds)
+      .order('created_at', { ascending: false })
+      .limit(15),
+
+    // Source 10: Hot take reminders
+    supabase
+      .from('hot_take_reminders')
+      .select('id, reminder_user_id, hot_take_id, created_at, hot_takes(id, user_id, content, team_tag, created_at)')
+      .in('reminder_user_id', allIds)
       .order('created_at', { ascending: false })
       .limit(15),
   ])
@@ -747,6 +755,42 @@ export async function getConnectionActivity(userId) {
         content: take.content,
         team_tag: take.team_tag,
       },
+    })
+  }
+
+  // Process hot take reminders
+  for (const reminder of hotTakeReminders.data || []) {
+    const user = userMap[reminder.reminder_user_id]
+    if (!user || !reminder.hot_takes) continue
+    const take = reminder.hot_takes
+
+    // Get take author info — may not be in userMap if not in squad
+    let takeAuthor = userMap[take.user_id]
+    if (!takeAuthor) {
+      const { data: authorData } = await supabase
+        .from('users')
+        .select('id, username, display_name, avatar_url, avatar_emoji')
+        .eq('id', take.user_id)
+        .single()
+      takeAuthor = authorData
+    }
+
+    feed.push({
+      type: 'hot_take_reminder',
+      id: reminder.id,
+      userId: reminder.reminder_user_id,
+      ...buildUserFields(user),
+      timestamp: reminder.created_at,
+      hot_take: {
+        id: take.id,
+        content: take.content,
+        team_tag: take.team_tag,
+        created_at: take.created_at,
+      },
+      reminded_user: takeAuthor ? {
+        username: takeAuthor.username,
+        display_name: takeAuthor.display_name,
+      } : null,
     })
   }
 

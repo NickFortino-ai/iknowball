@@ -1,4 +1,6 @@
 import { supabase } from '../config/supabase.js'
+import { assertConnected } from './socialService.js'
+import { createNotification } from './notificationService.js'
 
 export async function createHotTake(userId, content, teamTag) {
   const { data, error } = await supabase
@@ -8,6 +10,67 @@ export async function createHotTake(userId, content, teamTag) {
     .single()
 
   if (error) throw error
+  return data
+}
+
+export async function getHotTakesByUser(userId) {
+  const { data, error } = await supabase
+    .from('hot_takes')
+    .select('id, content, team_tag, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+export async function createReminder(actorId, hotTakeId) {
+  // Fetch the hot take
+  const { data: hotTake } = await supabase
+    .from('hot_takes')
+    .select('id, user_id, content')
+    .eq('id', hotTakeId)
+    .single()
+
+  if (!hotTake) {
+    const err = new Error('Hot take not found')
+    err.status = 404
+    throw err
+  }
+
+  // Prevent self-remind
+  if (hotTake.user_id === actorId) {
+    const err = new Error('You cannot remind yourself of your own hot take')
+    err.status = 400
+    throw err
+  }
+
+  // Must be connected (squad members only)
+  await assertConnected(actorId, hotTake.user_id)
+
+  // Insert reminder
+  const { data, error } = await supabase
+    .from('hot_take_reminders')
+    .insert({ reminder_user_id: actorId, hot_take_id: hotTakeId })
+    .select()
+    .single()
+
+  if (error) throw error
+
+  // Notify the take author
+  try {
+    const { data: actor } = await supabase
+      .from('users')
+      .select('username')
+      .eq('id', actorId)
+      .single()
+    const username = actor?.username || 'Someone'
+    await createNotification(hotTake.user_id, 'hot_take_reminder', `${username} reminded you of your hot take`, {
+      actorId,
+      hotTakeId,
+    })
+  } catch (_) { /* notification is best-effort */ }
+
   return data
 }
 
