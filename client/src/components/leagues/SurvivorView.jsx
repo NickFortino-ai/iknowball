@@ -25,27 +25,16 @@ export default function SurvivorView({ league }) {
   const [showPickForm, setShowPickForm] = useState(false)
 
   const currentWeek = league.current_week
+  // Use pick_week from board (advances past locked picks) with fallback to current_week
+  const pickWeek = board?.pick_week || currentWeek
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
 
-  // Find current user's pick for this week
-  const myCurrentPick = useMemo(() => {
-    if (!board?.members || !currentWeek) return null
-    for (const m of board.members) {
-      for (const p of m.picks) {
-        if (p.league_week_id === currentWeek.id && m.user_id === league.members?.find(mm => mm.role === 'commissioner' || true)?.user_id) {
-          // We can't determine "me" here without auth context, so we return all picks
-        }
-      }
-    }
-    return null
-  }, [board, currentWeek, league])
-
   async function handlePick(gameId, pickedTeam) {
-    if (!currentWeek) return
+    if (!pickWeek) return
     try {
       await submitPick.mutateAsync({
         leagueId: league.id,
-        weekId: currentWeek.id,
+        weekId: pickWeek.id,
         gameId,
         pickedTeam,
       })
@@ -58,10 +47,10 @@ export default function SurvivorView({ league }) {
 
   // Auto-expand pick form if user hasn't picked yet
   useEffect(() => {
-    if (board && currentWeek && !board.user_has_picked) {
+    if (board && pickWeek && !board.user_has_picked) {
       setShowPickForm(true)
     }
-  }, [board, currentWeek])
+  }, [board, pickWeek])
 
   if (isLoading) return <LoadingSpinner />
   if (!board) return <EmptyState title="No data" message="Board not available" />
@@ -91,7 +80,7 @@ export default function SurvivorView({ league }) {
       </div>
 
       {/* No active period */}
-      {!currentWeek && (
+      {!pickWeek && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 text-center">
           <p className="text-sm text-text-secondary">No active {periodLabel.toLowerCase()} right now.</p>
           <p className="text-xs text-text-muted mt-1">Picks will be available when the next {periodLabel.toLowerCase()} begins.</p>
@@ -99,7 +88,7 @@ export default function SurvivorView({ league }) {
       )}
 
       {/* Make pick button */}
-      {currentWeek && (
+      {pickWeek && (
         <button
           onClick={() => setShowPickForm(!showPickForm)}
           className={`w-full py-3 rounded-xl font-display transition-colors mb-4 ${
@@ -111,8 +100,8 @@ export default function SurvivorView({ league }) {
           {showPickForm
             ? 'Hide Pick Form'
             : board.user_has_picked
-              ? `Edit ${periodLabel} ${board.display_period_number || currentWeek.week_number} Pick`
-              : `Make ${periodLabel} ${board.display_period_number || currentWeek.week_number} Pick`}
+              ? `Edit ${periodLabel} ${board.display_period_number || pickWeek.week_number} Pick`
+              : `Make ${periodLabel} ${board.display_period_number || pickWeek.week_number} Pick`}
         </button>
       )}
 

@@ -196,9 +196,27 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
   const currentWeekId = currentWeek?.id
 
   // Check if requesting user has made their pick for the current week
-  const userHasPicked = currentWeekId && (picks || []).some(
+  const userCurrentPick = currentWeekId && (picks || []).find(
     (p) => p.user_id === requestingUserId && p.league_week_id === currentWeekId
   )
+  const userHasPicked = !!userCurrentPick
+
+  // Determine pick week: if user's current pick is locked/settled, advance to next week
+  let pickWeek = currentWeek
+  let pickWeekUserHasPicked = userHasPicked
+  if (userCurrentPick && userCurrentPick.status !== 'pending') {
+    const currentIdx = (weeks || []).findIndex((w) => w.id === currentWeekId)
+    const nextWeek = currentIdx >= 0 ? weeks[currentIdx + 1] : null
+    if (nextWeek) {
+      pickWeek = nextWeek
+      pickWeekUserHasPicked = (picks || []).some(
+        (p) => p.user_id === requestingUserId && p.league_week_id === nextWeek.id
+      )
+    } else {
+      pickWeek = null
+      pickWeekUserHasPicked = false
+    }
+  }
 
   // Group picks by user, hiding current-week picks from others if user hasn't picked
   const picksByUser = {}
@@ -212,17 +230,17 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     }
   }
 
-  // Compute display period number: skip leading empty periods with no picks
+  // Compute display period number for the pick week
   const weekIdsWithPicks = new Set((picks || []).map((p) => p.league_week_id))
   const firstActiveIndex = (weeks || []).findIndex(
     (w) => weekIdsWithPicks.has(w.id) || w.id === currentWeekId
   )
-  const currentIndex = currentWeek
-    ? (weeks || []).findIndex((w) => w.id === currentWeek.id)
+  const pickWeekIndex = pickWeek
+    ? (weeks || []).findIndex((w) => w.id === pickWeek.id)
     : -1
-  const displayPeriodNumber = firstActiveIndex >= 0 && currentIndex >= 0
-    ? currentIndex - firstActiveIndex + 1
-    : currentWeek?.week_number || null
+  const displayPeriodNumber = firstActiveIndex >= 0 && pickWeekIndex >= 0
+    ? pickWeekIndex - firstActiveIndex + 1
+    : pickWeek?.week_number || null
 
   return {
     members: (members || []).map((m) => ({
@@ -230,8 +248,9 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
       picks: picksByUser[m.user_id] || [],
     })),
     weeks: weeks || [],
-    user_has_picked: !!userHasPicked,
+    user_has_picked: !!pickWeekUserHasPicked,
     display_period_number: displayPeriodNumber,
+    pick_week: pickWeek,
   }
 }
 
