@@ -218,7 +218,7 @@ export default function HeadlinesCard() {
                   <div className="flex items-baseline gap-3 mb-1">
                     <span className="font-display text-lg">{r.name}</span>
                     <span className="text-text-muted text-sm ml-auto">{r.record}</span>
-                    <span className="font-semibold text-accent text-sm">{r.points > 0 ? '+' : ''}{r.points} pts</span>
+                    <span className="font-semibold text-accent text-sm">{r.points} pts</span>
                   </div>
                   {r.narrative && (
                     <p className="text-text-secondary text-sm leading-relaxed">{r.narrative}</p>
