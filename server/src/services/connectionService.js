@@ -389,11 +389,12 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .order('created_at', { ascending: false })
       .limit(15),
 
-    // Source 8: H2H — settled picks in last 3 days
-    applyBefore(filterByUser(supabase
+    // Source 8: H2H — settled picks in last 3 days (squad only)
+    isAll ? Promise.resolve({ data: [] }) :
+    applyBefore(supabase
       .from('picks')
-      .select('id, user_id, picked_team, game_id, is_correct, odds_at_pick, points_earned, risk_points, multiplier, updated_at, games(home_team, away_team, sports(name))'),
-      'user_id', allIds)
+      .select('id, user_id, picked_team, game_id, is_correct, odds_at_pick, points_earned, risk_points, multiplier, updated_at, games(home_team, away_team, sports(name))')
+      .in('user_id', allIds)
       .eq('status', 'settled')
       .gte('updated_at', threeDaysAgo), 'updated_at')
       .order('updated_at', { ascending: false })
@@ -885,73 +886,116 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     })
   }
 
-  // Sort by timestamp desc, paginate
-  const PAGE_SIZE = 30
-  feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-  const page = feed.slice(0, PAGE_SIZE)
-
-  // Batch fetch comment counts for feed items that have reaction targets
-  const commentTargets = []
-  for (const item of page) {
+  // Helper: get comment target key for a feed item
+  function getCommentKey(item) {
     if (item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
-      commentTargets.push({ target_type: 'pick', target_id: item.pick.id })
+      return { key: `pick-${item.pick.id}`, target_type: 'pick', target_id: item.pick.id }
     } else if (item.type === 'parlay' || item.type === 'bad_beat') {
-      commentTargets.push({ target_type: 'parlay', target_id: item.parlay.id })
+      return { key: `parlay-${item.parlay.id}`, target_type: 'parlay', target_id: item.parlay.id }
     } else if (item.type === 'streak') {
-      commentTargets.push({ target_type: 'streak_event', target_id: item.streak.id })
+      return { key: `streak_event-${item.streak.id}`, target_type: 'streak_event', target_id: item.streak.id }
     } else if (item.type === 'record') {
-      commentTargets.push({ target_type: 'record_history', target_id: item.record.id })
+      return { key: `record_history-${item.record.id}`, target_type: 'record_history', target_id: item.record.id }
     } else if (item.type === 'hot_take') {
-      commentTargets.push({ target_type: 'hot_take', target_id: item.hot_take.id })
+      return { key: `hot_take-${item.hot_take.id}`, target_type: 'hot_take', target_id: item.hot_take.id }
     } else if (item.type === 'head_to_head' && item.pickId) {
-      commentTargets.push({ target_type: 'head_to_head', target_id: item.pickId })
+      return { key: `head_to_head-${item.pickId}`, target_type: 'head_to_head', target_id: item.pickId }
     }
+    return null
   }
 
-  const commentCountMap = {}
-  if (commentTargets.length > 0) {
-    // Group by target_type for batched queries
-    const byType = {}
-    for (const t of commentTargets) {
-      if (!byType[t.target_type]) byType[t.target_type] = []
-      byType[t.target_type].push(t.target_id)
+  // Batch fetch and attach comment counts for a set of feed items
+  async function attachCommentCounts(items) {
+    const targets = []
+    for (const item of items) {
+      const t = getCommentKey(item)
+      if (t) targets.push(t)
     }
-    const countQueries = Object.entries(byType).map(([type, ids]) =>
-      supabase
-        .from('comments')
-        .select('target_type, target_id', { count: 'exact', head: false })
-        .eq('target_type', type)
-        .in('target_id', ids)
-    )
-    const countResults = await Promise.all(countQueries)
-
-    // Build counts from result rows — group manually since we can't GROUP BY in PostgREST
-    for (const result of countResults) {
-      for (const row of result.data || []) {
-        const key = `${row.target_type}-${row.target_id}`
-        commentCountMap[key] = (commentCountMap[key] || 0) + 1
+    const commentCountMap = {}
+    if (targets.length > 0) {
+      const byType = {}
+      for (const t of targets) {
+        if (!byType[t.target_type]) byType[t.target_type] = []
+        byType[t.target_type].push(t.target_id)
+      }
+      const countQueries = Object.entries(byType).map(([type, ids]) =>
+        supabase
+          .from('comments')
+          .select('target_type, target_id', { count: 'exact', head: false })
+          .eq('target_type', type)
+          .in('target_id', ids)
+      )
+      const countResults = await Promise.all(countQueries)
+      for (const result of countResults) {
+        for (const row of result.data || []) {
+          const key = `${row.target_type}-${row.target_id}`
+          commentCountMap[key] = (commentCountMap[key] || 0) + 1
+        }
       }
     }
+    for (const item of items) {
+      const t = getCommentKey(item)
+      item.commentCount = t ? (commentCountMap[t.key] || 0) : 0
+    }
   }
 
-  // Attach comment counts to feed items
-  for (const item of page) {
-    let key = null
-    if (item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
-      key = `pick-${item.pick.id}`
-    } else if (item.type === 'parlay' || item.type === 'bad_beat') {
-      key = `parlay-${item.parlay.id}`
-    } else if (item.type === 'streak') {
-      key = `streak_event-${item.streak.id}`
-    } else if (item.type === 'record') {
-      key = `record_history-${item.record.id}`
-    } else if (item.type === 'hot_take') {
-      key = `hot_take-${item.hot_take.id}`
-    } else if (item.type === 'head_to_head' && item.pickId) {
-      key = `head_to_head-${item.pickId}`
+  const PAGE_SIZE = 30
+
+  if (isAll) {
+    // "All of IKB" feed: score-based ranking
+    // Fetch comment counts for all items first (needed for scoring)
+    await attachCommentCounts(feed)
+
+    function getFeedScore(item) {
+      let score = 0
+      switch (item.type) {
+        case 'hot_take':
+          score = item.hot_take?.image_url ? 100 : 80
+          break
+        case 'record':
+          score = 70
+          break
+        case 'underdog_hit':
+        case 'parlay':
+          score = 65
+          break
+        case 'multiplier_hit':
+          score = 55
+          break
+        case 'bad_beat':
+          score = 50
+          break
+        case 'multiplier_miss':
+          score = 30
+          break
+        case 'pick':
+          score = 20
+          break
+        default:
+          score = 15
+      }
+      // Engagement boost: +5 per comment, capped at +25
+      score += Math.min((item.commentCount || 0) * 5, 25)
+      // Time decay: -1 point per hour old
+      const hoursAgo = (Date.now() - new Date(item.timestamp).getTime()) / (1000 * 60 * 60)
+      score -= hoursAgo
+      return score
     }
-    item.commentCount = key ? (commentCountMap[key] || 0) : 0
+
+    feed.sort((a, b) => {
+      const diff = getFeedScore(b) - getFeedScore(a)
+      if (diff !== 0) return diff
+      return new Date(b.timestamp) - new Date(a.timestamp)
+    })
+
+    const page = feed.slice(0, PAGE_SIZE)
+    return { items: page, nextCursor: null }
   }
+
+  // Squad feed: chronological sort
+  feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  const page = feed.slice(0, PAGE_SIZE)
+  await attachCommentCounts(page)
 
   const nextCursor = page.length === PAGE_SIZE && feed.length > PAGE_SIZE
     ? page[page.length - 1].timestamp
