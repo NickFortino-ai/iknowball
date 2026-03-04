@@ -47,7 +47,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
   const settledPicksBySport = useMemo(() => {
     const map = {}
     for (const pick of (picks || [])) {
-      if (pick.games?.status !== 'settled') continue
+      if (pick.status !== 'settled') continue
       const key = pick.games?.sports?.key
       if (!key) continue
       if (!map[key]) map[key] = []

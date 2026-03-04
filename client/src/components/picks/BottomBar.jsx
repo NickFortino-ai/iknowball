@@ -27,6 +27,7 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
     }
   }, [expanded])
 
+  const isOnboarding = profile?.has_seen_onboarding === false
   const entries = Object.entries(picks || {})
   const today = new Date()
   const propEntries = useMemo(() => {
@@ -37,7 +38,23 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
       return isSameDay(new Date(gameStart), today)
     })
   }, [propPicks])
-  if (entries.length === 0 && propEntries.length === 0) return null
+
+  // During onboarding, show a placeholder so the tutorial can highlight this element
+  if (entries.length === 0 && propEntries.length === 0) {
+    if (!isOnboarding) return null
+    return (
+      <div
+        data-onboarding="bottom-bar"
+        className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 bg-bg-secondary border-t border-border px-4 py-3 z-40"
+      >
+        <div className="max-w-2xl mx-auto flex items-center gap-2">
+          <div className="flex-1 text-sm text-text-muted text-center">
+            Your picks will appear here
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const totalPoints = profile?.total_points ?? 0
   const canMultiply = totalPoints >= 20

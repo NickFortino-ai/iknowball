@@ -40,7 +40,15 @@ export default function OnboardingTutorial() {
       setTargetRect(null)
       return true
     }
-    const el = document.querySelector(currentStep.targetSelector)
+    // Use querySelectorAll and find the first visible element (non-zero dimensions)
+    // This handles elements that exist in both mobile and desktop layouts
+    const candidates = document.querySelectorAll(currentStep.targetSelector)
+    let el = null
+    for (const candidate of candidates) {
+      const r = candidate.getBoundingClientRect()
+      if (r.width > 0 && r.height > 0) { el = candidate; break }
+    }
+    if (!el && candidates.length > 0) el = candidates[0] // fallback to first match
     if (el) {
       // Scroll target into view on first discovery
       if (!scrolledRef.current) {

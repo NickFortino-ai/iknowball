@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
+import { Share } from '@capacitor/share'
 import { useAuth } from '../../hooks/useAuth'
 import { useAccountSwitcher } from '../../hooks/useAccountSwitcher'
 import { useMyInvitations, useAcceptInvitation, useDeclineInvitation } from '../../hooks/useInvitations'
@@ -198,9 +200,11 @@ export default function Navbar() {
   }
 
   async function handleShare() {
-    const url = window.location.origin
+    const url = 'https://iknowball.club'
     try {
-      if (navigator.share) {
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({ title: 'I KNOW BALL', url })
+      } else if (navigator.share) {
         await navigator.share({ title: 'I KNOW BALL', url })
       } else {
         await navigator.clipboard.writeText(url)

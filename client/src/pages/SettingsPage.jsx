@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 import { useProfile } from '../hooks/useProfile'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
@@ -365,7 +366,11 @@ export default function SettingsPage() {
 
       {/* Push Notifications */}
       <Section label="Push Notifications">
-        {!pushSupported ? (
+        {Capacitor.isNativePlatform() ? (
+          <p className="text-sm text-text-muted">
+            Manage push notifications in your device's Settings app.
+          </p>
+        ) : !pushSupported ? (
           <p className="text-sm text-text-muted">
             Push notifications are not supported in this browser.
           </p>

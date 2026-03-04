@@ -15,7 +15,7 @@ const TIER_THRESHOLDS = [
 async function updateRecord(key, holderId, value, metadata = {}) {
   const { data: existing } = await supabase
     .from('records')
-    .select('record_holder_id, record_value')
+    .select('record_holder_id, record_value, category')
     .eq('record_key', key)
     .single()
 
@@ -26,6 +26,8 @@ async function updateRecord(key, holderId, value, metadata = {}) {
 
   const previousHolderId = existing.record_holder_id
   const previousValue = existing.record_value
+  // For percentage records, same holder beating their own record is silent (avoids feed spam from tiny increments)
+  const isSilentUpdate = previousHolderId === holderId && existing.category === 'percentage'
 
   // Update the record
   const { error: updateError } = await supabase
@@ -41,6 +43,13 @@ async function updateRecord(key, holderId, value, metadata = {}) {
   if (updateError) {
     logger.error({ updateError, key }, 'Failed to update record')
     return false
+  }
+
+  // For percentage records, same holder beating their own record updates silently
+  // (no history entry, notification, or email — avoids feed spam from tiny increments)
+  if (isSilentUpdate) {
+    logger.info({ key, holderId, value, previousValue }, 'Record value updated by same holder (silent)')
+    return true
   }
 
   // Insert history

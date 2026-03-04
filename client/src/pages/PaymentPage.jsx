@@ -35,7 +35,7 @@ async function navigateAfterPayment(fetchProfile, navigate) {
   await fetchProfile()
   const league = await attemptPendingJoin()
   const updatedProfile = useAuthStore.getState().profile
-  const dest = league ? `/leagues/${league.id}` : isNewUser(updatedProfile) ? '/settings' : '/picks'
+  const dest = league ? `/leagues/${league.id}` : isNewUser(updatedProfile) ? '/' : '/picks'
   navigate(dest, { replace: true })
 }
 
@@ -61,7 +61,7 @@ export default function PaymentPage() {
   useEffect(() => {
     if (profile?.is_paid) {
       attemptPendingJoin().then((league) => {
-        const dest = league ? `/leagues/${league.id}` : isNewUser(profile) ? '/settings' : '/picks'
+        const dest = league ? `/leagues/${league.id}` : isNewUser(profile) ? '/' : '/picks'
         navigate(dest, { replace: true })
       })
     }

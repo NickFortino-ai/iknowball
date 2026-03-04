@@ -12,7 +12,8 @@ const ONBOARDING_STEPS = [
     targetSelector: '[data-onboarding="game-card"]',
     title: 'Pick Your Winners',
     body: 'Tap a team to pick them. You risk points (red) on every pick — get it right and you win the reward (green). Higher odds = bigger payoff.',
-    position: 'bottom',
+    position: 'top',
+    freeScroll: true,
   },
   {
     page: '/picks',
@@ -35,7 +36,8 @@ const ONBOARDING_STEPS = [
     targetSelector: '[data-onboarding="featured-prop"]',
     title: 'Player Props',
     body: "Pick on individual player performances — like points, rebounds, or touchdowns. There's a new featured prop every day. You can find it here on the home page or under its sport on the Picks page.",
-    position: 'bottom',
+    position: 'top',
+    freeScroll: true,
   },
   {
     page: '/leaderboard',
@@ -43,6 +45,7 @@ const ONBOARDING_STEPS = [
     title: 'Climb the Leaderboard',
     body: 'Earn points from your picks to climb tiers — from Rookie all the way to GOAT. See how you stack up against everyone.',
     position: 'center',
+    freeScroll: true,
   },
   {
     page: '/leagues',

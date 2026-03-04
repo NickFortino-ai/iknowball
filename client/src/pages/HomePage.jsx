@@ -51,8 +51,8 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Welcome Card — new users only */}
-      {isAuthenticated && profile?.total_points === 0 && (
+      {/* Welcome Card — new users only (account < 7 days old) */}
+      {isAuthenticated && profile?.created_at && (Date.now() - new Date(profile.created_at).getTime() < 7 * 24 * 60 * 60 * 1000) && (
         <div className="bg-bg-card rounded-2xl border border-border p-6 mb-8">
           <h2 className="font-display text-2xl text-accent mb-2">Welcome to I KNOW BALL</h2>
           <p className="text-text-secondary mb-5">You're in. Here's how to get started:</p>

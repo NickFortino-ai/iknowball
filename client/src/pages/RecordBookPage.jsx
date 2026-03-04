@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useRecords, useRecordPick, useRecordParlay, useRecordFuturesPick } from '../hooks/useRecords'
+import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
@@ -115,8 +115,7 @@ function FuturesDetailCard({ pickId }) {
   )
 }
 
-function RecordCard({ record }) {
-  const navigate = useNavigate()
+function RecordCard({ record, onUserTap }) {
   const [expanded, setExpanded] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
   const holder = record.users
@@ -175,7 +174,7 @@ function RecordCard({ record }) {
         {hasHolder && (
           <div
             className="flex items-center gap-2 mt-3 pt-3 border-t border-border cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={(e) => { e.stopPropagation(); navigate(`/profile?user=${holder.id}`) }}
+            onClick={(e) => { e.stopPropagation(); onUserTap?.(holder.id) }}
           >
             <Avatar user={holder} size="md" className="bg-accent/20" />
             <span className="text-sm font-medium text-text-primary">{holder.display_name || holder.username}</span>
@@ -219,7 +218,7 @@ function RecordCard({ record }) {
                     {sub.users && (
                       <div
                         className="flex items-center gap-1.5 mt-1 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => navigate(`/profile?user=${sub.users.id}`)}
+                        onClick={() => onUserTap?.(sub.users.id)}
                       >
                         <Avatar user={sub.users} size="xs" className="bg-accent/20" />
                         <span className="text-xs text-text-secondary">{sub.users.display_name || sub.users.username}</span>
@@ -241,6 +240,7 @@ function RecordCard({ record }) {
 
 export function RecordBookContent() {
   const { data: records, isLoading, isError, refetch } = useRecords()
+  const [profileUserId, setProfileUserId] = useState(null)
 
   // Group records by category — only show records that have a holder
   const grouped = {}
@@ -264,24 +264,27 @@ export function RecordBookContent() {
   if (!records?.length) return <EmptyState title="No records yet" message="Records will appear as picks are settled." />
 
   return (
-    <div className="space-y-8">
-      {CATEGORY_ORDER.map((cat) => {
-        const catRecords = grouped[cat]
-        if (!catRecords?.length) return null
-        return (
-          <div key={cat}>
-            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
-              {CATEGORY_LABELS[cat]}
-            </h2>
-            <div className="space-y-3">
-              {catRecords.map((record) => (
-                <RecordCard key={record.record_key} record={record} />
-              ))}
+    <>
+      <div className="space-y-8">
+        {CATEGORY_ORDER.map((cat) => {
+          const catRecords = grouped[cat]
+          if (!catRecords?.length) return null
+          return (
+            <div key={cat}>
+              <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
+                {CATEGORY_LABELS[cat]}
+              </h2>
+              <div className="space-y-3">
+                {catRecords.map((record) => (
+                  <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
+                ))}
+              </div>
             </div>
-          </div>
-        )
-      })}
-    </div>
+          )
+        })}
+      </div>
+      <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+    </>
   )
 }
 

@@ -12,7 +12,7 @@ export async function getSeasonAccessProduct() {
   if (!isIAPAvailable()) return null
   try {
     console.log('[IAP] Fetching product:', PRODUCT_ID)
-    const result = await NativePurchases.getProducts({ productIds: [PRODUCT_ID] })
+    const result = await NativePurchases.getProducts({ productIdentifiers: [PRODUCT_ID] })
     console.log('[IAP] getProducts result:', JSON.stringify(result))
     const { products } = result
     if (products.length === 0) {
@@ -26,7 +26,7 @@ export async function getSeasonAccessProduct() {
 }
 
 export async function purchaseSeasonAccess() {
-  const { transactions } = await NativePurchases.purchaseProduct({ productId: PRODUCT_ID })
+  const { transactions } = await NativePurchases.purchaseProduct({ productIdentifier: PRODUCT_ID })
   return transactions && transactions.length > 0 ? transactions[0] : null
 }
 
@@ -34,7 +34,7 @@ export async function restoreSeasonAccess() {
   const { transactions } = await NativePurchases.restorePurchases()
   if (!transactions || transactions.length === 0) return null
   // Find the season access transaction
-  const match = transactions.find((t) => t.productId === PRODUCT_ID)
+  const match = transactions.find((t) => t.productIdentifier === PRODUCT_ID)
   return match || transactions[0]
 }
 
