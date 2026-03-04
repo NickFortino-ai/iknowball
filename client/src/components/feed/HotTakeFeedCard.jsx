@@ -30,7 +30,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
           <img
             src={hot_take.image_url}
             alt=""
-            className="w-full max-h-72 object-cover rounded-lg"
+            className="w-full rounded-lg"
           />
         </button>
       )}
