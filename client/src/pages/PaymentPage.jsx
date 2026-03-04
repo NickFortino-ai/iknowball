@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
 
@@ -181,32 +182,34 @@ export default function PaymentPage() {
           {loading ? 'Redirecting...' : 'Unlock I Know Ball — $1'}
         </button>
 
-        {/* Promo code section */}
-        {!showPromo ? (
-          <button
-            onClick={() => setShowPromo(true)}
-            className="w-full text-text-secondary hover:text-text-primary text-sm transition-colors"
-          >
-            Have a promo code?
-          </button>
-        ) : (
-          <form onSubmit={handlePromo} className="flex gap-2">
-            <input
-              type="text"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-              placeholder="Enter code"
-              required
-              className="flex-1 bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors"
-            />
+        {/* Promo code section — hidden on native iOS app */}
+        {!Capacitor.isNativePlatform() && (
+          !showPromo ? (
             <button
-              type="submit"
-              disabled={promoLoading}
-              className="border border-accent text-accent hover:bg-accent hover:text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+              onClick={() => setShowPromo(true)}
+              className="w-full text-text-secondary hover:text-text-primary text-sm transition-colors"
             >
-              {promoLoading ? 'Applying...' : 'Apply'}
+              Have a promo code?
             </button>
-          </form>
+          ) : (
+            <form onSubmit={handlePromo} className="flex gap-2">
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                placeholder="Enter code"
+                required
+                className="flex-1 bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={promoLoading}
+                className="border border-accent text-accent hover:bg-accent hover:text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+              >
+                {promoLoading ? 'Applying...' : 'Apply'}
+              </button>
+            </form>
+          )
         )}
       </div>
     </div>

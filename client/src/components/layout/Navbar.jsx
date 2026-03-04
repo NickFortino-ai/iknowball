@@ -120,8 +120,8 @@ export default function Navbar() {
       }
     }
     if (showInvites) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('pointerdown', handleClickOutside)
+      return () => document.removeEventListener('pointerdown', handleClickOutside)
     }
   }, [showInvites])
 
@@ -133,8 +133,8 @@ export default function Navbar() {
       }
     }
     if (showMobileMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('pointerdown', handleClickOutside)
+      return () => document.removeEventListener('pointerdown', handleClickOutside)
     }
   }, [showMobileMenu])
 
@@ -146,8 +146,8 @@ export default function Navbar() {
       }
     }
     if (showDesktopMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('pointerdown', handleClickOutside)
+      return () => document.removeEventListener('pointerdown', handleClickOutside)
     }
   }, [showDesktopMenu])
 
@@ -218,7 +218,7 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className="bg-bg-secondary border-b border-border sticky top-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <nav className="bg-bg-secondary border-b border-border sticky top-0 z-50 touch-manipulation" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link to="/" className="font-display text-xl text-accent tracking-tight">
           I KNOW BALL
@@ -382,7 +382,7 @@ export default function Navbar() {
                 <button
                   data-onboarding="hamburger-menu"
                   onClick={() => { setShowInvites(false); if (!showDesktopMenu) refreshUnreadCounts(); else resetFetchState(); setShowDesktopMenu(!showDesktopMenu) }}
-                  className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                  className="p-2.5 -m-1 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                   aria-label="Menu"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -556,7 +556,7 @@ export default function Navbar() {
               {/* Notification bell — mobile */}
               <button
                 onClick={() => { setShowMobileMenu(false); setShowInvites(!showInvites) }}
-                className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                className="relative p-2.5 -m-0.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                 aria-label="Notifications"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -571,11 +571,11 @@ export default function Navbar() {
               </button>
 
               {/* Hamburger */}
-              <div ref={mobileMenuRef}>
+              <div ref={mobileMenuRef} className="relative">
                 <button
                   data-onboarding="hamburger-menu"
                   onClick={() => { setShowInvites(false); if (!showMobileMenu) refreshUnreadCounts(); else resetFetchState(); setShowMobileMenu(!showMobileMenu) }}
-                  className="p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                  className="p-2.5 -m-0.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                   aria-label="Menu"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

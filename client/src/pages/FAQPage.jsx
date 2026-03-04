@@ -99,7 +99,7 @@ The multiplier is only available on straight picks in the global competition. It
   },
   {
     q: 'How much does it cost?',
-    a: 'The app is free to use with one small one-time payment to unlock full access. We also offer promo codes for early adopters. Paid features are in development and will be insanely valuable.',
+    a: 'The app is free to use with one small one-time payment to unlock full access. Paid features are in development and will be insanely valuable.',
   },
   {
     q: 'What if I think there\u2019s an error with my score?',
