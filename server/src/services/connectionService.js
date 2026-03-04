@@ -289,8 +289,17 @@ export async function getConnectionActivity(userId, before) {
     c.user_id_1 === userId ? c.user_id_2 : c.user_id_1
   )
 
+  // Filter out blocked users
+  const { data: blocks } = await supabase
+    .from('blocked_users')
+    .select('blocked_id')
+    .eq('blocker_id', userId)
+
+  const blockedSet = new Set((blocks || []).map((b) => b.blocked_id))
+  const filteredIds = connectedIds.filter((id) => !blockedSet.has(id))
+
   // Include self + connections for queries
-  const allIds = [userId, ...connectedIds]
+  const allIds = [userId, ...filteredIds]
 
   // Get user details for mapping (including self for H2H)
   const { data: users } = await supabase

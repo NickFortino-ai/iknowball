@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
 import Avatar from '../ui/Avatar'
+import ReportButton from '../moderation/ReportButton'
 
 export default function PickComments({ pickId, targetType = 'pick', targetId, commentCount: serverCommentCount, initialExpanded = false, hideForm = false }) {
   // Support both old (pickId) and new (targetType + targetId) API
@@ -85,7 +86,7 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
                 <span className="text-text-secondary">{c.content}</span>
                 <span className="text-text-muted ml-1">{timeAgo(c.created_at)}</span>
               </div>
-              {c.user_id === currentUserId && !c._optimistic && (
+              {c.user_id === currentUserId && !c._optimistic ? (
                 <button
                   onClick={() => deleteComment.mutate({ commentId: c.id, targetType: resolvedType, targetId: resolvedId })}
                   className="text-text-muted hover:text-incorrect flex-shrink-0 transition-colors"
@@ -93,7 +94,9 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
                 >
                   ×
                 </button>
-              )}
+              ) : c.user_id !== currentUserId && !c._optimistic ? (
+                <ReportButton targetType="comment" targetId={c.id} reportedUserId={c.user_id} />
+              ) : null}
             </div>
           ))}
 

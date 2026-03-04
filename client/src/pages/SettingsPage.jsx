@@ -8,6 +8,7 @@ import { toast } from '../components/ui/Toast'
 import { usePushStatus, useSubscribePush, useUnsubscribePush } from '../hooks/usePushNotifications'
 import { useAvatarUpload } from '../hooks/useAvatarUpload'
 import Avatar from '../components/ui/Avatar'
+import { useBlockedUsers, useUnblockUser } from '../hooks/useBlocked'
 
 const avatarEmojis = [
   '🏀', '🏈', '⚾', '🏆', '🔥', '🎯',
@@ -45,6 +46,39 @@ function Section({ label, children, defaultOpen = true }) {
       </button>
       {open && <div className="px-4 pb-4">{children}</div>}
     </div>
+  )
+}
+
+function BlockedUsersSection() {
+  const { data: blockedUsers } = useBlockedUsers()
+  const unblock = useUnblockUser()
+
+  if (!blockedUsers?.length) return null
+
+  return (
+    <Section label="Blocked Users" defaultOpen={false}>
+      <div className="space-y-2">
+        {blockedUsers.map((b) => (
+          <div key={b.blocked_id} className="flex items-center gap-3">
+            <Avatar user={b.blocked} size="md" />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium truncate">{b.blocked?.display_name || b.blocked?.username}</div>
+              <div className="text-xs text-text-muted">@{b.blocked?.username}</div>
+            </div>
+            <button
+              onClick={async () => {
+                await unblock.mutateAsync(b.blocked_id)
+                toast(`@${b.blocked?.username} unblocked`, 'success')
+              }}
+              disabled={unblock.isPending}
+              className="text-xs text-accent hover:underline disabled:opacity-50"
+            >
+              Unblock
+            </button>
+          </div>
+        ))}
+      </div>
+    </Section>
   )
 }
 
@@ -382,6 +416,9 @@ export default function SettingsPage() {
           </>
         )}
       </Section>
+
+      {/* Blocked Users */}
+      <BlockedUsersSection />
 
       {/* Save */}
       <button

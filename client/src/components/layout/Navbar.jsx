@@ -513,6 +513,15 @@ export default function Navbar() {
                       Privacy
                     </Link>
                     <Link
+                      to="/guidelines"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      Guidelines
+                    </Link>
+                    <Link
                       to="/settings"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
                     >
@@ -703,6 +712,15 @@ export default function Navbar() {
                         <polyline points="10 9 9 9 8 9" />
                       </svg>
                       Privacy
+                    </Link>
+                    <Link
+                      to="/guidelines"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-card-hover transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                      Guidelines
                     </Link>
                     <Link
                       to="/settings"

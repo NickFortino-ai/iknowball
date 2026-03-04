@@ -42,6 +42,71 @@ const router = Router()
 // All admin routes require auth + admin
 router.use(requireAuth, requireAdmin)
 
+// ============================================
+// Reports Management
+// ============================================
+
+router.get('/reports', async (req, res) => {
+  const { status } = req.query
+  let query = supabase
+    .from('reports')
+    .select('*, reporter:users!reports_reporter_id_fkey(id, username), reported:users!reports_reported_user_id_fkey(id, username, avatar_url, avatar_emoji)')
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (status && status !== 'all') {
+    query = query.eq('status', status)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+
+  // Fetch reported content for each report
+  const enriched = await Promise.all((data || []).map(async (report) => {
+    let content = null
+    if (report.target_type === 'hot_take' && report.target_id) {
+      const { data: ht } = await supabase.from('hot_takes').select('id, content, image_url').eq('id', report.target_id).maybeSingle()
+      content = ht
+    } else if (report.target_type === 'comment' && report.target_id) {
+      const { data: c } = await supabase.from('comments').select('id, content').eq('id', report.target_id).maybeSingle()
+      content = c
+    }
+    return { ...report, reported_content: content }
+  }))
+
+  res.json(enriched)
+})
+
+router.patch('/reports/:id', async (req, res) => {
+  const { status, action } = req.body
+  if (!status) {
+    return res.status(400).json({ error: 'status is required' })
+  }
+
+  const updates = { status, reviewed_at: new Date().toISOString() }
+  const { data: report, error } = await supabase
+    .from('reports')
+    .update(updates)
+    .eq('id', req.params.id)
+    .select('*, reporter:users!reports_reporter_id_fkey(id, username), reported:users!reports_reported_user_id_fkey(id, username)')
+    .single()
+
+  if (error) throw error
+
+  // Handle content removal action
+  if (action === 'remove_content' && report) {
+    if (report.target_type === 'hot_take' && report.target_id) {
+      await supabase.from('hot_takes').delete().eq('id', report.target_id)
+    } else if (report.target_type === 'comment' && report.target_id) {
+      await supabase.from('comments').delete().eq('id', report.target_id)
+    } else if (report.target_type === 'profile_picture') {
+      await supabase.from('users').update({ avatar_url: null }).eq('id', report.reported_user_id)
+    }
+  }
+
+  res.json(report)
+})
+
 // System actions
 router.post('/sync-odds', async (req, res) => {
   await syncOdds()

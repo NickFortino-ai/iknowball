@@ -27,6 +27,7 @@ import UnsubscribePage from './pages/UnsubscribePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import HallOfFamePage from './pages/HallOfFamePage'
+import GuidelinesPage from './pages/GuidelinesPage'
 import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
 import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
@@ -57,6 +58,7 @@ function AppRoutes() {
         <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/faq" element={<FAQPage />} />
+        <Route path="/guidelines" element={<GuidelinesPage />} />
         <Route path="/unsubscribe" element={<UnsubscribePage />} />
         <Route path="/picks" element={<ProtectedRoute><PicksPage /></ProtectedRoute>} />
         <Route path="/results" element={<ProtectedRoute><ResultsPage /></ProtectedRoute>} />

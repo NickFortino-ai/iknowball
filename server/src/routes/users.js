@@ -326,13 +326,28 @@ router.get('/search', requireAuth, async (req, res) => {
     return res.json([])
   }
 
-  const { data, error } = await supabase
+  // Get blocked user IDs
+  const { data: blocks } = await supabase
+    .from('blocked_users')
+    .select('blocked_id')
+    .eq('blocker_id', req.user.id)
+
+  const blockedIds = (blocks || []).map((b) => b.blocked_id)
+
+  let query = supabase
     .from('users')
     .select('id, username, display_name, avatar_url, avatar_emoji')
     .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
     .neq('id', req.user.id)
     .limit(10)
 
+  if (blockedIds.length > 0) {
+    for (const id of blockedIds) {
+      query = query.neq('id', id)
+    }
+  }
+
+  const { data, error } = await query
   if (error) throw error
   res.json(data || [])
 })
@@ -377,6 +392,64 @@ router.get('/me/sports', requireAuth, async (req, res) => {
 
   if (error) throw error
   res.json(data || [])
+})
+
+// ============================================
+// Block System
+// ============================================
+
+router.get('/me/blocked', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('blocked_users')
+    .select('blocked_id, created_at, blocked:users!blocked_users_blocked_id_fkey(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('blocker_id', req.user.id)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  res.json(data || [])
+})
+
+router.post('/me/block', requireAuth, async (req, res) => {
+  const { blocked_id } = req.body
+  if (!blocked_id) {
+    return res.status(400).json({ error: 'blocked_id is required' })
+  }
+
+  if (blocked_id === req.user.id) {
+    return res.status(400).json({ error: 'You cannot block yourself' })
+  }
+
+  const { error } = await supabase
+    .from('blocked_users')
+    .insert({ blocker_id: req.user.id, blocked_id })
+
+  if (error) {
+    if (error.code === '23505') {
+      return res.json({ success: true }) // already blocked
+    }
+    throw error
+  }
+
+  // Remove connection if exists
+  const id1 = req.user.id < blocked_id ? req.user.id : blocked_id
+  const id2 = req.user.id < blocked_id ? blocked_id : req.user.id
+  await supabase
+    .from('connections')
+    .delete()
+    .eq('user_id_1', id1)
+    .eq('user_id_2', id2)
+
+  res.json({ success: true })
+})
+
+router.delete('/me/block/:blockedId', requireAuth, async (req, res) => {
+  await supabase
+    .from('blocked_users')
+    .delete()
+    .eq('blocker_id', req.user.id)
+    .eq('blocked_id', req.params.blockedId)
+
+  res.status(204).end()
 })
 
 router.delete('/me', requireAuth, async (req, res) => {

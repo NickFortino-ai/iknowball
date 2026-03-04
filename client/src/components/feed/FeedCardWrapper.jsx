@@ -1,7 +1,9 @@
 import { timeAgo } from '../../lib/time'
+import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import FeedReactions from './FeedReactions'
 import PickComments from '../social/PickComments'
+import ReportButton from '../moderation/ReportButton'
 
 const BORDER_COLORS = {
   green: 'border-l-correct',
@@ -23,6 +25,8 @@ export default function FeedCardWrapper({
   cardClassName = '',
   children,
 }) {
+  const { session } = useAuth()
+  const isOwnContent = item.userId === session?.user?.id
   const borderClass = BORDER_COLORS[borderColor] || 'border-l-transparent'
 
   return (
@@ -45,6 +49,9 @@ export default function FeedCardWrapper({
           <span className="text-xs text-text-muted">@{item.username}</span>
         </div>
         <span className="text-xs text-text-muted flex-shrink-0">{timeAgo(item.timestamp)}</span>
+        {!isOwnContent && targetType && targetId && (
+          <ReportButton targetType={targetType} targetId={targetId} reportedUserId={item.userId} />
+        )}
       </div>
 
       {/* Card body */}

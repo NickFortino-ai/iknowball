@@ -96,6 +96,10 @@ export default function SignupPage() {
           Already have an account?{' '}
           <Link to="/login" className="text-accent hover:underline">Sign in</Link>
         </p>
+        <p className="text-center text-text-muted mt-3 text-xs">
+          By signing up, you agree to our{' '}
+          <Link to="/guidelines" className="text-accent hover:underline">Community Guidelines</Link>
+        </p>
       </div>
     </div>
   )
