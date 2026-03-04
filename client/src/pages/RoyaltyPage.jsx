@@ -6,7 +6,26 @@ import ErrorState from '../components/ui/ErrorState'
 import TierBadge from '../components/ui/TierBadge'
 import Avatar from '../components/ui/Avatar'
 
-function CrownSVG({ size = 80, id = 'crown', animate = false }) {
+const JEWEL_THEMES = {
+  default:   { light: '#FF4D6A', mid: '#DC143C', dark: '#A0001C', deep: '#700014', glow: '#FF2040' },
+  NBA:       { light: '#FF8844', mid: '#E85D20', dark: '#B84010', deep: '#7A2A08', glow: '#FF6020' },
+  NFL:       { light: '#44BBFF', mid: '#1E90FF', dark: '#1060C0', deep: '#083880', glow: '#2090FF' },
+  MLB:       { light: '#FF4D6A', mid: '#DC143C', dark: '#A0001C', deep: '#700014', glow: '#FF2040' },
+  NHL:       { light: '#A070FF', mid: '#7B42E0', dark: '#5520A0', deep: '#350E6B', glow: '#8040FF' },
+  Props:     { light: '#50E8A0', mid: '#20C070', dark: '#108848', deep: '#06582C', glow: '#30D080' },
+  Parlays:   { light: '#FFD060', mid: '#E8A820', dark: '#B88010', deep: '#7A5508', glow: '#F0B020' },
+}
+
+function getJewelTheme(scope) {
+  if (!scope) return JEWEL_THEMES.default
+  for (const key of Object.keys(JEWEL_THEMES)) {
+    if (scope.toLowerCase().includes(key.toLowerCase())) return JEWEL_THEMES[key]
+  }
+  return JEWEL_THEMES.default
+}
+
+function CrownSVG({ size = 80, id = 'crown', animate = false, jewel }) {
+  const j = jewel || JEWEL_THEMES.default
   return (
     <svg
       width={size}
@@ -35,10 +54,10 @@ function CrownSVG({ size = 80, id = 'crown', animate = false }) {
           <stop offset="1" stopColor="#C8960C" />
         </linearGradient>
         <radialGradient id={`${id}-jewel`} cx="40%" cy="35%" r="55%">
-          <stop offset="0" stopColor="#FF4D6A" />
-          <stop offset="0.4" stopColor="#DC143C" />
-          <stop offset="0.8" stopColor="#A0001C" />
-          <stop offset="1" stopColor="#700014" />
+          <stop offset="0" stopColor={j.light} />
+          <stop offset="0.4" stopColor={j.mid} />
+          <stop offset="0.8" stopColor={j.dark} />
+          <stop offset="1" stopColor={j.deep} />
         </radialGradient>
         <radialGradient id={`${id}-sparkle`} cx="30%" cy="25%" r="45%">
           <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.95" />
@@ -56,7 +75,7 @@ function CrownSVG({ size = 80, id = 'crown', animate = false }) {
         </filter>
         <filter id={`${id}-jewel-glow`} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feFlood floodColor="#FF2040" floodOpacity="0.4" result="color" />
+          <feFlood floodColor={j.glow} floodOpacity="0.4" result="color" />
           <feComposite in="color" in2="blur" operator="in" result="glow" />
           <feMerge>
             <feMergeNode in="glow" />
@@ -171,8 +190,8 @@ function CrownSVG({ size = 80, id = 'crown', animate = false }) {
   )
 }
 
-function SmallCrownSVG({ id = 'sm-crown' }) {
-  return <CrownSVG size={44} id={id} />
+function SmallCrownSVG({ id = 'sm-crown', jewel }) {
+  return <CrownSVG size={44} id={id} jewel={jewel} />
 }
 
 function GlobalCrown({ crown }) {
@@ -219,7 +238,7 @@ function CategoryCrown({ crown, index }) {
       onClick={() => navigate(`/profile?user=${holder.id}`)}
     >
       <div className="flex justify-center mb-2">
-        <SmallCrownSVG id={`cat-crown-${index}`} />
+        <SmallCrownSVG id={`cat-crown-${index}`} jewel={getJewelTheme(crown.scope)} />
       </div>
       <div className="text-xs font-semibold text-[#DAA520] uppercase tracking-wider mb-2">{crown.scope}</div>
       <div className="flex justify-center mb-1">
