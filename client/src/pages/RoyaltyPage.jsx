@@ -6,92 +6,167 @@ import ErrorState from '../components/ui/ErrorState'
 import TierBadge from '../components/ui/TierBadge'
 import Avatar from '../components/ui/Avatar'
 
-function CrownSVG({ size = 80, id = 'crown' }) {
+function CrownSVG({ size = 80, id = 'crown', animate = false }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 120 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={animate ? 'crown-glow' : ''}
+    >
       <defs>
-        <linearGradient id={`${id}-gold`} x1="60" y1="0" x2="60" y2="100" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#FFF0A0" />
-          <stop offset="0.3" stopColor="#FFD700" />
-          <stop offset="0.6" stopColor="#DAA520" />
+        <linearGradient id={`${id}-gold`} x1="20" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#FFF6C2" />
+          <stop offset="0.25" stopColor="#FFD700" />
+          <stop offset="0.5" stopColor="#F5C400" />
+          <stop offset="0.75" stopColor="#DAA520" />
           <stop offset="1" stopColor="#B8860B" />
         </linearGradient>
-        <linearGradient id={`${id}-gold-light`} x1="60" y1="0" x2="60" y2="80" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#FFEC80" />
+        <linearGradient id={`${id}-gold-highlight`} x1="40" y1="0" x2="80" y2="70" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#FFFBE0" />
+          <stop offset="0.5" stopColor="#FFE766" />
           <stop offset="1" stopColor="#FFD700" />
         </linearGradient>
-        <radialGradient id={`${id}-jewel`} cx="50%" cy="40%" r="50%">
-          <stop offset="0" stopColor="#FF6B6B" />
-          <stop offset="0.5" stopColor="#DC143C" />
-          <stop offset="1" stopColor="#8B0000" />
+        <linearGradient id={`${id}-band`} x1="60" y1="68" x2="60" y2="82" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#FFE766" />
+          <stop offset="0.4" stopColor="#FFD700" />
+          <stop offset="1" stopColor="#C8960C" />
+        </linearGradient>
+        <radialGradient id={`${id}-jewel`} cx="40%" cy="35%" r="55%">
+          <stop offset="0" stopColor="#FF4D6A" />
+          <stop offset="0.4" stopColor="#DC143C" />
+          <stop offset="0.8" stopColor="#A0001C" />
+          <stop offset="1" stopColor="#700014" />
         </radialGradient>
-        <radialGradient id={`${id}-sparkle`} cx="30%" cy="30%" r="50%">
-          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.9" />
+        <radialGradient id={`${id}-sparkle`} cx="30%" cy="25%" r="45%">
+          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.95" />
+          <stop offset="0.5" stopColor="#FFFFFF" stopOpacity="0.3" />
           <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
         </radialGradient>
+        <filter id={`${id}-glow`} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feFlood floodColor="#FFD700" floodOpacity="0.3" result="color" />
+          <feComposite in="color" in2="blur" operator="in" result="glow" />
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id={`${id}-jewel-glow`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feFlood floodColor="#FF2040" floodOpacity="0.4" result="color" />
+          <feComposite in="color" in2="blur" operator="in" result="glow" />
+          <feMerge>
+            <feMergeNode in="glow" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
+
+      {/* Outer glow aura */}
+      <path
+        d="M10 72 L2 25 Q2 22 5 23 L25 38 Q28 40 30 37 L55 8 Q58 4 62 8 L88 37 Q90 40 93 38 L113 23 Q116 22 116 25 L108 72 Z"
+        fill="#FFD700"
+        opacity="0.12"
+        filter={`url(#${id}-glow)`}
+      />
 
       {/* Crown body */}
       <path
         d="M10 72 L2 25 Q2 22 5 23 L25 38 Q28 40 30 37 L55 8 Q58 4 62 8 L88 37 Q90 40 93 38 L113 23 Q116 22 116 25 L108 72 Z"
         fill={`url(#${id}-gold)`}
         stroke="#B8860B"
-        strokeWidth="1.5"
+        strokeWidth="1.2"
       />
 
-      {/* Inner velvet */}
+      {/* Inner velvet with gradient feel */}
       <path
         d="M18 68 L12 32 L30 44 L58 14 L88 44 L106 32 L100 68 Z"
-        fill="#8B0000"
-        opacity="0.4"
+        fill="#6B0015"
+        opacity="0.35"
+      />
+      <path
+        d="M22 66 L16 36 L30 46 L58 18 L88 46 L102 36 L98 66 Z"
+        fill="#400010"
+        opacity="0.2"
+      />
+
+      {/* Left face highlight */}
+      <path
+        d="M10 72 L2 25 Q2 22 5 23 L25 38 L18 68 Z"
+        fill="#FFF8D0"
+        opacity="0.15"
       />
 
       {/* Crown band */}
-      <rect x="8" y="68" width="102" height="14" rx="3" fill={`url(#${id}-gold)`} stroke="#B8860B" strokeWidth="1" />
-      <rect x="10" y="70" width="98" height="10" rx="2" fill={`url(#${id}-gold-light)`} opacity="0.5" />
+      <rect x="8" y="68" width="102" height="14" rx="3" fill={`url(#${id}-band)`} stroke="#B8860B" strokeWidth="1" />
+      <rect x="10" y="69" width="98" height="6" rx="2" fill={`url(#${id}-gold-highlight)`} opacity="0.35" />
 
-      {/* Band decorative dots */}
-      <circle cx="30" cy="75" r="2" fill="#B8860B" opacity="0.5" />
-      <circle cx="45" cy="75" r="2" fill="#B8860B" opacity="0.5" />
-      <circle cx="75" cy="75" r="2" fill="#B8860B" opacity="0.5" />
-      <circle cx="90" cy="75" r="2" fill="#B8860B" opacity="0.5" />
+      {/* Band filigree pattern */}
+      <path d="M20 75 Q27 71 34 75 Q41 79 48 75" stroke="#B8860B" strokeWidth="0.6" opacity="0.4" fill="none" />
+      <path d="M70 75 Q77 71 84 75 Q91 79 98 75" stroke="#B8860B" strokeWidth="0.6" opacity="0.4" fill="none" />
 
       {/* Center jewel (large) */}
-      <ellipse cx="59" cy="50" rx="8" ry="9" fill={`url(#${id}-jewel)`} stroke="#B8860B" strokeWidth="1" />
-      <ellipse cx="56" cy="46" rx="3" ry="2.5" fill={`url(#${id}-sparkle)`} />
+      <g filter={`url(#${id}-jewel-glow)`}>
+        <ellipse cx="59" cy="50" rx="8" ry="9" fill={`url(#${id}-jewel)`} stroke="#C8960C" strokeWidth="1.2" />
+      </g>
+      <ellipse cx="55.5" cy="45.5" rx="3" ry="2.5" fill={`url(#${id}-sparkle)`} />
+      <ellipse cx="62" cy="54" rx="1.5" ry="1" fill="white" opacity="0.15" />
 
       {/* Left jewel */}
-      <circle cx="32" cy="55" r="5.5" fill={`url(#${id}-jewel)`} stroke="#B8860B" strokeWidth="1" />
-      <circle cx="30" cy="53" r="2" fill={`url(#${id}-sparkle)`} />
+      <g filter={`url(#${id}-jewel-glow)`}>
+        <circle cx="32" cy="55" r="5.5" fill={`url(#${id}-jewel)`} stroke="#C8960C" strokeWidth="1" />
+      </g>
+      <circle cx="29.5" cy="52.5" r="2" fill={`url(#${id}-sparkle)`} />
 
       {/* Right jewel */}
-      <circle cx="86" cy="55" r="5.5" fill={`url(#${id}-jewel)`} stroke="#B8860B" strokeWidth="1" />
-      <circle cx="84" cy="53" r="2" fill={`url(#${id}-sparkle)`} />
+      <g filter={`url(#${id}-jewel-glow)`}>
+        <circle cx="86" cy="55" r="5.5" fill={`url(#${id}-jewel)`} stroke="#C8960C" strokeWidth="1" />
+      </g>
+      <circle cx="83.5" cy="52.5" r="2" fill={`url(#${id}-sparkle)`} />
 
       {/* Band center jewel */}
-      <ellipse cx="59" cy="75" rx="5" ry="4.5" fill={`url(#${id}-jewel)`} stroke="#B8860B" strokeWidth="0.8" />
-      <ellipse cx="57" cy="73" rx="2" ry="1.5" fill={`url(#${id}-sparkle)`} />
+      <g filter={`url(#${id}-jewel-glow)`}>
+        <ellipse cx="59" cy="75" rx="5" ry="4.5" fill={`url(#${id}-jewel)`} stroke="#C8960C" strokeWidth="0.8" />
+      </g>
+      <ellipse cx="56.5" cy="72.5" rx="2" ry="1.5" fill={`url(#${id}-sparkle)`} />
 
-      {/* Top prong tips — fleur-de-lis style */}
+      {/* Top prong tips */}
       {/* Center tip */}
-      <ellipse cx="58" cy="9" rx="4" ry="5" fill={`url(#${id}-gold-light)`} stroke="#B8860B" strokeWidth="0.8" />
-      <circle cx="58" cy="7" r="2.5" fill={`url(#${id}-jewel)`} />
-      <circle cx="57" cy="6" r="1" fill={`url(#${id}-sparkle)`} />
+      <ellipse cx="58" cy="9" rx="4.5" ry="5.5" fill={`url(#${id}-gold-highlight)`} stroke="#B8860B" strokeWidth="0.8" />
+      <circle cx="58" cy="7" r="2.8" fill={`url(#${id}-jewel)`} />
+      <circle cx="56.5" cy="5.5" r="1.1" fill={`url(#${id}-sparkle)`} />
 
       {/* Left tip */}
-      <ellipse cx="5" cy="24" rx="4" ry="4.5" fill={`url(#${id}-gold-light)`} stroke="#B8860B" strokeWidth="0.8" />
-      <circle cx="5" cy="23" r="2.2" fill={`url(#${id}-jewel)`} />
+      <ellipse cx="5" cy="24" rx="4.5" ry="5" fill={`url(#${id}-gold-highlight)`} stroke="#B8860B" strokeWidth="0.8" />
+      <circle cx="5" cy="23" r="2.5" fill={`url(#${id}-jewel)`} />
+      <circle cx="3.8" cy="21.8" r="0.9" fill={`url(#${id}-sparkle)`} />
 
       {/* Right tip */}
-      <ellipse cx="113" cy="24" rx="4" ry="4.5" fill={`url(#${id}-gold-light)`} stroke="#B8860B" strokeWidth="0.8" />
-      <circle cx="113" cy="23" r="2.2" fill={`url(#${id}-jewel)`} />
+      <ellipse cx="113" cy="24" rx="4.5" ry="5" fill={`url(#${id}-gold-highlight)`} stroke="#B8860B" strokeWidth="0.8" />
+      <circle cx="113" cy="23" r="2.5" fill={`url(#${id}-jewel)`} />
+      <circle cx="111.8" cy="21.8" r="0.9" fill={`url(#${id}-sparkle)`} />
 
-      {/* Subtle gold shimmer highlights */}
-      <path d="M20 40 Q40 35 50 42" stroke="#FFF8C0" strokeWidth="0.8" opacity="0.5" fill="none" />
-      <path d="M68 42 Q78 35 98 40" stroke="#FFF8C0" strokeWidth="0.8" opacity="0.5" fill="none" />
+      {/* Gold highlight streaks */}
+      <path d="M16 45 Q35 38 48 45" stroke="#FFF8D0" strokeWidth="0.7" opacity="0.45" fill="none" />
+      <path d="M70 45 Q85 38 102 45" stroke="#FFF8D0" strokeWidth="0.7" opacity="0.45" fill="none" />
+      <path d="M30 62 Q45 58 58 62" stroke="#FFFBE0" strokeWidth="0.5" opacity="0.3" fill="none" />
+      <path d="M60 62 Q75 58 88 62" stroke="#FFFBE0" strokeWidth="0.5" opacity="0.3" fill="none" />
 
-      {/* Shadow/reflection */}
-      <ellipse cx="59" cy="92" rx="40" ry="4" fill="#FFD700" opacity="0.08" />
+      {/* Animated shimmer line */}
+      {animate && (
+        <rect x="-20" y="0" width="12" height="100" fill={`url(#${id}-gold-highlight)`} opacity="0.08" transform="rotate(15 60 50)">
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            values="-40 0; 160 0"
+            dur="3s"
+            repeatCount="indefinite"
+          />
+        </rect>
+      )}
     </svg>
   )
 }
@@ -113,7 +188,7 @@ function GlobalCrown({ crown }) {
       onClick={() => navigate(`/profile?user=${holder.id}`)}
     >
       <div className="flex justify-center mb-4">
-        <CrownSVG size={100} id="global-crown" />
+        <CrownSVG size={100} id="global-crown" animate />
       </div>
       <h2 className="font-display text-lg text-[#FFD700] mb-4 tracking-wide">The {title} of I KNOW BALL</h2>
 

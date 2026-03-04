@@ -145,6 +145,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
+@keyframes crown-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(255, 215, 0, 0.5)) drop-shadow(0 0 4px rgba(255, 200, 0, 0.2));
+  }
+}
+
+.crown-glow {
+  animation: crown-pulse 3s ease-in-out infinite;
+}
+
 @media (min-width: 768px) {
   .bottom-nav-offset {
     bottom: 0;
