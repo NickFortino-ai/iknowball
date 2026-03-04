@@ -13,14 +13,6 @@ import {
   clearPendingTransaction,
 } from '../lib/iap'
 
-const tiers = [
-  { name: 'Lost', color: 'border-tier-lost text-tier-lost' },
-  { name: 'Rookie', color: 'border-tier-rookie text-tier-rookie' },
-  { name: 'Baller', color: 'border-tier-baller text-tier-baller' },
-  { name: 'Elite', color: 'border-tier-elite text-tier-elite' },
-  { name: 'Hall of Famer', color: 'border-tier-hof text-tier-hof' },
-  { name: 'GOAT', color: 'border-tier-goat text-tier-goat' },
-]
 
 async function attemptPendingJoin() {
   const code = localStorage.getItem('pendingInviteCode')
@@ -231,16 +223,16 @@ export default function PaymentPage() {
   // Determine purchase button label
   const purchaseLabel = isNative
     ? product
-      ? `Unlock I Know Ball — ${product.priceString}`
+      ? `Unlock I KNOW BALL — ${product.priceString}`
       : 'Purchase unavailable'
-    : 'Unlock I Know Ball — $1'
+    : 'Unlock I KNOW BALL — $1'
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-bg-card rounded-2xl p-8 border border-border">
-        <h1 className="font-display text-3xl text-center mb-2">Unlock I Know Ball</h1>
+        <h1 className="font-display text-3xl text-center mb-2">Unlock I KNOW BALL</h1>
         <p className="text-text-secondary text-center mb-8">
-          One-time payment to access all features
+          One-time payment to join
         </p>
 
         {(error || status === 'cancelled') && (
@@ -263,15 +255,6 @@ export default function PaymentPage() {
             <div className="font-display text-xl text-incorrect">-10</div>
             <div className="text-text-muted text-xs">Wrong pick</div>
           </div>
-        </div>
-
-        {/* Tier breakdown */}
-        <div className="flex gap-1.5 mb-8 justify-center">
-          {tiers.map((tier) => (
-            <div key={tier.name} className={`rounded-lg border ${tier.color} px-2 py-1.5 text-center text-xs`}>
-              <div className="font-display">{tier.name}</div>
-            </div>
-          ))}
         </div>
 
         {/* Purchase button */}
