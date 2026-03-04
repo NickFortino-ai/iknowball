@@ -339,13 +339,8 @@ export async function getConnectionActivity(userId, before) {
       .order('created_at', { ascending: false })
       .limit(20),
 
-    // Source 4: Tier achievements (non-Rookie, updated recently)
-    applyBefore(supabase
-      .from('users')
-      .select('id, tier, total_points, updated_at')
-      .in('id', connectedIds)
-      .not('tier', 'in', '("Rookie","Lost")')
-      .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()), 'updated_at'),
+    // Source 4: (removed — tier_up cards disabled, no tier_changed_at column to track actual changes)
+    Promise.resolve({ data: [] }),
 
     // Source 5: Record broken
     applyBefore(supabase
@@ -533,28 +528,6 @@ export async function getConnectionActivity(userId, before) {
         streak_length: event.streak_length,
         sport_name: event.sports?.name,
       },
-    })
-  }
-
-  // Process tier achievements — dedup to highest tier per user
-  const tierByUser = {}
-  const TIER_ORDER = { 'Rookie': 0, 'Baller': 1, 'Elite': 2, 'Hall of Famer': 3, 'GOAT': 4 }
-  for (const u of tierAchievements.data || []) {
-    const existing = tierByUser[u.id]
-    if (!existing || (TIER_ORDER[u.tier] || 0) > (TIER_ORDER[existing.tier] || 0)) {
-      tierByUser[u.id] = u
-    }
-  }
-  for (const u of Object.values(tierByUser)) {
-    const user = userMap[u.id]
-    if (!user) continue
-    feed.push({
-      type: 'tier_up',
-      id: `tier-${u.id}-${u.updated_at}`,
-      userId: u.id,
-      ...buildUserFields(user),
-      timestamp: u.updated_at,
-      tier: { name: u.tier, total_points: u.total_points },
     })
   }
 
