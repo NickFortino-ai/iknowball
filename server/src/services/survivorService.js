@@ -218,12 +218,14 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     }
   }
 
-  // Group picks by user, hiding current-week picks from others if user hasn't picked
+  // Group picks by user, hiding picks from others if user hasn't picked for that week
   const picksByUser = {}
   for (const pick of picks || []) {
     if (!picksByUser[pick.user_id]) picksByUser[pick.user_id] = []
-    // Redact other users' current-week picks until requesting user has picked
-    if (!userHasPicked && currentWeekId && pick.league_week_id === currentWeekId && pick.user_id !== requestingUserId) {
+    const isOtherUser = pick.user_id !== requestingUserId
+    const isCurrentWeekHidden = !userHasPicked && currentWeekId && pick.league_week_id === currentWeekId
+    const isPickWeekHidden = !pickWeekUserHasPicked && pickWeek && pick.league_week_id === pickWeek.id
+    if (isOtherUser && (isCurrentWeekHidden || isPickWeekHidden)) {
       picksByUser[pick.user_id].push({ ...pick, team_name: 'Locked', game_id: null })
     } else {
       picksByUser[pick.user_id].push(pick)
