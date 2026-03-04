@@ -25,12 +25,14 @@ export function usePendingConnectionRequests(enabled = true) {
   })
 }
 
-export function useConnectionActivity() {
+export function useConnectionActivity(scope = 'squad') {
   return useInfiniteQuery({
-    queryKey: ['connections', 'activity'],
+    queryKey: ['connections', 'activity', scope],
     queryFn: ({ pageParam }) => {
-      const params = pageParam ? `?before=${encodeURIComponent(pageParam)}` : ''
-      return api.get(`/connections/activity${params}`)
+      const params = new URLSearchParams()
+      if (pageParam) params.set('before', pageParam)
+      params.set('scope', scope)
+      return api.get(`/connections/activity?${params}`)
     },
     initialPageParam: null,
     getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,

@@ -275,41 +275,46 @@ export async function declineConnectionRequest(connectionId, userId) {
   if (error) throw error
 }
 
-export async function getConnectionActivity(userId, before) {
-  // Get connected user IDs
-  const { data: connections } = await supabase
-    .from('connections')
-    .select('user_id_1, user_id_2')
-    .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
-    .eq('status', 'connected')
+export async function getConnectionActivity(userId, before, scope = 'squad') {
+  const isAll = scope === 'all'
 
-  if (!connections?.length) return { items: [], nextCursor: null }
-
-  const connectedIds = connections.map((c) =>
-    c.user_id_1 === userId ? c.user_id_2 : c.user_id_1
-  )
-
-  // Filter out blocked users
+  // Filter out blocked users — always needed
   const { data: blocks } = await supabase
     .from('blocked_users')
     .select('blocked_id')
     .eq('blocker_id', userId)
 
   const blockedSet = new Set((blocks || []).map((b) => b.blocked_id))
-  const filteredIds = connectedIds.filter((id) => !blockedSet.has(id))
 
-  // Include self + connections for queries
-  const allIds = [userId, ...filteredIds]
-
-  // Get user details for mapping (including self for H2H)
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji, title_preference')
-    .in('id', allIds)
-
+  let connectedIds = []
+  let allIds = [userId]
   const userMap = {}
-  for (const u of users || []) {
-    userMap[u.id] = u
+
+  if (!isAll) {
+    // Get connected user IDs
+    const { data: connections } = await supabase
+      .from('connections')
+      .select('user_id_1, user_id_2')
+      .or(`user_id_1.eq.${userId},user_id_2.eq.${userId}`)
+      .eq('status', 'connected')
+
+    if (!connections?.length) return { items: [], nextCursor: null }
+
+    connectedIds = connections.map((c) =>
+      c.user_id_1 === userId ? c.user_id_2 : c.user_id_1
+    ).filter((id) => !blockedSet.has(id))
+
+    allIds = [userId, ...connectedIds]
+
+    // Get user details for mapping (including self for H2H)
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, avatar_emoji, title_preference')
+      .in('id', allIds)
+
+    for (const u of users || []) {
+      userMap[u.id] = u
+    }
   }
 
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
@@ -319,28 +324,34 @@ export async function getConnectionActivity(userId, before) {
     return before ? query.lt(col, before) : query
   }
 
-  // Query 10 sources in parallel
+  // Helper: for 'all' scope, skip user filter; for 'squad', filter by connected users
+  function filterByUser(query, col, ids) {
+    return isAll ? query : query.in(col, ids)
+  }
+
+  // Query sources in parallel (some skipped for 'all' scope)
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders] = await Promise.all([
     // Source 1: Notable picks — settled where (correct AND odds >= 200) OR (multiplier >= 3)
-    applyBefore(supabase
+    applyBefore(filterByUser(supabase
       .from('picks')
-      .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, sports(name))')
-      .in('user_id', connectedIds)
+      .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, sports(name))'),
+      'user_id', connectedIds)
       .eq('status', 'settled')
       .or('and(is_correct.eq.true,odds_at_pick.gte.200),multiplier.gte.3'), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(20),
 
     // Source 2: Settled parlays (won + bad beats only, filtered in processing)
-    applyBefore(supabase
+    applyBefore(filterByUser(supabase
       .from('parlays')
-      .select('id, user_id, leg_count, combined_multiplier, status, is_correct, points_earned, risk_points, reward_points, updated_at, parlay_legs(picked_team, odds_at_submission, status, games(home_team, away_team, sports(name)))')
-      .in('user_id', connectedIds)
+      .select('id, user_id, leg_count, combined_multiplier, status, is_correct, points_earned, risk_points, reward_points, updated_at, parlay_legs(picked_team, odds_at_submission, status, games(home_team, away_team, sports(name)))'),
+      'user_id', connectedIds)
       .eq('status', 'settled'), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(20),
 
-    // Source 3: Streak events (filtered to thresholds in processing)
+    // Source 3: Streak events (squad only)
+    isAll ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('streak_events')
       .select('id, user_id, streak_length, created_at, sports(key, name)')
@@ -348,18 +359,19 @@ export async function getConnectionActivity(userId, before) {
       .order('created_at', { ascending: false })
       .limit(20),
 
-    // Source 4: (removed — tier_up cards disabled, no tier_changed_at column to track actual changes)
+    // Source 4: (removed — tier_up cards disabled)
     Promise.resolve({ data: [] }),
 
     // Source 5: Record broken
-    applyBefore(supabase
+    applyBefore(filterByUser(supabase
       .from('record_history')
-      .select('id, record_key, new_holder_id, previous_holder_id, previous_value, new_value, broken_at, records(display_name)')
-      .in('new_holder_id', connectedIds), 'broken_at')
+      .select('id, record_key, new_holder_id, previous_holder_id, previous_value, new_value, broken_at, records(display_name)'),
+      'new_holder_id', connectedIds), 'broken_at')
       .order('broken_at', { ascending: false })
       .limit(10),
 
-    // Source 6: Pick shares
+    // Source 6: Pick shares (squad only)
+    isAll ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, games(home_team, away_team, sports(name)))')
@@ -367,7 +379,8 @@ export async function getConnectionActivity(userId, before) {
       .order('created_at', { ascending: false })
       .limit(15),
 
-    // Source 7: Recent comments from connected users
+    // Source 7: Recent comments (squad only)
+    isAll ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('comments')
       .select('id, target_type, target_id, user_id, content, created_at')
@@ -376,25 +389,26 @@ export async function getConnectionActivity(userId, before) {
       .order('created_at', { ascending: false })
       .limit(15),
 
-    // Source 8: H2H — all settled picks from squad in last 3 days
-    applyBefore(supabase
+    // Source 8: H2H — settled picks in last 3 days
+    applyBefore(filterByUser(supabase
       .from('picks')
-      .select('id, user_id, picked_team, game_id, is_correct, odds_at_pick, points_earned, risk_points, multiplier, updated_at, games(home_team, away_team, sports(name))')
-      .in('user_id', allIds)
+      .select('id, user_id, picked_team, game_id, is_correct, odds_at_pick, points_earned, risk_points, multiplier, updated_at, games(home_team, away_team, sports(name))'),
+      'user_id', allIds)
       .eq('status', 'settled')
       .gte('updated_at', threeDaysAgo), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(100),
 
     // Source 9: Hot takes
-    applyBefore(supabase
+    applyBefore(filterByUser(supabase
       .from('hot_takes')
-      .select('id, user_id, content, team_tag, image_url, created_at')
-      .in('user_id', allIds), 'created_at')
+      .select('id, user_id, content, team_tag, image_url, created_at'),
+      'user_id', allIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
 
-    // Source 10: Hot take reminders
+    // Source 10: Hot take reminders (squad only)
+    isAll ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('hot_take_reminders')
       .select('id, reminder_user_id, hot_take_id, created_at, hot_takes(id, user_id, content, team_tag, created_at)')
@@ -402,6 +416,31 @@ export async function getConnectionActivity(userId, before) {
       .order('created_at', { ascending: false })
       .limit(15),
   ])
+
+  // For 'all' scope, batch-fetch user data from query results
+  if (isAll) {
+    const userIdSet = new Set()
+    for (const pick of notablePicks.data || []) userIdSet.add(pick.user_id)
+    for (const parlay of settledParlays.data || []) userIdSet.add(parlay.user_id)
+    for (const record of recordsBroken.data || []) {
+      userIdSet.add(record.new_holder_id)
+      if (record.previous_holder_id) userIdSet.add(record.previous_holder_id)
+    }
+    for (const pick of h2hPicks.data || []) userIdSet.add(pick.user_id)
+    for (const take of hotTakes.data || []) userIdSet.add(take.user_id)
+    userIdSet.delete(undefined)
+    for (const id of blockedSet) userIdSet.delete(id)
+    const userIdsToFetch = [...userIdSet]
+    if (userIdsToFetch.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, username, display_name, avatar_url, avatar_emoji, title_preference')
+        .in('id', userIdsToFetch)
+      for (const u of users || []) {
+        userMap[u.id] = u
+      }
+    }
+  }
 
   const feed = []
 
@@ -728,9 +767,9 @@ export async function getConnectionActivity(userId, before) {
     }
   }
 
-  // Compute cumulative h2h records
+  // Compute cumulative h2h records (squad only — too expensive across all users)
   const h2hItems = feed.filter(f => f.type === 'head_to_head')
-  if (h2hItems.length > 0) {
+  if (h2hItems.length > 0 && !isAll) {
     const pairSet = new Set()
     const h2hUserIds = new Set()
     for (const item of h2hItems) {

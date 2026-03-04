@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import {
@@ -49,6 +49,8 @@ export default function HubPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [squadExpanded, setSquadExpanded] = useState(false)
+  const [feedScope, setFeedScope] = useState('squad')
+  const hasManuallyToggled = useRef(false)
 
   const { data: connections, isLoading: connectionsLoading } = useConnections()
   const { data: pending } = usePendingConnectionRequests()
@@ -58,6 +60,18 @@ export default function HubPage() {
   const declineRequest = useDeclineConnectionRequest()
 
   const connectedUserIds = new Set((connections || []).map((c) => c.user_id))
+
+  // Default to 'all' feed when user has no connections
+  useEffect(() => {
+    if (!connectionsLoading && !hasManuallyToggled.current) {
+      setFeedScope(connections?.length ? 'squad' : 'all')
+    }
+  }, [connections, connectionsLoading])
+
+  function handleScopeToggle(scope) {
+    hasManuallyToggled.current = true
+    setFeedScope(scope)
+  }
 
   async function handleSendRequest(username) {
     try {
@@ -257,8 +271,28 @@ export default function HubPage() {
 
       {/* Activity Feed */}
       <div>
-        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Feed</h2>
-        <ActivityFeed onUserTap={setSelectedUserId} />
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="text-xs text-text-muted uppercase tracking-wider">Feed</h2>
+          <div className="flex gap-1">
+            <button
+              onClick={() => handleScopeToggle('squad')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                feedScope === 'squad' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              }`}
+            >
+              My Squad
+            </button>
+            <button
+              onClick={() => handleScopeToggle('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                feedScope === 'all' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              }`}
+            >
+              All of IKB
+            </button>
+          </div>
+        </div>
+        <ActivityFeed onUserTap={setSelectedUserId} scope={feedScope} />
       </div>
 
       <UserProfileModal

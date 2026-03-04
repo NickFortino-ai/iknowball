@@ -17,14 +17,14 @@ import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
 import FeedSkeleton from './FeedSkeleton'
 
-export default function ActivityFeed({ onUserTap }) {
+export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
   const {
     data,
     isLoading,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useConnectionActivity()
+  } = useConnectionActivity(scope)
 
   // Flatten all pages into a single list
   const activity = useMemo(() => {
@@ -91,10 +91,14 @@ export default function ActivityFeed({ onUserTap }) {
       ) : !activity?.length ? (
         /* Empty state */
         <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
-          <div className="text-2xl mb-2">{'\uD83D\uDC4B'}</div>
-          <div className="text-sm text-text-primary font-medium mb-1">Your feed is empty</div>
+          <div className="text-2xl mb-2">{scope === 'all' ? '\uD83C\uDFC0' : '\uD83D\uDC4B'}</div>
+          <div className="text-sm text-text-primary font-medium mb-1">
+            {scope === 'all' ? 'No activity yet' : 'Your feed is empty'}
+          </div>
           <div className="text-xs text-text-muted">
-            Connect with other users to see their activity here.
+            {scope === 'all'
+              ? 'Be the first to drop a hot take!'
+              : 'Connect with other users to see their activity here.'}
           </div>
         </div>
       ) : (
