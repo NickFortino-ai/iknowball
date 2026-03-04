@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { useRoyalty } from '../hooks/useRecords'
+import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
@@ -217,8 +218,7 @@ function SmallCrownSVG({ id = 'sm-crown', jewel }) {
   return <CrownSVG size={44} id={id} jewel={jewel} />
 }
 
-function GlobalCrown({ crown }) {
-  const navigate = useNavigate()
+function GlobalCrown({ crown, onUserTap }) {
   if (!crown) return null
 
   const holder = crown.holder
@@ -227,7 +227,7 @@ function GlobalCrown({ crown }) {
   return (
     <div
       className="text-center py-8 cursor-pointer group"
-      onClick={() => navigate(`/profile?user=${holder.id}`)}
+      onClick={() => onUserTap?.(holder.id)}
     >
       <div className="flex justify-center mb-4">
         <CrownSVG size={100} id="global-crown" animate />
@@ -249,8 +249,7 @@ function GlobalCrown({ crown }) {
   )
 }
 
-function CategoryCrown({ crown, index }) {
-  const navigate = useNavigate()
+function CategoryCrown({ crown, index, onUserTap }) {
   if (!crown) return null
 
   const holder = crown.holder
@@ -258,7 +257,7 @@ function CategoryCrown({ crown, index }) {
   return (
     <div
       className="text-center py-5 cursor-pointer group"
-      onClick={() => navigate(`/profile?user=${holder.id}`)}
+      onClick={() => onUserTap?.(holder.id)}
     >
       <div className="flex justify-center mb-2">
         <SmallCrownSVG id={`cat-crown-${index}`} jewel={getJewelTheme(crown.scope)} />
@@ -279,6 +278,7 @@ function CategoryCrown({ crown, index }) {
 
 export function RoyaltyContent() {
   const { data: royalty, isLoading, isError, refetch } = useRoyalty()
+  const [profileUserId, setProfileUserId] = useState(null)
 
   const secondaryCrowns = [
     ...(royalty?.sportCrowns || []),
@@ -291,20 +291,23 @@ export function RoyaltyContent() {
   if (!royalty?.globalCrown) return <EmptyState title="No crowns yet" message="Crowns will appear once the leaderboard has data." />
 
   return (
-    <div>
-      <GlobalCrown crown={royalty.globalCrown} />
+    <>
+      <div>
+        <GlobalCrown crown={royalty.globalCrown} onUserTap={setProfileUserId} />
 
-      {secondaryCrowns.length > 0 && (
-        <>
-          <div className="border-t border-border/50 my-2" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2">
-            {secondaryCrowns.map((crown, i) => (
-              <CategoryCrown key={crown.scope || i} crown={crown} index={i} />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+        {secondaryCrowns.length > 0 && (
+          <>
+            <div className="border-t border-border/50 my-2" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2">
+              {secondaryCrowns.map((crown, i) => (
+                <CategoryCrown key={crown.scope || i} crown={crown} index={i} onUserTap={setProfileUserId} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+    </>
   )
 }
 

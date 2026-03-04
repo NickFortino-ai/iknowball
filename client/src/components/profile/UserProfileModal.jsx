@@ -348,26 +348,28 @@ export default function UserProfileModal({ userId, onClose }) {
                 <div className="text-text-muted text-sm">@{user.username}</div>
                 <SocialLinks user={user} />
               </div>
-              {isViewingOther && connStatus === 'none' && (
-                <button
-                  onClick={handleConnect}
-                  disabled={sendRequest.isPending}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-full bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
-                >
-                  {sendRequest.isPending ? '...' : 'Connect'}
-                </button>
-              )}
-              {isViewingOther && connStatus === 'pending_sent' && (
-                <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-bg-primary text-text-muted">
-                  Pending
-                </span>
-              )}
-              {isViewingOther && connStatus === 'connected' && (
-                <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-bg-primary text-correct">
-                  Connected
-                </span>
-              )}
             </div>
+
+            {/* Connection status */}
+            {isViewingOther && connStatus === 'none' && (
+              <button
+                onClick={handleConnect}
+                disabled={sendRequest.isPending}
+                className="text-xs font-semibold px-4 py-1.5 rounded-full bg-accent text-white hover:bg-accent/90 disabled:opacity-50 mb-4"
+              >
+                {sendRequest.isPending ? '...' : 'Connect'}
+              </button>
+            )}
+            {isViewingOther && connStatus === 'pending_sent' && (
+              <span className="inline-block text-xs font-semibold px-4 py-1.5 rounded-full bg-bg-primary text-text-muted mb-4">
+                Pending
+              </span>
+            )}
+            {isViewingOther && connStatus === 'connected' && (
+              <span className="inline-block text-xs font-semibold px-4 py-1.5 rounded-full bg-bg-primary text-correct mb-4">
+                Connected
+              </span>
+            )}
 
             {/* Bio */}
             {user.bio && (
