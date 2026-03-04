@@ -48,7 +48,7 @@ export default function HubPage() {
   const { data: profile, isLoading: profileLoading } = useProfile()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState(null)
-  const [squadExpanded, setSquadExpanded] = useState(true)
+  const [squadExpanded, setSquadExpanded] = useState(false)
 
   const { data: connections, isLoading: connectionsLoading } = useConnections()
   const { data: pending } = usePendingConnectionRequests()
