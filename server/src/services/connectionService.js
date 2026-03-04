@@ -485,9 +485,9 @@ export async function getConnectionActivity(userId, before) {
         },
       })
     } else {
-      // Check for bad beat: exactly 1 lost leg
+      // Check for bad beat: 4+ leg parlay with exactly 1 lost leg
       const lostLegs = parlay.parlay_legs?.filter((l) => l.status === 'lost') || []
-      if (lostLegs.length === 1) {
+      if (lostLegs.length === 1 && parlay.leg_count >= 4) {
         feed.push({
           type: 'bad_beat',
           id: parlay.id,
