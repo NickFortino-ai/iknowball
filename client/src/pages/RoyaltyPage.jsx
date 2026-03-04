@@ -174,17 +174,40 @@ function CrownSVG({ size = 80, id = 'crown', animate = false, jewel }) {
       <path d="M30 62 Q45 58 58 62" stroke="#FFFBE0" strokeWidth="0.5" opacity="0.3" fill="none" />
       <path d="M60 62 Q75 58 88 62" stroke="#FFFBE0" strokeWidth="0.5" opacity="0.3" fill="none" />
 
-      {/* Animated shimmer line */}
+      {/* Edge shimmer sparkles */}
       {animate && (
-        <rect x="-20" y="0" width="12" height="100" fill={`url(#${id}-gold-highlight)`} opacity="0.08" transform="rotate(15 60 50)">
-          <animateTransform
-            attributeName="transform"
-            type="translate"
-            values="-40 0; 160 0"
-            dur="3s"
-            repeatCount="indefinite"
-          />
-        </rect>
+        <>
+          {/* Left prong tip sparkle */}
+          <circle cx="5" cy="19" r="2.5" fill="white" opacity="0">
+            <animate attributeName="opacity" values="0;0.7;0" dur="3s" begin="0s" repeatCount="indefinite" />
+            <animate attributeName="r" values="1.5;3;1.5" dur="3s" begin="0s" repeatCount="indefinite" />
+          </circle>
+          {/* Center prong tip sparkle */}
+          <circle cx="58" cy="4" r="2.5" fill="white" opacity="0">
+            <animate attributeName="opacity" values="0;0.8;0" dur="3.5s" begin="1.2s" repeatCount="indefinite" />
+            <animate attributeName="r" values="1.5;3.5;1.5" dur="3.5s" begin="1.2s" repeatCount="indefinite" />
+          </circle>
+          {/* Right prong tip sparkle */}
+          <circle cx="113" cy="19" r="2.5" fill="white" opacity="0">
+            <animate attributeName="opacity" values="0;0.7;0" dur="3s" begin="2s" repeatCount="indefinite" />
+            <animate attributeName="r" values="1.5;3;1.5" dur="3s" begin="2s" repeatCount="indefinite" />
+          </circle>
+          {/* Left edge highlight */}
+          <path d="M3 28 L10 68" stroke="#FFFBE0" strokeWidth="1" opacity="0" strokeLinecap="round">
+            <animate attributeName="opacity" values="0;0.4;0" dur="4s" begin="0.5s" repeatCount="indefinite" />
+          </path>
+          {/* Right edge highlight */}
+          <path d="M115 28 L108 68" stroke="#FFFBE0" strokeWidth="1" opacity="0" strokeLinecap="round">
+            <animate attributeName="opacity" values="0;0.4;0" dur="4s" begin="2.5s" repeatCount="indefinite" />
+          </path>
+          {/* Band edge glint */}
+          <rect x="8" y="69" width="6" height="3" rx="1.5" fill="white" opacity="0">
+            <animate attributeName="opacity" values="0;0.5;0" dur="2.5s" begin="1.8s" repeatCount="indefinite" />
+          </rect>
+          <rect x="104" y="69" width="6" height="3" rx="1.5" fill="white" opacity="0">
+            <animate attributeName="opacity" values="0;0.5;0" dur="2.5s" begin="0.8s" repeatCount="indefinite" />
+          </rect>
+        </>
       )}
     </svg>
   )
