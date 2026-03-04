@@ -42,6 +42,7 @@ export default function BracketView({ league }) {
         tournament={tournament}
         matchups={tournament.matchups}
         existingPicks={myEntry?.picks}
+        existingTiebreakerScore={myEntry?.tiebreaker_score}
         onClose={() => setShowPicker(false)}
       />
     )
@@ -142,7 +143,7 @@ export default function BracketView({ league }) {
       )}
 
       {viewTab === 'standings' && (
-        <BracketStandings entries={entries} />
+        <BracketStandings entries={entries} championshipTotalScore={tournament?.championship_total_score} />
       )}
     </div>
   )

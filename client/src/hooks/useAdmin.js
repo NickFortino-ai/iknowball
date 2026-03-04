@@ -259,6 +259,19 @@ export function useUndoTemplateResult() {
   })
 }
 
+// Bracket Championship Score
+export function useSetChampionshipScore() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ templateId, totalScore }) =>
+      api.post(`/admin/bracket-templates/${templateId}/championship-score`, { total_score: totalScore }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['adminBracketTemplates', variables.templateId] })
+    },
+  })
+}
+
 // Weekly Recap
 export function useUpdateRecap() {
   const queryClient = useQueryClient()

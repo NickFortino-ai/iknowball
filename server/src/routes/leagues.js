@@ -468,6 +468,7 @@ const submitBracketSchema = z.object({
     })
   ).min(1),
   entry_name: z.string().max(50).optional(),
+  tiebreaker_score: z.number().int().min(0).max(500),
 })
 
 router.post('/:id/bracket/entry', requireAuth, validate(submitBracketSchema), async (req, res) => {
@@ -476,7 +477,8 @@ router.post('/:id/bracket/entry', requireAuth, validate(submitBracketSchema), as
     tournament.id,
     req.user.id,
     req.validated.picks,
-    req.validated.entry_name
+    req.validated.entry_name,
+    req.validated.tiebreaker_score
   )
   res.status(201).json(result)
 })

@@ -338,8 +338,8 @@ export function useSubmitBracket() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ leagueId, picks, entryName }) =>
-      api.post(`/leagues/${leagueId}/bracket/entry`, { picks, entry_name: entryName }),
+    mutationFn: ({ leagueId, picks, entryName, tiebreakerScore }) =>
+      api.post(`/leagues/${leagueId}/bracket/entry`, { picks, entry_name: entryName, tiebreaker_score: tiebreakerScore }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'bracket'] })
     },

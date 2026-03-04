@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useBracketTemplate, useEnterTemplateResult, useUndoTemplateResult } from '../../hooks/useAdmin'
+import { useBracketTemplate, useEnterTemplateResult, useUndoTemplateResult, useSetChampionshipScore } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 
@@ -7,7 +7,9 @@ export default function BracketTemplateResults({ templateId, onClose }) {
   const { data: template, isLoading } = useBracketTemplate(templateId)
   const enterResult = useEnterTemplateResult()
   const undoResult = useUndoTemplateResult()
+  const setChampionshipScore = useSetChampionshipScore()
   const [selectedMatchup, setSelectedMatchup] = useState(null)
+  const [champScore, setChampScore] = useState('')
 
   if (isLoading) return <LoadingSpinner />
 
@@ -48,6 +50,21 @@ export default function BracketTemplateResults({ templateId, onClose }) {
 
   const completedCount = matchups.filter((m) => m.winner).length
   const totalNonBye = matchups.filter((m) => !m.is_bye).length
+  const allMatchupsCompleted = completedCount === totalNonBye && totalNonBye > 0
+
+  async function handleSaveChampionshipScore() {
+    const score = Number(champScore)
+    if (!Number.isInteger(score) || score < 0) {
+      toast('Enter a valid non-negative integer', 'error')
+      return
+    }
+    try {
+      await setChampionshipScore.mutateAsync({ templateId, totalScore: score })
+      toast('Championship score saved', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to save score', 'error')
+    }
+  }
 
   return (
     <div>
@@ -153,6 +170,33 @@ export default function BracketTemplateResults({ templateId, onClose }) {
             </div>
           ))}
       </div>
+
+      {/* Championship Total Score (tiebreaker) */}
+      {allMatchupsCompleted && (
+        <div className="mt-6 bg-bg-card rounded-xl border border-border p-4">
+          <h3 className="text-sm font-semibold text-text-primary mb-2">Championship Total Score (Tiebreaker)</h3>
+          <p className="text-xs text-text-muted mb-3">
+            Enter the combined final score of the championship game. This will be used to break ties across all tournaments using this template.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={champScore}
+              onChange={(e) => setChampScore(e.target.value)}
+              placeholder="e.g. 145"
+              min={0}
+              className="flex-1 bg-bg-input border border-border rounded-lg px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            />
+            <button
+              onClick={handleSaveChampionshipScore}
+              disabled={!champScore || setChampionshipScore.isPending}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {setChampionshipScore.isPending ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -24,6 +24,7 @@ import {
   getTemplateResults,
   enterTemplateResult,
   undoTemplateResult,
+  setTemplateChampionshipScore,
 } from '../services/bracketService.js'
 import {
   syncFuturesForSport,
@@ -308,6 +309,15 @@ router.post('/bracket-templates/:id/results', async (req, res) => {
 router.delete('/bracket-templates/:id/results/:matchupId', async (req, res) => {
   await undoTemplateResult(req.params.id, req.params.matchupId)
   res.status(204).end()
+})
+
+router.post('/bracket-templates/:id/championship-score', async (req, res) => {
+  const { total_score } = req.body
+  if (total_score == null || !Number.isInteger(total_score) || total_score < 0) {
+    return res.status(400).json({ error: 'total_score must be a non-negative integer' })
+  }
+  const result = await setTemplateChampionshipScore(req.params.id, total_score)
+  res.json(result)
 })
 
 // ============================================

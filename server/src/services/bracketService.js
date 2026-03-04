@@ -341,7 +341,7 @@ export async function createTournament(leagueId, templateId, locksAt) {
 // User Bracket Entry
 // ============================================
 
-export async function submitBracket(tournamentId, userId, picks, entryName) {
+export async function submitBracket(tournamentId, userId, picks, entryName, tiebreakerScore) {
   // Get tournament
   const { data: tournament } = await supabase
     .from('bracket_tournaments')
@@ -446,6 +446,7 @@ export async function submitBracket(tournamentId, userId, picks, entryName) {
         tournament_id: tournamentId,
         user_id: userId,
         entry_name: entryName || null,
+        tiebreaker_score: tiebreakerScore ?? null,
         total_points: 0,
         possible_points: possiblePoints,
         submitted_at: new Date().toISOString(),
@@ -514,6 +515,12 @@ export async function getEntryByUser(tournamentId, userId) {
 }
 
 export async function getAllEntries(tournamentId) {
+  const { data: tournament } = await supabase
+    .from('bracket_tournaments')
+    .select('championship_total_score')
+    .eq('id', tournamentId)
+    .single()
+
   const { data: entries, error } = await supabase
     .from('bracket_entries')
     .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
@@ -521,7 +528,10 @@ export async function getAllEntries(tournamentId) {
     .order('total_points', { ascending: false })
 
   if (error) throw error
-  return entries || []
+  if (!entries?.length) return []
+
+  const actualScore = tournament?.championship_total_score
+  return sortEntriesWithTiebreaker(entries, actualScore)
 }
 
 // ============================================
@@ -959,7 +969,7 @@ export async function getUserEntriesForTemplate(templateId, userId, excludeTourn
 export async function getBracketStandings(leagueId) {
   const { data: tournament } = await supabase
     .from('bracket_tournaments')
-    .select('id')
+    .select('id, championship_total_score')
     .eq('league_id', leagueId)
     .single()
 
@@ -973,7 +983,10 @@ export async function getBracketStandings(leagueId) {
 
   if (!entries?.length) return []
 
-  return entries.map((e, i) => ({
+  const actualScore = tournament.championship_total_score
+  const sorted = sortEntriesWithTiebreaker(entries, actualScore)
+
+  return sorted.map((e, i) => ({
     rank: i + 1,
     user_id: e.user_id,
     user: e.users,
@@ -981,5 +994,57 @@ export async function getBracketStandings(leagueId) {
     possible_points: e.possible_points,
     entry_name: e.entry_name,
     submitted_at: e.submitted_at,
+    tiebreaker_score: e.tiebreaker_score,
+    tiebreaker_distance: e.tiebreaker_distance,
   }))
+}
+
+// ============================================
+// Tiebreaker Helpers
+// ============================================
+
+function sortEntriesWithTiebreaker(entries, actualScore) {
+  return entries.map((e) => {
+    const distance = actualScore != null && e.tiebreaker_score != null
+      ? Math.abs(e.tiebreaker_score - actualScore)
+      : null
+    return { ...e, tiebreaker_distance: distance }
+  }).sort((a, b) => {
+    // Primary: total_points DESC
+    if (b.total_points !== a.total_points) return b.total_points - a.total_points
+    // Secondary: tiebreaker distance ASC (null = last)
+    const aDist = a.tiebreaker_distance ?? Infinity
+    const bDist = b.tiebreaker_distance ?? Infinity
+    return aDist - bDist
+  })
+}
+
+export async function setTemplateChampionshipScore(templateId, totalScore) {
+  // Verify template exists
+  const { data: template } = await supabase
+    .from('bracket_templates')
+    .select('id')
+    .eq('id', templateId)
+    .single()
+
+  if (!template) {
+    const err = new Error('Template not found')
+    err.status = 404
+    throw err
+  }
+
+  // Find all tournaments using this template and update championship_total_score
+  const { data: tournaments } = await supabase
+    .from('bracket_tournaments')
+    .select('id')
+    .eq('template_id', templateId)
+
+  for (const t of tournaments || []) {
+    await supabase
+      .from('bracket_tournaments')
+      .update({ championship_total_score: totalScore })
+      .eq('id', t.id)
+  }
+
+  return { templateId, totalScore, tournamentsUpdated: tournaments?.length || 0 }
 }

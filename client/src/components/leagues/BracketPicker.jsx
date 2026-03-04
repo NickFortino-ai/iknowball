@@ -2,10 +2,11 @@ import { useState, useMemo, useCallback } from 'react'
 import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 
-export default function BracketPicker({ league, tournament, matchups, existingPicks, onClose }) {
+export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose }) {
   const submitBracket = useSubmitBracket()
   const { data: otherEntries } = useMyOtherBracketEntries(league?.id)
   const [entryName, setEntryName] = useState('')
+  const [tiebreakerScore, setTiebreakerScore] = useState(existingTiebreakerScore ?? '')
   const [copiedFrom, setCopiedFrom] = useState(null)
 
   // Template matchups for feeds_into info
@@ -132,6 +133,8 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const filledCount = Object.keys(picks).length
   const totalRequired = nonByeMatchups.length
   const allFilled = filledCount === totalRequired
+  const tiebreakerValid = tiebreakerScore !== '' && Number.isInteger(Number(tiebreakerScore)) && Number(tiebreakerScore) >= 0 && Number(tiebreakerScore) <= 500
+  const canSubmit = allFilled && tiebreakerValid
 
   async function handleSubmit() {
     const pickArray = Object.entries(picks).map(([template_matchup_id, picked_team]) => ({
@@ -144,6 +147,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         leagueId: league.id,
         picks: pickArray,
         entryName: entryName || undefined,
+        tiebreakerScore: Number(tiebreakerScore),
       })
       toast('Bracket submitted!', 'success')
       onClose?.()
@@ -302,7 +306,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         {getRoundPoints(activeRound)} points per correct pick in {getRoundName(activeRound)}
       </div>
 
-      {/* Entry name + Submit */}
+      {/* Entry name + Tiebreaker + Submit */}
       <div className="mt-6 space-y-3">
         <div>
           <label className="block text-xs text-text-muted mb-1">
@@ -317,12 +321,35 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
+        <div>
+          <label className="block text-xs text-text-muted mb-1">
+            Championship Total Score Prediction <span className="text-incorrect">*</span>
+          </label>
+          <input
+            type="number"
+            value={tiebreakerScore}
+            onChange={(e) => setTiebreakerScore(e.target.value)}
+            placeholder="e.g. 145"
+            min={0}
+            max={500}
+            className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+          />
+          <p className="text-[10px] text-text-muted mt-1">
+            Predict the combined final score of the championship game (tiebreaker)
+          </p>
+        </div>
         <button
           onClick={handleSubmit}
-          disabled={!allFilled || submitBracket.isPending}
+          disabled={!canSubmit || submitBracket.isPending}
           className="w-full py-3 rounded-xl font-display text-lg bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitBracket.isPending ? 'Submitting...' : allFilled ? 'Submit Bracket' : `Pick ${totalRequired - filledCount} more games`}
+          {submitBracket.isPending
+            ? 'Submitting...'
+            : !allFilled
+              ? `Pick ${totalRequired - filledCount} more games`
+              : !tiebreakerValid
+                ? 'Enter tiebreaker score'
+                : 'Submit Bracket'}
         </button>
       </div>
     </div>
