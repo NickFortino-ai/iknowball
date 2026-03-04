@@ -11,9 +11,16 @@ export function isIAPAvailable() {
 export async function getSeasonAccessProduct() {
   if (!isIAPAvailable()) return null
   try {
-    const { products } = await NativePurchases.getProducts({ productIds: [PRODUCT_ID] })
+    console.log('[IAP] Fetching product:', PRODUCT_ID)
+    const result = await NativePurchases.getProducts({ productIds: [PRODUCT_ID] })
+    console.log('[IAP] getProducts result:', JSON.stringify(result))
+    const { products } = result
+    if (products.length === 0) {
+      console.warn('[IAP] No products returned for', PRODUCT_ID)
+    }
     return products.length > 0 ? products[0] : null
-  } catch {
+  } catch (err) {
+    console.error('[IAP] getProducts error:', err)
     return null
   }
 }

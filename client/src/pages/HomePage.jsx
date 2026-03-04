@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import HeadlinesCard from '../components/home/HeadlinesCard'
@@ -18,6 +18,11 @@ const tiers = [
 export default function HomePage() {
   const { isAuthenticated, profile } = useAuth()
   const [selectedTier, setSelectedTier] = useState(null)
+
+  // Redirect authenticated but unpaid users to payment
+  if (isAuthenticated && profile && !profile.is_paid) {
+    return <Navigate to="/payment" replace />
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
