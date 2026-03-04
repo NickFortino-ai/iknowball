@@ -30,6 +30,7 @@ import HallOfFamePage from './pages/HallOfFamePage'
 import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
 import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
+import { initIAPListener } from './lib/iapListener'
 import { useRealtimeGames } from './hooks/useRealtimeGames'
 
 function AppRoutes() {
@@ -41,6 +42,7 @@ function AppRoutes() {
     initialize()
     initPushNotifications()
     initStatusBar()
+    initIAPListener()
   }, [initialize])
 
   return (

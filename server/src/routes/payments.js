@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase.js'
 import { env } from '../config/env.js'
 import { requireAuth } from '../middleware/auth.js'
 import { logger } from '../utils/logger.js'
+import { verifyTransaction } from '../services/appleIapService.js'
 
 const router = Router()
 const stripe = new Stripe(env.STRIPE_SECRET_KEY)
@@ -67,7 +68,7 @@ router.post('/redeem-promo', async (req, res) => {
 
   const { error: userError } = await supabase
     .from('users')
-    .update({ is_paid: true, promo_code_used: promo.code })
+    .update({ is_paid: true, promo_code_used: promo.code, payment_source: 'promo' })
     .eq('id', req.user.id)
 
   if (userError) {
@@ -77,6 +78,52 @@ router.post('/redeem-promo', async (req, res) => {
 
   logger.info({ userId: req.user.id, code: promo.code }, 'Promo code redeemed')
   res.json({ success: true })
+})
+
+// Verify Apple IAP transaction
+router.post('/verify-apple-iap', async (req, res) => {
+  const { signedTransaction } = req.body
+  if (!signedTransaction) {
+    return res.status(400).json({ error: 'signedTransaction is required' })
+  }
+
+  try {
+    const decoded = await verifyTransaction(signedTransaction)
+    const txId = decoded.originalTransactionId
+
+    // Idempotency: check if this transaction was already processed
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('apple_original_transaction_id', txId)
+      .maybeSingle()
+
+    if (existing) {
+      logger.info({ userId: existing.id, txId }, 'Apple IAP already processed')
+      return res.json({ success: true })
+    }
+
+    // Mark user as paid
+    const { error } = await supabase
+      .from('users')
+      .update({
+        is_paid: true,
+        apple_original_transaction_id: txId,
+        payment_source: 'apple',
+      })
+      .eq('id', req.user.id)
+
+    if (error) {
+      logger.error({ error, userId: req.user.id }, 'Failed to update user after Apple IAP')
+      return res.status(500).json({ error: 'Database update failed' })
+    }
+
+    logger.info({ userId: req.user.id, txId, productId: decoded.productId }, 'User marked as paid via Apple IAP')
+    res.json({ success: true })
+  } catch (err) {
+    logger.error({ err, userId: req.user.id }, 'Apple IAP verification failed')
+    return res.status(400).json({ error: 'Transaction verification failed' })
+  }
 })
 
 // Check payment status

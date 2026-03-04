@@ -3,6 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
+import {
+  isIAPAvailable,
+  getSeasonAccessProduct,
+  purchaseSeasonAccess,
+  restoreSeasonAccess,
+  savePendingTransaction,
+  getPendingTransaction,
+  clearPendingTransaction,
+} from '../lib/iap'
 
 const tiers = [
   { name: 'Lost', color: 'border-tier-lost text-tier-lost' },
@@ -30,6 +39,14 @@ function isNewUser(profile) {
   return profile && !profile.bio && !profile.avatar_emoji
 }
 
+async function navigateAfterPayment(fetchProfile, navigate) {
+  await fetchProfile()
+  const league = await attemptPendingJoin()
+  const updatedProfile = useAuthStore.getState().profile
+  const dest = league ? `/leagues/${league.id}` : isNewUser(updatedProfile) ? '/settings' : '/picks'
+  navigate(dest, { replace: true })
+}
+
 export default function PaymentPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -40,8 +57,12 @@ export default function PaymentPage() {
   const [promoCode, setPromoCode] = useState('')
   const [promoLoading, setPromoLoading] = useState(false)
   const [polling, setPolling] = useState(false)
+  const [product, setProduct] = useState(null)
+  const [restoringPurchase, setRestoringPurchase] = useState(false)
   const pollCount = useRef(0)
+  const pendingRecoveryAttempted = useRef(false)
 
+  const isNative = isIAPAvailable()
   const status = searchParams.get('status')
 
   // Redirect if already paid
@@ -61,7 +82,33 @@ export default function PaymentPage() {
     }
   }, [session, navigate])
 
-  // Poll after successful checkout redirect
+  // Native: fetch product details and recover pending transactions
+  useEffect(() => {
+    if (!isNative) return
+
+    getSeasonAccessProduct().then(setProduct)
+
+    // Recover pending transaction from a previous interrupted purchase
+    if (!pendingRecoveryAttempted.current) {
+      pendingRecoveryAttempted.current = true
+      const pendingJws = getPendingTransaction()
+      if (pendingJws) {
+        setLoading(true)
+        api.post('/payments/verify-apple-iap', { signedTransaction: pendingJws })
+          .then(() => {
+            clearPendingTransaction()
+            return navigateAfterPayment(fetchProfile, navigate)
+          })
+          .catch(() => {
+            // Verification failed — clear stale transaction
+            clearPendingTransaction()
+            setLoading(false)
+          })
+      }
+    }
+  }, [isNative, fetchProfile, navigate])
+
+  // Poll after successful Stripe checkout redirect
   useEffect(() => {
     if (status !== 'success' || polling) return
     setPolling(true)
@@ -73,11 +120,7 @@ export default function PaymentPage() {
         const { is_paid } = await api.get('/payments/status')
         if (is_paid) {
           clearInterval(interval)
-          await fetchProfile()
-          const league = await attemptPendingJoin()
-          const updatedProfile = useAuthStore.getState().profile
-          const dest = league ? `/leagues/${league.id}` : isNewUser(updatedProfile) ? '/settings' : '/picks'
-          navigate(dest, { replace: true })
+          await navigateAfterPayment(fetchProfile, navigate)
         }
       } catch {
         // ignore polling errors
@@ -92,6 +135,61 @@ export default function PaymentPage() {
     return () => clearInterval(interval)
   }, [status, polling, fetchProfile, navigate])
 
+  // Native Apple IAP purchase
+  const handleApplePurchase = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const transaction = await purchaseSeasonAccess()
+      if (!transaction?.jwsRepresentation) {
+        throw new Error('No transaction returned')
+      }
+
+      // Save for crash recovery before server call
+      savePendingTransaction(transaction.jwsRepresentation)
+
+      await api.post('/payments/verify-apple-iap', {
+        signedTransaction: transaction.jwsRepresentation,
+      })
+
+      clearPendingTransaction()
+      await navigateAfterPayment(fetchProfile, navigate)
+    } catch (err) {
+      // User cancelled — no error
+      const msg = (err.message || '').toLowerCase()
+      if (msg.includes('cancel') || msg.includes('user cancelled')) {
+        setLoading(false)
+        return
+      }
+      setError(err.message || 'Purchase failed. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  // Restore purchases (native only)
+  const handleRestore = async () => {
+    setRestoringPurchase(true)
+    setError(null)
+    try {
+      const transaction = await restoreSeasonAccess()
+      if (!transaction?.jwsRepresentation) {
+        setError('No previous purchase found.')
+        return
+      }
+
+      await api.post('/payments/verify-apple-iap', {
+        signedTransaction: transaction.jwsRepresentation,
+      })
+
+      await navigateAfterPayment(fetchProfile, navigate)
+    } catch (err) {
+      setError(err.message || 'Restore failed. Please try again.')
+    } finally {
+      setRestoringPurchase(false)
+    }
+  }
+
+  // Stripe web checkout
   const handleCheckout = async () => {
     setLoading(true)
     setError(null)
@@ -110,11 +208,7 @@ export default function PaymentPage() {
     setError(null)
     try {
       await api.post('/payments/redeem-promo', { code: promoCode })
-      await fetchProfile()
-      const league = await attemptPendingJoin()
-      const updatedProfile = useAuthStore.getState().profile
-      const dest = league ? `/leagues/${league.id}` : isNewUser(updatedProfile) ? '/settings' : '/picks'
-      navigate(dest, { replace: true })
+      await navigateAfterPayment(fetchProfile, navigate)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -133,6 +227,13 @@ export default function PaymentPage() {
       </div>
     )
   }
+
+  // Determine purchase button label
+  const purchaseLabel = isNative
+    ? product
+      ? `Unlock I Know Ball — ${product.priceString}`
+      : 'Purchase unavailable'
+    : 'Unlock I Know Ball — $1'
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -173,14 +274,25 @@ export default function PaymentPage() {
           ))}
         </div>
 
-        {/* Checkout button */}
+        {/* Purchase button */}
         <button
-          onClick={handleCheckout}
-          disabled={loading}
+          onClick={isNative ? handleApplePurchase : handleCheckout}
+          disabled={loading || (isNative && !product)}
           className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 text-lg mb-4"
         >
-          {loading ? 'Redirecting...' : 'Unlock I Know Ball — $1'}
+          {loading ? 'Processing...' : purchaseLabel}
         </button>
+
+        {/* Restore Purchases — native only */}
+        {isNative && (
+          <button
+            onClick={handleRestore}
+            disabled={restoringPurchase}
+            className="w-full text-text-secondary hover:text-text-primary text-sm transition-colors mb-2"
+          >
+            {restoringPurchase ? 'Restoring...' : 'Restore Purchase'}
+          </button>
+        )}
 
         {/* Promo code section — hidden on native iOS app */}
         {!Capacitor.isNativePlatform() && (

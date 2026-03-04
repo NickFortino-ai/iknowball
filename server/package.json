@@ -8,6 +8,7 @@
     "create-admin": "node src/scripts/createAdmin.js"
   },
   "dependencies": {
+    "@apple/app-store-server-library": "^2.0.0",
     "@supabase/supabase-js": "^2.49.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",

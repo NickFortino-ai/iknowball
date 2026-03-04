@@ -33,7 +33,7 @@ router.post(
 
       const { error } = await supabase
         .from('users')
-        .update({ is_paid: true })
+        .update({ is_paid: true, payment_source: 'stripe' })
         .eq('id', userId)
 
       if (error) {
