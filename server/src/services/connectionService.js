@@ -941,63 +941,54 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
 
   const PAGE_SIZE = 30
 
-  if (isAll) {
-    // "All of IKB" feed: score-based ranking
-    // Fetch comment counts for all items first (needed for scoring)
-    await attachCommentCounts(feed)
-
-    function getFeedScore(item) {
-      let score = 0
-      switch (item.type) {
-        case 'hot_take':
-          score = item.hot_take?.image_url ? 100 : 80
-          break
-        case 'record':
-          score = 70
-          break
-        case 'underdog_hit':
-        case 'parlay':
-          score = 65
-          break
-        case 'multiplier_hit':
-          score = 55
-          break
-        case 'bad_beat':
-          score = 50
-          break
-        case 'multiplier_miss':
-          score = 30
-          break
-        case 'pick':
-          score = 20
-          break
-        default:
-          score = 15
-      }
-      // Engagement boost: +5 per comment, capped at +25
-      score += Math.min((item.commentCount || 0) * 5, 25)
-      // Time decay: -1 point per hour old
-      const hoursAgo = (Date.now() - new Date(item.timestamp).getTime()) / (1000 * 60 * 60)
-      score -= hoursAgo
-      return score
+  // Score-based ranking for both feeds
+  function getFeedScore(item) {
+    let score = 0
+    switch (item.type) {
+      case 'hot_take':
+        score = item.hot_take?.image_url ? 100 : 80
+        break
+      case 'record':
+        score = 70
+        break
+      case 'underdog_hit':
+      case 'parlay':
+        score = 65
+        break
+      case 'multiplier_hit':
+        score = 55
+        break
+      case 'bad_beat':
+        score = 50
+        break
+      case 'multiplier_miss':
+        score = 30
+        break
+      case 'pick':
+        score = 20
+        break
+      default:
+        score = 15
     }
-
-    feed.sort((a, b) => {
-      const diff = getFeedScore(b) - getFeedScore(a)
-      if (diff !== 0) return diff
-      return new Date(b.timestamp) - new Date(a.timestamp)
-    })
-
-    const page = feed.slice(0, PAGE_SIZE)
-    return { items: page, nextCursor: null }
+    // Engagement boost: +5 per comment, capped at +25
+    score += Math.min((item.commentCount || 0) * 5, 25)
+    // Time decay: -1 point per hour old
+    const hoursAgo = (Date.now() - new Date(item.timestamp).getTime()) / (1000 * 60 * 60)
+    score -= hoursAgo
+    return score
   }
 
-  // Squad feed: chronological sort
-  feed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-  const page = feed.slice(0, PAGE_SIZE)
-  await attachCommentCounts(page)
+  // Fetch comment counts for all items (needed for scoring)
+  await attachCommentCounts(feed)
 
-  const nextCursor = page.length === PAGE_SIZE && feed.length > PAGE_SIZE
+  feed.sort((a, b) => {
+    const diff = getFeedScore(b) - getFeedScore(a)
+    if (diff !== 0) return diff
+    return new Date(b.timestamp) - new Date(a.timestamp)
+  })
+
+  const page = feed.slice(0, PAGE_SIZE)
+  const nextCursor = !isAll && page.length === PAGE_SIZE && feed.length > PAGE_SIZE
     ? page[page.length - 1].timestamp
     : null
 
