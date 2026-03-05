@@ -28,6 +28,17 @@ export default function SurvivorView({ league }) {
   // Use pick_week from board (advances past locked picks) with fallback to current_week
   const pickWeek = board?.pick_week || currentWeek
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
+  const currentPickTeam = board?.current_pick?.team_name
+
+  // If user hasn't picked for the current period, only show games within that period.
+  // Once they've picked, show all upcoming games so they can pick a day ahead.
+  const pickWeekGames = useMemo(() => {
+    if (!games?.length) return []
+    if (!board?.user_has_picked && pickWeek?.starts_at && pickWeek?.ends_at) {
+      return games.filter((g) => g.starts_at >= pickWeek.starts_at && g.starts_at <= pickWeek.ends_at)
+    }
+    return games
+  }, [games, pickWeek, board?.user_has_picked])
 
   async function handlePick(gameId, pickedTeam) {
     if (!pickWeek) return
@@ -106,14 +117,14 @@ export default function SurvivorView({ league }) {
       )}
 
       {/* Pick form */}
-      {showPickForm && (!games || games.length === 0) && (
+      {showPickForm && pickWeekGames.length === 0 && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
           <p className="text-sm text-text-muted text-center">No upcoming games available right now. Check back closer to game time.</p>
         </div>
       )}
-      {showPickForm && games?.length > 0 && (() => {
+      {showPickForm && pickWeekGames.length > 0 && (() => {
         // Group games by date
-        const grouped = games.reduce((acc, game) => {
+        const grouped = pickWeekGames.reduce((acc, game) => {
           const d = new Date(game.starts_at)
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
           if (!acc[key]) acc[key] = []
@@ -136,6 +147,8 @@ export default function SurvivorView({ league }) {
                       {grouped[dateKey].map((game) => {
                         const homeUsed = usedTeamSet.has(game.home_team)
                         const awayUsed = usedTeamSet.has(game.away_team)
+                        const awayPicked = currentPickTeam === game.away_team
+                        const homePicked = currentPickTeam === game.home_team
 
                         return (
                           <div key={game.id} className="flex items-center gap-2">
@@ -145,7 +158,9 @@ export default function SurvivorView({ league }) {
                               className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
                                 awayUsed
                                   ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
-                                  : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
+                                  : awayPicked
+                                    ? 'bg-accent/20 text-accent ring-2 ring-accent'
+                                    : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
                               {game.away_team}
@@ -160,7 +175,9 @@ export default function SurvivorView({ league }) {
                               className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
                                 homeUsed
                                   ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
-                                  : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
+                                  : homePicked
+                                    ? 'bg-accent/20 text-accent ring-2 ring-accent'
+                                    : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
                               {game.home_team}

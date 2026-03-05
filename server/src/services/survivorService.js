@@ -244,6 +244,11 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     ? pickWeekIndex - firstActiveIndex + 1
     : pickWeek?.week_number || null
 
+  // Find user's current pick for the pick week (for highlighting in form)
+  const userPickWeekPick = pickWeek && (picks || []).find(
+    (p) => p.user_id === requestingUserId && p.league_week_id === pickWeek.id
+  )
+
   return {
     members: (members || []).map((m) => ({
       ...m,
@@ -253,6 +258,7 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     user_has_picked: !!pickWeekUserHasPicked,
     display_period_number: displayPeriodNumber,
     pick_week: pickWeek,
+    current_pick: userPickWeekPick ? { team_name: userPickWeekPick.team_name, game_id: userPickWeekPick.game_id } : null,
   }
 }
 

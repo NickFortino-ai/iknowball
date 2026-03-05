@@ -190,6 +190,7 @@ export default function SettingsPage() {
       })
       await refetch()
       await fetchProfile()
+      localStorage.setItem('ikb_welcome_setup_profile', '1')
       toast('Settings saved!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to save', 'error')

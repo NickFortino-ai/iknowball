@@ -40,6 +40,7 @@ export function useSubmitPropPick() {
       api.post('/props/picks', { prop_id: propId, picked_side: pickedSide }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['propPicks'] })
+      localStorage.setItem('ikb_welcome_first_pick', '1')
     },
   })
 }

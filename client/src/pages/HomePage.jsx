@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import HeadlinesCard from '../components/home/HeadlinesCard'
@@ -14,6 +14,83 @@ const tiers = [
   { name: 'Hall of Famer', points: '1,000+', color: 'border-tier-hof text-tier-hof', desc: 'Legendary status' },
   { name: 'GOAT', points: '3,000+', color: 'border-tier-goat text-tier-goat', desc: 'Undisputed' },
 ]
+
+function WelcomeCard() {
+  const navigate = useNavigate()
+  const [checklist, setChecklist] = useState(() => ({
+    first_pick: localStorage.getItem('ikb_welcome_first_pick') === '1',
+    read_faq: localStorage.getItem('ikb_welcome_read_faq') === '1',
+    setup_profile: localStorage.getItem('ikb_welcome_setup_profile') === '1',
+  }))
+
+  // Re-check localStorage when returning to this page (e.g. after making a pick)
+  useEffect(() => {
+    setChecklist({
+      first_pick: localStorage.getItem('ikb_welcome_first_pick') === '1',
+      read_faq: localStorage.getItem('ikb_welcome_read_faq') === '1',
+      setup_profile: localStorage.getItem('ikb_welcome_setup_profile') === '1',
+    })
+  }, [])
+
+  const allDone = checklist.first_pick && checklist.read_faq && checklist.setup_profile
+  if (allDone) return null
+
+  const items = [
+    {
+      key: 'first_pick',
+      label: 'Make Your First Pick',
+      done: checklist.first_pick,
+      onClick: () => navigate('/picks'),
+    },
+    {
+      key: 'read_faq',
+      label: 'Read the FAQ',
+      done: checklist.read_faq,
+      onClick: () => {
+        localStorage.setItem('ikb_welcome_read_faq', '1')
+        setChecklist((prev) => ({ ...prev, read_faq: true }))
+        navigate('/faq')
+      },
+    },
+    {
+      key: 'setup_profile',
+      label: 'Set Up Your Profile',
+      done: checklist.setup_profile,
+      onClick: () => navigate('/settings'),
+    },
+  ]
+
+  return (
+    <div className="bg-bg-card rounded-2xl border border-border p-6 mb-8">
+      <h2 className="font-display text-2xl text-accent mb-2">Welcome to I KNOW BALL</h2>
+      <p className="text-text-secondary mb-4">You're in. Here's how to get started:</p>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <button
+            key={item.key}
+            onClick={item.onClick}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${
+              item.done
+                ? 'bg-correct/10 text-correct'
+                : 'bg-bg-card-hover hover:bg-accent/10 text-text-primary hover:text-accent'
+            }`}
+          >
+            {item.done ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <div className="w-5 h-5 rounded-full border-2 border-text-muted flex-shrink-0" />
+            )}
+            <span className={`font-semibold text-sm ${item.done ? 'line-through opacity-70' : ''}`}>
+              {item.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function HomePage() {
   const { isAuthenticated, profile } = useAuth()
@@ -51,23 +128,9 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Welcome Card — new users only (account < 7 days old) */}
+      {/* Welcome Card — new users only (account < 7 days old, not all tasks done) */}
       {isAuthenticated && profile?.created_at && (Date.now() - new Date(profile.created_at).getTime() < 7 * 24 * 60 * 60 * 1000) && (
-        <div className="bg-bg-card rounded-2xl border border-border p-6 mb-8">
-          <h2 className="font-display text-2xl text-accent mb-2">Welcome to I KNOW BALL</h2>
-          <p className="text-text-secondary mb-5">You're in. Here's how to get started:</p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link to="/picks" className="bg-accent hover:bg-accent-hover text-white font-semibold px-5 py-2.5 rounded-xl text-center transition-colors">
-              Make Your First Pick
-            </Link>
-            <Link to="/faq" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-5 py-2.5 rounded-xl text-center transition-colors">
-              Read the FAQ
-            </Link>
-            <Link to="/settings" className="border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-5 py-2.5 rounded-xl text-center transition-colors">
-              Set Up Your Profile
-            </Link>
-          </div>
-        </div>
+        <WelcomeCard />
       )}
 
       {/* Logged-in: Power Rankings + Featured Prop */}

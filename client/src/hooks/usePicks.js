@@ -49,6 +49,7 @@ export function useSubmitPick() {
       api.post('/picks', { game_id: gameId, picked_team: pickedTeam }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['picks'] })
+      localStorage.setItem('ikb_welcome_first_pick', '1')
     },
   })
 }
