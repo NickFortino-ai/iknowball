@@ -11,17 +11,18 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
   const { parlay } = item
   const won = parlay.is_correct
   const isDramatic = won && parlay.leg_count >= 4
+  const isDogParlay = parlay.isDogParlay
 
   return (
     <FeedCardWrapper
       item={item}
-      borderColor={won ? 'green' : 'red'}
+      borderColor={isDogParlay && won ? 'gold' : won ? 'green' : 'red'}
       targetType="parlay"
       targetId={parlay.id}
       reactions={reactions}
       onUserTap={onUserTap}
       commentCount={item.commentCount}
-      cardClassName={`${won ? 'feed-victory-entrance' : ''} ${isDramatic ? 'parlay-win-glow' : ''}`.trim()}
+      cardClassName={`${won ? 'feed-victory-entrance' : ''} ${isDramatic ? 'parlay-win-glow' : ''} ${isDogParlay && won ? 'underdog-gold-glow' : ''}`.trim()}
     >
       {/* Collapsed view */}
       <button
@@ -30,7 +31,7 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
       >
         <div className="flex items-center gap-2">
           <span className={`font-semibold ${isDramatic ? 'text-base' : 'text-sm'}`}>
-            {parlay.leg_count}-Leg Parlay
+            {isDogParlay ? `${'\uD83D\uDC36'} Dog Parlay` : `${parlay.leg_count}-Leg Parlay`}
           </span>
           <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
             won ? 'bg-correct/20 text-correct' : 'bg-incorrect/20 text-incorrect'

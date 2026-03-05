@@ -539,8 +539,13 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       away_team: leg.games?.away_team,
     }))
 
+    // 2-leg parlays only featured if all legs are underdogs
+    const allLegsUnderdog = (parlay.parlay_legs || []).every(l => l.odds_at_submission >= 200)
+    if (parlay.leg_count === 2 && !allLegsUnderdog) continue
+
     if (parlay.is_correct) {
       // Won parlay
+      const isDogParlay = parlay.leg_count === 2 && allLegsUnderdog
       feed.push({
         type: 'parlay',
         id: parlay.id,
@@ -556,6 +561,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
           points_earned: parlay.points_earned,
           risk_points: parlay.risk_points,
           reward_points: parlay.reward_points,
+          isDogParlay,
           legs,
         },
       })
@@ -1133,7 +1139,15 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
             bestParlay = { username: item.username, legs: item.parlay.leg_count, points: item.parlay.points_earned }
           }
         } else if (item.type === 'streak') {
-          streakItems.push({ username: item.username, length: item.streak.streak_length, sport: item.streak.sport_name })
+          // Deduplicate: keep only the highest streak per user+sport
+          const dupeIdx = streakItems.findIndex(s => s.username === item.username && s.sport === item.streak.sport_name)
+          if (dupeIdx >= 0) {
+            if (item.streak.streak_length > streakItems[dupeIdx].length) {
+              streakItems[dupeIdx].length = item.streak.streak_length
+            }
+          } else {
+            streakItems.push({ username: item.username, length: item.streak.streak_length, sport: item.streak.sport_name })
+          }
         } else if (item.type === 'record') {
           recordItems.push({ username: item.username, record: item.record.display_name, value: item.record.new_value })
         }
