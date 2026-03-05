@@ -228,8 +228,8 @@ export default function SurvivorView({ league }) {
             </div>
             {/* Pick history */}
             {m.picks?.length > 0 && (
-              <div className="flex gap-1 flex-wrap">
-                {m.picks.map((p) => {
+              <div className="flex flex-row-reverse gap-1 overflow-x-auto scrollbar-hide">
+                {[...m.picks].reverse().map((p) => {
                   const isLocked = p.team_name === 'Locked'
                   const isPostElimination = !m.is_alive && m.eliminated_week != null && p.league_weeks?.week_number > m.eliminated_week
                   const chipStyle = isLocked
