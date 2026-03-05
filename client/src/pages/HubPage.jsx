@@ -7,6 +7,7 @@ import {
   useSendConnectionRequest,
   useAcceptConnectionRequest,
   useDeclineConnectionRequest,
+  useRemoveConnection,
 } from '../hooks/useConnections'
 import { useSearchUsers } from '../hooks/useInvitations'
 import { getTier } from '../lib/scoring'
@@ -50,6 +51,7 @@ export default function HubPage() {
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [squadExpanded, setSquadExpanded] = useState(false)
   const [feedScope, setFeedScope] = useState('squad')
+  const [filterMode, setFilterMode] = useState(false)
   const hasManuallyToggled = useRef(false)
 
   const { data: connections, isLoading: connectionsLoading } = useConnections()
@@ -58,6 +60,7 @@ export default function HubPage() {
   const sendRequest = useSendConnectionRequest()
   const acceptRequest = useAcceptConnectionRequest()
   const declineRequest = useDeclineConnectionRequest()
+  const removeConnection = useRemoveConnection()
 
   const connectedUserIds = new Set((connections || []).map((c) => c.user_id))
 
@@ -99,6 +102,20 @@ export default function HubPage() {
     } catch (err) {
       toast(err.message || 'Failed to decline', 'error')
     }
+  }
+
+  async function handleRemoveConnection(conn) {
+    try {
+      await removeConnection.mutateAsync(conn.connection_id)
+      toast(`Removed @${conn.username} from squad`, 'info')
+    } catch (err) {
+      toast(err.message || 'Failed to remove', 'error')
+    }
+  }
+
+  function toggleFilterMode() {
+    if (!filterMode) setSquadExpanded(true)
+    setFilterMode(!filterMode)
   }
 
   if (profileLoading || connectionsLoading) {
@@ -215,7 +232,12 @@ export default function HubPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <button
-            onClick={() => connections?.length && setSquadExpanded(!squadExpanded)}
+            onClick={() => {
+              if (connections?.length) {
+                if (squadExpanded && filterMode) setFilterMode(false)
+                setSquadExpanded(!squadExpanded)
+              }
+            }}
             className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider"
           >
             My Squad {connections?.length > 0 && `(${connections.length})`}
@@ -235,7 +257,17 @@ export default function HubPage() {
               </svg>
             )}
           </button>
-          <InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast. The 🔥 you see in this list indicates an active win streak." />
+          <div className="flex items-center gap-2">
+            {squadExpanded && connections?.length > 0 && (
+              <button
+                onClick={toggleFilterMode}
+                className={`text-xs transition-colors ${filterMode ? 'text-accent font-semibold' : 'text-text-muted hover:text-accent'}`}
+              >
+                {filterMode ? 'Done' : 'Filter'}
+              </button>
+            )}
+            <InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast. The 🔥 you see in this list indicates an active win streak." />
+          </div>
         </div>
         {!connections?.length ? (
           <div className="bg-bg-card border border-border rounded-xl px-4 py-8 text-center text-text-muted text-sm">
@@ -246,23 +278,39 @@ export default function HubPage() {
             {[...connections].sort((a, b) => (b.total_points || 0) - (a.total_points || 0)).map((conn) => (
               <div
                 key={conn.connection_id}
-                onClick={() => setSelectedUserId(conn.user_id)}
-                className="px-4 py-3 flex items-center gap-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-bg-card-hover transition-colors"
+                onClick={() => !filterMode && setSelectedUserId(conn.user_id)}
+                className={`px-4 py-3 flex items-center gap-3 border-b border-border last:border-b-0 transition-colors ${filterMode ? '' : 'cursor-pointer hover:bg-bg-card-hover'}`}
               >
                 <Avatar user={conn} size="xl" />
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm truncate">{conn.display_name || conn.username}</div>
                   <div className="text-xs text-text-muted">@{conn.username}</div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {conn.current_streak > 0 && (
-                    <span className="text-xs text-text-muted flex items-center gap-0.5">
-                      <span className="text-orange-400">{'\uD83D\uDD25'}</span>
-                      {conn.current_streak}
-                    </span>
-                  )}
-                  <TierBadge tier={conn.tier} size="xs" />
-                </div>
+                {filterMode ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleRemoveConnection(conn)
+                    }}
+                    disabled={removeConnection.isPending}
+                    className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {conn.current_streak > 0 && (
+                      <span className="text-xs text-text-muted flex items-center gap-0.5">
+                        <span className="text-orange-400">{'\uD83D\uDD25'}</span>
+                        {conn.current_streak}
+                      </span>
+                    )}
+                    <TierBadge tier={conn.tier} size="xs" />
+                  </div>
+                )}
               </div>
             ))}
           </div>

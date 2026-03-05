@@ -73,6 +73,18 @@ export function useDeclineConnectionRequest() {
   })
 }
 
+export function useRemoveConnection() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (connectionId) => api.delete(`/connections/${connectionId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connections'] })
+      queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
+    },
+  })
+}
+
 export function useSharePickToSquad() {
   const queryClient = useQueryClient()
 

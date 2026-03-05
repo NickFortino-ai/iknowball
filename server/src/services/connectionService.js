@@ -388,7 +388,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     isAll ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('pick_shares')
-      .select('id, pick_id, user_id, created_at, picks(picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, games(home_team, away_team, sports(name)))')
+      .select('id, pick_id, user_id, created_at, picks(game_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, games(home_team, away_team, sports(name)))')
       .in('user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
@@ -525,6 +525,9 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     })
   }
 
+  // Track pick IDs from Source 1 to deduplicate against Source 6
+  const source1PickIds = new Set((notablePicks.data || []).map(p => p.id))
+
   // Process settled parlays — keep wins and bad beats only
   for (const parlay of settledParlays.data || []) {
     const user = userMap[parlay.user_id]
@@ -654,6 +657,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     const pick = share.picks
     // Skip pending picks (handled by sweat cards) and recently settled (handled by sweat_result)
     if (pick.status !== 'settled') continue
+    // Skip picks already in feed from Source 1 (notable picks)
+    if (source1PickIds.has(share.pick_id)) continue
 
     feed.push({
       type: 'pick',
@@ -661,6 +666,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       userId: share.user_id,
       ...buildUserFields(user),
       timestamp: share.created_at,
+      game_id: pick.game_id,
       current_streak: streakMap[share.user_id] || 0,
       pick: {
         id: share.pick_id,
@@ -1321,6 +1327,39 @@ export async function getConnectionStatus(userId, otherUserId) {
   // Pending — distinguish who sent the request
   if (data.requested_by === userId) return { status: 'pending_sent' }
   return { status: 'pending_received' }
+}
+
+export async function removeConnection(connectionId, userId) {
+  const { data: connection } = await supabase
+    .from('connections')
+    .select('id, user_id_1, user_id_2, status')
+    .eq('id', connectionId)
+    .single()
+
+  if (!connection) {
+    const err = new Error('Connection not found')
+    err.status = 404
+    throw err
+  }
+
+  if (connection.user_id_1 !== userId && connection.user_id_2 !== userId) {
+    const err = new Error('Connection not found')
+    err.status = 404
+    throw err
+  }
+
+  if (connection.status !== 'connected') {
+    const err = new Error('Can only remove active connections')
+    err.status = 400
+    throw err
+  }
+
+  const { error } = await supabase
+    .from('connections')
+    .delete()
+    .eq('id', connectionId)
+
+  if (error) throw error
 }
 
 export async function sharePickToSquad(userId, pickId) {
