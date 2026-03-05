@@ -13,6 +13,7 @@ import BadBeatFeedCard from './BadBeatFeedCard'
 import HeadToHeadFeedCard from './HeadToHeadFeedCard'
 import HotTakeFeedCard from './HotTakeFeedCard'
 import HotTakeReminderFeedCard from './HotTakeReminderFeedCard'
+import GroupedPickFeedCard from './GroupedPickFeedCard'
 import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
 import FeedSkeleton from './FeedSkeleton'
@@ -37,7 +38,9 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
     if (!activity?.length) return []
     const targets = []
     for (const item of activity) {
-      if (item.type === 'pick') targets.push({ target_type: 'pick', target_id: item.pick.id })
+      if (item.grouped) {
+        targets.push({ target_type: 'pick', target_id: item.pick.id })
+      } else if (item.type === 'pick') targets.push({ target_type: 'pick', target_id: item.pick.id })
       else if (item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
         targets.push({ target_type: 'pick', target_id: item.pick.id })
       }
@@ -140,6 +143,16 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
 }
 
 function FeedCard({ item, getReactions, onUserTap }) {
+  if (item.grouped) {
+    return (
+      <GroupedPickFeedCard
+        item={item}
+        reactions={getReactions('pick', item.pick.id)}
+        onUserTap={onUserTap}
+      />
+    )
+  }
+
   switch (item.type) {
     case 'pick':
       return (

@@ -479,6 +479,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       userId: pick.user_id,
       ...buildUserFields(user),
       timestamp: pick.updated_at,
+      game_id: pick.game_id,
       pick: {
         id: pick.id,
         picked_team: pick.picked_team,
@@ -886,6 +887,51 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     })
   }
 
+  // Group duplicate picks: merge items where multiple users picked the same side of the same game
+  const GROUPABLE_TYPES = new Set(['underdog_hit', 'multiplier_hit', 'multiplier_miss', 'pick'])
+  const groupBuckets = {}
+  const ungrouped = []
+
+  for (const item of feed) {
+    if (GROUPABLE_TYPES.has(item.type) && item.game_id && item.pick) {
+      const key = `${item.type}-${item.game_id}-${item.pick.picked_team}`
+      if (!groupBuckets[key]) groupBuckets[key] = []
+      groupBuckets[key].push(item)
+    } else {
+      ungrouped.push(item)
+    }
+  }
+
+  // Replace feed contents: grouped items become a single merged item, singles stay as-is
+  feed.length = 0
+  feed.push(...ungrouped)
+
+  for (const items of Object.values(groupBuckets)) {
+    if (items.length < 2) {
+      feed.push(items[0])
+      continue
+    }
+
+    // Sort by most recent first
+    items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    const first = items[0]
+
+    feed.push({
+      ...first,
+      id: `grouped-${first.type}-${first.game_id}-${first.pick.picked_team}`,
+      grouped: true,
+      users: items.map((i) => ({
+        userId: i.userId,
+        username: i.username,
+        display_name: i.display_name,
+        avatar_url: i.avatar_url,
+        avatar_emoji: i.avatar_emoji,
+      })),
+      pickIds: items.map((i) => i.pick.id),
+      timestamp: first.timestamp, // most recent
+    })
+  }
+
   // Helper: get comment target key for a feed item
   function getCommentKey(item) {
     if (item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
@@ -969,6 +1015,10 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
         break
       default:
         score = 15
+    }
+    // Grouped items get a social proof boost (+10 per extra user, capped at +30)
+    if (item.grouped && item.users?.length > 1) {
+      score += Math.min((item.users.length - 1) * 10, 30)
     }
     // Engagement boost: +5 per comment, capped at +25
     score += Math.min((item.commentCount || 0) * 5, 25)
