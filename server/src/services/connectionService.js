@@ -435,7 +435,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     isAll ? Promise.resolve({ data: [] }) :
     supabase
       .from('pick_shares')
-      .select('id, pick_id, user_id, created_at, picks(id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(id, home_team, away_team, sports(name)))')
+      .select('id, pick_id, user_id, created_at, picks(id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(id, home_team, away_team, starts_at, sports(name)))')
       .in('user_id', connectedIds)
       .gte('created_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false })
@@ -1028,6 +1028,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
             game: {
               home_team: game.home_team,
               away_team: game.away_team,
+              starts_at: game.starts_at,
               sport_name: game.sports?.name,
             },
           })

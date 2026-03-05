@@ -4,8 +4,8 @@ function formatOdds(odds) {
   return odds >= 0 ? `+${odds}` : `${odds}`
 }
 
-function timeGap(sharedAt, settledAt) {
-  const ms = new Date(settledAt) - new Date(sharedAt)
+function timeBeforeGame(sharedAt, startsAt) {
+  const ms = new Date(startsAt) - new Date(sharedAt)
   const hours = Math.floor(ms / (1000 * 60 * 60))
   if (hours < 1) return 'less than an hour'
   if (hours === 1) return '1 hour'
@@ -13,7 +13,7 @@ function timeGap(sharedAt, settledAt) {
 }
 
 export default function CalledShotFeedCard({ item, reactions, onUserTap }) {
-  const gap = timeGap(item.shared_at, item.settled_at)
+  const gap = item.game?.starts_at ? timeBeforeGame(item.shared_at, item.game.starts_at) : null
 
   return (
     <FeedCardWrapper
@@ -29,9 +29,11 @@ export default function CalledShotFeedCard({ item, reactions, onUserTap }) {
       {/* Banner */}
       <div className="mb-2 rounded-lg px-3 py-3 text-center border bg-yellow-500/15 border-yellow-500/40">
         <div className="font-bold text-yellow-400 text-lg">CALLED IT</div>
-        <div className="text-xs text-yellow-400/70 mt-0.5">
-          Shared this pick {gap} ago
-        </div>
+        {gap && (
+          <div className="text-xs text-yellow-400/70 mt-0.5">
+            Shared this {gap} before gametime
+          </div>
+        )}
       </div>
 
       {/* Sport tag */}
