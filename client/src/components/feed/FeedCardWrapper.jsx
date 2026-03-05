@@ -23,6 +23,7 @@ export default function FeedCardWrapper({
   commentCount,
   onUserTap,
   cardClassName = '',
+  streakCount,
   children,
 }) {
   const { session } = useAuth()
@@ -46,7 +47,12 @@ export default function FeedCardWrapper({
           >
             {item.display_name || item.username}
           </button>
-          <span className="text-xs text-text-muted">@{item.username}</span>
+          <span className="text-xs text-text-muted">
+            @{item.username}
+            {streakCount >= 3 && (
+              <span className="ml-1.5 inline-flex items-center text-[10px] font-bold bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded-full">{'\uD83D\uDD25'}{streakCount}</span>
+            )}
+          </span>
         </div>
         <span className="text-xs text-text-muted flex-shrink-0">{timeAgo(item.timestamp)}</span>
         {!isOwnContent && targetType && targetId && (

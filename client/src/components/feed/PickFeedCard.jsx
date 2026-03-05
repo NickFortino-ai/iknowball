@@ -18,6 +18,7 @@ export default function PickFeedCard({ item, reactions, onUserTap }) {
       reactions={reactions}
       onUserTap={onUserTap}
       commentCount={item.commentCount}
+      streakCount={item.current_streak}
     >
       {/* Sport tag */}
       {game.sport_name && (

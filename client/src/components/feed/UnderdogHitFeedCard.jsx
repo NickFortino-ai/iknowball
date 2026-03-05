@@ -14,9 +14,7 @@ export default function UnderdogHitFeedCard({ item, reactions, onUserTap }) {
   const { pick, game } = item
   const tier = getOddsTier(pick.odds_at_pick)
 
-  const cardClass = tier === 'marquee'
-    ? 'underdog-gold-glow'
-    : ''
+  const cardClass = `feed-victory-entrance ${tier === 'marquee' ? 'underdog-gold-glow' : ''}`
 
   return (
     <FeedCardWrapper
@@ -27,6 +25,7 @@ export default function UnderdogHitFeedCard({ item, reactions, onUserTap }) {
       reactions={reactions}
       onUserTap={onUserTap}
       commentCount={item.commentCount}
+      streakCount={item.current_streak}
       cardClassName={cardClass}
     >
       {/* Banner */}

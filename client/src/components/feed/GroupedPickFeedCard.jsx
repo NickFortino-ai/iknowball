@@ -45,8 +45,12 @@ function getBorderColor(type, pick) {
 }
 
 function getCardClassName(type, pick) {
-  if (type === 'underdog_hit' && getOddsTier(pick.odds_at_pick) === 'marquee') return 'underdog-gold-glow'
-  if (type === 'multiplier_hit') return 'multiplier-green-glow'
+  if (type === 'underdog_hit') {
+    const tier = getOddsTier(pick.odds_at_pick)
+    return `feed-victory-entrance ${tier === 'marquee' ? 'underdog-gold-glow' : ''}`
+  }
+  if (type === 'multiplier_hit') return 'feed-victory-entrance multiplier-green-glow'
+  if (type === 'pick' && pick.is_correct) return 'feed-victory-entrance'
   return ''
 }
 
@@ -94,6 +98,9 @@ export default function GroupedPickFeedCard({ item, reactions, onUserTap }) {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium text-text-primary leading-tight">
             {getDescriptiveText(type, users.length)}
+            {item.current_streak >= 3 && (
+              <span className="ml-1.5 inline-flex items-center text-[10px] font-bold bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded-full">{'\uD83D\uDD25'}{item.current_streak}</span>
+            )}
           </div>
         </div>
         <span className="text-xs text-text-muted flex-shrink-0">{timeAgo(item.timestamp)}</span>

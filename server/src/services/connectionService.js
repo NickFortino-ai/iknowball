@@ -317,6 +317,20 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     }
   }
 
+  // Build streak map for all users in scope
+  const streakMap = {}
+  if (!isAll) {
+    const { data: streakStats } = await supabase
+      .from('user_sport_stats')
+      .select('user_id, current_streak')
+      .in('user_id', allIds)
+    for (const s of streakStats || []) {
+      if (!streakMap[s.user_id] || s.current_streak > streakMap[s.user_id]) {
+        streakMap[s.user_id] = s.current_streak
+      }
+    }
+  }
+
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
 
   // Helper to conditionally add cursor filter
@@ -330,7 +344,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
   }
 
   // Query sources in parallel (some skipped for 'all' scope)
-  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders] = await Promise.all([
+  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders, sweatShares] = await Promise.all([
     // Source 1: Notable picks — settled where (correct AND odds >= 200) OR (multiplier >= 3)
     applyBefore(filterByUser(supabase
       .from('picks')
@@ -416,6 +430,16 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .in('reminder_user_id', allIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
+
+    // Source 11: All pick shares for sweat cards (squad only)
+    isAll ? Promise.resolve({ data: [] }) :
+    supabase
+      .from('pick_shares')
+      .select('id, pick_id, user_id, created_at, picks(id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(id, home_team, away_team, sports(name)))')
+      .in('user_id', connectedIds)
+      .gte('created_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(50),
   ])
 
   // For 'all' scope, batch-fetch user data from query results
@@ -480,6 +504,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       ...buildUserFields(user),
       timestamp: pick.updated_at,
       game_id: pick.game_id,
+      current_streak: streakMap[pick.user_id] || 0,
       pick: {
         id: pick.id,
         picked_team: pick.picked_team,
@@ -621,12 +646,16 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     const user = userMap[share.user_id]
     if (!user || !share.picks) continue
     const pick = share.picks
+    // Skip pending picks (handled by sweat cards) and recently settled (handled by sweat_result)
+    if (pick.status !== 'settled') continue
+
     feed.push({
       type: 'pick',
       id: share.pick_id,
       userId: share.user_id,
       ...buildUserFields(user),
       timestamp: share.created_at,
+      current_streak: streakMap[share.user_id] || 0,
       pick: {
         id: share.pick_id,
         picked_team: pick.picked_team,
@@ -887,6 +916,143 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     })
   }
 
+  // Process sweat cards from Source 11 (squad only)
+  const sweatShareData = sweatShares?.data || []
+  if (sweatShareData.length > 0) {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    // Track settled pick IDs from sweat_result to dedup from Source 6
+    const sweatResultPickIds = new Set()
+
+    // Group by game_id
+    const byGame = {}
+    for (const share of sweatShareData) {
+      const pick = share.picks
+      if (!pick || !pick.games) continue
+      const gameId = pick.game_id || pick.games?.id
+      if (!gameId) continue
+      if (!byGame[gameId]) byGame[gameId] = { game: pick.games, shares: [] }
+      byGame[gameId].shares.push({ share, pick })
+    }
+
+    for (const [gameId, { game, shares }] of Object.entries(byGame)) {
+      const pending = shares.filter(s => s.pick.status !== 'settled')
+      const settled = shares.filter(s => s.pick.status === 'settled' && new Date(s.pick.updated_at) >= twentyFourHoursAgo)
+
+      // Sweat card: pending/locked shared picks
+      if (pending.length > 0) {
+        const sweaters = pending.map(s => {
+          const user = userMap[s.share.user_id]
+          if (!user) return null
+          return {
+            userId: s.share.user_id,
+            ...buildUserFields(user),
+            picked_team: s.pick.picked_team,
+            picked_team_name: buildPickedTeamName(s.pick.picked_team, game),
+          }
+        }).filter(Boolean)
+
+        if (sweaters.length > 0) {
+          feed.push({
+            type: 'sweat',
+            id: `sweat-${gameId}`,
+            userId: sweaters[0].userId,
+            username: sweaters[0].username,
+            display_name: sweaters[0].display_name,
+            avatar_url: sweaters[0].avatar_url,
+            avatar_emoji: sweaters[0].avatar_emoji,
+            timestamp: pending[0].share.created_at,
+            game: {
+              home_team: game.home_team,
+              away_team: game.away_team,
+              sport_name: game.sports?.name,
+            },
+            sweaters,
+          })
+        }
+      }
+
+      // Sweat result card: recently settled shared picks
+      if (settled.length > 0) {
+        const winners = []
+        const losers = []
+        for (const s of settled) {
+          const user = userMap[s.share.user_id]
+          if (!user) continue
+          sweatResultPickIds.add(s.pick.id)
+          const entry = {
+            userId: s.share.user_id,
+            ...buildUserFields(user),
+            picked_team_name: buildPickedTeamName(s.pick.picked_team, game),
+            points_earned: s.pick.points_earned,
+            odds_at_pick: s.pick.odds_at_pick,
+            pick_id: s.pick.id,
+            shared_at: s.share.created_at,
+            settled_at: s.pick.updated_at,
+          }
+          if (s.pick.is_correct) winners.push(entry)
+          else losers.push(entry)
+        }
+
+        // Extract called shots: winners with odds >= 200 get their own card
+        const calledShots = winners.filter(w => w.odds_at_pick >= 200)
+        const regularWinners = winners.filter(w => w.odds_at_pick < 200)
+
+        for (const cs of calledShots) {
+          feed.push({
+            type: 'called_shot',
+            id: `called-shot-${cs.pick_id}`,
+            userId: cs.userId,
+            username: cs.username,
+            display_name: cs.display_name,
+            avatar_url: cs.avatar_url,
+            avatar_emoji: cs.avatar_emoji,
+            timestamp: cs.settled_at,
+            pick_id: cs.pick_id,
+            picked_team_name: cs.picked_team_name,
+            odds_at_pick: cs.odds_at_pick,
+            points_earned: cs.points_earned,
+            shared_at: cs.shared_at,
+            settled_at: cs.settled_at,
+            game: {
+              home_team: game.home_team,
+              away_team: game.away_team,
+              sport_name: game.sports?.name,
+            },
+          })
+        }
+
+        if (regularWinners.length > 0 || losers.length > 0) {
+          feed.push({
+            type: 'sweat_result',
+            id: `sweat-result-${gameId}`,
+            userId: (regularWinners[0] || losers[0]).userId,
+            username: (regularWinners[0] || losers[0]).username,
+            display_name: (regularWinners[0] || losers[0]).display_name,
+            avatar_url: (regularWinners[0] || losers[0]).avatar_url,
+            avatar_emoji: (regularWinners[0] || losers[0]).avatar_emoji,
+            timestamp: settled[0].pick.updated_at,
+            game: {
+              home_team: game.home_team,
+              away_team: game.away_team,
+              sport_name: game.sports?.name,
+            },
+            winners: regularWinners,
+            losers,
+          })
+        }
+      }
+    }
+
+    // Remove pick share items that are now covered by sweat_result cards
+    if (sweatResultPickIds.size > 0) {
+      for (let i = feed.length - 1; i >= 0; i--) {
+        if (feed[i].type === 'pick' && sweatResultPickIds.has(feed[i].pick?.id)) {
+          feed.splice(i, 1)
+        }
+      }
+    }
+  }
+
   // Group duplicate picks: merge items where multiple users picked the same side of the same game
   const GROUPABLE_TYPES = new Set(['underdog_hit', 'multiplier_hit', 'multiplier_miss', 'pick'])
   const groupBuckets = {}
@@ -920,6 +1086,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       ...first,
       id: `grouped-${first.type}-${first.game_id}-${first.pick.picked_team}`,
       grouped: true,
+      current_streak: Math.max(...items.map(i => i.current_streak || 0)),
       users: items.map((i) => ({
         userId: i.userId,
         username: i.username,
@@ -930,6 +1097,69 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       pickIds: items.map((i) => i.pick.id),
       timestamp: first.timestamp, // most recent
     })
+  }
+
+  // Daily digest: summarize yesterday's squad activity (first page, squad scope only)
+  if (!before && !isAll) {
+    const now = new Date()
+    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+    const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterdayISO = yesterdayStart.toISOString()
+    const todayISO = yesterdayEnd.toISOString()
+
+    const yesterdayItems = feed.filter(item => {
+      const ts = new Date(item.timestamp)
+      return ts >= yesterdayStart && ts < yesterdayEnd
+    })
+
+    if (yesterdayItems.length >= 3) {
+      let totalPicks = 0, wins = 0, losses = 0
+      let biggestUnderdog = null, bestParlay = null
+      const streakItems = []
+      const recordItems = []
+
+      for (const item of yesterdayItems) {
+        if (item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
+          totalPicks++
+          if (item.pick?.is_correct) wins++
+          else losses++
+          if (item.type === 'underdog_hit' && (!biggestUnderdog || item.pick.odds_at_pick > biggestUnderdog.odds)) {
+            biggestUnderdog = { username: item.username, team: item.pick.picked_team_name, odds: item.pick.odds_at_pick, points: item.pick.points_earned }
+          }
+        } else if (item.type === 'parlay' && item.parlay?.is_correct) {
+          totalPicks++
+          wins++
+          if (!bestParlay || item.parlay.points_earned > bestParlay.points) {
+            bestParlay = { username: item.username, legs: item.parlay.leg_count, points: item.parlay.points_earned }
+          }
+        } else if (item.type === 'streak') {
+          streakItems.push({ username: item.username, length: item.streak.streak_length, sport: item.streak.sport_name })
+        } else if (item.type === 'record') {
+          recordItems.push({ username: item.username, record: item.record.display_name, value: item.record.new_value })
+        }
+      }
+
+      if (totalPicks > 0) {
+        feed.push({
+          type: 'daily_digest',
+          id: `digest-${yesterdayISO}`,
+          userId: null,
+          timestamp: now.toISOString(),
+          stats: {
+            totalPicks,
+            wins,
+            losses,
+            winRate: Math.round((wins / totalPicks) * 100),
+          },
+          highlights: {
+            biggestUnderdog,
+            bestParlay,
+            streaks: streakItems.slice(0, 3),
+            records: recordItems.slice(0, 3),
+          },
+        })
+      }
+    }
   }
 
   // Helper: get comment target key for a feed item
@@ -944,6 +1174,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       return { key: `record_history-${item.record.id}`, target_type: 'record_history', target_id: item.record.id }
     } else if (item.type === 'hot_take') {
       return { key: `hot_take-${item.hot_take.id}`, target_type: 'hot_take', target_id: item.hot_take.id }
+    } else if (item.type === 'called_shot' && item.pick_id) {
+      return { key: `pick-${item.pick_id}`, target_type: 'pick', target_id: item.pick_id }
     } else if (item.type === 'head_to_head' && item.pickId) {
       return { key: `head_to_head-${item.pickId}`, target_type: 'head_to_head', target_id: item.pickId }
     }
@@ -991,8 +1223,14 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
   function getFeedScore(item) {
     let score = 0
     switch (item.type) {
+      case 'daily_digest':
+        score = 200
+        break
       case 'hot_take':
         score = item.hot_take?.image_url ? 100 : 80
+        break
+      case 'called_shot':
+        score = 75
         break
       case 'record':
         score = 70
@@ -1006,6 +1244,12 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
         break
       case 'bad_beat':
         score = 50
+        break
+      case 'sweat_result':
+        score = 60
+        break
+      case 'sweat':
+        score = 45
         break
       case 'multiplier_miss':
         score = 30

@@ -21,7 +21,7 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
       reactions={reactions}
       onUserTap={onUserTap}
       commentCount={item.commentCount}
-      cardClassName={isDramatic ? 'parlay-win-glow' : ''}
+      cardClassName={`${won ? 'feed-victory-entrance' : ''} ${isDramatic ? 'parlay-win-glow' : ''}`.trim()}
     >
       {/* Collapsed view */}
       <button

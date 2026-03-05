@@ -14,6 +14,10 @@ import HeadToHeadFeedCard from './HeadToHeadFeedCard'
 import HotTakeFeedCard from './HotTakeFeedCard'
 import HotTakeReminderFeedCard from './HotTakeReminderFeedCard'
 import GroupedPickFeedCard from './GroupedPickFeedCard'
+import DailyDigestFeedCard from './DailyDigestFeedCard'
+import SweatFeedCard from './SweatFeedCard'
+import SweatResultFeedCard from './SweatResultFeedCard'
+import CalledShotFeedCard from './CalledShotFeedCard'
 import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
 import FeedSkeleton from './FeedSkeleton'
@@ -44,6 +48,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
       else if (item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
         targets.push({ target_type: 'pick', target_id: item.pick.id })
       }
+      else if (item.type === 'called_shot') targets.push({ target_type: 'pick', target_id: item.pick_id })
       else if (item.type === 'parlay') targets.push({ target_type: 'parlay', target_id: item.parlay.id })
       else if (item.type === 'bad_beat') targets.push({ target_type: 'parlay', target_id: item.parlay.id })
       else if (item.type === 'streak') targets.push({ target_type: 'streak_event', target_id: item.streak.id })
@@ -231,6 +236,20 @@ function FeedCard({ item, getReactions, onUserTap }) {
       )
     case 'hot_take_reminder':
       return <HotTakeReminderFeedCard item={item} onUserTap={onUserTap} />
+    case 'daily_digest':
+      return <DailyDigestFeedCard item={item} />
+    case 'sweat':
+      return <SweatFeedCard item={item} onUserTap={onUserTap} />
+    case 'sweat_result':
+      return <SweatResultFeedCard item={item} onUserTap={onUserTap} />
+    case 'called_shot':
+      return (
+        <CalledShotFeedCard
+          item={item}
+          reactions={getReactions('pick', item.pick_id)}
+          onUserTap={onUserTap}
+        />
+      )
     case 'comment':
       return <CommentFeedCard item={item} onUserTap={onUserTap} />
     default:

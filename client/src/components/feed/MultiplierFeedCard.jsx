@@ -17,7 +17,8 @@ export default function MultiplierFeedCard({ item, reactions, onUserTap }) {
       reactions={reactions}
       onUserTap={onUserTap}
       commentCount={item.commentCount}
-      cardClassName={isHit ? 'multiplier-green-glow' : ''}
+      streakCount={item.current_streak}
+      cardClassName={`${isHit ? 'feed-victory-entrance multiplier-green-glow' : ''}`}
     >
       {/* Multiplier pill + result */}
       <div className="flex items-center gap-3 mb-2">
