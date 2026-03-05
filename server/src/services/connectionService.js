@@ -972,10 +972,10 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     }
     // Engagement boost: +5 per comment, capped at +25
     score += Math.min((item.commentCount || 0) * 5, 25)
-    // Time decay: -1 point per hour old
+    // Time decay: priority bonus shrinks over 24h, then items rank purely by recency
     const hoursAgo = (Date.now() - new Date(item.timestamp).getTime()) / (1000 * 60 * 60)
-    score -= hoursAgo
-    return score
+    const decayFactor = Math.max(0, 1 - hoursAgo / 24)
+    return score * decayFactor
   }
 
   // Fetch comment counts for all items (needed for scoring)
