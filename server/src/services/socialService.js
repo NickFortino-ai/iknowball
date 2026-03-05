@@ -163,20 +163,33 @@ export async function getReactionsForPicks(pickIds) {
   return mapped
 }
 
-export async function addComment(userId, targetType, targetId, content) {
+export async function addComment(userId, targetType, targetId, content, parentId = null) {
   const ownerId = await getTargetOwner(targetType, targetId)
-  await assertConnected(userId, ownerId)
+
+  const insertData = { target_type: targetType, target_id: targetId, user_id: userId, content }
+  if (parentId) insertData.parent_id = parentId
 
   const { data, error } = await supabase
     .from('comments')
-    .insert({ target_type: targetType, target_id: targetId, user_id: userId, content })
-    .select('id, content, created_at, user_id, users(username, avatar_url, avatar_emoji)')
+    .insert(insertData)
+    .select('id, content, created_at, user_id, parent_id, users(username, avatar_url, avatar_emoji)')
     .single()
 
   if (error) throw error
 
-  // Notify owner on comment (skip self)
-  if (userId !== ownerId) {
+  // Determine who to notify
+  let notifyUserId = ownerId
+  if (parentId) {
+    // Reply — notify the parent comment's author instead
+    const { data: parentComment } = await supabase
+      .from('comments')
+      .select('user_id')
+      .eq('id', parentId)
+      .single()
+    if (parentComment) notifyUserId = parentComment.user_id
+  }
+
+  if (userId !== notifyUserId) {
     try {
       const label = NOTIFICATION_LABELS[targetType]
       const username = data.users?.username || 'Someone'
@@ -184,23 +197,75 @@ export async function addComment(userId, targetType, targetId, content) {
       if (targetType === 'pick') metadata.pickId = targetId
       else if (targetType === 'parlay') metadata.parlayId = targetId
       else if (targetType === 'prop') metadata.propPickId = targetId
-      await createNotification(ownerId, 'comment', `${username} commented on your ${label}`, metadata)
+      const message = parentId
+        ? `${username} replied to your comment`
+        : `${username} commented on your ${label}`
+      await createNotification(notifyUserId, 'comment', message, metadata)
     } catch (_) { /* notification is best-effort */ }
   }
 
   return data
 }
 
-export async function getComments(targetType, targetId) {
+export async function getComments(targetType, targetId, requestingUserId = null) {
   const { data, error } = await supabase
     .from('comments')
-    .select('id, content, created_at, user_id, target_type, target_id, users(username, avatar_url, avatar_emoji)')
+    .select('id, content, created_at, user_id, target_type, target_id, parent_id, users(username, avatar_url, avatar_emoji)')
     .eq('target_type', targetType)
     .eq('target_id', targetId)
     .order('created_at', { ascending: true })
 
   if (error) throw error
-  return data || []
+  const comments = data || []
+  if (!comments.length) return comments
+
+  // Batch-fetch like counts
+  const commentIds = comments.map((c) => c.id)
+  const { data: likeCounts } = await supabase
+    .from('comment_likes')
+    .select('comment_id')
+    .in('comment_id', commentIds)
+
+  const likeCountMap = {}
+  for (const row of likeCounts || []) {
+    likeCountMap[row.comment_id] = (likeCountMap[row.comment_id] || 0) + 1
+  }
+
+  // Fetch user's own likes if requesting user provided
+  const userLikeSet = new Set()
+  if (requestingUserId) {
+    const { data: userLikes } = await supabase
+      .from('comment_likes')
+      .select('comment_id')
+      .in('comment_id', commentIds)
+      .eq('user_id', requestingUserId)
+    for (const row of userLikes || []) {
+      userLikeSet.add(row.comment_id)
+    }
+  }
+
+  return comments.map((c) => ({
+    ...c,
+    like_count: likeCountMap[c.id] || 0,
+    has_liked: userLikeSet.has(c.id),
+  }))
+}
+
+export async function toggleCommentLike(userId, commentId) {
+  const { data: existing } = await supabase
+    .from('comment_likes')
+    .select('id')
+    .eq('comment_id', commentId)
+    .eq('user_id', userId)
+    .single()
+
+  if (existing) {
+    await supabase.from('comment_likes').delete().eq('id', existing.id)
+    return { toggled: 'off' }
+  }
+
+  await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: userId })
+  return { toggled: 'on' }
 }
 
 export async function deleteComment(userId, commentId) {

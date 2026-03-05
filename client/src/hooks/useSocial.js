@@ -52,10 +52,24 @@ export function useAddComment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ targetType, targetId, content }) =>
-      api.post(COMMENT_ROUTES[targetType](targetId), { content }),
+    mutationFn: ({ targetType, targetId, content, parentId }) => {
+      const body = { content }
+      if (parentId) body.parent_id = parentId
+      return api.post(COMMENT_ROUTES[targetType](targetId), body)
+    },
     onSuccess: (_data, { targetType, targetId }) => {
       queryClient.invalidateQueries({ queryKey: ['comments', targetType, targetId] })
+    },
+  })
+}
+
+export function useToggleCommentLike() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ commentId }) => api.post(`/social/comments/${commentId}/like`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] })
     },
   })
 }

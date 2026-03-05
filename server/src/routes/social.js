@@ -9,6 +9,7 @@ import {
   addComment,
   getComments,
   deleteComment,
+  toggleCommentLike,
   toggleFeedReaction,
   getFeedReactionsBatch,
 } from '../services/socialService.js'
@@ -37,71 +38,72 @@ router.get('/picks/reactions/batch', requireAuth, async (req, res) => {
 
 const commentSchema = z.object({
   content: z.string().min(1).max(280),
+  parent_id: z.string().uuid().nullable().optional(),
 })
 
 // Pick comments
 router.post('/picks/:pickId/comments', requireAuth, validate(commentSchema), async (req, res) => {
-  const comment = await addComment(req.user.id, 'pick', req.params.pickId, req.validated.content)
+  const comment = await addComment(req.user.id, 'pick', req.params.pickId, req.validated.content, req.validated.parent_id)
   res.status(201).json(comment)
 })
 
 router.get('/picks/:pickId/comments', requireAuth, async (req, res) => {
-  const comments = await getComments('pick', req.params.pickId)
+  const comments = await getComments('pick', req.params.pickId, req.user.id)
   res.json(comments)
 })
 
 // Parlay comments
 router.post('/parlays/:parlayId/comments', requireAuth, validate(commentSchema), async (req, res) => {
-  const comment = await addComment(req.user.id, 'parlay', req.params.parlayId, req.validated.content)
+  const comment = await addComment(req.user.id, 'parlay', req.params.parlayId, req.validated.content, req.validated.parent_id)
   res.status(201).json(comment)
 })
 
 router.get('/parlays/:parlayId/comments', requireAuth, async (req, res) => {
-  const comments = await getComments('parlay', req.params.parlayId)
+  const comments = await getComments('parlay', req.params.parlayId, req.user.id)
   res.json(comments)
 })
 
 // Prop pick comments
 router.post('/props/:propPickId/comments', requireAuth, validate(commentSchema), async (req, res) => {
-  const comment = await addComment(req.user.id, 'prop', req.params.propPickId, req.validated.content)
+  const comment = await addComment(req.user.id, 'prop', req.params.propPickId, req.validated.content, req.validated.parent_id)
   res.status(201).json(comment)
 })
 
 router.get('/props/:propPickId/comments', requireAuth, async (req, res) => {
-  const comments = await getComments('prop', req.params.propPickId)
+  const comments = await getComments('prop', req.params.propPickId, req.user.id)
   res.json(comments)
 })
 
 // Streak event comments
 router.post('/streak-events/:streakEventId/comments', requireAuth, validate(commentSchema), async (req, res) => {
-  const comment = await addComment(req.user.id, 'streak_event', req.params.streakEventId, req.validated.content)
+  const comment = await addComment(req.user.id, 'streak_event', req.params.streakEventId, req.validated.content, req.validated.parent_id)
   res.status(201).json(comment)
 })
 
 router.get('/streak-events/:streakEventId/comments', requireAuth, async (req, res) => {
-  const comments = await getComments('streak_event', req.params.streakEventId)
+  const comments = await getComments('streak_event', req.params.streakEventId, req.user.id)
   res.json(comments)
 })
 
 // Record history comments
 router.post('/records/:recordId/comments', requireAuth, validate(commentSchema), async (req, res) => {
-  const comment = await addComment(req.user.id, 'record_history', req.params.recordId, req.validated.content)
+  const comment = await addComment(req.user.id, 'record_history', req.params.recordId, req.validated.content, req.validated.parent_id)
   res.status(201).json(comment)
 })
 
 router.get('/records/:recordId/comments', requireAuth, async (req, res) => {
-  const comments = await getComments('record_history', req.params.recordId)
+  const comments = await getComments('record_history', req.params.recordId, req.user.id)
   res.json(comments)
 })
 
 // Hot take comments
 router.post('/hot-takes/:hotTakeId/comments', requireAuth, validate(commentSchema), async (req, res) => {
-  const comment = await addComment(req.user.id, 'hot_take', req.params.hotTakeId, req.validated.content)
+  const comment = await addComment(req.user.id, 'hot_take', req.params.hotTakeId, req.validated.content, req.validated.parent_id)
   res.status(201).json(comment)
 })
 
 router.get('/hot-takes/:hotTakeId/comments', requireAuth, async (req, res) => {
-  const comments = await getComments('hot_take', req.params.hotTakeId)
+  const comments = await getComments('hot_take', req.params.hotTakeId, req.user.id)
   res.json(comments)
 })
 
@@ -109,6 +111,12 @@ router.get('/hot-takes/:hotTakeId/comments', requireAuth, async (req, res) => {
 router.delete('/comments/:commentId', requireAuth, async (req, res) => {
   await deleteComment(req.user.id, req.params.commentId)
   res.status(204).end()
+})
+
+// Comment likes
+router.post('/comments/:commentId/like', requireAuth, async (req, res) => {
+  const result = await toggleCommentLike(req.user.id, req.params.commentId)
+  res.json(result)
 })
 
 // Feed reactions
