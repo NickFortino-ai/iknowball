@@ -193,6 +193,7 @@ export default function OnboardingTutorial() {
         top: '5rem',
         right: '1rem',
         width: '20rem',
+        maxWidth: 'calc(100vw - 2rem)',
       }
     }
 
@@ -220,12 +221,12 @@ export default function OnboardingTutorial() {
       }
     }
 
-    // Desktop: position near the spotlight
+    // Desktop / tablet: position near the spotlight
     const preferredPos = currentStep.position || 'bottom'
     const style = {
       position: 'fixed',
-      maxWidth: '22rem',
-      width: '100%',
+      width: '22rem',
+      maxWidth: 'calc(100vw - 2rem)',
     }
 
     // Estimate tooltip height (~220px) and check if it fits below
@@ -325,7 +326,7 @@ export default function OnboardingTutorial() {
           ...(isFreeScroll ? { pointerEvents: 'auto' } : {}),
         }}
       >
-        <div className="bg-bg-card border border-border rounded-2xl p-5 shadow-2xl">
+        <div className="bg-bg-card border border-border rounded-2xl p-5 shadow-2xl overflow-hidden">
           {/* Header: Step counter + Skip */}
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-text-muted font-semibold">
