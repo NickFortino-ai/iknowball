@@ -341,14 +341,27 @@ export default function UserProfileModal({ userId, onClose }) {
         ) : (
           <>
             {/* Header */}
-            <div className="flex items-center gap-3 mb-4">
-              <Avatar user={user} size="2xl" />
-              <div className="min-w-0 flex-1">
-                <div className="font-display text-xl truncate">{user.display_name || user.username}</div>
+            {user.avatar_url ? (
+              <div className="flex flex-col items-center mb-4">
+                <img
+                  src={user.avatar_url}
+                  alt=""
+                  className="w-24 h-24 rounded-full object-cover mb-3"
+                />
+                <div className="font-display text-xl">{user.display_name || user.username}</div>
                 <div className="text-text-muted text-sm">@{user.username}</div>
                 <SocialLinks user={user} />
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-3 mb-4">
+                <Avatar user={user} size="2xl" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-display text-xl truncate">{user.display_name || user.username}</div>
+                  <div className="text-text-muted text-sm">@{user.username}</div>
+                  <SocialLinks user={user} />
+                </div>
+              </div>
+            )}
 
             {/* Connection status */}
             {isViewingOther && connStatus === 'none' && (
