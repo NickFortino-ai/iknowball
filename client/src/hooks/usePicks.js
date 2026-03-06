@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { useAuthStore } from '../stores/authStore'
 
 export function useMyPicks(status) {
   const params = status ? `?status=${status}` : ''
@@ -49,7 +50,8 @@ export function useSubmitPick() {
       api.post('/picks', { game_id: gameId, picked_team: pickedTeam }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['picks'] })
-      localStorage.setItem('ikb_welcome_first_pick', '1')
+      const uid = useAuthStore.getState().session?.user?.id
+      if (uid) localStorage.setItem(`ikb_welcome_first_pick_${uid}`, '1')
     },
   })
 }

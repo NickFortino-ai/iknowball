@@ -190,7 +190,8 @@ export default function SettingsPage() {
       })
       await refetch()
       await fetchProfile()
-      localStorage.setItem('ikb_welcome_setup_profile', '1')
+      const uid = useAuthStore.getState().session?.user?.id
+      if (uid) localStorage.setItem(`ikb_welcome_setup_profile_${uid}`, '1')
       toast('Settings saved!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to save', 'error')

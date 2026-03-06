@@ -15,22 +15,22 @@ const tiers = [
   { name: 'GOAT', points: '3,000+', color: 'border-tier-goat text-tier-goat', desc: 'Undisputed' },
 ]
 
-function WelcomeCard() {
+function WelcomeCard({ userId }) {
   const navigate = useNavigate()
   const [checklist, setChecklist] = useState(() => ({
-    first_pick: localStorage.getItem('ikb_welcome_first_pick') === '1',
-    read_faq: localStorage.getItem('ikb_welcome_read_faq') === '1',
-    setup_profile: localStorage.getItem('ikb_welcome_setup_profile') === '1',
+    first_pick: localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1',
+    read_faq: localStorage.getItem(`ikb_welcome_read_faq_${userId}`) === '1',
+    setup_profile: localStorage.getItem(`ikb_welcome_setup_profile_${userId}`) === '1',
   }))
 
   // Re-check localStorage when returning to this page (e.g. after making a pick)
   useEffect(() => {
     setChecklist({
-      first_pick: localStorage.getItem('ikb_welcome_first_pick') === '1',
-      read_faq: localStorage.getItem('ikb_welcome_read_faq') === '1',
-      setup_profile: localStorage.getItem('ikb_welcome_setup_profile') === '1',
+      first_pick: localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1',
+      read_faq: localStorage.getItem(`ikb_welcome_read_faq_${userId}`) === '1',
+      setup_profile: localStorage.getItem(`ikb_welcome_setup_profile_${userId}`) === '1',
     })
-  }, [])
+  }, [userId])
 
   const allDone = checklist.first_pick && checklist.read_faq && checklist.setup_profile
   if (allDone) return null
@@ -47,7 +47,7 @@ function WelcomeCard() {
       label: 'Read the FAQ',
       done: checklist.read_faq,
       onClick: () => {
-        localStorage.setItem('ikb_welcome_read_faq', '1')
+        localStorage.setItem(`ikb_welcome_read_faq_${userId}`, '1')
         setChecklist((prev) => ({ ...prev, read_faq: true }))
         navigate('/faq')
       },
@@ -93,7 +93,7 @@ function WelcomeCard() {
 }
 
 export default function HomePage() {
-  const { isAuthenticated, profile } = useAuth()
+  const { isAuthenticated, profile, session } = useAuth()
   const [selectedTier, setSelectedTier] = useState(null)
 
   // Redirect authenticated but unpaid users to payment
@@ -130,7 +130,7 @@ export default function HomePage() {
 
       {/* Welcome Card — new users only (account < 7 days old, not all tasks done) */}
       {isAuthenticated && profile?.created_at && (Date.now() - new Date(profile.created_at).getTime() < 7 * 24 * 60 * 60 * 1000) && (
-        <WelcomeCard />
+        <WelcomeCard userId={session?.user?.id} />
       )}
 
       {/* Logged-in: Power Rankings + Featured Prop */}
