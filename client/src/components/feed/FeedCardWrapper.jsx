@@ -59,7 +59,7 @@ export default function FeedCardWrapper({
           </span>
         </div>
         <span className="text-xs text-text-muted flex-shrink-0">{timeAgo(item.timestamp)}</span>
-        {!isOwnContent && targetType && targetId && (
+        {!isOwnContent && targetType === 'hot_take' && targetId && (
           <ReportButton targetType={targetType} targetId={targetId} reportedUserId={item.userId} />
         )}
       </div>
