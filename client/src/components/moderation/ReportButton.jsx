@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import ReportModal from './ReportModal'
 
 export default function ReportButton({ targetType, targetId, reportedUserId, className = '' }) {
@@ -16,13 +17,14 @@ export default function ReportButton({ targetType, targetId, reportedUserId, cla
           <line x1="4" y1="22" x2="4" y2="15" />
         </svg>
       </button>
-      {showModal && (
+      {showModal && createPortal(
         <ReportModal
           targetType={targetType}
           targetId={targetId}
           reportedUserId={reportedUserId}
           onClose={() => setShowModal(false)}
-        />
+        />,
+        document.body
       )}
     </>
   )
