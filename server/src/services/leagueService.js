@@ -280,6 +280,12 @@ export async function joinLeague(userId, inviteCode) {
     throw err
   }
 
+  if (league.starts_at && new Date(league.starts_at) <= new Date()) {
+    const err = new Error('This league has already started')
+    err.status = 400
+    throw err
+  }
+
   // Check max members
   if (league.max_members) {
     const { count } = await supabase

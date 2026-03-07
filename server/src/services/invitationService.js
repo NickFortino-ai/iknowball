@@ -134,7 +134,7 @@ export async function getMyInvitations(userId) {
 export async function acceptInvitation(invitationId, userId) {
   const { data: invitation } = await supabase
     .from('league_invitations')
-    .select('*, leagues(status, max_members, settings)')
+    .select('*, leagues(status, starts_at, max_members, settings)')
     .eq('id', invitationId)
     .eq('invited_user_id', userId)
     .single()
@@ -153,6 +153,12 @@ export async function acceptInvitation(invitationId, userId) {
 
   if (invitation.leagues.status === 'completed') {
     const err = new Error('This league is no longer accepting members')
+    err.status = 400
+    throw err
+  }
+
+  if (invitation.leagues.starts_at && new Date(invitation.leagues.starts_at) <= new Date()) {
+    const err = new Error('This league has already started')
     err.status = 400
     throw err
   }
