@@ -213,6 +213,7 @@ export async function addComment(userId, targetType, targetId, content, parentId
       if (targetType === 'pick') metadata.pickId = targetId
       else if (targetType === 'parlay') metadata.parlayId = targetId
       else if (targetType === 'prop') metadata.propPickId = targetId
+      else if (targetType === 'hot_take') metadata.hotTakeId = targetId
       const message = parentId
         ? `${username} replied to your comment`
         : `${username} commented on your ${label}`
