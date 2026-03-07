@@ -118,8 +118,8 @@ router.patch('/reports/:id', async (req, res) => {
 
 // System actions
 router.post('/sync-odds', async (req, res) => {
-  await syncOdds()
-  res.json({ message: 'Odds sync complete' })
+  const results = await syncOdds()
+  res.json({ message: 'Odds sync complete', results })
 })
 
 router.post('/score-games', async (req, res) => {

@@ -11,7 +11,7 @@ async function syncSport(sportKey) {
 
   if (!sport) {
     logger.warn({ sportKey }, 'Sport not found in database, skipping')
-    return 0
+    return { sport: sportKey, status: 'not_in_db', synced: 0 }
   }
 
   // Smart gate: skip API call if no relevant games
@@ -43,7 +43,7 @@ async function syncSport(sportKey) {
 
     if (lastSync && lastSync > oneDayAgo) {
       logger.debug({ sportKey }, 'No upcoming games within 7 days and synced recently, skipping')
-      return 0
+      return { sport: sportKey, status: 'skipped_recent', synced: 0 }
     }
 
     logger.info({ sportKey }, 'No upcoming games within 7 days, checking API for new games')
@@ -54,10 +54,14 @@ async function syncSport(sportKey) {
     events = await fetchOdds(sportKey)
   } catch (err) {
     logger.error({ err, sportKey }, 'Failed to fetch odds')
-    return 0
+    return { sport: sportKey, status: 'api_error', error: err.message, synced: 0 }
   }
 
   logger.info({ sportKey, count: events.length }, 'Fetched events from Odds API')
+
+  if (events.length === 0) {
+    return { sport: sportKey, status: 'no_events', synced: 0 }
+  }
 
   let upserted = 0
   for (const event of events) {
@@ -103,19 +107,22 @@ async function syncSport(sportKey) {
     }
   }
 
-  return upserted
+  return { sport: sportKey, status: 'ok', apiEvents: events.length, synced: upserted }
 }
 
 export async function syncOdds() {
   logger.info('Starting odds sync...')
 
   const sports = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'basketball_wncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'icehockey_nhl', 'soccer_usa_mls']
-  let total = 0
+  const results = []
 
   for (const sportKey of sports) {
-    const count = await syncSport(sportKey)
-    total += count
+    const result = await syncSport(sportKey)
+    results.push(result)
   }
 
+  const total = results.reduce((sum, r) => sum + r.synced, 0)
   logger.info({ total }, 'Odds sync complete')
+
+  return results
 }

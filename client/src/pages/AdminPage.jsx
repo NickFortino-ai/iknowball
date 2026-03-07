@@ -59,8 +59,14 @@ export default function AdminPage() {
 
   async function handleSyncOdds() {
     try {
-      await syncOdds.mutateAsync()
-      toast('Odds synced successfully', 'success')
+      const data = await syncOdds.mutateAsync()
+      const results = data.results || []
+      const total = results.reduce((sum, r) => sum + r.synced, 0)
+      const errors = results.filter(r => r.status === 'api_error')
+      console.table(results)
+      let msg = `Synced ${total} games`
+      if (errors.length > 0) msg += ` (${errors.map(e => e.sport).join(', ')} failed)`
+      toast(msg, errors.length > 0 ? 'info' : 'success')
     } catch (err) {
       toast(err.message || 'Sync failed', 'error')
     }
