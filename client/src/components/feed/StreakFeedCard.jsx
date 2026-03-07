@@ -24,13 +24,11 @@ export default function StreakFeedCard({ item, reactions, onUserTap, onStreakTap
       targetId={streak.id}
       reactions={reactions}
       onUserTap={onUserTap}
+      onCardTap={() => onStreakTap?.(streak.id)}
       commentCount={item.commentCount}
       cardClassName={cardClass}
     >
-      <div
-        className="flex items-center gap-3 cursor-pointer"
-        onClick={() => onStreakTap?.(streak.id)}
-      >
+      <div className="flex items-center gap-3">
         <span className={tier === 'legendary' ? 'text-4xl' : tier === 'hot' ? 'text-3xl' : 'text-xl'}>
           {'\uD83D\uDD25'}
         </span>

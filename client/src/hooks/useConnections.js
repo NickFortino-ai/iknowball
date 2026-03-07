@@ -103,3 +103,11 @@ export function useStreakDetail(streakId) {
     enabled: !!streakId,
   })
 }
+
+export function useHeadToHeadHistory(userAId, userBId) {
+  return useQuery({
+    queryKey: ['h2h', userAId, userBId],
+    queryFn: () => api.get(`/social/head-to-head/${userAId}/${userBId}`),
+    enabled: !!userAId && !!userBId,
+  })
+}

@@ -9,7 +9,7 @@ function shortName(fullName) {
   return words[words.length - 1]
 }
 
-export default function HeadToHeadFeedCard({ item, reactions, onUserTap }) {
+export default function HeadToHeadFeedCard({ item, reactions, onUserTap, onH2HTap }) {
   const { matchup, game } = item
   const { userA, userB, record } = matchup
 
@@ -55,7 +55,7 @@ export default function HeadToHeadFeedCard({ item, reactions, onUserTap }) {
   }
 
   return (
-    <div className="bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 border-l-accent">
+    <div className="bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 border-l-accent cursor-pointer" onClick={() => onH2HTap?.(item)}>
       {/* Header */}
       <div className="px-4 pt-3 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -84,7 +84,7 @@ export default function HeadToHeadFeedCard({ item, reactions, onUserTap }) {
 
       {/* Reactions + comments */}
       {item.pickId && (
-        <div className="px-4 pb-3 space-y-1.5">
+        <div className="px-4 pb-3 space-y-1.5" onClick={(e) => e.stopPropagation()}>
           <FeedReactions targetType="head_to_head" targetId={item.pickId} reactions={reactions} />
           <PickComments targetType="head_to_head" targetId={item.pickId} commentCount={item.commentCount} />
         </div>
@@ -98,7 +98,7 @@ function UserSide({ user, onUserTap }) {
 
   return (
     <button
-      onClick={() => onUserTap?.(user.userId)}
+      onClick={(e) => { e.stopPropagation(); onUserTap?.(user.userId) }}
       className="flex-1 bg-bg-secondary rounded-lg px-3 py-2 flex flex-col items-center gap-1.5 hover:bg-border transition-colors"
     >
       <Avatar

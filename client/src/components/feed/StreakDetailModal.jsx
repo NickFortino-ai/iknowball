@@ -71,8 +71,8 @@ export default function StreakDetailModal({ streakId, onClose }) {
                 : 'bg-bg-secondary text-text-muted'
             }`}>
               {data.isActive
-                ? `The streak is now up to ${data.currentStreak}`
-                : `The streak got up to ${data.currentStreak}`}
+                ? 'Streak is still active!'
+                : 'Streak no longer active'}
             </div>
 
             {/* Picks list */}
@@ -91,7 +91,7 @@ export default function StreakDetailModal({ streakId, onClose }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-text-muted text-xs">{formatGameDate(pick.games.commence_time)}</span>
+                      <span className="text-text-muted text-xs">{formatGameDate(pick.games.starts_at)}</span>
                       {pick.points_earned != null && (
                         <span className="text-correct text-xs font-semibold">
                           +{pick.points_earned}

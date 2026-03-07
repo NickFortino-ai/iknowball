@@ -19,12 +19,14 @@ import SweatFeedCard from './SweatFeedCard'
 import SweatResultFeedCard from './SweatResultFeedCard'
 import CalledShotFeedCard from './CalledShotFeedCard'
 import StreakDetailModal from './StreakDetailModal'
+import HeadToHeadDetailModal from './HeadToHeadDetailModal'
 import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
 import FeedSkeleton from './FeedSkeleton'
 
 export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
   const [selectedStreakId, setSelectedStreakId] = useState(null)
+  const [selectedH2HItem, setSelectedH2HItem] = useState(null)
   const {
     data,
     isLoading,
@@ -126,6 +128,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
                     getReactions={getReactions}
                     onUserTap={onUserTap}
                     onStreakTap={setSelectedStreakId}
+                    onH2HTap={setSelectedH2HItem}
                   />
                 ))}
               </div>
@@ -148,11 +151,12 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
       )}
 
       <StreakDetailModal streakId={selectedStreakId} onClose={() => setSelectedStreakId(null)} />
+      <HeadToHeadDetailModal item={selectedH2HItem} onClose={() => setSelectedH2HItem(null)} />
     </div>
   )
 }
 
-function FeedCard({ item, getReactions, onUserTap, onStreakTap }) {
+function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap }) {
   if (item.grouped) {
     return (
       <GroupedPickFeedCard
@@ -230,6 +234,7 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap }) {
           item={item}
           reactions={getReactions('head_to_head', item.pickId)}
           onUserTap={onUserTap}
+          onH2HTap={onH2HTap}
         />
       )
     case 'hot_take':
