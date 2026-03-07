@@ -169,20 +169,69 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
   const currentStreak = stats?.current_streak || 0
   const isActive = currentStreak >= streakEvent.streak_length
 
-  // 3. Get the picks that formed this streak
-  const { data: picks } = await supabase
+  // 3. Get the picks that formed this streak by reconstructing from history
+  //    Fetch recent settled picks (wins + losses) for this sport, walk backwards
+  //    to find the consecutive winning run.
+  const { data: allPicks, error: picksError } = await supabase
     .from('picks')
-    .select('id, picked_team, odds_at_lock, points_earned, updated_at, games!inner(home_team, away_team, starts_at, sport_id, sports(key, name))')
+    .select('id, picked_team, is_correct, odds_at_pick, points_earned, updated_at, games(home_team, away_team, starts_at, sport_id, sports(name))')
     .eq('user_id', streakEvent.user_id)
-    .eq('games.sport_id', streakEvent.sport_id)
     .eq('status', 'settled')
-    .eq('is_correct', true)
-    .lte('updated_at', streakEvent.created_at)
     .order('updated_at', { ascending: false })
-    .limit(streakEvent.streak_length)
+
+  if (picksError) {
+    console.error('Failed to fetch streak picks:', picksError)
+  }
+
+  // Filter to the correct sport
+  const sportPicks = (allPicks || []).filter(p => p.games?.sport_id === streakEvent.sport_id)
+
+  // Find consecutive winning runs
+  let streakPicks = []
+  if (isActive) {
+    // Active streak: consecutive wins from the top
+    for (const p of sportPicks) {
+      if (p.is_correct) streakPicks.push(p)
+      else break
+    }
+  } else {
+    // Inactive streak: skip any recent wins/losses until we find the run
+    // that matches this streak's length. Walk through and collect winning runs.
+    let currentRun = []
+    for (const p of sportPicks) {
+      if (p.is_correct) {
+        currentRun.push(p)
+      } else {
+        if (currentRun.length === streakEvent.streak_length) {
+          streakPicks = currentRun
+          break
+        }
+        currentRun = []
+      }
+    }
+    // Check the last run if we didn't break
+    if (streakPicks.length === 0 && currentRun.length === streakEvent.streak_length) {
+      streakPicks = currentRun
+    }
+    // Fallback: if no exact match, take the first run >= streak_length
+    if (streakPicks.length === 0) {
+      currentRun = []
+      for (const p of sportPicks) {
+        if (p.is_correct) {
+          currentRun.push(p)
+          if (currentRun.length === streakEvent.streak_length) {
+            streakPicks = currentRun
+            break
+          }
+        } else {
+          currentRun = []
+        }
+      }
+    }
+  }
 
   // Reverse so oldest pick is first (chronological order)
-  const orderedPicks = (picks || []).reverse()
+  const orderedPicks = streakPicks.reverse()
 
   res.json({
     streakEvent,
