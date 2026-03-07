@@ -16,12 +16,13 @@ const SPORT_OPTIONS = [
   { value: 'basketball_nba', label: 'NBA' },
   { value: 'baseball_mlb', label: 'MLB' },
   { value: 'basketball_ncaab', label: 'NCAAB' },
+  { value: 'basketball_wncaab', label: 'WNCAAB' },
   { value: 'americanfootball_ncaaf', label: 'NCAAF' },
   { value: 'basketball_wnba', label: 'WNBA' },
   { value: 'all', label: 'All Sports' },
 ]
 
-const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'baseball_mlb', 'all'])
+const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wncaab', 'basketball_wnba', 'baseball_mlb', 'all'])
 
 const DURATION_OPTIONS = [
   { value: 'this_week', label: 'This Week Only' },

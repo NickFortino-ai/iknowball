@@ -8,6 +8,7 @@ const SPORT_TO_ESPN = {
   americanfootball_ncaaf: { path: 'football/college-football', params: 'groups=80&limit=500' },
   basketball_nba: { path: 'basketball/nba' },
   basketball_ncaab: { path: 'basketball/mens-college-basketball', params: 'groups=50&limit=500' },
+  basketball_wncaab: { path: 'basketball/womens-college-basketball', params: 'groups=50&limit=500' },
   basketball_wnba: { path: 'basketball/wnba' },
   baseball_mlb: { path: 'baseball/mlb' },
   icehockey_nhl: { path: 'hockey/nhl' },

@@ -7,6 +7,7 @@ const SPORTS = [
   'americanfootball_ncaaf',
   'basketball_nba',
   'basketball_ncaab',
+  'basketball_wncaab',
   'basketball_wnba',
   'baseball_mlb',
   'icehockey_nhl',
