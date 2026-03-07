@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
+import { supabase } from '../config/supabase.js'
 import {
   toggleReaction,
   getReactionsForPick,
@@ -139,6 +140,55 @@ router.get('/feed/reactions/batch', requireAuth, async (req, res) => {
   } catch (_) { /* ignore parse errors */ }
   const reactions = await getFeedReactionsBatch(items)
   res.json(reactions)
+})
+
+// Streak detail
+router.get('/streaks/:streakId', requireAuth, async (req, res) => {
+  const { streakId } = req.params
+
+  // 1. Fetch the streak event
+  const { data: streakEvent, error } = await supabase
+    .from('streak_events')
+    .select('id, user_id, sport_id, streak_length, created_at, sports(key, name)')
+    .eq('id', streakId)
+    .single()
+
+  if (error || !streakEvent) {
+    return res.status(404).json({ error: 'Streak not found' })
+  }
+
+  // 2. Get current streak for this user+sport
+  const { data: stats } = await supabase
+    .from('user_sport_stats')
+    .select('current_streak')
+    .eq('user_id', streakEvent.user_id)
+    .eq('sport_id', streakEvent.sport_id)
+    .single()
+
+  const currentStreak = stats?.current_streak || 0
+  const isActive = currentStreak >= streakEvent.streak_length
+
+  // 3. Get the picks that formed this streak
+  const { data: picks } = await supabase
+    .from('picks')
+    .select('id, picked_team, odds_at_lock, points_earned, updated_at, games!inner(home_team, away_team, commence_time, sport_id, sports(key, name))')
+    .eq('user_id', streakEvent.user_id)
+    .eq('games.sport_id', streakEvent.sport_id)
+    .eq('status', 'settled')
+    .eq('is_correct', true)
+    .lte('updated_at', streakEvent.created_at)
+    .order('updated_at', { ascending: false })
+    .limit(streakEvent.streak_length)
+
+  // Reverse so oldest pick is first (chronological order)
+  const orderedPicks = (picks || []).reverse()
+
+  res.json({
+    streakEvent,
+    currentStreak: isActive ? currentStreak : streakEvent.streak_length,
+    isActive,
+    picks: orderedPicks,
+  })
 })
 
 export default router

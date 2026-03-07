@@ -6,7 +6,7 @@ function getStreakTier(length) {
   return 'normal'
 }
 
-export default function StreakFeedCard({ item, reactions, onUserTap }) {
+export default function StreakFeedCard({ item, reactions, onUserTap, onStreakTap }) {
   const { streak } = item
   const tier = getStreakTier(streak.streak_length)
 
@@ -27,7 +27,10 @@ export default function StreakFeedCard({ item, reactions, onUserTap }) {
       commentCount={item.commentCount}
       cardClassName={cardClass}
     >
-      <div className="flex items-center gap-3">
+      <div
+        className="flex items-center gap-3 cursor-pointer"
+        onClick={() => onStreakTap?.(streak.id)}
+      >
         <span className={tier === 'legendary' ? 'text-4xl' : tier === 'hot' ? 'text-3xl' : 'text-xl'}>
           {'\uD83D\uDD25'}
         </span>

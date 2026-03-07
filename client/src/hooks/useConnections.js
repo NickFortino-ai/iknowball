@@ -95,3 +95,11 @@ export function useSharePickToSquad() {
     },
   })
 }
+
+export function useStreakDetail(streakId) {
+  return useQuery({
+    queryKey: ['streak', streakId],
+    queryFn: () => api.get(`/social/streaks/${streakId}`),
+    enabled: !!streakId,
+  })
+}

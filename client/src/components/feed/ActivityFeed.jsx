@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useConnectionActivity } from '../../hooks/useConnections'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
 import { getDateKey, formatFeedDate } from '../../lib/time'
@@ -18,11 +18,13 @@ import DailyDigestFeedCard from './DailyDigestFeedCard'
 import SweatFeedCard from './SweatFeedCard'
 import SweatResultFeedCard from './SweatResultFeedCard'
 import CalledShotFeedCard from './CalledShotFeedCard'
+import StreakDetailModal from './StreakDetailModal'
 import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
 import FeedSkeleton from './FeedSkeleton'
 
 export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
+  const [selectedStreakId, setSelectedStreakId] = useState(null)
   const {
     data,
     isLoading,
@@ -123,6 +125,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
                     item={item}
                     getReactions={getReactions}
                     onUserTap={onUserTap}
+                    onStreakTap={setSelectedStreakId}
                   />
                 ))}
               </div>
@@ -143,11 +146,13 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
           )}
         </div>
       )}
+
+      <StreakDetailModal streakId={selectedStreakId} onClose={() => setSelectedStreakId(null)} />
     </div>
   )
 }
 
-function FeedCard({ item, getReactions, onUserTap }) {
+function FeedCard({ item, getReactions, onUserTap, onStreakTap }) {
   if (item.grouped) {
     return (
       <GroupedPickFeedCard
@@ -206,6 +211,7 @@ function FeedCard({ item, getReactions, onUserTap }) {
           item={item}
           reactions={getReactions('streak_event', item.streak.id)}
           onUserTap={onUserTap}
+          onStreakTap={onStreakTap}
         />
       )
     case 'tier_up':
