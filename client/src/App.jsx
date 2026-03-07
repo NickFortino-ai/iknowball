@@ -29,6 +29,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import HallOfFamePage from './pages/HallOfFamePage'
 import GuidelinesPage from './pages/GuidelinesPage'
 import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
+import InstallPrompt from './components/pwa/InstallPrompt'
 import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
 import { initIAPListener } from './lib/iapListener'
@@ -84,6 +85,7 @@ export default function App() {
         <BrowserRouter>
           <AppRoutes />
           <OnboardingTutorial />
+          <InstallPrompt />
           <ToastContainer />
         </BrowserRouter>
       </QueryClientProvider>
