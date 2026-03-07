@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAdminReports, useUpdateReportStatus } from '../../hooks/useReports'
+import { useMuteUser } from '../../hooks/useAdmin'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
 import Avatar from '../ui/Avatar'
@@ -17,6 +18,17 @@ export default function ReportsPanel() {
   const [filter, setFilter] = useState('pending')
   const { data: reports, isLoading } = useAdminReports(filter)
   const updateStatus = useUpdateReportStatus()
+  const muteUser = useMuteUser()
+
+  async function handleMuteUser(userId, username) {
+    if (!confirm(`Mute @${username}? They will not be able to post hot takes or comments.`)) return
+    try {
+      await muteUser.mutateAsync(userId)
+      toast(`@${username} has been muted`, 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to mute user', 'error')
+    }
+  }
 
   async function handleAction(reportId, status, action) {
     try {
@@ -123,6 +135,13 @@ export default function ReportsPanel() {
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent/20 text-accent hover:bg-accent/30 transition-colors disabled:opacity-50"
                   >
                     Mark Actioned
+                  </button>
+                  <button
+                    onClick={() => handleMuteUser(report.reported?.id, report.reported?.username)}
+                    disabled={muteUser.isPending}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 transition-colors disabled:opacity-50"
+                  >
+                    Mute User
                   </button>
                 </div>
               )}

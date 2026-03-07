@@ -7,6 +7,7 @@ import PropSyncPanel from '../components/admin/PropSyncPanel'
 import BracketTemplateManager from '../components/admin/BracketTemplateManager'
 import FuturesAdminPanel from '../components/admin/FuturesAdminPanel'
 import ReportsPanel from '../components/admin/ReportsPanel'
+import ModerationPanel from '../components/admin/ModerationPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import Avatar from '../components/ui/Avatar'
@@ -22,7 +23,7 @@ const sportTabs = [
 
 export default function AdminPage() {
   const { profile } = useAuth()
-  const [adminSection, setAdminSection] = useState('props') // props | brackets | email | futures | reports
+  const [adminSection, setAdminSection] = useState('props') // props | brackets | email | futures | reports | moderation
   const [activeSport, setActiveSport] = useState(0)
   const [selectedGame, setSelectedGame] = useState(null)
   const [emailSubject, setEmailSubject] = useState('')
@@ -208,6 +209,16 @@ export default function AdminPage() {
         >
           Reports
         </button>
+        <button
+          onClick={() => setAdminSection('moderation')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            adminSection === 'moderation'
+              ? 'bg-accent text-white'
+              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Moderation
+        </button>
       </div>
 
       {adminSection === 'email' && (<>
@@ -388,6 +399,8 @@ export default function AdminPage() {
       {adminSection === 'futures' && <FuturesAdminPanel />}
 
       {adminSection === 'reports' && <ReportsPanel />}
+
+      {adminSection === 'moderation' && <ModerationPanel />}
 
       {adminSection === 'props' && <>
       {/* Featured Schedule — 7-day overview */}

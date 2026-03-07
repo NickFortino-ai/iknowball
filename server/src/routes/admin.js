@@ -37,6 +37,14 @@ import { generateWeeklyRecap } from '../jobs/generateRecap.js'
 import { updateRecapContent } from '../services/recapService.js'
 import { recalculateAllRecords } from '../services/recordService.js'
 import { snapshotRanks } from '../jobs/snapshotRanks.js'
+import {
+  getBannedWords,
+  addBannedWord,
+  removeBannedWord,
+  getMutedUsers,
+  muteUser,
+  unmuteUser,
+} from '../services/contentFilterService.js'
 
 const router = Router()
 
@@ -360,6 +368,46 @@ router.post('/futures/settle', async (req, res) => {
   }
   const result = await settleFuturesMarket(marketId, winningOutcome)
   res.json(result)
+})
+
+// ============================================
+// Content Moderation
+// ============================================
+
+// Banned words CRUD
+router.get('/banned-words', async (req, res) => {
+  const words = await getBannedWords()
+  res.json(words)
+})
+
+router.post('/banned-words', async (req, res) => {
+  const { word } = req.body
+  if (!word?.trim()) {
+    return res.status(400).json({ error: 'word is required' })
+  }
+  const created = await addBannedWord(word)
+  res.status(201).json(created)
+})
+
+router.delete('/banned-words/:id', async (req, res) => {
+  await removeBannedWord(req.params.id)
+  res.status(204).end()
+})
+
+// User mute/unmute
+router.get('/muted-users', async (req, res) => {
+  const users = await getMutedUsers()
+  res.json(users)
+})
+
+router.post('/users/:id/mute', async (req, res) => {
+  await muteUser(req.params.id)
+  res.json({ message: 'User muted' })
+})
+
+router.post('/users/:id/unmute', async (req, res) => {
+  await unmuteUser(req.params.id)
+  res.json({ message: 'User unmuted' })
 })
 
 export default router

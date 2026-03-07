@@ -272,6 +272,53 @@ export function useSetChampionshipScore() {
   })
 }
 
+// Content Moderation
+export function useBannedWords() {
+  return useQuery({
+    queryKey: ['admin', 'banned-words'],
+    queryFn: () => api.get('/admin/banned-words'),
+  })
+}
+
+export function useAddBannedWord() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (word) => api.post('/admin/banned-words', { word }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'banned-words'] }),
+  })
+}
+
+export function useRemoveBannedWord() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.delete(`/admin/banned-words/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'banned-words'] }),
+  })
+}
+
+export function useMutedUsers() {
+  return useQuery({
+    queryKey: ['admin', 'muted-users'],
+    queryFn: () => api.get('/admin/muted-users'),
+  })
+}
+
+export function useMuteUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId) => api.post(`/admin/users/${userId}/mute`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'muted-users'] }),
+  })
+}
+
+export function useUnmuteUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId) => api.post(`/admin/users/${userId}/unmute`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'muted-users'] }),
+  })
+}
+
 // Weekly Recap
 export function useUpdateRecap() {
   const queryClient = useQueryClient()

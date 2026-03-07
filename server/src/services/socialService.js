@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { createNotification } from './notificationService.js'
+import { checkUserMuted, checkContent } from './contentFilterService.js'
 
 export async function assertConnected(actorId, ownerId) {
   // Allow self-interactions
@@ -164,6 +165,21 @@ export async function getReactionsForPicks(pickIds) {
 }
 
 export async function addComment(userId, targetType, targetId, content, parentId = null) {
+  // Check if user is muted
+  if (await checkUserMuted(userId)) {
+    const err = new Error('Your posting privileges have been suspended')
+    err.status = 403
+    throw err
+  }
+
+  // Check content against banned words
+  const filterResult = await checkContent(content)
+  if (filterResult.blocked) {
+    const err = new Error('Your comment contains inappropriate language. Please revise and try again.')
+    err.status = 400
+    throw err
+  }
+
   const ownerId = await getTargetOwner(targetType, targetId)
 
   const insertData = { target_type: targetType, target_id: targetId, user_id: userId, content }

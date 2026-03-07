@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useCreateHotTake, useHotTakeImageUpload } from '../../hooks/useHotTakes'
 import { useProfile } from '../../hooks/useProfile'
 import Avatar from '../ui/Avatar'
+import { toast } from '../ui/Toast'
 
 const MAX_CHARS = 280
 
@@ -34,6 +35,13 @@ export default function HotTakeComposer() {
           setTeamTag('')
           setExpanded(false)
           removeImage()
+        },
+        onError: (err) => {
+          if (err.status === 403) {
+            toast('Your posting privileges have been suspended. Contact support if you believe this is an error.', 'error')
+          } else {
+            toast(err.message || 'Failed to post', 'error')
+          }
         },
       }
     )

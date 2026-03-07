@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { createHotTake, deleteHotTake, getHotTakesByUser, createReminder } from '../services/hotTakeService.js'
+import { checkUserMuted, checkContent } from '../services/contentFilterService.js'
 
 const router = Router()
 
@@ -13,6 +14,17 @@ const hotTakeSchema = z.object({
 })
 
 router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
+  // Check if user is muted
+  if (await checkUserMuted(req.user.id)) {
+    return res.status(403).json({ error: 'Your posting privileges have been suspended' })
+  }
+
+  // Check content against banned words
+  const filterResult = await checkContent(req.validated.content)
+  if (filterResult.blocked) {
+    return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
+  }
+
   const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tag, req.validated.image_url)
   res.status(201).json(hotTake)
 })
