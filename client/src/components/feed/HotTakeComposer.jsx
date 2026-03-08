@@ -3,6 +3,7 @@ import { useCreateHotTake, useHotTakeImageUpload, useTeamsForSport } from '../..
 import { useActiveSports } from '../../hooks/useGames'
 import { useProfile } from '../../hooks/useProfile'
 import Avatar from '../ui/Avatar'
+import InfoTooltip from '../ui/InfoTooltip'
 import TeamAutocomplete from './TeamAutocomplete'
 import { toast } from '../ui/Toast'
 
@@ -288,6 +289,7 @@ export default function HotTakeComposer() {
                       <polyline points="21 15 16 10 5 21" />
                     </svg>
                   </button>
+                  <InfoTooltip text="Hot takes are your bold predictions and opinions. Tag teams so fans can find them in the Team Feed. Your squad can react, comment, and remind you of your takes later. Bookmark other people's takes to save receipts for when it's time to hold them accountable." />
                   <input
                     ref={fileInputRef}
                     type="file"
