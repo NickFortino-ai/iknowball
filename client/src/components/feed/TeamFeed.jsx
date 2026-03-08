@@ -7,6 +7,71 @@ import HotTakeComposer from './HotTakeComposer'
 import HotTakeFeedCard from './HotTakeFeedCard'
 import FeedSkeleton from './FeedSkeleton'
 
+// Reverse lookup: team name → sport key (built from known team lists)
+const TEAM_SPORT_MAP = {}
+const SPORT_TEAMS = {
+  basketball_nba: [
+    'Atlanta Hawks', 'Boston Celtics', 'Brooklyn Nets', 'Charlotte Hornets',
+    'Chicago Bulls', 'Cleveland Cavaliers', 'Dallas Mavericks', 'Denver Nuggets',
+    'Detroit Pistons', 'Golden State Warriors', 'Houston Rockets', 'Indiana Pacers',
+    'LA Clippers', 'Los Angeles Lakers', 'Memphis Grizzlies', 'Miami Heat',
+    'Milwaukee Bucks', 'Minnesota Timberwolves', 'New Orleans Pelicans', 'New York Knicks',
+    'Oklahoma City Thunder', 'Orlando Magic', 'Philadelphia 76ers', 'Phoenix Suns',
+    'Portland Trail Blazers', 'Sacramento Kings', 'San Antonio Spurs', 'Toronto Raptors',
+    'Utah Jazz', 'Washington Wizards',
+  ],
+  americanfootball_nfl: [
+    'Arizona Cardinals', 'Atlanta Falcons', 'Baltimore Ravens', 'Buffalo Bills',
+    'Carolina Panthers', 'Chicago Bears', 'Cincinnati Bengals', 'Cleveland Browns',
+    'Dallas Cowboys', 'Denver Broncos', 'Detroit Lions', 'Green Bay Packers',
+    'Houston Texans', 'Indianapolis Colts', 'Jacksonville Jaguars', 'Kansas City Chiefs',
+    'Las Vegas Raiders', 'Los Angeles Chargers', 'Los Angeles Rams', 'Miami Dolphins',
+    'Minnesota Vikings', 'New England Patriots', 'New Orleans Saints', 'New York Giants',
+    'New York Jets', 'Philadelphia Eagles', 'Pittsburgh Steelers', 'San Francisco 49ers',
+    'Seattle Seahawks', 'Tampa Bay Buccaneers', 'Tennessee Titans', 'Washington Commanders',
+  ],
+  baseball_mlb: [
+    'Arizona Diamondbacks', 'Atlanta Braves', 'Baltimore Orioles', 'Boston Red Sox',
+    'Chicago Cubs', 'Chicago White Sox', 'Cincinnati Reds', 'Cleveland Guardians',
+    'Colorado Rockies', 'Detroit Tigers', 'Houston Astros', 'Kansas City Royals',
+    'Los Angeles Angels', 'Los Angeles Dodgers', 'Miami Marlins', 'Milwaukee Brewers',
+    'Minnesota Twins', 'New York Mets', 'New York Yankees', 'Oakland Athletics',
+    'Philadelphia Phillies', 'Pittsburgh Pirates', 'San Diego Padres', 'San Francisco Giants',
+    'Seattle Mariners', 'St. Louis Cardinals', 'Tampa Bay Rays', 'Texas Rangers',
+    'Toronto Blue Jays', 'Washington Nationals',
+  ],
+  icehockey_nhl: [
+    'Anaheim Ducks', 'Arizona Coyotes', 'Boston Bruins', 'Buffalo Sabres',
+    'Calgary Flames', 'Carolina Hurricanes', 'Chicago Blackhawks', 'Colorado Avalanche',
+    'Columbus Blue Jackets', 'Dallas Stars', 'Detroit Red Wings', 'Edmonton Oilers',
+    'Florida Panthers', 'Los Angeles Kings', 'Minnesota Wild', 'Montreal Canadiens',
+    'Nashville Predators', 'New Jersey Devils', 'New York Islanders', 'New York Rangers',
+    'Ottawa Senators', 'Philadelphia Flyers', 'Pittsburgh Penguins', 'San Jose Sharks',
+    'Seattle Kraken', 'St. Louis Blues', 'Tampa Bay Lightning', 'Toronto Maple Leafs',
+    'Utah Hockey Club', 'Vancouver Canucks', 'Vegas Golden Knights', 'Washington Capitals',
+    'Winnipeg Jets',
+  ],
+  soccer_usa_mls: [
+    'Atlanta United FC', 'Austin FC', 'CF Montreal', 'Charlotte FC',
+    'Chicago Fire FC', 'Colorado Rapids', 'Columbus Crew', 'D.C. United',
+    'FC Cincinnati', 'FC Dallas', 'Houston Dynamo FC', 'Inter Miami CF',
+    'LA Galaxy', 'Los Angeles FC', 'Miami FC', 'Minnesota United FC',
+    'Nashville SC', 'New England Revolution', 'New York City FC', 'New York Red Bulls',
+    'Orlando City SC', 'Philadelphia Union', 'Portland Timbers', 'Real Salt Lake',
+    'San Diego FC', 'San Jose Earthquakes', 'Seattle Sounders FC', 'Sporting Kansas City',
+    'St. Louis City SC', 'Toronto FC', 'Vancouver Whitecaps FC',
+  ],
+  basketball_wnba: [
+    'Atlanta Dream', 'Chicago Sky', 'Connecticut Sun', 'Dallas Wings',
+    'Golden State Valkyries', 'Indiana Fever', 'Las Vegas Aces', 'Los Angeles Sparks',
+    'Minnesota Lynx', 'New York Liberty', 'Phoenix Mercury', 'Seattle Storm',
+    'Washington Mystics',
+  ],
+}
+for (const [sport, teams] of Object.entries(SPORT_TEAMS)) {
+  for (const team of teams) TEAM_SPORT_MAP[team] = sport
+}
+
 const RECENT_TEAMS_KEY = 'iknowball_recent_teams'
 const MAX_RECENT = 10
 
@@ -42,10 +107,12 @@ export default function TeamFeed({ onUserTap, initialTeam = null, onTeamConsumed
   const [searchValue, setSearchValue] = useState('')
   const [recentTeams, setRecentTeams] = useState(getRecentTeams)
 
-  // Handle initialTeam from query params
+  // Handle initialTeam from query params — auto-select sport + team
   useEffect(() => {
     if (initialTeam) {
       setSelectedTeam(initialTeam)
+      const sport = TEAM_SPORT_MAP[initialTeam]
+      if (sport) setSelectedSport(sport)
       addRecentTeam(initialTeam)
       setRecentTeams(getRecentTeams())
       onTeamConsumed?.()
@@ -177,7 +244,7 @@ export default function TeamFeed({ onUserTap, initialTeam = null, onTeamConsumed
       )}
 
       {/* No sport selected */}
-      {!selectedSport && (
+      {!selectedSport && !selectedTeam && (
         <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
           <div className="text-2xl mb-2">{'\uD83C\uDFC8'}</div>
           <div className="text-sm text-text-primary font-medium mb-1">Select a sport</div>
