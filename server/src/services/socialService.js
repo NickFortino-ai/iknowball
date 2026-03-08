@@ -209,7 +209,7 @@ export async function addComment(userId, targetType, targetId, content, parentId
     try {
       const label = NOTIFICATION_LABELS[targetType]
       const username = data.users?.username || 'Someone'
-      const metadata = { actorId: userId }
+      const metadata = { actorId: userId, targetType, targetId }
       if (targetType === 'pick') metadata.pickId = targetId
       else if (targetType === 'parlay') metadata.parlayId = targetId
       else if (targetType === 'prop') metadata.propPickId = targetId

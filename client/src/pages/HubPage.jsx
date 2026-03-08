@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import {
@@ -44,15 +45,45 @@ function MyProfileBanner({ profile, onTap }) {
   )
 }
 
+const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'hot_takes'])
+
 export default function HubPage() {
   const { session } = useAuth()
   const { data: profile, isLoading: profileLoading } = useProfile()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [squadExpanded, setSquadExpanded] = useState(false)
-  const [feedScope, setFeedScope] = useState('squad')
   const [filterMode, setFilterMode] = useState(false)
   const hasManuallyToggled = useRef(false)
+
+  // Read tab + scrollTo from query params
+  const tabParam = searchParams.get('tab')
+  const scrollToParam = searchParams.get('scrollTo')
+  const [feedScope, setFeedScope] = useState(
+    tabParam && VALID_SCOPES.has(tabParam) ? tabParam : 'squad'
+  )
+  const [scrollToItem, setScrollToItem] = useState(scrollToParam || null)
+
+  // When query params change (e.g. notification deep-link), update state
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    const scrollTo = searchParams.get('scrollTo')
+    if (tab && VALID_SCOPES.has(tab)) {
+      hasManuallyToggled.current = true
+      setFeedScope(tab)
+    }
+    if (scrollTo) {
+      setScrollToItem(scrollTo)
+    }
+    // Clear query params after consumption
+    if (tab || scrollTo) {
+      const timer = setTimeout(() => {
+        setSearchParams({}, { replace: true })
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams])
 
   const { data: connections, isLoading: connectionsLoading } = useConnections()
   const { data: pending } = usePendingConnectionRequests()
@@ -64,7 +95,7 @@ export default function HubPage() {
 
   const connectedUserIds = new Set((connections || []).map((c) => c.user_id))
 
-  // Default to 'all' feed when user has no connections
+  // Default to 'all' feed when user has no connections (but don't override query param tab)
   useEffect(() => {
     if (!connectionsLoading && !hasManuallyToggled.current) {
       setFeedScope(connections?.length ? 'squad' : 'all')
@@ -320,27 +351,32 @@ export default function HubPage() {
       {/* Activity Feed */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <h2 className="text-xs text-text-muted uppercase tracking-wider">Feed</h2>
-          <div className="flex gap-1">
-            <button
-              onClick={() => handleScopeToggle('squad')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                feedScope === 'squad' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-              }`}
-            >
-              My Squad
-            </button>
-            <button
-              onClick={() => handleScopeToggle('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                feedScope === 'all' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-              }`}
-            >
-              All of IKB
-            </button>
+          <h2 className="text-xs text-text-muted uppercase tracking-wider flex-shrink-0">Feed</h2>
+          <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar">
+            {[
+              { key: 'squad', label: 'My Squad' },
+              { key: 'all', label: 'All of IKB' },
+              { key: 'highlights', label: 'My Highlights' },
+              { key: 'hot_takes', label: 'Hot Takes' },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => handleScopeToggle(tab.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${
+                  feedScope === tab.key ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
-        <ActivityFeed onUserTap={setSelectedUserId} scope={feedScope} />
+        <ActivityFeed
+          onUserTap={setSelectedUserId}
+          scope={feedScope}
+          scrollToItemId={scrollToItem}
+          onScrollComplete={() => setScrollToItem(null)}
+        />
       </div>
 
       <UserProfileModal

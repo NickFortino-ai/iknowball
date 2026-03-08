@@ -42,14 +42,30 @@ const navLinks = [
 ]
 
 function getNotificationRoute(notification) {
-  if (notification.metadata?.pickId) return null // handled by modal
-  if (notification.metadata?.parlayId) return null // handled by modal
-  if (notification.metadata?.propPickId) return null // handled by modal
-  if (notification.metadata?.hotTakeId) return '/hub'
-  switch (notification.type) {
-    case 'comment':
-    case 'reaction':
-      return '/hub'
+  const { type, metadata } = notification
+
+  // Comment/reaction notifications: deep-link to highlights with scroll target
+  if (type === 'comment' || type === 'reaction') {
+    // Pick/parlay/prop comments still open modals (handled below by pickId/parlayId/propPickId check)
+    if (metadata?.pickId || metadata?.parlayId || metadata?.propPickId) return null
+
+    // Deep-link with targetType + targetId
+    if (metadata?.targetType && metadata?.targetId) {
+      return `/hub?tab=highlights&scrollTo=${metadata.targetType}-${metadata.targetId}`
+    }
+    // Old notifications with only hotTakeId
+    if (metadata?.hotTakeId) {
+      return `/hub?tab=highlights&scrollTo=hot_take-${metadata.hotTakeId}`
+    }
+    // Fallback: just go to highlights tab
+    return '/hub?tab=highlights'
+  }
+
+  if (metadata?.pickId) return null // handled by modal
+  if (metadata?.parlayId) return null // handled by modal
+  if (metadata?.propPickId) return null // handled by modal
+
+  switch (type) {
     case 'parlay_result':
     case 'futures_result':
     case 'streak_milestone':
@@ -66,7 +82,7 @@ function getNotificationRoute(notification) {
       return null // handled by modal
     case 'squares_quarter_win':
     case 'survivor_result':
-      return notification.metadata?.leagueId ? `/leagues/${notification.metadata.leagueId}` : null
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
     default:
       return null
   }

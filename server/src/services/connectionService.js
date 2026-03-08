@@ -277,6 +277,8 @@ export async function declineConnectionRequest(connectionId, userId) {
 
 export async function getConnectionActivity(userId, before, scope = 'squad') {
   const isAll = scope === 'all'
+  const isHighlights = scope === 'highlights'
+  const isHotTakes = scope === 'hot_takes'
 
   // Filter out blocked users — always needed
   const { data: blocks } = await supabase
@@ -290,7 +292,20 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
   let allIds = [userId]
   const userMap = {}
 
-  if (!isAll) {
+  if (isHighlights) {
+    // Highlights: show only the current user's activity
+    allIds = [userId]
+    connectedIds = [userId]
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, avatar_emoji, title_preference')
+      .eq('id', userId)
+    for (const u of users || []) {
+      userMap[u.id] = u
+    }
+  } else if (isHotTakes) {
+    // Hot takes: handled specially below — no connections needed
+  } else if (!isAll) {
     // Get connected user IDs
     const { data: connections } = await supabase
       .from('connections')
@@ -319,7 +334,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
 
   // Build streak map for all users in scope
   const streakMap = {}
-  if (!isAll) {
+  if (!isAll && !isHotTakes) {
     const { data: streakStats } = await supabase
       .from('user_sport_stats')
       .select('user_id, current_streak')
@@ -338,14 +353,18 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     return before ? query.lt(col, before) : query
   }
 
-  // Helper: for 'all' scope, skip user filter; for 'squad', filter by connected users
+  // Helper: for 'all'/'hot_takes' scope, skip user filter; for 'squad'/'highlights', filter by user ids
   function filterByUser(query, col, ids) {
-    return isAll ? query : query.in(col, ids)
+    return (isAll || isHotTakes) ? query : query.in(col, ids)
   }
 
-  // Query sources in parallel (some skipped for 'all' scope)
+  // For hot_takes scope, only run Source 9; everything else resolves to empty
+  const skipForHotTakes = isHotTakes ? Promise.resolve({ data: [] }) : null
+
+  // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders, sweatShares] = await Promise.all([
     // Source 1: Notable picks — settled where (correct AND odds >= 200) OR (multiplier >= 3)
+    skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('picks')
       .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, sports(name))'),
@@ -356,6 +375,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .limit(20),
 
     // Source 2: Settled parlays (won + bad beats only, filtered in processing)
+    skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('parlays')
       .select('id, user_id, leg_count, combined_multiplier, status, is_correct, points_earned, risk_points, reward_points, updated_at, parlay_legs(picked_team, odds_at_submission, status, games(home_team, away_team, sports(name)))'),
@@ -364,8 +384,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .order('updated_at', { ascending: false })
       .limit(20),
 
-    // Source 3: Streak events (squad only)
-    isAll ? Promise.resolve({ data: [] }) :
+    // Source 3: Streak events (squad/highlights only)
+    (isAll || isHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('streak_events')
       .select('id, user_id, streak_length, created_at, sports(key, name)')
@@ -377,6 +397,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     Promise.resolve({ data: [] }),
 
     // Source 5: Record broken
+    skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('record_history')
       .select('id, record_key, new_holder_id, previous_holder_id, previous_value, new_value, broken_at, records(display_name)'),
@@ -384,8 +405,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .order('broken_at', { ascending: false })
       .limit(10),
 
-    // Source 6: Pick shares (squad only)
-    isAll ? Promise.resolve({ data: [] }) :
+    // Source 6: Pick shares (squad only — not relevant for highlights/hot_takes)
+    (isAll || isHighlights || isHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(game_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, games(home_team, away_team, sports(name)))')
@@ -394,7 +415,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .limit(15),
 
     // Source 7: Recent comments (squad only)
-    isAll ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('comments')
       .select('id, target_type, target_id, user_id, content, created_at')
@@ -404,7 +425,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .limit(15),
 
     // Source 8: H2H — settled picks in last 3 days (squad only)
-    isAll ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('picks')
       .select('id, user_id, picked_team, game_id, is_correct, odds_at_pick, points_earned, risk_points, multiplier, updated_at, games(home_team, away_team, sports(name))')
@@ -415,15 +436,16 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .limit(100),
 
     // Source 9: Hot takes
-    applyBefore(filterByUser(supabase
-      .from('hot_takes')
-      .select('id, user_id, content, team_tag, image_url, created_at'),
-      'user_id', allIds), 'created_at')
+    applyBefore(
+      isHotTakes
+        ? supabase.from('hot_takes').select('id, user_id, content, team_tag, image_url, created_at')
+        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tag, image_url, created_at'), 'user_id', allIds),
+      'created_at')
       .order('created_at', { ascending: false })
-      .limit(15),
+      .limit(isHotTakes ? 30 : 15),
 
     // Source 10: Hot take reminders (squad only)
-    isAll ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('hot_take_reminders')
       .select('id, reminder_user_id, hot_take_id, created_at, hot_takes(id, user_id, content, team_tag, created_at)')
@@ -432,7 +454,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .limit(15),
 
     // Source 11: All pick shares for sweat cards (squad only)
-    isAll ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes) ? Promise.resolve({ data: [] }) :
     supabase
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(id, home_team, away_team, starts_at, sports(name)))')
@@ -442,8 +464,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .limit(50),
   ])
 
-  // For 'all' scope, batch-fetch user data from query results
-  if (isAll) {
+  // For 'all' / 'hot_takes' scope, batch-fetch user data from query results
+  if (isAll || isHotTakes) {
     const userIdSet = new Set()
     for (const pick of notablePicks.data || []) userIdSet.add(pick.user_id)
     for (const parlay of settledParlays.data || []) userIdSet.add(parlay.user_id)
@@ -812,7 +834,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
 
   // Compute cumulative h2h records (squad only — too expensive across all users)
   const h2hItems = feed.filter(f => f.type === 'head_to_head')
-  if (h2hItems.length > 0 && !isAll) {
+  if (h2hItems.length > 0 && !isAll && !isHighlights && !isHotTakes) {
     const pairSet = new Set()
     const h2hUserIds = new Set()
     for (const item of h2hItems) {
@@ -1113,7 +1135,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
   }
 
   // Daily digest: summarize yesterday's squad activity (first page, squad scope only)
-  if (!before && !isAll) {
+  if (!before && !isAll && !isHighlights && !isHotTakes) {
     const now = new Date()
     const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
     const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -1303,7 +1325,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
   })
 
   const page = feed.slice(0, PAGE_SIZE)
-  const nextCursor = !isAll && page.length === PAGE_SIZE && feed.length > PAGE_SIZE
+  const hasPagination = !isAll && !isHotTakes
+  const nextCursor = hasPagination && page.length === PAGE_SIZE && feed.length > PAGE_SIZE
     ? page[page.length - 1].timestamp
     : null
 

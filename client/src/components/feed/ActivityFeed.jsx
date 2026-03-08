@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useConnectionActivity } from '../../hooks/useConnections'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
 import { getDateKey, formatFeedDate } from '../../lib/time'
@@ -24,9 +24,26 @@ import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
 import FeedSkeleton from './FeedSkeleton'
 
-export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
+function getFeedItemTargetKey(item) {
+  if (item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
+    return `pick-${item.pick.id}`
+  } else if (item.type === 'parlay' || item.type === 'bad_beat') {
+    return `parlay-${item.parlay.id}`
+  } else if (item.type === 'streak') {
+    return `streak_event-${item.streak.id}`
+  } else if (item.type === 'record') {
+    return `record_history-${item.record.id}`
+  } else if (item.type === 'hot_take') {
+    return `hot_take-${item.hot_take.id}`
+  }
+  return null
+}
+
+export default function ActivityFeed({ onUserTap, scope = 'squad', scrollToItemId, onScrollComplete }) {
   const [selectedStreakId, setSelectedStreakId] = useState(null)
   const [selectedH2HItem, setSelectedH2HItem] = useState(null)
+  const [highlightedKey, setHighlightedKey] = useState(null)
+  const scrollTargetRef = useRef(null)
   const {
     data,
     isLoading,
@@ -40,6 +57,22 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
     if (!data?.pages) return []
     return data.pages.flatMap((page) => page.items || [])
   }, [data])
+
+  // Scroll to target item when data loads
+  useEffect(() => {
+    if (!scrollToItemId || !activity.length) return
+    // Find the matching item
+    const match = activity.find((item) => getFeedItemTargetKey(item) === scrollToItemId)
+    if (match && scrollTargetRef.current) {
+      setTimeout(() => {
+        scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 300)
+      setHighlightedKey(scrollToItemId)
+      const timer = setTimeout(() => setHighlightedKey(null), 3000)
+      onScrollComplete?.()
+      return () => clearTimeout(timer)
+    }
+  }, [scrollToItemId, activity])
 
   // Build reaction targets for batch query
   const reactionTargets = useMemo(() => {
@@ -103,12 +136,16 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
       ) : !activity?.length ? (
         /* Empty state */
         <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
-          <div className="text-2xl mb-2">{scope === 'all' ? '\uD83C\uDFC0' : '\uD83D\uDC4B'}</div>
+          <div className="text-2xl mb-2">{scope === 'highlights' ? '\u2B50' : scope === 'hot_takes' ? '\uD83D\uDD25' : scope === 'all' ? '\uD83C\uDFC0' : '\uD83D\uDC4B'}</div>
           <div className="text-sm text-text-primary font-medium mb-1">
-            {scope === 'all' ? 'No activity yet' : 'Your feed is empty'}
+            {scope === 'highlights' ? 'No highlights yet' : scope === 'hot_takes' ? 'No hot takes yet' : scope === 'all' ? 'No activity yet' : 'Your feed is empty'}
           </div>
           <div className="text-xs text-text-muted">
-            {scope === 'all'
+            {scope === 'highlights'
+              ? 'Make some picks and your notable activity will show up here.'
+              : scope === 'hot_takes'
+              ? 'Be the first to drop a hot take!'
+              : scope === 'all'
               ? 'Be the first to drop a hot take!'
               : 'Connect with other users to see their activity here.'}
           </div>
@@ -121,16 +158,26 @@ export default function ActivityFeed({ onUserTap, scope = 'squad' }) {
                 {group.label}
               </h3>
               <div className="space-y-3">
-                {group.items.map((item) => (
-                  <FeedCard
-                    key={`${item.type}-${item.id}`}
-                    item={item}
-                    getReactions={getReactions}
-                    onUserTap={onUserTap}
-                    onStreakTap={setSelectedStreakId}
-                    onH2HTap={setSelectedH2HItem}
-                  />
-                ))}
+                {group.items.map((item) => {
+                  const targetKey = getFeedItemTargetKey(item)
+                  const isScrollTarget = scrollToItemId && targetKey === scrollToItemId
+                  const isHighlighted = targetKey && targetKey === highlightedKey
+                  return (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      ref={isScrollTarget ? scrollTargetRef : undefined}
+                      className={`rounded-2xl transition-shadow duration-700 ${isHighlighted ? 'ring-2 ring-accent' : ''}`}
+                    >
+                      <FeedCard
+                        item={item}
+                        getReactions={getReactions}
+                        onUserTap={onUserTap}
+                        onStreakTap={setSelectedStreakId}
+                        onH2HTap={setSelectedH2HItem}
+                      />
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ))}

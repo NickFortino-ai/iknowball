@@ -28,7 +28,8 @@ router.get('/pending', requireAuth, async (req, res) => {
 
 router.get('/activity', requireAuth, async (req, res) => {
   const before = req.query.before || null
-  const scope = req.query.scope === 'all' ? 'all' : 'squad'
+  const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'hot_takes'])
+  const scope = VALID_SCOPES.has(req.query.scope) ? req.query.scope : 'squad'
   const activity = await getConnectionActivity(req.user.id, before, scope)
   res.json(activity)
 })
