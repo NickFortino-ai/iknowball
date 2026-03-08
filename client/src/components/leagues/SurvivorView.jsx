@@ -157,7 +157,7 @@ export default function SurvivorView({ league }) {
               </button>
             </div>
             <p className="text-[10px] text-text-muted">
-              Keep going to chase the record, or settle to lock in your points
+              Keep going to chase the streak record, or settle to close out the league
             </p>
           </div>
         </div>

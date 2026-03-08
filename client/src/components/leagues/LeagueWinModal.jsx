@@ -40,7 +40,7 @@ export default function LeagueWinModal({ data, onClose }) {
               <div className="text-5xl">{'\uD83D\uDC51'}</div>
               <h2 className="text-2xl font-display font-bold text-correct">League Settled!</h2>
               <p className="text-text-secondary">
-                You settled <span className="text-text-primary font-semibold">{data.leagueName}</span> and locked in your points.
+                You settled <span className="text-text-primary font-semibold">{data.leagueName}</span>. What a run!
               </p>
 
               <div className="flex justify-center gap-6 pt-2">
@@ -55,7 +55,7 @@ export default function LeagueWinModal({ data, onClose }) {
               </div>
 
               <p className="text-xs text-text-muted pt-2">
-                Your points have been added to your global score.
+                Your bonus points were added to your global score.
               </p>
             </>
           ) : isSurvivorWin ? (
