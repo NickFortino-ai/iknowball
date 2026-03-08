@@ -25,13 +25,14 @@ export function usePendingConnectionRequests(enabled = true) {
   })
 }
 
-export function useConnectionActivity(scope = 'squad') {
+export function useConnectionActivity(scope = 'squad', targetUserId = null) {
   return useInfiniteQuery({
-    queryKey: ['connections', 'activity', scope],
+    queryKey: ['connections', 'activity', scope, targetUserId],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams()
       if (pageParam) params.set('before', pageParam)
       params.set('scope', scope)
+      if (targetUserId) params.set('userId', targetUserId)
       return api.get(`/connections/activity?${params}`)
     },
     initialPageParam: null,

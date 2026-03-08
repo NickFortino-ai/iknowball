@@ -2,8 +2,9 @@ import { useState, useRef, useMemo } from 'react'
 import FeedCardWrapper from './FeedCardWrapper'
 import ImageLightbox from './ImageLightbox'
 import TeamAutocomplete from './TeamAutocomplete'
-import { useUpdateHotTake, useHotTakeImageUpload, useTeamsForSport, useToggleBookmark } from '../../hooks/useHotTakes'
+import { useUpdateHotTake, useHotTakeImageUpload, useTeamsForSport, useToggleBookmark, useRemindHotTake } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
+import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 
 const MAX_CHARS = 280
@@ -22,8 +23,11 @@ const sportTabs = [
 
 export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmarked, onBookmarkToggle }) {
   const { hot_take } = item
+  const { session } = useAuth()
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [reminded, setReminded] = useState(false)
+  const remindHotTake = useRemindHotTake()
   const [editContent, setEditContent] = useState('')
   const [editTeamTags, setEditTeamTags] = useState([])
   const [editSport, setEditSport] = useState(null)
@@ -104,6 +108,22 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
       selectImage(file)
     }
     e.target.value = ''
+  }
+
+  const isOwnTake = item.userId === session?.user?.id
+
+  async function handleRemind() {
+    try {
+      await remindHotTake.mutateAsync(hot_take.id)
+      setReminded(true)
+      toast(`@${item.username} has been reminded about this take`, 'success')
+    } catch (err) {
+      if (err.status === 403) {
+        toast('You must be connected to this user to remind them', 'error')
+      } else {
+        toast(err.message || 'Failed to remind', 'error')
+      }
+    }
   }
 
   const charCount = editContent.length
@@ -283,7 +303,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
             </button>
           )}
 
-          {/* Team tags + bookmark */}
+          {/* Team tags + remind + bookmark */}
           <div className="mt-2 flex items-center justify-between">
             <div className="flex flex-wrap gap-1">
               {hot_take.team_tags?.length > 0 && hot_take.team_tags.map((tag) => (
@@ -295,17 +315,28 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                 </span>
               ))}
             </div>
-            {onBookmarkToggle && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onBookmarkToggle(hot_take.id) }}
-                className={`p-1 transition-colors ${isBookmarked ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
-                title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                </svg>
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {!isOwnTake && !reminded && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRemind() }}
+                  disabled={remindHotTake.isPending}
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-50 transition-colors"
+                >
+                  Remind
+                </button>
+              )}
+              {onBookmarkToggle && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onBookmarkToggle(hot_take.id) }}
+                  className={`p-1 transition-colors ${isBookmarked ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
+                  title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Lightbox */}

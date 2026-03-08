@@ -40,7 +40,7 @@ function getFeedItemTargetKey(item) {
   return null
 }
 
-export default function ActivityFeed({ onUserTap, scope = 'squad', scrollToItemId, onScrollComplete }) {
+export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId = null, scrollToItemId, onScrollComplete }) {
   const [selectedStreakId, setSelectedStreakId] = useState(null)
   const [selectedH2HItem, setSelectedH2HItem] = useState(null)
   const [highlightedKey, setHighlightedKey] = useState(null)
@@ -51,7 +51,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', scrollToItemI
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useConnectionActivity(scope)
+  } = useConnectionActivity(scope, targetUserId)
 
   // Flatten all pages into a single list
   const activity = useMemo(() => {
@@ -139,8 +139,8 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', scrollToItemI
 
   return (
     <div>
-      {/* Hot Take Composer */}
-      <HotTakeComposer />
+      {/* Hot Take Composer — hidden when viewing another user's feed */}
+      {!targetUserId && <HotTakeComposer />}
 
       {/* Loading skeleton */}
       {isLoading ? (
