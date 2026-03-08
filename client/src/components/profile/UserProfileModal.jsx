@@ -276,6 +276,7 @@ export default function UserProfileModal({ userId, onClose }) {
   const [showAllHotTakes, setShowAllHotTakes] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
   const [confirmBlock, setConfirmBlock] = useState(false)
+  const [showAvatarOverlay, setShowAvatarOverlay] = useState(false)
   const blockUser = useBlockUser()
 
   async function handleBlock() {
@@ -341,12 +342,28 @@ export default function UserProfileModal({ userId, onClose }) {
         ) : (
           <>
             {/* Header */}
+            {/* Avatar overlay */}
+            {showAvatarOverlay && user.avatar_url && (
+              <div
+                className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center"
+                onClick={() => setShowAvatarOverlay(false)}
+              >
+                <img
+                  src={user.avatar_url}
+                  alt=""
+                  className="w-72 h-72 md:w-80 md:h-80 rounded-full object-cover"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
+
             {user.avatar_url ? (
               <div className="flex flex-col items-center mb-4">
                 <img
                   src={user.avatar_url}
                   alt=""
-                  className="w-24 h-24 rounded-full object-cover mb-3"
+                  className="w-24 h-24 rounded-full object-cover mb-3 cursor-pointer"
+                  onClick={() => setShowAvatarOverlay(true)}
                 />
                 <div className="font-display text-xl">{user.display_name || user.username}</div>
                 <div className="text-text-muted text-sm">@{user.username}</div>
