@@ -83,6 +83,43 @@ export function useTeamHotTakes(teamName) {
   })
 }
 
+export function useToggleBookmark() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (hotTakeId) => api.post(`/hot-takes/${hotTakeId}/bookmark`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
+      queryClient.invalidateQueries({ queryKey: ['bookmarkStatus'] })
+    },
+  })
+}
+
+export function useBookmarkStatus(hotTakeIds) {
+  const key = hotTakeIds?.length ? hotTakeIds.join(',') : ''
+  return useQuery({
+    queryKey: ['bookmarkStatus', key],
+    queryFn: () => api.get(`/hot-takes/bookmarks/check?ids=${key}`),
+    enabled: !!hotTakeIds?.length,
+  })
+}
+
+export function useBookmarkedHotTakes() {
+  return useInfiniteQuery({
+    queryKey: ['bookmarks', 'list'],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams()
+      if (pageParam) params.set('before', pageParam)
+      return api.get(`/hot-takes/bookmarks/list?${params}`)
+    },
+    initialPageParam: null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.items?.length
+        ? lastPage.items[lastPage.items.length - 1].bookmarkedAt
+        : undefined,
+  })
+}
+
 function resizeImage(file, maxWidth = 1200) {
   return new Promise((resolve, reject) => {
     const img = new Image()

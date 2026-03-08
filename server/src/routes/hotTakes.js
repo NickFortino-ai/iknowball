@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { createHotTake, updateHotTake, deleteHotTake, getHotTakesByUser, createReminder } from '../services/hotTakeService.js'
+import { toggleBookmark, getBookmarkedHotTakes, getBookmarkStatusBatch } from '../services/socialService.js'
 import { checkUserMuted, checkContent } from '../services/contentFilterService.js'
 import { supabase } from '../config/supabase.js'
 
@@ -95,9 +96,9 @@ router.get('/team', requireAuth, async (req, res) => {
       id: take.id,
       userId: take.user_id,
       username: user?.username,
-      displayName: user?.display_name,
-      avatarUrl: user?.avatar_url,
-      avatarEmoji: user?.avatar_emoji,
+      display_name: user?.display_name,
+      avatar_url: user?.avatar_url,
+      avatar_emoji: user?.avatar_emoji,
       timestamp: take.created_at,
       commentCount: commentCountMap[take.id] || 0,
       hot_take: {
@@ -110,6 +111,23 @@ router.get('/team', requireAuth, async (req, res) => {
   })
 
   res.json({ items, hasMore: hotTakes.length === 20 })
+})
+
+// Bookmark endpoints
+router.post('/:id/bookmark', requireAuth, async (req, res) => {
+  const result = await toggleBookmark(req.user.id, req.params.id)
+  res.json(result)
+})
+
+router.get('/bookmarks/list', requireAuth, async (req, res) => {
+  const result = await getBookmarkedHotTakes(req.user.id, req.query.before || null)
+  res.json(result)
+})
+
+router.get('/bookmarks/check', requireAuth, async (req, res) => {
+  const ids = req.query.ids ? req.query.ids.split(',') : []
+  const result = await getBookmarkStatusBatch(req.user.id, ids)
+  res.json(result)
 })
 
 router.post('/:id/remind', requireAuth, async (req, res) => {

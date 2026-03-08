@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useConnectionActivity } from '../../hooks/useConnections'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
+import { useBookmarkStatus, useToggleBookmark } from '../../hooks/useHotTakes'
 import { getDateKey, formatFeedDate } from '../../lib/time'
 import PickFeedCard from './PickFeedCard'
 import ParlayFeedCard from './ParlayFeedCard'
@@ -100,6 +101,17 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', scrollToItemI
 
   const { data: reactionsBatch } = useFeedReactionsBatch(reactionTargets)
 
+  // Bookmark status for hot takes
+  const hotTakeIds = useMemo(() => {
+    return activity.filter((i) => i.type === 'hot_take').map((i) => i.hot_take.id)
+  }, [activity])
+  const { data: bookmarkStatus } = useBookmarkStatus(hotTakeIds)
+  const toggleBookmark = useToggleBookmark()
+
+  function handleBookmarkToggle(hotTakeId) {
+    toggleBookmark.mutate(hotTakeId)
+  }
+
   function getReactions(targetType, targetId) {
     if (!reactionsBatch) return []
     return reactionsBatch[`${targetType}-${targetId}`] || []
@@ -174,6 +186,8 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', scrollToItemI
                         onUserTap={onUserTap}
                         onStreakTap={setSelectedStreakId}
                         onH2HTap={setSelectedH2HItem}
+                        bookmarkStatus={bookmarkStatus}
+                        onBookmarkToggle={handleBookmarkToggle}
                       />
                     </div>
                   )
@@ -203,7 +217,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', scrollToItemI
   )
 }
 
-function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap }) {
+function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, bookmarkStatus, onBookmarkToggle }) {
   if (item.grouped) {
     return (
       <GroupedPickFeedCard
@@ -290,6 +304,8 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap }) {
           item={item}
           reactions={getReactions('hot_take', item.hot_take.id)}
           onUserTap={onUserTap}
+          isBookmarked={bookmarkStatus?.[item.hot_take.id] || false}
+          onBookmarkToggle={onBookmarkToggle}
         />
       )
     case 'hot_take_reminder':

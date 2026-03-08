@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useTeamsForSport, useTeamHotTakes } from '../../hooks/useHotTakes'
+import { useTeamsForSport, useTeamHotTakes, useBookmarkStatus, useToggleBookmark } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
 import TeamAutocomplete from './TeamAutocomplete'
@@ -67,9 +67,18 @@ export default function TeamFeed({ onUserTap }) {
 
   const { data: reactionsBatch } = useFeedReactionsBatch(reactionTargets)
 
+  // Bookmark status
+  const hotTakeIds = useMemo(() => items.map((i) => i.hot_take.id), [items])
+  const { data: bookmarkStatusData } = useBookmarkStatus(hotTakeIds)
+  const toggleBookmark = useToggleBookmark()
+
   function getReactions(targetType, targetId) {
     if (!reactionsBatch) return []
     return reactionsBatch[`${targetType}-${targetId}`] || []
+  }
+
+  function handleBookmarkToggle(hotTakeId) {
+    toggleBookmark.mutate(hotTakeId)
   }
 
   function handleSelectTeam(teamName) {
@@ -193,6 +202,8 @@ export default function TeamFeed({ onUserTap }) {
                   item={item}
                   reactions={getReactions('hot_take', item.hot_take.id)}
                   onUserTap={onUserTap}
+                  isBookmarked={bookmarkStatusData?.[item.hot_take.id] || false}
+                  onBookmarkToggle={handleBookmarkToggle}
                 />
               ))}
 

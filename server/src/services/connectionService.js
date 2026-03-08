@@ -362,7 +362,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
   const skipForHotTakes = isHotTakes ? Promise.resolve({ data: [] }) : null
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
-  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders, sweatShares] = await Promise.all([
+  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes] = await Promise.all([
     // Source 1: Notable picks — settled where (correct AND odds >= 200) OR (multiplier >= 3)
     skipForHotTakes ||
     applyBefore(filterByUser(supabase
@@ -462,6 +462,13 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       .gte('created_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false })
       .limit(50),
+
+    // Source 12: Hot take reminder counts — to find viral takes (5+ reminds)
+    isHighlights ? Promise.resolve({ data: [] }) :
+    supabase
+      .from('hot_take_reminders')
+      .select('hot_take_id')
+      .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
   ])
 
   // For 'all' / 'hot_takes' scope, batch-fetch user data from query results
@@ -475,6 +482,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     }
     for (const pick of h2hPicks.data || []) userIdSet.add(pick.user_id)
     for (const take of hotTakes.data || []) userIdSet.add(take.user_id)
+    // viralHotTakes user IDs are added after we fetch the actual hot takes below
     userIdSet.delete(undefined)
     for (const id of blockedSet) userIdSet.delete(id)
     const userIdsToFetch = [...userIdSet]
@@ -950,6 +958,63 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     })
   }
 
+  // Process viral hot takes from Source 12 (5+ reminds)
+  const viralReminderData = viralHotTakes?.data || []
+  if (viralReminderData.length > 0) {
+    // Count reminds per hot take
+    const remindCounts = {}
+    for (const r of viralReminderData) {
+      remindCounts[r.hot_take_id] = (remindCounts[r.hot_take_id] || 0) + 1
+    }
+    // Filter to hot takes with 5+ reminds that aren't already in the feed
+    const existingHotTakeIds = new Set(feed.filter((f) => f.type === 'hot_take').map((f) => f.hot_take.id))
+    const viralIds = Object.entries(remindCounts)
+      .filter(([id, count]) => count >= 5 && !existingHotTakeIds.has(id))
+      .map(([id]) => id)
+
+    if (viralIds.length > 0) {
+      const { data: viralTakes } = await supabase
+        .from('hot_takes')
+        .select('id, user_id, content, team_tags, image_url, created_at')
+        .in('id', viralIds)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      // Fetch user info for viral take authors not already in userMap
+      const missingUserIds = (viralTakes || []).map((t) => t.user_id).filter((id) => !userMap[id])
+      if (missingUserIds.length > 0) {
+        const { data: missingUsers } = await supabase
+          .from('users')
+          .select('id, username, display_name, avatar_url, avatar_emoji')
+          .in('id', [...new Set(missingUserIds)])
+        for (const u of missingUsers || []) {
+          userMap[u.id] = u
+        }
+      }
+
+      for (const take of viralTakes || []) {
+        const user = userMap[take.user_id]
+        if (!user) continue
+        if (blockedSet.has(take.user_id)) continue
+        feed.push({
+          type: 'hot_take',
+          id: `viral-${take.id}`,
+          userId: take.user_id,
+          ...buildUserFields(user),
+          timestamp: take.created_at,
+          hot_take: {
+            id: take.id,
+            content: take.content,
+            team_tags: take.team_tags,
+            image_url: take.image_url,
+          },
+          remindCount: remindCounts[take.id],
+          viral: true,
+        })
+      }
+    }
+  }
+
   // Process sweat cards from Source 11 (squad only)
   const sweatShareData = sweatShares?.data || []
   if (sweatShareData.length > 0) {
@@ -1260,6 +1325,40 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     }
   }
 
+  // Batch fetch and attach reaction counts for feed items (for scoring)
+  async function attachReactionCounts(items) {
+    const targets = []
+    for (const item of items) {
+      const t = getCommentKey(item)
+      if (t && t.target_type !== 'head_to_head') targets.push(t)
+    }
+    if (!targets.length) return
+    const byType = {}
+    for (const t of targets) {
+      if (!byType[t.target_type]) byType[t.target_type] = new Set()
+      byType[t.target_type].add(t.target_id)
+    }
+    const countQueries = Object.entries(byType).map(([type, ids]) =>
+      supabase
+        .from('feed_reactions')
+        .select('target_type, target_id')
+        .eq('target_type', type)
+        .in('target_id', [...ids])
+    )
+    const reactionCountMap = {}
+    const countResults = await Promise.all(countQueries)
+    for (const result of countResults) {
+      for (const row of result.data || []) {
+        const key = `${row.target_type}-${row.target_id}`
+        reactionCountMap[key] = (reactionCountMap[key] || 0) + 1
+      }
+    }
+    for (const item of items) {
+      const t = getCommentKey(item)
+      item.reactionCount = t ? (reactionCountMap[t.key] || 0) : 0
+    }
+  }
+
   const PAGE_SIZE = 30
 
   // Score-based ranking for both feeds
@@ -1271,6 +1370,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
         break
       case 'hot_take':
         score = item.hot_take?.image_url ? 100 : 80
+        // Viral hot takes (5+ reminds) get a significant boost
+        if (item.viral) score += 40
         break
       case 'called_shot':
         score = 75
@@ -1309,14 +1410,16 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     }
     // Engagement boost: +5 per comment, capped at +25
     score += Math.min((item.commentCount || 0) * 5, 25)
+    // Reaction boost: +3 per reaction, capped at +15
+    score += Math.min((item.reactionCount || 0) * 3, 15)
     // Time decay: priority bonus shrinks over 24h, then items rank purely by recency
     const hoursAgo = (Date.now() - new Date(item.timestamp).getTime()) / (1000 * 60 * 60)
     const decayFactor = Math.max(0, 1 - hoursAgo / 24)
     return score * decayFactor
   }
 
-  // Fetch comment counts for all items (needed for scoring)
-  await attachCommentCounts(feed)
+  // Fetch comment + reaction counts for all items (needed for scoring)
+  await Promise.all([attachCommentCounts(feed), attachReactionCounts(feed)])
 
   feed.sort((a, b) => {
     const diff = getFeedScore(b) - getFeedScore(a)

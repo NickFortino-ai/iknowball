@@ -355,6 +355,112 @@ export async function toggleFeedReaction(userId, targetType, targetId, reactionT
   return { toggled: 'on' }
 }
 
+// --- Bookmarks ---
+
+export async function toggleBookmark(userId, hotTakeId) {
+  const { data: existing } = await supabase
+    .from('hot_take_bookmarks')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('hot_take_id', hotTakeId)
+    .single()
+
+  if (existing) {
+    await supabase.from('hot_take_bookmarks').delete().eq('id', existing.id)
+    return { toggled: 'off' }
+  }
+
+  await supabase.from('hot_take_bookmarks').insert({ user_id: userId, hot_take_id: hotTakeId })
+  return { toggled: 'on' }
+}
+
+export async function getBookmarkStatusBatch(userId, hotTakeIds) {
+  if (!hotTakeIds?.length) return {}
+
+  const { data } = await supabase
+    .from('hot_take_bookmarks')
+    .select('hot_take_id')
+    .eq('user_id', userId)
+    .in('hot_take_id', hotTakeIds)
+
+  const result = {}
+  for (const id of hotTakeIds) {
+    result[id] = false
+  }
+  for (const row of data || []) {
+    result[row.hot_take_id] = true
+  }
+  return result
+}
+
+export async function getBookmarkedHotTakes(userId, before = null) {
+  let query = supabase
+    .from('hot_take_bookmarks')
+    .select('hot_take_id, created_at, hot_takes(id, user_id, content, team_tags, image_url, created_at)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (before) {
+    query = query.lt('created_at', before)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+
+  if (!data?.length) return { items: [], hasMore: false }
+
+  // Get user info for all hot take authors
+  const userIds = [...new Set(data.map((b) => b.hot_takes?.user_id).filter(Boolean))]
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, avatar_emoji')
+    .in('id', userIds)
+
+  const userMap = {}
+  for (const u of users || []) {
+    userMap[u.id] = u
+  }
+
+  // Get comment counts
+  const hotTakeIds = data.map((b) => b.hot_takes?.id).filter(Boolean)
+  const { data: commentCounts } = await supabase
+    .from('comments')
+    .select('target_id')
+    .eq('target_type', 'hot_take')
+    .in('target_id', hotTakeIds)
+
+  const commentCountMap = {}
+  for (const c of commentCounts || []) {
+    commentCountMap[c.target_id] = (commentCountMap[c.target_id] || 0) + 1
+  }
+
+  const items = data.filter((b) => b.hot_takes).map((bookmark) => {
+    const take = bookmark.hot_takes
+    const user = userMap[take.user_id]
+    return {
+      type: 'hot_take',
+      id: take.id,
+      userId: take.user_id,
+      username: user?.username,
+      display_name: user?.display_name,
+      avatar_url: user?.avatar_url,
+      avatar_emoji: user?.avatar_emoji,
+      timestamp: take.created_at,
+      bookmarkedAt: bookmark.created_at,
+      commentCount: commentCountMap[take.id] || 0,
+      hot_take: {
+        id: take.id,
+        content: take.content,
+        team_tags: take.team_tags,
+        image_url: take.image_url,
+      },
+    }
+  })
+
+  return { items, hasMore: data.length === 20 }
+}
+
 export async function getFeedReactionsBatch(items) {
   if (!items?.length) return {}
 

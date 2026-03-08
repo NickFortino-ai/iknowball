@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from 'react'
 import FeedCardWrapper from './FeedCardWrapper'
 import ImageLightbox from './ImageLightbox'
 import TeamAutocomplete from './TeamAutocomplete'
-import { useUpdateHotTake, useHotTakeImageUpload, useTeamsForSport } from '../../hooks/useHotTakes'
+import { useUpdateHotTake, useHotTakeImageUpload, useTeamsForSport, useToggleBookmark } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
 import { toast } from '../ui/Toast'
 
@@ -20,7 +20,7 @@ const sportTabs = [
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
 
-export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
+export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmarked, onBookmarkToggle }) {
   const { hot_take } = item
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -255,6 +255,15 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
         </div>
       ) : (
         <>
+          {/* Viral badge */}
+          {item.viral && (
+            <div className="mb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full">
+                {'\uD83D\uDD25'} {item.remindCount}+ reminds
+              </span>
+            </div>
+          )}
+
           {/* Tweet-style content */}
           <div className="text-sm text-text-primary leading-relaxed">
             {hot_take.content}
@@ -274,10 +283,10 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
             </button>
           )}
 
-          {/* Team tags */}
-          {hot_take.team_tags?.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {hot_take.team_tags.map((tag) => (
+          {/* Team tags + bookmark */}
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex flex-wrap gap-1">
+              {hot_take.team_tags?.length > 0 && hot_take.team_tags.map((tag) => (
                 <span
                   key={tag}
                   className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full"
@@ -286,7 +295,18 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
                 </span>
               ))}
             </div>
-          )}
+            {onBookmarkToggle && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onBookmarkToggle(hot_take.id) }}
+                className={`p-1 transition-colors ${isBookmarked ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
+                title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+            )}
+          </div>
 
           {/* Lightbox */}
           {lightboxOpen && hot_take.image_url && (
