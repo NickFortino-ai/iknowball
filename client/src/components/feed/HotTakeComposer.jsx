@@ -57,14 +57,13 @@ export default function HotTakeComposer() {
 
     if (!teams?.length || !selectedSport) {
       setInlineMatches([])
+      setInlineDropdownPos(null)
       return
     }
 
-    // Get word at cursor
-    const cursorPos = e.target.selectionStart
-    const textBeforeCursor = val.slice(0, cursorPos)
-    const wordMatch = textBeforeCursor.match(/(\S+)$/)
-    const currentWord = wordMatch ? wordMatch[1].toLowerCase() : ''
+    // Get the last word being typed (split on whitespace)
+    const words = val.split(/\s+/)
+    const currentWord = (words[words.length - 1] || '').toLowerCase()
 
     if (currentWord.length >= 3) {
       const matches = teams.filter((t) => {
@@ -73,11 +72,7 @@ export default function HotTakeComposer() {
         return lower.split(/\s+/).some((w) => w.startsWith(currentWord))
       }).filter((t) => !teamTags.includes(t)).slice(0, 6)
       setInlineMatches(matches)
-      if (matches.length > 0) {
-        setInlineDropdownPos({ show: true })
-      } else {
-        setInlineDropdownPos(null)
-      }
+      setInlineDropdownPos(matches.length > 0 ? { show: true } : null)
     } else {
       setInlineMatches([])
       setInlineDropdownPos(null)
