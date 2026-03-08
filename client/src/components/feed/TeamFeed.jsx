@@ -3,6 +3,7 @@ import { useTeamsForSport, useTeamHotTakes, useBookmarkStatus, useToggleBookmark
 import { useActiveSports } from '../../hooks/useGames'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
 import TeamAutocomplete from './TeamAutocomplete'
+import HotTakeComposer from './HotTakeComposer'
 import HotTakeFeedCard from './HotTakeFeedCard'
 import FeedSkeleton from './FeedSkeleton'
 
@@ -183,16 +184,20 @@ export default function TeamFeed({ onUserTap }) {
         </div>
       )}
 
-      {/* Team feed results */}
+      {/* Composer + Team feed results */}
       {selectedTeam && (
         <>
+          <HotTakeComposer initialTeamTags={[selectedTeam]} />
+
           {isLoading ? (
             <FeedSkeleton />
           ) : !items.length ? (
             <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
-              <div className="text-2xl mb-2">{'\uD83E\uDD37'}</div>
-              <div className="text-sm text-text-primary font-medium mb-1">No hot takes yet</div>
-              <div className="text-xs text-text-muted">Be the first to post about {selectedTeam}!</div>
+              <div className="text-2xl mb-2">{'\uD83D\uDCAC'}</div>
+              <div className="text-sm text-text-primary font-medium mb-2">Be the first to say something about {selectedTeam}!</div>
+              <div className="text-xs text-text-muted leading-relaxed max-w-xs mx-auto">
+                Drop a hot take above and get the conversation started.
+              </div>
             </div>
           ) : (
             <div className="space-y-3">

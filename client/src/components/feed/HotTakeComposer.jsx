@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCreateHotTake, useHotTakeImageUpload, useTeamsForSport } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
 import { useProfile } from '../../hooks/useProfile'
@@ -21,13 +22,14 @@ const sportTabs = [
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
 
-export default function HotTakeComposer() {
+export default function HotTakeComposer({ initialTeamTags = [] }) {
   const [content, setContent] = useState('')
-  const [teamTags, setTeamTags] = useState([])
+  const [teamTags, setTeamTags] = useState(initialTeamTags)
   const [selectedSport, setSelectedSport] = useState(null)
   const [teamSearch, setTeamSearch] = useState('')
   const [expanded, setExpanded] = useState(false)
   const createHotTake = useCreateHotTake()
+  const queryClient = useQueryClient()
   const { data: profile } = useProfile()
   const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
   const fileInputRef = useRef(null)
@@ -115,11 +117,12 @@ export default function HotTakeComposer() {
       {
         onSuccess: () => {
           setContent('')
-          setTeamTags([])
+          setTeamTags(initialTeamTags)
           setSelectedSport(null)
           setTeamSearch('')
           setExpanded(false)
           removeImage()
+          queryClient.invalidateQueries({ queryKey: ['hotTakes', 'team'] })
         },
         onError: (err) => {
           if (err.status === 403) {
@@ -135,7 +138,7 @@ export default function HotTakeComposer() {
   function handleCancel() {
     setExpanded(false)
     setContent('')
-    setTeamTags([])
+    setTeamTags(initialTeamTags)
     setSelectedSport(null)
     setTeamSearch('')
     removeImage()
