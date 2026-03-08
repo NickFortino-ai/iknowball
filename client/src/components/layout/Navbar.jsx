@@ -47,6 +47,9 @@ function getNotificationRoute(notification) {
   if (notification.metadata?.propPickId) return null // handled by modal
   if (notification.metadata?.hotTakeId) return '/hub'
   switch (notification.type) {
+    case 'comment':
+    case 'reaction':
+      return '/hub'
     case 'parlay_result':
     case 'futures_result':
     case 'streak_milestone':
