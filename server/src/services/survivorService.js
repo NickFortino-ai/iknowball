@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
+import { checkRecordAfterSettle } from './recordService.js'
 
 export async function submitSurvivorPick(leagueId, userId, weekId, gameId, pickedTeam) {
   // Verify user is alive
@@ -249,6 +250,28 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     (p) => p.user_id === requestingUserId && p.league_week_id === pickWeek.id
   )
 
+  // Check for survivor winner (bonus_points entry with type 'survivor_win')
+  const { data: winnerBonus } = await supabase
+    .from('bonus_points')
+    .select('user_id, points')
+    .eq('league_id', leagueId)
+    .eq('type', 'survivor_win')
+    .maybeSingle()
+
+  let survivorWinner = null
+  if (winnerBonus) {
+    const { count: memberCount } = await supabase
+      .from('league_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', leagueId)
+
+    survivorWinner = {
+      user_id: winnerBonus.user_id,
+      points: winnerBonus.points,
+      outlasted: (memberCount || 1) - 1,
+    }
+  }
+
   return {
     members: (members || []).map((m) => ({
       ...m,
@@ -259,6 +282,7 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     display_period_number: displayPeriodNumber,
     pick_week: pickWeek,
     current_pick: userPickWeekPick ? { team_name: userPickWeekPick.team_name, game_id: userPickWeekPick.game_id } : null,
+    survivor_winner: survivorWinner,
   }
 }
 
@@ -541,6 +565,70 @@ export async function autoEliminateMissedPicks() {
   logger.info('Auto-eliminate missed survivor picks completed')
 }
 
+export async function settleSurvivorLeague(leagueId, userId) {
+  // Verify the requesting user IS the winner
+  const { data: bonusEntry } = await supabase
+    .from('bonus_points')
+    .select('user_id, points')
+    .eq('league_id', leagueId)
+    .eq('type', 'survivor_win')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!bonusEntry) {
+    const err = new Error('You are not the winner of this league')
+    err.status = 403
+    throw err
+  }
+
+  // Check league is not already completed
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('status, name, settings')
+    .eq('id', leagueId)
+    .single()
+
+  if (!league) {
+    const err = new Error('League not found')
+    err.status = 404
+    throw err
+  }
+
+  if (league.status === 'completed') {
+    const err = new Error('League is already settled')
+    err.status = 400
+    throw err
+  }
+
+  const { count: memberCount } = await supabase
+    .from('league_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('league_id', leagueId)
+
+  const outlasted = (memberCount || 1) - 1
+  const leagueName = league.name || 'Survivor'
+
+  // Mark league as completed
+  await supabase
+    .from('leagues')
+    .update({ status: 'completed', updated_at: new Date().toISOString() })
+    .eq('id', leagueId)
+
+  // Send settle notification
+  await createNotification(userId, 'survivor_result',
+    `You settled ${leagueName}. Great run!`,
+    { leagueId, settled: true, leagueName, points: bonusEntry.points, outlasted })
+
+  // Check survivor streak record
+  try {
+    await checkRecordAfterSettle(userId, 'survivor', {})
+  } catch (err) {
+    logger.error({ err, leagueId, userId }, 'Failed to check survivor streak record on settle')
+  }
+
+  return { points: bonusEntry.points, outlasted }
+}
+
 async function checkSurvivorWinner(leagueId) {
   const { data: aliveMembers } = await supabase
     .from('league_members')
@@ -680,6 +768,13 @@ async function checkSurvivorWinner(leagueId) {
       await createNotification(bonusEntry.user_id, 'survivor_result',
         `Your survivor streak in ${leagueName} has ended. What a run!`,
         { leagueId, streakEnded: true, leagueName, points: bonusEntry.points, outlasted: (memberCount || 1) - 1 })
+
+      // Check survivor streak record
+      try {
+        await checkRecordAfterSettle(bonusEntry.user_id, 'survivor', {})
+      } catch (err) {
+        logger.error({ err, leagueId }, 'Failed to check survivor streak record on streak end')
+      }
     }
 
     await supabase

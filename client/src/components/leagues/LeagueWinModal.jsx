@@ -13,11 +13,12 @@ export default function LeagueWinModal({ data, onClose }) {
   const format = data.format || (data.outlasted != null ? 'survivor' : 'pickem')
   const isSurvivorWin = format === 'survivor' && data.mode === 'win'
   const isSurvivorStreakEnd = format === 'survivor' && data.mode === 'streak_ended'
-  const isSurvivor = isSurvivorWin || isSurvivorStreakEnd
+  const isSurvivorSettled = format === 'survivor' && data.mode === 'settled'
+  const isSurvivor = isSurvivorWin || isSurvivorStreakEnd || isSurvivorSettled
   const isBracket = format === 'bracket'
 
-  const glowClass = isSurvivorWin ? 'parlay-win-glow' : isSurvivorStreakEnd ? 'survivor-streak-glow' : 'parlay-win-glow'
-  const borderColor = isSurvivorWin ? 'border-correct' : isSurvivorStreakEnd ? 'border-accent' : 'border-correct'
+  const glowClass = (isSurvivorWin || isSurvivorSettled) ? 'parlay-win-glow' : isSurvivorStreakEnd ? 'survivor-streak-glow' : 'parlay-win-glow'
+  const borderColor = (isSurvivorWin || isSurvivorSettled) ? 'border-correct' : isSurvivorStreakEnd ? 'border-accent' : 'border-correct'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
@@ -34,7 +35,30 @@ export default function LeagueWinModal({ data, onClose }) {
         </button>
 
         <div className="text-center space-y-4 py-4">
-          {isSurvivorWin ? (
+          {isSurvivorSettled ? (
+            <>
+              <div className="text-5xl">{'\uD83D\uDC51'}</div>
+              <h2 className="text-2xl font-display font-bold text-correct">League Settled!</h2>
+              <p className="text-text-secondary">
+                You settled <span className="text-text-primary font-semibold">{data.leagueName}</span> and locked in your points.
+              </p>
+
+              <div className="flex justify-center gap-6 pt-2">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-correct">+{data.points}</div>
+                  <div className="text-xs text-text-muted">Points Earned</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-text-primary">{data.outlasted}</div>
+                  <div className="text-xs text-text-muted">Players Outlasted</div>
+                </div>
+              </div>
+
+              <p className="text-xs text-text-muted pt-2">
+                Your points have been added to your global score.
+              </p>
+            </>
+          ) : isSurvivorWin ? (
             <>
               <div className="text-5xl">{'\uD83D\uDC51'}</div>
               <h2 className="text-2xl font-display font-bold text-correct">Congratulations!</h2>

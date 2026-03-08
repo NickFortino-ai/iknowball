@@ -319,6 +319,64 @@ async function calcHighestPropPct() {
   }
 }
 
+async function calcLongestSurvivorStreak() {
+  // Only count 1-life survivor leagues
+  const { data: picks, error } = await supabase
+    .from('survivor_picks')
+    .select('user_id, league_id, status, league_weeks(week_number), leagues!inner(settings)')
+    .in('status', ['survived', 'eliminated'])
+
+  if (error || !picks?.length) return null
+
+  // Filter to 1-life leagues only
+  const oneLifePicks = picks.filter((p) => {
+    const lives = p.leagues?.settings?.lives
+    return lives === 1 || lives === undefined || lives === null
+  })
+
+  if (!oneLifePicks.length) return null
+
+  // Group by (league_id, user_id), sorted by week_number
+  const groups = {}
+  for (const p of oneLifePicks) {
+    const key = `${p.league_id}::${p.user_id}`
+    if (!groups[key]) groups[key] = { leagueId: p.league_id, userId: p.user_id, picks: [] }
+    groups[key].picks.push(p)
+  }
+
+  let bestUserId = null
+  let bestStreak = 0
+  let bestLeagueId = null
+
+  for (const group of Object.values(groups)) {
+    // Sort by week_number
+    group.picks.sort((a, b) => (a.league_weeks?.week_number || 0) - (b.league_weeks?.week_number || 0))
+
+    let streak = 0
+    for (const p of group.picks) {
+      if (p.status === 'survived') {
+        streak++
+      } else {
+        if (streak > bestStreak) {
+          bestStreak = streak
+          bestUserId = group.userId
+          bestLeagueId = group.leagueId
+        }
+        streak = 0
+      }
+    }
+    // Check final streak (still alive / winner never eliminated)
+    if (streak > bestStreak) {
+      bestStreak = streak
+      bestUserId = group.userId
+      bestLeagueId = group.leagueId
+    }
+  }
+
+  if (!bestUserId || bestStreak === 0) return null
+  return { holderId: bestUserId, value: bestStreak, metadata: { leagueId: bestLeagueId } }
+}
+
 async function calcBiggestUnderdogHit() {
   const { data: pick, error } = await supabase
     .from('picks')
@@ -636,6 +694,7 @@ export async function recalculateAllRecords() {
     { key: 'longest_crown_tenure', fn: calcLongestCrownTenure },
     { key: 'best_futures_hit', fn: () => calcBestFuturesHit(null) },
     { key: 'highest_overall_win_pct', fn: calcHighestOverallWinPct },
+    { key: 'longest_survivor_streak', fn: calcLongestSurvivorStreak },
   ]
 
   // Add per-sport calculators
@@ -733,6 +792,10 @@ export async function checkRecordAfterSettle(userId, type, data = {}) {
       checks.push({ key: 'fewest_picks_to_elite', fn: () => calcFewestPicksToTier(500) })
       checks.push({ key: 'fewest_picks_to_hof', fn: () => calcFewestPicksToTier(1000) })
       checks.push({ key: 'fewest_picks_to_goat', fn: () => calcFewestPicksToTier(3000) })
+    }
+
+    if (type === 'survivor') {
+      checks.push({ key: 'longest_survivor_streak', fn: calcLongestSurvivorStreak })
     }
 
     if (type === 'futures') {

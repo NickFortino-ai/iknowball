@@ -210,6 +210,19 @@ export function useSubmitSurvivorPick() {
   })
 }
 
+export function useSettleSurvivorLeague() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/survivor/settle`),
+    onSuccess: (_, leagueId) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'survivor'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+    },
+  })
+}
+
 export function useDeleteSurvivorPick() {
   const queryClient = useQueryClient()
 

@@ -27,6 +27,7 @@ import {
   deleteSurvivorPick,
   getSurvivorBoard,
   getUsedTeams,
+  settleSurvivorLeague,
 } from '../services/survivorService.js'
 import {
   submitLeaguePick,
@@ -365,6 +366,11 @@ router.get('/:id/survivor/board', requireAuth, async (req, res) => {
 router.get('/:id/survivor/used-teams', requireAuth, async (req, res) => {
   const teams = await getUsedTeams(req.params.id, req.user.id)
   res.json(teams)
+})
+
+router.post('/:id/survivor/settle', requireAuth, async (req, res) => {
+  const result = await settleSurvivorLeague(req.params.id, req.user.id)
+  res.json({ success: true, ...result })
 })
 
 // ============================================

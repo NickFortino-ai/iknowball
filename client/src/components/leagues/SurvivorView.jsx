@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useSurvivorBoard, useUsedTeams, useSubmitSurvivorPick, useDeleteSurvivorPick } from '../../hooks/useLeagues'
+import { useSurvivorBoard, useUsedTeams, useSubmitSurvivorPick, useDeleteSurvivorPick, useSettleSurvivorLeague } from '../../hooks/useLeagues'
 import { useGames } from '../../hooks/useGames'
+import { useAuthStore } from '../../stores/authStore'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
 import Avatar from '../ui/Avatar'
+import LeagueWinModal from './LeagueWinModal'
 
 const STATUS_STYLES = {
   survived: 'bg-correct/20 text-correct',
@@ -22,13 +24,43 @@ export default function SurvivorView({ league }) {
   const { data: games } = useGames(league.sport === 'all' ? null : league.sport, 'upcoming', isDaily ? 2 : 3)
   const submitPick = useSubmitSurvivorPick()
   const deletePick = useDeleteSurvivorPick()
+  const settleMutation = useSettleSurvivorLeague()
+  const session = useAuthStore((s) => s.session)
+  const currentUserId = session?.user?.id
   const [showPickForm, setShowPickForm] = useState(false)
+  const [settleModalData, setSettleModalData] = useState(null)
 
   const currentWeek = league.current_week
   // Use pick_week from board (advances past locked picks) with fallback to current_week
   const pickWeek = board?.pick_week || currentWeek
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
   const currentPickTeam = board?.current_pick?.team_name
+
+  // Winner detection
+  const isWinner = board?.survivor_winner?.user_id === currentUserId
+  const leagueCompleted = league.status === 'completed'
+  const winSeenKey = `survivor_win_seen_${league.id}`
+  const [winSeen, setWinSeen] = useState(() => localStorage.getItem(winSeenKey) === '1')
+
+  async function handleSettle() {
+    try {
+      const result = await settleMutation.mutateAsync(league.id)
+      setSettleModalData({
+        format: 'survivor',
+        mode: 'settled',
+        leagueName: league.name,
+        points: result.points,
+        outlasted: result.outlasted,
+      })
+    } catch (err) {
+      toast(err.message || 'Failed to settle league', 'error')
+    }
+  }
+
+  function handleKeepGoing() {
+    localStorage.setItem(winSeenKey, '1')
+    setWinSeen(true)
+  }
 
   // If user hasn't picked for the current period, only show games within that period.
   // Once they've picked, show all upcoming games so they can pick a day ahead.
@@ -89,6 +121,75 @@ export default function SurvivorView({ league }) {
           <div className="text-xs text-text-muted">{periodLabel}</div>
         </div>
       </div>
+
+      {/* Winner celebration / settle banner */}
+      {isWinner && !leagueCompleted && !winSeen && (
+        <div className="bg-bg-card rounded-xl border border-correct p-5 mb-4 survivor-winner-glow">
+          <div className="text-center space-y-3">
+            <div className="text-4xl">{'\uD83D\uDC51'}</div>
+            <h3 className="font-display text-xl font-bold text-correct">You Won!</h3>
+            <p className="text-sm text-text-secondary">
+              You're the last one standing in <span className="text-text-primary font-semibold">{league.name}</span>
+            </p>
+            <div className="flex justify-center gap-6">
+              <div className="text-center">
+                <div className="text-xl font-bold text-correct">+{board.survivor_winner.points}</div>
+                <div className="text-[10px] text-text-muted">Points Earned</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-text-primary">{board.survivor_winner.outlasted}</div>
+                <div className="text-[10px] text-text-muted">Outlasted</div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={handleKeepGoing}
+                className="flex-1 py-2.5 rounded-xl font-display text-sm bg-bg-card-hover text-text-secondary hover:bg-bg-primary border border-border transition-colors"
+              >
+                Keep Going
+              </button>
+              <button
+                onClick={handleSettle}
+                disabled={settleMutation.isPending}
+                className="flex-1 py-2.5 rounded-xl font-display text-sm bg-correct text-white hover:bg-correct/90 transition-colors"
+              >
+                {settleMutation.isPending ? 'Settling...' : 'Settle League'}
+              </button>
+            </div>
+            <p className="text-[10px] text-text-muted">
+              Keep going to chase the record, or settle to lock in your points
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Compact settle banner for subsequent visits */}
+      {isWinner && !leagueCompleted && winSeen && (
+        <div className="bg-bg-card rounded-xl border border-correct/30 px-4 py-3 mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{'\uD83D\uDC51'}</span>
+            <span className="text-sm text-correct font-semibold">Winner — +{board.survivor_winner.points} pts</span>
+          </div>
+          <button
+            onClick={handleSettle}
+            disabled={settleMutation.isPending}
+            className="px-4 py-1.5 rounded-lg font-display text-xs bg-correct text-white hover:bg-correct/90 transition-colors"
+          >
+            {settleMutation.isPending ? 'Settling...' : 'Settle League'}
+          </button>
+        </div>
+      )}
+
+      {/* Completed winner badge */}
+      {isWinner && leagueCompleted && (
+        <div className="bg-bg-card rounded-xl border border-correct/30 px-4 py-3 mb-4 flex items-center gap-2">
+          <span className="text-lg">{'\uD83D\uDC51'}</span>
+          <span className="text-sm text-correct font-semibold">You won this league! +{board.survivor_winner.points} pts</span>
+        </div>
+      )}
+
+      {/* Settle modal */}
+      <LeagueWinModal data={settleModalData} onClose={() => setSettleModalData(null)} />
 
       {/* No active period */}
       {!pickWeek && (
