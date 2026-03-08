@@ -429,12 +429,13 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .order('created_at', { ascending: false })
       .limit(15),
 
-    // Source 7: Recent comments (squad only)
+    // Source 7: Recent comments (squad only, exclude hot take comments — they live in the hot take thread)
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('comments')
       .select('id, target_type, target_id, user_id, content, created_at')
       .in('user_id', connectedIds)
+      .neq('target_type', 'hot_take')
       .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),

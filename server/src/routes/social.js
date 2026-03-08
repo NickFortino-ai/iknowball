@@ -186,28 +186,30 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
   // Filter to the correct sport
   const sportPicks = (allPicks || []).filter(p => p.games?.sport_id === streakEvent.sport_id)
 
-  // Find consecutive winning runs
+  // Find consecutive winning runs (pushes — is_correct === null — are skipped, not streak-breaking)
   let streakPicks = []
   if (isActive) {
-    // Active streak: consecutive wins from the top
+    // Active streak: consecutive wins from the top (skip pushes)
     for (const p of sportPicks) {
-      if (p.is_correct) streakPicks.push(p)
-      else break
+      if (p.is_correct === true) streakPicks.push(p)
+      else if (p.is_correct === false) break
+      // is_correct === null (push) — skip without breaking
     }
   } else {
     // Inactive streak: skip any recent wins/losses until we find the run
     // that matches this streak's length. Walk through and collect winning runs.
     let currentRun = []
     for (const p of sportPicks) {
-      if (p.is_correct) {
+      if (p.is_correct === true) {
         currentRun.push(p)
-      } else {
+      } else if (p.is_correct === false) {
         if (currentRun.length === streakEvent.streak_length) {
           streakPicks = currentRun
           break
         }
         currentRun = []
       }
+      // is_correct === null (push) — skip without breaking
     }
     // Check the last run if we didn't break
     if (streakPicks.length === 0 && currentRun.length === streakEvent.streak_length) {
@@ -217,15 +219,16 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
     if (streakPicks.length === 0) {
       currentRun = []
       for (const p of sportPicks) {
-        if (p.is_correct) {
+        if (p.is_correct === true) {
           currentRun.push(p)
           if (currentRun.length === streakEvent.streak_length) {
             streakPicks = currentRun
             break
           }
-        } else {
+        } else if (p.is_correct === false) {
           currentRun = []
         }
+        // is_correct === null (push) — skip without breaking
       }
     }
   }

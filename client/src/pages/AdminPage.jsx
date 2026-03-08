@@ -165,10 +165,10 @@ export default function AdminPage() {
       <h1 className="font-display text-3xl mb-4">Admin Panel</h1>
 
       {/* Top-level section tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setAdminSection('props')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             adminSection === 'props'
               ? 'bg-accent text-white'
               : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -178,7 +178,7 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setAdminSection('brackets')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             adminSection === 'brackets'
               ? 'bg-accent text-white'
               : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -188,7 +188,7 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setAdminSection('futures')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             adminSection === 'futures'
               ? 'bg-accent text-white'
               : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -198,7 +198,7 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setAdminSection('email')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             adminSection === 'email'
               ? 'bg-accent text-white'
               : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -208,7 +208,7 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setAdminSection('reports')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             adminSection === 'reports'
               ? 'bg-accent text-white'
               : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -218,7 +218,7 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setAdminSection('moderation')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             adminSection === 'moderation'
               ? 'bg-accent text-white'
               : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -480,7 +480,7 @@ export default function AdminPage() {
       <h2 className="font-display text-xl mb-4">Sync & Feature Props</h2>
 
       {/* Sport Tabs */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
         {sportTabs.map((tab, i) => (
           <button
             key={tab.key}
@@ -488,7 +488,7 @@ export default function AdminPage() {
               setActiveSport(i)
               setSelectedGame(null)
             }}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               activeSport === i
                 ? 'bg-accent text-white'
                 : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
@@ -540,32 +540,32 @@ export default function AdminPage() {
       {/* System Actions — manual overrides, rarely needed */}
       <div className="bg-bg-card rounded-xl border border-border p-4 mt-8">
         <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Manual Overrides</h2>
-        <div className="flex gap-3">
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide">
           <button
             onClick={handleSyncOdds}
             disabled={syncOdds.isPending}
-            className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {syncOdds.isPending ? 'Syncing...' : 'Sync Odds'}
           </button>
           <button
             onClick={handleScoreGames}
             disabled={scoreGames.isPending}
-            className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {scoreGames.isPending ? 'Scoring...' : 'Score Games'}
           </button>
           <button
             onClick={handleRecalculatePoints}
             disabled={recalculatePoints.isPending}
-            className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {recalculatePoints.isPending ? 'Recalculating...' : 'Recalculate Points'}
           </button>
           <button
             onClick={handleRecalculateRecords}
             disabled={recalculateRecords.isPending}
-            className="bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {recalculateRecords.isPending ? 'Recalculating...' : 'Recalculate Records'}
           </button>
