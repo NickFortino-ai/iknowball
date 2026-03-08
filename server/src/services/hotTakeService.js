@@ -74,6 +74,36 @@ export async function createReminder(actorId, hotTakeId) {
   return data
 }
 
+export async function updateHotTake(userId, hotTakeId, content, teamTag, imageUrl) {
+  const { data: hotTake } = await supabase
+    .from('hot_takes')
+    .select('id, user_id')
+    .eq('id', hotTakeId)
+    .single()
+
+  if (!hotTake) {
+    const err = new Error('Hot take not found')
+    err.status = 404
+    throw err
+  }
+
+  if (hotTake.user_id !== userId) {
+    const err = new Error('You can only edit your own hot takes')
+    err.status = 403
+    throw err
+  }
+
+  const { data, error } = await supabase
+    .from('hot_takes')
+    .update({ content, team_tag: teamTag || null, image_url: imageUrl || null })
+    .eq('id', hotTakeId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function deleteHotTake(userId, hotTakeId) {
   const { data: hotTake } = await supabase
     .from('hot_takes')

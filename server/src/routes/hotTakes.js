@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
-import { createHotTake, deleteHotTake, getHotTakesByUser, createReminder } from '../services/hotTakeService.js'
+import { createHotTake, updateHotTake, deleteHotTake, getHotTakesByUser, createReminder } from '../services/hotTakeService.js'
 import { checkUserMuted, checkContent } from '../services/contentFilterService.js'
 
 const router = Router()
@@ -37,6 +37,20 @@ router.get('/user/:userId', requireAuth, async (req, res) => {
 router.post('/:id/remind', requireAuth, async (req, res) => {
   const data = await createReminder(req.user.id, req.params.id)
   res.status(201).json(data)
+})
+
+router.patch('/:id', requireAuth, validate(hotTakeSchema), async (req, res) => {
+  if (await checkUserMuted(req.user.id)) {
+    return res.status(403).json({ error: 'Your posting privileges have been suspended' })
+  }
+
+  const filterResult = await checkContent(req.validated.content)
+  if (filterResult.blocked) {
+    return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
+  }
+
+  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tag, req.validated.image_url)
+  res.json(hotTake)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {

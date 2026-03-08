@@ -35,6 +35,18 @@ export function useRemindHotTake() {
   })
 }
 
+export function useUpdateHotTake() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, content, team_tag, image_url }) =>
+      api.patch(`/hot-takes/${id}`, { content, team_tag, image_url }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
+    },
+  })
+}
+
 export function useDeleteHotTake() {
   const queryClient = useQueryClient()
 
