@@ -438,8 +438,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     // Source 9: Hot takes
     applyBefore(
       isHotTakes
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tag, image_url, created_at')
-        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tag, image_url, created_at'), 'user_id', allIds),
+        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, image_url, created_at')
+        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tags, image_url, created_at'), 'user_id', allIds),
       'created_at')
       .order('created_at', { ascending: false })
       .limit(isHotTakes ? 30 : 15),
@@ -448,7 +448,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
     (isAll || isHighlights || isHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('hot_take_reminders')
-      .select('id, reminder_user_id, hot_take_id, created_at, hot_takes(id, user_id, content, team_tag, created_at)')
+      .select('id, reminder_user_id, hot_take_id, created_at, hot_takes(id, user_id, content, team_tags, created_at)')
       .in('reminder_user_id', allIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
@@ -908,7 +908,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       hot_take: {
         id: take.id,
         content: take.content,
-        team_tag: take.team_tag,
+        team_tags: take.team_tags,
         image_url: take.image_url,
       },
     })
@@ -940,7 +940,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad') {
       hot_take: {
         id: take.id,
         content: take.content,
-        team_tag: take.team_tag,
+        team_tags: take.team_tags,
         created_at: take.created_at,
       },
       reminded_user: takeAuthor ? {

@@ -3,7 +3,6 @@ import { timeAgo } from '../../lib/time'
 
 export default function HotTakeReminderFeedCard({ item, onUserTap }) {
   const { hot_take, reminded_user } = item
-  const authorName = reminded_user?.display_name || reminded_user?.username || 'someone'
 
   return (
     <FeedCardWrapper
@@ -22,11 +21,14 @@ export default function HotTakeReminderFeedCard({ item, onUserTap }) {
           &ldquo;{hot_take.content}&rdquo;
         </div>
         <div className="flex items-center gap-2 mt-1.5">
-          {hot_take.team_tag && (
-            <span className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full">
-              {hot_take.team_tag}
+          {hot_take.team_tags?.length > 0 && hot_take.team_tags.map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full"
+            >
+              {tag}
             </span>
-          )}
+          ))}
           <span className="text-[10px] text-text-muted">
             Originally posted {timeAgo(hot_take.created_at)}
           </span>

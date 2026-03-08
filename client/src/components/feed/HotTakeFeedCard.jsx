@@ -1,25 +1,56 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import FeedCardWrapper from './FeedCardWrapper'
 import ImageLightbox from './ImageLightbox'
-import { useUpdateHotTake, useHotTakeImageUpload } from '../../hooks/useHotTakes'
+import TeamAutocomplete from './TeamAutocomplete'
+import { useUpdateHotTake, useHotTakeImageUpload, useTeamsForSport } from '../../hooks/useHotTakes'
+import { useActiveSports } from '../../hooks/useGames'
 import { toast } from '../ui/Toast'
 
 const MAX_CHARS = 280
+
+const sportTabs = [
+  { label: 'NBA', key: 'basketball_nba' },
+  { label: 'NCAAB', key: 'basketball_ncaab' },
+  { label: 'WNCAAB', key: 'basketball_wncaab' },
+  { label: 'MLB', key: 'baseball_mlb' },
+  { label: 'NFL', key: 'americanfootball_nfl' },
+  { label: 'NHL', key: 'icehockey_nhl' },
+  { label: 'MLS', key: 'soccer_usa_mls' },
+  { label: 'WNBA', key: 'basketball_wnba' },
+  { label: 'NCAAF', key: 'americanfootball_ncaaf' },
+]
 
 export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
   const { hot_take } = item
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
-  const [editTeamTag, setEditTeamTag] = useState('')
+  const [editTeamTags, setEditTeamTags] = useState([])
+  const [editSport, setEditSport] = useState(null)
+  const [editTeamSearch, setEditTeamSearch] = useState('')
   const [existingImageUrl, setExistingImageUrl] = useState(null)
   const updateHotTake = useUpdateHotTake()
   const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
   const fileInputRef = useRef(null)
 
+  const { data: activeSports } = useActiveSports()
+  const { data: editTeams } = useTeamsForSport(editing ? editSport : null)
+
+  const sortedSportTabs = useMemo(() => {
+    if (!activeSports?.length) return sportTabs
+    const activeKeys = new Set(activeSports.map((s) => s.key))
+    return [...sportTabs].sort((a, b) => {
+      const aActive = activeKeys.has(a.key) ? 0 : 1
+      const bActive = activeKeys.has(b.key) ? 0 : 1
+      return aActive - bActive
+    })
+  }, [activeSports])
+
   function startEditing() {
     setEditContent(hot_take.content)
-    setEditTeamTag(hot_take.team_tag || '')
+    setEditTeamTags(hot_take.team_tags || [])
+    setEditSport(null)
+    setEditTeamSearch('')
     setExistingImageUrl(hot_take.image_url || null)
     setEditing(true)
   }
@@ -27,7 +58,9 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
   function cancelEditing() {
     setEditing(false)
     setEditContent('')
-    setEditTeamTag('')
+    setEditTeamTags([])
+    setEditSport(null)
+    setEditTeamSearch('')
     setExistingImageUrl(null)
     removeImage()
   }
@@ -43,7 +76,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
     }
 
     updateHotTake.mutate(
-      { id: hot_take.id, content: trimmed, team_tag: editTeamTag.trim() || undefined, image_url: imageUrl || undefined },
+      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined },
       {
         onSuccess: () => {
           cancelEditing()
@@ -116,15 +149,66 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
             </div>
           )}
 
+          {/* Sport chips for editing */}
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            {sortedSportTabs.map((sport) => (
+              <button
+                key={sport.key}
+                onClick={() => {
+                  if (editSport === sport.key) {
+                    setEditSport(null)
+                    setEditTeamSearch('')
+                  } else {
+                    setEditSport(sport.key)
+                    setEditTeamSearch('')
+                  }
+                }}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap transition-colors ${
+                  editSport === sport.key
+                    ? 'bg-accent text-white'
+                    : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                }`}
+              >
+                {sport.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Team tag pills */}
+          {editTeamTags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {editTeamTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full"
+                >
+                  {tag}
+                  <button
+                    onClick={() => setEditTeamTags(editTeamTags.filter((t) => t !== tag))}
+                    className="hover:text-white transition-colors leading-none"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <input
-                value={editTeamTag}
-                onChange={(e) => setEditTeamTag(e.target.value)}
-                placeholder="Team tag"
-                maxLength={50}
-                className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary placeholder-text-muted outline-none w-28"
-              />
+              {editSport && editTeamTags.length < 5 ? (
+                <div className="w-28">
+                  <TeamAutocomplete
+                    teams={(editTeams || []).filter((t) => !editTeamTags.includes(t))}
+                    onSelect={(t) => setEditTeamTags([...editTeamTags, t])}
+                    inputValue={editTeamSearch}
+                    onInputChange={setEditTeamSearch}
+                    placeholder="Tag team..."
+                  />
+                </div>
+              ) : !editSport && editTeamTags.length < 5 ? (
+                <span className="text-[10px] text-text-muted">Pick a sport to tag</span>
+              ) : null}
 
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -190,12 +274,17 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap }) {
             </button>
           )}
 
-          {/* Team tag */}
-          {hot_take.team_tag && (
-            <div className="mt-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full">
-                {hot_take.team_tag}
-              </span>
+          {/* Team tags */}
+          {hot_take.team_tags?.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {hot_take.team_tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
           )}
 

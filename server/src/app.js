@@ -23,6 +23,7 @@ import recapsRouter from './routes/recaps.js'
 import recordsRouter from './routes/records.js'
 import hotTakesRouter from './routes/hotTakes.js'
 import reportsRouter from './routes/reports.js'
+import teamsRouter from './routes/teams.js'
 
 const app = express()
 
@@ -54,6 +55,7 @@ app.use('/api/recaps', recapsRouter)
 app.use('/api/records', recordsRouter)
 app.use('/api/hot-takes', hotTakesRouter)
 app.use('/api/reports', reportsRouter)
+app.use('/api/teams', teamsRouter)
 
 app.use(errorHandler)
 

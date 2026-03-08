@@ -19,6 +19,7 @@ import { toast } from '../components/ui/Toast'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import SocialLinks from '../components/ui/SocialLinks'
 import ActivityFeed from '../components/feed/ActivityFeed'
+import TeamFeed from '../components/feed/TeamFeed'
 import Avatar from '../components/ui/Avatar'
 
 function MyProfileBanner({ profile, onTap }) {
@@ -45,7 +46,7 @@ function MyProfileBanner({ profile, onTap }) {
   )
 }
 
-const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'hot_takes'])
+const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'hot_takes', 'team_feed'])
 
 export default function HubPage() {
   const { session } = useAuth()
@@ -358,6 +359,7 @@ export default function HubPage() {
               { key: 'all', label: 'All of IKB' },
               { key: 'highlights', label: 'My Highlights' },
               { key: 'hot_takes', label: 'Hot Takes' },
+              { key: 'team_feed', label: 'Team Feed' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -371,12 +373,16 @@ export default function HubPage() {
             ))}
           </div>
         </div>
-        <ActivityFeed
-          onUserTap={setSelectedUserId}
-          scope={feedScope}
-          scrollToItemId={scrollToItem}
-          onScrollComplete={() => setScrollToItem(null)}
-        />
+        {feedScope === 'team_feed' ? (
+          <TeamFeed onUserTap={setSelectedUserId} />
+        ) : (
+          <ActivityFeed
+            onUserTap={setSelectedUserId}
+            scope={feedScope}
+            scrollToItemId={scrollToItem}
+            onScrollComplete={() => setScrollToItem(null)}
+          />
+        )}
       </div>
 
       <UserProfileModal

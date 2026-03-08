@@ -2,10 +2,10 @@ import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { createNotification } from './notificationService.js'
 
-export async function createHotTake(userId, content, teamTag, imageUrl) {
+export async function createHotTake(userId, content, teamTags, imageUrl) {
   const { data, error } = await supabase
     .from('hot_takes')
-    .insert({ user_id: userId, content, team_tag: teamTag || null, image_url: imageUrl || null })
+    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null })
     .select()
     .single()
 
@@ -16,7 +16,7 @@ export async function createHotTake(userId, content, teamTag, imageUrl) {
 export async function getHotTakesByUser(userId) {
   const { data, error } = await supabase
     .from('hot_takes')
-    .select('id, content, team_tag, created_at')
+    .select('id, content, team_tags, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -74,7 +74,7 @@ export async function createReminder(actorId, hotTakeId) {
   return data
 }
 
-export async function updateHotTake(userId, hotTakeId, content, teamTag, imageUrl) {
+export async function updateHotTake(userId, hotTakeId, content, teamTags, imageUrl) {
   const { data: hotTake } = await supabase
     .from('hot_takes')
     .select('id, user_id')
@@ -95,7 +95,7 @@ export async function updateHotTake(userId, hotTakeId, content, teamTag, imageUr
 
   const { data, error } = await supabase
     .from('hot_takes')
-    .update({ content, team_tag: teamTag || null, image_url: imageUrl || null })
+    .update({ content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null })
     .eq('id', hotTakeId)
     .select()
     .single()

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { toast } from '../components/ui/Toast'
@@ -8,8 +8,8 @@ export function useCreateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ content, team_tag, image_url }) =>
-      api.post('/hot-takes', { content, team_tag, image_url }),
+    mutationFn: ({ content, team_tags, image_url }) =>
+      api.post('/hot-takes', { content, team_tags, image_url }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },
@@ -39,8 +39,8 @@ export function useUpdateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, content, team_tag, image_url }) =>
-      api.patch(`/hot-takes/${id}`, { content, team_tag, image_url }),
+    mutationFn: ({ id, content, team_tags, image_url }) =>
+      api.patch(`/hot-takes/${id}`, { content, team_tags, image_url }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },
@@ -55,6 +55,31 @@ export function useDeleteHotTake() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },
+  })
+}
+
+export function useTeamsForSport(sportKey) {
+  return useQuery({
+    queryKey: ['teams', sportKey],
+    queryFn: () => api.get(`/teams?sport=${sportKey}`),
+    enabled: !!sportKey,
+  })
+}
+
+export function useTeamHotTakes(teamName) {
+  return useInfiniteQuery({
+    queryKey: ['hotTakes', 'team', teamName],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ team: teamName })
+      if (pageParam) params.set('before', pageParam)
+      return api.get(`/hot-takes/team?${params}`)
+    },
+    initialPageParam: null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.items?.length
+        ? lastPage.items[lastPage.items.length - 1].timestamp
+        : undefined,
+    enabled: !!teamName,
   })
 }
 

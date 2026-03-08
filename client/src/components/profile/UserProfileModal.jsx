@@ -525,11 +525,11 @@ export default function UserProfileModal({ userId, onClose }) {
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-2">
-                          {take.team_tag && (
-                            <span className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full">
-                              {take.team_tag}
+                          {take.team_tags?.length > 0 && take.team_tags.map((tag) => (
+                            <span key={tag} className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full">
+                              {tag}
                             </span>
-                          )}
+                          ))}
                           <span className="text-xs text-text-muted">{timeAgo(take.created_at)}</span>
                         </div>
                         {isViewingOther && connStatus === 'connected' && (
