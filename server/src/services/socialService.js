@@ -32,6 +32,7 @@ async function getTargetOwner(targetType, targetId) {
     streak_event: 'streak_events',
     record_history: 'record_history',
     hot_take: 'hot_takes',
+    head_to_head: 'picks',
   }
   const OWNER_COL = {
     pick: 'user_id',
@@ -40,6 +41,7 @@ async function getTargetOwner(targetType, targetId) {
     streak_event: 'user_id',
     record_history: 'new_holder_id',
     hot_take: 'user_id',
+    head_to_head: 'user_id',
   }
 
   const table = TABLE_MAP[targetType]
@@ -64,7 +66,7 @@ async function getTargetOwner(targetType, targetId) {
   return data[ownerCol]
 }
 
-const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'hot take' }
+const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'hot take', head_to_head: 'head-to-head' }
 
 export async function toggleReaction(userId, pickId, reactionType) {
   const ownerId = await getTargetOwner('pick', pickId)
