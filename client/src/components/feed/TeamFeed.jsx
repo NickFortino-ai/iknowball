@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTeamsForSport, useTeamHotTakes, useBookmarkStatus, useToggleBookmark } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
@@ -36,11 +36,21 @@ function addRecentTeam(teamName) {
   localStorage.setItem(RECENT_TEAMS_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)))
 }
 
-export default function TeamFeed({ onUserTap }) {
+export default function TeamFeed({ onUserTap, initialTeam = null, onTeamConsumed }) {
   const [selectedSport, setSelectedSport] = useState(null)
-  const [selectedTeam, setSelectedTeam] = useState(null)
+  const [selectedTeam, setSelectedTeam] = useState(initialTeam)
   const [searchValue, setSearchValue] = useState('')
   const [recentTeams, setRecentTeams] = useState(getRecentTeams)
+
+  // Handle initialTeam from query params
+  useEffect(() => {
+    if (initialTeam) {
+      setSelectedTeam(initialTeam)
+      addRecentTeam(initialTeam)
+      setRecentTeams(getRecentTeams())
+      onTeamConsumed?.()
+    }
+  }, [initialTeam])
 
   const { data: activeSports } = useActiveSports()
   const { data: teams } = useTeamsForSport(selectedSport)

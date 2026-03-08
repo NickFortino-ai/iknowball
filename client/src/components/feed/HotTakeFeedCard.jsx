@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import FeedCardWrapper from './FeedCardWrapper'
 import ImageLightbox from './ImageLightbox'
 import TeamAutocomplete from './TeamAutocomplete'
@@ -24,6 +25,7 @@ const sportTabs = [
 export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmarked, onBookmarkToggle }) {
   const { hot_take } = item
   const { session } = useAuth()
+  const navigate = useNavigate()
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [reminded, setReminded] = useState(false)
@@ -307,12 +309,13 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           <div className="mt-2 flex items-center justify-between">
             <div className="flex flex-wrap gap-1">
               {hot_take.team_tags?.length > 0 && hot_take.team_tags.map((tag) => (
-                <span
+                <button
                   key={tag}
-                  className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/hub?tab=team_feed&team=${encodeURIComponent(tag)}`) }}
+                  className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full hover:bg-accent/25 transition-colors"
                 >
                   {tag}
-                </span>
+                </button>
               ))}
             </div>
             <div className="flex items-center gap-2">

@@ -61,18 +61,21 @@ export default function HubPage() {
   const [highlightsFilter, setHighlightsFilter] = useState('all')
   const hasManuallyToggled = useRef(false)
 
-  // Read tab + scrollTo from query params
+  // Read tab + scrollTo + team from query params
   const tabParam = searchParams.get('tab')
   const scrollToParam = searchParams.get('scrollTo')
+  const teamParam = searchParams.get('team')
   const [feedScope, setFeedScope] = useState(
     tabParam && VALID_SCOPES.has(tabParam) ? tabParam : 'squad'
   )
   const [scrollToItem, setScrollToItem] = useState(scrollToParam || null)
+  const [initialTeam, setInitialTeam] = useState(teamParam || null)
 
   // When query params change (e.g. notification deep-link), update state
   useEffect(() => {
     const tab = searchParams.get('tab')
     const scrollTo = searchParams.get('scrollTo')
+    const team = searchParams.get('team')
     if (tab && VALID_SCOPES.has(tab)) {
       hasManuallyToggled.current = true
       setFeedScope(tab)
@@ -80,8 +83,11 @@ export default function HubPage() {
     if (scrollTo) {
       setScrollToItem(scrollTo)
     }
+    if (team) {
+      setInitialTeam(team)
+    }
     // Clear query params after consumption
-    if (tab || scrollTo) {
+    if (tab || scrollTo || team) {
       const timer = setTimeout(() => {
         setSearchParams({}, { replace: true })
       }, 2000)
@@ -110,6 +116,7 @@ export default function HubPage() {
     hasManuallyToggled.current = true
     setFeedScope(scope)
     if (scope !== 'highlights') setHighlightsFilter('all')
+    if (scope !== 'team_feed') setInitialTeam(null)
   }
 
   async function handleSendRequest(username) {
@@ -399,7 +406,7 @@ export default function HubPage() {
           </div>
         )}
         {feedScope === 'team_feed' ? (
-          <TeamFeed onUserTap={setSelectedUserId} />
+          <TeamFeed onUserTap={setSelectedUserId} initialTeam={initialTeam} onTeamConsumed={() => setInitialTeam(null)} />
         ) : feedScope === 'receipts' ? (
           <ReceiptsTab onUserTap={setSelectedUserId} />
         ) : feedScope === 'user_feeds' ? (
