@@ -72,6 +72,7 @@ export default function UserFeedTab({ onUserTap }) {
           onUserTap={onUserTap}
           scope={subFilter === 'hot_takes' ? 'user_hot_takes' : 'user_highlights'}
           targetUserId={selectedUser.user_id || selectedUser.id}
+          targetUserName={selectedUser.display_name || selectedUser.username}
         />
       </div>
     )

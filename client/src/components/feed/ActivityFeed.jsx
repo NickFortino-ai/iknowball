@@ -1,7 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useConnectionActivity } from '../../hooks/useConnections'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
-import { useBookmarkStatus, useToggleBookmark } from '../../hooks/useHotTakes'
+import { useBookmarkStatus, useToggleBookmark, useAskForHotTakes } from '../../hooks/useHotTakes'
+import { useAuth } from '../../hooks/useAuth'
+import { toast } from '../ui/Toast'
 import { getDateKey, formatFeedDate } from '../../lib/time'
 import PickFeedCard from './PickFeedCard'
 import ParlayFeedCard from './ParlayFeedCard'
@@ -40,8 +42,11 @@ function getFeedItemTargetKey(item) {
   return null
 }
 
-export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId = null, scrollToItemId, onScrollComplete }) {
+export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId = null, targetUserName = null, scrollToItemId, onScrollComplete }) {
+  const { session } = useAuth()
   const [selectedStreakId, setSelectedStreakId] = useState(null)
+  const [asked, setAsked] = useState(false)
+  const askForHotTakes = useAskForHotTakes()
   const [selectedH2HItem, setSelectedH2HItem] = useState(null)
   const [highlightedKey, setHighlightedKey] = useState(null)
   const scrollTargetRef = useRef(null)
@@ -148,12 +153,46 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
       ) : !activity?.length ? (
         /* Empty state */
         <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
-          <div className="text-2xl mb-2">{scope === 'highlights' ? '\u2B50' : scope === 'hot_takes' ? '\uD83D\uDD25' : scope === 'all' ? '\uD83C\uDFC0' : '\uD83D\uDC4B'}</div>
+          <div className="text-2xl mb-2">
+            {scope === 'user_hot_takes' ? '\uD83D\uDD25' : scope === 'user_highlights' ? '\u2B50' : scope === 'highlights' ? '\u2B50' : scope === 'hot_takes' ? '\uD83D\uDD25' : scope === 'all' ? '\uD83C\uDFC0' : '\uD83D\uDC4B'}
+          </div>
           <div className="text-sm text-text-primary font-medium mb-1">
-            {scope === 'highlights' ? 'No highlights yet' : scope === 'hot_takes' ? 'No hot takes yet' : scope === 'all' ? 'No activity yet' : 'Your feed is empty'}
+            {scope === 'user_hot_takes' && targetUserId && targetUserId !== session?.user?.id
+              ? 'No hot takes yet!'
+              : scope === 'user_highlights' ? 'No highlights yet'
+              : scope === 'highlights' ? 'No highlights yet'
+              : scope === 'hot_takes' ? 'No hot takes yet'
+              : scope === 'all' ? 'No activity yet'
+              : 'Your feed is empty'}
           </div>
           <div className="text-xs text-text-muted">
-            {scope === 'highlights'
+            {scope === 'user_hot_takes' && targetUserId && targetUserId !== session?.user?.id ? (
+              <>
+                This user hasn't dropped any hot takes yet!{' '}
+                {!asked ? (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await askForHotTakes.mutateAsync(targetUserId)
+                        setAsked(true)
+                        toast(`${targetUserName || 'User'} was notified you asked`, 'success')
+                      } catch (err) {
+                        toast(err.message || 'Failed to ask', 'error')
+                      }
+                    }}
+                    disabled={askForHotTakes.isPending}
+                    className="text-accent font-semibold hover:underline disabled:opacity-50"
+                  >
+                    Ask them
+                  </button>
+                ) : (
+                  <span className="text-accent font-semibold">Asked!</span>
+                )}
+                {' '}if they have anything interesting to say.
+              </>
+            ) : scope === 'user_highlights'
+              ? 'This user has no notable activity yet.'
+              : scope === 'highlights'
               ? 'Make some picks and your notable activity will show up here.'
               : scope === 'hot_takes'
               ? 'Be the first to drop a hot take!'

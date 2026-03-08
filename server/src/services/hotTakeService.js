@@ -74,6 +74,28 @@ export async function createReminder(actorId, hotTakeId) {
   return data
 }
 
+export async function askForHotTakes(actorId, targetUserId) {
+  if (actorId === targetUserId) {
+    const err = new Error('You cannot ask yourself for hot takes')
+    err.status = 400
+    throw err
+  }
+
+  const { data: actor } = await supabase
+    .from('users')
+    .select('username')
+    .eq('id', actorId)
+    .single()
+
+  const username = actor?.username || 'Someone'
+
+  await createNotification(targetUserId, 'hot_take_ask', `@${username} wants to hear your hot takes!`, {
+    actorId,
+  })
+
+  return { success: true }
+}
+
 export async function updateHotTake(userId, hotTakeId, content, teamTags, imageUrl) {
   const { data: hotTake } = await supabase
     .from('hot_takes')

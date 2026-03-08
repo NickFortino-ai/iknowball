@@ -72,6 +72,7 @@ function getNotificationRoute(notification) {
       return '/results'
     case 'connection_request':
     case 'hot_take_reminder':
+    case 'hot_take_ask':
       return '/hub'
     case 'headlines':
       return '/hall-of-fame'

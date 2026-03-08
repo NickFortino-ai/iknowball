@@ -35,6 +35,12 @@ export function useRemindHotTake() {
   })
 }
 
+export function useAskForHotTakes() {
+  return useMutation({
+    mutationFn: (userId) => api.post(`/hot-takes/ask/${userId}`),
+  })
+}
+
 export function useUpdateHotTake() {
   const queryClient = useQueryClient()
 

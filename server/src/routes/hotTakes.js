@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
-import { createHotTake, updateHotTake, deleteHotTake, getHotTakesByUser, createReminder } from '../services/hotTakeService.js'
+import { createHotTake, updateHotTake, deleteHotTake, getHotTakesByUser, createReminder, askForHotTakes } from '../services/hotTakeService.js'
 import { toggleBookmark, getBookmarkedHotTakes, getBookmarkStatusBatch } from '../services/socialService.js'
 import { checkUserMuted, checkContent } from '../services/contentFilterService.js'
 import { supabase } from '../config/supabase.js'
@@ -132,6 +132,11 @@ router.get('/bookmarks/check', requireAuth, async (req, res) => {
 
 router.post('/:id/remind', requireAuth, async (req, res) => {
   const data = await createReminder(req.user.id, req.params.id)
+  res.status(201).json(data)
+})
+
+router.post('/ask/:userId', requireAuth, async (req, res) => {
+  const data = await askForHotTakes(req.user.id, req.params.userId)
   res.status(201).json(data)
 })
 
