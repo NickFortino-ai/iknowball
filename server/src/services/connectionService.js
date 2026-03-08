@@ -643,7 +643,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   }
 
   // Process streak events — filter to thresholds [3, 5, 10, 15, 20, 25...]
-  const STREAK_THRESHOLDS = new Set([3, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
+  const STREAK_THRESHOLDS = new Set([5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
   for (const event of streakEvents.data || []) {
     if (!STREAK_THRESHOLDS.has(event.streak_length)) continue
     const user = userMap[event.user_id]

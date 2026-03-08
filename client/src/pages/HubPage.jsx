@@ -364,8 +364,8 @@ export default function HubPage() {
               { key: 'highlights', label: 'My Highlights' },
               { key: 'hot_takes', label: 'Hot Takes' },
               { key: 'team_feed', label: 'Team Feed' },
-              { key: 'receipts', label: 'Receipts' },
               { key: 'user_feeds', label: 'User Feeds' },
+              { key: 'receipts', label: 'Receipts' },
             ].map((tab) => (
               <button
                 key={tab.key}
