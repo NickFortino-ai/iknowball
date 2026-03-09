@@ -150,6 +150,19 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     e.target.value = ''
   }
 
+  function handlePaste(e) {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) selectImage(file)
+        return
+      }
+    }
+  }
+
   return (
     <div className={`bg-bg-card border rounded-xl px-4 py-3 mb-4 transition-all ${
       expanded ? 'border-accent/20' : 'border-border'
@@ -169,6 +182,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               ref={textareaRef}
               value={content}
               onChange={handleContentChange}
+              onPaste={handlePaste}
               onFocus={() => setExpanded(true)}
               placeholder="Drop a hot take..."
               maxLength={MAX_CHARS}
