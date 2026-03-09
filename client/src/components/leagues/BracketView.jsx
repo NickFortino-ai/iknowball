@@ -34,8 +34,43 @@ export default function BracketView({ league }) {
   const hasSubmitted = !!myEntry
   const rounds = tournament.bracket_templates?.rounds || []
 
-  // Show picker if user chose to fill bracket
-  if (showPicker && !isLocked) {
+  // Check if bracket is populated (first-round matchups have teams)
+  const firstRoundMatchups = (tournament.matchups || []).filter((m) => m.round_number === 1 || m.round_number === 0)
+  const isBracketPopulated = firstRoundMatchups.length > 0 && firstRoundMatchups.some(
+    (m) => m.team_top || m.team_bottom
+  )
+
+  const picksAvailableAt = tournament.bracket_templates?.picks_available_at
+  const picksAvailableNow = !picksAvailableAt || new Date(picksAvailableAt) <= new Date()
+
+  // State A: Bracket not populated yet
+  if (!isBracketPopulated) {
+    return (
+      <div className="bg-bg-card rounded-xl border border-border p-6 text-center">
+        <div className="text-4xl mb-3">&#x1F3C0;</div>
+        <h3 className="font-display text-lg text-text-primary mb-2">Bracket Coming Soon</h3>
+        {picksAvailableAt ? (
+          <p className="text-sm text-text-muted">
+            You'll be able to make your picks starting{' '}
+            <span className="text-text-secondary font-semibold">
+              {new Date(picksAvailableAt).toLocaleString('en-US', {
+                month: 'long', day: 'numeric', year: 'numeric',
+                hour: 'numeric', minute: '2-digit',
+              })}
+            </span>
+          </p>
+        ) : (
+          <p className="text-sm text-text-muted">Teams haven't been set yet. Check back soon!</p>
+        )}
+      </div>
+    )
+  }
+
+  // State B: Bracket populated but picks not available yet
+  const picksBlocked = !picksAvailableNow && !isLocked
+
+  // Show picker if user chose to fill bracket (only if picks are available)
+  if (showPicker && !isLocked && picksAvailableNow) {
     return (
       <BracketPicker
         league={league}
@@ -54,8 +89,21 @@ export default function BracketView({ league }) {
 
   return (
     <div>
+      {/* Picks not available yet banner */}
+      {picksBlocked && (
+        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 mb-4 text-center">
+          <div className="text-sm text-text-secondary font-semibold mb-1">
+            Picks open {new Date(picksAvailableAt).toLocaleString('en-US', {
+              month: 'long', day: 'numeric', year: 'numeric',
+              hour: 'numeric', minute: '2-digit',
+            })}
+          </div>
+          <div className="text-xs text-text-muted">Review the bracket in the meantime!</div>
+        </div>
+      )}
+
       {/* Status banner */}
-      {!isLocked && (
+      {!isLocked && !picksBlocked && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 text-center">
           <div className="text-sm text-text-secondary mb-2">
             {hasSubmitted ? 'Your bracket has been submitted!' : 'Fill out your bracket before the lock.'}

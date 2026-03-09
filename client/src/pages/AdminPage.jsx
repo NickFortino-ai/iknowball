@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useEmailLogs, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -29,9 +29,10 @@ export default function AdminPage() {
   const [selectedGame, setSelectedGame] = useState(null)
   const [emailSubject, setEmailSubject] = useState('')
   const [emailBody, setEmailBody] = useState('')
-  const [emailMode, setEmailMode] = useState('all') // 'all' | 'targeted'
+  const [emailMode, setEmailMode] = useState('all') // 'all' | 'targeted' | 'template'
   const [targetUsers, setTargetUsers] = useState([])
   const [userSearch, setUserSearch] = useState('')
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
 
   const { data: userSearchResults } = useSearchUsers(userSearch)
   const sportKey = sportTabs[activeSport].key
@@ -46,6 +47,9 @@ export default function AdminPage() {
   const recalculateRecords = useRecalculateRecords()
   const sendEmailBlast = useSendEmailBlast()
   const sendTargetedEmail = useSendTargetedEmail()
+  const sendTemplateBracketEmail = useSendTemplateBracketEmail()
+  const { data: emailTemplates } = useBracketTemplates()
+  const { data: templateUserCount } = useBracketTemplateUserCount(selectedTemplateId)
   const { data: emailLogs } = useEmailLogs()
 
   if (!profile?.is_admin) {
@@ -82,7 +86,20 @@ export default function AdminPage() {
   }
 
   async function handleSendEmail() {
-    if (emailMode === 'targeted') {
+    if (emailMode === 'template') {
+      const selectedTemplate = emailTemplates?.find((t) => t.id === selectedTemplateId)
+      if (!selectedTemplateId || !selectedTemplate) return toast('Select a template', 'error')
+      const userCount = templateUserCount?.count || 0
+      if (!confirm(`Send this email to all ${userCount} user(s) in leagues using "${selectedTemplate.name}"?\n\nSubject: ${emailSubject}`)) return
+      try {
+        const result = await sendTemplateBracketEmail.mutateAsync({ subject: emailSubject, body: emailBody, templateId: selectedTemplateId })
+        toast(`Email sent to ${result.sent} user(s)${result.failed ? ` (${result.failed} failed)` : ''}`, result.sent > 0 ? 'success' : 'error')
+        setEmailSubject('')
+        setEmailBody('')
+      } catch (err) {
+        toast(err.message || 'Template email failed', 'error')
+      }
+    } else if (emailMode === 'targeted') {
       const usernames = targetUsers.map((u) => u.username)
       if (!usernames.length) return toast('Select at least one user', 'error')
       if (!confirm(`Send this email to ${usernames.length} user(s)?\n\n${usernames.join(', ')}\n\nSubject: ${emailSubject}`)) return
@@ -236,18 +253,42 @@ export default function AdminPage() {
           </p>
           <div className="space-y-4">
             <div className="flex bg-bg-primary rounded-lg border border-border p-1">
-              {['all', 'targeted'].map((mode) => (
+              {[
+                { value: 'all', label: 'All Users' },
+                { value: 'targeted', label: 'Targeted' },
+                { value: 'template', label: 'Template' },
+              ].map((mode) => (
                 <button
-                  key={mode}
-                  onClick={() => setEmailMode(mode)}
+                  key={mode.value}
+                  onClick={() => setEmailMode(mode.value)}
                   className={`flex-1 py-2 rounded-md text-sm font-semibold transition-colors ${
-                    emailMode === mode ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
+                    emailMode === mode.value ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-card-hover'
                   }`}
                 >
-                  {mode === 'all' ? 'All Users' : 'Targeted'}
+                  {mode.label}
                 </button>
               ))}
             </div>
+            {emailMode === 'template' && (
+              <div>
+                <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Bracket Template</label>
+                <select
+                  value={selectedTemplateId}
+                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  className="w-full bg-bg-primary border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+                >
+                  <option value="">Select a template...</option>
+                  {(emailTemplates || []).map((t) => (
+                    <option key={t.id} value={t.id}>{t.name} ({t.team_count} teams)</option>
+                  ))}
+                </select>
+                {selectedTemplateId && templateUserCount && (
+                  <div className="text-xs text-text-secondary mt-1.5">
+                    {templateUserCount.count} user{templateUserCount.count !== 1 ? 's' : ''} in leagues using this template
+                  </div>
+                )}
+              </div>
+            )}
             {emailMode === 'targeted' && (
               <div>
                 <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Recipients</label>
@@ -337,14 +378,21 @@ export default function AdminPage() {
             </div>
             <button
               onClick={handleSendEmail}
-              disabled={(sendEmailBlast.isPending || sendTargetedEmail.isPending) || !emailSubject.trim() || !emailBody.trim() || (emailMode === 'targeted' && !targetUsers.length)}
+              disabled={
+                (sendEmailBlast.isPending || sendTargetedEmail.isPending || sendTemplateBracketEmail.isPending)
+                || !emailSubject.trim() || !emailBody.trim()
+                || (emailMode === 'targeted' && !targetUsers.length)
+                || (emailMode === 'template' && !selectedTemplateId)
+              }
               className="bg-accent hover:bg-accent/90 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
             >
-              {(sendEmailBlast.isPending || sendTargetedEmail.isPending)
+              {(sendEmailBlast.isPending || sendTargetedEmail.isPending || sendTemplateBracketEmail.isPending)
                 ? 'Sending...'
-                : emailMode === 'targeted'
-                  ? 'Send to Selected Users'
-                  : 'Send to All Users'}
+                : emailMode === 'template'
+                  ? `Send to ${emailTemplates?.find((t) => t.id === selectedTemplateId)?.name || 'Template'} Users`
+                  : emailMode === 'targeted'
+                    ? 'Send to Selected Users'
+                    : 'Send to All Users'}
             </button>
           </div>
         </div>
@@ -364,9 +412,11 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded ${
-                      log.type === 'blast' ? 'bg-accent/10 text-accent' : 'bg-blue-500/10 text-blue-400'
+                      log.type === 'blast' ? 'bg-accent/10 text-accent'
+                        : log.type === 'template_blast' ? 'bg-purple-500/10 text-purple-400'
+                        : 'bg-blue-500/10 text-blue-400'
                     }`}>
-                      {log.type === 'blast' ? 'All Users' : 'Targeted'}
+                      {log.type === 'blast' ? 'All Users' : log.type === 'template_blast' ? 'Template' : 'Targeted'}
                     </span>
                   </div>
                   <div className="flex gap-4 text-xs mb-2">

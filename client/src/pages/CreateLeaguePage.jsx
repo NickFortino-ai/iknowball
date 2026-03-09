@@ -498,6 +498,13 @@ export default function CreateLeaguePage() {
                         {t.team_count} teams &middot; {t.rounds?.length || 0} rounds
                         {t.description && ` — ${t.description}`}
                       </div>
+                      {t.picks_available_at && (
+                        <div className="text-xs text-accent mt-1">
+                          Picks open {new Date(t.picks_available_at).toLocaleString('en-US', {
+                            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                          })}
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>

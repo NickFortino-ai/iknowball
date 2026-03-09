@@ -313,6 +313,112 @@ export async function sendLeagueInviteEmail(toEmail, leagueName, inviteCode) {
   logger.info({ to: toEmail, league: leagueName }, 'Sent league invite email')
 }
 
+export async function sendTemplateBracketEmail(subject, body, templateId) {
+  const transport = getTransporter()
+
+  // Get all league_ids using this template
+  const { data: tournaments, error: tError } = await supabase
+    .from('bracket_tournaments')
+    .select('league_id')
+    .eq('template_id', templateId)
+
+  if (tError) throw tError
+  if (!tournaments?.length) return { total: 0, sent: 0, failed: 0, errors: [] }
+
+  const leagueIds = tournaments.map((t) => t.league_id)
+
+  // Get unique user IDs across all those leagues
+  const { data: members, error: mError } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .in('league_id', leagueIds)
+
+  if (mError) throw mError
+
+  const uniqueUserIds = [...new Set((members || []).map((m) => m.user_id))]
+  if (!uniqueUserIds.length) return { total: 0, sent: 0, failed: 0, errors: [] }
+
+  // Check which users are subscribed
+  const { data: subscribedUsers, error: subError } = await supabase
+    .from('users')
+    .select('id')
+    .in('id', uniqueUserIds)
+    .eq('email_unsubscribed', false)
+
+  if (subError) throw subError
+  if (!subscribedUsers?.length) return { total: uniqueUserIds.length, sent: 0, failed: 0, errors: [] }
+
+  const subscribedIds = new Set(subscribedUsers.map((u) => u.id))
+
+  // Get emails from auth
+  const emailMap = {}
+  let page = 1
+  const perPage = 1000
+
+  while (true) {
+    const { data: { users: authUsers }, error } = await supabase.auth.admin.listUsers({ page, perPage })
+    if (error) throw error
+    if (!authUsers || authUsers.length === 0) break
+
+    for (const authUser of authUsers) {
+      if (authUser.email && subscribedIds.has(authUser.id)) {
+        emailMap[authUser.id] = authUser.email
+      }
+    }
+
+    if (authUsers.length < perPage) break
+    page++
+  }
+
+  logger.info({ count: Object.keys(emailMap).length, templateId }, 'Sending template bracket email')
+
+  let sent = 0
+  let failed = 0
+  const errors = []
+
+  for (const userId of uniqueUserIds) {
+    const email = emailMap[userId]
+    if (!email) continue
+
+    try {
+      const htmlWithFooter = appendUnsubscribeFooter(body, userId)
+      await transport.sendMail({
+        from: `"I KNOW BALL" <${env.SMTP_FROM}>`,
+        to: email,
+        subject,
+        html: htmlWithFooter,
+        text: htmlWithFooter.replace(/<[^>]*>/g, ''),
+      })
+      sent++
+    } catch (err) {
+      failed++
+      errors.push({ email, error: err.message })
+      logger.error({ email, error: err.message }, 'Failed to send template bracket email')
+    }
+  }
+
+  logger.info({ sent, failed, templateId }, 'Template bracket email complete')
+
+  const sentEmails = Object.values(emailMap).filter(
+    (email) => !errors.some((e) => e.email === email)
+  )
+  const failedEmails = errors.map((e) => e.email)
+
+  await supabase.from('email_logs').insert({
+    type: 'template_blast',
+    subject,
+    body,
+    recipients_requested: Object.values(emailMap),
+    recipients_sent: sentEmails,
+    recipients_failed: failedEmails,
+    total: Object.keys(emailMap).length,
+    sent,
+    failed,
+  })
+
+  return { total: uniqueUserIds.length, sent, failed, errors }
+}
+
 export async function unsubscribeUser(userId) {
   const { error } = await supabase
     .from('users')

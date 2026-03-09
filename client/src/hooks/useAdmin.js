@@ -272,6 +272,24 @@ export function useSetChampionshipScore() {
   })
 }
 
+// Template Bracket Email
+export function useSendTemplateBracketEmail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ subject, body, templateId }) =>
+      api.post('/admin/email-template-blast', { subject, body, templateId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'email-logs'] }),
+  })
+}
+
+export function useBracketTemplateUserCount(templateId) {
+  return useQuery({
+    queryKey: ['admin', 'bracket-template-user-count', templateId],
+    queryFn: () => api.get(`/admin/bracket-templates/${templateId}/user-count`),
+    enabled: !!templateId,
+  })
+}
+
 // Content Moderation
 export function useBannedWords() {
   return useQuery({

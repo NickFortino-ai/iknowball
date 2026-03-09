@@ -248,6 +248,14 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   const [teamCount, setTeamCount] = useState(existing?.team_count || 64)
   const [description, setDescription] = useState(existing?.description || '')
   const [regions, setRegions] = useState(existing?.regions || [])
+  const [picksAvailableAt, setPicksAvailableAt] = useState(() => {
+    if (existing?.picks_available_at) {
+      // Convert ISO to datetime-local format
+      const d = new Date(existing.picks_available_at)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    }
+    return ''
+  })
   const [regionInput, setRegionInput] = useState('')
   const [rounds, setRounds] = useState(() => {
     if (existing?.rounds?.length) return existing.rounds
@@ -334,6 +342,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           description: description || undefined,
           rounds,
           regions: regions.length > 0 ? regions : undefined,
+          picks_available_at: picksAvailableAt ? new Date(picksAvailableAt).toISOString() : null,
         })
         id = template.id
         setSavedTemplateId(id)
@@ -346,6 +355,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           description: description || undefined,
           rounds,
           regions: regions.length > 0 ? regions : undefined,
+          picks_available_at: picksAvailableAt ? new Date(picksAvailableAt).toISOString() : null,
         })
       }
       toast('Template saved!', 'success')
@@ -509,6 +519,21 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               placeholder="Optional description"
               className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">
+              Picks Available At <span className="text-text-muted font-normal">(optional)</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={picksAvailableAt}
+              onChange={(e) => setPicksAvailableAt(e.target.value)}
+              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+            />
+            <div className="text-[10px] text-text-muted mt-1">
+              When can users start making picks? Leave blank if picks should be available immediately.
+            </div>
           </div>
 
           <div>

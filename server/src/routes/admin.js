@@ -4,7 +4,7 @@ import { requireAdmin } from '../middleware/requireAdmin.js'
 import { syncOdds } from '../jobs/syncOdds.js'
 import { scoreGames } from '../jobs/scoreGames.js'
 import { recalculateAllUserPoints } from '../services/scoringService.js'
-import { sendEmailBlast, sendTargetedEmail } from '../services/emailService.js'
+import { sendEmailBlast, sendTargetedEmail, sendTemplateBracketEmail } from '../services/emailService.js'
 import {
   syncPropsForGame,
   getAllPropsForGame,
@@ -156,6 +156,15 @@ router.post('/email-targeted', async (req, res) => {
   res.json(result)
 })
 
+router.post('/email-template-blast', async (req, res) => {
+  const { subject, body, templateId } = req.body
+  if (!subject || !body || !templateId) {
+    return res.status(400).json({ error: 'subject, body, and templateId are required' })
+  }
+  const result = await sendTemplateBracketEmail(subject, body, templateId)
+  res.json(result)
+})
+
 router.get('/email-logs', async (req, res) => {
   const { data, error } = await supabase
     .from('email_logs')
@@ -272,17 +281,35 @@ router.get('/bracket-templates/:id', async (req, res) => {
 })
 
 router.post('/bracket-templates', async (req, res) => {
-  const { name, sport, team_count, description, rounds, regions } = req.body
+  const { name, sport, team_count, description, rounds, regions, picks_available_at } = req.body
   if (!name || !sport || !team_count) {
     return res.status(400).json({ error: 'name, sport, and team_count are required' })
   }
-  const template = await createTemplate(req.user.id, { name, sport, team_count, description, rounds, regions })
+  const template = await createTemplate(req.user.id, { name, sport, team_count, description, rounds, regions, picks_available_at })
   res.status(201).json(template)
 })
 
 router.patch('/bracket-templates/:id', async (req, res) => {
   const template = await updateTemplate(req.params.id, req.user.id, req.body)
   res.json(template)
+})
+
+router.get('/bracket-templates/:id/user-count', async (req, res) => {
+  const { data: tournaments } = await supabase
+    .from('bracket_tournaments')
+    .select('league_id')
+    .eq('template_id', req.params.id)
+
+  if (!tournaments?.length) return res.json({ count: 0 })
+
+  const leagueIds = tournaments.map((t) => t.league_id)
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .in('league_id', leagueIds)
+
+  const uniqueUserIds = new Set((members || []).map((m) => m.user_id))
+  res.json({ count: uniqueUserIds.size })
 })
 
 router.post('/bracket-templates/:id/matchups', async (req, res) => {
