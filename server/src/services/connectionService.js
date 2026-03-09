@@ -378,14 +378,15 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes] = await Promise.all([
-    // Source 1: Notable picks — settled where (correct AND odds >= 300) OR (multiplier >= 3)
+    // Source 1: Notable picks — settled where (correct AND odds >= 250) OR (multiplier >= 3)
+    // Fetches at +250 threshold; "all" scope filters to +300 during processing
     skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('picks')
       .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, sports(name))'),
       'user_id', connectedIds)
       .eq('status', 'settled')
-      .or('and(is_correct.eq.true,odds_at_pick.gte.300),multiplier.gte.3'), 'updated_at')
+      .or('and(is_correct.eq.true,odds_at_pick.gte.250),multiplier.gte.3'), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(20),
 
@@ -536,13 +537,18 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     if (!user) continue
 
     // Determine card type: multiplier check first, then underdog
+    // Underdog threshold: +250 for squad, +300 for "all of IKB"
+    const underdogMin = isAll ? 300 : 250
     let type = 'pick'
     if (pick.multiplier >= 3 && pick.is_correct) {
       type = 'multiplier_hit'
     } else if (pick.multiplier >= 3 && !pick.is_correct) {
       type = 'multiplier_miss'
-    } else if (pick.is_correct && pick.odds_at_pick >= 300) {
+    } else if (pick.is_correct && pick.odds_at_pick >= underdogMin) {
       type = 'underdog_hit'
+    } else if (pick.is_correct && pick.odds_at_pick < underdogMin) {
+      // Below this scope's underdog threshold and not a multiplier — skip
+      continue
     }
 
     feed.push({
