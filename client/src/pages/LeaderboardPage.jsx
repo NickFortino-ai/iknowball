@@ -14,6 +14,7 @@ const tabs = [
   { label: 'Parlays', scope: 'parlays', sport: null },
   { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
   { label: 'NCAAB', scope: 'sport', sport: 'basketball_ncaab' },
+  { label: 'WNCAAB', scope: 'sport', sport: 'basketball_wncaab' },
   { label: 'WNBA', scope: 'sport', sport: 'basketball_wnba' },
   { label: 'MLB', scope: 'sport', sport: 'baseball_mlb' },
   { label: 'NFL', scope: 'sport', sport: 'americanfootball_nfl' },
