@@ -378,14 +378,14 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes] = await Promise.all([
-    // Source 1: Notable picks — settled where (correct AND odds >= 200) OR (multiplier >= 3)
+    // Source 1: Notable picks — settled where (correct AND odds >= 300) OR (multiplier >= 3)
     skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('picks')
       .select('id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(home_team, away_team, sports(name))'),
       'user_id', connectedIds)
       .eq('status', 'settled')
-      .or('and(is_correct.eq.true,odds_at_pick.gte.200),multiplier.gte.3'), 'updated_at')
+      .or('and(is_correct.eq.true,odds_at_pick.gte.300),multiplier.gte.3'), 'updated_at')
       .order('updated_at', { ascending: false })
       .limit(20),
 
@@ -541,7 +541,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       type = 'multiplier_hit'
     } else if (pick.multiplier >= 3 && !pick.is_correct) {
       type = 'multiplier_miss'
-    } else if (pick.is_correct && pick.odds_at_pick >= 200) {
+    } else if (pick.is_correct && pick.odds_at_pick >= 300) {
       type = 'underdog_hit'
     }
 
@@ -590,13 +590,11 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       away_team: leg.games?.away_team,
     }))
 
-    // 2-leg parlays only featured if all legs are underdogs
-    const allLegsUnderdog = (parlay.parlay_legs || []).every(l => l.odds_at_submission >= 200)
-    if (parlay.leg_count === 2 && !allLegsUnderdog) continue
+    // Only feature parlays with 4+ legs
+    if (parlay.leg_count < 4) continue
 
     if (parlay.is_correct) {
       // Won parlay
-      const isDogParlay = parlay.leg_count === 2 && allLegsUnderdog
       feed.push({
         type: 'parlay',
         id: parlay.id,
@@ -612,7 +610,6 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
           points_earned: parlay.points_earned,
           risk_points: parlay.risk_points,
           reward_points: parlay.reward_points,
-          isDogParlay,
           legs,
         },
       })
