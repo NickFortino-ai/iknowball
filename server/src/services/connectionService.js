@@ -377,7 +377,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   const skipForHotTakes = (isHotTakes || isUserHotTakes) ? Promise.resolve({ data: [] }) : null
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
-  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, recentComments, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes] = await Promise.all([
+  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes] = await Promise.all([
     // Source 1: Notable picks — settled where (correct AND odds >= 250) OR (multiplier >= 3)
     // Fetches at +250 threshold; "all" scope filters to +300 during processing
     skipForHotTakes ||
@@ -430,16 +430,15 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .order('created_at', { ascending: false })
       .limit(15),
 
-    // Source 7: Recent comments (squad only, exclude hot take comments — they live in the hot take thread)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
+    // Source 7: League wins — league_win (isWinner=true) + survivor_win notifications
+    skipForHotTakes ||
     applyBefore(supabase
-      .from('comments')
-      .select('id, target_type, target_id, user_id, content, created_at')
-      .in('user_id', connectedIds)
-      .neq('target_type', 'hot_take')
-      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()), 'created_at')
+      .from('notifications')
+      .select('id, user_id, type, message, metadata, created_at')
+      .or('and(type.eq.league_win,metadata->>isWinner.eq.true),type.eq.survivor_win')
+      .in('user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
-      .limit(15),
+      .limit(10),
 
     // Source 8: H2H — settled picks in last 3 days (squad only)
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
@@ -501,6 +500,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     }
     for (const pick of h2hPicks.data || []) userIdSet.add(pick.user_id)
     for (const take of hotTakes.data || []) userIdSet.add(take.user_id)
+    for (const win of leagueWins.data || []) userIdSet.add(win.user_id)
     // viralHotTakes user IDs are added after we fetch the actual hot takes below
     userIdSet.delete(undefined)
     for (const id of blockedSet) userIdSet.delete(id)
@@ -740,59 +740,31 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   }
 
   // Process recent comments (batch fetch target owners by type)
-  const commentData = recentComments.data || []
-  if (commentData.length > 0) {
-    const targetsByType = {}
-    for (const c of commentData) {
-      if (!targetsByType[c.target_type]) targetsByType[c.target_type] = new Set()
-      targetsByType[c.target_type].add(c.target_id)
-    }
+  // Process league wins
+  const leagueWinData = leagueWins.data || []
+  for (const win of leagueWinData) {
+    const user = userMap[win.user_id]
+    if (!user) continue
+    const meta = win.metadata || {}
+    const isSurvivorWin = win.type === 'survivor_win'
+    const memberCount = isSurvivorWin ? (meta.outlasted || 0) + 1 : (meta.memberCount || 0)
+    const format = isSurvivorWin ? 'survivor' : (meta.format || 'pickem')
+    // "all of IKB" scope requires 20+ members; squad/highlights always show
+    if (isAll && memberCount < 20) continue
 
-    const ownerMap = {}
-    const TABLE_MAP = { pick: 'picks', parlay: 'parlays', prop: 'prop_picks', streak_event: 'streak_events', record_history: 'record_history', hot_take: 'hot_takes' }
-    const OWNER_COL = { pick: 'user_id', parlay: 'user_id', prop: 'user_id', streak_event: 'user_id', record_history: 'new_holder_id', hot_take: 'user_id' }
-
-    for (const [type, ids] of Object.entries(targetsByType)) {
-      const table = TABLE_MAP[type]
-      if (!table) continue
-      const ownerCol = OWNER_COL[type]
-      const { data: rows } = await supabase
-        .from(table)
-        .select(`id, ${ownerCol}`)
-        .in('id', [...ids])
-      for (const r of rows || []) {
-        const ownerId = r[ownerCol]
-        let username = userMap[ownerId]?.username
-        if (!username && ownerId) {
-          const { data: ownerUser } = await supabase.from('users').select('username').eq('id', ownerId).single()
-          username = ownerUser?.username
-        }
-        ownerMap[`${type}-${r.id}`] = { user_id: ownerId, username }
-      }
-    }
-
-    for (const comment of commentData) {
-      const user = userMap[comment.user_id]
-      if (!user) continue
-
-      const target = ownerMap[`${comment.target_type}-${comment.target_id}`]
-      const ownerUsername = target?.user_id === comment.user_id
-        ? null
-        : target?.username || null
-
-      feed.push({
-        type: 'comment',
-        id: comment.id,
-        userId: comment.user_id,
-        ...buildUserFields(user),
-        timestamp: comment.created_at,
-        comment: {
-          content: comment.content,
-          target_type: comment.target_type,
-          owner_username: ownerUsername,
-        },
-      })
-    }
+    feed.push({
+      type: 'league_win',
+      id: win.id,
+      userId: win.user_id,
+      ...buildUserFields(user),
+      timestamp: win.created_at,
+      league_win: {
+        leagueName: meta.leagueName,
+        points: meta.points,
+        memberCount,
+        format,
+      },
+    })
   }
 
   // Process head-to-head conflicts

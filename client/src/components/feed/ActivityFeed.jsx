@@ -363,34 +363,36 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, bookma
           onUserTap={onUserTap}
         />
       )
-    case 'comment':
-      return <CommentFeedCard item={item} onUserTap={onUserTap} />
+    case 'league_win':
+      return <LeagueWinFeedCard item={item} onUserTap={onUserTap} />
     default:
       return null
   }
 }
 
-function CommentFeedCard({ item, onUserTap }) {
-  const { comment } = item
-  const targetLabel = comment.target_type === 'pick' ? 'pick'
-    : comment.target_type === 'parlay' ? 'parlay'
-    : comment.target_type === 'prop' ? 'prop pick'
-    : comment.target_type === 'streak_event' ? 'streak'
-    : comment.target_type === 'record_history' ? 'record'
-    : comment.target_type === 'hot_take' ? 'hot take'
-    : 'item'
-
-  const ownerText = comment.owner_username
-    ? `@${comment.owner_username}'s`
-    : 'a'
+function LeagueWinFeedCard({ item, onUserTap }) {
+  const { league_win } = item
+  const formatLabel = league_win.format === 'bracket' ? 'bracket' : league_win.format === 'survivor' ? 'survivor pool' : 'league'
 
   return (
     <FeedCardWrapper item={item} onUserTap={onUserTap}>
-      <div className="text-sm text-text-secondary">
-        Commented on {ownerText} {targetLabel}
-      </div>
-      <div className="mt-1 text-sm text-text-primary bg-bg-secondary rounded-lg px-3 py-2 italic">
-        &ldquo;{comment.content}&rdquo;
+      <div className="text-center space-y-2 py-2">
+        <div className="text-3xl">{'\uD83C\uDFC6'}</div>
+        <div className="text-sm font-semibold text-correct">
+          Won the {league_win.leagueName} {formatLabel}!
+        </div>
+        <div className="flex justify-center gap-4">
+          <div className="text-center">
+            <div className="text-lg font-bold text-correct">+{league_win.points}</div>
+            <div className="text-[10px] text-text-muted">Points</div>
+          </div>
+          {league_win.memberCount > 0 && (
+            <div className="text-center">
+              <div className="text-lg font-bold text-text-primary">{league_win.memberCount}</div>
+              <div className="text-[10px] text-text-muted">{league_win.format === 'bracket' ? 'Entries' : 'Players'}</div>
+            </div>
+          )}
+        </div>
       </div>
     </FeedCardWrapper>
   )
