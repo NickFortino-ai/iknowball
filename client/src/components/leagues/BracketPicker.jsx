@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 
@@ -8,6 +8,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const [entryName, setEntryName] = useState('')
   const [tiebreakerScore, setTiebreakerScore] = useState(existingTiebreakerScore ?? '')
   const [copiedFrom, setCopiedFrom] = useState(null)
+  const autoAdvanceTimer = useRef(null)
 
   // Template matchups for feeds_into info
   const templateMatchups = useMemo(
@@ -36,21 +37,8 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     return {}
   })
 
-  // Group matchups by round
-  const byRound = useMemo(() => {
-    const grouped = {}
-    for (const m of matchups || []) {
-      if (!grouped[m.round_number]) grouped[m.round_number] = []
-      grouped[m.round_number].push(m)
-    }
-    for (const key in grouped) {
-      grouped[key].sort((a, b) => a.position - b.position)
-    }
-    return grouped
-  }, [matchups])
-
-  const roundNumbers = Object.keys(byRound).map(Number).sort((a, b) => a - b)
   const rounds = tournament?.bracket_templates?.rounds || []
+  const regions = tournament?.bracket_templates?.regions || []
 
   function getRoundName(roundNum) {
     const r = rounds.find((r) => r.round_number === roundNum)
@@ -61,6 +49,98 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     const r = rounds.find((r) => r.round_number === roundNum)
     return r?.points_per_correct || 0
   }
+
+  // Settled Round 0 matchups (already have a winner) don't need picks at all
+  const settledPlayInIds = useMemo(() => new Set(
+    (matchups || []).filter((m) => m.round_number === 0 && m.winner).map((m) => m.template_matchup_id)
+  ), [matchups])
+
+  // Build wizard steps from matchup data
+  const steps = useMemo(() => {
+    const allMatchups = matchups || []
+    const grouped = {}
+    for (const m of allMatchups) {
+      if (!grouped[m.round_number]) grouped[m.round_number] = []
+      grouped[m.round_number].push(m)
+    }
+    for (const key in grouped) {
+      grouped[key].sort((a, b) => a.position - b.position)
+    }
+
+    const roundNums = Object.keys(grouped).map(Number).sort((a, b) => a - b)
+    const hasRegions = regions.length > 1
+    const result = []
+
+    for (const roundNum of roundNums) {
+      const roundMatchups = grouped[roundNum]
+      const isPlayIn = roundNum === 0
+
+      // Split rounds 1-2 by region when regions exist and there are enough matchups
+      if (hasRegions && (roundNum === 1 || roundNum === 2) && roundMatchups.length > regions.length) {
+        for (const region of regions) {
+          const regionMatchups = roundMatchups.filter((m) => m.region === region)
+          if (regionMatchups.length > 0) {
+            result.push({
+              roundNum,
+              region,
+              label: `${getRoundName(roundNum)} — ${region}`,
+              matchups: regionMatchups,
+              isBonus: false,
+            })
+          }
+        }
+        // Include any matchups without a region (shouldn't happen, but safe fallback)
+        const noRegion = roundMatchups.filter((m) => !m.region || !regions.includes(m.region))
+        if (noRegion.length > 0) {
+          result.push({
+            roundNum,
+            region: null,
+            label: getRoundName(roundNum),
+            matchups: noRegion,
+            isBonus: false,
+          })
+        }
+      } else {
+        // Round 0 (play-in), rounds 3+ (Sweet 16 onward), or small brackets: one step per round
+        result.push({
+          roundNum,
+          region: null,
+          label: isPlayIn ? `${getRoundName(roundNum)} (Bonus)` : getRoundName(roundNum),
+          matchups: roundMatchups,
+          isBonus: isPlayIn,
+        })
+      }
+    }
+
+    return result
+  }, [matchups, regions, rounds])
+
+  // Helper: get pickable matchups for a step
+  const getPickableMatchups = useCallback((step) => {
+    return step.matchups.filter((m) => {
+      if (templateMatchupMap[m.template_matchup_id]?.is_bye) return false
+      if (step.isBonus && settledPlayInIds.has(m.template_matchup_id)) return false
+      return true
+    })
+  }, [templateMatchupMap, settledPlayInIds])
+
+  // Helper: check if a step is complete given a picks object
+  const isStepComplete = useCallback((step, picksObj) => {
+    const pickable = getPickableMatchups(step)
+    if (pickable.length === 0) return true
+    return pickable.every((m) => picksObj[m.template_matchup_id])
+  }, [getPickableMatchups])
+
+  // Find first incomplete step for initial position
+  const initialStep = useMemo(() => {
+    if (steps.length === 0) return 0
+    const firstIncomplete = steps.findIndex((step) => !isStepComplete(step, picks))
+    return firstIncomplete === -1 ? 0 : firstIncomplete
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only compute on mount
+
+  const [activeStep, setActiveStep] = useState(initialStep)
+  const currentStep = steps[activeStep] || steps[0]
 
   // Get the available teams for a matchup (from feeder picks or direct team names)
   const getTeamsForMatchup = useCallback((matchup) => {
@@ -93,6 +173,18 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     }
 
     setPicks(newPicks)
+
+    // Auto-advance if current step is now complete (non-bonus only)
+    if (currentStep && !currentStep.isBonus && activeStep < steps.length - 1) {
+      if (isStepComplete(currentStep, newPicks)) {
+        // Clear any existing timer
+        if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current)
+        autoAdvanceTimer.current = setTimeout(() => {
+          setActiveStep((prev) => Math.min(prev + 1, steps.length - 1))
+          autoAdvanceTimer.current = null
+        }, 400)
+      }
+    }
   }
 
   function clearDownstreamPicks(tmId, oldTeam, newPicks) {
@@ -116,6 +208,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     }
     setPicks(newPicks)
     setCopiedFrom(entry.league_name)
+    setActiveStep(0) // Start at step 0 to review
     toast(`Bracket copied from ${entry.league_name}`, 'success')
   }
 
@@ -130,10 +223,6 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     const tm = templateMatchupMap[m.template_matchup_id]
     return !tm?.is_bye
   })
-  // Settled Round 0 matchups (already have a winner) don't need picks at all
-  const settledPlayInIds = new Set(
-    (matchups || []).filter((m) => m.round_number === 0 && m.winner).map((m) => m.template_matchup_id)
-  )
   const requiredMatchups = nonByeMatchups.filter((m) => {
     const tm = templateMatchupMap[m.template_matchup_id]
     return m.round_number >= 1 && !tm?.is_bye
@@ -164,8 +253,10 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     }
   }
 
-  // Mobile: round-by-round stepper
-  const [activeRound, setActiveRound] = useState(roundNumbers[0] || 1)
+  // Step completion stats for navigator
+  const stepPickable = currentStep ? getPickableMatchups(currentStep) : []
+  const stepFilled = stepPickable.filter((m) => picks[m.template_matchup_id]).length
+  const stepTotal = stepPickable.length
 
   return (
     <div>
@@ -221,54 +312,58 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         </div>
       )}
 
-      {/* Round tabs (mobile stepper) */}
-      <div className="flex gap-1 mb-4 overflow-x-auto">
-        {roundNumbers.map((num) => {
-          const roundMatchups = byRound[num] || []
-          const isPlayIn = num === 0
-          // For Round 0, exclude settled matchups from the pickable count
-          const pickableMatchups = roundMatchups.filter((m) => {
-            if (templateMatchupMap[m.template_matchup_id]?.is_bye) return false
-            if (isPlayIn && settledPlayInIds.has(m.template_matchup_id)) return false
-            return true
-          })
-          const roundFilled = pickableMatchups.filter((m) => picks[m.template_matchup_id]).length
-          const roundTotal = pickableMatchups.length
-
-          return (
-            <button
-              key={num}
-              onClick={() => setActiveRound(num)}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                activeRound === num
-                  ? 'bg-accent text-white'
-                  : roundFilled === roundTotal && roundTotal > 0
-                    ? 'bg-correct/20 text-correct'
-                    : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-              }`}
-            >
-              {getRoundName(num)}{isPlayIn ? ' (Bonus)' : ''}
-              {roundTotal > 0 && (
-                <span className="ml-1 text-[10px] opacity-70">{roundFilled}/{roundTotal}</span>
+      {/* Step navigator */}
+      {steps.length > 0 && (
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setActiveStep((s) => Math.max(s - 1, 0))}
+            disabled={activeStep === 0}
+            className="p-2 rounded-lg text-text-secondary hover:bg-bg-card-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+              <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+            </svg>
+          </button>
+          <div className="text-center min-w-0 flex-1 px-2">
+            <div className="font-display text-sm truncate">{currentStep?.label}</div>
+            <div className="text-[11px] text-text-muted mt-0.5">
+              Step {activeStep + 1} of {steps.length}
+              {stepTotal > 0 && (
+                <span className={stepFilled === stepTotal ? ' text-correct' : ''}>
+                  {' '}&middot; {stepFilled}/{stepTotal} picked
+                </span>
               )}
-            </button>
-          )
-        })}
-      </div>
+            </div>
+            <div className="text-[10px] text-text-muted mt-0.5">
+              {currentStep?.isBonus
+                ? '(bonus — not required to submit)'
+                : `${getRoundPoints(currentStep?.roundNum)} pts per correct pick`
+              }
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveStep((s) => Math.min(s + 1, steps.length - 1))}
+            disabled={activeStep === steps.length - 1}
+            className="p-2 rounded-lg text-text-secondary hover:bg-bg-card-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      )}
 
-      {/* Matchups for active round */}
+      {/* Matchups for active step */}
       <div className="space-y-3">
-        {byRound[activeRound]?.map((matchup) => {
+        {currentStep?.matchups.map((matchup) => {
           const tm = templateMatchupMap[matchup.template_matchup_id]
           if (tm?.is_bye) return null
 
           // Settled Round 0 matchups: show result as locked, not pickable
           if (matchup.round_number === 0 && matchup.winner) {
-            const winnerTeam = matchup.winning_team_name
-            const loserTeam = matchup.winner === 'top' ? matchup.team_bottom : matchup.team_top
             return (
               <div key={matchup.id} className="bg-bg-card rounded-xl border border-border overflow-hidden opacity-70">
-                {matchup.region && (
+                {matchup.region && !currentStep.region && (
                   <div className="text-[10px] text-text-muted text-center pt-2">{matchup.region}</div>
                 )}
                 <div className="px-3 py-1 text-[10px] text-text-muted text-center">Result</div>
@@ -300,7 +395,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
           return (
             <div key={matchup.id} className="bg-bg-card rounded-xl border border-border overflow-hidden">
-              {matchup.region && (
+              {matchup.region && !currentStep.region && (
                 <div className="text-[10px] text-text-muted text-center pt-2">{matchup.region}</div>
               )}
               <div className="p-1">
@@ -347,12 +442,6 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             </div>
           )
         })}
-      </div>
-
-      {/* Round points info */}
-      <div className="text-center text-xs text-text-muted mt-3">
-        {getRoundPoints(activeRound)} points per correct pick in {getRoundName(activeRound)}
-        {activeRound === 0 && ' (bonus — not required to submit)'}
       </div>
 
       {/* Entry name + Tiebreaker + Submit */}
