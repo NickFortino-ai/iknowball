@@ -560,14 +560,31 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             <div className="flex gap-1 flex-wrap">
               {regions.map((r, i) => (
                 <span
-                  key={i}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-accent/20 text-accent text-xs font-semibold"
+                  key={r}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData('text/plain', i)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const from = parseInt(e.dataTransfer.getData('text/plain'))
+                    if (from === i) return
+                    const next = [...regions]
+                    const [moved] = next.splice(from, 1)
+                    next.splice(i, 0, moved)
+                    setRegions(next)
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-accent/20 text-accent text-xs font-semibold cursor-grab active:cursor-grabbing select-none"
                 >
                   {r}
                   <button onClick={() => handleRemoveRegion(i)} className="hover:text-incorrect">x</button>
                 </span>
               ))}
             </div>
+            {regions.length > 1 && (
+              <div className="text-[10px] text-text-muted mt-1">
+                Drag to reorder — regions 1 &amp; 2 pair in the Final Four, as do 3 &amp; 4
+              </div>
+            )}
           </div>
 
           <button
