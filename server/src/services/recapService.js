@@ -16,7 +16,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
   // 1. Settled picks in the date range
   const { data: picks } = await supabase
     .from('picks')
-    .select('user_id, points_earned, is_correct, odds_at_pick, reward_points, games(home_team, away_team)')
+    .select('user_id, points_earned, is_correct, odds_at_pick, reward_points, picked_team, games(home_team, away_team)')
     .eq('status', 'settled')
     .not('points_earned', 'is', null)
     .gte('updated_at', startISO)
@@ -82,6 +82,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
         biggest_underdog_odds: 0,
         biggest_underdog_reward: 0,
         biggest_underdog_game: null,
+        biggest_underdog_picked: null,
         total_picks: 0,
       }
     }
@@ -102,6 +103,9 @@ export async function collectWeeklyData(weekStart, weekEnd) {
         u.biggest_underdog_game = p.games
           ? `${p.games.away_team} @ ${p.games.home_team}`
           : null
+        u.biggest_underdog_picked = p.picked_team === 'home'
+          ? p.games?.home_team
+          : p.games?.away_team
       }
     } else if (p.is_correct === false) {
       u.picks_losses++
@@ -194,7 +198,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
       weekly_points: weeklyPoints,
       record: { wins: totalWins, losses: allLosses, pushes: u.picks_pushes },
       biggest_underdog: u.biggest_underdog_reward > 0
-        ? { odds: u.biggest_underdog_odds, reward: u.biggest_underdog_reward, game: u.biggest_underdog_game }
+        ? { odds: u.biggest_underdog_odds, reward: u.biggest_underdog_reward, game: u.biggest_underdog_game, picked_team: u.biggest_underdog_picked }
         : null,
       parlays: { total: u.parlays_total, won: u.parlays_won, points: u.parlays_points },
       current_streak: streak,
@@ -392,6 +396,7 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
       odds: `+${pickOfWeekUser.biggest_underdog.odds}`,
       reward: pickOfWeekUser.biggest_underdog.reward,
       game: pickOfWeekUser.biggest_underdog.game,
+      picked_team: pickOfWeekUser.biggest_underdog.picked_team,
     } : null,
     biggestFall: biggestFallUser ? {
       name: biggestFallUser.display_name,
@@ -414,6 +419,8 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
   const prompt = `You are the voice of I KNOW BALL, a sports prediction app. Write a weekly headlines recap for the top 5 users this week. For each user, write a 1-2 sentence narrative that's fun, competitive, and highlights their boldest picks, biggest wins, or interesting patterns. Be conversational with a little trash talk energy. Also include: Pick of the Week (biggest underdog hit), Biggest Fall (user who lost the most points), and Longest Active Streak. Make it feel like something users would want to screenshot and share.
 
 Use each user's specified pronouns (provided in their data as "pronouns": "he/him/his", "she/her/her", or "they/them/their") when referring to them in third person.
+
+IMPORTANT: When mentioning a user's underdog pick, ALWAYS use the "picked_team" field to identify which team they picked. Do NOT guess or infer the team from the game matchup or odds — use the exact team name from "picked_team".
 
 Use this exact format:
 
