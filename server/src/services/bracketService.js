@@ -400,13 +400,17 @@ export async function createTournament(leagueId, templateId, locksAt) {
       const winningTeam = tm.winner === 'top' ? tm.team_top : tm.team_bottom
       const winningSeed = tm.winner === 'top' ? tm.seed_top : tm.seed_bottom
 
+      const resultUpdate = {
+        winner: tm.winner,
+        winning_team_name: winningTeam,
+        status: 'completed',
+      }
+      if (tm.score_top != null) resultUpdate.score_top = tm.score_top
+      if (tm.score_bottom != null) resultUpdate.score_bottom = tm.score_bottom
+
       await supabase
         .from('bracket_matchups')
-        .update({
-          winner: tm.winner,
-          winning_team_name: winningTeam,
-          status: 'completed',
-        })
+        .update(resultUpdate)
         .eq('tournament_id', tournament.id)
         .eq('template_matchup_id', tm.id)
 
@@ -673,7 +677,7 @@ export async function getTemplateResults(templateId) {
   return matchups || []
 }
 
-export async function enterTemplateResult(templateId, templateMatchupId, winner) {
+export async function enterTemplateResult(templateId, templateMatchupId, winner, scoreTop, scoreBottom) {
   // Get the template matchup
   const { data: templateMatchup } = await supabase
     .from('bracket_template_matchups')
@@ -698,9 +702,13 @@ export async function enterTemplateResult(templateId, templateMatchupId, winner)
   }
 
   // Set winner on the template matchup
+  const templateUpdate = { winner, winning_team_name: winningTeam }
+  if (scoreTop != null) templateUpdate.score_top = scoreTop
+  if (scoreBottom != null) templateUpdate.score_bottom = scoreBottom
+
   await supabase
     .from('bracket_template_matchups')
-    .update({ winner, winning_team_name: winningTeam })
+    .update(templateUpdate)
     .eq('id', templateMatchupId)
 
   // Propagate winner to next template matchup (fill in team name for next round)
@@ -722,23 +730,27 @@ export async function enterTemplateResult(templateId, templateMatchupId, winner)
     .eq('template_id', templateId)
 
   for (const tournament of tournaments || []) {
-    await cascadeResultToTournament(tournament, templateMatchup, winner, winningTeam, winningSeed)
+    await cascadeResultToTournament(tournament, templateMatchup, winner, winningTeam, winningSeed, scoreTop, scoreBottom)
   }
 
   return { templateMatchupId, winner, winningTeam }
 }
 
-async function cascadeResultToTournament(tournament, templateMatchup, winner, winningTeam, winningSeed) {
+async function cascadeResultToTournament(tournament, templateMatchup, winner, winningTeam, winningSeed, scoreTop, scoreBottom) {
   const tournamentId = tournament.id
 
   // Update the tournament matchup
+  const matchupUpdate = {
+    winner,
+    winning_team_name: winningTeam,
+    status: 'completed',
+  }
+  if (scoreTop != null) matchupUpdate.score_top = scoreTop
+  if (scoreBottom != null) matchupUpdate.score_bottom = scoreBottom
+
   await supabase
     .from('bracket_matchups')
-    .update({
-      winner,
-      winning_team_name: winningTeam,
-      status: 'completed',
-    })
+    .update(matchupUpdate)
     .eq('tournament_id', tournamentId)
     .eq('template_matchup_id', templateMatchup.id)
 
@@ -912,10 +924,10 @@ export async function undoTemplateResult(templateId, templateMatchupId) {
       .eq('id', templateMatchup.feeds_into_matchup_id)
   }
 
-  // Clear winner on template matchup
+  // Clear winner and scores on template matchup
   await supabase
     .from('bracket_template_matchups')
-    .update({ winner: null, winning_team_name: null })
+    .update({ winner: null, winning_team_name: null, score_top: null, score_bottom: null })
     .eq('id', templateMatchupId)
 
   // Cascade reset to all tournaments using this template
@@ -948,7 +960,7 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
   // Reset the matchup
   await supabase
     .from('bracket_matchups')
-    .update({ winner: null, winning_team_name: null, status: 'pending' })
+    .update({ winner: null, winning_team_name: null, status: 'pending', score_top: null, score_bottom: null })
     .eq('tournament_id', tournamentId)
     .eq('template_matchup_id', templateMatchup.id)
 
@@ -983,7 +995,7 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
 // Standings
 // ============================================
 
-export async function scoreBracketMatchups(homeTeam, awayTeam, winner) {
+export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore, awayScore) {
   // Find unsettled template matchups where both teams match this game
   const { data: matchups, error } = await supabase
     .from('bracket_template_matchups')
@@ -1003,8 +1015,15 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner) {
 
     const winnerSlot = matchup.team_top === winningTeam ? 'top' : 'bottom'
 
+    // Map home/away scores to top/bottom based on team positions
+    let scoreTop, scoreBottom
+    if (homeScore != null && awayScore != null) {
+      scoreTop = matchup.team_top === homeTeam ? homeScore : awayScore
+      scoreBottom = matchup.team_bottom === homeTeam ? homeScore : awayScore
+    }
+
     try {
-      await enterTemplateResult(matchup.bracket_templates.id, matchup.id, winnerSlot)
+      await enterTemplateResult(matchup.bracket_templates.id, matchup.id, winnerSlot, scoreTop, scoreBottom)
       logger.info({ matchupId: matchup.id, winningTeam, winnerSlot }, 'Auto-settled bracket matchup')
     } catch (err) {
       logger.error({ err, matchupId: matchup.id }, 'Failed to auto-settle bracket matchup')

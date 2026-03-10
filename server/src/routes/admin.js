@@ -339,11 +339,11 @@ router.get('/bracket-templates/:id/results', async (req, res) => {
 })
 
 router.post('/bracket-templates/:id/results', async (req, res) => {
-  const { template_matchup_id, winner } = req.body
+  const { template_matchup_id, winner, score_top, score_bottom } = req.body
   if (!template_matchup_id || !winner) {
     return res.status(400).json({ error: 'template_matchup_id and winner are required' })
   }
-  const result = await enterTemplateResult(req.params.id, template_matchup_id, winner)
+  const result = await enterTemplateResult(req.params.id, template_matchup_id, winner, score_top ?? null, score_bottom ?? null)
   res.json(result)
 })
 

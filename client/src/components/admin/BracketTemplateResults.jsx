@@ -9,6 +9,7 @@ export default function BracketTemplateResults({ templateId, onClose }) {
   const undoResult = useUndoTemplateResult()
   const setChampionshipScore = useSetChampionshipScore()
   const [selectedMatchup, setSelectedMatchup] = useState(null)
+  const [scores, setScores] = useState({})
   const [champScore, setChampScore] = useState('')
 
   if (isLoading) return <LoadingSpinner />
@@ -29,10 +30,14 @@ export default function BracketTemplateResults({ templateId, onClose }) {
   }
 
   async function handleEnterResult(matchupId, winner) {
+    const matchupScores = scores[matchupId]
+    const scoreTop = matchupScores?.top !== '' && matchupScores?.top != null ? matchupScores.top : undefined
+    const scoreBottom = matchupScores?.bottom !== '' && matchupScores?.bottom != null ? matchupScores.bottom : undefined
     try {
-      await enterResult.mutateAsync({ templateId, templateMatchupId: matchupId, winner })
+      await enterResult.mutateAsync({ templateId, templateMatchupId: matchupId, winner, scoreTop, scoreBottom })
       toast('Result entered and synced to all tournaments', 'success')
       setSelectedMatchup(null)
+      setScores((s) => { const next = { ...s }; delete next[matchupId]; return next })
     } catch (err) {
       toast(err.message || 'Failed to enter result', 'error')
     }
@@ -107,6 +112,9 @@ export default function BracketTemplateResults({ templateId, onClose }) {
                           <span className={`font-semibold ${isCompleted && m.winner === 'top' ? 'text-correct' : ''}`}>
                             {m.team_top || 'TBD'}
                           </span>
+                          {isCompleted && m.score_top != null && m.score_bottom != null && (
+                            <span className="text-text-muted text-xs ml-1">({m.score_top} - {m.score_bottom})</span>
+                          )}
                           <span className="text-text-muted mx-2">vs</span>
                           {m.seed_bottom != null && (
                             <span className="text-text-muted text-xs">({m.seed_bottom}) </span>
@@ -146,7 +154,33 @@ export default function BracketTemplateResults({ templateId, onClose }) {
                         </div>
                       </div>
                       {selectedMatchup === m.id && (
-                        <div className="mt-3 flex gap-2">
+                        <div className="mt-3 space-y-2">
+                          <div className="flex gap-2 items-center text-xs text-text-muted">
+                            <div className="flex-1 flex items-center gap-1">
+                              <span className="truncate">{m.team_top}</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={scores[m.id]?.top ?? ''}
+                                onChange={(e) => setScores((s) => ({ ...s, [m.id]: { ...s[m.id], top: e.target.value } }))}
+                                placeholder="Score"
+                                className="w-16 bg-bg-input border border-border rounded px-2 py-1 text-text-primary text-xs focus:outline-none focus:border-accent"
+                              />
+                            </div>
+                            <div className="flex-1 flex items-center gap-1">
+                              <span className="truncate">{m.team_bottom}</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={scores[m.id]?.bottom ?? ''}
+                                onChange={(e) => setScores((s) => ({ ...s, [m.id]: { ...s[m.id], bottom: e.target.value } }))}
+                                placeholder="Score"
+                                className="w-16 bg-bg-input border border-border rounded px-2 py-1 text-text-primary text-xs focus:outline-none focus:border-accent"
+                              />
+                            </div>
+                            <span className="text-[10px] italic shrink-0">(optional)</span>
+                          </div>
+                          <div className="flex gap-2">
                           <button
                             onClick={() => handleEnterResult(m.id, 'top')}
                             disabled={enterResult.isPending}
@@ -161,6 +195,7 @@ export default function BracketTemplateResults({ templateId, onClose }) {
                           >
                             {m.team_bottom} Wins
                           </button>
+                          </div>
                         </div>
                       )}
                     </div>

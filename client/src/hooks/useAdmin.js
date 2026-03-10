@@ -250,10 +250,12 @@ export function useEnterTemplateResult() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ templateId, templateMatchupId, winner }) =>
+    mutationFn: ({ templateId, templateMatchupId, winner, scoreTop, scoreBottom }) =>
       api.post(`/admin/bracket-templates/${templateId}/results`, {
         template_matchup_id: templateMatchupId,
         winner,
+        score_top: scoreTop != null ? Number(scoreTop) : undefined,
+        score_bottom: scoreBottom != null ? Number(scoreBottom) : undefined,
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['adminBracketTemplates', variables.templateId] })

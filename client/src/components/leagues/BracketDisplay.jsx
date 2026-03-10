@@ -1,10 +1,22 @@
 import { useMemo, useState } from 'react'
 
 function MatchupCard({ matchup, pick, showPick, onTap }) {
+  const [showScore, setShowScore] = useState(false)
+
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
   const bottomCorrect = pick && matchup.status === 'completed' && pick === matchup.team_bottom && matchup.winner === 'bottom'
   const topWrong = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'bottom'
   const bottomWrong = pick && matchup.status === 'completed' && pick === matchup.team_bottom && matchup.winner === 'top'
+
+  const hasScores = matchup.status === 'completed' && matchup.score_top != null && matchup.score_bottom != null
+  const canExpand = !onTap && hasScores
+
+  function handleClick() {
+    if (onTap) return onTap(matchup)
+    if (canExpand) setShowScore((s) => !s)
+  }
+
+  const isClickable = !!onTap || canExpand
 
   function teamClass(team, isTop) {
     if (!team) return 'text-text-muted'
@@ -22,8 +34,8 @@ function MatchupCard({ matchup, pick, showPick, onTap }) {
 
   return (
     <div
-      className={`bg-bg-card border border-border rounded-lg w-44 text-xs overflow-hidden${onTap ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
-      onClick={onTap ? () => onTap(matchup) : undefined}
+      className={`bg-bg-card border border-border rounded-lg w-44 text-xs overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
+      onClick={isClickable ? handleClick : undefined}
     >
       <div className={`flex items-center gap-1 px-2 py-1.5 border-b border-border ${teamClass(matchup.team_top, true)}`}>
         {matchup.seed_top != null && (
@@ -43,6 +55,11 @@ function MatchupCard({ matchup, pick, showPick, onTap }) {
           <span className="text-correct shrink-0">W</span>
         )}
       </div>
+      {showScore && (
+        <div className="border-t border-border bg-bg-card-hover px-2 py-1 text-center text-text-muted">
+          {matchup.score_top} - {matchup.score_bottom}
+        </div>
+      )}
     </div>
   )
 }
