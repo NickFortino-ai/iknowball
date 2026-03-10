@@ -184,8 +184,9 @@ export default function BracketView({ league }) {
 
           <BracketDisplay
             matchups={tournament.matchups}
-            picks={viewingUserId ? displayPicks : null}
+            picks={viewingUserId ? displayPicks : (myEntry?.picks || null)}
             rounds={rounds}
+            regions={tournament.bracket_templates?.regions}
           />
         </div>
       )}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 function MatchupCard({ matchup, pick, showPick }) {
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -44,7 +44,9 @@ function MatchupCard({ matchup, pick, showPick }) {
   )
 }
 
-export default function BracketDisplay({ matchups, picks, rounds }) {
+export default function BracketDisplay({ matchups, picks, rounds, regions }) {
+  const [selectedRegion, setSelectedRegion] = useState(null)
+
   // Build pick lookup by template_matchup_id
   const pickMap = useMemo(() => {
     const map = {}
@@ -68,7 +70,19 @@ export default function BracketDisplay({ matchups, picks, rounds }) {
     return grouped
   }, [matchups])
 
-  const roundNumbers = Object.keys(byRound).map(Number).sort((a, b) => a - b)
+  // Filter by region when selected
+  const filteredByRound = useMemo(() => {
+    if (!selectedRegion) return byRound
+    const filtered = {}
+    for (const key in byRound) {
+      const regionMatchups = byRound[key].filter((m) => m.region === selectedRegion)
+      if (regionMatchups.length > 0) filtered[key] = regionMatchups
+    }
+    return filtered
+  }, [byRound, selectedRegion])
+
+  const roundNumbers = Object.keys(filteredByRound).map(Number).sort((a, b) => a - b)
+  const firstRoundCount = filteredByRound[roundNumbers[0]]?.length || 0
 
   function getRoundName(roundNum) {
     const r = (rounds || []).find((r) => r.round_number === roundNum)
@@ -81,40 +95,68 @@ export default function BracketDisplay({ matchups, picks, rounds }) {
   }
 
   const hasPicks = picks && picks.length > 0
+  const showRegionTabs = regions && regions.length >= 2
 
   // Desktop horizontal view
   return (
-    <div className="overflow-x-auto">
-      <div className="flex gap-4 min-w-max py-2">
-        {roundNumbers.map((roundNum) => (
-          <div key={roundNum} className="flex flex-col items-center">
-            <div className="text-xs font-semibold text-text-secondary mb-1">{getRoundName(roundNum)}</div>
-            <div className="text-[10px] text-text-muted mb-3">{getRoundPoints(roundNum)} pts</div>
-            <div
-              className="flex flex-col gap-3 justify-around"
-              style={{ minHeight: byRound[roundNumbers[0]]?.length * 60 || 200 }}
+    <div>
+      {/* Region tabs */}
+      {showRegionTabs && (
+        <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+          <button
+            onClick={() => setSelectedRegion(null)}
+            className={`shrink-0 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              !selectedRegion ? 'bg-accent/20 text-accent' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+            }`}
+          >
+            All
+          </button>
+          {regions.map((region) => (
+            <button
+              key={region}
+              onClick={() => setSelectedRegion(region)}
+              className={`shrink-0 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                selectedRegion === region ? 'bg-accent/20 text-accent' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              }`}
             >
-              {byRound[roundNum]?.map((matchup) => (
-                <MatchupCard
-                  key={matchup.id}
-                  matchup={matchup}
-                  pick={pickMap[matchup.template_matchup_id]}
-                  showPick={hasPicks}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Legend */}
-      {hasPicks && (
-        <div className="flex gap-4 mt-4 text-[10px] text-text-muted">
-          <span><span className="inline-block w-2 h-2 bg-correct rounded-full mr-1" />Correct</span>
-          <span><span className="inline-block w-2 h-2 bg-incorrect rounded-full mr-1" />Wrong</span>
-          <span><span className="inline-block w-2 h-2 bg-accent rounded-full mr-1" />Your Pick</span>
+              {region}
+            </button>
+          ))}
         </div>
       )}
+
+      <div className="overflow-x-auto">
+        <div className="flex gap-4 min-w-max py-2">
+          {roundNumbers.map((roundNum) => (
+            <div key={roundNum} className="flex flex-col items-center">
+              <div className="text-xs font-semibold text-text-secondary mb-1">{getRoundName(roundNum)}</div>
+              <div className="text-[10px] text-text-muted mb-3">{getRoundPoints(roundNum)} pts</div>
+              <div
+                className="flex flex-col gap-3 justify-around"
+                style={{ minHeight: firstRoundCount * 60 || 200 }}
+              >
+                {filteredByRound[roundNum]?.map((matchup) => (
+                  <MatchupCard
+                    key={matchup.id}
+                    matchup={matchup}
+                    pick={pickMap[matchup.template_matchup_id]}
+                    showPick={hasPicks}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Legend */}
+        {hasPicks && (
+          <div className="flex gap-4 mt-4 text-[10px] text-text-muted">
+            <span><span className="inline-block w-2 h-2 bg-correct rounded-full mr-1" />Correct</span>
+            <span><span className="inline-block w-2 h-2 bg-incorrect rounded-full mr-1" />Wrong</span>
+            <span><span className="inline-block w-2 h-2 bg-accent rounded-full mr-1" />Your Pick</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
