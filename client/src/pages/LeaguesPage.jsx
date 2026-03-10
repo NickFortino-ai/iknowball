@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useMyLeagues } from '../hooks/useLeagues'
 import LeagueCard from '../components/leagues/LeagueCard'
+import TrophyCase from '../components/leagues/TrophyCase'
 import JoinLeagueModal from '../components/leagues/JoinLeagueModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
@@ -63,6 +64,8 @@ export default function LeaguesPage() {
               message="Create a league or join one with an invite code"
             />
           )}
+
+          <TrophyCase />
 
           {completed.length > 0 && (
             <div className="mt-6">

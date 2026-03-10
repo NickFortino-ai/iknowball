@@ -8,6 +8,13 @@ export function useMyLeagues() {
   })
 }
 
+export function useMyLeagueWins() {
+  return useQuery({
+    queryKey: ['leagues', 'my-wins'],
+    queryFn: () => api.get('/leagues/my-wins'),
+  })
+}
+
 export function useLeague(id) {
   return useQuery({
     queryKey: ['leagues', id],

@@ -120,6 +120,38 @@ router.get('/', requireAuth, async (req, res) => {
   res.json(leagues)
 })
 
+// Trophy case: user's league wins
+router.get('/my-wins', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('bonus_points')
+    .select('id, league_id, type, label, points, created_at, leagues(name, format, sport)')
+    .eq('user_id', req.user.id)
+    .in('type', ['league_win', 'survivor_win'])
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  if (!data?.length) return res.json([])
+
+  const leagueIds = [...new Set(data.filter(w => w.league_id).map(w => w.league_id))]
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('league_id')
+    .in('league_id', leagueIds)
+
+  const countMap = {}
+  for (const m of members || []) {
+    countMap[m.league_id] = (countMap[m.league_id] || 0) + 1
+  }
+
+  res.json(data.map(w => ({
+    ...w,
+    league_name: w.leagues?.name || 'Deleted League',
+    league_format: w.leagues?.format || null,
+    league_sport: w.leagues?.sport || null,
+    member_count: countMap[w.league_id] || 0,
+  })))
+})
+
 // Public bracket templates (for commissioners creating leagues)
 router.get('/bracket-templates/active', requireAuth, async (req, res) => {
   const templates = await getTemplates({ sport: req.query.sport })
