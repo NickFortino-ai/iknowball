@@ -392,6 +392,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             }))}
             rounds={rounds}
             regions={regions}
+            initialRegion={currentStep?.region || null}
             onMatchupTap={(matchup) => {
               const stepIdx = steps.findIndex((s) =>
                 s.matchups.some((m) => m.id === matchup.id)

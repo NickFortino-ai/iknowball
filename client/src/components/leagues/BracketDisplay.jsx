@@ -47,8 +47,8 @@ function MatchupCard({ matchup, pick, showPick, onTap }) {
   )
 }
 
-export default function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap }) {
-  const [selectedRegion, setSelectedRegion] = useState(null)
+export default function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion }) {
+  const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
 
   // Build pick lookup by template_matchup_id
   const pickMap = useMemo(() => {
