@@ -51,6 +51,7 @@ import {
   submitBracket,
   getTemplates,
   getUserEntriesForTemplate,
+  updateBracketTournament,
 } from '../services/bracketService.js'
 
 const router = Router()
@@ -468,6 +469,16 @@ router.patch('/:id/squares/board', requireAuth, validate(updateBoardSettingsSche
 router.get('/:id/bracket/tournament', requireAuth, async (req, res) => {
   const tournament = await getTournament(req.params.id)
   res.json(tournament)
+})
+
+router.patch('/:id/bracket/tournament', requireAuth, async (req, res) => {
+  const league = await getLeagueDetails(req.params.id, req.user.id)
+  if (league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can update bracket settings' })
+  }
+  const tournament = await getTournament(req.params.id)
+  const updated = await updateBracketTournament(tournament.id, req.body)
+  res.json(updated)
 })
 
 router.get('/:id/bracket/entry', requireAuth, async (req, res) => {

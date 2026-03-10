@@ -297,6 +297,25 @@ export async function deleteTemplate(templateId, userId) {
 }
 
 // ============================================
+// Tournament Settings
+// ============================================
+
+export async function updateBracketTournament(tournamentId, data) {
+  const updates = { updated_at: new Date().toISOString() }
+  if (data.locks_at !== undefined) updates.locks_at = data.locks_at
+
+  const { data: updated, error } = await supabase
+    .from('bracket_tournaments')
+    .update(updates)
+    .eq('id', tournamentId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return updated
+}
+
+// ============================================
 // Tournament Instance (League Creation)
 // ============================================
 

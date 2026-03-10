@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useUpdateBracketTournament } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -123,10 +123,31 @@ function LeagueConditions({ league }) {
   )
 }
 
+function toDateTimeLocalValue(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
   const [expanded, setExpanded] = useState(false)
   const settings = league.settings || {}
   const isDaily = league.settings?.pick_frequency === 'daily'
+  const { data: tournament } = useBracketTournament(league.format === 'bracket' ? league.id : null)
+  const updateTournament = useUpdateBracketTournament()
+
+  async function saveBracketLockTime(value) {
+    if (!value || !tournament) return
+    try {
+      await updateTournament.mutateAsync({
+        leagueId: league.id,
+        locks_at: new Date(value).toISOString(),
+      })
+      toast('Lock time saved', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to save lock time', 'error')
+    }
+  }
 
   async function save(newSettings) {
     try {
@@ -360,6 +381,21 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
                 settings.all_eliminated_survive ? 'translate-x-4' : ''
               }`} />
             </button>
+          </div>
+        </>
+      )}
+
+      {league.format === 'bracket' && tournament && (
+        <>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">Bracket Lock Time</label>
+            <input
+              type="datetime-local"
+              defaultValue={toDateTimeLocalValue(tournament.locks_at)}
+              onBlur={(e) => saveBracketLockTime(e.target.value)}
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+            />
+            <div className="text-[10px] text-text-muted mt-1">Users must submit brackets before this time</div>
           </div>
         </>
       )}

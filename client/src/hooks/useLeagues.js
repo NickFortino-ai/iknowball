@@ -322,6 +322,17 @@ export function useBracketTournament(leagueId) {
   })
 }
 
+export function useUpdateBracketTournament() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, ...data }) =>
+      api.patch(`/leagues/${leagueId}/bracket/tournament`, data),
+    onSuccess: (_, { leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'bracket', 'tournament'] })
+    },
+  })
+}
+
 export function useBracketEntry(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'bracket', 'entry'],
