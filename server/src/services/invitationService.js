@@ -134,7 +134,7 @@ export async function getMyInvitations(userId) {
 export async function acceptInvitation(invitationId, userId) {
   const { data: invitation } = await supabase
     .from('league_invitations')
-    .select('*, leagues(status, starts_at, max_members, settings)')
+    .select('*, leagues(id, status, starts_at, max_members, settings, format)')
     .eq('id', invitationId)
     .eq('invited_user_id', userId)
     .single()
@@ -157,7 +157,22 @@ export async function acceptInvitation(invitationId, userId) {
     throw err
   }
 
-  if (invitation.leagues.starts_at && new Date(invitation.leagues.starts_at) <= new Date()) {
+  // For survivor/pickem, allow joining until the first period ends
+  if (['survivor', 'pickem'].includes(invitation.leagues.format)) {
+    const { data: firstWeek } = await supabase
+      .from('league_weeks')
+      .select('ends_at')
+      .eq('league_id', invitation.leagues.id)
+      .order('week_number', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (!firstWeek || new Date(firstWeek.ends_at) <= new Date()) {
+      const err = new Error('This league has already started')
+      err.status = 400
+      throw err
+    }
+  } else if (invitation.leagues.starts_at && new Date(invitation.leagues.starts_at) <= new Date()) {
     const err = new Error('This league has already started')
     err.status = 400
     throw err
