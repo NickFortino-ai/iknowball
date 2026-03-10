@@ -76,10 +76,11 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     return map
   }, [picks])
 
-  // Group matchups by round
+  // Group matchups by round (exclude play-in round 0 from full bracket view)
   const byRound = useMemo(() => {
     const grouped = {}
     for (const m of matchups || []) {
+      if (m.round_number === 0) continue
       if (!grouped[m.round_number]) grouped[m.round_number] = []
       grouped[m.round_number].push(m)
     }
