@@ -83,10 +83,10 @@ export default function HeadToHeadFeedCard({ item, reactions, onUserTap, onH2HTa
       </div>
 
       {/* Reactions + comments */}
-      {item.pickId && (
+      {item.id && (
         <div className="px-4 pb-3 space-y-1.5" onClick={(e) => e.stopPropagation()}>
-          <FeedReactions targetType="head_to_head" targetId={item.pickId} reactions={reactions} />
-          <PickComments targetType="head_to_head" targetId={item.pickId} commentCount={item.commentCount} />
+          <FeedReactions targetType="head_to_head" targetId={item.id} reactions={reactions} />
+          <PickComments targetType="head_to_head" targetId={item.id} commentCount={item.commentCount} />
         </div>
       )}
     </div>

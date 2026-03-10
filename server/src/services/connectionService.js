@@ -1277,8 +1277,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       return { key: `hot_take-${item.hot_take.id}`, target_type: 'hot_take', target_id: item.hot_take.id }
     } else if (item.type === 'called_shot' && item.pick_id) {
       return { key: `pick-${item.pick_id}`, target_type: 'pick', target_id: item.pick_id }
-    } else if (item.type === 'head_to_head' && item.pickId) {
-      return { key: `head_to_head-${item.pickId}`, target_type: 'head_to_head', target_id: item.pickId }
+    } else if (item.type === 'head_to_head' && item.id) {
+      return { key: `head_to_head-${item.id}`, target_type: 'head_to_head', target_id: item.id }
     }
     return null
   }
