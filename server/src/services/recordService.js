@@ -109,7 +109,7 @@ async function updateRecord(key, holderId, value, metadata = {}) {
 
 // ── Record Calculators ──────────────────────────────────────────────────────
 
-// Walk settled straight picks per user ordered by settlement time, counting consecutive wins
+// Walk settled straight picks per user ordered by game start time, counting consecutive wins
 async function calcLongestWinStreak(sportKey) {
   // If filtering by sport, resolve sport_id first
   let sportId = null
@@ -121,7 +121,7 @@ async function calcLongestWinStreak(sportKey) {
 
   const { data: allPicks, error } = await supabase
     .from('picks')
-    .select('id, user_id, is_correct, updated_at, games!inner(sport_id)')
+    .select('id, user_id, is_correct, updated_at, games!inner(sport_id, starts_at)')
     .eq('status', 'settled')
     .not('is_correct', 'is', null)
 
@@ -134,8 +134,14 @@ async function calcLongestWinStreak(sportKey) {
 
   if (!picks.length) return null
 
-  // Sort by settlement time (matches pick history UI and real-time streak counter)
-  picks.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at))
+  // Sort by game start time, with losses before wins for same-time games
+  // (conservative: a loss in a same-time batch always breaks the streak)
+  picks.sort((a, b) => {
+    const timeDiff = new Date(a.games.starts_at) - new Date(b.games.starts_at)
+    if (timeDiff !== 0) return timeDiff
+    // Same start time: losses (false=0) before wins (true=1)
+    return (a.is_correct === true ? 1 : 0) - (b.is_correct === true ? 1 : 0)
+  })
 
   // Group by user
   const userPicks = {}
