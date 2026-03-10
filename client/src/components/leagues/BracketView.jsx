@@ -45,22 +45,39 @@ export default function BracketView({ league }) {
 
   // State A: Bracket not populated yet
   if (!isBracketPopulated) {
+    const templateName = tournament.bracket_templates?.name
+    const locksAtDate = tournament.locks_at
+      ? new Date(tournament.locks_at).toLocaleString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric',
+          hour: 'numeric', minute: '2-digit',
+        })
+      : null
+
     return (
       <div className="bg-bg-card rounded-xl border border-border p-6 text-center">
         <div className="text-4xl mb-3">&#x1F3C0;</div>
-        <h3 className="font-display text-lg text-text-primary mb-2">Bracket Coming Soon</h3>
-        {picksAvailableAt ? (
-          <p className="text-sm text-text-muted">
-            You'll be able to make your picks starting{' '}
+        <h3 className="font-display text-lg text-text-primary mb-2">
+          Welcome to the {templateName || 'Tournament'} Challenge!
+        </h3>
+        <p className="text-sm text-text-muted mb-3">
+          The tournament bracket hasn't been set yet.
+        </p>
+        {picksAvailableAt && (
+          <p className="text-sm text-text-muted mb-1">
+            Your bracket will be available to fill out starting{' '}
             <span className="text-text-secondary font-semibold">
               {new Date(picksAvailableAt).toLocaleString('en-US', {
-                month: 'long', day: 'numeric', year: 'numeric',
+                weekday: 'long', month: 'long', day: 'numeric',
                 hour: 'numeric', minute: '2-digit',
               })}
             </span>
           </p>
-        ) : (
-          <p className="text-sm text-text-muted">Teams haven't been set yet. Check back soon!</p>
+        )}
+        {locksAtDate && (
+          <p className="text-sm text-text-muted">
+            Brackets must be completed by{' '}
+            <span className="text-text-secondary font-semibold">{locksAtDate}</span>
+          </p>
         )}
       </div>
     )
