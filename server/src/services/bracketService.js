@@ -509,10 +509,16 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     }
   }
 
-  // Validate all non-bye slots are filled
+  // Validate pick count: rounds >= 1 are required, round 0 (play-in) is optional bonus
   const nonByeMatchups = templateMatchups.filter((m) => !m.is_bye)
-  if (picks.length !== nonByeMatchups.length) {
-    const err = new Error(`Must fill all ${nonByeMatchups.length} bracket slots (got ${picks.length})`)
+  const requiredMatchups = nonByeMatchups.filter((m) => m.round_number >= 1)
+  if (picks.length < requiredMatchups.length) {
+    const err = new Error(`Must fill at least ${requiredMatchups.length} bracket slots (got ${picks.length})`)
+    err.status = 400
+    throw err
+  }
+  if (picks.length > nonByeMatchups.length) {
+    const err = new Error(`Too many picks: max ${nonByeMatchups.length} slots (got ${picks.length})`)
     err.status = 400
     throw err
   }

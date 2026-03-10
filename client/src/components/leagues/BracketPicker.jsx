@@ -125,14 +125,22 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     ? (otherEntries || [])
     : []
 
-  // Count filled picks vs total non-bye matchups
+  // Count filled picks vs required matchups (Round 0 play-in picks are optional bonus)
   const nonByeMatchups = (matchups || []).filter((m) => {
     const tm = templateMatchupMap[m.template_matchup_id]
     return !tm?.is_bye
   })
+  // Settled Round 0 matchups (already have a winner) don't need picks at all
+  const settledPlayInIds = new Set(
+    (matchups || []).filter((m) => m.round_number === 0 && m.winner).map((m) => m.template_matchup_id)
+  )
+  const requiredMatchups = nonByeMatchups.filter((m) => {
+    const tm = templateMatchupMap[m.template_matchup_id]
+    return m.round_number >= 1 && !tm?.is_bye
+  })
   const filledCount = Object.keys(picks).length
-  const totalRequired = nonByeMatchups.length
-  const allFilled = filledCount === totalRequired
+  const totalRequired = requiredMatchups.length
+  const allFilled = filledCount >= totalRequired
   const tiebreakerValid = tiebreakerScore !== '' && Number.isInteger(Number(tiebreakerScore)) && Number(tiebreakerScore) >= 0 && Number(tiebreakerScore) <= 500
   const canSubmit = allFilled && tiebreakerValid
 
@@ -175,13 +183,13 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       {/* Progress */}
       <div className="bg-bg-card rounded-xl border border-border p-3 mb-4 text-center">
         <div className="text-sm">
-          <span className="font-semibold text-accent">{filledCount}</span>
-          <span className="text-text-muted"> / {totalRequired} picks made</span>
+          <span className="font-semibold text-accent">{Math.min(filledCount, totalRequired)}</span>
+          <span className="text-text-muted"> / {totalRequired} required picks made</span>
         </div>
         <div className="w-full bg-bg-input rounded-full h-1.5 mt-2">
           <div
             className="bg-accent rounded-full h-1.5 transition-all"
-            style={{ width: `${totalRequired > 0 ? (filledCount / totalRequired) * 100 : 0}%` }}
+            style={{ width: `${totalRequired > 0 ? Math.min((filledCount / totalRequired) * 100, 100) : 0}%` }}
           />
         </div>
       </div>
@@ -217,8 +225,15 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       <div className="flex gap-1 mb-4 overflow-x-auto">
         {roundNumbers.map((num) => {
           const roundMatchups = byRound[num] || []
-          const roundFilled = roundMatchups.filter((m) => picks[m.template_matchup_id]).length
-          const roundTotal = roundMatchups.filter((m) => !templateMatchupMap[m.template_matchup_id]?.is_bye).length
+          const isPlayIn = num === 0
+          // For Round 0, exclude settled matchups from the pickable count
+          const pickableMatchups = roundMatchups.filter((m) => {
+            if (templateMatchupMap[m.template_matchup_id]?.is_bye) return false
+            if (isPlayIn && settledPlayInIds.has(m.template_matchup_id)) return false
+            return true
+          })
+          const roundFilled = pickableMatchups.filter((m) => picks[m.template_matchup_id]).length
+          const roundTotal = pickableMatchups.length
 
           return (
             <button
@@ -232,7 +247,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                     : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
               }`}
             >
-              {getRoundName(num)}
+              {getRoundName(num)}{isPlayIn ? ' (Bonus)' : ''}
               {roundTotal > 0 && (
                 <span className="ml-1 text-[10px] opacity-70">{roundFilled}/{roundTotal}</span>
               )}
@@ -246,6 +261,39 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         {byRound[activeRound]?.map((matchup) => {
           const tm = templateMatchupMap[matchup.template_matchup_id]
           if (tm?.is_bye) return null
+
+          // Settled Round 0 matchups: show result as locked, not pickable
+          if (matchup.round_number === 0 && matchup.winner) {
+            const winnerTeam = matchup.winning_team_name
+            const loserTeam = matchup.winner === 'top' ? matchup.team_bottom : matchup.team_top
+            return (
+              <div key={matchup.id} className="bg-bg-card rounded-xl border border-border overflow-hidden opacity-70">
+                {matchup.region && (
+                  <div className="text-[10px] text-text-muted text-center pt-2">{matchup.region}</div>
+                )}
+                <div className="px-3 py-1 text-[10px] text-text-muted text-center">Result</div>
+                <div className="p-1">
+                  <div className="flex items-center gap-2 px-3 py-2.5 text-sm">
+                    {matchup.seed_top != null && (
+                      <span className="text-xs text-text-muted w-5 text-right">{matchup.seed_top}</span>
+                    )}
+                    <span className={`flex-1 text-left truncate ${matchup.winner === 'top' ? 'text-correct font-semibold' : 'text-text-muted line-through'}`}>
+                      {matchup.team_top}
+                    </span>
+                  </div>
+                  <div className="border-t border-border mx-3" />
+                  <div className="flex items-center gap-2 px-3 py-2.5 text-sm">
+                    {matchup.seed_bottom != null && (
+                      <span className="text-xs text-text-muted w-5 text-right">{matchup.seed_bottom}</span>
+                    )}
+                    <span className={`flex-1 text-left truncate ${matchup.winner === 'bottom' ? 'text-correct font-semibold' : 'text-text-muted line-through'}`}>
+                      {matchup.team_bottom}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )
+          }
 
           const { top, bottom } = getTeamsForMatchup(matchup)
           const currentPick = picks[matchup.template_matchup_id]
@@ -304,6 +352,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       {/* Round points info */}
       <div className="text-center text-xs text-text-muted mt-3">
         {getRoundPoints(activeRound)} points per correct pick in {getRoundName(activeRound)}
+        {activeRound === 0 && ' (bonus — not required to submit)'}
       </div>
 
       {/* Entry name + Tiebreaker + Submit */}
@@ -346,7 +395,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
           {submitBracket.isPending
             ? 'Submitting...'
             : !allFilled
-              ? `Pick ${totalRequired - filledCount} more games`
+              ? `Pick ${totalRequired - Math.min(filledCount, totalRequired)} more games`
               : !tiebreakerValid
                 ? 'Enter tiebreaker score'
                 : 'Submit Bracket'}
