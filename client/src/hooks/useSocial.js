@@ -38,6 +38,7 @@ const COMMENT_ROUTES = {
   streak_event: (id) => `/social/streak-events/${id}/comments`,
   record_history: (id) => `/social/records/${id}/comments`,
   hot_take: (id) => `/social/hot-takes/${id}/comments`,
+  hot_take_reminder: (id) => `/social/hot-take-reminders/${id}/comments`,
   head_to_head: (id) => `/social/head-to-head/${id}/comments`,
 }
 

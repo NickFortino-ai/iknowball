@@ -109,6 +109,17 @@ router.get('/hot-takes/:hotTakeId/comments', requireAuth, async (req, res) => {
   res.json(comments)
 })
 
+// Hot take reminder comments
+router.post('/hot-take-reminders/:reminderId/comments', requireAuth, validate(commentSchema), async (req, res) => {
+  const comment = await addComment(req.user.id, 'hot_take_reminder', req.params.reminderId, req.validated.content, req.validated.parent_id)
+  res.status(201).json(comment)
+})
+
+router.get('/hot-take-reminders/:reminderId/comments', requireAuth, async (req, res) => {
+  const comments = await getComments('hot_take_reminder', req.params.reminderId, req.user.id)
+  res.json(comments)
+})
+
 // Head-to-head comments
 router.post('/head-to-head/:pickId/comments', requireAuth, validate(commentSchema), async (req, res) => {
   const comment = await addComment(req.user.id, 'head_to_head', req.params.pickId, req.validated.content, req.validated.parent_id)
