@@ -4,6 +4,19 @@ import { createNotification } from './notificationService.js'
 import { checkRecordAfterSettle } from './recordService.js'
 
 export async function submitSurvivorPick(leagueId, userId, weekId, gameId, pickedTeam) {
+  // Check if league is completed
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('status')
+    .eq('id', leagueId)
+    .single()
+
+  if (league?.status === 'completed') {
+    const err = new Error('This league has been completed')
+    err.status = 400
+    throw err
+  }
+
   // Verify user is alive
   const { data: member } = await supabase
     .from('league_members')
@@ -718,11 +731,24 @@ async function checkSurvivorWinner(leagueId) {
       }
     }
 
-    // Send survivor_win notification — league stays active so winner can keep picking
+    // Send survivor_win notification and mark league completed
     const leagueName = league?.name || 'Survivor'
     await createNotification(winnerId, 'survivor_win',
       `You won the ${leagueName} survivor pool! +${winnerBonus} pts`,
       { leagueId, points: winnerBonus, outlasted, leagueName })
+
+    // Mark league as completed
+    await supabase
+      .from('leagues')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', leagueId)
+
+    // Check survivor streak record
+    try {
+      await checkRecordAfterSettle(winnerId, 'survivor', {})
+    } catch (err) {
+      logger.error({ err, leagueId, winnerId }, 'Failed to check survivor streak record on win')
+    }
 
     // Notify all other league members
     const { data: winnerUser } = await supabase
@@ -744,43 +770,6 @@ async function checkSurvivorWinner(leagueId) {
           { leagueId, leagueName, format: 'survivor', isWinner: false })
       }
     }
-
-  } else if (aliveMembers.length === 1 && bonusExists) {
-    // Winner still playing solo — no-op
-  } else if (aliveMembers.length === 0 && bonusExists) {
-    // Winner was finally eliminated — streak ended, mark league completed
-    const leagueName = league?.name || 'Survivor'
-
-    // Find the winner from the bonus_points entry
-    const { data: bonusEntry } = await supabase
-      .from('bonus_points')
-      .select('user_id, points')
-      .eq('league_id', leagueId)
-      .eq('type', 'survivor_win')
-      .single()
-
-    if (bonusEntry) {
-      const { count: memberCount } = await supabase
-        .from('league_members')
-        .select('id', { count: 'exact', head: true })
-        .eq('league_id', leagueId)
-
-      await createNotification(bonusEntry.user_id, 'survivor_result',
-        `Your survivor streak in ${leagueName} has ended. What a run!`,
-        { leagueId, streakEnded: true, leagueName, points: bonusEntry.points, outlasted: (memberCount || 1) - 1 })
-
-      // Check survivor streak record
-      try {
-        await checkRecordAfterSettle(bonusEntry.user_id, 'survivor', {})
-      } catch (err) {
-        logger.error({ err, leagueId }, 'Failed to check survivor streak record on streak end')
-      }
-    }
-
-    await supabase
-      .from('leagues')
-      .update({ status: 'completed', updated_at: new Date().toISOString() })
-      .eq('id', leagueId)
 
   } else if (aliveMembers.length === 0 && !bonusExists) {
     // All eliminated — check league settings
