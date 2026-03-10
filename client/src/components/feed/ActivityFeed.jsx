@@ -38,6 +38,10 @@ function getFeedItemTargetKey(item) {
     return `record_history-${item.record.id}`
   } else if (item.type === 'hot_take') {
     return `hot_take-${item.hot_take.id}`
+  } else if (item.type === 'head_to_head') {
+    return `head_to_head-${item.id}`
+  } else if (item.type === 'hot_take_reminder') {
+    return `hot_take_reminder-${item.id}`
   }
   return null
 }
@@ -97,8 +101,11 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
       else if (item.type === 'streak') targets.push({ target_type: 'streak_event', target_id: item.streak.id })
       else if (item.type === 'record') targets.push({ target_type: 'record_history', target_id: item.record.id })
       else if (item.type === 'hot_take') targets.push({ target_type: 'hot_take', target_id: item.hot_take.id })
-      else if (item.type === 'head_to_head' && item.pickId) {
-        targets.push({ target_type: 'head_to_head', target_id: item.pickId })
+      else if (item.type === 'head_to_head') {
+        targets.push({ target_type: 'head_to_head', target_id: item.id })
+      }
+      else if (item.type === 'hot_take_reminder') {
+        targets.push({ target_type: 'hot_take_reminder', target_id: item.id })
       }
     }
     return targets
@@ -332,7 +339,7 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, bookma
       return (
         <HeadToHeadFeedCard
           item={item}
-          reactions={getReactions('head_to_head', item.pickId)}
+          reactions={getReactions('head_to_head', item.id)}
           onUserTap={onUserTap}
           onH2HTap={onH2HTap}
         />
@@ -348,7 +355,7 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, bookma
         />
       )
     case 'hot_take_reminder':
-      return <HotTakeReminderFeedCard item={item} onUserTap={onUserTap} />
+      return <HotTakeReminderFeedCard item={item} reactions={getReactions('hot_take_reminder', item.id)} onUserTap={onUserTap} />
     case 'daily_digest':
       return <DailyDigestFeedCard item={item} />
     case 'sweat':

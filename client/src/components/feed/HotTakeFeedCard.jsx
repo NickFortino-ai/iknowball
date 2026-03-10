@@ -29,6 +29,8 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [reminded, setReminded] = useState(false)
+  const [showRemindInput, setShowRemindInput] = useState(false)
+  const [remindComment, setRemindComment] = useState('')
   const remindHotTake = useRemindHotTake()
   const [editContent, setEditContent] = useState('')
   const [editTeamTags, setEditTeamTags] = useState([])
@@ -114,10 +116,12 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
   const isOwnTake = item.userId === session?.user?.id
 
-  async function handleRemind() {
+  async function handleRemindSubmit() {
     try {
-      await remindHotTake.mutateAsync(hot_take.id)
+      await remindHotTake.mutateAsync({ hotTakeId: hot_take.id, comment: remindComment.trim() || undefined })
       setReminded(true)
+      setShowRemindInput(false)
+      setRemindComment('')
       toast(`@${item.username} has been reminded about this take`, 'success')
     } catch (err) {
       if (err.status === 403) {
@@ -319,11 +323,10 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               ))}
             </div>
             <div className="flex items-center gap-2">
-              {!isOwnTake && !reminded && (
+              {!isOwnTake && !reminded && !showRemindInput && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleRemind() }}
-                  disabled={remindHotTake.isPending}
-                  className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-50 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setShowRemindInput(true) }}
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
                 >
                   Remind
                 </button>
@@ -341,6 +344,35 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               )}
             </div>
           </div>
+
+          {/* Inline remind input */}
+          {showRemindInput && (
+            <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="text"
+                value={remindComment}
+                onChange={(e) => setRemindComment(e.target.value)}
+                placeholder="Add a comment (optional)"
+                maxLength={280}
+                className="flex-1 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted outline-none focus:border-accent/40"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRemindSubmit() }}
+              />
+              <button
+                onClick={handleRemindSubmit}
+                disabled={remindHotTake.isPending}
+                className="bg-accent text-white text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50 transition-opacity"
+              >
+                {remindHotTake.isPending ? '...' : 'Send'}
+              </button>
+              <button
+                onClick={() => { setShowRemindInput(false); setRemindComment('') }}
+                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
 
           {/* Lightbox */}
           {lightboxOpen && hot_take.image_url && (

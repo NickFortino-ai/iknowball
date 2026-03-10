@@ -466,7 +466,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('hot_take_reminders')
-      .select('id, reminder_user_id, hot_take_id, created_at, hot_takes(id, user_id, content, team_tags, created_at)')
+      .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, created_at)')
       .in('reminder_user_id', allIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
@@ -938,6 +938,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       userId: reminder.reminder_user_id,
       ...buildUserFields(user),
       timestamp: reminder.created_at,
+      comment: reminder.comment,
       hot_take: {
         id: take.id,
         content: take.content,
@@ -1279,6 +1280,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       return { key: `pick-${item.pick_id}`, target_type: 'pick', target_id: item.pick_id }
     } else if (item.type === 'head_to_head' && item.id) {
       return { key: `head_to_head-${item.id}`, target_type: 'head_to_head', target_id: item.id }
+    } else if (item.type === 'hot_take_reminder') {
+      return { key: `hot_take_reminder-${item.id}`, target_type: 'hot_take_reminder', target_id: item.id }
     }
     return null
   }

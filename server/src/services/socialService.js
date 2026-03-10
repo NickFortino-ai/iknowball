@@ -33,6 +33,7 @@ async function getTargetOwner(targetType, targetId) {
     record_history: 'record_history',
     hot_take: 'hot_takes',
     head_to_head: 'picks',
+    hot_take_reminder: 'hot_take_reminders',
   }
   const OWNER_COL = {
     pick: 'user_id',
@@ -42,6 +43,12 @@ async function getTargetOwner(targetType, targetId) {
     record_history: 'new_holder_id',
     hot_take: 'user_id',
     head_to_head: 'user_id',
+    hot_take_reminder: 'reminder_user_id',
+  }
+
+  // H2H items have composite IDs like "h2h-..." that aren't real DB UUIDs
+  if (targetType === 'head_to_head' && typeof targetId === 'string' && targetId.startsWith('h2h-')) {
+    return null
   }
 
   const table = TABLE_MAP[targetType]
@@ -66,7 +73,7 @@ async function getTargetOwner(targetType, targetId) {
   return data[ownerCol]
 }
 
-const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'hot take', head_to_head: 'head-to-head' }
+const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'hot take', head_to_head: 'head-to-head', hot_take_reminder: 'hot take reminder' }
 
 export async function toggleReaction(userId, pickId, reactionType) {
   const ownerId = await getTargetOwner('pick', pickId)
@@ -207,7 +214,7 @@ export async function addComment(userId, targetType, targetId, content, parentId
     if (parentComment) notifyUserId = parentComment.user_id
   }
 
-  if (userId !== notifyUserId) {
+  if (notifyUserId && userId !== notifyUserId) {
     try {
       const label = NOTIFICATION_LABELS[targetType]
       const username = data.users?.username || 'Someone'
@@ -314,7 +321,7 @@ export async function deleteComment(userId, commentId) {
 
 export async function toggleFeedReaction(userId, targetType, targetId, reactionType) {
   const ownerId = await getTargetOwner(targetType, targetId)
-  await assertConnected(userId, ownerId)
+  if (ownerId) await assertConnected(userId, ownerId)
 
   const { data: existing } = await supabase
     .from('feed_reactions')
@@ -337,7 +344,7 @@ export async function toggleFeedReaction(userId, targetType, targetId, reactionT
     reaction_type: reactionType,
   })
 
-  if (userId !== ownerId) {
+  if (ownerId && userId !== ownerId) {
     try {
       const { data: actor } = await supabase
         .from('users')

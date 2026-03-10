@@ -28,7 +28,7 @@ export function useRemindHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (hotTakeId) => api.post(`/hot-takes/${hotTakeId}/remind`),
+    mutationFn: ({ hotTakeId, comment }) => api.post(`/hot-takes/${hotTakeId}/remind`, { comment: comment || undefined }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },

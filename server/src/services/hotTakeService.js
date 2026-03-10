@@ -24,7 +24,7 @@ export async function getHotTakesByUser(userId) {
   return data || []
 }
 
-export async function createReminder(actorId, hotTakeId) {
+export async function createReminder(actorId, hotTakeId, comment) {
   // Fetch the hot take
   const { data: hotTake } = await supabase
     .from('hot_takes')
@@ -51,7 +51,7 @@ export async function createReminder(actorId, hotTakeId) {
   // Insert reminder
   const { data, error } = await supabase
     .from('hot_take_reminders')
-    .insert({ reminder_user_id: actorId, hot_take_id: hotTakeId })
+    .insert({ reminder_user_id: actorId, hot_take_id: hotTakeId, comment: comment || null })
     .select()
     .single()
 

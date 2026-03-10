@@ -131,7 +131,7 @@ router.get('/bookmarks/check', requireAuth, async (req, res) => {
 })
 
 router.post('/:id/remind', requireAuth, async (req, res) => {
-  const data = await createReminder(req.user.id, req.params.id)
+  const data = await createReminder(req.user.id, req.params.id, req.body.comment)
   res.status(201).json(data)
 })
 
