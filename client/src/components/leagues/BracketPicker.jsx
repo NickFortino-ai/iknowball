@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
+import BracketDisplay from './BracketDisplay'
 
 export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose }) {
   const submitBracket = useSubmitBracket()
@@ -8,6 +9,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const [entryName, setEntryName] = useState('')
   const [tiebreakerScore, setTiebreakerScore] = useState(existingTiebreakerScore ?? '')
   const [copiedFrom, setCopiedFrom] = useState(null)
+  const [showOverview, setShowOverview] = useState(false)
   const autoAdvanceTimer = useRef(null)
 
   // Template matchups for feeds_into info
@@ -315,46 +317,99 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       {/* Step navigator */}
       {steps.length > 0 && (
         <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => setActiveStep((s) => Math.max(s - 1, 0))}
-            disabled={activeStep === 0}
-            className="p-2 rounded-lg text-text-secondary hover:bg-bg-card-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-            </svg>
-          </button>
+          {!showOverview && (
+            <button
+              onClick={() => setActiveStep((s) => Math.max(s - 1, 0))}
+              disabled={activeStep === 0}
+              className="p-2 rounded-lg text-text-secondary hover:bg-bg-card-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
           <div className="text-center min-w-0 flex-1 px-2">
-            <div className="font-display text-sm truncate">{currentStep?.label}</div>
-            <div className="text-[11px] text-text-muted mt-0.5">
-              Step {activeStep + 1} of {steps.length}
-              {stepTotal > 0 && (
-                <span className={stepFilled === stepTotal ? ' text-correct' : ''}>
-                  {' '}&middot; {stepFilled}/{stepTotal} picked
-                </span>
-              )}
-            </div>
-            <div className="text-[10px] text-text-muted mt-0.5">
-              {currentStep?.isBonus
-                ? '(bonus — not required to submit)'
-                : `${getRoundPoints(currentStep?.roundNum)} pts per correct pick`
-              }
-            </div>
+            {showOverview ? (
+              <div className="font-display text-sm">Bracket Overview</div>
+            ) : (
+              <>
+                <div className="font-display text-sm truncate">{currentStep?.label}</div>
+                <div className="text-[11px] text-text-muted mt-0.5">
+                  Step {activeStep + 1} of {steps.length}
+                  {stepTotal > 0 && (
+                    <span className={stepFilled === stepTotal ? ' text-correct' : ''}>
+                      {' '}&middot; {stepFilled}/{stepTotal} picked
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-text-muted mt-0.5">
+                  {currentStep?.isBonus
+                    ? '(bonus — not required to submit)'
+                    : `${getRoundPoints(currentStep?.roundNum)} pts per correct pick`
+                  }
+                </div>
+              </>
+            )}
           </div>
+          {!showOverview && (
+            <button
+              onClick={() => setActiveStep((s) => Math.min(s + 1, steps.length - 1))}
+              disabled={activeStep === steps.length - 1}
+              className="p-2 rounded-lg text-text-secondary hover:bg-bg-card-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
           <button
-            onClick={() => setActiveStep((s) => Math.min(s + 1, steps.length - 1))}
-            disabled={activeStep === steps.length - 1}
-            className="p-2 rounded-lg text-text-secondary hover:bg-bg-card-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setShowOverview((v) => !v)}
+            className={`p-2 rounded-lg transition-colors ${showOverview ? 'bg-accent/20 text-accent' : 'text-text-secondary hover:bg-bg-card-hover'}`}
+            title={showOverview ? 'Back to step view' : 'Bracket overview'}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-            </svg>
+            {showOverview ? (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M6 10a.75.75 0 01.75-.75h9.546l-1.048-.943a.75.75 0 111.004-1.114l2.5 2.25a.75.75 0 010 1.114l-2.5 2.25a.75.75 0 11-1.004-1.114l1.048-.943H6.75A.75.75 0 016 10z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 002 4.25v2.5A2.25 2.25 0 004.25 9h2.5A2.25 2.25 0 009 6.75v-2.5A2.25 2.25 0 006.75 2h-2.5zm0 9A2.25 2.25 0 002 13.25v2.5A2.25 2.25 0 004.25 18h2.5A2.25 2.25 0 009 15.75v-2.5A2.25 2.25 0 006.75 11h-2.5zm9-9A2.25 2.25 0 0011 4.25v2.5A2.25 2.25 0 0013.25 9h2.5A2.25 2.25 0 0018 6.75v-2.5A2.25 2.25 0 0015.75 2h-2.5zm0 9A2.25 2.25 0 0011 13.25v2.5A2.25 2.25 0 0013.25 18h2.5A2.25 2.25 0 0018 15.75v-2.5A2.25 2.25 0 0015.75 11h-2.5z" clipRule="evenodd" />
+              </svg>
+            )}
           </button>
         </div>
       )}
 
+      {/* Overview mode: full bracket */}
+      {showOverview && (
+        <div className="mb-4">
+          <BracketDisplay
+            matchups={matchups}
+            picks={Object.entries(picks).map(([tmId, picked_team]) => ({
+              template_matchup_id: tmId,
+              picked_team,
+            }))}
+            rounds={rounds}
+            regions={regions}
+            onMatchupTap={(matchup) => {
+              const stepIdx = steps.findIndex((s) =>
+                s.matchups.some((m) => m.id === matchup.id)
+              )
+              if (stepIdx !== -1) {
+                setActiveStep(stepIdx)
+                setShowOverview(false)
+              }
+            }}
+          />
+          <p className="text-[10px] text-text-muted text-center mt-2">
+            Tap any matchup to jump to that step
+          </p>
+        </div>
+      )}
+
       {/* Matchups for active step */}
-      <div className="space-y-3">
+      {!showOverview && <div className="space-y-3">
         {currentStep?.matchups.map((matchup) => {
           const tm = templateMatchupMap[matchup.template_matchup_id]
           if (tm?.is_bye) return null
@@ -442,7 +497,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             </div>
           )
         })}
-      </div>
+      </div>}
 
       {/* Entry name + Tiebreaker + Submit */}
       <div className="mt-6 space-y-3">

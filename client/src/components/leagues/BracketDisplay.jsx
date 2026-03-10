@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-function MatchupCard({ matchup, pick, showPick }) {
+function MatchupCard({ matchup, pick, showPick, onTap }) {
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
   const bottomCorrect = pick && matchup.status === 'completed' && pick === matchup.team_bottom && matchup.winner === 'bottom'
   const topWrong = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'bottom'
@@ -21,7 +21,10 @@ function MatchupCard({ matchup, pick, showPick }) {
   }
 
   return (
-    <div className="bg-bg-card border border-border rounded-lg w-44 text-xs overflow-hidden">
+    <div
+      className={`bg-bg-card border border-border rounded-lg w-44 text-xs overflow-hidden${onTap ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
+      onClick={onTap ? () => onTap(matchup) : undefined}
+    >
       <div className={`flex items-center gap-1 px-2 py-1.5 border-b border-border ${teamClass(matchup.team_top, true)}`}>
         {matchup.seed_top != null && (
           <span className="text-text-muted w-4 text-right shrink-0">{matchup.seed_top}</span>
@@ -44,7 +47,7 @@ function MatchupCard({ matchup, pick, showPick }) {
   )
 }
 
-export default function BracketDisplay({ matchups, picks, rounds, regions }) {
+export default function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap }) {
   const [selectedRegion, setSelectedRegion] = useState(null)
 
   // Build pick lookup by template_matchup_id
@@ -141,6 +144,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions }) {
                     matchup={matchup}
                     pick={pickMap[matchup.template_matchup_id]}
                     showPick={hasPicks}
+                    onTap={onMatchupTap}
                   />
                 ))}
               </div>
