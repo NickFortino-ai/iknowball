@@ -87,7 +87,7 @@ export default function CreateLeaguePage() {
     }
     if (format === 'bracket') {
       settings.template_id = templateId
-      settings.locks_at = locksAt
+      settings.locks_at = locksAt ? new Date(locksAt).toISOString() : undefined
     }
 
     try {
