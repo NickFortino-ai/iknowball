@@ -1,4 +1,4 @@
-const CACHE_NAME = 'iknowball-v1'
+const CACHE_NAME = 'iknowball-v2'
 const PRECACHE_URLS = [
   '/',
   '/index.html',
@@ -43,7 +43,7 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Static assets (JS, CSS, images, fonts) — cache first, then network
+  // Static assets (JS, CSS, images, fonts) — network first, cache fallback
   if (
     request.destination === 'script' ||
     request.destination === 'style' ||
@@ -51,14 +51,13 @@ self.addEventListener('fetch', (event) => {
     request.destination === 'font'
   ) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached
-        return fetch(request).then((response) => {
+      fetch(request)
+        .then((response) => {
           const clone = response.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
           return response
         })
-      })
+        .catch(() => caches.match(request))
     )
   }
 })
