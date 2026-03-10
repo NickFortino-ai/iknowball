@@ -10,6 +10,7 @@ import {
   getAllPropsForGame,
   featureProp,
   unfeatureProp,
+  voidProp,
   settleProps,
   getFeaturedProps,
 } from '../services/propService.js'
@@ -223,6 +224,11 @@ router.post('/props/feature', async (req, res) => {
 
 router.post('/props/:propId/unfeature', async (req, res) => {
   const result = await unfeatureProp(req.params.propId)
+  res.json(result)
+})
+
+router.post('/props/:propId/void', async (req, res) => {
+  const result = await voidProp(req.params.propId)
   res.json(result)
 })
 

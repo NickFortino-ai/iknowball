@@ -439,6 +439,95 @@ export async function getUserPropPicks(userId, status) {
   return data || []
 }
 
+export async function voidProp(propId) {
+  // Fetch the prop
+  const { data: prop, error: propError } = await supabase
+    .from('player_props')
+    .select('id, status, sport_id')
+    .eq('id', propId)
+    .single()
+
+  if (propError || !prop) {
+    const err = new Error('Prop not found')
+    err.status = 404
+    throw err
+  }
+
+  if (!['published', 'locked', 'settled'].includes(prop.status)) {
+    const err = new Error('Only published, locked, or settled props can be voided')
+    err.status = 400
+    throw err
+  }
+
+  // Fetch all non-voided picks for this prop
+  const { data: picks, error: picksError } = await supabase
+    .from('prop_picks')
+    .select('*')
+    .eq('prop_id', propId)
+    .neq('status', 'voided')
+
+  if (picksError) throw picksError
+
+  // Reverse points and stats for settled picks
+  for (const pick of picks || []) {
+    if (pick.status === 'settled' && pick.points_earned !== 0) {
+      const { error: pointsError } = await supabase
+        .rpc('increment_user_points', {
+          user_row_id: pick.user_id,
+          points_delta: -pick.points_earned,
+        })
+
+      if (pointsError) {
+        logger.error({ pointsError, userId: pick.user_id }, 'Failed to reverse points for voided prop')
+      }
+    }
+
+    if (pick.status === 'settled' && pick.is_correct !== null) {
+      const { error: statsError } = await supabase
+        .rpc('update_sport_stats', {
+          p_user_id: pick.user_id,
+          p_sport_id: prop.sport_id,
+          p_is_correct: !pick.is_correct,
+          p_points: -pick.points_earned,
+        })
+
+      if (statsError) {
+        logger.error({ statsError, userId: pick.user_id }, 'Failed to reverse sport stats for voided prop')
+      }
+    }
+
+    // Mark pick as voided
+    const { error: pickError } = await supabase
+      .from('prop_picks')
+      .update({
+        status: 'voided',
+        is_correct: null,
+        points_earned: 0,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pick.id)
+
+    if (pickError) {
+      logger.error({ pickError, pickId: pick.id }, 'Failed to void prop pick')
+    }
+  }
+
+  // Mark prop as voided
+  const { error: voidError } = await supabase
+    .from('player_props')
+    .update({
+      status: 'voided',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', propId)
+
+  if (voidError) throw voidError
+
+  const voidedCount = (picks || []).length
+  logger.info({ propId, voidedCount }, 'Prop voided')
+  return { voidedCount }
+}
+
 export async function getUserPropPickHistory(userId) {
   const { data, error } = await supabase
     .from('prop_picks')

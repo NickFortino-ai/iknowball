@@ -55,6 +55,20 @@ export function useUnfeatureProp() {
   })
 }
 
+export function useVoidProp() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (propId) => api.post(`/admin/props/${propId}/void`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminProps'] })
+      queryClient.invalidateQueries({ queryKey: ['adminFeaturedProps'] })
+      queryClient.invalidateQueries({ queryKey: ['featuredProp'] })
+      queryClient.invalidateQueries({ queryKey: ['propPicks'] })
+    },
+  })
+}
+
 export function useSettleProps() {
   const queryClient = useQueryClient()
 

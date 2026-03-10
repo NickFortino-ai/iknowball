@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useUnfeatureProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -38,7 +38,7 @@ export default function AdminPage() {
   const sportKey = sportTabs[activeSport].key
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming', 7)
   const { data: featuredProps } = useAdminFeaturedProps()
-  const unfeatureProp = useUnfeatureProp()
+  const voidProp = useVoidProp()
   const settleProps = useSettleProps()
 
   const syncOdds = useSyncOdds()
@@ -146,12 +146,13 @@ export default function AdminPage() {
     }
   }
 
-  async function handleUnfeature(propId) {
+  async function handleVoid(propId) {
+    if (!window.confirm('Void this prop? All picks will be cancelled and any points reversed.')) return
     try {
-      await unfeatureProp.mutateAsync(propId)
-      toast('Prop removed from featured', 'success')
+      const result = await voidProp.mutateAsync(propId)
+      toast(`Prop voided — reverted ${result.voidedCount} picks`, 'success')
     } catch (err) {
-      toast(err.message || 'Failed to unfeature', 'error')
+      toast(err.message || 'Failed to void prop', 'error')
     }
   }
 
@@ -510,13 +511,21 @@ export default function AdminPage() {
                       {prop.outcome.toUpperCase()}
                     </span>
                   )}
-                  <button
-                    onClick={() => handleUnfeature(prop.id)}
-                    disabled={unfeatureProp.isPending}
-                    className="text-xs text-incorrect hover:underline shrink-0"
-                  >
-                    Unfeature
-                  </button>
+                  {/* Voided badge */}
+                  {prop.status === 'voided' && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-text-muted/20 text-text-muted">
+                      VOIDED
+                    </span>
+                  )}
+                  {prop.status !== 'voided' && (
+                    <button
+                      onClick={() => handleVoid(prop.id)}
+                      disabled={voidProp.isPending}
+                      className="text-xs text-incorrect hover:underline shrink-0"
+                    >
+                      Void
+                    </button>
+                  )}
                 </>
               ) : (
                 <span className="text-xs text-text-muted">—</span>
