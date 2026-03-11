@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useTierUsers } from '../../hooks/useTierUsers'
 import TierBadge from '../ui/TierBadge'
 import Avatar from '../ui/Avatar'
@@ -11,8 +12,8 @@ export default function TierUsersModal({ tier, onClose }) {
 
   useEffect(() => {
     if (!tier) return
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    lockScroll()
+    return () => unlockScroll()
   }, [tier])
 
   if (!tier) return null

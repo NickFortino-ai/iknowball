@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 
 function isSameDay(date1, date2) {
@@ -22,8 +23,8 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
   // Lock body scroll when expanded on mobile
   useEffect(() => {
     if (expanded) {
-      document.body.style.overflow = 'hidden'
-      return () => { document.body.style.overflow = '' }
+      lockScroll()
+      return () => unlockScroll()
     }
   }, [expanded])
 

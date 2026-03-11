@@ -1,10 +1,11 @@
 import { useEffect } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 
 export default function LeagueWinModal({ data, onClose }) {
   useEffect(() => {
     if (!data) return
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    lockScroll()
+    return () => unlockScroll()
   }, [data])
 
   if (!data) return null

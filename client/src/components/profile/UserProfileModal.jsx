@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus, useSendConnectionRequest } from '../../hooks/useConnections'
 import { useUserHotTakes, useRemindHotTake } from '../../hooks/useHotTakes'
 import { timeAgo } from '../../lib/time'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useMemo } from 'react'
 import { getTier } from '../../lib/scoring'
 import { toast } from '../ui/Toast'
@@ -291,8 +292,8 @@ export default function UserProfileModal({ userId, onClose }) {
 
   useEffect(() => {
     if (!userId) return
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    lockScroll()
+    return () => unlockScroll()
   }, [userId])
 
   async function handleConnect() {

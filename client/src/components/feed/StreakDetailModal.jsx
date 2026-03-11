@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useStreakDetail } from '../../hooks/useConnections'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
@@ -18,8 +19,8 @@ export default function StreakDetailModal({ streakId, onClose }) {
 
   useEffect(() => {
     if (!streakId) return
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    lockScroll()
+    return () => unlockScroll()
   }, [streakId])
 
   if (!streakId) return null

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useGamePicks } from '../../hooks/usePicks'
 import { formatOdds } from '../../lib/scoring'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -239,8 +240,8 @@ export default function GamePicksModal({ game, userPick, onClose }) {
     setCardBlob(null)
     if (cardUrl) URL.revokeObjectURL(cardUrl)
     setCardUrl(null)
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    lockScroll()
+    return () => unlockScroll()
   }, [game])
 
   useEffect(() => {

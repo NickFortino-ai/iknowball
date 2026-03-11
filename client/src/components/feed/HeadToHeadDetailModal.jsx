@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useHeadToHeadHistory } from '../../hooks/useConnections'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -16,8 +17,8 @@ export default function HeadToHeadDetailModal({ item, onClose }) {
 
   useEffect(() => {
     if (!item) return
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    lockScroll()
+    return () => unlockScroll()
   }, [item])
 
   if (!item) return null

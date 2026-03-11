@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { usePropPick } from '../../hooks/useProps'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus } from '../../hooks/useConnections'
@@ -15,8 +16,8 @@ export default function PropDetailModal({ propPickId, onClose }) {
 
   useEffect(() => {
     if (!propPickId) return
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    lockScroll()
+    return () => unlockScroll()
   }, [propPickId])
 
   if (!propPickId) return null

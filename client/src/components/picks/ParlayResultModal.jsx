@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useParlay } from '../../hooks/useParlays'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus } from '../../hooks/useConnections'
@@ -16,8 +17,8 @@ export default function ParlayResultModal({ parlayId, onClose }) {
 
   useEffect(() => {
     if (!parlayId) return
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    lockScroll()
+    return () => unlockScroll()
   }, [parlayId])
 
   if (!parlayId) return null
