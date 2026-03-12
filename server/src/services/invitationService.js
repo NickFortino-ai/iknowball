@@ -1,12 +1,13 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createNotification } from './notificationService.js'
 import { connectLeagueMembers } from './connectionService.js'
 
 export async function sendInvitation(leagueId, senderId, username) {
   // Verify sender is commissioner
   const { data: league } = await supabase
     .from('leagues')
-    .select('commissioner_id, status, max_members, settings')
+    .select('name, commissioner_id, status, max_members, settings')
     .eq('id', leagueId)
     .single()
 
@@ -109,6 +110,21 @@ export async function sendInvitation(leagueId, senderId, username) {
     logger.error({ error }, 'Failed to create invitation')
     throw error
   }
+
+  // Notify the invited user
+  try {
+    const { data: sender } = await supabase
+      .from('users')
+      .select('username')
+      .eq('id', senderId)
+      .single()
+    const senderName = sender?.username || 'Someone'
+    await createNotification(recipient.id, 'league_invitation', `${senderName} invited you to join ${league.name}`, {
+      actorId: senderId,
+      leagueId,
+      invitationId: invitation.id,
+    })
+  } catch (_) { /* notification is best-effort */ }
 
   return invitation
 }

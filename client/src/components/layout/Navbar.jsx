@@ -74,6 +74,8 @@ function getNotificationRoute(notification) {
       return '/hub'
     case 'hot_take_callout':
       return null
+    case 'league_invitation':
+      return '/leagues'
     case 'headlines':
       return '/hall-of-fame'
     case 'record_broken':
