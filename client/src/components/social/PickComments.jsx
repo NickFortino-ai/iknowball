@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useComments, useAddComment, useDeleteComment, useToggleCommentLike } from '../../hooks/useSocial'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
 import Avatar from '../ui/Avatar'
-import ReportButton from '../moderation/ReportButton'
+import ReportModal from '../moderation/ReportModal'
 
 export default function PickComments({ pickId, targetType = 'pick', targetId, commentCount: serverCommentCount, initialExpanded = false, hideForm = false }) {
   const resolvedType = targetType
@@ -14,6 +15,8 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
   const [text, setText] = useState('')
   const [optimisticComments, setOptimisticComments] = useState([])
   const [replyingTo, setReplyingTo] = useState(null) // { id, username }
+  const [flagMode, setFlagMode] = useState(false)
+  const [reportTarget, setReportTarget] = useState(null) // { commentId, userId }
   const { session } = useAuth()
   const currentUserId = session?.user?.id
   // Always fetch comments so we can show the most recent one in collapsed view
@@ -83,8 +86,15 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
   }
 
   function renderComment(c, isReply = false) {
+    const isOwnComment = c.user_id === currentUserId
+    const canFlag = flagMode && !isOwnComment && !c._optimistic
+
     return (
-      <div key={c.id} className={`flex items-start gap-2 ${isReply ? 'ml-8 pl-3 border-l border-border' : ''} ${c._optimistic ? 'opacity-60' : ''}`}>
+      <div
+        key={c.id}
+        className={`flex items-start gap-2 ${isReply ? 'ml-8 pl-3 border-l border-border' : ''} ${c._optimistic ? 'opacity-60' : ''} ${canFlag ? 'cursor-pointer rounded-lg -mx-1 px-1 py-0.5 hover:bg-incorrect/10 transition-colors' : ''}`}
+        onClick={canFlag ? () => { setReportTarget({ commentId: c.id, userId: c.user_id }); setFlagMode(false) } : undefined}
+      >
         <Avatar user={c.users} size="xs" />
         <div className="min-w-0 flex-1">
           <div>
@@ -93,7 +103,7 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
           </div>
           <div className="flex items-center gap-3 mt-0.5">
             <span className="text-xs text-text-muted">{timeAgo(c.created_at)}</span>
-            {!c._optimistic && (
+            {!c._optimistic && !flagMode && (
               <>
                 <button
                   onClick={() => handleToggleLike(c.id, c.has_liked)}
@@ -120,7 +130,7 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
             )}
           </div>
         </div>
-        {c.user_id === currentUserId && !c._optimistic ? (
+        {isOwnComment && !c._optimistic && !flagMode && (
           <button
             onClick={() => deleteComment.mutate({ commentId: c.id, targetType: resolvedType, targetId: resolvedId })}
             className="text-text-muted hover:text-incorrect flex-shrink-0 transition-colors text-sm"
@@ -128,9 +138,7 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
           >
             ×
           </button>
-        ) : c.user_id !== currentUserId && !c._optimistic ? (
-          <ReportButton targetType="comment" targetId={c.id} reportedUserId={c.user_id} />
-        ) : null}
+        )}
       </div>
     )
   }
@@ -170,6 +178,13 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
     </form>
   )
 
+  const flagIcon = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  )
+
   // Collapsed view: show most recent comment + "View all X comments" link
   if (!expanded) {
     return (
@@ -191,13 +206,27 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
   // Expanded view: all comments threaded
   return (
     <div className="space-y-2">
-      {displayCount > 1 && (
-        <button
-          onClick={() => setExpanded(false)}
-          className="text-xs text-text-muted hover:text-text-secondary transition-colors"
-        >
-          Hide comments
-        </button>
+      <div className="flex items-center justify-between">
+        {displayCount > 1 && (
+          <button
+            onClick={() => { setExpanded(false); setFlagMode(false) }}
+            className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+          >
+            Hide comments
+          </button>
+        )}
+        {allComments.some((c) => c.user_id !== currentUserId && !c._optimistic) && (
+          <button
+            onClick={() => setFlagMode(!flagMode)}
+            className={`transition-colors ${flagMode ? 'text-incorrect' : 'text-text-muted hover:text-text-secondary'}`}
+            title={flagMode ? 'Cancel report' : 'Report a comment'}
+          >
+            {flagIcon}
+          </button>
+        )}
+      </div>
+      {flagMode && (
+        <div className="text-xs text-incorrect">Tap a comment to report it</div>
       )}
       {topLevel.map((c) => (
         <div key={c.id}>
@@ -206,6 +235,15 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
         </div>
       ))}
       {commentForm}
+      {reportTarget && createPortal(
+        <ReportModal
+          targetType="comment"
+          targetId={reportTarget.commentId}
+          reportedUserId={reportTarget.userId}
+          onClose={() => setReportTarget(null)}
+        />,
+        document.body
+      )}
     </div>
   )
 }
