@@ -8,6 +8,7 @@ export default function PickFeedCard({ item, reactions, onUserTap }) {
   const { pick, game } = item
   const won = pick.is_correct
   const borderColor = won ? 'green' : 'red'
+  const displayName = item.display_name || item.username
 
   return (
     <FeedCardWrapper
@@ -20,6 +21,15 @@ export default function PickFeedCard({ item, reactions, onUserTap }) {
       commentCount={item.commentCount}
       streakCount={item.current_streak}
     >
+      {/* Shared pick narrative */}
+      {item.shared && (
+        <div className={`text-xs italic mb-1.5 ${won ? 'text-correct/80' : 'text-text-muted'}`}>
+          {won
+            ? `${displayName} called this one early and cashed`
+            : `${displayName} was confident on this one, but it didn't hit`}
+        </div>
+      )}
+
       {/* Sport tag */}
       {game.sport_name && (
         <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">

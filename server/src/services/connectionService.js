@@ -719,6 +719,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       timestamp: share.created_at,
       game_id: pick.game_id,
       current_streak: streakMap[share.user_id] || 0,
+      shared: true,
       pick: {
         id: share.pick_id,
         picked_team: pick.picked_team,
