@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 const SIZE_CLASSES = {
   xs: 'w-5 h-5 text-[10px]',
   sm: 'w-6 h-6 text-xs',
@@ -8,22 +10,25 @@ const SIZE_CLASSES = {
 }
 
 export default function Avatar({ user, size = 'md', className = '' }) {
+  const [imgError, setImgError] = useState(false)
   const sizeClass = SIZE_CLASSES[size] || SIZE_CLASSES.md
   const name = user?.display_name || user?.username || ''
+  const fallback = user?.avatar_emoji || name[0]?.toUpperCase() || '?'
 
-  if (user?.avatar_url) {
+  if (user?.avatar_url && !imgError) {
     return (
       <img
         src={user.avatar_url}
         alt=""
         className={`rounded-full object-cover flex-shrink-0 ${sizeClass} ${className}`}
+        onError={() => setImgError(true)}
       />
     )
   }
 
   return (
     <span className={`rounded-full flex items-center justify-center flex-shrink-0 ${sizeClass} ${className || 'bg-bg-primary'}`}>
-      {user?.avatar_emoji || name[0]?.toUpperCase() || '?'}
+      {fallback}
     </span>
   )
 }

@@ -471,7 +471,11 @@ router.get('/:id/bracket/tournament', requireAuth, async (req, res) => {
   res.json(tournament)
 })
 
-router.patch('/:id/bracket/tournament', requireAuth, async (req, res) => {
+const updateBracketTournamentSchema = z.object({
+  locks_at: z.string().optional(),
+})
+
+router.patch('/:id/bracket/tournament', requireAuth, validate(updateBracketTournamentSchema), async (req, res) => {
   const league = await getLeagueDetails(req.params.id, req.user.id)
   if (league.commissioner_id !== req.user.id) {
     return res.status(403).json({ error: 'Only the commissioner can update bracket settings' })

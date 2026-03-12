@@ -567,7 +567,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                   onDrop={(e) => {
                     e.preventDefault()
                     const from = parseInt(e.dataTransfer.getData('text/plain'))
-                    if (from === i) return
+                    if (isNaN(from) || from < 0 || from >= regions.length || from === i) return
                     const next = [...regions]
                     const [moved] = next.splice(from, 1)
                     next.splice(i, 0, moved)

@@ -5,7 +5,7 @@ export async function initStatusBar() {
   if (!Capacitor.isNativePlatform()) return
   try {
     await StatusBar.setStyle({ style: Style.Dark })
-    await StatusBar.setBackgroundColor({ color: '#111111' })
+    await StatusBar.setBackgroundColor({ color: '#0A0A0F' })
   } catch {
     // no-op if not supported
   }
