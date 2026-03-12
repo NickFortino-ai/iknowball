@@ -16,6 +16,14 @@ export function useCreateHotTake() {
   })
 }
 
+export function useHotTakeById(hotTakeId) {
+  return useQuery({
+    queryKey: ['hotTakes', hotTakeId],
+    queryFn: () => api.get(`/hot-takes/${hotTakeId}`),
+    enabled: !!hotTakeId,
+  })
+}
+
 export function useUserHotTakes(userId) {
   return useQuery({
     queryKey: ['hotTakes', 'user', userId],

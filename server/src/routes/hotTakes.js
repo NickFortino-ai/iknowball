@@ -140,6 +140,41 @@ router.post('/ask/:userId', requireAuth, async (req, res) => {
   res.status(201).json(data)
 })
 
+router.get('/:id', requireAuth, async (req, res) => {
+  const { data: take, error } = await supabase
+    .from('hot_takes')
+    .select('id, user_id, content, team_tags, image_url, created_at')
+    .eq('id', req.params.id)
+    .single()
+
+  if (error || !take) {
+    return res.status(404).json({ error: 'Hot take not found' })
+  }
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, avatar_emoji')
+    .eq('id', take.user_id)
+    .single()
+
+  res.json({
+    type: 'hot_take',
+    id: take.id,
+    userId: take.user_id,
+    username: user?.username,
+    display_name: user?.display_name,
+    avatar_url: user?.avatar_url,
+    avatar_emoji: user?.avatar_emoji,
+    timestamp: take.created_at,
+    hot_take: {
+      id: take.id,
+      content: take.content,
+      team_tags: take.team_tags,
+      image_url: take.image_url,
+    },
+  })
+})
+
 router.patch('/:id', requireAuth, validate(hotTakeSchema), async (req, res) => {
   if (await checkUserMuted(req.user.id)) {
     return res.status(403).json({ error: 'Your posting privileges have been suspended' })

@@ -13,6 +13,7 @@ import PickDetailModal from '../social/PickDetailModal'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
 import LeagueWinModal from '../leagues/LeagueWinModal'
+import HotTakeDetailModal from '../feed/HotTakeDetailModal'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
@@ -46,16 +47,13 @@ function getNotificationRoute(notification) {
 
   // Comment/reaction notifications: deep-link to highlights with scroll target
   if (type === 'comment' || type === 'reaction') {
-    // Pick/parlay/prop comments still open modals (handled below by pickId/parlayId/propPickId check)
+    // Pick/parlay/prop/hot_take comments open modals
     if (metadata?.pickId || metadata?.parlayId || metadata?.propPickId) return null
+    if (metadata?.hotTakeId || (metadata?.targetType === 'hot_take' && metadata?.targetId)) return null
 
-    // Deep-link with targetType + targetId
+    // Deep-link with targetType + targetId (non-hot-take types)
     if (metadata?.targetType && metadata?.targetId) {
       return `/hub?tab=highlights&scrollTo=${metadata.targetType}-${metadata.targetId}`
-    }
-    // Old notifications with only hotTakeId
-    if (metadata?.hotTakeId) {
-      return `/hub?tab=highlights&scrollTo=hot_take-${metadata.hotTakeId}`
     }
     // Fallback: just go to highlights tab
     return '/hub?tab=highlights'
@@ -101,6 +99,7 @@ export default function Navbar() {
   const [selectedParlayId, setSelectedParlayId] = useState(null)
   const [selectedPropPickId, setSelectedPropPickId] = useState(null)
   const [leagueWinData, setLeagueWinData] = useState(null)
+  const [selectedHotTakeId, setSelectedHotTakeId] = useState(null)
   const dropdownRef = useRef(null)
   const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
@@ -353,7 +352,8 @@ export default function Navbar() {
                           const isSurvivorWin = n.type === 'survivor_win'
                           const isLeagueWin = n.type === 'league_win'
                           const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
-                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || route
+                          const hotTakeId = n.metadata?.hotTakeId || (n.metadata?.targetType === 'hot_take' ? n.metadata.targetId : null)
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || route
                           return (
                             <div
                               key={n.id}
@@ -362,6 +362,7 @@ export default function Navbar() {
                                 if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                                 else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                                 else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
+                                else if (hotTakeId) { setSelectedHotTakeId(hotTakeId); setShowInvites(false) }
                                 else if (isSurvivorWin) {
                                   if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
                                   setLeagueWinData({ mode: 'win', ...n.metadata })
@@ -852,7 +853,8 @@ export default function Navbar() {
                       const isSurvivorWin = n.type === 'survivor_win'
                       const isLeagueWin = n.type === 'league_win'
                       const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
-                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || route
+                      const hotTakeId = n.metadata?.hotTakeId || (n.metadata?.targetType === 'hot_take' ? n.metadata.targetId : null)
+                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || route
                       return (
                         <div
                           key={n.id}
@@ -861,6 +863,7 @@ export default function Navbar() {
                             if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                             else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                             else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
+                            else if (hotTakeId) { setSelectedHotTakeId(hotTakeId); setShowInvites(false) }
                             else if (isSurvivorWin) {
                               if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
                               setLeagueWinData({ mode: 'win', ...n.metadata })
@@ -912,6 +915,7 @@ export default function Navbar() {
     <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
     <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
     <LeagueWinModal data={leagueWinData} onClose={() => setLeagueWinData(null)} />
+    <HotTakeDetailModal hotTakeId={selectedHotTakeId} onClose={() => setSelectedHotTakeId(null)} />
     </>
   )
 }
