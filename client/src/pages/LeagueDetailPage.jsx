@@ -466,16 +466,8 @@ export default function LeagueDetailPage() {
         <button
           onClick={async () => {
             const url = `${window.location.origin}/join/${league.invite_code}`
-            if (navigator.share) {
-              try {
-                await navigator.share({ title: `Join ${league.name}`, url })
-              } catch {
-                // user cancelled share sheet
-              }
-            } else {
-              await navigator.clipboard.writeText(url)
-              toast('Invite link copied!', 'success')
-            }
+            await navigator.clipboard.writeText(url)
+            toast('Invite link copied!', 'success')
           }}
           className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
         >
@@ -485,6 +477,28 @@ export default function LeagueDetailPage() {
           </svg>
           Copy Invite Link
         </button>
+        {navigator.share && (
+          <button
+            onClick={async () => {
+              const url = `${window.location.origin}/join/${league.invite_code}`
+              try {
+                await navigator.share({ title: `Join ${league.name}`, url })
+              } catch {
+                // user cancelled share sheet
+              }
+            }}
+            className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+            Share
+          </button>
+        )}
         {isCommissioner && (
           <button
             onClick={() => setShowInviteModal(true)}
