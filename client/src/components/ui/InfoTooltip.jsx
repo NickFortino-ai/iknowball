@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 export default function InfoTooltip({ text }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const tooltipRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
@@ -14,6 +15,20 @@ export default function InfoTooltip({ text }) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
+
+  // Clamp tooltip to viewport edges
+  const clampToViewport = useCallback((el) => {
+    if (!el) return
+    tooltipRef.current = el
+    const rect = el.getBoundingClientRect()
+    if (rect.left < 8) {
+      el.style.transform = 'none'
+      el.style.left = `${-rect.left + 8}px`
+    } else if (rect.right > window.innerWidth - 8) {
+      el.style.transform = 'none'
+      el.style.left = `${-(rect.right - window.innerWidth + 8)}px`
+    }
+  }, [])
 
   return (
     <span className="relative inline-flex items-center" ref={ref}>
@@ -31,7 +46,10 @@ export default function InfoTooltip({ text }) {
         </svg>
       </button>
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 bg-bg-card border border-border rounded-xl shadow-lg z-50 px-4 py-3 text-sm text-text-secondary leading-relaxed font-sans font-normal tracking-normal normal-case text-left">
+        <div
+          ref={clampToViewport}
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 max-w-[calc(100vw-1rem)] bg-bg-card border border-border rounded-xl shadow-lg z-50 px-4 py-3 text-sm text-text-secondary leading-relaxed font-sans font-normal tracking-normal normal-case text-left"
+        >
           {text}
         </div>
       )}
