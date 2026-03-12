@@ -65,17 +65,20 @@ export default function HubPage() {
   const tabParam = searchParams.get('tab')
   const scrollToParam = searchParams.get('scrollTo')
   const teamParam = searchParams.get('team')
+  const userParam = searchParams.get('user')
   const [feedScope, setFeedScope] = useState(
     tabParam && VALID_SCOPES.has(tabParam) ? tabParam : 'squad'
   )
   const [scrollToItem, setScrollToItem] = useState(scrollToParam || null)
   const [initialTeam, setInitialTeam] = useState(teamParam || null)
+  const [initialFeedUserId, setInitialFeedUserId] = useState(userParam || null)
 
   // When query params change (e.g. notification deep-link), update state
   useEffect(() => {
     const tab = searchParams.get('tab')
     const scrollTo = searchParams.get('scrollTo')
     const team = searchParams.get('team')
+    const user = searchParams.get('user')
     if (tab && VALID_SCOPES.has(tab)) {
       hasManuallyToggled.current = true
       setFeedScope(tab)
@@ -86,8 +89,11 @@ export default function HubPage() {
     if (team) {
       setInitialTeam(team)
     }
+    if (user) {
+      setInitialFeedUserId(user)
+    }
     // Clear query params after consumption
-    if (tab || scrollTo || team) {
+    if (tab || scrollTo || team || user) {
       const timer = setTimeout(() => {
         setSearchParams({}, { replace: true })
       }, 2000)
@@ -410,7 +416,7 @@ export default function HubPage() {
         ) : feedScope === 'receipts' ? (
           <ReceiptsTab onUserTap={setSelectedUserId} />
         ) : feedScope === 'user_feeds' ? (
-          <UserFeedTab onUserTap={setSelectedUserId} />
+          <UserFeedTab onUserTap={setSelectedUserId} initialUserId={initialFeedUserId} />
         ) : feedScope === 'highlights' ? (
           <ActivityFeed
             onUserTap={setSelectedUserId}

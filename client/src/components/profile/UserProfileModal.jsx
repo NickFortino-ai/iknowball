@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useUserProfile, useUserPickHistory, useUserParlayHistory, useUserPropPickHistory, useUserBonusHistory, useHeadToHead } from '../../hooks/useUserProfile'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus, useSendConnectionRequest } from '../../hooks/useConnections'
@@ -258,6 +259,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
 }
 
 export default function UserProfileModal({ userId, onClose }) {
+  const navigate = useNavigate()
   const { session } = useAuth()
   const { data: user, isLoading } = useUserProfile(userId)
   const { data: picks, isLoading: picksLoading } = useUserPickHistory(userId)
@@ -614,8 +616,19 @@ export default function UserProfileModal({ userId, onClose }) {
               </div>
             )}
 
+            {/* View feed link */}
+            <button
+              onClick={() => {
+                onClose()
+                navigate(`/hub?tab=user_feeds&user=${userId}`)
+              }}
+              className="w-full text-center text-xs text-accent hover:text-accent/80 font-semibold py-2 mt-4"
+            >
+              View {user.display_name || user.username}'s feed
+            </button>
+
             {/* Member since */}
-            <div className="text-text-muted text-xs text-center mt-4">
+            <div className="text-text-muted text-xs text-center">
               Member since {new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </div>
           </>

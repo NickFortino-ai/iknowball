@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchUsers } from '../../hooks/useInvitations'
 import { useConnections } from '../../hooks/useConnections'
+import { useUserProfile } from '../../hooks/useUserProfile'
 import Avatar from '../ui/Avatar'
 import TierBadge from '../ui/TierBadge'
 import HotTakeComposer from './HotTakeComposer'
 import ActivityFeed from './ActivityFeed'
 
-export default function UserFeedTab({ onUserTap }) {
+export default function UserFeedTab({ onUserTap, initialUserId }) {
   const [selectedUser, setSelectedUser] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [subFilter, setSubFilter] = useState('all')
@@ -14,6 +15,14 @@ export default function UserFeedTab({ onUserTap }) {
 
   const { data: searchResults } = useSearchUsers(searchQuery)
   const { data: connections } = useConnections()
+
+  // Auto-select user from initialUserId (e.g. deep-link from profile modal)
+  const { data: initialUser } = useUserProfile(!selectedUser ? initialUserId : null)
+  useEffect(() => {
+    if (initialUser && !selectedUser) {
+      setSelectedUser(initialUser)
+    }
+  }, [initialUser])
 
   function selectUser(user) {
     setSelectedUser(user)
