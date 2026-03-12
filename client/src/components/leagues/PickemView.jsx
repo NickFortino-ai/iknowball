@@ -83,12 +83,18 @@ function LeaguePicksView({ league, standings }) {
   const [selectedWeekId, setSelectedWeekId] = useState(null)
   const scrollRef = useRef(null)
 
-  // Auto-select current week
+  // Auto-select current week (or nearest upcoming if between periods)
   useEffect(() => {
     if (!weeks?.length || selectedWeekId) return
     const now = new Date().toISOString()
     const current = weeks.find((w) => w.starts_at <= now && w.ends_at >= now)
-    setSelectedWeekId(current?.id || weeks[weeks.length - 1]?.id)
+    if (current) {
+      setSelectedWeekId(current.id)
+    } else {
+      // Between periods (e.g. before 6 AM ET) — pick the nearest upcoming week
+      const upcoming = weeks.find((w) => w.starts_at > now)
+      setSelectedWeekId(upcoming?.id || weeks[weeks.length - 1]?.id)
+    }
   }, [weeks, selectedWeekId])
 
   const selectedWeek = weeks?.find((w) => w.id === selectedWeekId)
