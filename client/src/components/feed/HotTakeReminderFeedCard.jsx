@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import FeedCardWrapper from './FeedCardWrapper'
 import { timeAgo } from '../../lib/time'
+import { getPronouns } from '../../lib/pronouns'
 
 export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) {
   const { hot_take, reminded_user } = item
   const navigate = useNavigate()
+  const { possessive } = getPronouns(reminded_user?.title_preference)
 
   function handleQuoteTap(e) {
     e.stopPropagation()
@@ -23,7 +25,7 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
     >
       {/* Header text */}
       <div className="text-sm text-text-secondary mb-2">
-        reminded <span className="font-semibold text-accent">@{reminded_user?.username || 'unknown'}</span> of their hot take
+        reminded <span className="font-semibold text-accent">@{reminded_user?.username || 'unknown'}</span> of {possessive} hot take
       </div>
 
       {/* Reminder comment */}

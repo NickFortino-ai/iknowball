@@ -528,6 +528,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       display_name: user.display_name,
       avatar_url: user.avatar_url,
       avatar_emoji: user.avatar_emoji,
+      title_preference: user.title_preference || null,
     }
   }
 
@@ -927,7 +928,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     if (!takeAuthor) {
       const { data: authorData } = await supabase
         .from('users')
-        .select('id, username, display_name, avatar_url, avatar_emoji')
+        .select('id, username, display_name, avatar_url, avatar_emoji, title_preference')
         .eq('id', take.user_id)
         .single()
       takeAuthor = authorData
@@ -949,6 +950,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       reminded_user: takeAuthor ? {
         username: takeAuthor.username,
         display_name: takeAuthor.display_name,
+        title_preference: takeAuthor.title_preference || null,
       } : null,
     })
   }

@@ -2,6 +2,7 @@ import { timeAgo } from '../../lib/time'
 import Avatar from '../ui/Avatar'
 import FeedReactions from './FeedReactions'
 import PickComments from '../social/PickComments'
+import { getPronouns } from '../../lib/pronouns'
 
 function shortName(fullName) {
   if (!fullName) return ''
@@ -23,7 +24,8 @@ export default function HeadToHeadFeedCard({ item, reactions, onUserTap, onH2HTa
   // Narrative text
   let narrative
   if (winner) {
-    narrative = `${name(winner)} beats ${name(loser)} head to head in their ${shortName(winner.picked_team_name)} vs ${shortName(loser.picked_team_name)} pick.`
+    const { possessive } = getPronouns(winner.title_preference)
+    narrative = `${name(winner)} beats ${name(loser)} head to head in ${possessive} ${shortName(winner.picked_team_name)} vs ${shortName(loser.picked_team_name)} pick.`
   } else {
     narrative = `${name(userA)} and ${name(userB)} both missed on ${shortName(userA.picked_team_name)} vs ${shortName(userB.picked_team_name)}.`
   }
