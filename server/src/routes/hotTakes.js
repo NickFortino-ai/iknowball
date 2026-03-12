@@ -13,6 +13,7 @@ const hotTakeSchema = z.object({
   content: z.string().min(1).max(280),
   team_tags: z.array(z.string().max(50)).max(5).optional(),
   image_url: z.string().url().optional(),
+  user_tags: z.array(z.string().uuid()).max(3).optional(),
 })
 
 router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
@@ -27,7 +28,7 @@ router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.image_url)
+  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.image_url, req.validated.user_tags)
   res.status(201).json(hotTake)
 })
 
@@ -45,7 +46,7 @@ router.get('/team', requireAuth, async (req, res) => {
 
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, image_url, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, created_at')
     .contains('team_tags', [team])
     .order('created_at', { ascending: false })
     .limit(20)
@@ -89,8 +90,22 @@ router.get('/team', requireAuth, async (req, res) => {
     commentCountMap[c.target_id] = (commentCountMap[c.target_id] || 0) + 1
   }
 
+  // Resolve tagged users
+  const allTaggedIds = [...new Set(hotTakes.flatMap((t) => t.user_tags || []))]
+  const taggedUserMap = {}
+  if (allTaggedIds.length > 0) {
+    const { data: taggedUsers } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, avatar_emoji')
+      .in('id', allTaggedIds)
+    for (const u of taggedUsers || []) {
+      taggedUserMap[u.id] = u
+    }
+  }
+
   const items = hotTakes.map((take) => {
     const user = userMap[take.user_id]
+    const tagged_users = (take.user_tags || []).map((id) => taggedUserMap[id]).filter(Boolean)
     return {
       type: 'hot_take',
       id: take.id,
@@ -105,7 +120,9 @@ router.get('/team', requireAuth, async (req, res) => {
         id: take.id,
         content: take.content,
         team_tags: take.team_tags,
+        user_tags: take.user_tags,
         image_url: take.image_url,
+        tagged_users,
       },
     }
   })
@@ -143,7 +160,7 @@ router.post('/ask/:userId', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   const { data: take, error } = await supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, image_url, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, created_at')
     .eq('id', req.params.id)
     .single()
 
@@ -156,6 +173,16 @@ router.get('/:id', requireAuth, async (req, res) => {
     .select('id, username, display_name, avatar_url, avatar_emoji')
     .eq('id', take.user_id)
     .single()
+
+  // Resolve tagged users
+  let tagged_users = []
+  if (take.user_tags?.length) {
+    const { data: taggedUsers } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, avatar_emoji')
+      .in('id', take.user_tags)
+    tagged_users = taggedUsers || []
+  }
 
   res.json({
     type: 'hot_take',
@@ -170,7 +197,9 @@ router.get('/:id', requireAuth, async (req, res) => {
       id: take.id,
       content: take.content,
       team_tags: take.team_tags,
+      user_tags: take.user_tags,
       image_url: take.image_url,
+      tagged_users,
     },
   })
 })
@@ -185,7 +214,7 @@ router.patch('/:id', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tags, req.validated.image_url)
+  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tags, req.validated.image_url, req.validated.user_tags)
   res.json(hotTake)
 })
 

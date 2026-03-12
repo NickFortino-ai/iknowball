@@ -454,10 +454,10 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     // Source 9: Hot takes
     applyBefore(
       isHotTakes
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, image_url, created_at')
+        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, created_at')
         : isUserHotTakes && targetUserId
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, image_url, created_at').eq('user_id', targetUserId)
-        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tags, image_url, created_at'), 'user_id', allIds),
+        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, created_at').eq('user_id', targetUserId)
+        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, created_at'), 'user_id', allIds),
       'created_at')
       .order('created_at', { ascending: false })
       .limit((isHotTakes || isUserHotTakes) ? 30 : 15),
@@ -466,7 +466,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('hot_take_reminders')
-      .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, created_at)')
+      .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, user_tags, created_at)')
       .in('reminder_user_id', allIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(15),
@@ -912,6 +912,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         id: take.id,
         content: take.content,
         team_tags: take.team_tags,
+        user_tags: take.user_tags,
         image_url: take.image_url,
       },
     })
@@ -945,6 +946,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         id: take.id,
         content: take.content,
         team_tags: take.team_tags,
+        user_tags: take.user_tags,
         created_at: take.created_at,
       },
       reminded_user: takeAuthor ? {
@@ -972,7 +974,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     if (viralIds.length > 0) {
       const { data: viralTakes } = await supabase
         .from('hot_takes')
-        .select('id, user_id, content, team_tags, image_url, created_at')
+        .select('id, user_id, content, team_tags, user_tags, image_url, created_at')
         .in('id', viralIds)
         .order('created_at', { ascending: false })
         .limit(10)
@@ -1003,6 +1005,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
             id: take.id,
             content: take.content,
             team_tags: take.team_tags,
+            user_tags: take.user_tags,
             image_url: take.image_url,
           },
           remindCount: remindCounts[take.id],
@@ -1415,6 +1418,27 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     const hoursAgo = (Date.now() - new Date(item.timestamp).getTime()) / (1000 * 60 * 60)
     const decayFactor = Math.max(0, 1 - hoursAgo / 24)
     return score * decayFactor
+  }
+
+  // Batch resolve tagged users for hot take items
+  const taggedUserIds = new Set()
+  for (const item of feed) {
+    if (item.hot_take?.user_tags?.length) {
+      for (const id of item.hot_take.user_tags) taggedUserIds.add(id)
+    }
+  }
+  if (taggedUserIds.size > 0) {
+    const { data: taggedUsers } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, avatar_emoji')
+      .in('id', [...taggedUserIds])
+    const taggedMap = {}
+    for (const u of taggedUsers || []) taggedMap[u.id] = u
+    for (const item of feed) {
+      if (item.hot_take?.user_tags?.length) {
+        item.hot_take.tagged_users = item.hot_take.user_tags.map((id) => taggedMap[id]).filter(Boolean)
+      }
+    }
   }
 
   // Fetch comment + reaction counts for all items (needed for scoring)

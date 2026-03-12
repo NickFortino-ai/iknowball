@@ -66,11 +66,17 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
               {hotTake.image_url && (
                 <img src={hotTake.image_url} alt="" className="w-full rounded-lg mt-2" />
               )}
-              {hotTake.team_tags?.length > 0 && (
+              {(hotTake.team_tags?.length > 0 || hotTake.tagged_users?.length > 0) && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {hotTake.team_tags.map((tag) => (
+                  {hotTake.team_tags?.map((tag) => (
                     <span key={tag} className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full">
                       {tag}
+                    </span>
+                  ))}
+                  {hotTake.tagged_users?.map((u) => (
+                    <span key={u.id} className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full">
+                      <Avatar user={u} size="xs" />
+                      @{u.username}
                     </span>
                   ))}
                 </div>

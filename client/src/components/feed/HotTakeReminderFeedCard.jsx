@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import FeedCardWrapper from './FeedCardWrapper'
+import Avatar from '../ui/Avatar'
 import { timeAgo } from '../../lib/time'
 import { getPronouns } from '../../lib/pronouns'
 
@@ -43,13 +44,22 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
         <div className="text-sm text-text-primary leading-relaxed italic">
           &ldquo;{hot_take.content}&rdquo;
         </div>
-        <div className="flex items-center gap-2 mt-1.5">
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {hot_take.team_tags?.length > 0 && hot_take.team_tags.map((tag) => (
             <span
               key={tag}
               className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full"
             >
               {tag}
+            </span>
+          ))}
+          {hot_take.tagged_users?.length > 0 && hot_take.tagged_users.map((u) => (
+            <span
+              key={u.id}
+              className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full"
+            >
+              <Avatar user={u} size="xs" />
+              @{u.username}
             </span>
           ))}
           <span className="text-[10px] text-text-muted">

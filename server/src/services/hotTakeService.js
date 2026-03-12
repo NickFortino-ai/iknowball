@@ -2,21 +2,41 @@ import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { createNotification } from './notificationService.js'
 
-export async function createHotTake(userId, content, teamTags, imageUrl) {
+export async function createHotTake(userId, content, teamTags, imageUrl, userTags) {
   const { data, error } = await supabase
     .from('hot_takes')
-    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null })
+    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null, user_tags: userTags?.length ? userTags : null })
     .select()
     .single()
 
   if (error) throw error
+
+  // Notify tagged users (best-effort)
+  if (userTags?.length) {
+    try {
+      const { data: actor } = await supabase
+        .from('users')
+        .select('username')
+        .eq('id', userId)
+        .single()
+      const username = actor?.username || 'Someone'
+      for (const taggedId of userTags) {
+        if (taggedId === userId) continue
+        await createNotification(taggedId, 'hot_take_callout', `@${username} called you out in a hot take`, {
+          actorId: userId,
+          hotTakeId: data.id,
+        })
+      }
+    } catch (_) { /* notification is best-effort */ }
+  }
+
   return data
 }
 
 export async function getHotTakesByUser(userId) {
   const { data, error } = await supabase
     .from('hot_takes')
-    .select('id, content, team_tags, created_at')
+    .select('id, content, team_tags, user_tags, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -96,10 +116,10 @@ export async function askForHotTakes(actorId, targetUserId) {
   return { success: true }
 }
 
-export async function updateHotTake(userId, hotTakeId, content, teamTags, imageUrl) {
+export async function updateHotTake(userId, hotTakeId, content, teamTags, imageUrl, userTags) {
   const { data: hotTake } = await supabase
     .from('hot_takes')
-    .select('id, user_id')
+    .select('id, user_id, user_tags')
     .eq('id', hotTakeId)
     .single()
 
@@ -117,12 +137,35 @@ export async function updateHotTake(userId, hotTakeId, content, teamTags, imageU
 
   const { data, error } = await supabase
     .from('hot_takes')
-    .update({ content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null })
+    .update({ content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null, user_tags: userTags?.length ? userTags : null })
     .eq('id', hotTakeId)
     .select()
     .single()
 
   if (error) throw error
+
+  // Notify only newly tagged users (best-effort)
+  if (userTags?.length) {
+    try {
+      const previousTags = new Set(hotTake.user_tags || [])
+      const newlyTagged = userTags.filter((id) => !previousTags.has(id) && id !== userId)
+      if (newlyTagged.length > 0) {
+        const { data: actor } = await supabase
+          .from('users')
+          .select('username')
+          .eq('id', userId)
+          .single()
+        const username = actor?.username || 'Someone'
+        for (const taggedId of newlyTagged) {
+          await createNotification(taggedId, 'hot_take_callout', `@${username} called you out in a hot take`, {
+            actorId: userId,
+            hotTakeId,
+          })
+        }
+      }
+    } catch (_) { /* notification is best-effort */ }
+  }
+
   return data
 }
 

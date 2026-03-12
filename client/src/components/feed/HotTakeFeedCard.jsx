@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import FeedCardWrapper from './FeedCardWrapper'
 import ImageLightbox from './ImageLightbox'
 import TeamAutocomplete from './TeamAutocomplete'
+import Avatar from '../ui/Avatar'
 import { useUpdateHotTake, useHotTakeImageUpload, useTeamsForSport, useToggleBookmark, useRemindHotTake } from '../../hooks/useHotTakes'
+import { useSearchUsers } from '../../hooks/useInvitations'
 import { useActiveSports } from '../../hooks/useGames'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
@@ -36,6 +38,8 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   const [editTeamTags, setEditTeamTags] = useState([])
   const [editSport, setEditSport] = useState(null)
   const [editTeamSearch, setEditTeamSearch] = useState('')
+  const [editUserTags, setEditUserTags] = useState([])
+  const [editUserSearch, setEditUserSearch] = useState('')
   const [existingImageUrl, setExistingImageUrl] = useState(null)
   const updateHotTake = useUpdateHotTake()
   const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
@@ -43,6 +47,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
   const { data: activeSports } = useActiveSports()
   const { data: editTeams } = useTeamsForSport(editing ? editSport : null)
+  const { data: editUserSearchResults } = useSearchUsers(editing ? editUserSearch : '')
 
   const sortedSportTabs = useMemo(() => {
     if (!activeSports?.length) return sportTabs
@@ -57,6 +62,8 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   function startEditing() {
     setEditContent(hot_take.content)
     setEditTeamTags(hot_take.team_tags || [])
+    setEditUserTags(hot_take.tagged_users || [])
+    setEditUserSearch('')
     setEditSport(null)
     setEditTeamSearch('')
     setExistingImageUrl(hot_take.image_url || null)
@@ -67,6 +74,8 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setEditing(false)
     setEditContent('')
     setEditTeamTags([])
+    setEditUserTags([])
+    setEditUserSearch('')
     setEditSport(null)
     setEditTeamSearch('')
     setExistingImageUrl(null)
@@ -84,7 +93,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     }
 
     updateHotTake.mutate(
-      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined },
+      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined, user_tags: editUserTags.length ? editUserTags.map((u) => u.id) : undefined },
       {
         onSuccess: () => {
           cancelEditing()
@@ -220,6 +229,27 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
             </div>
           )}
 
+          {/* User tag pills (edit) */}
+          {editUserTags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {editUserTags.map((u) => (
+                <span
+                  key={u.id}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full"
+                >
+                  <Avatar user={u} size="xs" />
+                  @{u.username}
+                  <button
+                    onClick={() => setEditUserTags(editUserTags.filter((t) => t.id !== u.id))}
+                    className="hover:text-white transition-colors leading-none"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {editSport && editTeamTags.length < 5 ? (
@@ -235,6 +265,44 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               ) : !editSport && editTeamTags.length < 5 ? (
                 <span className="text-[10px] text-text-muted">Pick a sport to tag</span>
               ) : null}
+
+              {/* User tag search (edit) */}
+              {editUserTags.length < 3 && (
+                <div className="relative w-28">
+                  <input
+                    type="text"
+                    value={editUserSearch}
+                    onChange={(e) => setEditUserSearch(e.target.value)}
+                    placeholder="Tag user..."
+                    className="w-full bg-transparent border-b border-border text-[11px] text-text-primary placeholder-text-muted py-1 outline-none focus:border-purple-400 transition-colors"
+                  />
+                  {editUserSearch.length >= 2 && editUserSearchResults?.length > 0 && (
+                    <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-32 overflow-y-auto">
+                      {editUserSearchResults
+                        .filter((u) => !editUserTags.some((t) => t.id === u.id))
+                        .slice(0, 5)
+                        .map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setEditUserTags([...editUserTags, u])
+                              setEditUserSearch('')
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-bg-card-hover transition-colors"
+                          >
+                            <Avatar user={u} size="xs" />
+                            <div className="min-w-0">
+                              <div className="text-xs text-text-primary truncate">{u.display_name || u.username}</div>
+                              <div className="text-[10px] text-text-muted truncate">@{u.username}</div>
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -309,7 +377,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
             </button>
           )}
 
-          {/* Team tags + remind + bookmark */}
+          {/* Team tags + user tags + remind + bookmark */}
           <div className="mt-2 flex items-center justify-between">
             <div className="flex flex-wrap gap-1">
               {hot_take.team_tags?.length > 0 && hot_take.team_tags.map((tag) => (
@@ -319,6 +387,16 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                   className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full hover:bg-accent/25 transition-colors"
                 >
                   {tag}
+                </button>
+              ))}
+              {hot_take.tagged_users?.length > 0 && hot_take.tagged_users.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={(e) => { e.stopPropagation(); onUserTap?.(u.id) }}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full hover:bg-purple-500/25 transition-colors"
+                >
+                  <Avatar user={u} size="xs" />
+                  @{u.username}
                 </button>
               ))}
             </div>
