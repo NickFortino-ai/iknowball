@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useUpdateBracketTournament } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useUpdateBracketTournament, useToggleAutoConnect } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -68,6 +68,7 @@ function formatDateRange(startsAt, endsAt) {
 function LeagueConditions({ league }) {
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
+  const toggleAutoConnect = useToggleAutoConnect()
   const items = []
 
   // Date range / duration
@@ -109,6 +110,8 @@ function LeagueConditions({ league }) {
 
   if (items.length === 0) return null
 
+  const autoConnect = league.my_auto_connect ?? true
+
   return (
     <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -119,6 +122,22 @@ function LeagueConditions({ league }) {
           </div>
         ))}
       </div>
+      {league.status !== 'completed' && (
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+          <span className="text-xs text-text-muted">Add league mates to squad when league ends</span>
+          <button
+            onClick={() => toggleAutoConnect.mutate({ leagueId: league.id, autoConnect: !autoConnect })}
+            disabled={toggleAutoConnect.isPending}
+            className={`w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
+              autoConnect ? 'bg-accent' : 'bg-bg-primary'
+            }`}
+          >
+            <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform mx-0.5 ${
+              autoConnect ? 'translate-x-4' : ''
+            }`} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

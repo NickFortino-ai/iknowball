@@ -4,6 +4,7 @@ import { getPickemStandings } from '../services/leagueService.js'
 import { getLeaguePickStandings } from '../services/leaguePickService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 import { createNotification } from '../services/notificationService.js'
+import { connectAutoConnectMembers } from '../services/connectionService.js'
 
 const BRACKET_WINNER_BONUS = 10
 
@@ -259,6 +260,13 @@ export async function completeLeagues() {
         .from('leagues')
         .update({ status: 'completed', updated_at: new Date().toISOString() })
         .eq('id', league.id)
+
+      // Auto-connect members who opted in
+      try {
+        await connectAutoConnectMembers(league.id)
+      } catch (err) {
+        logger.error({ err, leagueId: league.id }, 'Failed to auto-connect league members on completion')
+      }
 
       logger.info({ leagueId: league.id, format: league.format }, 'League completed')
     } catch (err) {

@@ -184,6 +184,22 @@ router.delete('/:id', requireAuth, async (req, res) => {
   res.status(204).end()
 })
 
+router.patch('/:id/auto-connect', requireAuth, async (req, res) => {
+  const { auto_connect } = req.body
+  if (typeof auto_connect !== 'boolean') {
+    return res.status(400).json({ error: 'auto_connect must be a boolean' })
+  }
+
+  const { error } = await supabase
+    .from('league_members')
+    .update({ auto_connect })
+    .eq('league_id', req.params.id)
+    .eq('user_id', req.user.id)
+
+  if (error) return res.status(500).json({ error: 'Failed to update preference' })
+  res.json({ auto_connect })
+})
+
 router.post('/:id/complete', requireAuth, async (req, res) => {
   const { data: league } = await supabase
     .from('leagues')

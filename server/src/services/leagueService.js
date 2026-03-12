@@ -2,7 +2,6 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
 import { getLeaguePickStandings } from './leaguePickService.js'
-import { connectLeagueMembers } from './connectionService.js'
 
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -354,13 +353,6 @@ export async function joinLeague(userId, inviteCode) {
     throw error
   }
 
-  // Auto-connect with existing league members
-  try {
-    await connectLeagueMembers(userId, league.id)
-  } catch (err) {
-    logger.error({ err, userId, leagueId: league.id }, 'Failed to auto-connect league members')
-  }
-
   return league
 }
 
@@ -410,7 +402,7 @@ export async function getLeagueDetails(leagueId, userId) {
   // Verify membership
   const { data: member } = await supabase
     .from('league_members')
-    .select('role')
+    .select('role, auto_connect')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .single()
@@ -486,6 +478,7 @@ export async function getLeagueDetails(leagueId, userId) {
   return {
     ...league,
     my_role: member.role,
+    my_auto_connect: member.auto_connect ?? true,
     members: members || [],
     pending_invitations: pendingInvitations || [],
     current_week: activeWeek || null,

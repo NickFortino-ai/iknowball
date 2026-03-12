@@ -49,6 +49,26 @@ export async function connectLeagueMembers(userId, leagueId) {
   }
 }
 
+export async function connectAutoConnectMembers(leagueId) {
+  const { data: members, error } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+    .eq('auto_connect', true)
+
+  if (error || !members?.length || members.length < 2) return
+
+  for (let i = 0; i < members.length; i++) {
+    for (let j = i + 1; j < members.length; j++) {
+      try {
+        await connectUsers(members[i].user_id, members[j].user_id, 'league_auto')
+      } catch (err) {
+        logger.error({ err, leagueId }, 'Failed to auto-connect league members on complete')
+      }
+    }
+  }
+}
+
 export async function getMyConnections(userId) {
   const { data, error } = await supabase
     .from('connections')

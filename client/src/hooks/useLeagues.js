@@ -82,6 +82,18 @@ export function useUpdateLeague() {
   })
 }
 
+export function useToggleAutoConnect() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ leagueId, autoConnect }) =>
+      api.patch(`/leagues/${leagueId}/auto-connect`, { auto_connect: autoConnect }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId] })
+    },
+  })
+}
+
 export function useDeleteLeague() {
   const queryClient = useQueryClient()
 
