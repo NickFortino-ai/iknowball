@@ -17,7 +17,8 @@ export default function SignupPage() {
     setLoading(true)
     try {
       await signUp(email, password, username)
-      navigate('/payment')
+      const pendingCode = localStorage.getItem('pendingInviteCode')
+      navigate(pendingCode ? `/join/${pendingCode}` : '/payment')
     } catch (err) {
       if (err.message?.toLowerCase().includes('already registered') || err.message?.toLowerCase().includes('already exists')) {
         setError('There is already an account associated with this email. For help, send an email to admin@iknowball.club')

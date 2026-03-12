@@ -19,11 +19,10 @@ async function attemptPendingJoin() {
   if (!code) return null
   try {
     const league = await api.post('/leagues/_/join', { invite_code: code })
+    localStorage.removeItem('pendingInviteCode')
     return league
   } catch {
     return null
-  } finally {
-    localStorage.removeItem('pendingInviteCode')
   }
 }
 
@@ -34,9 +33,17 @@ function isNewUser(profile) {
 async function navigateAfterPayment(fetchProfile, navigate) {
   await fetchProfile()
   const league = await attemptPendingJoin()
+  if (league) {
+    navigate(`/leagues/${league.id}`, { replace: true })
+    return
+  }
+  const pendingCode = localStorage.getItem('pendingInviteCode')
+  if (pendingCode) {
+    navigate(`/join/${pendingCode}`, { replace: true })
+    return
+  }
   const updatedProfile = useAuthStore.getState().profile
-  const dest = league ? `/leagues/${league.id}` : isNewUser(updatedProfile) ? '/' : '/picks'
-  navigate(dest, { replace: true })
+  navigate(isNewUser(updatedProfile) ? '/' : '/picks', { replace: true })
 }
 
 export default function PaymentPage() {
@@ -61,8 +68,16 @@ export default function PaymentPage() {
   useEffect(() => {
     if (profile?.is_paid) {
       attemptPendingJoin().then((league) => {
-        const dest = league ? `/leagues/${league.id}` : isNewUser(profile) ? '/' : '/picks'
-        navigate(dest, { replace: true })
+        if (league) {
+          navigate(`/leagues/${league.id}`, { replace: true })
+          return
+        }
+        const pendingCode = localStorage.getItem('pendingInviteCode')
+        if (pendingCode) {
+          navigate(`/join/${pendingCode}`, { replace: true })
+          return
+        }
+        navigate(isNewUser(profile) ? '/' : '/picks', { replace: true })
       })
     }
   }, [profile, navigate])
