@@ -209,7 +209,14 @@ export default function BracketView({ league }) {
       )}
 
       {viewTab === 'standings' && (
-        <BracketStandings entries={entries} championshipTotalScore={tournament?.championship_total_score} />
+        <BracketStandings
+          entries={entries}
+          championshipTotalScore={tournament?.championship_total_score}
+          onViewBracket={isLocked ? (userId) => {
+            setViewingUserId(userId)
+            setViewTab('bracket')
+          } : null}
+        />
       )}
     </div>
   )
