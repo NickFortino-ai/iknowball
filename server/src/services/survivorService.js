@@ -194,7 +194,7 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
 
   const { data: picks } = await supabase
     .from('survivor_picks')
-    .select('*, league_weeks(week_number)')
+    .select('*, league_weeks(week_number), games(starts_at)')
     .eq('league_id', leagueId)
     .order('league_weeks(week_number)', { ascending: true })
 
@@ -232,14 +232,14 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     }
   }
 
-  // Group picks by user, hiding picks from others if user hasn't picked for that week
+  // Group picks by user, hiding other users' picks until their picked game has started
   const picksByUser = {}
   for (const pick of picks || []) {
     if (!picksByUser[pick.user_id]) picksByUser[pick.user_id] = []
     const isOtherUser = pick.user_id !== requestingUserId
-    const isCurrentWeekHidden = !userHasPicked && currentWeekId && pick.league_week_id === currentWeekId
-    const isPickWeekHidden = !pickWeekUserHasPicked && pickWeek && pick.league_week_id === pickWeek.id
-    if (isOtherUser && (isCurrentWeekHidden || isPickWeekHidden)) {
+    const gameStarted = pick.games?.starts_at && new Date(pick.games.starts_at) <= new Date()
+    const isSettled = pick.status === 'won' || pick.status === 'lost'
+    if (isOtherUser && !gameStarted && !isSettled) {
       picksByUser[pick.user_id].push({ ...pick, team_name: 'Locked', game_id: null })
     } else {
       picksByUser[pick.user_id].push(pick)
