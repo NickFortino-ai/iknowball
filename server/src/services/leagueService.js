@@ -295,6 +295,19 @@ export async function joinLeague(userId, inviteCode) {
       err.status = 400
       throw err
     }
+  } else if (league.format === 'bracket') {
+    // Bracket leagues allow joining until the bracket locks
+    const { data: tournament } = await supabase
+      .from('bracket_tournaments')
+      .select('locks_at, status')
+      .eq('league_id', league.id)
+      .single()
+
+    if (tournament && (tournament.status !== 'open' || new Date(tournament.locks_at) <= new Date())) {
+      const err = new Error('This bracket is locked and no longer accepting entries')
+      err.status = 400
+      throw err
+    }
   } else if (league.starts_at && new Date(league.starts_at) <= new Date()) {
     const err = new Error('This league has already started')
     err.status = 400
