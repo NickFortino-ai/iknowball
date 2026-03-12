@@ -122,7 +122,7 @@ function LeagueConditions({ league }) {
           </div>
         ))}
       </div>
-      {league.status !== 'completed' && (
+      {league.status !== 'completed' && !league.all_members_connected && (
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <span className="text-xs text-text-muted">Add league mates to squad when league ends</span>
           <button

@@ -475,10 +475,25 @@ export async function getLeagueDetails(leagueId, userId) {
     }
   }
 
+  // Check if all league mates are already in user's squad
+  const otherMemberIds = (members || []).map(m => m.user_id).filter(id => id !== userId)
+  let allConnected = false
+  if (otherMemberIds.length > 0) {
+    const { count } = await supabase
+      .from('connections')
+      .select('id', { count: 'exact', head: true })
+      .or(`and(user_id_1.eq.${userId},user_id_2.in.(${otherMemberIds.join(',')})),and(user_id_2.eq.${userId},user_id_1.in.(${otherMemberIds.join(',')}))`)
+      .eq('status', 'connected')
+    allConnected = count >= otherMemberIds.length
+  } else {
+    allConnected = true
+  }
+
   return {
     ...league,
     my_role: member.role,
     my_auto_connect: member.auto_connect ?? true,
+    all_members_connected: allConnected,
     members: members || [],
     pending_invitations: pendingInvitations || [],
     current_week: activeWeek || null,
