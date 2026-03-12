@@ -134,8 +134,10 @@ export default function OnboardingTutorial() {
 
   const goNext = useCallback(() => {
     if (step >= TOTAL_STEPS - 1) {
-      // Complete — return to where the user was, or /picks as fallback
-      const returnTo = returnPathRef.current || '/picks'
+      // Check for a saved return path from the payment/invite flow
+      const savedReturn = localStorage.getItem('onboardingReturnPath')
+      if (savedReturn) localStorage.removeItem('onboardingReturnPath')
+      const returnTo = savedReturn || returnPathRef.current || '/picks'
       setMounted(false)
       setTimeout(() => {
         setActive(false)
@@ -161,12 +163,15 @@ export default function OnboardingTutorial() {
   }, [step])
 
   const handleSkip = useCallback(() => {
+    const savedReturn = localStorage.getItem('onboardingReturnPath')
+    if (savedReturn) localStorage.removeItem('onboardingReturnPath')
     setMounted(false)
     setTimeout(() => {
       setActive(false)
       completeOnboarding()
+      if (savedReturn) navigate(savedReturn)
     }, 300)
-  }, [completeOnboarding])
+  }, [completeOnboarding, navigate])
 
   if (!active) return null
 

@@ -35,11 +35,15 @@ function teamsMatch(espnName, dbName) {
   return false
 }
 
-export async function fetchESPNScoreboard(sportKey) {
+export async function fetchESPNScoreboard(sportKey, date = null) {
   const sport = SPORT_TO_ESPN[sportKey]
   if (!sport) return []
 
-  const url = `${ESPN_BASE}/${sport.path}/scoreboard${sport.params ? `?${sport.params}` : ''}`
+  const params = []
+  if (sport.params) params.push(sport.params)
+  if (date) params.push(`dates=${date}`)
+  const qs = params.length ? `?${params.join('&')}` : ''
+  const url = `${ESPN_BASE}/${sport.path}/scoreboard${qs}`
 
   let data
   try {

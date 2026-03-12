@@ -31,17 +31,23 @@ function isNewUser(profile) {
 }
 
 async function navigateAfterPayment(fetchProfile, navigate) {
-  await fetchProfile()
+  // Determine destination BEFORE fetchProfile, because fetchProfile sets is_paid=true
+  // which triggers the onboarding tutorial — the tutorial needs to know where to return
   const league = await attemptPendingJoin()
   if (league) {
+    localStorage.setItem('onboardingReturnPath', `/leagues/${league.id}`)
     navigate(`/leagues/${league.id}`, { replace: true })
+    await fetchProfile()
     return
   }
   const pendingCode = localStorage.getItem('pendingInviteCode')
   if (pendingCode) {
+    localStorage.setItem('onboardingReturnPath', `/join/${pendingCode}`)
     navigate(`/join/${pendingCode}`, { replace: true })
+    await fetchProfile()
     return
   }
+  await fetchProfile()
   const updatedProfile = useAuthStore.getState().profile
   navigate(isNewUser(updatedProfile) ? '/' : '/picks', { replace: true })
 }

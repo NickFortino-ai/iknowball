@@ -1,6 +1,10 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchESPNScoreboard, matchESPNToGame } from '../services/espnService.js'
+import { scoreCompletedGame, scoreParlayLegs } from '../services/scoringService.js'
+import { scoreSurvivorPicks } from '../services/survivorService.js'
+import { scoreLeaguePicks } from '../services/leaguePickService.js'
+import { scoreBracketMatchups } from '../services/bracketService.js'
 
 const SPORTS = [
   'americanfootball_nfl',
@@ -89,6 +93,58 @@ async function syncSportLiveScores(sportKey) {
         logger.error({ error, gameId: game.id }, 'Failed to update live score')
         continue
       }
+      updated++
+    } else if (match.state === 'post' && game.status === 'live') {
+      // ESPN says game is final but our DB still has it as live — finalize it
+      let winner = null
+      if (match.homeScore > match.awayScore) winner = 'home'
+      else if (match.awayScore > match.homeScore) winner = 'away'
+
+      // Only update if still live (prevents race with scoreGames)
+      const { data: finalized, error } = await supabase
+        .from('games')
+        .update({
+          status: 'final',
+          home_score: match.homeScore,
+          away_score: match.awayScore,
+          winner,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', game.id)
+        .eq('status', 'live')
+        .select()
+        .single()
+
+      if (error || !finalized) {
+        if (error) logger.error({ error, gameId: game.id }, 'Failed to finalize game via ESPN')
+        continue
+      }
+
+      logger.info({ gameId: game.id, home: game.home_team, away: game.away_team, winner }, 'Finalized game via ESPN live sync')
+
+      // Run full scoring pipeline
+      try {
+        await scoreCompletedGame(game.id, winner, game.sport_id)
+        await scoreParlayLegs(game.id, winner)
+        await scoreSurvivorPicks(game.id, winner)
+        await scoreLeaguePicks(game.id, winner)
+
+        if (winner) {
+          try {
+            await scoreBracketMatchups(game.home_team, game.away_team, winner, match.homeScore, match.awayScore)
+          } catch (err) {
+            logger.error({ err, gameId: game.id }, 'Failed to auto-settle bracket matchups via ESPN')
+          }
+        }
+      } catch (err) {
+        logger.error({ err, gameId: game.id }, 'Scoring failed for ESPN-finalized game, reverting to live')
+        await supabase
+          .from('games')
+          .update({ status: 'live', updated_at: new Date().toISOString() })
+          .eq('id', game.id)
+        continue
+      }
+
       updated++
     }
   }
