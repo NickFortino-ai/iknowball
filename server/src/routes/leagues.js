@@ -357,6 +357,22 @@ router.get('/:id/pickem/picks', requireAuth, async (req, res) => {
   res.json(picks)
 })
 
+router.get('/:id/pickem/member-picks/:userId', requireAuth, async (req, res) => {
+  // Verify requester is a member
+  const { data: member } = await supabase
+    .from('league_members')
+    .select('id')
+    .eq('league_id', req.params.id)
+    .eq('user_id', req.user.id)
+    .single()
+
+  if (!member) return res.status(403).json({ error: 'Not a member of this league' })
+
+  const picks = await getLeaguePicks(req.params.id, req.params.userId)
+  // Only return settled picks
+  res.json((picks || []).filter(p => p.status === 'settled'))
+})
+
 router.get('/:id/pickem/games', requireAuth, async (req, res) => {
   if (!req.query.week_id) {
     return res.status(400).json({ error: 'week_id query parameter is required' })

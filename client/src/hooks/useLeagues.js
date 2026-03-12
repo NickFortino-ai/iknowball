@@ -171,6 +171,14 @@ export function useSubmitLeaguePick() {
   })
 }
 
+export function useUserLeaguePicks(leagueId, userId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'pickem', 'member-picks', userId],
+    queryFn: () => api.get(`/leagues/${leagueId}/pickem/member-picks/${userId}`),
+    enabled: !!leagueId && !!userId,
+  })
+}
+
 export function useDeleteLeaguePick() {
   const queryClient = useQueryClient()
 

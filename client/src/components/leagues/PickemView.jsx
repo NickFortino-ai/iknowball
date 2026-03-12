@@ -11,66 +11,152 @@ import {
   useLeagueGames,
   useSubmitLeaguePick,
   useDeleteLeaguePick,
+  useUserLeaguePicks,
 } from '../../hooks/useLeagues'
 import { useMyPicks } from '../../hooks/usePicks'
 
-function StandingsTable({ standings }) {
+function SettledPicksList({ leagueId, userId }) {
+  const { data: picks, isLoading } = useUserLeaguePicks(leagueId, userId)
+
+  if (isLoading) {
+    return <div className="px-4 py-3 text-xs text-text-muted text-center">Loading picks...</div>
+  }
+
+  if (!picks?.length) {
+    return <div className="px-4 py-3 text-xs text-text-muted text-center">No settled picks yet</div>
+  }
+
+  return (
+    <div className="px-4 pb-3 space-y-1.5">
+      {picks.map((pick) => {
+        const game = pick.games
+        const pickedHome = pick.picked_team === 'home'
+        const teamName = pickedHome ? game.home_team : game.away_team
+        const oppName = pickedHome ? game.away_team : game.home_team
+        const teamScore = pickedHome ? game.home_score : game.away_score
+        const oppScore = pickedHome ? game.away_score : game.home_score
+        const pts = pick.points_earned || 0
+
+        return (
+          <div
+            key={pick.id}
+            className="flex items-center justify-between text-xs bg-bg-page/50 rounded-lg px-3 py-2"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${pick.is_correct ? 'bg-correct' : 'bg-incorrect'}`} />
+              <span className="font-semibold truncate">{teamName}</span>
+              {teamScore != null && (
+                <span className="text-text-muted">
+                  {teamScore}-{oppScore} vs {oppName}
+                </span>
+              )}
+            </div>
+            <span className={`font-semibold flex-shrink-0 ml-2 ${pts > 0 ? 'text-correct' : pts < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+              {pts > 0 ? '+' : ''}{pts}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function StandingsTable({ standings, leagueId, expandable = true }) {
+  const [expandedUser, setExpandedUser] = useState(null)
+
   if (!standings?.length) {
     return <EmptyState title="No standings yet" message="Make some picks to see standings" />
   }
 
   return (
-    <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-text-muted text-xs">
-            <th className="text-left px-4 py-3 font-medium">#</th>
-            <th className="text-left px-4 py-3 font-medium">Player</th>
-            <th className="text-right px-4 py-3 font-medium">Record</th>
-            <th className="text-right px-4 py-3 font-medium">Points</th>
-          </tr>
-        </thead>
-        <tbody>
-          {standings.map((s) => (
-            <tr key={s.user_id} className="border-b border-border last:border-0 hover:bg-bg-card-hover">
-              <td className="px-4 py-3 text-text-muted font-semibold">{s.rank}</td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
+    <div className="bg-bg-card rounded-xl border border-border overflow-hidden text-sm">
+      {/* Header */}
+      <div className="flex items-center border-b border-border text-text-muted text-xs">
+        <span className="px-4 py-3 font-medium w-10">#</span>
+        <span className="px-4 py-3 font-medium flex-1">Player</span>
+        <span className="px-4 py-3 font-medium text-right">Record</span>
+        <span className="px-4 py-3 font-medium text-right w-16">Points</span>
+      </div>
+      {/* Rows */}
+      {standings.map((s, i) => {
+        const isExpanded = expandable && expandedUser === s.user_id
+        const Row = expandable ? 'button' : 'div'
+
+        return (
+          <div key={s.user_id} className={i < standings.length - 1 ? 'border-b border-border' : ''}>
+            <Row
+              {...(expandable ? {
+                onClick: () => setExpandedUser(expandedUser === s.user_id ? null : s.user_id),
+              } : {})}
+              className={`w-full text-left ${expandable ? 'hover:bg-bg-card-hover cursor-pointer' : ''} transition-colors`}
+            >
+              <div className="flex items-center">
+                <span className="px-4 py-3 text-text-muted font-semibold w-10">{s.rank}</span>
+                <div className="px-4 py-3 flex-1 min-w-0 flex items-center gap-2">
                   <TierBadge tier={getTier(s.user?.total_points || 0).name} size="xs" />
                   <span className="font-semibold truncate">
                     {s.user?.display_name || s.user?.username}
                   </span>
+                  {expandable && (
+                    <svg
+                      className={`w-3.5 h-3.5 text-text-muted transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
                 </div>
-              </td>
-              <td className="px-4 py-3 text-right text-text-muted">
-                {s.correct_picks}W-{s.total_picks - s.correct_picks}L
-              </td>
-              <td className="px-4 py-3 text-right font-semibold text-accent">{s.total_points}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <span className="px-4 py-3 text-right text-text-muted whitespace-nowrap">
+                  {s.correct_picks}W-{s.total_picks - s.correct_picks}L
+                </span>
+                <span className="px-4 py-3 text-right font-semibold text-accent whitespace-nowrap w-16">{s.total_points}</span>
+              </div>
+            </Row>
+            {isExpanded && (
+              <SettledPicksList leagueId={leagueId} userId={s.user_id} />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function MiniLeaderboard({ standings }) {
+function MiniLeaderboard({ standings, leagueId }) {
+  const [expandedUser, setExpandedUser] = useState(null)
+
   if (!standings?.length) return null
   const top3 = standings.slice(0, 3)
 
   return (
     <div className="bg-bg-card rounded-xl border border-border p-3 mt-6">
       <div className="text-xs font-semibold text-text-muted mb-2">Leaderboard</div>
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {top3.map((s) => (
-          <div key={s.user_id} className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-text-muted font-semibold w-4">{s.rank}</span>
-              <span className="font-semibold truncate">
-                {s.user?.display_name || s.user?.username}
-              </span>
-            </div>
-            <span className="font-semibold text-accent">{s.total_points}</span>
+          <div key={s.user_id}>
+            <button
+              onClick={() => setExpandedUser(expandedUser === s.user_id ? null : s.user_id)}
+              className="w-full flex items-center justify-between text-sm py-1 hover:bg-bg-card-hover rounded-lg px-1 transition-colors"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-text-muted font-semibold w-4">{s.rank}</span>
+                <span className="font-semibold truncate">
+                  {s.user?.display_name || s.user?.username}
+                </span>
+                <svg
+                  className={`w-3 h-3 text-text-muted transition-transform flex-shrink-0 ${expandedUser === s.user_id ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              <span className="font-semibold text-accent">{s.total_points}</span>
+            </button>
+            {expandedUser === s.user_id && (
+              <div className="mt-1">
+                <SettledPicksList leagueId={leagueId} userId={s.user_id} />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -216,7 +302,7 @@ function LeaguePicksView({ league, standings }) {
       )}
 
       {/* Mini leaderboard */}
-      <MiniLeaderboard standings={standings} />
+      <MiniLeaderboard standings={standings} leagueId={league.id} />
     </div>
   )
 }
@@ -257,7 +343,7 @@ export default function PickemView({ league, standings, mode }) {
           </div>
         )}
 
-        <StandingsTable standings={standings} />
+        <StandingsTable standings={standings} leagueId={league.id} expandable={!!league.use_league_picks} />
       </div>
     )
   }
