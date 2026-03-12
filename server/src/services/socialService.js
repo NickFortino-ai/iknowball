@@ -77,7 +77,6 @@ const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick',
 
 export async function toggleReaction(userId, pickId, reactionType) {
   const ownerId = await getTargetOwner('pick', pickId)
-  await assertConnected(userId, ownerId)
 
   // Check if reaction already exists
   const { data: existing } = await supabase
@@ -321,7 +320,6 @@ export async function deleteComment(userId, commentId) {
 
 export async function toggleFeedReaction(userId, targetType, targetId, reactionType) {
   const ownerId = await getTargetOwner(targetType, targetId)
-  if (ownerId) await assertConnected(userId, ownerId)
 
   const { data: existing } = await supabase
     .from('feed_reactions')
