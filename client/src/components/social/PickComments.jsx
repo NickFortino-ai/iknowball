@@ -150,13 +150,14 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
             </button>
           </div>
         )}
-        <input
-          type="text"
+        <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={replyingTo ? `Reply to @${replyingTo.username}...` : 'Add a comment...'}
           maxLength={280}
-          className="w-full bg-bg-input border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+          rows={1}
+          onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+          className="w-full bg-bg-input border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none"
         />
       </div>
       <button
