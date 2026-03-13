@@ -4,7 +4,6 @@ import { useConnections } from '../../hooks/useConnections'
 import { useUserProfile } from '../../hooks/useUserProfile'
 import Avatar from '../ui/Avatar'
 import TierBadge from '../ui/TierBadge'
-import HotTakeComposer from './HotTakeComposer'
 import ActivityFeed from './ActivityFeed'
 
 export default function UserFeedTab({ onUserTap, initialUserId }) {
@@ -54,9 +53,6 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
             Clear
           </button>
         </div>
-
-        {/* Hot Take Composer */}
-        <HotTakeComposer />
 
         {/* All / Hot Takes toggle */}
         <div className="flex gap-1 mb-3">
