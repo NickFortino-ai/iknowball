@@ -180,7 +180,6 @@ function LeaguePicksView({ league, standings }) {
   const { data: leaguePicks } = useLeaguePicks(league.id, selectedWeekId)
   const { data: games, isLoading: gamesLoading } = useLeagueGames(league.id, selectedWeekId)
   const { data: globalPicks } = useMyPicks()
-
   const submitPick = useSubmitLeaguePick()
   const deletePick = useDeleteLeaguePick()
 
@@ -200,11 +199,11 @@ function LeaguePicksView({ league, standings }) {
   const pickCount = (leaguePicks || []).length
 
   async function handlePick(gameId, side) {
-    // Check if user has a global pick on same game + same team
+    // Warn if user already has a global pick on the same game + team
     const globalPick = globalPicksByGame[gameId]
     if (globalPick && globalPick.picked_team === side) {
       if (!window.confirm(
-        "You've already picked this game globally. Double down? Points will count in both places."
+        "You've already picked this game globally. This league's points also count toward your global score when the league ends. Continue?"
       )) {
         return
       }
