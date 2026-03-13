@@ -279,18 +279,16 @@ export async function joinLeague(userId, inviteCode) {
     throw err
   }
 
-  // For survivor/pickem, allow joining until the first period ends
+  // For survivor/pickem, allow joining as long as any period still has time left
   if (['survivor', 'pickem'].includes(league.format)) {
-    const { data: firstWeek } = await supabase
+    const { count } = await supabase
       .from('league_weeks')
-      .select('ends_at')
+      .select('id', { count: 'exact', head: true })
       .eq('league_id', league.id)
-      .order('week_number', { ascending: true })
-      .limit(1)
-      .single()
+      .gt('ends_at', new Date().toISOString())
 
-    if (!firstWeek || new Date(firstWeek.ends_at) <= new Date()) {
-      const err = new Error('This league has already started')
+    if (!count) {
+      const err = new Error('This league is no longer accepting new members')
       err.status = 400
       throw err
     }
