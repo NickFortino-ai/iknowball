@@ -1,7 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCreateHotTake, useHotTakeImageUpload, useTeamsForSport } from '../../hooks/useHotTakes'
-import { useSearchUsers } from '../../hooks/useInvitations'
 import { useActiveSports } from '../../hooks/useGames'
 import { useProfile } from '../../hooks/useProfile'
 import Avatar from '../ui/Avatar'
@@ -29,8 +28,6 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   const [selectedSport, setSelectedSport] = useState(null)
   const [teamSearch, setTeamSearch] = useState('')
   const [expanded, setExpanded] = useState(false)
-  const [userTags, setUserTags] = useState([])
-  const [userSearchQuery, setUserSearchQuery] = useState('')
   const createHotTake = useCreateHotTake()
   const queryClient = useQueryClient()
   const { data: profile } = useProfile()
@@ -40,7 +37,6 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
   const { data: activeSports } = useActiveSports()
   const { data: teams } = useTeamsForSport(selectedSport)
-  const { data: userSearchResults } = useSearchUsers(userSearchQuery)
 
   // Sort sport tabs: active sports first
   const sortedSportTabs = useMemo(() => {
@@ -117,13 +113,11 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     }
 
     createHotTake.mutate(
-      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, image_url: imageUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
+      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, image_url: imageUrl },
       {
         onSuccess: () => {
           setContent('')
           setTeamTags(initialTeamTags)
-          setUserTags([])
-          setUserSearchQuery('')
           setSelectedSport(null)
           setTeamSearch('')
           setExpanded(false)
@@ -146,8 +140,6 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     setExpanded(false)
     setContent('')
     setTeamTags(initialTeamTags)
-    setUserTags([])
-    setUserSearchQuery('')
     setSelectedSport(null)
     setTeamSearch('')
     removeImage()
@@ -281,27 +273,6 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                 </div>
               )}
 
-              {/* User tag pills */}
-              {userTags.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {userTags.map((u) => (
-                    <span
-                      key={u.id}
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full"
-                    >
-                      <Avatar user={u} size="xs" />
-                      @{u.username}
-                      <button
-                        onClick={() => setUserTags(userTags.filter((t) => t.id !== u.id))}
-                        className="hover:text-white transition-colors leading-none"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
               <div className="mt-2 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {/* Team autocomplete (when sport selected) */}
@@ -318,44 +289,6 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   ) : !selectedSport ? (
                     <span className="text-[10px] text-text-muted">Pick a sport to tag teams</span>
                   ) : null}
-
-                  {/* User tag search */}
-                  {userTags.length < 3 && (
-                    <div className="relative w-28">
-                      <input
-                        type="text"
-                        value={userSearchQuery}
-                        onChange={(e) => setUserSearchQuery(e.target.value)}
-                        placeholder="Tag user..."
-                        className="w-full bg-transparent border-b border-border text-[11px] text-text-primary placeholder-text-muted py-1 outline-none focus:border-purple-400 transition-colors"
-                      />
-                      {userSearchQuery.length >= 2 && userSearchResults?.length > 0 && (
-                        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-32 overflow-y-auto">
-                          {userSearchResults
-                            .filter((u) => !userTags.some((t) => t.id === u.id))
-                            .slice(0, 5)
-                            .map((u) => (
-                              <button
-                                key={u.id}
-                                type="button"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => {
-                                  setUserTags([...userTags, u])
-                                  setUserSearchQuery('')
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-bg-card-hover transition-colors"
-                              >
-                                <Avatar user={u} size="xs" />
-                                <div className="min-w-0">
-                                  <div className="text-xs text-text-primary truncate">{u.display_name || u.username}</div>
-                                  <div className="text-[10px] text-text-muted truncate">@{u.username}</div>
-                                </div>
-                              </button>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* Image upload button */}
                   <button
