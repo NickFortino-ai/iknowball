@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useTeamsForSport, useTeamHotTakes, useBookmarkStatus, useToggleBookmark } from '../../hooks/useHotTakes'
+import { useTeamsForSport, useTeamHotTakes, useSportHotTakes, useBookmarkStatus, useToggleBookmark } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
 import TeamAutocomplete from './TeamAutocomplete'
@@ -121,7 +121,10 @@ export default function TeamFeed({ onUserTap, initialTeam = null, onTeamConsumed
 
   const { data: activeSports } = useActiveSports()
   const { data: teams } = useTeamsForSport(selectedSport)
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useTeamHotTakes(selectedTeam)
+  const sportFeed = useSportHotTakes(selectedSport && !selectedTeam ? selectedSport : null)
+  const teamFeed = useTeamHotTakes(selectedTeam)
+  const activeFeed = selectedTeam ? teamFeed : sportFeed
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = activeFeed
 
   const sortedSportTabs = useMemo(() => {
     if (!activeSports?.length) return sportTabs
@@ -199,29 +202,28 @@ export default function TeamFeed({ onUserTap, initialTeam = null, onTeamConsumed
         ))}
       </div>
 
-      {/* Team search */}
-      {selectedSport && !selectedTeam && (
+      {/* Team search / selected team header */}
+      {selectedSport && (
         <div className="mb-3">
-          <TeamAutocomplete
-            teams={teams || []}
-            onSelect={handleSelectTeam}
-            inputValue={searchValue}
-            onInputChange={setSearchValue}
-            placeholder="Search for a team..."
-          />
-        </div>
-      )}
-
-      {/* Selected team header */}
-      {selectedTeam && (
-        <div className="flex items-center justify-between mb-3 bg-bg-card border border-border rounded-xl px-4 py-2.5">
-          <span className="text-sm font-semibold text-text-primary">{selectedTeam}</span>
-          <button
-            onClick={handleClearTeam}
-            className="text-xs text-text-muted hover:text-text-secondary transition-colors"
-          >
-            Clear
-          </button>
+          {selectedTeam ? (
+            <div className="flex items-center justify-between bg-bg-card border border-border rounded-xl px-4 py-2.5">
+              <span className="text-sm font-semibold text-text-primary">{selectedTeam}</span>
+              <button
+                onClick={handleClearTeam}
+                className="text-xs text-accent hover:text-accent-hover transition-colors"
+              >
+                All {sortedSportTabs.find((s) => s.key === selectedSport)?.label || 'teams'}
+              </button>
+            </div>
+          ) : (
+            <TeamAutocomplete
+              teams={teams || []}
+              onSelect={handleSelectTeam}
+              inputValue={searchValue}
+              onInputChange={setSearchValue}
+              placeholder="Filter by team..."
+            />
+          )}
         </div>
       )}
 
@@ -248,30 +250,25 @@ export default function TeamFeed({ onUserTap, initialTeam = null, onTeamConsumed
         <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
           <div className="text-2xl mb-2">{'\uD83C\uDFC8'}</div>
           <div className="text-sm text-text-primary font-medium mb-1">Select a sport</div>
-          <div className="text-xs text-text-muted">Pick a sport above to search for team hot takes</div>
+          <div className="text-xs text-text-muted">Pick a sport above to browse hot takes</div>
         </div>
       )}
 
-      {/* No team selected but sport selected */}
-      {selectedSport && !selectedTeam && (
-        <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
-          <div className="text-2xl mb-2">{'\uD83D\uDD0D'}</div>
-          <div className="text-sm text-text-primary font-medium mb-1">Search for a team</div>
-          <div className="text-xs text-text-muted">Type 3+ characters to find a team</div>
-        </div>
-      )}
-
-      {/* Composer + Team feed results */}
-      {selectedTeam && (
+      {/* Composer + Feed results (sport-wide or team-filtered) */}
+      {selectedSport && (
         <>
-          <HotTakeComposer initialTeamTags={[selectedTeam]} />
+          <HotTakeComposer initialTeamTags={selectedTeam ? [selectedTeam] : []} />
 
           {isLoading ? (
             <FeedSkeleton />
           ) : !items.length ? (
             <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
               <div className="text-2xl mb-2">{'\uD83D\uDCAC'}</div>
-              <div className="text-sm text-text-primary font-medium mb-2">Be the first to say something about {selectedTeam}!</div>
+              <div className="text-sm text-text-primary font-medium mb-2">
+                {selectedTeam
+                  ? `Be the first to say something about ${selectedTeam}!`
+                  : 'No hot takes yet for this sport!'}
+              </div>
               <div className="text-xs text-text-muted leading-relaxed max-w-xs mx-auto">
                 Drop a hot take above and get the conversation started.
               </div>

@@ -80,6 +80,23 @@ export function useTeamsForSport(sportKey) {
   })
 }
 
+export function useSportHotTakes(sportKey) {
+  return useInfiniteQuery({
+    queryKey: ['hotTakes', 'sport', sportKey],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ sport: sportKey })
+      if (pageParam) params.set('before', pageParam)
+      return api.get(`/hot-takes/sport?${params}`)
+    },
+    initialPageParam: null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.items?.length
+        ? lastPage.items[lastPage.items.length - 1].timestamp
+        : undefined,
+    enabled: !!sportKey,
+  })
+}
+
 export function useTeamHotTakes(teamName) {
   return useInfiniteQuery({
     queryKey: ['hotTakes', 'team', teamName],

@@ -6,6 +6,7 @@ import { createHotTake, updateHotTake, deleteHotTake, getHotTakesByUser, createR
 import { toggleBookmark, getBookmarkedHotTakes, getBookmarkStatusBatch } from '../services/socialService.js'
 import { checkUserMuted, checkContent } from '../services/contentFilterService.js'
 import { supabase } from '../config/supabase.js'
+import { FALLBACK_TEAMS } from './teams.js'
 
 const router = Router()
 
@@ -35,6 +36,104 @@ router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
 router.get('/user/:userId', requireAuth, async (req, res) => {
   const data = await getHotTakesByUser(req.params.userId)
   res.json(data)
+})
+
+// Sport feed endpoint — all hot takes from any team in a sport
+router.get('/sport', requireAuth, async (req, res) => {
+  const { sport, before } = req.query
+  if (!sport) {
+    return res.status(400).json({ error: 'sport query param is required' })
+  }
+
+  const teamList = FALLBACK_TEAMS[sport]
+  if (!teamList?.length) {
+    return res.status(400).json({ error: 'Unknown sport' })
+  }
+
+  let query = supabase
+    .from('hot_takes')
+    .select('id, user_id, content, team_tags, user_tags, image_url, created_at')
+    .overlaps('team_tags', teamList)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  if (before) {
+    query = query.lt('created_at', before)
+  }
+
+  const { data: hotTakes, error } = await query
+
+  if (error) {
+    return res.status(500).json({ error: 'Failed to fetch sport feed' })
+  }
+
+  if (!hotTakes?.length) {
+    return res.json({ items: [], hasMore: false })
+  }
+
+  // Get user info for all hot take authors
+  const userIds = [...new Set(hotTakes.map((t) => t.user_id))]
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, avatar_emoji')
+    .in('id', userIds)
+
+  const userMap = {}
+  for (const u of users || []) {
+    userMap[u.id] = u
+  }
+
+  // Get comment counts
+  const hotTakeIds = hotTakes.map((t) => t.id)
+  const { data: commentCounts } = await supabase
+    .from('comments')
+    .select('target_id')
+    .eq('target_type', 'hot_take')
+    .in('target_id', hotTakeIds)
+
+  const commentCountMap = {}
+  for (const c of commentCounts || []) {
+    commentCountMap[c.target_id] = (commentCountMap[c.target_id] || 0) + 1
+  }
+
+  // Resolve tagged users
+  const allTaggedIds = [...new Set(hotTakes.flatMap((t) => t.user_tags || []))]
+  const taggedUserMap = {}
+  if (allTaggedIds.length > 0) {
+    const { data: taggedUsers } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, avatar_emoji')
+      .in('id', allTaggedIds)
+    for (const u of taggedUsers || []) {
+      taggedUserMap[u.id] = u
+    }
+  }
+
+  const items = hotTakes.map((take) => {
+    const user = userMap[take.user_id]
+    const tagged_users = (take.user_tags || []).map((id) => taggedUserMap[id]).filter(Boolean)
+    return {
+      type: 'hot_take',
+      id: take.id,
+      userId: take.user_id,
+      username: user?.username,
+      display_name: user?.display_name,
+      avatar_url: user?.avatar_url,
+      avatar_emoji: user?.avatar_emoji,
+      timestamp: take.created_at,
+      commentCount: commentCountMap[take.id] || 0,
+      hot_take: {
+        id: take.id,
+        content: take.content,
+        team_tags: take.team_tags,
+        user_tags: take.user_tags,
+        image_url: take.image_url,
+        tagged_users,
+      },
+    }
+  })
+
+  res.json({ items, hasMore: hotTakes.length === 20 })
 })
 
 // Team feed endpoint

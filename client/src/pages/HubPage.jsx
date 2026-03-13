@@ -376,7 +376,7 @@ export default function HubPage() {
               { key: 'all', label: 'All of IKB' },
               { key: 'highlights', label: 'My Highlights' },
               { key: 'hot_takes', label: 'Hot Takes' },
-              { key: 'team_feed', label: 'Team Feed' },
+              { key: 'team_feed', label: 'Sports' },
               { key: 'user_feeds', label: 'User Feeds' },
               { key: 'receipts', label: 'Receipts' },
             ].map((tab) => (

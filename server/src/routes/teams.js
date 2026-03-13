@@ -5,7 +5,7 @@ import { supabase } from '../config/supabase.js'
 const router = Router()
 
 // Static fallback team lists for when no games exist in the DB (offseason)
-const FALLBACK_TEAMS = {
+export const FALLBACK_TEAMS = {
   basketball_nba: [
     'Atlanta Hawks', 'Boston Celtics', 'Brooklyn Nets', 'Charlotte Hornets',
     'Chicago Bulls', 'Cleveland Cavaliers', 'Dallas Mavericks', 'Denver Nuggets',

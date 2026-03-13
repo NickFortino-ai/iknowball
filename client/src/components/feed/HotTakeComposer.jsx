@@ -129,6 +129,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
           setExpanded(false)
           removeImage()
           queryClient.invalidateQueries({ queryKey: ['hotTakes', 'team'] })
+          queryClient.invalidateQueries({ queryKey: ['hotTakes', 'sport'] })
         },
         onError: (err) => {
           if (err.status === 403) {
