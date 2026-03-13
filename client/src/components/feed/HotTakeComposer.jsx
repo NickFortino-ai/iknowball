@@ -2,6 +2,7 @@ import { useState, useRef, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCreateHotTake, useHotTakeImageUpload, useTeamsForSport } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
+import { useSearchUsers } from '../../hooks/useInvitations'
 import { useProfile } from '../../hooks/useProfile'
 import Avatar from '../ui/Avatar'
 import InfoTooltip from '../ui/InfoTooltip'
@@ -28,6 +29,8 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   const [selectedSport, setSelectedSport] = useState(null)
   const [teamSearch, setTeamSearch] = useState('')
   const [expanded, setExpanded] = useState(false)
+  const [userTags, setUserTags] = useState([])
+  const [mentionQuery, setMentionQuery] = useState('')
   const createHotTake = useCreateHotTake()
   const queryClient = useQueryClient()
   const { data: profile } = useProfile()
@@ -37,6 +40,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
   const { data: activeSports } = useActiveSports()
   const { data: teams } = useTeamsForSport(selectedSport)
+  const { data: mentionResults } = useSearchUsers(mentionQuery)
 
   // Sort sport tabs: active sports first
   const sortedSportTabs = useMemo(() => {
@@ -55,7 +59,19 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
   function handleContentChange(e) {
     const val = e.target.value
+    const cursorPos = e.target.selectionStart
     setContent(val)
+
+    // Detect @mention at cursor position
+    const beforeCursor = val.slice(0, cursorPos)
+    const mentionMatch = beforeCursor.match(/(^|\s)@(\w*)$/)
+    if (mentionMatch) {
+      setMentionQuery(mentionMatch[2].length >= 2 ? mentionMatch[2] : '')
+      setInlineMatches([])
+      setInlineDropdownPos(null)
+      return
+    }
+    setMentionQuery('')
 
     if (!teams?.length || !selectedSport) {
       setInlineMatches([])
@@ -90,6 +106,31 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     textareaRef.current?.focus()
   }
 
+  function handleMentionSelect(user) {
+    if (userTags.length >= 3 || userTags.some((u) => u.id === user.id)) return
+    const textarea = textareaRef.current
+    const cursorPos = textarea?.selectionStart || content.length
+    const beforeCursor = content.slice(0, cursorPos)
+    const afterCursor = content.slice(cursorPos)
+    const match = beforeCursor.match(/@(\w*)$/)
+    if (match) {
+      const prefix = beforeCursor.slice(0, beforeCursor.length - match[0].length)
+      const inserted = `@${user.username} `
+      const newContent = prefix + inserted + afterCursor
+      const newPos = prefix.length + inserted.length
+      setContent(newContent)
+      setUserTags([...userTags, user])
+      setMentionQuery('')
+      setTimeout(() => {
+        if (textarea) {
+          textarea.selectionStart = newPos
+          textarea.selectionEnd = newPos
+          textarea.focus()
+        }
+      }, 0)
+    }
+  }
+
   function addTeamTag(teamName) {
     if (teamTags.length < 5 && !teamTags.includes(teamName)) {
       setTeamTags([...teamTags, teamName])
@@ -113,11 +154,13 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     }
 
     createHotTake.mutate(
-      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, image_url: imageUrl },
+      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, image_url: imageUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
       {
         onSuccess: () => {
           setContent('')
           setTeamTags(initialTeamTags)
+          setUserTags([])
+          setMentionQuery('')
           setSelectedSport(null)
           setTeamSearch('')
           setExpanded(false)
@@ -140,6 +183,8 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     setExpanded(false)
     setContent('')
     setTeamTags(initialTeamTags)
+    setUserTags([])
+    setMentionQuery('')
     setSelectedSport(null)
     setTeamSearch('')
     removeImage()
@@ -191,7 +236,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               className="w-full bg-transparent text-sm text-text-primary placeholder-text-muted resize-none outline-none transition-all"
             />
 
-            {/* Inline autocomplete dropdown */}
+            {/* Inline team autocomplete dropdown */}
             {inlineDropdownPos?.show && inlineMatches.length > 0 && (
               <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
                 {inlineMatches.map((t) => (
@@ -205,6 +250,30 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                     {t}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* @mention autocomplete dropdown */}
+            {mentionQuery.length >= 2 && mentionResults?.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {mentionResults
+                  .filter((u) => !userTags.some((t) => t.id === u.id))
+                  .slice(0, 5)
+                  .map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleMentionSelect(u)}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-bg-card-hover transition-colors"
+                    >
+                      <Avatar user={u} size="xs" />
+                      <div className="min-w-0">
+                        <div className="text-xs text-text-primary truncate">{u.display_name || u.username}</div>
+                        <div className="text-[10px] text-text-muted truncate">@{u.username}</div>
+                      </div>
+                    </button>
+                  ))}
               </div>
             )}
           </div>
@@ -264,6 +333,26 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                       {tag}
                       <button
                         onClick={() => removeTeamTag(tag)}
+                        className="hover:text-white transition-colors leading-none"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* User tag pills */}
+              {userTags.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {userTags.map((u) => (
+                    <span
+                      key={u.id}
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded-full"
+                    >
+                      @{u.username}
+                      <button
+                        onClick={() => setUserTags(userTags.filter((t) => t.id !== u.id))}
                         className="hover:text-white transition-colors leading-none"
                       >
                         ×

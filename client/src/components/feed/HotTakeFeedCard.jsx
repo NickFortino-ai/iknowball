@@ -39,15 +39,16 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   const [editSport, setEditSport] = useState(null)
   const [editTeamSearch, setEditTeamSearch] = useState('')
   const [editUserTags, setEditUserTags] = useState([])
-  const [editUserSearch, setEditUserSearch] = useState('')
+  const [editMentionQuery, setEditMentionQuery] = useState('')
   const [existingImageUrl, setExistingImageUrl] = useState(null)
   const updateHotTake = useUpdateHotTake()
   const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
   const fileInputRef = useRef(null)
+  const editTextareaRef = useRef(null)
 
   const { data: activeSports } = useActiveSports()
   const { data: editTeams } = useTeamsForSport(editing ? editSport : null)
-  const { data: editUserSearchResults } = useSearchUsers(editing ? editUserSearch : '')
+  const { data: editMentionResults } = useSearchUsers(editing ? editMentionQuery : '')
 
   const sortedSportTabs = useMemo(() => {
     if (!activeSports?.length) return sportTabs
@@ -63,7 +64,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setEditContent(hot_take.content)
     setEditTeamTags(hot_take.team_tags || [])
     setEditUserTags(hot_take.tagged_users || [])
-    setEditUserSearch('')
+    setEditMentionQuery('')
     setEditSport(null)
     setEditTeamSearch('')
     setExistingImageUrl(hot_take.image_url || null)
@@ -75,7 +76,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setEditContent('')
     setEditTeamTags([])
     setEditUserTags([])
-    setEditUserSearch('')
+    setEditMentionQuery('')
     setEditSport(null)
     setEditTeamSearch('')
     setExistingImageUrl(null)
@@ -123,6 +124,45 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     e.target.value = ''
   }
 
+  function handleEditContentChange(e) {
+    const val = e.target.value
+    const cursorPos = e.target.selectionStart
+    setEditContent(val)
+
+    const beforeCursor = val.slice(0, cursorPos)
+    const mentionMatch = beforeCursor.match(/(^|\s)@(\w*)$/)
+    if (mentionMatch) {
+      setEditMentionQuery(mentionMatch[2].length >= 2 ? mentionMatch[2] : '')
+    } else {
+      setEditMentionQuery('')
+    }
+  }
+
+  function handleEditMentionSelect(user) {
+    if (editUserTags.length >= 3 || editUserTags.some((u) => u.id === user.id)) return
+    const textarea = editTextareaRef.current
+    const cursorPos = textarea?.selectionStart || editContent.length
+    const beforeCursor = editContent.slice(0, cursorPos)
+    const afterCursor = editContent.slice(cursorPos)
+    const match = beforeCursor.match(/@(\w*)$/)
+    if (match) {
+      const prefix = beforeCursor.slice(0, beforeCursor.length - match[0].length)
+      const inserted = `@${user.username} `
+      const newContent = prefix + inserted + afterCursor
+      const newPos = prefix.length + inserted.length
+      setEditContent(newContent)
+      setEditUserTags([...editUserTags, user])
+      setEditMentionQuery('')
+      setTimeout(() => {
+        if (textarea) {
+          textarea.selectionStart = newPos
+          textarea.selectionEnd = newPos
+          textarea.focus()
+        }
+      }, 0)
+    }
+  }
+
   const isOwnTake = item.userId === session?.user?.id
 
   async function handleRemindSubmit() {
@@ -158,14 +198,41 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     >
       {editing ? (
         <div className="space-y-2">
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            maxLength={MAX_CHARS}
-            rows={3}
-            className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted resize-none outline-none focus:border-accent/40"
-            autoFocus
-          />
+          <div className="relative">
+            <textarea
+              ref={editTextareaRef}
+              value={editContent}
+              onChange={handleEditContentChange}
+              maxLength={MAX_CHARS}
+              rows={3}
+              className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted resize-none outline-none focus:border-accent/40"
+              autoFocus
+            />
+
+            {/* @mention autocomplete dropdown */}
+            {editMentionQuery.length >= 2 && editMentionResults?.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {editMentionResults
+                  .filter((u) => !editUserTags.some((t) => t.id === u.id))
+                  .slice(0, 5)
+                  .map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleEditMentionSelect(u)}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-bg-card-hover transition-colors"
+                    >
+                      <Avatar user={u} size="xs" />
+                      <div className="min-w-0">
+                        <div className="text-xs text-text-primary truncate">{u.display_name || u.username}</div>
+                        <div className="text-[10px] text-text-muted truncate">@{u.username}</div>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
 
           {/* Image preview */}
           {currentPreview && (
@@ -265,44 +332,6 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               ) : !editSport && editTeamTags.length < 5 ? (
                 <span className="text-[10px] text-text-muted">Pick a sport to tag</span>
               ) : null}
-
-              {/* User tag search (edit) */}
-              {editUserTags.length < 3 && (
-                <div className="relative w-28">
-                  <input
-                    type="text"
-                    value={editUserSearch}
-                    onChange={(e) => setEditUserSearch(e.target.value)}
-                    placeholder="Tag user..."
-                    className="w-full bg-transparent border-b border-border text-[11px] text-text-primary placeholder-text-muted py-1 outline-none focus:border-purple-400 transition-colors"
-                  />
-                  {editUserSearch.length >= 2 && editUserSearchResults?.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-32 overflow-y-auto">
-                      {editUserSearchResults
-                        .filter((u) => !editUserTags.some((t) => t.id === u.id))
-                        .slice(0, 5)
-                        .map((u) => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                              setEditUserTags([...editUserTags, u])
-                              setEditUserSearch('')
-                            }}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-bg-card-hover transition-colors"
-                          >
-                            <Avatar user={u} size="xs" />
-                            <div className="min-w-0">
-                              <div className="text-xs text-text-primary truncate">{u.display_name || u.username}</div>
-                              <div className="text-[10px] text-text-muted truncate">@{u.username}</div>
-                            </div>
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               <button
                 onClick={() => fileInputRef.current?.click()}
