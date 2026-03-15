@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { fetchOdds } from '../services/oddsService.js'
 import { logger } from '../utils/logger.js'
 
-async function syncSport(sportKey) {
+async function syncSport(sportKey, { force = false } = {}) {
   const { data: sport } = await supabase
     .from('sports')
     .select('id')
@@ -28,7 +28,7 @@ async function syncSport(sportKey) {
     .gte('starts_at', now.toISOString())
     .lte('starts_at', sevenDaysFromNow.toISOString())
 
-  if (upcomingCount === 0) {
+  if (upcomingCount === 0 && !force) {
     // Check when we last synced any game for this sport
     const { data: lastGame } = await supabase
       .from('games')
@@ -39,10 +39,10 @@ async function syncSport(sportKey) {
       .single()
 
     const lastSync = lastGame ? new Date(lastGame.updated_at) : null
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000)
 
-    if (lastSync && lastSync > oneDayAgo) {
-      logger.debug({ sportKey }, 'No upcoming games within 7 days and synced recently, skipping')
+    if (lastSync && lastSync > fourHoursAgo) {
+      logger.debug({ sportKey }, 'No upcoming games within 7 days and synced within 4h, skipping')
       return { sport: sportKey, status: 'skipped_recent', synced: 0 }
     }
 
@@ -110,14 +110,14 @@ async function syncSport(sportKey) {
   return { sport: sportKey, status: 'ok', apiEvents: events.length, synced: upserted }
 }
 
-export async function syncOdds() {
-  logger.info('Starting odds sync...')
+export async function syncOdds({ force = false } = {}) {
+  logger.info({ force }, 'Starting odds sync...')
 
   const sports = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'basketball_wncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'icehockey_nhl', 'soccer_usa_mls']
   const results = []
 
   for (const sportKey of sports) {
-    const result = await syncSport(sportKey)
+    const result = await syncSport(sportKey, { force })
     results.push(result)
   }
 

@@ -119,7 +119,7 @@ router.patch('/reports/:id', async (req, res) => {
 
 // System actions
 router.post('/sync-odds', async (req, res) => {
-  const results = await syncOdds()
+  const results = await syncOdds({ force: true })
   res.json({ message: 'Odds sync complete', results })
 })
 
