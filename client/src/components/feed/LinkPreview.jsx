@@ -18,7 +18,7 @@ export default function LinkPreview({ url }) {
       <div className="mt-2" onClick={(e) => e.stopPropagation()}>
         <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: '56.25%' }}>
           <iframe
-            src={`https://www.youtube.com/embed/${data.youtubeVideoId}`}
+            src={`https://www.youtube.com/embed/${data.youtubeVideoId}?autoplay=1&mute=1`}
             title={data.title || 'YouTube video'}
             className="absolute inset-0 w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

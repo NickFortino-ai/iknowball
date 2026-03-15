@@ -1,8 +1,11 @@
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g
+const EMBED_REGEX = /<iframe[^>]+src=["']https?:\/\/(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)[^"']*["'][^>]*>(?:<\/iframe>)?/g
 
 export function extractFirstUrl(text) {
   if (!text) return null
-  const match = text.match(URL_REGEX)
+  // Skip URLs that are inside an iframe embed code
+  const withoutEmbeds = text.replace(new RegExp(EMBED_REGEX.source, 'g'), '')
+  const match = withoutEmbeds.match(URL_REGEX)
   return match ? match[0] : null
 }
 
@@ -21,15 +24,23 @@ export function displayUrl(url) {
 
 export function segmentContent(text) {
   if (!text) return []
+
+  // Combined regex: match embed codes OR URLs
+  const combined = new RegExp(`(${EMBED_REGEX.source})|(${URL_REGEX.source})`, 'g')
   const segments = []
   let lastIndex = 0
-  const regex = new RegExp(URL_REGEX.source, 'g')
   let match
-  while ((match = regex.exec(text)) !== null) {
+
+  while ((match = combined.exec(text)) !== null) {
     if (match.index > lastIndex) {
       segments.push({ type: 'text', value: text.slice(lastIndex, match.index) })
     }
-    segments.push({ type: 'url', value: match[0] })
+    if (match[1]) {
+      // Embed code matched — match[2] is the video ID from the embed capture group
+      segments.push({ type: 'youtube_embed', videoId: match[2] })
+    } else {
+      segments.push({ type: 'url', value: match[0] })
+    }
     lastIndex = match.index + match[0].length
   }
   if (lastIndex < text.length) {
