@@ -22,8 +22,9 @@ function TeamAutocomplete({ value, onChange, placeholder, disabled, teams }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  const strip = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '')
   const filtered = (teams || []).filter((t) =>
-    t.toLowerCase().includes((filter || value || '').toLowerCase())
+    strip(t).includes(strip(filter || value || ''))
   )
 
   return (
