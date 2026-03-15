@@ -963,7 +963,7 @@ export async function undoTemplateResult(templateId, templateMatchupId) {
 async function cascadeUndoToTournament(tournament, templateMatchup) {
   const tournamentId = tournament.id
 
-  // Clear the team from the next round matchup
+  // Clear the winning team from the next round matchup
   if (templateMatchup.feeds_into_matchup_id) {
     const clearUpdate = templateMatchup.feeds_into_slot === 'top'
       ? { team_top: null, seed_top: null }
@@ -983,6 +983,11 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
     .eq('tournament_id', tournamentId)
     .eq('template_matchup_id', templateMatchup.id)
 
+  // Determine the losing team (the one whose downstream picks were eliminated)
+  const losingTeam = templateMatchup.winner === 'top'
+    ? templateMatchup.team_bottom
+    : templateMatchup.team_top
+
   // Reset picks for this matchup
   const { data: picks } = await supabase
     .from('bracket_picks')
@@ -994,14 +999,19 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
       .from('bracket_picks')
       .update({ is_correct: null, points_earned: 0 })
       .eq('id', pick.id)
+  }
 
-    // Un-eliminate downstream picks for both teams
-    await supabase
-      .from('bracket_picks')
-      .update({ is_eliminated: false })
-      .eq('entry_id', pick.entry_id)
-      .gt('round_number', templateMatchup.round_number)
-      .in('picked_team', [templateMatchup.team_top, templateMatchup.team_bottom].filter(Boolean))
+  // Un-eliminate downstream picks only for the losing team (those were eliminated when result was entered)
+  if (losingTeam) {
+    const entryIds = [...new Set((picks || []).map((p) => p.entry_id))]
+    for (const entryId of entryIds) {
+      await supabase
+        .from('bracket_picks')
+        .update({ is_eliminated: false })
+        .eq('entry_id', entryId)
+        .eq('picked_team', losingTeam)
+        .gt('round_number', templateMatchup.round_number)
+    }
   }
 
   // Recalculate points
