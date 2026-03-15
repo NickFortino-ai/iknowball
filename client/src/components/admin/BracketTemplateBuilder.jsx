@@ -264,12 +264,12 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   })
   const [matchups, setMatchups] = useState(() => {
     if (existing?.matchups?.length) {
-      return existing.matchups.map((m) => ({
-        ...m,
-        feeds_into_round: null,
-        feeds_into_position: null,
-        feeds_into_slot: null,
-      }))
+      const idLookup = {}
+      for (const m of existing.matchups) idLookup[m.id] = { round_number: m.round_number, position: m.position }
+      return existing.matchups.filter((m) => m.round_number >= 1).map((m) => {
+        const target = m.feeds_into_matchup_id ? idLookup[m.feeds_into_matchup_id] : null
+        return { ...m, feeds_into_round: target?.round_number ?? null, feeds_into_position: target?.position ?? null, feeds_into_slot: m.feeds_into_slot || null }
+      })
     }
     return []
   })
@@ -291,12 +291,22 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     if (existing.matchups?.length) {
       const round0 = existing.matchups.filter((m) => m.round_number === 0)
       const rest = existing.matchups.filter((m) => m.round_number >= 1)
-      setMatchups(rest.map((m) => ({
-        ...m,
-        feeds_into_round: null,
-        feeds_into_position: null,
-        feeds_into_slot: null,
-      })))
+
+      // Build id→{round_number, position} lookup to convert feeds_into_matchup_id back to round/position
+      const idLookup = {}
+      for (const m of existing.matchups) {
+        idLookup[m.id] = { round_number: m.round_number, position: m.position }
+      }
+
+      setMatchups(rest.map((m) => {
+        const target = m.feeds_into_matchup_id ? idLookup[m.feeds_into_matchup_id] : null
+        return {
+          ...m,
+          feeds_into_round: target?.round_number ?? null,
+          feeds_into_position: target?.position ?? null,
+          feeds_into_slot: m.feeds_into_slot || null,
+        }
+      }))
 
       // Restore play-in slots from round 0 matchups
       if (round0.length > 0) {
