@@ -9,6 +9,9 @@ import { useSearchUsers } from '../../hooks/useInvitations'
 import { useActiveSports } from '../../hooks/useGames'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
+import RichContent from './RichContent'
+import LinkPreview from './LinkPreview'
+import { extractFirstUrl } from '../../lib/urlUtils'
 
 const MAX_CHARS = 280
 
@@ -388,9 +391,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           )}
 
           {/* Tweet-style content */}
-          <div className="text-sm text-text-primary leading-relaxed">
-            {hot_take.content}
-          </div>
+          <RichContent text={hot_take.content} className="text-sm text-text-primary leading-relaxed" />
 
           {/* Image */}
           {hot_take.image_url && (
@@ -404,6 +405,11 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                 className="w-full rounded-lg"
               />
             </button>
+          )}
+
+          {/* Link preview */}
+          {extractFirstUrl(hot_take.content) && (
+            <LinkPreview url={extractFirstUrl(hot_take.content)} />
           )}
 
           {/* Team tags + user tags + remind + bookmark */}

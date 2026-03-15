@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import FeedCardWrapper from './FeedCardWrapper'
 import Avatar from '../ui/Avatar'
+import RichContent from './RichContent'
 import { timeAgo } from '../../lib/time'
 import { getPronouns } from '../../lib/pronouns'
 
@@ -41,9 +42,7 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
         onClick={handleQuoteTap}
         className="bg-bg-secondary rounded-lg px-3 py-2 cursor-pointer hover:bg-border transition-colors"
       >
-        <div className="text-sm text-text-primary leading-relaxed italic">
-          &ldquo;{hot_take.content}&rdquo;
-        </div>
+        <RichContent text={`\u201C${hot_take.content}\u201D`} className="text-sm text-text-primary leading-relaxed italic" />
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {hot_take.team_tags?.length > 0 && hot_take.team_tags.map((tag) => (
             <span

@@ -25,6 +25,7 @@ import hotTakesRouter from './routes/hotTakes.js'
 import reportsRouter from './routes/reports.js'
 import teamsRouter from './routes/teams.js'
 import injuriesRouter from './routes/injuries.js'
+import linkPreviewRouter from './routes/linkPreview.js'
 
 const app = express()
 
@@ -58,6 +59,7 @@ app.use('/api/hot-takes', hotTakesRouter)
 app.use('/api/reports', reportsRouter)
 app.use('/api/teams', teamsRouter)
 app.use('/api/injuries', injuriesRouter)
+app.use('/api/link-preview', linkPreviewRouter)
 
 app.use(errorHandler)
 

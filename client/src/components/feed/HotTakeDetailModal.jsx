@@ -5,9 +5,12 @@ import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus } from '../../hooks/useConnections'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
+import RichContent from './RichContent'
+import LinkPreview from './LinkPreview'
 import FeedReactions from './FeedReactions'
 import PickComments from '../social/PickComments'
 import { timeAgo } from '../../lib/time'
+import { extractFirstUrl } from '../../lib/urlUtils'
 
 export default function HotTakeDetailModal({ hotTakeId, onClose }) {
   const { data: item, isLoading } = useHotTakeById(hotTakeId)
@@ -62,9 +65,12 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
 
             {/* Hot take content */}
             <div className="bg-bg-primary rounded-xl p-4">
-              <div className="text-sm text-text-primary leading-relaxed">{hotTake.content}</div>
+              <RichContent text={hotTake.content} className="text-sm text-text-primary leading-relaxed" />
               {hotTake.image_url && (
                 <img src={hotTake.image_url} alt="" className="w-full rounded-lg mt-2" />
+              )}
+              {extractFirstUrl(hotTake.content) && (
+                <LinkPreview url={extractFirstUrl(hotTake.content)} />
               )}
               {(hotTake.team_tags?.length > 0 || hotTake.tagged_users?.length > 0) && (
                 <div className="flex flex-wrap gap-1 mt-2">
