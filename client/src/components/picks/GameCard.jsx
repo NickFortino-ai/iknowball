@@ -35,7 +35,7 @@ function formatLiveStatus(game) {
   return parts.join(' · ')
 }
 
-export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle, onCardClick, isFirstCard }) {
+export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle, onCardClick, isFirstCard, hasInjuryData, onInjuryClick }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
   const isLive = game.status === 'live'
@@ -77,7 +77,10 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
 
   return (
     <div {...(isFirstCard ? { 'data-onboarding': 'game-card' } : {})} onClick={onCardClick} className={`bg-bg-card rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4 overflow-hidden${onCardClick ? ' cursor-pointer' : ''}`}>
-      <div className="flex items-center justify-between mb-3">
+      <div
+        className={`flex items-center justify-between mb-3${hasInjuryData ? ' cursor-pointer' : ''}`}
+        onClick={hasInjuryData ? (e) => { e.stopPropagation(); onInjuryClick?.() } : undefined}
+      >
         <span className="text-xs text-text-muted uppercase tracking-wider">
           {game.sports?.name || 'NFL'}
         </span>

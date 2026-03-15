@@ -24,6 +24,7 @@ import recordsRouter from './routes/records.js'
 import hotTakesRouter from './routes/hotTakes.js'
 import reportsRouter from './routes/reports.js'
 import teamsRouter from './routes/teams.js'
+import injuriesRouter from './routes/injuries.js'
 
 const app = express()
 
@@ -56,6 +57,7 @@ app.use('/api/records', recordsRouter)
 app.use('/api/hot-takes', hotTakesRouter)
 app.use('/api/reports', reportsRouter)
 app.use('/api/teams', teamsRouter)
+app.use('/api/injuries', injuriesRouter)
 
 app.use(errorHandler)
 

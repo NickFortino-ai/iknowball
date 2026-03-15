@@ -4,6 +4,7 @@ import { useMyPicks, useSubmitPick, useDeletePick, useUpdatePickMultiplier } fro
 import { useSharePickToSquad } from '../hooks/useConnections'
 import { useMyParlays, useDeleteParlay } from '../hooks/useParlays'
 import { useMyPropPicks } from '../hooks/useProps'
+import { useInjuryCounts } from '../hooks/useInjuries'
 import { usePickStore } from '../stores/pickStore'
 import GameCard from '../components/picks/GameCard'
 import BottomBar from '../components/picks/BottomBar'
@@ -11,6 +12,7 @@ import ParlaySlip from '../components/picks/ParlaySlip'
 import ParlayCard from '../components/picks/ParlayCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import FuturesSection from '../components/picks/FuturesSection'
+import InjuryReportModal from '../components/picks/InjuryReportModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
@@ -93,6 +95,7 @@ export default function PicksPage() {
   const updateMultiplier = useUpdatePickMultiplier()
   const profile = useAuthStore((s) => s.profile)
   const [sharedPickIds, setSharedPickIds] = useState(new Set())
+  const [injuryGameId, setInjuryGameId] = useState(null)
 
   const { data: pendingPropPicks } = useMyPropPicks('pending')
   const { data: activeParlays } = useMyParlays('pending')
@@ -132,6 +135,9 @@ export default function PicksPage() {
     if (!games) return []
     return games.filter((game) => isSameDay(new Date(game.starts_at), selectedDate))
   }, [games, selectedDate])
+
+  const injuryGameIds = useMemo(() => filteredGames.map((g) => g.id), [filteredGames])
+  const { data: injuryCounts } = useInjuryCounts(injuryGameIds)
 
   useEffect(() => {
     userChangedDay.current = false
@@ -344,6 +350,8 @@ export default function PicksPage() {
                   parlayMode={parlayMode}
                   parlayPickedTeam={parlayLegsMap[game.id] || null}
                   onParlayToggle={handleParlayToggle}
+                  hasInjuryData={!!injuryCounts?.[game.id]}
+                  onInjuryClick={() => setInjuryGameId(game.id)}
                 />
               ))}
             </div>
@@ -352,6 +360,8 @@ export default function PicksPage() {
           {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={allGames} propPicks={pendingPropPicks} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />}
         </>
       )}
+
+      <InjuryReportModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
     </div>
   )
 }

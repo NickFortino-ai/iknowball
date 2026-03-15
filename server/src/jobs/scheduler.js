@@ -13,6 +13,7 @@ import { snapshotCrowns } from './snapshotCrowns.js'
 import { snapshotRanks } from './snapshotRanks.js'
 import { recalculateRecords } from './recalculateRecords.js'
 import { settleStuckParlays } from './settleStuckParlays.js'
+import { syncInjuries } from './syncInjuries.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -75,6 +76,13 @@ export function startScheduler() {
       try { await recalculateRecords() } catch (err) { logger.error({ err }, 'Record recalculation job failed') }
     }, { timezone: 'America/New_York' })
     logger.info('Record recalculation scheduled: daily at 4:00 AM EST')
+  }
+
+  if (env.ENABLE_INJURY_SYNC) {
+    cron.schedule('*/30 * * * *', async () => {
+      try { await syncInjuries() } catch (err) { logger.error({ err }, 'Injury sync job failed') }
+    })
+    logger.info('Injury sync scheduled: every 30 minutes')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues

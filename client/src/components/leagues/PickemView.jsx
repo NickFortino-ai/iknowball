@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import TierBadge from '../ui/TierBadge'
 import { getTier } from '../../lib/scoring'
 import EmptyState from '../ui/EmptyState'
 import GameCard from '../picks/GameCard'
+import InjuryReportModal from '../picks/InjuryReportModal'
 import { toast } from '../ui/Toast'
 import {
   useLeagueWeeks,
@@ -14,6 +15,7 @@ import {
   useUserLeaguePicks,
 } from '../../hooks/useLeagues'
 import { useMyPicks } from '../../hooks/usePicks'
+import { useInjuryCounts } from '../../hooks/useInjuries'
 
 function SettledPicksList({ leagueId, userId }) {
   const { data: picks, isLoading } = useUserLeaguePicks(leagueId, userId)
@@ -182,6 +184,10 @@ function LeaguePicksView({ league, standings }) {
   const { data: globalPicks } = useMyPicks()
   const submitPick = useSubmitLeaguePick()
   const deletePick = useDeleteLeaguePick()
+  const [injuryGameId, setInjuryGameId] = useState(null)
+
+  const injuryGameIds = useMemo(() => (games || []).map((g) => g.id), [games])
+  const { data: injuryCounts } = useInjuryCounts(injuryGameIds)
 
   // Build lookup of league picks by game_id
   const picksByGame = {}
@@ -286,6 +292,8 @@ function LeaguePicksView({ league, standings }) {
               onPick={handlePick}
               onUndoPick={handleUndoPick}
               isSubmitting={submitPick.isPending || deletePick.isPending}
+              hasInjuryData={!!injuryCounts?.[game.id]}
+              onInjuryClick={() => setInjuryGameId(game.id)}
             />
           ))}
         </div>
@@ -293,6 +301,8 @@ function LeaguePicksView({ league, standings }) {
 
       {/* Mini leaderboard */}
       <MiniLeaderboard standings={standings} leagueId={league.id} />
+
+      <InjuryReportModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
     </div>
   )
 }

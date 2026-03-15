@@ -77,6 +77,11 @@ async function syncSportLiveScores(sportKey) {
     }
 
     if (match.state === 'in') {
+      // Guard: don't mark a game live if it hasn't reached its start time yet
+      if (new Date(game.starts_at) > new Date()) {
+        logger.warn({ gameId: game.id, startsAt: game.starts_at }, 'ESPN reports in-progress but game has not reached start time, skipping')
+        continue
+      }
       const { error } = await supabase
         .from('games')
         .update({
