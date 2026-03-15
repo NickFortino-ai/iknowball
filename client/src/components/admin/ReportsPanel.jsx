@@ -98,7 +98,15 @@ export default function ReportsPanel() {
                 {report.reported_content && (
                   <div className="border-l-2 border-accent pl-3 mt-2">
                     {report.target_type === 'hot_take' && (
-                      <p className="text-text-primary text-sm">{report.reported_content.content}</p>
+                      <>
+                        <p className="text-text-primary text-sm">{report.reported_content.content}</p>
+                        {report.reported_content.image_url && (
+                          <img src={report.reported_content.image_url} alt="" className="mt-2 max-h-48 rounded-lg" />
+                        )}
+                        {report.reported_content.video_url && (
+                          <video src={report.reported_content.video_url} controls playsInline className="mt-2 max-h-48 rounded-lg" />
+                        )}
+                      </>
                     )}
                     {report.target_type === 'comment' && (
                       <p className="text-text-primary text-sm">{report.reported_content.content}</p>

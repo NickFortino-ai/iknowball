@@ -51,12 +51,23 @@ router.get('/sport', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Unknown sport' })
   }
 
+  // Get blocked user IDs to filter out
+  const { data: blocks } = await supabase
+    .from('blocked_users')
+    .select('blocked_id')
+    .eq('blocker_id', req.user.id)
+  const blockedIds = (blocks || []).map((b) => b.blocked_id)
+
   let query = supabase
     .from('hot_takes')
     .select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at')
     .overlaps('team_tags', teamList)
     .order('created_at', { ascending: false })
     .limit(20)
+
+  if (blockedIds.length > 0) {
+    query = query.not('user_id', 'in', `(${blockedIds.join(',')})`)
+  }
 
   if (before) {
     query = query.lt('created_at', before)
@@ -145,12 +156,23 @@ router.get('/team', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'team query param is required' })
   }
 
+  // Get blocked user IDs to filter out
+  const { data: blocks } = await supabase
+    .from('blocked_users')
+    .select('blocked_id')
+    .eq('blocker_id', req.user.id)
+  const blockedIds = (blocks || []).map((b) => b.blocked_id)
+
   let query = supabase
     .from('hot_takes')
     .select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at')
     .contains('team_tags', [team])
     .order('created_at', { ascending: false })
     .limit(20)
+
+  if (blockedIds.length > 0) {
+    query = query.not('user_id', 'in', `(${blockedIds.join(',')})`)
+  }
 
   if (before) {
     query = query.lt('created_at', before)
