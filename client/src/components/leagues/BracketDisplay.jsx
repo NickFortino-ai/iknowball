@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-function MatchupCard({ matchup, pick, showPick, onTap }) {
+function MatchupCard({ matchup, pick, eliminated, showPick, onTap }) {
   const [showScore, setShowScore] = useState(false)
 
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -23,6 +23,7 @@ function MatchupCard({ matchup, pick, showPick, onTap }) {
     if (showPick && pick === team) {
       if (isTop ? topCorrect : bottomCorrect) return 'text-correct font-semibold'
       if (isTop ? topWrong : bottomWrong) return 'text-incorrect line-through'
+      if (eliminated) return 'text-text-muted line-through'
       return 'text-accent font-semibold'
     }
     if (matchup.status === 'completed') {
@@ -71,7 +72,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
   const pickMap = useMemo(() => {
     const map = {}
     for (const p of picks || []) {
-      map[p.template_matchup_id] = p.picked_team
+      map[p.template_matchup_id] = { team: p.picked_team, eliminated: p.is_eliminated }
     }
     return map
   }, [picks])
@@ -160,7 +161,8 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
                   <MatchupCard
                     key={matchup.id}
                     matchup={matchup}
-                    pick={pickMap[matchup.template_matchup_id]}
+                    pick={pickMap[matchup.template_matchup_id]?.team}
+                    eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
                     showPick={hasPicks}
                     onTap={onMatchupTap}
                   />
@@ -176,6 +178,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
             <span><span className="inline-block w-2 h-2 bg-correct rounded-full mr-1" />Correct</span>
             <span><span className="inline-block w-2 h-2 bg-incorrect rounded-full mr-1" />Wrong</span>
             <span><span className="inline-block w-2 h-2 bg-accent rounded-full mr-1" />Your Pick</span>
+            <span><span className="line-through mr-1">X</span>Eliminated</span>
           </div>
         )}
       </div>
