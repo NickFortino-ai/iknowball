@@ -22,6 +22,11 @@ function DetailVideo({ url }) {
     if (video) video.play().catch(() => {})
   }, [])
 
+  // Sync muted property imperatively (React doesn't reliably update video.muted via JSX)
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = muted
+  }, [muted])
+
   const togglePlayPause = useCallback((e) => {
     e.stopPropagation()
     const video = videoRef.current

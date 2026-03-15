@@ -41,6 +41,11 @@ function FeedVideo({ url }) {
     return () => window.removeEventListener('feed-video-unmuted', handleUnmute)
   }, [])
 
+  // Sync muted property imperatively (React doesn't reliably update video.muted via JSX)
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = muted
+  }, [muted])
+
   // Intersection Observer — autoplay on scroll
   useEffect(() => {
     const video = videoRef.current
