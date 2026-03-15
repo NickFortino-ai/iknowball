@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useHotTakeById } from '../../hooks/useHotTakes'
 import { useAuth } from '../../hooks/useAuth'
@@ -11,6 +11,50 @@ import FeedReactions from './FeedReactions'
 import PickComments from '../social/PickComments'
 import { timeAgo } from '../../lib/time'
 import { extractFirstUrl } from '../../lib/urlUtils'
+
+function DetailVideo({ url }) {
+  const videoRef = useRef(null)
+  const [muted, setMuted] = useState(true)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (video) video.play().catch(() => {})
+  }, [])
+
+  const toggleMute = useCallback((e) => {
+    e.stopPropagation()
+    setMuted((m) => !m)
+  }, [])
+
+  return (
+    <div className="relative mt-2 cursor-pointer" onClick={toggleMute}>
+      <video
+        ref={videoRef}
+        src={url}
+        muted={muted}
+        playsInline
+        loop
+        preload="metadata"
+        className="w-full rounded-lg"
+      />
+      <div className="absolute bottom-2 right-2 bg-black/60 rounded-full p-1.5">
+        {muted ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          </svg>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function HotTakeDetailModal({ hotTakeId, onClose }) {
   const { data: item, isLoading } = useHotTakeById(hotTakeId)
@@ -69,6 +113,7 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
               {hotTake.image_url && (
                 <img src={hotTake.image_url} alt="" className="w-full rounded-lg mt-2" />
               )}
+              {hotTake.video_url && <DetailVideo url={hotTake.video_url} />}
               {extractFirstUrl(hotTake.content) && (
                 <LinkPreview url={extractFirstUrl(hotTake.content)} />
               )}

@@ -2,10 +2,10 @@ import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { createNotification } from './notificationService.js'
 
-export async function createHotTake(userId, content, teamTags, imageUrl, userTags) {
+export async function createHotTake(userId, content, teamTags, imageUrl, userTags, videoUrl) {
   const { data, error } = await supabase
     .from('hot_takes')
-    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null, user_tags: userTags?.length ? userTags : null })
+    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null, user_tags: userTags?.length ? userTags : null, video_url: videoUrl || null })
     .select()
     .single()
 
@@ -116,7 +116,7 @@ export async function askForHotTakes(actorId, targetUserId) {
   return { success: true }
 }
 
-export async function updateHotTake(userId, hotTakeId, content, teamTags, imageUrl, userTags) {
+export async function updateHotTake(userId, hotTakeId, content, teamTags, imageUrl, userTags, videoUrl) {
   const { data: hotTake } = await supabase
     .from('hot_takes')
     .select('id, user_id, user_tags')
@@ -137,7 +137,7 @@ export async function updateHotTake(userId, hotTakeId, content, teamTags, imageU
 
   const { data, error } = await supabase
     .from('hot_takes')
-    .update({ content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null, user_tags: userTags?.length ? userTags : null })
+    .update({ content, team_tags: teamTags?.length ? teamTags : null, image_url: imageUrl || null, user_tags: userTags?.length ? userTags : null, video_url: videoUrl || null })
     .eq('id', hotTakeId)
     .select()
     .single()

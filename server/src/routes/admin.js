@@ -76,7 +76,7 @@ router.get('/reports', async (req, res) => {
   const enriched = await Promise.all((data || []).map(async (report) => {
     let content = null
     if (report.target_type === 'hot_take' && report.target_id) {
-      const { data: ht } = await supabase.from('hot_takes').select('id, content, image_url').eq('id', report.target_id).maybeSingle()
+      const { data: ht } = await supabase.from('hot_takes').select('id, content, image_url, video_url').eq('id', report.target_id).maybeSingle()
       content = ht
     } else if (report.target_type === 'comment' && report.target_id) {
       const { data: c } = await supabase.from('comments').select('id, content').eq('id', report.target_id).maybeSingle()

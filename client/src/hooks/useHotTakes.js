@@ -8,8 +8,8 @@ export function useCreateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ content, team_tags, image_url, user_tags }) =>
-      api.post('/hot-takes', { content, team_tags, image_url, user_tags }),
+    mutationFn: ({ content, team_tags, image_url, video_url, user_tags }) =>
+      api.post('/hot-takes', { content, team_tags, image_url, video_url, user_tags }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },
@@ -53,8 +53,8 @@ export function useUpdateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, content, team_tags, image_url, user_tags }) =>
-      api.patch(`/hot-takes/${id}`, { content, team_tags, image_url, user_tags }),
+    mutationFn: ({ id, content, team_tags, image_url, video_url, user_tags }) =>
+      api.patch(`/hot-takes/${id}`, { content, team_tags, image_url, video_url, user_tags }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },
@@ -235,4 +235,64 @@ export function useHotTakeImageUpload() {
   }
 
   return { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage: !!imageFile }
+}
+
+export function useHotTakeVideoUpload() {
+  const [uploading, setUploading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [videoFile, setVideoFile] = useState(null)
+
+  function selectVideo(file) {
+    if (!file) return
+
+    const validTypes = ['video/mp4', 'video/webm']
+    if (!validTypes.includes(file.type)) {
+      toast('Please convert your video to MP4 before uploading. Most video converter apps on iPhone can do this in seconds.', 'error')
+      return
+    }
+    if (file.size > 100 * 1024 * 1024) {
+      toast('Video must be under 100MB', 'error')
+      return
+    }
+
+    setVideoFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  function removeVideo() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setVideoFile(null)
+    setPreviewUrl(null)
+  }
+
+  async function uploadVideo() {
+    if (!videoFile) return null
+    setUploading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+      if (!userId) throw new Error('Not authenticated')
+
+      const ext = videoFile.type === 'video/webm' ? 'webm' : 'mp4'
+      const fileName = `${userId}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('hot-take-videos')
+        .upload(fileName, videoFile, { contentType: videoFile.type })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('hot-take-videos')
+        .getPublicUrl(fileName)
+
+      return publicUrl
+    } catch (err) {
+      toast(err.message || 'Failed to upload video', 'error')
+      return null
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return { uploading, previewUrl, selectVideo, removeVideo, uploadVideo, hasVideo: !!videoFile }
 }

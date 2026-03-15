@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCreateHotTake, useHotTakeImageUpload, useTeamsForSport } from '../../hooks/useHotTakes'
+import { useCreateHotTake, useHotTakeImageUpload, useHotTakeVideoUpload, useTeamsForSport } from '../../hooks/useHotTakes'
 import { useActiveSports } from '../../hooks/useGames'
 import { useSearchUsers } from '../../hooks/useInvitations'
 import { useProfile } from '../../hooks/useProfile'
@@ -35,6 +35,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   const queryClient = useQueryClient()
   const { data: profile } = useProfile()
   const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
+  const { uploading: videoUploading, previewUrl: videoPreviewUrl, selectVideo, removeVideo, uploadVideo, hasVideo } = useHotTakeVideoUpload()
   const fileInputRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -142,7 +143,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   }
 
   const charCount = content.length
-  const canPost = charCount > 0 && charCount <= MAX_CHARS && !createHotTake.isPending && !uploading
+  const canPost = charCount > 0 && charCount <= MAX_CHARS && !createHotTake.isPending && !uploading && !videoUploading
 
   async function handlePost() {
     if (!canPost) return
@@ -153,8 +154,14 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
       if (!imageUrl && hasImage) return // upload failed
     }
 
+    let videoUrl = undefined
+    if (hasVideo) {
+      videoUrl = await uploadVideo()
+      if (!videoUrl && hasVideo) return // upload failed
+    }
+
     createHotTake.mutate(
-      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, image_url: imageUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
+      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, image_url: imageUrl, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
       {
         onSuccess: () => {
           setContent('')
@@ -165,6 +172,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
           setTeamSearch('')
           setExpanded(false)
           removeImage()
+          removeVideo()
           queryClient.invalidateQueries({ queryKey: ['hotTakes', 'team'] })
           queryClient.invalidateQueries({ queryKey: ['hotTakes', 'sport'] })
         },
@@ -188,11 +196,19 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     setSelectedSport(null)
     setTeamSearch('')
     removeImage()
+    removeVideo()
   }
 
   function handleFileChange(e) {
     const file = e.target.files?.[0]
-    if (file) selectImage(file)
+    if (!file) { e.target.value = ''; return }
+    if (file.type.startsWith('video/')) {
+      removeImage()
+      selectVideo(file)
+    } else {
+      removeVideo()
+      selectImage(file)
+    }
     e.target.value = ''
   }
 
@@ -295,6 +311,23 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
             </div>
           )}
 
+          {/* Video preview */}
+          {videoPreviewUrl && (
+            <div className="relative mt-2 inline-block">
+              <video
+                src={videoPreviewUrl}
+                controls
+                className="max-h-48 rounded-lg"
+              />
+              <button
+                onClick={removeVideo}
+                className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/90 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {expanded && (
             <>
               {/* Sport chips row */}
@@ -383,7 +416,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className="text-text-muted hover:text-text-secondary transition-colors p-1"
-                    title="Add image"
+                    title="Upload image/video"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -395,7 +428,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
+                    accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
                     onChange={handleFileChange}
                     className="hidden"
                   />
@@ -420,7 +453,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                       disabled={!canPost}
                       className="bg-accent text-white text-xs font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 transition-opacity"
                     >
-                      {createHotTake.isPending || uploading ? 'Posting...' : 'Post'}
+                      {createHotTake.isPending || uploading || videoUploading ? 'Posting...' : 'Post'}
                     </button>
                   )}
                 </div>

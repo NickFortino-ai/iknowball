@@ -474,10 +474,10 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     // Source 9: Hot takes
     applyBefore(
       isHotTakes
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, created_at')
+        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at')
         : isUserHotTakes && targetUserId
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, created_at').eq('user_id', targetUserId)
-        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, created_at'), 'user_id', allIds),
+        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at').eq('user_id', targetUserId)
+        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at'), 'user_id', allIds),
       'created_at')
       .order('created_at', { ascending: false })
       .limit((isHotTakes || isUserHotTakes) ? 30 : 15),
@@ -934,6 +934,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         team_tags: take.team_tags,
         user_tags: take.user_tags,
         image_url: take.image_url,
+        video_url: take.video_url,
       },
     })
   }
@@ -1391,7 +1392,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         score = 200
         break
       case 'hot_take':
-        score = item.hot_take?.image_url ? 100 : 80
+        score = item.hot_take?.image_url || item.hot_take?.video_url ? 100 : 80
         // Viral hot takes (5+ reminds) get a significant boost
         if (item.viral) score += 40
         break

@@ -14,6 +14,7 @@ import { snapshotRanks } from './snapshotRanks.js'
 import { recalculateRecords } from './recalculateRecords.js'
 import { settleStuckParlays } from './settleStuckParlays.js'
 import { syncInjuries } from './syncInjuries.js'
+import { cleanupExpiredVideos } from './cleanupExpiredVideos.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -76,6 +77,12 @@ export function startScheduler() {
       try { await recalculateRecords() } catch (err) { logger.error({ err }, 'Record recalculation job failed') }
     }, { timezone: 'America/New_York' })
     logger.info('Record recalculation scheduled: daily at 4:00 AM EST')
+
+    // Cleanup expired hot take videos daily at 4:15 AM EST
+    cron.schedule('15 4 * * *', async () => {
+      try { await cleanupExpiredVideos() } catch (err) { logger.error({ err }, 'Video cleanup job failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('Video cleanup scheduled: daily at 4:15 AM EST')
   }
 
   if (env.ENABLE_INJURY_SYNC) {

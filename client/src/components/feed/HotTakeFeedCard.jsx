@@ -1,10 +1,10 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import FeedCardWrapper from './FeedCardWrapper'
 import ImageLightbox from './ImageLightbox'
 import TeamAutocomplete from './TeamAutocomplete'
 import Avatar from '../ui/Avatar'
-import { useUpdateHotTake, useHotTakeImageUpload, useTeamsForSport, useToggleBookmark, useRemindHotTake } from '../../hooks/useHotTakes'
+import { useUpdateHotTake, useHotTakeImageUpload, useHotTakeVideoUpload, useTeamsForSport, useToggleBookmark, useRemindHotTake } from '../../hooks/useHotTakes'
 import { useSearchUsers } from '../../hooks/useInvitations'
 import { useActiveSports } from '../../hooks/useGames'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,6 +12,65 @@ import { toast } from '../ui/Toast'
 import RichContent from './RichContent'
 import LinkPreview from './LinkPreview'
 import { extractFirstUrl } from '../../lib/urlUtils'
+
+function FeedVideo({ url }) {
+  const videoRef = useRef(null)
+  const containerRef = useRef(null)
+  const [muted, setMuted] = useState(true)
+
+  useEffect(() => {
+    const video = videoRef.current
+    const container = containerRef.current
+    if (!video || !container) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch(() => {})
+        } else {
+          video.pause()
+        }
+      },
+      { threshold: 0.5 }
+    )
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+
+  const toggleMute = useCallback((e) => {
+    e.stopPropagation()
+    setMuted((m) => !m)
+  }, [])
+
+  return (
+    <div ref={containerRef} className="relative mt-2 cursor-pointer" onClick={toggleMute}>
+      <video
+        ref={videoRef}
+        src={url}
+        muted={muted}
+        playsInline
+        loop
+        preload="metadata"
+        className="w-full rounded-lg"
+      />
+      <div className="absolute bottom-2 right-2 bg-black/60 rounded-full p-1.5">
+        {muted ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          </svg>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const MAX_CHARS = 280
 
@@ -44,8 +103,10 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   const [editUserTags, setEditUserTags] = useState([])
   const [editMentionQuery, setEditMentionQuery] = useState('')
   const [existingImageUrl, setExistingImageUrl] = useState(null)
+  const [existingVideoUrl, setExistingVideoUrl] = useState(null)
   const updateHotTake = useUpdateHotTake()
   const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
+  const { uploading: videoUploading, previewUrl: videoPreviewUrl, selectVideo, removeVideo, uploadVideo, hasVideo } = useHotTakeVideoUpload()
   const fileInputRef = useRef(null)
   const editTextareaRef = useRef(null)
 
@@ -71,6 +132,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setEditSport(null)
     setEditTeamSearch('')
     setExistingImageUrl(hot_take.image_url || null)
+    setExistingVideoUrl(hot_take.video_url || null)
     setEditing(true)
   }
 
@@ -83,7 +145,9 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setEditSport(null)
     setEditTeamSearch('')
     setExistingImageUrl(null)
+    setExistingVideoUrl(null)
     removeImage()
+    removeVideo()
   }
 
   async function handleSave() {
@@ -96,8 +160,14 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
       if (!imageUrl && hasImage) return // upload failed
     }
 
+    let videoUrl = existingVideoUrl
+    if (hasVideo) {
+      videoUrl = await uploadVideo()
+      if (!videoUrl && hasVideo) return // upload failed
+    }
+
     updateHotTake.mutate(
-      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined, user_tags: editUserTags.length ? editUserTags.map((u) => u.id) : undefined },
+      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined, video_url: videoUrl || undefined, user_tags: editUserTags.length ? editUserTags.map((u) => u.id) : undefined },
       {
         onSuccess: () => {
           cancelEditing()
@@ -118,9 +188,22 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     removeImage()
   }
 
+  function handleRemoveVideo() {
+    setExistingVideoUrl(null)
+    removeVideo()
+  }
+
   function handleFileChange(e) {
     const file = e.target.files?.[0]
-    if (file) {
+    if (!file) { e.target.value = ''; return }
+    if (file.type.startsWith('video/')) {
+      setExistingImageUrl(null)
+      removeImage()
+      setExistingVideoUrl(null)
+      selectVideo(file)
+    } else {
+      setExistingVideoUrl(null)
+      removeVideo()
       setExistingImageUrl(null)
       selectImage(file)
     }
@@ -185,8 +268,9 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   }
 
   const charCount = editContent.length
-  const canSave = charCount > 0 && charCount <= MAX_CHARS && !updateHotTake.isPending && !uploading
+  const canSave = charCount > 0 && charCount <= MAX_CHARS && !updateHotTake.isPending && !uploading && !videoUploading
   const currentPreview = previewUrl || existingImageUrl
+  const currentVideoPreview = videoPreviewUrl || existingVideoUrl
 
   return (
     <FeedCardWrapper
@@ -247,6 +331,23 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               />
               <button
                 onClick={handleRemoveImage}
+                className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/90 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {/* Video preview */}
+          {currentVideoPreview && (
+            <div className="relative inline-block">
+              <video
+                src={currentVideoPreview}
+                controls
+                className="max-h-48 rounded-lg"
+              />
+              <button
+                onClick={handleRemoveVideo}
                 className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/90 transition-colors"
               >
                 ×
@@ -339,7 +440,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="text-text-muted hover:text-text-secondary transition-colors p-1"
-                title="Add image"
+                title="Upload image/video"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -350,7 +451,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -374,7 +475,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                 disabled={!canSave}
                 className="bg-accent text-white text-xs font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 transition-opacity"
               >
-                {updateHotTake.isPending || uploading ? 'Saving...' : 'Save'}
+                {updateHotTake.isPending || uploading || videoUploading ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -406,6 +507,9 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               />
             </button>
           )}
+
+          {/* Video */}
+          {hot_take.video_url && <FeedVideo url={hot_take.video_url} />}
 
           {/* Link preview */}
           {extractFirstUrl(hot_take.content) && (
