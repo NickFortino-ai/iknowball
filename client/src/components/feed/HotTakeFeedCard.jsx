@@ -34,11 +34,16 @@ function FeedVideo({ url }) {
     }
   }, [])
 
-  // Listen for unmute events from other feed videos
+  // Listen for mute/unmute events from other feed videos
   useEffect(() => {
     function handleUnmute() { setMuted(false) }
+    function handleMute() { setMuted(true) }
     window.addEventListener('feed-video-unmuted', handleUnmute)
-    return () => window.removeEventListener('feed-video-unmuted', handleUnmute)
+    window.addEventListener('feed-video-muted', handleMute)
+    return () => {
+      window.removeEventListener('feed-video-unmuted', handleUnmute)
+      window.removeEventListener('feed-video-muted', handleMute)
+    }
   }, [])
 
   // Sync muted property imperatively (React doesn't reliably update video.muted via JSX)
@@ -89,10 +94,8 @@ function FeedVideo({ url }) {
     e.stopPropagation()
     setMuted((m) => {
       const newMuted = !m
-      if (!newMuted) {
-        feedUnmuted = true
-        window.dispatchEvent(new Event('feed-video-unmuted'))
-      }
+      feedUnmuted = !newMuted
+      window.dispatchEvent(new Event(newMuted ? 'feed-video-muted' : 'feed-video-unmuted'))
       return newMuted
     })
   }, [])
