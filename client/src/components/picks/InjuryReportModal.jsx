@@ -45,10 +45,9 @@ function TeamSection({ teamName, starters, injuries }) {
       if (status === 'Out' || status === 'Doubtful') continue
       return { position: s.position, name: player.name, shortName: player.shortName, status: status || null }
     }
-    // All players at this position are out — show last resort
-    const last = depth[depth.length - 1]
-    return { position: s.position, name: last.name, shortName: last.shortName, status: null }
-  })
+    // All available players at this position are out
+    return null
+  }).filter(Boolean)
   const hasStarters = todayStarters.length > 0
 
   return (
