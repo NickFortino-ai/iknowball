@@ -89,6 +89,12 @@ export function useSyncOdds() {
   })
 }
 
+export function useSyncInjuries() {
+  return useMutation({
+    mutationFn: () => api.post('/admin/sync-injuries'),
+  })
+}
+
 export function useScoreGames() {
   return useMutation({
     mutationFn: () => api.post('/admin/score-games'),

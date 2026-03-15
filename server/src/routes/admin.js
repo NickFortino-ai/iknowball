@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { syncOdds } from '../jobs/syncOdds.js'
+import { syncInjuries } from '../jobs/syncInjuries.js'
 import { scoreGames } from '../jobs/scoreGames.js'
 import { recalculateAllUserPoints } from '../services/scoringService.js'
 import { sendEmailBlast, sendTargetedEmail, sendTemplateBracketEmail } from '../services/emailService.js'
@@ -121,6 +122,11 @@ router.patch('/reports/:id', async (req, res) => {
 router.post('/sync-odds', async (req, res) => {
   const results = await syncOdds({ force: true })
   res.json({ message: 'Odds sync complete', results })
+})
+
+router.post('/sync-injuries', async (req, res) => {
+  const result = await syncInjuries()
+  res.json({ message: 'Injury sync complete', ...result })
 })
 
 router.post('/score-games', async (req, res) => {

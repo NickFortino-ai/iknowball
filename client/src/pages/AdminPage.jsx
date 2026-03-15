@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -42,6 +42,7 @@ export default function AdminPage() {
   const settleProps = useSettleProps()
 
   const syncOdds = useSyncOdds()
+  const syncInjuries = useSyncInjuries()
   const scoreGames = useScoreGames()
   const recalculatePoints = useRecalculatePoints()
   const recalculateRecords = useRecalculateRecords()
@@ -73,6 +74,15 @@ export default function AdminPage() {
       toast(msg, errors.length > 0 ? 'info' : 'success')
     } catch (err) {
       toast(err.message || 'Sync failed', 'error')
+    }
+  }
+
+  async function handleSyncInjuries() {
+    try {
+      const data = await syncInjuries.mutateAsync()
+      toast(data.message || 'Injury sync complete', 'success')
+    } catch (err) {
+      toast(err.message || 'Injury sync failed', 'error')
     }
   }
 
@@ -606,6 +616,13 @@ export default function AdminPage() {
             className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {syncOdds.isPending ? 'Syncing...' : 'Sync Odds'}
+          </button>
+          <button
+            onClick={handleSyncInjuries}
+            disabled={syncInjuries.isPending}
+            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {syncInjuries.isPending ? 'Syncing...' : 'Sync Injuries'}
           </button>
           <button
             onClick={handleScoreGames}
