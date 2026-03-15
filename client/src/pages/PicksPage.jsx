@@ -4,7 +4,6 @@ import { useMyPicks, useSubmitPick, useDeletePick, useUpdatePickMultiplier } fro
 import { useSharePickToSquad } from '../hooks/useConnections'
 import { useMyParlays, useDeleteParlay } from '../hooks/useParlays'
 import { useMyPropPicks } from '../hooks/useProps'
-import { useInjuryCounts } from '../hooks/useInjuries'
 import { usePickStore } from '../stores/pickStore'
 import GameCard from '../components/picks/GameCard'
 import BottomBar from '../components/picks/BottomBar'
@@ -31,6 +30,8 @@ const sportTabs = [
   { label: 'WNBA', key: 'basketball_wnba' },
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
+
+const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl'])
 
 function getDateOffset(offset) {
   const d = new Date()
@@ -135,9 +136,6 @@ export default function PicksPage() {
     if (!games) return []
     return games.filter((game) => isSameDay(new Date(game.starts_at), selectedDate))
   }, [games, selectedDate])
-
-  const injuryGameIds = useMemo(() => filteredGames.map((g) => g.id), [filteredGames])
-  const { data: injuryCounts } = useInjuryCounts(injuryGameIds)
 
   useEffect(() => {
     userChangedDay.current = false
@@ -350,7 +348,7 @@ export default function PicksPage() {
                   parlayMode={parlayMode}
                   parlayPickedTeam={parlayLegsMap[game.id] || null}
                   onParlayToggle={handleParlayToggle}
-                  hasInjuryData={!!injuryCounts?.[game.id]}
+                  hasInjuryData={INTEL_SPORTS.has(sportKey)}
                   onInjuryClick={() => setInjuryGameId(game.id)}
                 />
               ))}

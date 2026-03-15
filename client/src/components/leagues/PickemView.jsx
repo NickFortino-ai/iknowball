@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import TierBadge from '../ui/TierBadge'
 import { getTier } from '../../lib/scoring'
@@ -15,7 +15,8 @@ import {
   useUserLeaguePicks,
 } from '../../hooks/useLeagues'
 import { useMyPicks } from '../../hooks/usePicks'
-import { useInjuryCounts } from '../../hooks/useInjuries'
+
+const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl'])
 
 function SettledPicksList({ leagueId, userId }) {
   const { data: picks, isLoading } = useUserLeaguePicks(leagueId, userId)
@@ -186,9 +187,6 @@ function LeaguePicksView({ league, standings }) {
   const deletePick = useDeleteLeaguePick()
   const [injuryGameId, setInjuryGameId] = useState(null)
 
-  const injuryGameIds = useMemo(() => (games || []).map((g) => g.id), [games])
-  const { data: injuryCounts } = useInjuryCounts(injuryGameIds)
-
   // Build lookup of league picks by game_id
   const picksByGame = {}
   for (const pick of leaguePicks || []) {
@@ -292,7 +290,7 @@ function LeaguePicksView({ league, standings }) {
               onPick={handlePick}
               onUndoPick={handleUndoPick}
               isSubmitting={submitPick.isPending || deletePick.isPending}
-              hasInjuryData={!!injuryCounts?.[game.id]}
+              hasInjuryData={INTEL_SPORTS.has(game.sports?.key)}
               onInjuryClick={() => setInjuryGameId(game.id)}
             />
           ))}

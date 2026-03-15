@@ -49,9 +49,9 @@ function TeamSection({ teamName, starters, injuries }) {
         </div>
       )}
 
-      {hasInjuries && (
-        <div>
-          <div className="text-xs text-text-muted uppercase tracking-wider mb-2">May Not Play</div>
+      <div>
+        <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Injuries</div>
+        {hasInjuries ? (
           <div className="space-y-1.5">
             {injuries.map((inj) => (
               <div
@@ -71,12 +71,10 @@ function TeamSection({ teamName, starters, injuries }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {!hasStarters && !hasInjuries && (
-        <p className="text-sm text-text-muted">No data available</p>
-      )}
+        ) : (
+          <p className="text-sm text-correct">No injuries reported</p>
+        )}
+      </div>
     </div>
   )
 }
