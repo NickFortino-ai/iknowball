@@ -40,6 +40,17 @@ function DetailVideo({ url }) {
     setMuted((m) => !m)
   }, [])
 
+  const expandVideo = useCallback((e) => {
+    e.stopPropagation()
+    const video = videoRef.current
+    if (!video) return
+    if (video.requestFullscreen) {
+      video.requestFullscreen()
+    } else if (video.webkitEnterFullscreen) {
+      video.webkitEnterFullscreen()
+    }
+  }, [])
+
   return (
     <div className="relative mt-2 cursor-pointer" onClick={togglePlayPause}>
       <video
@@ -60,7 +71,7 @@ function DetailVideo({ url }) {
           </div>
         </div>
       )}
-      <div className="absolute bottom-2 right-2 bg-black/60 rounded-full p-1.5" onClick={toggleMute}>
+      <div className="absolute bottom-2 left-2 bg-black/60 rounded-full p-1.5" onClick={toggleMute}>
         {muted ? (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
@@ -74,6 +85,14 @@ function DetailVideo({ url }) {
             <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
           </svg>
         )}
+      </div>
+      <div className="absolute bottom-2 right-2 bg-black/60 rounded-full p-1.5" onClick={expandVideo}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 3 21 3 21 9" />
+          <polyline points="9 21 3 21 3 15" />
+          <line x1="21" y1="3" x2="14" y2="10" />
+          <line x1="3" y1="21" x2="10" y2="14" />
+        </svg>
       </div>
     </div>
   )
