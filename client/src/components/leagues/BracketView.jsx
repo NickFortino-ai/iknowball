@@ -144,9 +144,11 @@ export default function BracketView({ league }) {
       )}
 
       {isLocked && !hasSubmitted && (
-        <div className="bg-incorrect/10 border border-incorrect/30 rounded-xl p-4 mb-4 text-center">
-          <div className="text-sm text-incorrect font-semibold">You did not submit a bracket</div>
-          <div className="text-xs text-text-muted mt-1">The bracket is now locked</div>
+        <div className="bg-bg-card border border-border rounded-xl p-5 mb-4 text-center">
+          <div className="text-sm text-text-primary font-semibold mb-2">Bracket not submitted in time</div>
+          <div className="text-xs text-text-muted leading-relaxed">
+            You didn't get your bracket in before this tournament locked. But don't worry — I KNOW BALL has plenty of ways to compete and showcase your sports prediction powers!
+          </div>
         </div>
       )}
 
