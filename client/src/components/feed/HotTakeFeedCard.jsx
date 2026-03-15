@@ -13,11 +13,35 @@ import RichContent from './RichContent'
 import LinkPreview from './LinkPreview'
 import { extractFirstUrl } from '../../lib/urlUtils'
 
+// Module-level feed mute preference — resets when all FeedVideo instances unmount (navigation away)
+let feedUnmuted = false
+let mountedVideoCount = 0
+
 function FeedVideo({ url }) {
   const videoRef = useRef(null)
   const containerRef = useRef(null)
-  const [muted, setMuted] = useState(true)
+  const userPausedRef = useRef(false)
+  const [muted, setMuted] = useState(!feedUnmuted)
+  const [showPlayIcon, setShowPlayIcon] = useState(false)
 
+  // Track mount count to reset feedUnmuted on navigation away
+  useEffect(() => {
+    mountedVideoCount++
+    if (feedUnmuted) setMuted(false)
+    return () => {
+      mountedVideoCount--
+      if (mountedVideoCount === 0) feedUnmuted = false
+    }
+  }, [])
+
+  // Listen for unmute events from other feed videos
+  useEffect(() => {
+    function handleUnmute() { setMuted(false) }
+    window.addEventListener('feed-video-unmuted', handleUnmute)
+    return () => window.removeEventListener('feed-video-unmuted', handleUnmute)
+  }, [])
+
+  // Intersection Observer — autoplay on scroll
   useEffect(() => {
     const video = videoRef.current
     const container = containerRef.current
@@ -26,9 +50,13 @@ function FeedVideo({ url }) {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          video.play().catch(() => {})
+          if (!userPausedRef.current) {
+            video.play().catch(() => {})
+          }
         } else {
           video.pause()
+          userPausedRef.current = false
+          setShowPlayIcon(false)
         }
       },
       { threshold: 0.5 }
@@ -37,13 +65,35 @@ function FeedVideo({ url }) {
     return () => observer.disconnect()
   }, [])
 
+  const togglePlayPause = useCallback((e) => {
+    e.stopPropagation()
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) {
+      video.play().catch(() => {})
+      userPausedRef.current = false
+      setShowPlayIcon(false)
+    } else {
+      video.pause()
+      userPausedRef.current = true
+      setShowPlayIcon(true)
+    }
+  }, [])
+
   const toggleMute = useCallback((e) => {
     e.stopPropagation()
-    setMuted((m) => !m)
+    setMuted((m) => {
+      const newMuted = !m
+      if (!newMuted) {
+        feedUnmuted = true
+        window.dispatchEvent(new Event('feed-video-unmuted'))
+      }
+      return newMuted
+    })
   }, [])
 
   return (
-    <div ref={containerRef} className="relative mt-2 cursor-pointer" onClick={toggleMute}>
+    <div ref={containerRef} className="relative mt-2 cursor-pointer" onClick={togglePlayPause}>
       <video
         ref={videoRef}
         src={url}
@@ -53,7 +103,16 @@ function FeedVideo({ url }) {
         preload="metadata"
         className="w-full rounded-lg"
       />
-      <div className="absolute bottom-2 right-2 bg-black/60 rounded-full p-1.5">
+      {showPlayIcon && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/50 rounded-full p-3">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          </div>
+        </div>
+      )}
+      <div className="absolute bottom-2 right-2 bg-black/60 rounded-full p-1.5" onClick={toggleMute}>
         {muted ? (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />

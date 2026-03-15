@@ -15,10 +15,24 @@ import { extractFirstUrl } from '../../lib/urlUtils'
 function DetailVideo({ url }) {
   const videoRef = useRef(null)
   const [muted, setMuted] = useState(true)
+  const [paused, setPaused] = useState(false)
 
   useEffect(() => {
     const video = videoRef.current
     if (video) video.play().catch(() => {})
+  }, [])
+
+  const togglePlayPause = useCallback((e) => {
+    e.stopPropagation()
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) {
+      video.play().catch(() => {})
+      setPaused(false)
+    } else {
+      video.pause()
+      setPaused(true)
+    }
   }, [])
 
   const toggleMute = useCallback((e) => {
@@ -27,7 +41,7 @@ function DetailVideo({ url }) {
   }, [])
 
   return (
-    <div className="relative mt-2 cursor-pointer" onClick={toggleMute}>
+    <div className="relative mt-2 cursor-pointer" onClick={togglePlayPause}>
       <video
         ref={videoRef}
         src={url}
@@ -37,7 +51,16 @@ function DetailVideo({ url }) {
         preload="metadata"
         className="w-full rounded-lg"
       />
-      <div className="absolute bottom-2 right-2 bg-black/60 rounded-full p-1.5">
+      {paused && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/50 rounded-full p-3">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          </div>
+        </div>
+      )}
+      <div className="absolute bottom-2 right-2 bg-black/60 rounded-full p-1.5" onClick={toggleMute}>
         {muted ? (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
