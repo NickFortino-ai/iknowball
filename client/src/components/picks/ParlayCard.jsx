@@ -1,8 +1,71 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatOdds } from '../../lib/scoring'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
+
+function formatGameTime(dateStr) {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+    ' at ' +
+    d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+function LegModal({ game, onClose }) {
+  useEffect(() => {
+    lockScroll()
+    return () => unlockScroll()
+  }, [])
+
+  if (!game) return null
+
+  const isLive = game.status === 'live' && game.live_home_score != null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div
+        className="relative bg-bg-card border border-border w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-xl leading-none"
+        >
+          &times;
+        </button>
+
+        {isLive ? (
+          <div className="text-center space-y-4">
+            <div className="text-xs text-correct font-semibold uppercase tracking-wider">Live</div>
+            <div className="flex items-center justify-center gap-6">
+              <div className="text-center">
+                <div className="text-sm text-text-secondary mb-1">{game.away_team}</div>
+                <div className="text-3xl font-display">{game.live_away_score}</div>
+              </div>
+              <div className="text-text-muted text-sm">@</div>
+              <div className="text-center">
+                <div className="text-sm text-text-secondary mb-1">{game.home_team}</div>
+                <div className="text-3xl font-display">{game.live_home_score}</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center space-y-2 py-2">
+            <div className="text-sm text-text-secondary">
+              {game.away_team} @ {game.home_team}
+            </div>
+            <div className="text-text-primary">
+              This game starts {formatGameTime(game.starts_at)}. Good luck!
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function ParlayCard({ parlay, onDelete }) {
   const [expanded, setExpanded] = useState(false)
+  const [selectedGame, setSelectedGame] = useState(null)
 
   const isWon = parlay.is_correct === true
   const isLost = parlay.is_correct === false
@@ -56,9 +119,14 @@ export default function ParlayCard({ parlay, onDelete }) {
             const legWon = leg.status === 'won'
             const legLost = leg.status === 'lost'
             const legPush = leg.status === 'push'
+            const isFinal = leg.games?.status === 'final'
 
             return (
-              <div key={leg.id} className="flex items-center justify-between bg-bg-secondary rounded-lg px-3 py-2 text-sm">
+              <button
+                key={leg.id}
+                onClick={!isFinal ? () => setSelectedGame(leg.games) : undefined}
+                className={`w-full flex items-center justify-between bg-bg-secondary rounded-lg px-3 py-2 text-sm text-left${!isFinal ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
+              >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-text-muted text-xs uppercase">
                     {leg.games?.sports?.name || ''}
@@ -71,7 +139,7 @@ export default function ParlayCard({ parlay, onDelete }) {
                 <span className={`text-xs font-bold ${legWon ? 'text-correct' : legLost ? 'text-incorrect' : legPush ? 'text-text-muted' : ''}`}>
                   {legWon ? 'W' : legLost ? 'L' : legPush ? 'P' : ''}
                 </span>
-              </div>
+              </button>
             )
           })}
           <div className="text-center text-xs text-text-muted pt-1">
@@ -86,6 +154,10 @@ export default function ParlayCard({ parlay, onDelete }) {
             </button>
           )}
         </div>
+      )}
+
+      {selectedGame && (
+        <LegModal game={selectedGame} onClose={() => setSelectedGame(null)} />
       )}
     </div>
   )
