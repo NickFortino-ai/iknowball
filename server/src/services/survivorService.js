@@ -7,7 +7,7 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
   // Check if league is completed
   const { data: league } = await supabase
     .from('leagues')
-    .select('status')
+    .select('status, sport')
     .eq('id', leagueId)
     .single()
 
@@ -85,9 +85,45 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
 
   const usedTeams = (usedPicks || []).map((p) => p.team_name)
   if (usedTeams.includes(teamName)) {
-    const err = new Error(`You have already used ${teamName} in this league`)
-    err.status = 400
-    throw err
+    // Check if ALL available teams for this period are used (pool expansion)
+    let poolExpanded = false
+    const { data: weekBounds } = await supabase
+      .from('league_weeks')
+      .select('starts_at, ends_at')
+      .eq('id', resolvedWeekId)
+      .single()
+
+    if (weekBounds) {
+      let periodGamesQuery = supabase
+        .from('games')
+        .select('home_team, away_team')
+        .gte('starts_at', weekBounds.starts_at)
+        .lt('starts_at', weekBounds.ends_at)
+
+      if (league.sport !== 'all') {
+        const { data: sport } = await supabase
+          .from('sports')
+          .select('id')
+          .eq('key', league.sport)
+          .single()
+        if (sport) periodGamesQuery = periodGamesQuery.eq('sport_id', sport.id)
+      }
+
+      const { data: periodGames } = await periodGamesQuery
+      const availableTeams = new Set()
+      for (const g of periodGames || []) {
+        availableTeams.add(g.home_team)
+        availableTeams.add(g.away_team)
+      }
+      poolExpanded = availableTeams.size > 0 && [...availableTeams].every((t) => usedTeams.includes(t))
+    }
+
+    if (!poolExpanded) {
+      const err = new Error(`You have already used ${teamName} in this league`)
+      err.status = 400
+      throw err
+    }
+    logger.info({ leagueId, userId, teamName }, 'Pool expanded — allowing re-pick of used team')
   }
 
   // Upsert pick for the resolved week (based on game date, not client-supplied week)
@@ -468,7 +504,7 @@ export async function autoEliminateMissedPicks() {
       // Count games in this period, filtered by sport if not 'all'
       let gamesQuery = supabase
         .from('games')
-        .select('id, status')
+        .select('id, status, home_team, away_team')
         .gte('starts_at', week.starts_at)
         .lt('starts_at', week.ends_at)
 
@@ -526,7 +562,35 @@ export async function autoEliminateMissedPicks() {
       // Find alive members with no pick for this week
       const missedMembers = aliveMembers.filter((m) => !pickedUserIds.has(m.user_id))
 
+      // Collect all team names available in this period
+      const periodTeamNames = new Set()
+      for (const g of games) {
+        periodTeamNames.add(g.home_team)
+        periodTeamNames.add(g.away_team)
+      }
+
+      // Filter out members who had no available teams (pool exhaustion — not their fault)
+      const membersToEliminate = []
       for (const member of missedMembers) {
+        const { data: memberUsedPicks } = await supabase
+          .from('survivor_picks')
+          .select('team_name')
+          .eq('league_id', league.id)
+          .eq('user_id', member.user_id)
+          .in('status', ['locked', 'survived', 'eliminated'])
+
+        const memberUsedTeams = new Set((memberUsedPicks || []).map((p) => p.team_name))
+        const hadAvailableTeam = [...periodTeamNames].some((t) => !memberUsedTeams.has(t))
+
+        if (hadAvailableTeam) {
+          membersToEliminate.push(member)
+        } else {
+          logger.info({ leagueId: league.id, userId: member.user_id, week: week.week_number },
+            'Skipping missed-pick elimination — all available teams were used (pool expanded)')
+        }
+      }
+
+      for (const member of membersToEliminate) {
         const newLives = (member.lives_remaining || 1) - 1
 
         if (newLives <= 0) {

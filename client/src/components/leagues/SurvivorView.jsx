@@ -47,6 +47,14 @@ export default function SurvivorView({ league }) {
     return games
   }, [games, pickWeek, board?.user_has_picked])
 
+  // Detect when user has used every available team in current period (pool expansion)
+  const poolExpanded = useMemo(() => {
+    if (!pickWeekGames?.length || !usedTeamSet.size) return false
+    return pickWeekGames.every(
+      (g) => usedTeamSet.has(g.home_team) && usedTeamSet.has(g.away_team)
+    )
+  }, [pickWeekGames, usedTeamSet])
+
   async function handlePick(gameId, pickedTeam) {
     if (!pickWeek) return
     try {
@@ -150,6 +158,14 @@ export default function SurvivorView({ league }) {
 
         return (
           <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+            {poolExpanded && (
+              <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3 text-center">
+                <div className="text-xs text-text-secondary font-semibold mb-0.5">Pool Expanded</div>
+                <div className="text-[11px] text-text-muted leading-snug">
+                  You've used every available team — all teams are back in play!
+                </div>
+              </div>
+            )}
             <h3 className="font-display text-sm text-text-secondary mb-3">Pick a Team</h3>
             <div className="space-y-3">
               {dateKeys.map((dateKey) => {
@@ -160,8 +176,8 @@ export default function SurvivorView({ league }) {
                     <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">{label}</div>
                     <div className="space-y-2">
                       {grouped[dateKey].map((game) => {
-                        const homeUsed = usedTeamSet.has(game.home_team)
-                        const awayUsed = usedTeamSet.has(game.away_team)
+                        const homeUsed = !poolExpanded && usedTeamSet.has(game.home_team)
+                        const awayUsed = !poolExpanded && usedTeamSet.has(game.away_team)
                         const awayPicked = currentPickTeam === game.away_team
                         const homePicked = currentPickTeam === game.home_team
 
