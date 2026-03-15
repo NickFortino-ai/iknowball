@@ -273,6 +273,31 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     return []
   })
   const [savedTemplateId, setSavedTemplateId] = useState(templateId)
+
+  // Sync state when existing template data loads (useState initializers run before async fetch completes)
+  useEffect(() => {
+    if (!existing) return
+    setSport(existing.sport || '')
+    setName(existing.name || '')
+    setTeamCount(existing.team_count || 64)
+    setDescription(existing.description || '')
+    setRegions(existing.regions || [])
+    if (existing.picks_available_at) {
+      const d = new Date(existing.picks_available_at)
+      setPicksAvailableAt(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)
+    }
+    if (existing.rounds?.length) setRounds(existing.rounds)
+    if (existing.matchups?.length) {
+      setMatchups(existing.matchups.map((m) => ({
+        ...m,
+        feeds_into_round: null,
+        feeds_into_position: null,
+        feeds_into_slot: null,
+      })))
+    }
+    setStep(existing.matchups?.length ? 3 : 1)
+  }, [existing])
+
   // Play-in slots for 68-team brackets: key = `${matchupIdx}-${'top'|'bottom'}`, value = { team1, team2 }
   const [playInSlots, setPlayInSlots] = useState({})
   const playInCount = Object.keys(playInSlots).length
