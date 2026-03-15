@@ -1392,7 +1392,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         score = 200
         break
       case 'hot_take':
-        score = item.hot_take?.image_url || item.hot_take?.video_url ? 100 : 80
+        score = item.hot_take?.video_url ? 120 : item.hot_take?.image_url ? 100 : 80
         // Viral hot takes (5+ reminds) get a significant boost
         if (item.viral) score += 40
         break

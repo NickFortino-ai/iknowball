@@ -14,9 +14,13 @@ export default function LinkPreview({ url }) {
 
   // YouTube embed
   if (data.youtubeVideoId) {
+    const isShort = /\/shorts\//.test(url)
     return (
       <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-        <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+        <div
+          className={`relative rounded-lg overflow-hidden ${isShort ? 'max-w-[280px]' : 'w-full'}`}
+          style={{ paddingBottom: isShort ? '177.78%' : '56.25%' }}
+        >
           <iframe
             src={`https://www.youtube.com/embed/${data.youtubeVideoId}?autoplay=1&mute=1`}
             title={data.title || 'YouTube video'}
