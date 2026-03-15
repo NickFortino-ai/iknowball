@@ -76,11 +76,12 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
   }
 
   return (
-    <div {...(isFirstCard ? { 'data-onboarding': 'game-card' } : {})} onClick={onCardClick} className={`bg-bg-card rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4 overflow-hidden${onCardClick ? ' cursor-pointer' : ''}`}>
-      <div
-        className={`flex items-center justify-between mb-3${hasInjuryData ? ' cursor-pointer' : ''}`}
-        onClick={hasInjuryData ? (e) => { e.stopPropagation(); onInjuryClick?.() } : undefined}
-      >
+    <div
+      {...(isFirstCard ? { 'data-onboarding': 'game-card' } : {})}
+      onClick={hasInjuryData ? (e) => { onInjuryClick?.() } : onCardClick}
+      className={`bg-bg-card rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4 overflow-hidden${hasInjuryData || onCardClick ? ' cursor-pointer' : ''}`}
+    >
+      <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-text-muted uppercase tracking-wider">
           {game.sports?.name || 'NFL'}
         </span>
