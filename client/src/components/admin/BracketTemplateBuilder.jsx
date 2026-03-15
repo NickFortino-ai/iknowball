@@ -302,9 +302,9 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
       if (round0.length > 0) {
         const restored = {}
         for (const pi of round0) {
-          // Find the round 1 matchup index this play-in feeds into
+          // Find the round 1 matchup index this play-in feeds into (server returns feeds_into_matchup_id UUID)
           const r1Idx = rest.findIndex(
-            (m) => m.round_number === 1 && m.position === pi.feeds_into_position
+            (m) => m.id === pi.feeds_into_matchup_id
           )
           if (r1Idx >= 0 && pi.feeds_into_slot) {
             restored[`${r1Idx}-${pi.feeds_into_slot}`] = {
