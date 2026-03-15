@@ -289,12 +289,32 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     }
     if (existing.rounds?.length) setRounds(existing.rounds)
     if (existing.matchups?.length) {
-      setMatchups(existing.matchups.map((m) => ({
+      const round0 = existing.matchups.filter((m) => m.round_number === 0)
+      const rest = existing.matchups.filter((m) => m.round_number >= 1)
+      setMatchups(rest.map((m) => ({
         ...m,
         feeds_into_round: null,
         feeds_into_position: null,
         feeds_into_slot: null,
       })))
+
+      // Restore play-in slots from round 0 matchups
+      if (round0.length > 0) {
+        const restored = {}
+        for (const pi of round0) {
+          // Find the round 1 matchup index this play-in feeds into
+          const r1Idx = rest.findIndex(
+            (m) => m.round_number === 1 && m.position === pi.feeds_into_position
+          )
+          if (r1Idx >= 0 && pi.feeds_into_slot) {
+            restored[`${r1Idx}-${pi.feeds_into_slot}`] = {
+              team1: pi.team_top || '',
+              team2: pi.team_bottom || '',
+            }
+          }
+        }
+        setPlayInSlots(restored)
+      }
     }
     setStep(existing.matchups?.length ? 3 : 1)
   }, [existing])
@@ -302,9 +322,11 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   // Play-in slots for 68-team brackets: key = `${matchupIdx}-${'top'|'bottom'}`, value = { team1, team2 }
   const [playInSlots, setPlayInSlots] = useState({})
   const playInCount = Object.keys(playInSlots).length
+  const [saved, setSaved] = useState(false)
 
   function togglePlayIn(idx, slot) {
     const key = `${idx}-${slot}`
+    setSaved(false)
     setPlayInSlots((prev) => {
       const next = { ...prev }
       if (next[key]) {
@@ -321,6 +343,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   }
 
   function updatePlayInTeam(key, field, value) {
+    setSaved(false)
     setPlayInSlots((prev) => ({
       ...prev,
       [key]: { ...prev[key], [field]: value },
@@ -346,12 +369,14 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   }
 
   function updateMatchupTeam(idx, field, value) {
+    setSaved(false)
     const next = [...matchups]
     next[idx] = { ...next[idx], [field]: value }
     setMatchups(next)
   }
 
   function toggleBye(idx) {
+    setSaved(false)
     const next = [...matchups]
     next[idx] = { ...next[idx], is_bye: !next[idx].is_bye }
     setMatchups(next)
@@ -439,7 +464,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     try {
       await saveMatchups.mutateAsync({ templateId: id, matchups: allMatchups })
       toast('Matchups saved!', 'success')
-      onClose()
+      setSaved(true)
     } catch (err) {
       toast(err.message || 'Failed to save matchups', 'error')
     }
@@ -826,10 +851,12 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             </button>
             <button
               onClick={handleSaveMatchups}
-              disabled={saveMatchups.isPending || createTemplate.isPending}
-              className="flex-1 py-3 rounded-xl font-display text-lg bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              disabled={saved || saveMatchups.isPending || createTemplate.isPending}
+              className={`flex-1 py-3 rounded-xl font-display text-lg transition-colors disabled:opacity-50 ${
+                saved ? 'bg-correct text-white' : 'bg-accent text-white hover:bg-accent-hover'
+              }`}
             >
-              {saveMatchups.isPending ? 'Saving...' : 'Save Template'}
+              {saveMatchups.isPending ? 'Saving...' : saved ? 'Saved \u2713' : 'Save Template'}
             </button>
           </div>
         </div>
