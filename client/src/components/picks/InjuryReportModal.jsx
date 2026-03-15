@@ -28,8 +28,28 @@ const BORDER_COLORS = {
 }
 
 function TeamSection({ teamName, starters, injuries }) {
-  const hasStarters = starters?.length > 0
   const hasInjuries = injuries?.length > 0
+
+  // Build injury status map by player name for cross-referencing with starters
+  const injuryMap = {}
+  for (const inj of injuries || []) {
+    injuryMap[inj.name] = inj.status
+    injuryMap[inj.shortName] = inj.status
+  }
+
+  // Build today's starters: promote next man up when starter is Out/Doubtful
+  const todayStarters = (starters || []).map((s) => {
+    const depth = s.depth || [{ name: s.name, shortName: s.shortName }]
+    for (const player of depth) {
+      const status = injuryMap[player.name] || injuryMap[player.shortName]
+      if (status === 'Out' || status === 'Doubtful') continue
+      return { position: s.position, name: player.name, shortName: player.shortName, status: status || null }
+    }
+    // All players at this position are out — show last resort
+    const last = depth[depth.length - 1]
+    return { position: s.position, name: last.name, shortName: last.shortName, status: null }
+  })
+  const hasStarters = todayStarters.length > 0
 
   return (
     <div className="min-w-0">
@@ -37,12 +57,15 @@ function TeamSection({ teamName, starters, injuries }) {
 
       {hasStarters && (
         <div className="mb-4">
-          <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Starting 5</div>
+          <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Today's Starters</div>
           <div className="space-y-1.5">
-            {starters.map((s) => (
+            {todayStarters.map((s) => (
               <div key={s.position} className="flex items-center gap-2 text-sm">
                 <span className="font-semibold text-accent w-7 shrink-0">{s.position}</span>
                 <span className="text-text-primary truncate">{s.shortName}</span>
+                {s.status === 'Questionable' && (
+                  <span className="text-[10px] font-bold text-yellow-400 shrink-0">Q</span>
+                )}
               </div>
             ))}
           </div>
