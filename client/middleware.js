@@ -8,22 +8,29 @@ export default function middleware(request) {
   const ua = request.headers.get('user-agent') || ''
   if (!BOT_PATTERN.test(ua)) return
 
+  const isBracket = url.searchParams.get('t') === 'bracket'
+  const ogImage = isBracket ? 'https://iknowball.club/og-bracket.png' : 'https://iknowball.club/og-image.png'
+  const ogTitle = isBracket ? 'I KNOW BALL — March Madness Bracket Challenge' : 'I KNOW BALL — Join this league!'
+  const ogDesc = isBracket
+    ? 'Fill out your bracket and compete with friends. Tap to join.'
+    : "You've been invited to join a league on I KNOW BALL. Tap to join and prove you know ball."
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>I KNOW BALL — Join this league!</title>
-  <meta property="og:title" content="I KNOW BALL — Join this league!" />
-  <meta property="og:description" content="You've been invited to join a league on I KNOW BALL. Tap to join and prove you know ball." />
-  <meta property="og:image" content="https://iknowball.club/og-image.png" />
+  <title>${ogTitle}</title>
+  <meta property="og:title" content="${ogTitle}" />
+  <meta property="og:description" content="${ogDesc}" />
+  <meta property="og:image" content="${ogImage}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="${url.href}" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="I KNOW BALL — Join this league!" />
-  <meta name="twitter:description" content="You've been invited to join a league on I KNOW BALL. Tap to join and prove you know ball." />
-  <meta name="twitter:image" content="https://iknowball.club/og-image.png" />
+  <meta name="twitter:title" content="${ogTitle}" />
+  <meta name="twitter:description" content="${ogDesc}" />
+  <meta name="twitter:image" content="${ogImage}" />
 </head>
 <body></body>
 </html>`

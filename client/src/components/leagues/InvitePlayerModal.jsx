@@ -10,7 +10,7 @@ const STATUS_STYLES = {
   declined: 'bg-text-muted/20 text-text-muted',
 }
 
-export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, onClose }) {
+export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, format, onClose }) {
   const [query, setQuery] = useState('')
   const [email, setEmail] = useState('')
   const [linkCopied, setLinkCopied] = useState(false)
@@ -20,7 +20,7 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, on
   const sendInvitation = useSendInvitation()
   const sendEmailInvitation = useSendEmailInvitation()
 
-  const inviteLink = `${window.location.origin}/join/${inviteCode}`
+  const inviteLink = `${window.location.origin}/join/${inviteCode}${format === 'bracket' ? '?t=bracket' : ''}`
 
   async function handleInvite(username) {
     try {

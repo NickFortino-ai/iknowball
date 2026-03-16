@@ -539,7 +539,7 @@ export default function LeagueDetailPage() {
       </div>
 
       {showInviteModal && (
-        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} onClose={() => {
+        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} format={league.format} onClose={() => {
           setShowInviteModal(false)
           if (searchParams.has('invite')) {
             searchParams.delete('invite')
