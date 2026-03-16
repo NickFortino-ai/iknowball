@@ -259,19 +259,16 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
         continue
       }
 
-      // Don't overwrite matchups that already have a winner
-      if (existing.winner) continue
+      // Always re-link template_matchup_id (may be null after SET NULL cascade)
+      const updates = { template_matchup_id: tm.id }
 
-      // Update template_matchup_id reference if it changed (template matchups were re-inserted with new UUIDs)
-      const updates = {
-        team_top: tm.team_top || null,
-        team_bottom: tm.team_bottom || null,
-        seed_top: tm.seed_top ?? null,
-        seed_bottom: tm.seed_bottom ?? null,
-        region: tm.region || null,
-      }
-      if (existing.template_matchup_id !== tm.id) {
-        updates.template_matchup_id = tm.id
+      // Only update team data if matchup doesn't have a winner yet
+      if (!existing.winner) {
+        updates.team_top = tm.team_top || null
+        updates.team_bottom = tm.team_bottom || null
+        updates.seed_top = tm.seed_top ?? null
+        updates.seed_bottom = tm.seed_bottom ?? null
+        updates.region = tm.region || null
       }
 
       await supabase
@@ -333,6 +330,25 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
         }
       }
     }
+  }
+
+  // Re-link bracket_picks that had template_matchup_id set to NULL by SET NULL cascade
+  // Match by (round_number, position) which are stable across template re-saves
+  const { data: nullPicks } = await supabase
+    .from('bracket_picks')
+    .select('id, round_number, position')
+    .is('template_matchup_id', null)
+
+  if (nullPicks?.length) {
+    for (const pick of nullPicks) {
+      const tm = templateByRoundPos[`${pick.round_number}-${pick.position}`]
+      if (!tm) continue
+      await supabase
+        .from('bracket_picks')
+        .update({ template_matchup_id: tm.id })
+        .eq('id', pick.id)
+    }
+    logger.info({ count: nullPicks.length }, 'Re-linked bracket picks after template re-save')
   }
 
   logger.info({ templateId, tournaments: tournaments.length }, 'Cascaded team updates to tournaments')
