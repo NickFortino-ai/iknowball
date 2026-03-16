@@ -329,12 +329,6 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
     setPicks(newPicks)
 
-    // Show champion celebration modal when championship pick is made
-    if (championshipMatchup && matchup.id === championshipMatchup.id) {
-      const seed = teamSeedMap[team] ?? null
-      setChampionModal({ team, seed })
-    }
-
     // Auto-advance if current step is now complete (non-bonus only)
     if (currentStep && !currentStep.isBonus && activeStep < steps.length - 1) {
       if (isStepComplete(currentStep, newPicks)) {
@@ -412,6 +406,16 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         tiebreakerScore: Number(tiebreakerTop) + Number(tiebreakerBottom),
       })
       localStorage.removeItem(draftKey)
+
+      // Show champion celebration modal
+      if (championshipMatchup) {
+        const champPick = picks[championshipMatchup.template_matchup_id]
+        if (champPick) {
+          const seed = teamSeedMap[champPick] ?? null
+          setChampionModal({ team: champPick, seed })
+          return // Don't close yet — modal will close and then call onClose
+        }
+      }
       toast('Bracket submitted!', 'success')
       onClose?.()
     } catch (err) {
@@ -767,7 +771,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
       {/* Champion celebration modal */}
       {championModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setChampionModal(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { setChampionModal(null); onClose?.() }}>
           <div className="absolute inset-0 bg-black/70" />
           <div
             className="relative bg-bg-secondary rounded-2xl border border-accent/30 p-6 max-w-sm w-full text-center overflow-hidden"
@@ -807,13 +811,13 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
               <div className="space-y-2 mt-6">
                 <button
                   onClick={async () => {
-                    const shareText = `My pick to win it all: ${championModal.seed ? `(${championModal.seed}) ` : ''}${championModal.team} \u{1F3C6}\n\nFill out your bracket on I KNOW BALL!\nhttps://iknowball.club`
+                    const shareText = `My pick to win it all: ${championModal.seed ? `(${championModal.seed}) ` : ''}${championModal.team} \u{1F3C6}\n\nFill out your bracket on I KNOW BALL!`
                     if (navigator.share) {
                       try {
-                        await navigator.share({ text: shareText })
+                        await navigator.share({ text: shareText, url: 'https://iknowball.club' })
                       } catch {}
                     } else {
-                      await navigator.clipboard.writeText(shareText)
+                      await navigator.clipboard.writeText(`${shareText}\nhttps://iknowball.club`)
                       toast('Copied to clipboard!', 'success')
                     }
                   }}
@@ -822,7 +826,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                   Share My Champion
                 </button>
                 <button
-                  onClick={() => setChampionModal(null)}
+                  onClick={() => { setChampionModal(null); onClose?.() }}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold bg-bg-card border border-border text-text-secondary hover:bg-bg-card-hover transition-colors"
                 >
                   Continue
