@@ -449,7 +449,14 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       {showOverview && (
         <div className="mb-4">
           <BracketDisplay
-            matchups={matchups}
+            matchups={(matchups || []).map((m) => {
+              const resolved = getTeamsForMatchup(m)
+              return {
+                ...m,
+                team_top: resolved.top || m.team_top,
+                team_bottom: resolved.bottom || m.team_bottom,
+              }
+            })}
             picks={Object.entries(picks).map(([tmId, picked_team]) => ({
               template_matchup_id: tmId,
               picked_team,
