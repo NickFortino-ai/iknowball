@@ -723,19 +723,6 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
       {/* Entry name + Submit */}
       <div className="mt-6 space-y-3">
-        <div>
-          <label className="block text-xs text-text-muted mb-1">
-            Bracket Name <span className="text-text-muted">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={entryName}
-            onChange={(e) => setEntryName(e.target.value)}
-            placeholder="My Bracket"
-            maxLength={50}
-            className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-          />
-        </div>
         <button
           onClick={() => {
             if (!allFilled) {
