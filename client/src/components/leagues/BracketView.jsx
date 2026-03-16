@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   useBracketTournament,
   useBracketEntry,
@@ -18,7 +18,18 @@ export default function BracketView({ league }) {
   const { data: myEntry } = useBracketEntry(league.id)
   const { data: entries } = useBracketEntries(league.id)
 
-  const [showPicker, setShowPicker] = useState(false)
+  // Check for saved draft
+  const savedDraft = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(`bracket-draft-${league.id}`)
+      if (!raw) return null
+      const draft = JSON.parse(raw)
+      const pickCount = draft?.picks ? Object.keys(draft.picks).length : 0
+      return pickCount > 0 ? { ...draft, pickCount } : null
+    } catch { return null }
+  }, [league.id])
+
+  const [showPicker, setShowPicker] = useState(!!savedDraft)
   const [viewingUserId, setViewingUserId] = useState(null)
   const [viewTab, setViewTab] = useState('bracket') // bracket | standings
 
@@ -123,7 +134,11 @@ export default function BracketView({ league }) {
       {!isLocked && !picksBlocked && (
         <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 text-center">
           <div className="text-sm text-text-secondary mb-2">
-            {hasSubmitted ? 'Your bracket has been submitted!' : 'Fill out your bracket before the lock.'}
+            {hasSubmitted
+              ? 'Your bracket has been submitted!'
+              : savedDraft
+                ? `You have a bracket in progress (${savedDraft.pickCount} picks made)`
+                : 'Fill out your bracket before the lock.'}
           </div>
           <div className="text-xs text-text-muted mb-3">
             Locks: {new Date(tournament.locks_at).toLocaleString('en-US', {
@@ -138,7 +153,7 @@ export default function BracketView({ league }) {
             onClick={() => setShowPicker(true)}
             className="px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
           >
-            {hasSubmitted ? 'Edit Bracket' : 'Fill Your Bracket'}
+            {hasSubmitted ? 'Edit Bracket' : savedDraft ? 'Continue Bracket' : 'Fill Your Bracket'}
           </button>
         </div>
       )}

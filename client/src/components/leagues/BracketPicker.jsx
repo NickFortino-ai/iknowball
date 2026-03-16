@@ -735,6 +735,22 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                 ? 'Enter championship scores'
                 : 'Submit Bracket'}
         </button>
+        {filledCount > 0 && !allFilled && (
+          <button
+            onClick={() => {
+              try {
+                localStorage.setItem(draftKey, JSON.stringify({ picks, entryName, tiebreakerTop, tiebreakerBottom }))
+                toast('Progress saved! You can pick up where you left off.', 'success')
+                onClose?.()
+              } catch {
+                toast('Failed to save progress', 'error')
+              }
+            }}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-bg-card border border-border text-text-secondary hover:bg-bg-card-hover transition-colors"
+          >
+            Save & Exit
+          </button>
+        )}
       </div>
     </div>
   )
