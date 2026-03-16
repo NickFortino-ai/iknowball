@@ -807,7 +807,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
               <div className="space-y-2 mt-6">
                 <button
                   onClick={async () => {
-                    const shareText = `My pick to win it all: ${championModal.seed ? `(${championModal.seed}) ` : ''}${championModal.team} \u{1F3C6}\n\nFill out your bracket on I KNOW BALL!`
+                    const shareText = `My pick to win it all: ${championModal.seed ? `(${championModal.seed}) ` : ''}${championModal.team} \u{1F3C6}\n\nFill out your bracket on I KNOW BALL!\nhttps://iknowball.club`
                     if (navigator.share) {
                       try {
                         await navigator.share({ text: shareText })
