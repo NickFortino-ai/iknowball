@@ -131,7 +131,7 @@ async function awardBracketStandings(league, standings) {
         `You won the ${league.name} bracket! +${totalPoints} pts`,
         { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: 'bracket', isWinner: true })
 
-      const winnerName = entry.users?.display_name || entry.users?.username || 'Someone'
+      const winnerName = entry.user?.display_name || entry.user?.username || 'Someone'
       await notifyLeagueMembers(league, entry.user_id, winnerName, 'bracket')
     }
 
@@ -168,7 +168,7 @@ async function awardLeaguePickPoints(league) {
     `You won the ${league.name} league! +${memberCount} pts`,
     { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem', isWinner: true })
 
-  const winnerName = standings[0].users?.display_name || standings[0].users?.username || 'Someone'
+  const winnerName = standings[0].user?.display_name || standings[0].user?.username || 'Someone'
   await notifyLeagueMembers(league, winnerId, winnerName, 'pickem')
 
   logger.info({ winnerId, leagueId: league.id, bonus: memberCount, members: standings.length }, 'League pick points awarded')
