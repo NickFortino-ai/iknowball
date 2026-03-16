@@ -237,26 +237,37 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   }, [matchups, templateMatchupMap, templateMatchups])
 
   // Get the available teams for a matchup (from feeder picks, settled results, or direct team names)
+  // Returns { top, bottom, seedTop, seedBottom }
   const getTeamsForMatchup = useCallback((matchup) => {
     const feeders = feederMap[matchup.id]
-    if (!feeders) return { top: matchup.team_top, bottom: matchup.team_bottom }
+    if (!feeders) return { top: matchup.team_top, bottom: matchup.team_bottom, seedTop: matchup.seed_top, seedBottom: matchup.seed_bottom }
 
-    function resolveFeeder(feederMatchup, fallbackTeam) {
-      if (!feederMatchup) return fallbackTeam
+    function resolveFeeder(feederMatchup, fallbackTeam, fallbackSeed) {
+      if (!feederMatchup) return { team: fallbackTeam, seed: fallbackSeed }
       // User's pick takes priority
       if (feederMatchup.template_matchup_id && picks[feederMatchup.template_matchup_id]) {
-        return picks[feederMatchup.template_matchup_id]
+        const pickedTeam = picks[feederMatchup.template_matchup_id]
+        const seed = pickedTeam === feederMatchup.team_top ? feederMatchup.seed_top
+          : pickedTeam === feederMatchup.team_bottom ? feederMatchup.seed_bottom
+          : null
+        return { team: pickedTeam, seed }
       }
       // Fallback: if feeder game is settled in the tournament, use the winner
       if (feederMatchup.winner) {
-        return feederMatchup.winner === 'top' ? feederMatchup.team_top : feederMatchup.team_bottom
+        const isTop = feederMatchup.winner === 'top'
+        return { team: isTop ? feederMatchup.team_top : feederMatchup.team_bottom, seed: isTop ? feederMatchup.seed_top : feederMatchup.seed_bottom }
       }
-      return null
+      return { team: null, seed: null }
     }
 
+    const topResult = resolveFeeder(feeders.top, matchup.team_top, matchup.seed_top)
+    const bottomResult = resolveFeeder(feeders.bottom, matchup.team_bottom, matchup.seed_bottom)
+
     return {
-      top: resolveFeeder(feeders.top, matchup.team_top),
-      bottom: resolveFeeder(feeders.bottom, matchup.team_bottom),
+      top: topResult.team,
+      bottom: bottomResult.team,
+      seedTop: topResult.seed,
+      seedBottom: bottomResult.seed,
     }
   }, [picks, feederMap])
 
@@ -588,7 +599,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             )
           }
 
-          const { top, bottom } = getTeamsForMatchup(matchup)
+          const { top, bottom, seedTop, seedBottom } = getTeamsForMatchup(matchup)
           const currentPick = picks[matchup.template_matchup_id]
 
           return (
@@ -608,8 +619,8 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                         : 'text-text-muted cursor-not-allowed'
                   }`}
                 >
-                  {matchup.seed_top != null && (
-                    <span className="text-xs text-text-muted w-5 text-right">{matchup.seed_top}</span>
+                  {seedTop != null && (
+                    <span className="text-xs text-text-muted w-5 text-right">{seedTop}</span>
                   )}
                   <span className="flex-1 text-left truncate">{top || 'Waiting...'}</span>
                   {currentPick === top && top && (
@@ -628,8 +639,8 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                         : 'text-text-muted cursor-not-allowed'
                   }`}
                 >
-                  {matchup.seed_bottom != null && (
-                    <span className="text-xs text-text-muted w-5 text-right">{matchup.seed_bottom}</span>
+                  {seedBottom != null && (
+                    <span className="text-xs text-text-muted w-5 text-right">{seedBottom}</span>
                   )}
                   <span className="flex-1 text-left truncate">{bottom || 'Waiting...'}</span>
                   {currentPick === bottom && bottom && (
