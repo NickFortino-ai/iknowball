@@ -7,7 +7,8 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const submitBracket = useSubmitBracket()
   const { data: otherEntries } = useMyOtherBracketEntries(league?.id)
   const [entryName, setEntryName] = useState('')
-  const [tiebreakerScore, setTiebreakerScore] = useState(existingTiebreakerScore ?? '')
+  const [tiebreakerTop, setTiebreakerTop] = useState('')
+  const [tiebreakerBottom, setTiebreakerBottom] = useState('')
   const [copiedFrom, setCopiedFrom] = useState(null)
   const [showOverview, setShowOverview] = useState(false)
   const autoAdvanceTimer = useRef(null)
@@ -160,6 +161,18 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     }
   }, [picks, templateMatchupMap, templateMatchups])
 
+  // Championship matchup for tiebreaker team names
+  const championshipMatchup = useMemo(() => {
+    if (!matchups?.length) return null
+    const maxRound = Math.max(...matchups.filter((m) => m.round_number > 0).map((m) => m.round_number))
+    return matchups.find((m) => m.round_number === maxRound) || null
+  }, [matchups])
+
+  const championshipTeams = useMemo(() => {
+    if (!championshipMatchup) return { top: null, bottom: null }
+    return getTeamsForMatchup(championshipMatchup)
+  }, [championshipMatchup, getTeamsForMatchup])
+
   // Handle picking a team
   function handlePick(matchup, team) {
     const tmId = matchup.template_matchup_id
@@ -232,7 +245,9 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const filledCount = Object.keys(picks).length
   const totalRequired = requiredMatchups.length
   const allFilled = filledCount >= totalRequired
-  const tiebreakerValid = tiebreakerScore !== '' && Number.isInteger(Number(tiebreakerScore)) && Number(tiebreakerScore) >= 0 && Number(tiebreakerScore) <= 500
+  const tiebreakerTopValid = tiebreakerTop !== '' && Number.isInteger(Number(tiebreakerTop)) && Number(tiebreakerTop) >= 0 && Number(tiebreakerTop) <= 250
+  const tiebreakerBottomValid = tiebreakerBottom !== '' && Number.isInteger(Number(tiebreakerBottom)) && Number(tiebreakerBottom) >= 0 && Number(tiebreakerBottom) <= 250
+  const tiebreakerValid = tiebreakerTopValid && tiebreakerBottomValid
   const canSubmit = allFilled && tiebreakerValid
 
   async function handleSubmit() {
@@ -246,7 +261,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         leagueId: league.id,
         picks: pickArray,
         entryName: entryName || undefined,
-        tiebreakerScore: Number(tiebreakerScore),
+        tiebreakerScore: Number(tiebreakerTop) + Number(tiebreakerBottom),
       })
       toast('Bracket submitted!', 'success')
       onClose?.()
@@ -517,19 +532,41 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         </div>
         <div>
           <label className="block text-xs text-text-muted mb-1">
-            Championship Total Score Prediction <span className="text-incorrect">*</span>
+            Championship Score Prediction <span className="text-incorrect">*</span>
           </label>
-          <input
-            type="number"
-            value={tiebreakerScore}
-            onChange={(e) => setTiebreakerScore(e.target.value)}
-            placeholder="e.g. 145"
-            min={0}
-            max={500}
-            className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-          />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <input
+                type="number"
+                value={tiebreakerTop}
+                onChange={(e) => setTiebreakerTop(e.target.value)}
+                placeholder="Score"
+                min={0}
+                max={250}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+              <p className="text-[10px] text-text-muted mt-1 truncate text-center">
+                {championshipTeams.top || 'Team 1'}
+              </p>
+            </div>
+            <span className="self-start pt-2.5 text-sm text-text-muted">–</span>
+            <div className="flex-1">
+              <input
+                type="number"
+                value={tiebreakerBottom}
+                onChange={(e) => setTiebreakerBottom(e.target.value)}
+                placeholder="Score"
+                min={0}
+                max={250}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+              <p className="text-[10px] text-text-muted mt-1 truncate text-center">
+                {championshipTeams.bottom || 'Team 2'}
+              </p>
+            </div>
+          </div>
           <p className="text-[10px] text-text-muted mt-1">
-            Predict the combined final score of the championship game (tiebreaker)
+            Predict the final score of the championship game (tiebreaker)
           </p>
         </div>
         <button
@@ -542,7 +579,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             : !allFilled
               ? `Pick ${totalRequired - Math.min(filledCount, totalRequired)} more games`
               : !tiebreakerValid
-                ? 'Enter tiebreaker score'
+                ? 'Enter championship scores'
                 : 'Submit Bracket'}
         </button>
       </div>

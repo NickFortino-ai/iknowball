@@ -213,12 +213,51 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
       .select('*')
       .eq('tournament_id', tournament.id)
 
-    if (!existingMatchups?.length) continue
+    // If no tournament matchups exist, create them all from template
+    if (!existingMatchups?.length) {
+      const newRows = templateMatchups.map((tm) => ({
+        tournament_id: tournament.id,
+        template_matchup_id: tm.id,
+        round_number: tm.round_number,
+        position: tm.position,
+        region: tm.region || null,
+        team_top: tm.team_top || null,
+        team_bottom: tm.team_bottom || null,
+        seed_top: tm.seed_top ?? null,
+        seed_bottom: tm.seed_bottom ?? null,
+        status: tm.is_bye ? 'completed' : 'pending',
+      }))
+      await supabase.from('bracket_matchups').insert(newRows)
+      continue
+    }
 
-    // Sync team names/seeds from template matchups using (round_number, position) as stable key
-    for (const existing of existingMatchups) {
-      const tm = templateByRoundPos[`${existing.round_number}-${existing.position}`]
-      if (!tm) continue
+    // Build lookup of existing matchups by (round_number, position)
+    const existingByRoundPos = {}
+    for (const m of existingMatchups) {
+      existingByRoundPos[`${m.round_number}-${m.position}`] = m
+    }
+
+    // Sync existing + insert missing matchups
+    const missingRows = []
+    for (const tm of templateMatchups) {
+      const existing = existingByRoundPos[`${tm.round_number}-${tm.position}`]
+
+      if (!existing) {
+        // Missing matchup — insert it
+        missingRows.push({
+          tournament_id: tournament.id,
+          template_matchup_id: tm.id,
+          round_number: tm.round_number,
+          position: tm.position,
+          region: tm.region || null,
+          team_top: tm.team_top || null,
+          team_bottom: tm.team_bottom || null,
+          seed_top: tm.seed_top ?? null,
+          seed_bottom: tm.seed_bottom ?? null,
+          status: tm.is_bye ? 'completed' : 'pending',
+        })
+        continue
+      }
 
       // Don't overwrite matchups that already have a winner
       if (existing.winner) continue
@@ -229,6 +268,7 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
         team_bottom: tm.team_bottom || null,
         seed_top: tm.seed_top ?? null,
         seed_bottom: tm.seed_bottom ?? null,
+        region: tm.region || null,
       }
       if (existing.template_matchup_id !== tm.id) {
         updates.template_matchup_id = tm.id
@@ -238,6 +278,11 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
         .from('bracket_matchups')
         .update(updates)
         .eq('id', existing.id)
+    }
+
+    // Insert any missing matchups
+    if (missingRows.length > 0) {
+      await supabase.from('bracket_matchups').insert(missingRows)
     }
 
     // Re-fetch tournament matchups after updates (template_matchup_id may have changed)
