@@ -225,10 +225,42 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     }
   }
 
+  const [dragging, setDragging] = useState(false)
+
+  function handleDragOver(e) {
+    e.preventDefault()
+    setDragging(true)
+  }
+
+  function handleDragLeave(e) {
+    e.preventDefault()
+    setDragging(false)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer?.files?.[0]
+    if (!file) return
+    if (file.type.startsWith('video/')) {
+      removeImage()
+      selectVideo(file)
+    } else if (file.type.startsWith('image/')) {
+      removeVideo()
+      selectImage(file)
+    }
+    if (!expanded) setExpanded(true)
+  }
+
   return (
-    <div className={`bg-bg-card border rounded-xl px-4 py-3 mb-4 transition-all ${
-      expanded ? 'border-accent/20' : 'border-border'
-    }`}>
+    <div
+      className={`bg-bg-card border rounded-xl px-4 py-3 mb-4 transition-all ${
+        dragging ? 'border-accent border-dashed bg-accent/5' : expanded ? 'border-accent/20' : 'border-border'
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="flex gap-3">
         {/* User avatar */}
         {profile && (
