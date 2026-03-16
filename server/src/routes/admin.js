@@ -38,6 +38,7 @@ import { FUTURES_SPORT_KEYS } from '../services/oddsService.js'
 import { generateWeeklyRecap } from '../jobs/generateRecap.js'
 import { updateRecapContent } from '../services/recapService.js'
 import { recalculateAllRecords } from '../services/recordService.js'
+import { FALLBACK_TEAMS } from './teams.js'
 import { snapshotRanks } from '../jobs/snapshotRanks.js'
 import {
   getBannedWords,
@@ -273,6 +274,11 @@ router.get('/teams', async (req, res) => {
   for (const g of games || []) {
     if (g.home_team) teamSet.add(g.home_team)
     if (g.away_team) teamSet.add(g.away_team)
+  }
+
+  // Merge fallback teams so all known teams appear in autocomplete
+  for (const t of FALLBACK_TEAMS[sport] || []) {
+    teamSet.add(t)
   }
 
   res.json([...teamSet].sort())
