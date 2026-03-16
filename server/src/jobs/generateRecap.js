@@ -1,9 +1,6 @@
 import { supabase } from '../config/supabase.js'
-import { env } from '../config/env.js'
 import { logger } from '../utils/logger.js'
 import { collectWeeklyData, generateRecapContent } from '../services/recapService.js'
-import { createNotification } from '../services/notificationService.js'
-import { sendEmailToUserIds } from '../services/emailService.js'
 
 function formatLocalDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -64,11 +61,14 @@ export async function generateWeeklyRecap() {
   if (weeklyData.longestStreakUser) featuredSet.add(weeklyData.longestStreakUser.user_id)
   const featuredUserIds = [...featuredSet]
 
-  // Set visible_after to 10:00 AM EST on the current day (2 hours after generation)
-  const visibleAfter = new Date()
-  visibleAfter.setHours(visibleAfter.getHours() + 2)
+  // Set visible_after to 9:00 AM Pacific on the current day
+  // Use Intl to get today's date in Pacific, then construct the target time
+  const pacificDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+  const pacificNow = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', timeZoneName: 'short' })
+  const offset = pacificNow.includes('PDT') ? '-07:00' : '-08:00'
+  const visibleAfter = new Date(`${pacificDate}T09:00:00${offset}`)
 
-  // Save to DB
+  // Save to DB (notifications/emails are sent separately after visible_after)
   const { error: insertError } = await supabase.from('weekly_recaps').insert({
     week_start: weekStartStr,
     week_end: weekEndStr,
@@ -86,68 +86,5 @@ export async function generateWeeklyRecap() {
     throw insertError
   }
 
-  // Send in-app notifications to featured users
-  for (const userId of featuredUserIds) {
-    try {
-      await createNotification(
-        userId,
-        'headlines',
-        'You made the Weekly Headlines this week! Check it out.',
-        { weekStart: weekStartStr, weekEnd: weekEndStr }
-      )
-    } catch (err) {
-      logger.error({ err, userId }, 'Failed to send headlines notification')
-    }
-  }
-
-  // Build a lookup of user data for email personalization
-  const userDataMap = {}
-  for (let i = 0; i < weeklyData.top5.length; i++) {
-    const u = weeklyData.top5[i]
-    userDataMap[u.user_id] = { rank: i + 1, ...u }
-  }
-  if (weeklyData.pickOfWeekUser) userDataMap[weeklyData.pickOfWeekUser.user_id] = userDataMap[weeklyData.pickOfWeekUser.user_id] || weeklyData.pickOfWeekUser
-  if (weeklyData.biggestFallUser) userDataMap[weeklyData.biggestFallUser.user_id] = userDataMap[weeklyData.biggestFallUser.user_id] || weeklyData.biggestFallUser
-  if (weeklyData.longestStreakUser) userDataMap[weeklyData.longestStreakUser.user_id] = userDataMap[weeklyData.longestStreakUser.user_id] || weeklyData.longestStreakUser
-
-  const baseUrl = env.CORS_ORIGIN.split(',')[0].trim()
-
-  // Send personalized emails
-  try {
-    await sendEmailToUserIds(featuredUserIds, (userId) => {
-      const userData = userDataMap[userId]
-      const name = userData?.display_name || userData?.username || 'Baller'
-      const rank = userData?.rank
-
-      let personalLine = ''
-      if (rank) {
-        personalLine = `You were featured in this week's headlines. See what they have to say about your week.`
-      } else {
-        personalLine = `You earned a shoutout in this week's awards section. Open the app to see what you won.`
-      }
-
-      const subject = "You made this week's Headlines"
-      const html = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-          <h1 style="font-size: 24px; margin-bottom: 8px;">Weekly Headlines</h1>
-          <p style="color: #aaa; font-size: 16px; margin-bottom: 24px;">
-            Hey <strong>${name}</strong>, you made this week's Headlines on I KNOW BALL!
-          </p>
-          <p style="font-size: 15px; color: #ccc; margin-bottom: 24px;">
-            ${personalLine}
-          </p>
-          <a href="${baseUrl}"
-             style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
-            See Full Headlines
-          </a>
-        </div>
-      `
-
-      return { subject, html }
-    })
-  } catch (err) {
-    logger.error({ err }, 'Failed to send recap emails')
-  }
-
-  logger.info({ weekStart: weekStartStr, featured: featuredUserIds.length }, 'Weekly recap generated successfully')
+  logger.info({ weekStart: weekStartStr, featured: featuredUserIds.length, visibleAfter: visibleAfter.toISOString() }, 'Weekly recap generated — notifications will be sent after visible_after')
 }
