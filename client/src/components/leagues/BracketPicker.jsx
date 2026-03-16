@@ -236,40 +236,45 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     return map
   }, [matchups, templateMatchupMap, templateMatchups])
 
+  // Team → seed lookup from Round 1 matchups (seeds are only set on Round 1)
+  const teamSeedMap = useMemo(() => {
+    const map = {}
+    for (const m of matchups || []) {
+      if (m.round_number <= 1 && m.team_top && m.seed_top != null) map[m.team_top] = m.seed_top
+      if (m.round_number <= 1 && m.team_bottom && m.seed_bottom != null) map[m.team_bottom] = m.seed_bottom
+    }
+    return map
+  }, [matchups])
+
   // Get the available teams for a matchup (from feeder picks, settled results, or direct team names)
   // Returns { top, bottom, seedTop, seedBottom }
   const getTeamsForMatchup = useCallback((matchup) => {
     const feeders = feederMap[matchup.id]
-    if (!feeders) return { top: matchup.team_top, bottom: matchup.team_bottom, seedTop: matchup.seed_top, seedBottom: matchup.seed_bottom }
+    if (!feeders) return { top: matchup.team_top, bottom: matchup.team_bottom, seedTop: matchup.seed_top ?? teamSeedMap[matchup.team_top], seedBottom: matchup.seed_bottom ?? teamSeedMap[matchup.team_bottom] }
 
-    function resolveFeeder(feederMatchup, fallbackTeam, fallbackSeed) {
-      if (!feederMatchup) return { team: fallbackTeam, seed: fallbackSeed }
+    function resolveFeeder(feederMatchup, fallbackTeam) {
+      if (!feederMatchup) return fallbackTeam
       // User's pick takes priority
       if (feederMatchup.template_matchup_id && picks[feederMatchup.template_matchup_id]) {
-        const pickedTeam = picks[feederMatchup.template_matchup_id]
-        const seed = pickedTeam === feederMatchup.team_top ? feederMatchup.seed_top
-          : pickedTeam === feederMatchup.team_bottom ? feederMatchup.seed_bottom
-          : null
-        return { team: pickedTeam, seed }
+        return picks[feederMatchup.template_matchup_id]
       }
       // Fallback: if feeder game is settled in the tournament, use the winner
       if (feederMatchup.winner) {
-        const isTop = feederMatchup.winner === 'top'
-        return { team: isTop ? feederMatchup.team_top : feederMatchup.team_bottom, seed: isTop ? feederMatchup.seed_top : feederMatchup.seed_bottom }
+        return feederMatchup.winner === 'top' ? feederMatchup.team_top : feederMatchup.team_bottom
       }
-      return { team: null, seed: null }
+      return null
     }
 
-    const topResult = resolveFeeder(feeders.top, matchup.team_top, matchup.seed_top)
-    const bottomResult = resolveFeeder(feeders.bottom, matchup.team_bottom, matchup.seed_bottom)
+    const top = resolveFeeder(feeders.top, matchup.team_top)
+    const bottom = resolveFeeder(feeders.bottom, matchup.team_bottom)
 
     return {
-      top: topResult.team,
-      bottom: bottomResult.team,
-      seedTop: topResult.seed,
-      seedBottom: bottomResult.seed,
+      top,
+      bottom,
+      seedTop: top ? (matchup.seed_top ?? teamSeedMap[top] ?? null) : null,
+      seedBottom: bottom ? (matchup.seed_bottom ?? teamSeedMap[bottom] ?? null) : null,
     }
-  }, [picks, feederMap])
+  }, [picks, feederMap, teamSeedMap])
 
   // Forward lookup: template_matchup_id → next round's template_matchup_id (for clearing downstream picks)
   const feedsIntoTmId = useMemo(() => {
