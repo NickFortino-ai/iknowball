@@ -382,7 +382,31 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   }
 
   function handleGenerateMatchups() {
+    // Build seed→team lookup from existing matchups so teams auto-fill after reorder
+    const seedTeamMap = {}
+    for (const m of matchups) {
+      if (m.region && m.seed_top && m.team_top) {
+        seedTeamMap[`${m.region}-${m.seed_top}`] = m.team_top
+      }
+      if (m.region && m.seed_bottom && m.team_bottom) {
+        seedTeamMap[`${m.region}-${m.seed_bottom}`] = m.team_bottom
+      }
+    }
+
     const generated = generateMatchups(teamCount, regions, rounds)
+
+    // Re-populate team names from seed mapping
+    if (Object.keys(seedTeamMap).length > 0) {
+      for (const m of generated) {
+        if (m.region && m.seed_top && seedTeamMap[`${m.region}-${m.seed_top}`]) {
+          m.team_top = seedTeamMap[`${m.region}-${m.seed_top}`]
+        }
+        if (m.region && m.seed_bottom && seedTeamMap[`${m.region}-${m.seed_bottom}`]) {
+          m.team_bottom = seedTeamMap[`${m.region}-${m.seed_bottom}`]
+        }
+      }
+    }
+
     setMatchups(generated)
     setPlayInSlots({})
     setStep(3)
