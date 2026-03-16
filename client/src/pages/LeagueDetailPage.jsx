@@ -111,17 +111,29 @@ function LeagueConditions({ league }) {
   if (items.length === 0) return null
 
   const autoConnect = league.my_auto_connect ?? true
+  const isBracket = league.format === 'bracket'
 
   return (
-    <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {items.map((item) => (
-          <div key={item.label}>
-            <div className="text-[10px] text-text-muted uppercase tracking-wider">{item.label}</div>
-            <div className="text-sm font-semibold text-text-primary mt-0.5">{item.value}</div>
-          </div>
-        ))}
-      </div>
+    <div className={isBracket ? 'mb-4' : 'bg-bg-card rounded-xl border border-border p-4 mb-6'}>
+      {isBracket ? (
+        <div className="flex items-center gap-3 text-xs text-text-muted">
+          {items.map((item, i) => (
+            <span key={item.label}>
+              {i > 0 && <span className="mr-3">·</span>}
+              {item.label}: {item.value}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {items.map((item) => (
+            <div key={item.label}>
+              <div className="text-[10px] text-text-muted uppercase tracking-wider">{item.label}</div>
+              <div className="text-sm font-semibold text-text-primary mt-0.5">{item.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
       {league.format === 'pickem' && (
         <p className="text-xs text-text-muted mt-2">
           {settings.games_per_week
@@ -484,59 +496,111 @@ export default function LeagueDetailPage() {
         </div>
       </div>
 
-      {/* League Conditions */}
-      <LeagueConditions league={league} />
-
       {/* Invite Actions */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={async () => {
-            const url = `${window.location.origin}/join/${league.invite_code}`
-            await navigator.clipboard.writeText(url)
-            toast('Invite link copied!', 'success')
-          }}
-          className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
-          </svg>
-          Copy Invite Link
-        </button>
-        {navigator.share && (
+      {league.format === 'bracket' ? (
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={async () => {
+              const url = `${window.location.origin}/join/${league.invite_code}?t=bracket`
+              await navigator.clipboard.writeText(url)
+              toast('Invite link copied!', 'success')
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
+            </svg>
+            Copy Link
+          </button>
+          {navigator.share && (
+            <button
+              onClick={async () => {
+                const url = `${window.location.origin}/join/${league.invite_code}?t=bracket`
+                try {
+                  await navigator.share({ title: `Join ${league.name}`, url })
+                } catch {
+                  // user cancelled share sheet
+                }
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-bg-card border border-border text-text-primary hover:bg-bg-card-hover transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+              Share
+            </button>
+          )}
+          {isCommissioner && (
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-bg-card border border-border text-text-primary hover:bg-bg-card-hover transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Invite
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 mb-6">
           <button
             onClick={async () => {
               const url = `${window.location.origin}/join/${league.invite_code}`
-              try {
-                await navigator.share({ title: `Join ${league.name}`, url })
-              } catch {
-                // user cancelled share sheet
-              }
+              await navigator.clipboard.writeText(url)
+              toast('Invite link copied!', 'success')
             }}
-            className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
+            className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <circle cx="18" cy="5" r="3" />
-              <circle cx="6" cy="12" r="3" />
-              <circle cx="18" cy="19" r="3" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
             </svg>
-            Share
+            Copy Invite Link
           </button>
-        )}
-        {isCommissioner && (
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
-            Invite Player
-          </button>
-        )}
-      </div>
+          {navigator.share && (
+            <button
+              onClick={async () => {
+                const url = `${window.location.origin}/join/${league.invite_code}`
+                try {
+                  await navigator.share({ title: `Join ${league.name}`, url })
+                } catch {
+                  // user cancelled share sheet
+                }
+              }}
+              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+              Share
+            </button>
+          )}
+          {isCommissioner && (
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Invite Player
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* League Conditions */}
+      <LeagueConditions league={league} />
 
       {showInviteModal && (
         <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} format={league.format} onClose={() => {
