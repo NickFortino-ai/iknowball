@@ -166,7 +166,7 @@ export async function syncInjuries() {
             injuries,
             notable_injury_count: notableCount,
             updated_at: new Date().toISOString(),
-          }, { onConflict: 'sport_key,espn_team_id' })
+          }, { onConflict: 'sport_key,team_name' })
 
         if (error) {
           logger.error({ error, sportKey, teamName }, 'Failed to upsert team_intel')
