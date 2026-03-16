@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, Fragment } from 'react'
 
-function MatchupCard({ matchup, pick, eliminated, showPick, onTap }) {
+function MatchupCard({ matchup, pick, eliminated, showPick, onTap, size = 'default' }) {
   const [showScore, setShowScore] = useState(false)
 
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -35,7 +35,7 @@ function MatchupCard({ matchup, pick, eliminated, showPick, onTap }) {
 
   return (
     <div
-      className={`bg-bg-card border border-border rounded-lg w-44 text-xs overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
+      className={`bg-bg-card border border-border rounded-lg ${size === 'xl' ? 'w-56' : size === 'lg' ? 'w-48' : 'w-44'} text-xs overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
       onClick={isClickable ? handleClick : undefined}
     >
       <div className={`flex items-center gap-1 px-2 py-1.5 border-b border-border ${teamClass(matchup.team_top, true)}`}>
@@ -117,20 +117,20 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
   const feederMap = useMemo(() => {
     const map = {}
     const all = (matchups || []).filter((m) => m.round_number > 0)
-    const byRound = {}
+    const byRoundLocal = {}
     for (const m of all) {
-      if (!byRound[m.round_number]) byRound[m.round_number] = []
-      byRound[m.round_number].push(m)
+      if (!byRoundLocal[m.round_number]) byRoundLocal[m.round_number] = []
+      byRoundLocal[m.round_number].push(m)
     }
-    for (const key in byRound) {
-      byRound[key].sort((a, b) => a.position - b.position)
+    for (const key in byRoundLocal) {
+      byRoundLocal[key].sort((a, b) => a.position - b.position)
     }
     for (const m of all) {
       if (m.round_number <= 1) continue
-      const prevRound = byRound[m.round_number - 1]
+      const prevRound = byRoundLocal[m.round_number - 1]
       if (!prevRound?.length) continue
       const prevMatchups = m.region ? prevRound.filter((p) => p.region === m.region) : prevRound
-      const myRound = byRound[m.round_number]
+      const myRound = byRoundLocal[m.round_number]
       const sameGroup = m.region ? myRound.filter((p) => p.region === m.region) : myRound
       const myIdx = sameGroup.indexOf(m)
       map[m.id] = { top: prevMatchups[myIdx * 2] || null, bottom: prevMatchups[myIdx * 2 + 1] || null }
@@ -168,6 +168,68 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     return resolved
   }, [matchups, picks, pickMap, feederMap, teamSeedMap])
 
+  // Determine facing bracket layout (4+ regions, no specific region selected)
+  const facingLayout = useMemo(() => {
+    if (selectedRegion || !regions || regions.length < 4) return null
+
+    // Find min position per region in round 1 to determine left/right pairing
+    const regionMinPos = {}
+    for (const m of matchups || []) {
+      if (m.round_number === 1 && m.region) {
+        if (!regionMinPos[m.region] || m.position < regionMinPos[m.region]) {
+          regionMinPos[m.region] = m.position
+        }
+      }
+    }
+
+    // Sort by position — first 2 go left, last 2 go right
+    const sorted = [...regions].sort((a, b) => (regionMinPos[a] || 0) - (regionMinPos[b] || 0))
+
+    // Determine which rounds have regional matchups vs cross-region
+    const regionalRoundSet = new Set()
+    const crossRoundSet = new Set()
+    for (const m of matchups || []) {
+      if (m.round_number > 0) {
+        if (m.region) regionalRoundSet.add(m.round_number)
+        else crossRoundSet.add(m.round_number)
+      }
+    }
+
+    return {
+      left: [sorted[0], sorted[1]],
+      right: [sorted[2], sorted[3]],
+      regionalRounds: [...regionalRoundSet].sort((a, b) => a - b),
+      crossRounds: [...crossRoundSet].sort((a, b) => a - b),
+    }
+  }, [selectedRegion, regions, matchups])
+
+  // Center column matchups (FF + Championship) for facing layout
+  const centerMatchups = useMemo(() => {
+    if (!facingLayout) return null
+
+    const ffRound = facingLayout.crossRounds.find((r) => (byRound[r]?.length || 0) === 2)
+    const champRound = facingLayout.crossRounds.find((r) => (byRound[r]?.length || 0) === 1)
+    if (!ffRound) return null
+
+    const ffMatchups = [...(byRound[ffRound] || [])].sort((a, b) => a.position - b.position)
+    return {
+      ffLeft: ffMatchups[0],
+      ffRight: ffMatchups[1],
+      championship: champRound ? byRound[champRound]?.[0] : null,
+      ffRound,
+      champRound,
+    }
+  }, [facingLayout, byRound])
+
+  // Half R1 count for facing layout grids (number of R1 matchups per side)
+  const halfR1Count = useMemo(() => {
+    if (!facingLayout) return 0
+    const r1 = facingLayout.regionalRounds[0]
+    return (byRound[r1] || []).filter((m) => facingLayout.left.includes(m.region)).length
+  }, [facingLayout, byRound])
+
+  const useFacing = !!(facingLayout && centerMatchups)
+
   const roundNumbers = Object.keys(filteredByRound).map(Number).sort((a, b) => a - b)
   const firstRoundCount = filteredByRound[roundNumbers[0]]?.length || 0
 
@@ -184,16 +246,241 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
   const hasPicks = picks && picks.length > 0
   const showRegionTabs = regions && regions.length >= 2
 
+  // ── Helper: render a matchup card with resolved data ──
+
+  function renderCard(matchup, size) {
+    const resolved = resolvedMatchups?.[matchup.id]
+    const dm = resolved
+      ? {
+          ...matchup,
+          team_top: resolved.team_top || matchup.team_top,
+          team_bottom: resolved.team_bottom || matchup.team_bottom,
+          seed_top: resolved.seed_top ?? matchup.seed_top,
+          seed_bottom: resolved.seed_bottom ?? matchup.seed_bottom,
+        }
+      : matchup
+
+    return (
+      <MatchupCard
+        matchup={dm}
+        pick={pickMap[matchup.template_matchup_id]?.team}
+        eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
+        showPick={hasPicks}
+        onTap={onMatchupTap}
+        size={size}
+      />
+    )
+  }
+
+  // ── Helper: render one bracket connector element (merge 2→1) ──
+
+  function renderConnectorElement(mirrored) {
+    if (mirrored) {
+      return (
+        <>
+          <div className="w-3 flex flex-col">
+            <div className="flex-1 border-b border-border/40" />
+            <div className="flex-1" />
+          </div>
+          <div className="w-3 flex flex-col">
+            <div className="flex-1" />
+            <div className="flex-1 border-t border-l border-border/40" />
+            <div className="flex-1 border-b border-l border-border/40" />
+            <div className="flex-1" />
+          </div>
+        </>
+      )
+    }
+    return (
+      <>
+        <div className="w-3 flex flex-col">
+          <div className="flex-1" />
+          <div className="flex-1 border-t border-r border-border/40" />
+          <div className="flex-1 border-b border-r border-border/40" />
+          <div className="flex-1" />
+        </div>
+        <div className="w-3 flex flex-col">
+          <div className="flex-1 border-b border-border/40" />
+          <div className="flex-1" />
+        </div>
+      </>
+    )
+  }
+
+  // ── Helper: render a column of connector elements ──
+
+  function renderConnectorColumn(count, span, gridRows, mirrored, key) {
+    return (
+      <div key={key} className="flex flex-col">
+        <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
+        <div className="text-[10px] mb-3 invisible">&nbsp;</div>
+        <div
+          className="grid"
+          style={{ gridTemplateRows: `repeat(${gridRows}, minmax(60px, 1fr))` }}
+        >
+          {Array.from({ length: count }, (_, idx) => (
+            <div
+              key={idx}
+              className="flex"
+              style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+            >
+              {renderConnectorElement(mirrored)}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Facing bracket: render one half (left or right side) ──
+
+  function renderBracketHalf(halfRegions, mirrored, side) {
+    const { regionalRounds } = facingLayout
+
+    // Matchups for this half, grouped by round
+    const halfByRound = {}
+    for (const r of regionalRounds) {
+      halfByRound[r] = (byRound[r] || []).filter((m) => halfRegions.includes(m.region))
+    }
+
+    const displayRounds = mirrored ? [...regionalRounds].reverse() : regionalRounds
+    const elements = []
+
+    displayRounds.forEach((roundNum, displayIdx) => {
+      const logicalIdx = regionalRounds.indexOf(roundNum)
+      const matchupsList = halfByRound[roundNum] || []
+      const span = Math.pow(2, logicalIdx)
+      const isLastDisplay = displayIdx === displayRounds.length - 1
+
+      // Round column
+      elements.push(
+        <div key={`${side}-r-${roundNum}`} className="flex flex-col items-center">
+          <div className="text-xs font-semibold text-text-secondary mb-1">
+            {getRoundName(roundNum)}
+          </div>
+          <div className="text-[10px] text-text-muted mb-3">
+            {getRoundPoints(roundNum)} pts
+          </div>
+          <div
+            className="grid"
+            style={{ gridTemplateRows: `repeat(${halfR1Count}, minmax(60px, 1fr))` }}
+          >
+            {matchupsList.map((matchup, idx) => (
+              <div
+                key={matchup.id}
+                className="flex items-center"
+                style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+              >
+                {renderCard(matchup, 'default')}
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+
+      // Inter-round connector
+      if (!isLastDisplay) {
+        let connCount, connSpan
+        if (mirrored) {
+          // Mirrored: current display round is "fewer" side (closer to center)
+          connCount = matchupsList.length
+          connSpan = span
+        } else {
+          // Normal: next display round is "fewer" side
+          const nextRound = displayRounds[displayIdx + 1]
+          const nextLogical = regionalRounds.indexOf(nextRound)
+          connCount = halfByRound[nextRound]?.length || 0
+          connSpan = Math.pow(2, nextLogical)
+        }
+
+        if (connCount > 0) {
+          elements.push(
+            renderConnectorColumn(connCount, connSpan, halfR1Count, mirrored, `${side}-c-${roundNum}`)
+          )
+        }
+      }
+    })
+
+    // Merge-to-center connector (last regional round → FF)
+    const mergeConn = renderConnectorColumn(
+      1,
+      halfR1Count,
+      halfR1Count,
+      mirrored,
+      `${side}-merge`
+    )
+    if (mirrored) {
+      elements.unshift(mergeConn)
+    } else {
+      elements.push(mergeConn)
+    }
+
+    return elements
+  }
+
+  // ── Facing bracket: render a center column matchup (FF or Championship) ──
+
+  function renderCenterMatchup(matchup, size, roundNum) {
+    if (!matchup) return null
+    return (
+      <div className="flex flex-col items-center">
+        <div className="text-xs font-semibold text-text-secondary mb-1">
+          {getRoundName(roundNum)}
+        </div>
+        <div className="text-[10px] text-text-muted mb-3">
+          {getRoundPoints(roundNum)} pts
+        </div>
+        <div
+          className="grid"
+          style={{ gridTemplateRows: `repeat(${halfR1Count}, minmax(60px, 1fr))` }}
+        >
+          <div
+            style={{ gridRow: `1 / span ${halfR1Count}` }}
+            className="flex items-center"
+          >
+            {renderCard(matchup, size)}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Facing bracket: horizontal line connector between center cards ──
+
+  function renderCenterLine() {
+    return (
+      <div className="flex flex-col">
+        <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
+        <div className="text-[10px] mb-3 invisible">&nbsp;</div>
+        <div
+          className="grid"
+          style={{ gridTemplateRows: `repeat(${halfR1Count}, minmax(60px, 1fr))` }}
+        >
+          <div
+            style={{ gridRow: `1 / span ${halfR1Count}` }}
+            className="flex items-center"
+          >
+            <div className="w-4 h-px bg-border/40" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Desktop horizontal view — break out of parent max-w container to use full viewport width
   return (
-    <div className="md:w-[calc(100vw-3rem)] md:max-w-[1400px] md:-ml-[calc((100vw-3rem-100%)/2)] md:self-center">
+    <div
+      className={`md:w-[calc(100vw-3rem)] ${useFacing ? '' : 'md:max-w-[1400px]'} md:-ml-[calc((100vw-3rem-100%)/2)] md:self-center`}
+    >
       {/* Region tabs */}
       {showRegionTabs && (
         <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
           <button
             onClick={() => setSelectedRegion(null)}
             className={`shrink-0 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-              !selectedRegion ? 'bg-accent/20 text-accent' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              !selectedRegion
+                ? 'bg-accent/20 text-accent'
+                : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
             }`}
           >
             All
@@ -203,7 +490,9 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
               key={region}
               onClick={() => setSelectedRegion(region)}
               className={`shrink-0 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                selectedRegion === region ? 'bg-accent/20 text-accent' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                selectedRegion === region
+                  ? 'bg-accent/20 text-accent'
+                  : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
               }`}
             >
               {region}
@@ -213,59 +502,139 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
       )}
 
       <div className="overflow-x-auto">
-        <div className="flex gap-4 min-w-max py-2">
-          {roundNumbers.map((roundNum, roundIdx) => {
-            const matchupsList = filteredByRound[roundNum] || []
-            const span = Math.pow(2, roundIdx)
+        {useFacing ? (
+          /* ── Facing bracket layout ── */
+          <div className="flex min-w-max py-2">
+            {renderBracketHalf(facingLayout.left, false, 'left')}
+            {renderCenterMatchup(centerMatchups.ffLeft, 'lg', centerMatchups.ffRound)}
+            {centerMatchups.championship && renderCenterLine()}
+            {centerMatchups.championship &&
+              renderCenterMatchup(centerMatchups.championship, 'xl', centerMatchups.champRound)}
+            {centerMatchups.championship && renderCenterLine()}
+            {renderCenterMatchup(centerMatchups.ffRight, 'lg', centerMatchups.ffRound)}
+            {renderBracketHalf(facingLayout.right, true, 'right')}
+          </div>
+        ) : (
+          /* ── Linear layout (single region or small bracket) ── */
+          <div className="flex min-w-max py-2">
+            {roundNumbers.map((roundNum, roundIdx) => {
+              const matchupsList = filteredByRound[roundNum] || []
+              const span = Math.pow(2, roundIdx)
+              const isLast = roundIdx === roundNumbers.length - 1
+              const cardSize =
+                roundIdx === roundNumbers.length - 1
+                  ? 'xl'
+                  : roundIdx === roundNumbers.length - 2
+                    ? 'lg'
+                    : 'default'
+              const nextMatchupCount = !isLast
+                ? filteredByRound[roundNumbers[roundIdx + 1]]?.length || 0
+                : 0
+              const nextSpan = Math.pow(2, roundIdx + 1)
 
-            return (
-              <div key={roundNum} className="flex flex-col items-center">
-                <div className="text-xs font-semibold text-text-secondary mb-1">{getRoundName(roundNum)}</div>
-                <div className="text-[10px] text-text-muted mb-3">{getRoundPoints(roundNum)} pts</div>
-                <div
-                  className="grid"
-                  style={{
-                    gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
-                  }}
-                >
-                  {matchupsList.map((matchup, idx) => {
-                    const resolved = resolvedMatchups?.[matchup.id]
-                    const displayMatchup = resolved ? {
-                      ...matchup,
-                      team_top: resolved.team_top || matchup.team_top,
-                      team_bottom: resolved.team_bottom || matchup.team_bottom,
-                      seed_top: resolved.seed_top ?? matchup.seed_top,
-                      seed_bottom: resolved.seed_bottom ?? matchup.seed_bottom,
-                    } : matchup
-                    return (
+              return (
+                <Fragment key={roundNum}>
+                  <div className="flex flex-col items-center">
+                    <div className="text-xs font-semibold text-text-secondary mb-1">
+                      {getRoundName(roundNum)}
+                    </div>
+                    <div className="text-[10px] text-text-muted mb-3">
+                      {getRoundPoints(roundNum)} pts
+                    </div>
+                    <div
+                      className="grid"
+                      style={{
+                        gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
+                      }}
+                    >
+                      {matchupsList.map((matchup, idx) => {
+                        const resolved = resolvedMatchups?.[matchup.id]
+                        const displayMatchup = resolved
+                          ? {
+                              ...matchup,
+                              team_top: resolved.team_top || matchup.team_top,
+                              team_bottom: resolved.team_bottom || matchup.team_bottom,
+                              seed_top: resolved.seed_top ?? matchup.seed_top,
+                              seed_bottom: resolved.seed_bottom ?? matchup.seed_bottom,
+                            }
+                          : matchup
+                        return (
+                          <div
+                            key={matchup.id}
+                            className="flex items-center"
+                            style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+                          >
+                            <MatchupCard
+                              matchup={displayMatchup}
+                              pick={pickMap[matchup.template_matchup_id]?.team}
+                              eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
+                              showPick={hasPicks}
+                              onTap={onMatchupTap}
+                              size={cardSize}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {/* Bracket connector lines to next round */}
+                  {!isLast && nextMatchupCount > 0 && (
+                    <div className="flex flex-col">
+                      <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
+                      <div className="text-[10px] mb-3 invisible">&nbsp;</div>
                       <div
-                        key={matchup.id}
-                        className="flex items-center"
-                        style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+                        className="grid"
+                        style={{
+                          gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
+                        }}
                       >
-                        <MatchupCard
-                          matchup={displayMatchup}
-                          pick={pickMap[matchup.template_matchup_id]?.team}
-                          eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
-                          showPick={hasPicks}
-                          onTap={onMatchupTap}
-                        />
+                        {Array.from({ length: nextMatchupCount }, (_, idx) => (
+                          <div
+                            key={idx}
+                            className="flex"
+                            style={{ gridRow: `${idx * nextSpan + 1} / span ${nextSpan}` }}
+                          >
+                            {/* Left: horizontal arms from feeder matchups + vertical bar */}
+                            <div className="w-3 flex flex-col">
+                              <div className="flex-1" />
+                              <div className="flex-1 border-t border-r border-border/40" />
+                              <div className="flex-1 border-b border-r border-border/40" />
+                              <div className="flex-1" />
+                            </div>
+                            {/* Right: horizontal line from midpoint to next matchup */}
+                            <div className="w-3 flex flex-col">
+                              <div className="flex-1 border-b border-border/40" />
+                              <div className="flex-1" />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                    </div>
+                  )}
+                </Fragment>
+              )
+            })}
+          </div>
+        )}
 
         {/* Legend */}
         {hasPicks && (
           <div className="flex gap-4 mt-4 text-[10px] text-text-muted">
-            <span><span className="inline-block w-2 h-2 bg-correct rounded-full mr-1" />Correct</span>
-            <span><span className="inline-block w-2 h-2 bg-incorrect rounded-full mr-1" />Wrong</span>
-            <span><span className="inline-block w-2 h-2 bg-accent rounded-full mr-1" />Your Pick</span>
-            <span><span className="line-through mr-1">X</span>Eliminated</span>
+            <span>
+              <span className="inline-block w-2 h-2 bg-correct rounded-full mr-1" />
+              Correct
+            </span>
+            <span>
+              <span className="inline-block w-2 h-2 bg-incorrect rounded-full mr-1" />
+              Wrong
+            </span>
+            <span>
+              <span className="inline-block w-2 h-2 bg-accent rounded-full mr-1" />
+              Your Pick
+            </span>
+            <span>
+              <span className="line-through mr-1">X</span>Eliminated
+            </span>
           </div>
         )}
       </div>
