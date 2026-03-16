@@ -200,6 +200,12 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
 
   if (!tournaments?.length) return
 
+  // Build template lookup by (round_number, position) for stable matching
+  const templateByRoundPos = {}
+  for (const tm of templateMatchups) {
+    templateByRoundPos[`${tm.round_number}-${tm.position}`] = tm
+  }
+
   for (const tournament of tournaments) {
     // Get existing tournament matchups
     const { data: existingMatchups } = await supabase
@@ -209,35 +215,47 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
 
     if (!existingMatchups?.length) continue
 
-    // Build lookup by template_matchup_id
-    const existingByTemplateId = {}
-    for (const m of existingMatchups) {
-      existingByTemplateId[m.template_matchup_id] = m
-    }
-
-    // Sync team names/seeds from template matchups
-    for (const tm of templateMatchups) {
-      const existing = existingByTemplateId[tm.id]
-      if (!existing) continue
+    // Sync team names/seeds from template matchups using (round_number, position) as stable key
+    for (const existing of existingMatchups) {
+      const tm = templateByRoundPos[`${existing.round_number}-${existing.position}`]
+      if (!tm) continue
 
       // Don't overwrite matchups that already have a winner
       if (existing.winner) continue
 
+      // Update template_matchup_id reference if it changed (template matchups were re-inserted with new UUIDs)
+      const updates = {
+        team_top: tm.team_top || null,
+        team_bottom: tm.team_bottom || null,
+        seed_top: tm.seed_top ?? null,
+        seed_bottom: tm.seed_bottom ?? null,
+      }
+      if (existing.template_matchup_id !== tm.id) {
+        updates.template_matchup_id = tm.id
+      }
+
       await supabase
         .from('bracket_matchups')
-        .update({
-          team_top: tm.team_top || null,
-          team_bottom: tm.team_bottom || null,
-          seed_top: tm.seed_top ?? null,
-          seed_bottom: tm.seed_bottom ?? null,
-        })
+        .update(updates)
         .eq('id', existing.id)
+    }
+
+    // Re-fetch tournament matchups after updates (template_matchup_id may have changed)
+    const { data: refreshedMatchups } = await supabase
+      .from('bracket_matchups')
+      .select('*')
+      .eq('tournament_id', tournament.id)
+
+    // Build lookup by template_matchup_id for bye propagation
+    const byeLookup = {}
+    for (const m of refreshedMatchups || []) {
+      byeLookup[m.template_matchup_id] = m
     }
 
     // Handle byes: if a matchup becomes a bye (only one team), auto-set winner
     for (const tm of templateMatchups) {
       if (!tm.is_bye) continue
-      const existing = existingByTemplateId[tm.id]
+      const existing = byeLookup[tm.id]
       if (!existing || existing.winner) continue
 
       const winnerSlot = tm.team_top ? 'top' : 'bottom'
@@ -257,7 +275,7 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
 
       // Propagate to next round
       if (tm.feeds_into_matchup_id) {
-        const nextExisting = existingByTemplateId[tm.feeds_into_matchup_id]
+        const nextExisting = byeLookup[tm.feeds_into_matchup_id]
         if (nextExisting && !nextExisting.winner) {
           const update = tm.feeds_into_slot === 'top'
             ? { team_top: winnerTeam, seed_top: winnerSeed }
