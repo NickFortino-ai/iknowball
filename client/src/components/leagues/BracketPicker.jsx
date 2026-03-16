@@ -25,8 +25,8 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
   // Template matchups for feeds_into info
   const templateMatchups = useMemo(
-    () => tournament?.bracket_templates?.matchups || [],
-    [tournament?.bracket_templates?.matchups]
+    () => tournament?.bracket_templates?.bracket_template_matchups || [],
+    [tournament?.bracket_templates?.bracket_template_matchups]
   )
 
   // Build lookup maps
@@ -254,17 +254,16 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     ? (otherEntries || [])
     : []
 
-  // Count filled picks vs required matchups (Round 0 play-in picks are optional bonus)
-  const nonByeMatchups = (matchups || []).filter((m) => {
+  // Count filled picks vs total pickable matchups
+  const allPickableMatchups = (matchups || []).filter((m) => {
     const tm = templateMatchupMap[m.template_matchup_id]
-    return !tm?.is_bye
+    if (tm?.is_bye) return false
+    // Settled play-in games don't need picks
+    if (m.round_number === 0 && m.winner) return false
+    return true
   })
-  const requiredMatchups = nonByeMatchups.filter((m) => {
-    const tm = templateMatchupMap[m.template_matchup_id]
-    return m.round_number >= 1 && !tm?.is_bye
-  })
-  const filledCount = Object.keys(picks).length
-  const totalRequired = requiredMatchups.length
+  const filledCount = allPickableMatchups.filter((m) => picks[m.template_matchup_id]).length
+  const totalRequired = allPickableMatchups.length
   const allFilled = filledCount >= totalRequired
   const tiebreakerTopValid = tiebreakerTop !== '' && Number.isInteger(Number(tiebreakerTop)) && Number(tiebreakerTop) >= 0 && Number(tiebreakerTop) <= 250
   const tiebreakerBottomValid = tiebreakerBottom !== '' && Number.isInteger(Number(tiebreakerBottom)) && Number(tiebreakerBottom) >= 0 && Number(tiebreakerBottom) <= 250
@@ -603,14 +602,25 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
           />
         </div>
         <button
-          onClick={handleSubmit}
-          disabled={!canSubmit || submitBracket.isPending}
+          onClick={() => {
+            if (!allFilled) {
+              // Jump to next incomplete step
+              const nextIncomplete = steps.findIndex((step) => !isStepComplete(step, picks))
+              if (nextIncomplete !== -1) {
+                setActiveStep(nextIncomplete)
+                setShowOverview(false)
+              }
+            } else if (canSubmit) {
+              handleSubmit()
+            }
+          }}
+          disabled={(!canSubmit && allFilled) || submitBracket.isPending}
           className="w-full py-3 rounded-xl font-display text-lg bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitBracket.isPending
             ? 'Submitting...'
             : !allFilled
-              ? `Pick ${totalRequired - Math.min(filledCount, totalRequired)} more games`
+              ? `Pick ${totalRequired - filledCount} more games`
               : !tiebreakerValid
                 ? 'Enter championship scores'
                 : 'Submit Bracket'}

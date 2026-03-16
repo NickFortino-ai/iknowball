@@ -739,7 +739,7 @@ export async function getAllEntries(tournamentId) {
 export async function getTournament(leagueId) {
   const { data: tournament, error } = await supabase
     .from('bracket_tournaments')
-    .select('*, bracket_templates(*)')
+    .select('*, bracket_templates(*, bracket_template_matchups(*))')
     .eq('league_id', leagueId)
     .single()
 
