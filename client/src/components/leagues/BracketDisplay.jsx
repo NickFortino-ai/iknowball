@@ -149,27 +149,39 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
 
       <div className="overflow-x-auto">
         <div className="flex gap-4 min-w-max py-2">
-          {roundNumbers.map((roundNum) => (
-            <div key={roundNum} className="flex flex-col items-center">
-              <div className="text-xs font-semibold text-text-secondary mb-1">{getRoundName(roundNum)}</div>
-              <div className="text-[10px] text-text-muted mb-3">{getRoundPoints(roundNum)} pts</div>
-              <div
-                className="flex flex-col gap-3 justify-around"
-                style={{ minHeight: firstRoundCount * 60 || 200 }}
-              >
-                {filteredByRound[roundNum]?.map((matchup) => (
-                  <MatchupCard
-                    key={matchup.id}
-                    matchup={matchup}
-                    pick={pickMap[matchup.template_matchup_id]?.team}
-                    eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
-                    showPick={hasPicks}
-                    onTap={onMatchupTap}
-                  />
-                ))}
+          {roundNumbers.map((roundNum, roundIdx) => {
+            const matchupsList = filteredByRound[roundNum] || []
+            const span = Math.pow(2, roundIdx)
+
+            return (
+              <div key={roundNum} className="flex flex-col items-center">
+                <div className="text-xs font-semibold text-text-secondary mb-1">{getRoundName(roundNum)}</div>
+                <div className="text-[10px] text-text-muted mb-3">{getRoundPoints(roundNum)} pts</div>
+                <div
+                  className="grid"
+                  style={{
+                    gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
+                  }}
+                >
+                  {matchupsList.map((matchup, idx) => (
+                    <div
+                      key={matchup.id}
+                      className="flex items-center"
+                      style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+                    >
+                      <MatchupCard
+                        matchup={matchup}
+                        pick={pickMap[matchup.template_matchup_id]?.team}
+                        eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
+                        showPick={hasPicks}
+                        onTap={onMatchupTap}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Legend */}
