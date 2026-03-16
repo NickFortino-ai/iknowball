@@ -228,6 +228,17 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     return (byRound[r1] || []).filter((m) => facingLayout.left.includes(m.region)).length
   }, [facingLayout, byRound])
 
+  // Gap-aware grid helpers for facing layout (adds spacer row between the two regions)
+  const perRegionCount = halfR1Count / 2
+  const facingGridTemplate = `repeat(${perRegionCount}, minmax(60px, 1fr)) 20px repeat(${perRegionCount}, minmax(60px, 1fr))`
+
+  function facingGridRow(idx, span) {
+    const start = idx * span + 1
+    return start > perRegionCount
+      ? `${start + 1} / span ${span}`
+      : `${start} / span ${span}`
+  }
+
   const useFacing = !!(facingLayout && centerMatchups)
 
   const roundNumbers = Object.keys(filteredByRound).map(Number).sort((a, b) => a - b)
@@ -309,20 +320,17 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
 
   // ── Helper: render a column of connector elements ──
 
-  function renderConnectorColumn(count, span, gridRows, mirrored, key) {
+  function renderConnectorColumn(count, span, gridTemplate, rowFn, mirrored, key) {
     return (
       <div key={key} className="flex flex-col">
         <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
         <div className="text-[10px] mb-3 invisible">&nbsp;</div>
-        <div
-          className="grid"
-          style={{ gridTemplateRows: `repeat(${gridRows}, minmax(60px, 1fr))` }}
-        >
+        <div className="grid" style={{ gridTemplateRows: gridTemplate }}>
           {Array.from({ length: count }, (_, idx) => (
             <div
               key={idx}
               className="flex"
-              style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+              style={{ gridRow: rowFn(idx, span) }}
             >
               {renderConnectorElement(mirrored)}
             </div>
@@ -363,13 +371,13 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
           </div>
           <div
             className="grid"
-            style={{ gridTemplateRows: `repeat(${halfR1Count}, minmax(60px, 1fr))` }}
+            style={{ gridTemplateRows: facingGridTemplate }}
           >
             {matchupsList.map((matchup, idx) => (
               <div
                 key={matchup.id}
                 className="flex items-center"
-                style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+                style={{ gridRow: facingGridRow(idx, span) }}
               >
                 {renderCard(matchup, 'default')}
               </div>
@@ -395,17 +403,19 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
 
         if (connCount > 0) {
           elements.push(
-            renderConnectorColumn(connCount, connSpan, halfR1Count, mirrored, `${side}-c-${roundNum}`)
+            renderConnectorColumn(connCount, connSpan, facingGridTemplate, facingGridRow, mirrored, `${side}-c-${roundNum}`)
           )
         }
       }
     })
 
     // Merge-to-center connector (last regional round → FF)
+    const fullSpanRow = (_, __) => '1 / -1'
     const mergeConn = renderConnectorColumn(
       1,
-      halfR1Count,
-      halfR1Count,
+      0,
+      facingGridTemplate,
+      fullSpanRow,
       mirrored,
       `${side}-merge`
     )
@@ -432,12 +442,9 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
         </div>
         <div
           className="grid"
-          style={{ gridTemplateRows: `repeat(${halfR1Count}, minmax(60px, 1fr))` }}
+          style={{ gridTemplateRows: facingGridTemplate }}
         >
-          <div
-            style={{ gridRow: `1 / span ${halfR1Count}` }}
-            className="flex items-center"
-          >
+          <div style={{ gridRow: '1 / -1' }} className="flex items-center">
             {renderCard(matchup, size)}
           </div>
         </div>
@@ -454,12 +461,9 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
         <div className="text-[10px] mb-3 invisible">&nbsp;</div>
         <div
           className="grid"
-          style={{ gridTemplateRows: `repeat(${halfR1Count}, minmax(60px, 1fr))` }}
+          style={{ gridTemplateRows: facingGridTemplate }}
         >
-          <div
-            style={{ gridRow: `1 / span ${halfR1Count}` }}
-            className="flex items-center"
-          >
+          <div style={{ gridRow: '1 / -1' }} className="flex items-center">
             <div className="w-4 h-px bg-border/40" />
           </div>
         </div>
