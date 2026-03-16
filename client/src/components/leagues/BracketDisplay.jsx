@@ -546,7 +546,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
                       {getRoundPoints(roundNum)} pts
                     </div>
                     <div
-                      className="grid"
+                      className="grid gap-y-1"
                       style={{
                         gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
                       }}
@@ -587,7 +587,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
                       <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
                       <div className="text-[10px] mb-3 invisible">&nbsp;</div>
                       <div
-                        className="grid"
+                        className="grid gap-y-1"
                         style={{
                           gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
                         }}
