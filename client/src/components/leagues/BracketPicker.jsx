@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import BracketDisplay from './BracketDisplay'
@@ -6,9 +6,19 @@ import BracketDisplay from './BracketDisplay'
 export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose }) {
   const submitBracket = useSubmitBracket()
   const { data: otherEntries } = useMyOtherBracketEntries(league?.id)
-  const [entryName, setEntryName] = useState('')
-  const [tiebreakerTop, setTiebreakerTop] = useState('')
-  const [tiebreakerBottom, setTiebreakerBottom] = useState('')
+  const draftKey = `bracket-draft-${league?.id}`
+
+  // Restore saved draft from localStorage
+  const savedDraft = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(draftKey)
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  }, [draftKey])
+
+  const [entryName, setEntryName] = useState(savedDraft?.entryName || '')
+  const [tiebreakerTop, setTiebreakerTop] = useState(savedDraft?.tiebreakerTop || '')
+  const [tiebreakerBottom, setTiebreakerBottom] = useState(savedDraft?.tiebreakerBottom || '')
   const [copiedFrom, setCopiedFrom] = useState(null)
   const [showOverview, setShowOverview] = useState(false)
   const autoAdvanceTimer = useRef(null)
@@ -28,7 +38,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     return map
   }, [templateMatchups])
 
-  // Initialize picks from existing or empty
+  // Initialize picks from existing entry, saved draft, or empty
   const [picks, setPicks] = useState(() => {
     if (existingPicks?.length) {
       const map = {}
@@ -37,8 +47,19 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       }
       return map
     }
+    if (savedDraft?.picks && Object.keys(savedDraft.picks).length > 0) {
+      return savedDraft.picks
+    }
     return {}
   })
+
+  // Auto-save draft to localStorage
+  useEffect(() => {
+    if (Object.keys(picks).length === 0 && !entryName && !tiebreakerTop && !tiebreakerBottom) return
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ picks, entryName, tiebreakerTop, tiebreakerBottom }))
+    } catch {}
+  }, [picks, entryName, tiebreakerTop, tiebreakerBottom, draftKey])
 
   const rounds = tournament?.bracket_templates?.rounds || []
   const regions = tournament?.bracket_templates?.regions || []
@@ -263,6 +284,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
         entryName: entryName || undefined,
         tiebreakerScore: Number(tiebreakerTop) + Number(tiebreakerBottom),
       })
+      localStorage.removeItem(draftKey)
       toast('Bracket submitted!', 'success')
       onClose?.()
     } catch (err) {
@@ -287,6 +309,13 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
           Cancel
         </button>
       </div>
+
+      {/* Draft restored indicator */}
+      {!existingPicks?.length && savedDraft?.picks && Object.keys(savedDraft.picks).length > 0 && !copiedFrom && (
+        <div className="bg-accent/10 border border-accent/30 rounded-xl px-3 py-2 mb-4 text-sm text-accent text-center">
+          Draft restored — your progress was saved
+        </div>
+      )}
 
       {/* Progress */}
       <div className="bg-bg-card rounded-xl border border-border p-3 mb-4 text-center">
