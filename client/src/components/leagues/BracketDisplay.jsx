@@ -184,9 +184,9 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
   const hasPicks = picks && picks.length > 0
   const showRegionTabs = regions && regions.length >= 2
 
-  // Desktop horizontal view
+  // Desktop horizontal view — break out of parent max-w container to use full viewport width
   return (
-    <div>
+    <div className="md:w-[calc(100vw-3rem)] md:max-w-[1400px] md:-ml-[calc((100vw-3rem-100%)/2)] md:self-center">
       {/* Region tabs */}
       {showRegionTabs && (
         <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
