@@ -166,42 +166,114 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const [activeStep, setActiveStep] = useState(initialStep)
   const currentStep = steps[activeStep] || steps[0]
 
-  // Lookup tournament matchups by template_matchup_id for settled-game fallback
-  const matchupByTmId = useMemo(() => {
-    const map = {}
-    for (const m of matchups || []) {
-      if (m.template_matchup_id) map[m.template_matchup_id] = m
+  // Build feeder map: for each matchup, which two previous-round matchups feed into it?
+  // Uses template feeds_into links when available, falls back to position-based pairing
+  const feederMap = useMemo(() => {
+    const map = {} // matchup.id -> { top: matchup, bottom: matchup }
+    const all = matchups || []
+
+    // First try template-based feeds_into links
+    const tmIdToMatchup = {}
+    for (const m of all) {
+      if (m.template_matchup_id) tmIdToMatchup[m.template_matchup_id] = m
     }
+
+    for (const m of all) {
+      if (m.round_number === 0) continue // play-ins handled separately
+      const tm = templateMatchupMap[m.template_matchup_id]
+      if (tm) {
+        const feeders = templateMatchups.filter((f) => f.feeds_into_matchup_id === tm.id)
+        const topFeeder = feeders.find((f) => f.feeds_into_slot === 'top')
+        const bottomFeeder = feeders.find((f) => f.feeds_into_slot === 'bottom')
+        if (topFeeder || bottomFeeder) {
+          map[m.id] = {
+            top: topFeeder ? tmIdToMatchup[topFeeder.id] : null,
+            bottom: bottomFeeder ? tmIdToMatchup[bottomFeeder.id] : null,
+          }
+        }
+      }
+    }
+
+    // Position-based fallback for any matchups without feeders
+    // Group by round, sort by position within same region grouping
+    const byRound = {}
+    for (const m of all) {
+      if (!byRound[m.round_number]) byRound[m.round_number] = []
+      byRound[m.round_number].push(m)
+    }
+    for (const key in byRound) {
+      byRound[key].sort((a, b) => a.position - b.position)
+    }
+
+    for (const m of all) {
+      if (map[m.id]) continue // already resolved via template
+      if (m.round_number <= 0) continue // skip play-ins (handled by template links)
+      if (m.round_number === 1) continue // round 1 has direct teams, no position-based feeders
+
+      const prevRound = byRound[m.round_number - 1]
+      if (!prevRound?.length) continue
+
+      // For within-region rounds, filter to same region
+      const prevMatchups = m.region
+        ? prevRound.filter((p) => p.region === m.region)
+        : prevRound // cross-region: use all previous round matchups
+
+      const myRound = byRound[m.round_number]
+      const sameGroup = m.region
+        ? myRound.filter((p) => p.region === m.region)
+        : myRound
+      const myIdx = sameGroup.indexOf(m)
+
+      // Each matchup in this round is fed by 2 consecutive matchups from prev round
+      const topFeeder = prevMatchups[myIdx * 2]
+      const bottomFeeder = prevMatchups[myIdx * 2 + 1]
+
+      if (topFeeder || bottomFeeder) {
+        map[m.id] = { top: topFeeder || null, bottom: bottomFeeder || null }
+      }
+    }
+
     return map
-  }, [matchups])
+  }, [matchups, templateMatchupMap, templateMatchups])
 
   // Get the available teams for a matchup (from feeder picks, settled results, or direct team names)
   const getTeamsForMatchup = useCallback((matchup) => {
-    const tm = templateMatchupMap[matchup.template_matchup_id]
-    if (!tm) return { top: matchup.team_top, bottom: matchup.team_bottom }
+    const feeders = feederMap[matchup.id]
+    if (!feeders) return { top: matchup.team_top, bottom: matchup.team_bottom }
 
-    // Find feeder matchups for each slot
-    const feeders = templateMatchups.filter((f) => f.feeds_into_matchup_id === tm.id)
-    const topFeeder = feeders.find((f) => f.feeds_into_slot === 'top')
-    const bottomFeeder = feeders.find((f) => f.feeds_into_slot === 'bottom')
-
-    function resolveFeeder(feeder, fallbackTeam) {
-      if (!feeder) return fallbackTeam
+    function resolveFeeder(feederMatchup, fallbackTeam) {
+      if (!feederMatchup) return fallbackTeam
       // User's pick takes priority
-      if (picks[feeder.id]) return picks[feeder.id]
+      if (feederMatchup.template_matchup_id && picks[feederMatchup.template_matchup_id]) {
+        return picks[feederMatchup.template_matchup_id]
+      }
       // Fallback: if feeder game is settled in the tournament, use the winner
-      const feederMatchup = matchupByTmId[feeder.id]
-      if (feederMatchup?.winner) {
+      if (feederMatchup.winner) {
         return feederMatchup.winner === 'top' ? feederMatchup.team_top : feederMatchup.team_bottom
       }
       return null
     }
 
     return {
-      top: resolveFeeder(topFeeder, matchup.team_top),
-      bottom: resolveFeeder(bottomFeeder, matchup.team_bottom),
+      top: resolveFeeder(feeders.top, matchup.team_top),
+      bottom: resolveFeeder(feeders.bottom, matchup.team_bottom),
     }
-  }, [picks, templateMatchupMap, templateMatchups, matchupByTmId])
+  }, [picks, feederMap])
+
+  // Forward lookup: template_matchup_id → next round's template_matchup_id (for clearing downstream picks)
+  const feedsIntoTmId = useMemo(() => {
+    const map = {}
+    const all = matchups || []
+    const byId = {}
+    for (const m of all) byId[m.id] = m
+    for (const [matchupId, feeders] of Object.entries(feederMap)) {
+      const m = byId[matchupId]
+      if (!m?.template_matchup_id) continue
+      if (feeders.top?.template_matchup_id) map[feeders.top.template_matchup_id] = m.template_matchup_id
+      if (feeders.bottom?.template_matchup_id) map[feeders.bottom.template_matchup_id] = m.template_matchup_id
+    }
+    return map
+  }, [feederMap, matchups])
 
   // Championship matchup for tiebreaker team names
   const championshipMatchup = useMemo(() => {
@@ -245,11 +317,10 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   }
 
   function clearDownstreamPicks(tmId, oldTeam, newPicks) {
-    // Find matchups that this one feeds into
-    const tm = templateMatchupMap[tmId]
-    if (!tm?.feeds_into_matchup_id) return
+    // Find the next round matchup this one feeds into
+    const nextTmId = feedsIntoTmId[tmId]
+    if (!nextTmId) return
 
-    const nextTmId = tm.feeds_into_matchup_id
     // If the next round pick was the team that was just changed, clear it
     if (newPicks[nextTmId] === oldTeam) {
       delete newPicks[nextTmId]
