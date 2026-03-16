@@ -513,9 +513,52 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             </div>
           )
         })}
+
+        {/* Tiebreaker score prediction — shown on championship step */}
+        {currentStep && championshipMatchup && currentStep.matchups.some((m) => m.id === championshipMatchup.id) && (
+          <div className="bg-bg-card rounded-xl border border-accent/30 p-4 mt-1">
+            <label className="block text-xs text-text-muted mb-2">
+              Predict the Final Score <span className="text-incorrect">*</span>
+            </label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={tiebreakerTop}
+                  onChange={(e) => setTiebreakerTop(e.target.value)}
+                  placeholder="Score"
+                  min={0}
+                  max={250}
+                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                />
+                <p className="text-[10px] text-text-muted mt-1 truncate text-center">
+                  {championshipTeams.top || 'Team 1'}
+                </p>
+              </div>
+              <span className="self-start pt-2.5 text-sm text-text-muted">–</span>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={tiebreakerBottom}
+                  onChange={(e) => setTiebreakerBottom(e.target.value)}
+                  placeholder="Score"
+                  min={0}
+                  max={250}
+                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                />
+                <p className="text-[10px] text-text-muted mt-1 truncate text-center">
+                  {championshipTeams.bottom || 'Team 2'}
+                </p>
+              </div>
+            </div>
+            <p className="text-[10px] text-text-muted mt-2">
+              Used as tiebreaker for standings
+            </p>
+          </div>
+        )}
       </div>}
 
-      {/* Entry name + Tiebreaker + Submit */}
+      {/* Entry name + Submit */}
       <div className="mt-6 space-y-3">
         <div>
           <label className="block text-xs text-text-muted mb-1">
@@ -529,45 +572,6 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             maxLength={50}
             className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
-        </div>
-        <div>
-          <label className="block text-xs text-text-muted mb-1">
-            Championship Score Prediction <span className="text-incorrect">*</span>
-          </label>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <input
-                type="number"
-                value={tiebreakerTop}
-                onChange={(e) => setTiebreakerTop(e.target.value)}
-                placeholder="Score"
-                min={0}
-                max={250}
-                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-              />
-              <p className="text-[10px] text-text-muted mt-1 truncate text-center">
-                {championshipTeams.top || 'Team 1'}
-              </p>
-            </div>
-            <span className="self-start pt-2.5 text-sm text-text-muted">–</span>
-            <div className="flex-1">
-              <input
-                type="number"
-                value={tiebreakerBottom}
-                onChange={(e) => setTiebreakerBottom(e.target.value)}
-                placeholder="Score"
-                min={0}
-                max={250}
-                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-              />
-              <p className="text-[10px] text-text-muted mt-1 truncate text-center">
-                {championshipTeams.bottom || 'Team 2'}
-              </p>
-            </div>
-          </div>
-          <p className="text-[10px] text-text-muted mt-1">
-            Predict the final score of the championship game (tiebreaker)
-          </p>
         </div>
         <button
           onClick={handleSubmit}
