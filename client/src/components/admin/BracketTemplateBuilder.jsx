@@ -122,6 +122,14 @@ function generateRounds(teamCount) {
   return rounds
 }
 
+// Official NCAA bracket seed order for 16-team regions (top to bottom):
+// 1v16, 8v9, 5v12, 4v13, 6v11, 3v14, 7v10, 2v15
+// This ensures correct convergence: (1/16 vs 8/9), (5/12 vs 4/13), etc.
+const NCAA_BRACKET_SEEDS_16 = [
+  [1, 16], [8, 9], [5, 12], [4, 13],
+  [6, 11], [3, 14], [7, 10], [2, 15],
+]
+
 function generateMatchups(teamCount, regions, rounds) {
   const effectiveTeamCount = teamCount === 68 ? 64 : teamCount
   const matchups = []
@@ -136,17 +144,19 @@ function generateMatchups(teamCount, regions, rounds) {
   const teamsPerRegion = effectiveTeamCount / regionsToUse.length
   const matchupsPerRegionR1 = teamsPerRegion / 2
 
-  // Generate round 1 matchups per region
+  // Generate round 1 matchups per region using NCAA bracket seed order
+  const seedPairs = teamsPerRegion === 16
+    ? NCAA_BRACKET_SEEDS_16
+    : Array.from({ length: matchupsPerRegionR1 }, (_, m) => [m + 1, teamsPerRegion - m])
+
   for (const region of regionsToUse) {
     for (let m = 0; m < matchupsPerRegionR1; m++) {
-      const seedTop = m + 1
-      const seedBottom = teamsPerRegion - m
       matchups.push({
         round_number: 1,
         position: position++,
         region,
-        seed_top: seedTop,
-        seed_bottom: seedBottom,
+        seed_top: seedPairs[m][0],
+        seed_bottom: seedPairs[m][1],
         team_top: '',
         team_bottom: '',
         is_bye: false,
