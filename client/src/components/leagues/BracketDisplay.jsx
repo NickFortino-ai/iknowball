@@ -35,21 +35,21 @@ function MatchupCard({ matchup, pick, eliminated, showPick, onTap, size = 'defau
 
   return (
     <div
-      className={`bg-bg-card border border-border rounded-lg ${size === 'xl' ? 'w-80 text-sm' : size === 'lg' ? 'w-52' : 'w-44'} text-xs overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
+      className={`bg-bg-card border border-border rounded-lg ${size === 'xl' ? 'w-56 text-base' : size === 'lg' ? 'w-48 text-sm' : 'w-44 text-xs'} overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
       onClick={isClickable ? handleClick : undefined}
     >
-      <div className={`flex items-center gap-1 px-2 py-1.5 border-b border-border ${teamClass(matchup.team_top, true)}`}>
+      <div className={`flex items-center gap-1 ${size === 'xl' ? 'px-3 py-3' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'} border-b border-border ${teamClass(matchup.team_top, true)}`}>
         {matchup.seed_top != null && (
-          <span className="text-text-muted w-4 text-right shrink-0">{matchup.seed_top}</span>
+          <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{matchup.seed_top}</span>
         )}
         <span className="truncate flex-1">{matchup.team_top || 'TBD'}</span>
         {matchup.status === 'completed' && matchup.winner === 'top' && (
           <span className="text-correct shrink-0">W</span>
         )}
       </div>
-      <div className={`flex items-center gap-1 px-2 py-1.5 ${teamClass(matchup.team_bottom, false)}`}>
+      <div className={`flex items-center gap-1 ${size === 'xl' ? 'px-3 py-3' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'} ${teamClass(matchup.team_bottom, false)}`}>
         {matchup.seed_bottom != null && (
-          <span className="text-text-muted w-4 text-right shrink-0">{matchup.seed_bottom}</span>
+          <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{matchup.seed_bottom}</span>
         )}
         <span className="truncate flex-1">{matchup.team_bottom || 'TBD'}</span>
         {matchup.status === 'completed' && matchup.winner === 'bottom' && (
