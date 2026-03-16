@@ -18,7 +18,9 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
           <span className="px-4 py-3 font-medium flex-1">Player</span>
           <span className="px-4 py-3 font-medium text-right">Points</span>
           <span className="px-4 py-3 font-medium text-right">Possible</span>
-          <span className="px-4 py-3 font-medium text-right">{hasActualScore ? 'TB Dist.' : 'TB Pred.'}</span>
+          {hasActualScore && (
+            <span className="px-4 py-3 font-medium text-right">TB Dist.</span>
+          )}
         </div>
         {/* Rows */}
         {entries.map((e, i) => {
@@ -49,9 +51,9 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
               </div>
               <span className="px-4 py-3 text-right font-semibold text-accent whitespace-nowrap">{e.total_points}</span>
               <span className="px-4 py-3 text-right text-text-muted whitespace-nowrap">{e.possible_points}</span>
-              <span className="px-4 py-3 text-right whitespace-nowrap">
-                {hasActualScore ? (
-                  distance != null ? (
+              {hasActualScore && (
+                <span className="px-4 py-3 text-right whitespace-nowrap">
+                  {distance != null ? (
                     distance === 0 ? (
                       <span className="text-correct font-semibold">Exact!</span>
                     ) : (
@@ -59,15 +61,9 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
                     )
                   ) : (
                     <span className="text-text-muted">-</span>
-                  )
-                ) : (
-                  prediction != null ? (
-                    <span className="text-text-secondary">{prediction}</span>
-                  ) : (
-                    <span className="text-text-muted">-</span>
-                  )
-                )}
-              </span>
+                  )}
+                </span>
+              )}
             </Row>
           )
         })}

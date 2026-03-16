@@ -103,6 +103,71 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     return filtered
   }, [byRound, selectedRegion])
 
+  // Build team→seed map from Round 1 matchups (seeds only set on early rounds)
+  const teamSeedMap = useMemo(() => {
+    const map = {}
+    for (const m of matchups || []) {
+      if (m.round_number <= 1 && m.team_top && m.seed_top != null) map[m.team_top] = m.seed_top
+      if (m.round_number <= 1 && m.team_bottom && m.seed_bottom != null) map[m.team_bottom] = m.seed_bottom
+    }
+    return map
+  }, [matchups])
+
+  // Build position-based feeder map for resolving team names from picks
+  const feederMap = useMemo(() => {
+    const map = {}
+    const all = (matchups || []).filter((m) => m.round_number > 0)
+    const byRound = {}
+    for (const m of all) {
+      if (!byRound[m.round_number]) byRound[m.round_number] = []
+      byRound[m.round_number].push(m)
+    }
+    for (const key in byRound) {
+      byRound[key].sort((a, b) => a.position - b.position)
+    }
+    for (const m of all) {
+      if (m.round_number <= 1) continue
+      const prevRound = byRound[m.round_number - 1]
+      if (!prevRound?.length) continue
+      const prevMatchups = m.region ? prevRound.filter((p) => p.region === m.region) : prevRound
+      const myRound = byRound[m.round_number]
+      const sameGroup = m.region ? myRound.filter((p) => p.region === m.region) : myRound
+      const myIdx = sameGroup.indexOf(m)
+      map[m.id] = { top: prevMatchups[myIdx * 2] || null, bottom: prevMatchups[myIdx * 2 + 1] || null }
+    }
+    return map
+  }, [matchups])
+
+  // Resolve team names from picks for matchups with null teams
+  const resolvedMatchups = useMemo(() => {
+    if (!picks?.length) return null
+
+    function resolveFromFeeder(feeder) {
+      if (!feeder) return null
+      const pick = pickMap[feeder.template_matchup_id]?.team
+      if (pick) return pick
+      if (feeder.winner === 'top') return feeder.team_top
+      if (feeder.winner === 'bottom') return feeder.team_bottom
+      return null
+    }
+
+    const resolved = {}
+    for (const m of matchups || []) {
+      if (m.round_number <= 1 || (m.team_top && m.team_bottom)) continue
+      const feeders = feederMap[m.id]
+      if (!feeders) continue
+      const topTeam = m.team_top || resolveFromFeeder(feeders.top)
+      const bottomTeam = m.team_bottom || resolveFromFeeder(feeders.bottom)
+      resolved[m.id] = {
+        team_top: topTeam,
+        team_bottom: bottomTeam,
+        seed_top: topTeam ? (m.seed_top ?? teamSeedMap[topTeam] ?? null) : null,
+        seed_bottom: bottomTeam ? (m.seed_bottom ?? teamSeedMap[bottomTeam] ?? null) : null,
+      }
+    }
+    return resolved
+  }, [matchups, picks, pickMap, feederMap, teamSeedMap])
+
   const roundNumbers = Object.keys(filteredByRound).map(Number).sort((a, b) => a - b)
   const firstRoundCount = filteredByRound[roundNumbers[0]]?.length || 0
 
@@ -163,21 +228,31 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
                     gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
                   }}
                 >
-                  {matchupsList.map((matchup, idx) => (
-                    <div
-                      key={matchup.id}
-                      className="flex items-center"
-                      style={{ gridRow: `${idx * span + 1} / span ${span}` }}
-                    >
-                      <MatchupCard
-                        matchup={matchup}
-                        pick={pickMap[matchup.template_matchup_id]?.team}
-                        eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
-                        showPick={hasPicks}
-                        onTap={onMatchupTap}
-                      />
-                    </div>
-                  ))}
+                  {matchupsList.map((matchup, idx) => {
+                    const resolved = resolvedMatchups?.[matchup.id]
+                    const displayMatchup = resolved ? {
+                      ...matchup,
+                      team_top: resolved.team_top || matchup.team_top,
+                      team_bottom: resolved.team_bottom || matchup.team_bottom,
+                      seed_top: resolved.seed_top ?? matchup.seed_top,
+                      seed_bottom: resolved.seed_bottom ?? matchup.seed_bottom,
+                    } : matchup
+                    return (
+                      <div
+                        key={matchup.id}
+                        className="flex items-center"
+                        style={{ gridRow: `${idx * span + 1} / span ${span}` }}
+                      >
+                        <MatchupCard
+                          matchup={displayMatchup}
+                          pick={pickMap[matchup.template_matchup_id]?.team}
+                          eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
+                          showPick={hasPicks}
+                          onTap={onMatchupTap}
+                        />
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )
