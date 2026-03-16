@@ -166,7 +166,16 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const [activeStep, setActiveStep] = useState(initialStep)
   const currentStep = steps[activeStep] || steps[0]
 
-  // Get the available teams for a matchup (from feeder picks or direct team names)
+  // Lookup tournament matchups by template_matchup_id for settled-game fallback
+  const matchupByTmId = useMemo(() => {
+    const map = {}
+    for (const m of matchups || []) {
+      if (m.template_matchup_id) map[m.template_matchup_id] = m
+    }
+    return map
+  }, [matchups])
+
+  // Get the available teams for a matchup (from feeder picks, settled results, or direct team names)
   const getTeamsForMatchup = useCallback((matchup) => {
     const tm = templateMatchupMap[matchup.template_matchup_id]
     if (!tm) return { top: matchup.team_top, bottom: matchup.team_bottom }
@@ -176,11 +185,23 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     const topFeeder = feeders.find((f) => f.feeds_into_slot === 'top')
     const bottomFeeder = feeders.find((f) => f.feeds_into_slot === 'bottom')
 
-    return {
-      top: topFeeder ? (picks[topFeeder.id] || null) : matchup.team_top,
-      bottom: bottomFeeder ? (picks[bottomFeeder.id] || null) : matchup.team_bottom,
+    function resolveFeeder(feeder, fallbackTeam) {
+      if (!feeder) return fallbackTeam
+      // User's pick takes priority
+      if (picks[feeder.id]) return picks[feeder.id]
+      // Fallback: if feeder game is settled in the tournament, use the winner
+      const feederMatchup = matchupByTmId[feeder.id]
+      if (feederMatchup?.winner) {
+        return feederMatchup.winner === 'top' ? feederMatchup.team_top : feederMatchup.team_bottom
+      }
+      return null
     }
-  }, [picks, templateMatchupMap, templateMatchups])
+
+    return {
+      top: resolveFeeder(topFeeder, matchup.team_top),
+      bottom: resolveFeeder(bottomFeeder, matchup.team_bottom),
+    }
+  }, [picks, templateMatchupMap, templateMatchups, matchupByTmId])
 
   // Championship matchup for tiebreaker team names
   const championshipMatchup = useMemo(() => {
