@@ -35,7 +35,7 @@ function MatchupCard({ matchup, pick, eliminated, showPick, onTap, size = 'defau
 
   return (
     <div
-      className={`bg-bg-card border border-border rounded-lg ${size === 'xl' ? 'w-64' : size === 'lg' ? 'w-52' : 'w-44'} text-xs overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
+      className={`bg-bg-card border border-border rounded-lg ${size === 'xl' ? 'w-80 text-sm' : size === 'lg' ? 'w-52' : 'w-44'} text-xs overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
       onClick={isClickable ? handleClick : undefined}
     >
       <div className={`flex items-center gap-1 px-2 py-1.5 border-b border-border ${teamClass(matchup.team_top, true)}`}>
