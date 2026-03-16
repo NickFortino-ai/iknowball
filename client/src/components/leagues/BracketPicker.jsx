@@ -21,6 +21,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const [tiebreakerBottom, setTiebreakerBottom] = useState(savedDraft?.tiebreakerBottom || '')
   const [copiedFrom, setCopiedFrom] = useState(null)
   const [showOverview, setShowOverview] = useState(false)
+  const [championModal, setChampionModal] = useState(null) // { team, seed }
   const autoAdvanceTimer = useRef(null)
 
   // Template matchups for feeds_into info
@@ -39,18 +40,22 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   }, [templateMatchups])
 
   // Initialize picks from existing entry, saved draft, or empty
+  // Filter to only include valid template matchup IDs (orphaned matchups from template regeneration are excluded)
   const [picks, setPicks] = useState(() => {
+    let raw = {}
     if (existingPicks?.length) {
-      const map = {}
       for (const p of existingPicks) {
-        map[p.template_matchup_id] = p.picked_team
+        raw[p.template_matchup_id] = p.picked_team
       }
-      return map
+    } else if (savedDraft?.picks && Object.keys(savedDraft.picks).length > 0) {
+      raw = savedDraft.picks
     }
-    if (savedDraft?.picks && Object.keys(savedDraft.picks).length > 0) {
-      return savedDraft.picks
+    // Strip orphaned picks
+    const cleaned = {}
+    for (const [tmId, team] of Object.entries(raw)) {
+      if (templateMatchupMap[tmId]) cleaned[tmId] = team
     }
-    return {}
+    return cleaned
   })
 
   // Auto-save draft to localStorage
@@ -79,9 +84,14 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     (matchups || []).filter((m) => m.round_number === 0 && m.winner).map((m) => m.template_matchup_id)
   ), [matchups])
 
-  // Build wizard steps from matchup data
+  // Build wizard steps from matchup data (exclude orphaned matchups without valid template entries)
   const steps = useMemo(() => {
-    const allMatchups = matchups || []
+    const tmMap = {}
+    for (const tm of templateMatchups) tmMap[tm.id] = tm
+    const allMatchups = (matchups || []).filter((m) => {
+      const tm = tmMap[m.template_matchup_id]
+      return tm && !tm.is_bye
+    })
     const grouped = {}
     for (const m of allMatchups) {
       if (!grouped[m.round_number]) grouped[m.round_number] = []
@@ -137,7 +147,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     }
 
     return result
-  }, [matchups, regions, rounds])
+  }, [matchups, regions, rounds, templateMatchups])
 
   // Helper: get pickable matchups for a step
   const getPickableMatchups = useCallback((step) => {
@@ -319,6 +329,12 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
     setPicks(newPicks)
 
+    // Show champion celebration modal when championship pick is made
+    if (championshipMatchup && matchup.id === championshipMatchup.id) {
+      const seed = teamSeedMap[team] ?? null
+      setChampionModal({ team, seed })
+    }
+
     // Auto-advance if current step is now complete (non-bonus only)
     if (currentStep && !currentStep.isBonus && activeStep < steps.length - 1) {
       if (isStepComplete(currentStep, newPicks)) {
@@ -365,7 +381,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   // Count filled picks vs total pickable matchups
   const allPickableMatchups = (matchups || []).filter((m) => {
     const tm = templateMatchupMap[m.template_matchup_id]
-    if (tm?.is_bye) return false
+    if (!tm || tm.is_bye) return false
     // Settled play-in games don't need picks
     if (m.round_number === 0 && m.winner) return false
     return true
@@ -379,10 +395,14 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const canSubmit = allFilled && tiebreakerValid
 
   async function handleSubmit() {
-    const pickArray = Object.entries(picks).map(([template_matchup_id, picked_team]) => ({
-      template_matchup_id,
-      picked_team,
-    }))
+    // Only submit picks for valid, non-bye template matchup IDs
+    const validTmIds = new Set(allPickableMatchups.map((m) => m.template_matchup_id))
+    const pickArray = Object.entries(picks)
+      .filter(([tmId]) => validTmIds.has(tmId))
+      .map(([template_matchup_id, picked_team]) => ({
+        template_matchup_id,
+        picked_team,
+      }))
 
     try {
       await submitBracket.mutateAsync({
@@ -571,7 +591,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       {!showOverview && <div className="space-y-3">
         {currentStep?.matchups.map((matchup) => {
           const tm = templateMatchupMap[matchup.template_matchup_id]
-          if (tm?.is_bye) return null
+          if (!tm || tm.is_bye) return null
 
           // Settled Round 0 matchups: show result as locked, not pickable
           if (matchup.round_number === 0 && matchup.winner) {
@@ -757,6 +777,74 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
           </button>
         )}
       </div>
+
+      {/* Champion celebration modal */}
+      {championModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setChampionModal(null)}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative bg-bg-secondary rounded-2xl border border-accent/30 p-6 max-w-sm w-full text-center overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Confetti animation */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              {Array.from({ length: 40 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-1.5 h-1.5 rounded-full animate-confetti"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    backgroundColor: ['#FFD700', '#32CD32', '#FF6347', '#00BFFF', '#FF69B4', '#FFA500'][i % 6],
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${2 + Math.random() * 2}s`,
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="relative z-10">
+              <div className="text-sm text-text-muted mb-1">Your pick to cut the nets down is</div>
+              <div className="font-display text-3xl text-accent mt-2 mb-1 animate-pulse">
+                {championModal.team}
+              </div>
+              {championModal.seed != null && (
+                <div className="text-sm text-text-muted mb-4">
+                  {championModal.seed} seed
+                </div>
+              )}
+
+              <div className="text-6xl my-4">
+                {'\u{1F3C6}'}
+              </div>
+
+              <div className="space-y-2 mt-6">
+                <button
+                  onClick={async () => {
+                    const shareText = `My pick to win it all: ${championModal.seed ? `(${championModal.seed}) ` : ''}${championModal.team} \u{1F3C6}\n\nFill out your bracket on I KNOW BALL!`
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({ text: shareText })
+                      } catch {}
+                    } else {
+                      await navigator.clipboard.writeText(shareText)
+                      toast('Copied to clipboard!', 'success')
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+                >
+                  Share My Champion
+                </button>
+                <button
+                  onClick={() => setChampionModal(null)}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold bg-bg-card border border-border text-text-secondary hover:bg-bg-card-hover transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

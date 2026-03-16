@@ -282,7 +282,20 @@ async function cascadeTeamUpdatesToTournaments(templateId, templateMatchups) {
       await supabase.from('bracket_matchups').insert(missingRows)
     }
 
-    // Re-fetch tournament matchups after updates (template_matchup_id may have changed)
+    // Delete orphaned tournament matchups (template was regenerated, old matchups remain)
+    const validTmIds = new Set(templateMatchups.map((tm) => tm.id))
+    const { data: allTournamentMatchups } = await supabase
+      .from('bracket_matchups')
+      .select('id, template_matchup_id')
+      .eq('tournament_id', tournament.id)
+    const orphanIds = (allTournamentMatchups || [])
+      .filter((m) => !m.template_matchup_id || !validTmIds.has(m.template_matchup_id))
+      .map((m) => m.id)
+    if (orphanIds.length > 0) {
+      await supabase.from('bracket_matchups').delete().in('id', orphanIds)
+    }
+
+    // Re-fetch tournament matchups after updates
     const { data: refreshedMatchups } = await supabase
       .from('bracket_matchups')
       .select('*')
