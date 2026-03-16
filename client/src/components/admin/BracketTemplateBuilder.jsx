@@ -886,22 +886,30 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             </div>
           ))}
 
-          <div className="flex gap-2">
+          <div className="space-y-2">
             <button
-              onClick={() => setStep(2)}
-              className="flex-1 py-3 rounded-xl font-display text-lg bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors"
+              onClick={handleGenerateMatchups}
+              className="w-full py-2 rounded-xl text-sm bg-bg-card text-text-secondary hover:bg-bg-card-hover border border-border transition-colors"
             >
-              Back
+              Regenerate Bracket (NCAA seed order)
             </button>
-            <button
-              onClick={handleSaveMatchups}
-              disabled={saved || saveMatchups.isPending || createTemplate.isPending}
-              className={`flex-1 py-3 rounded-xl font-display text-lg transition-colors disabled:opacity-50 ${
-                saved ? 'bg-correct text-white' : 'bg-accent text-white hover:bg-accent-hover'
-              }`}
-            >
-              {saveMatchups.isPending ? 'Saving...' : saved ? 'Saved \u2713' : 'Save Template'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStep(2)}
+                className="flex-1 py-3 rounded-xl font-display text-lg bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSaveMatchups}
+                disabled={saved || saveMatchups.isPending || createTemplate.isPending}
+                className={`flex-1 py-3 rounded-xl font-display text-lg transition-colors disabled:opacity-50 ${
+                  saved ? 'bg-correct text-white' : 'bg-accent text-white hover:bg-accent-hover'
+                }`}
+              >
+                {saveMatchups.isPending ? 'Saving...' : saved ? 'Saved \u2713' : 'Save Template'}
+              </button>
+            </div>
           </div>
         </div>
       )}
