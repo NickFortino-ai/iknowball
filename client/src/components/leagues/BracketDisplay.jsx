@@ -325,7 +325,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
       <div key={key} className="flex flex-col">
         <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
         <div className="text-[10px] mb-3 invisible">&nbsp;</div>
-        <div className="grid" style={{ gridTemplateRows: gridTemplate }}>
+        <div className="grid gap-y-1" style={{ gridTemplateRows: gridTemplate }}>
           {Array.from({ length: count }, (_, idx) => (
             <div
               key={idx}
@@ -370,7 +370,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
             {getRoundPoints(roundNum)} pts
           </div>
           <div
-            className="grid"
+            className="grid gap-y-1"
             style={{ gridTemplateRows: facingGridTemplate }}
           >
             {matchupsList.map((matchup, idx) => (
@@ -441,7 +441,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
           {getRoundPoints(roundNum)} pts
         </div>
         <div
-          className="grid"
+          className="grid gap-y-1"
           style={{ gridTemplateRows: facingGridTemplate }}
         >
           <div style={{ gridRow: '1 / -1' }} className="flex items-center">
@@ -460,7 +460,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
         <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
         <div className="text-[10px] mb-3 invisible">&nbsp;</div>
         <div
-          className="grid"
+          className="grid gap-y-1"
           style={{ gridTemplateRows: facingGridTemplate }}
         >
           <div style={{ gridRow: '1 / -1' }} className="flex items-center">
