@@ -8,19 +8,20 @@ const ONBOARDING_STEPS = [
     buttonText: "Let's Go",
   },
   {
+    page: '/settings',
+    targetSelector: null,
+    title: 'Set Up Your Profile',
+    body: "Add a display name, avatar, and bio to make your profile yours. You can also link your socials — X, Instagram, and more — so other ballers can find and follow you on other platforms too.",
+    position: 'center',
+    freeScroll: true,
+  },
+  {
     page: '/picks',
     targetSelector: '[data-onboarding="game-card"]',
     title: 'Pick Your Winners',
     body: 'Tap a team to pick them. You risk points (red) on every pick — get it right and you win the reward (green). Higher odds = bigger reward.',
     position: 'top',
     freeScroll: true,
-  },
-  {
-    page: '/picks',
-    targetSelector: '[data-onboarding="bottom-bar"]',
-    title: 'Multiply Your Picks',
-    body: "Once you've built up points, you can 2x, 3x, or 4x your risk and reward on any pick. Tap here to expand your pick slip.",
-    position: 'top',
   },
   {
     page: '/picks',
