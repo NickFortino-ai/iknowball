@@ -1,6 +1,6 @@
 import FeedCardWrapper from './FeedCardWrapper'
 
-export default function RecordFeedCard({ item, reactions, onUserTap }) {
+export default function RecordFeedCard({ item, reactions, onUserTap, onRecordTap }) {
   const { record } = item
 
   return (
@@ -18,7 +18,10 @@ export default function RecordFeedCard({ item, reactions, onUserTap }) {
         <span className="font-bold text-sm text-yellow-500">Record Broken!</span>
       </div>
 
-      <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg px-3 py-2">
+      <div
+        className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg px-3 py-2 cursor-pointer hover:bg-yellow-500/10 transition-colors"
+        onClick={() => onRecordTap?.(record.id)}
+      >
         <div className="font-semibold text-sm">{record.display_name}</div>
         <div className="flex items-center gap-2 mt-1 text-xs">
           <span className="text-yellow-500 font-bold">{record.new_value}</span>

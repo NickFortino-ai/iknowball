@@ -40,6 +40,14 @@ export function useRecordFuturesPick(pickId) {
   })
 }
 
+export function useRecordDetail(recordHistoryId) {
+  return useQuery({
+    queryKey: ['recordDetail', recordHistoryId],
+    queryFn: () => api.get(`/records/history/${recordHistoryId}/detail`),
+    enabled: !!recordHistoryId,
+  })
+}
+
 export function useRoyalty() {
   return useQuery({
     queryKey: ['royalty'],

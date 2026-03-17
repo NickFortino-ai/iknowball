@@ -22,6 +22,7 @@ import SweatFeedCard from './SweatFeedCard'
 import SweatResultFeedCard from './SweatResultFeedCard'
 import CalledShotFeedCard from './CalledShotFeedCard'
 import StreakDetailModal from './StreakDetailModal'
+import RecordDetailModal from './RecordDetailModal'
 import HeadToHeadDetailModal from './HeadToHeadDetailModal'
 import HotTakeComposer from './HotTakeComposer'
 import FeedCardWrapper from './FeedCardWrapper'
@@ -49,6 +50,7 @@ function getFeedItemTargetKey(item) {
 export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId = null, targetUserName = null, scrollToItemId, onScrollComplete }) {
   const { session } = useAuth()
   const [selectedStreakId, setSelectedStreakId] = useState(null)
+  const [selectedRecordId, setSelectedRecordId] = useState(null)
   const [asked, setAsked] = useState(false)
   const askForHotTakes = useAskForHotTakes()
   const [selectedH2HItem, setSelectedH2HItem] = useState(null)
@@ -258,6 +260,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
       )}
 
       <StreakDetailModal streakId={selectedStreakId} onClose={() => setSelectedStreakId(null)} />
+      <RecordDetailModal recordHistoryId={selectedRecordId} onClose={() => setSelectedRecordId(null)} />
       <HeadToHeadDetailModal item={selectedH2HItem} onClose={() => setSelectedH2HItem(null)} />
     </div>
   )
@@ -333,6 +336,7 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, bookma
           item={item}
           reactions={getReactions('record_history', item.record.id)}
           onUserTap={onUserTap}
+          onRecordTap={setSelectedRecordId}
         />
       )
     case 'head_to_head':
