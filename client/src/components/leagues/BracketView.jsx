@@ -115,57 +115,75 @@ export default function BracketView({ league, tab = 'bracket', onTabChange }) {
     ? myEntry?.picks
     : viewedEntry?.picks || null
 
+  const showCourtBg = league.sport === 'basketball_ncaab' || league.sport === 'basketball_wncaab'
+
   return (
     <div>
-      {/* Picks not available yet banner */}
-      {picksBlocked && (
-        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 mb-4 text-center">
-          <div className="text-sm text-text-secondary font-semibold mb-1">
-            Picks open {new Date(picksAvailableAt).toLocaleString('en-US', {
-              month: 'long', day: 'numeric', year: 'numeric',
-              hour: 'numeric', minute: '2-digit',
-            })}
-          </div>
-          <div className="text-xs text-text-muted">Review the bracket in the meantime!</div>
-        </div>
-      )}
+      {/* Hero area with optional court background for March Madness */}
+      <div className={`relative rounded-xl mb-4 overflow-hidden ${showCourtBg ? '' : ''}`}>
+        {showCourtBg && (
+          <>
+            <img
+              src="/bracket-bg.png"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover object-top opacity-15 pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/80 to-transparent pointer-events-none" />
+          </>
+        )}
 
-      {/* Status banner */}
-      {!isLocked && !picksBlocked && (
-        <div className="bg-bg-card rounded-xl border border-border p-4 mb-4 text-center">
-          <div className="text-sm text-text-secondary mb-2">
-            {hasSubmitted
-              ? 'Your bracket has been submitted!'
-              : savedDraft
-                ? `You have a bracket in progress (${savedDraft.pickCount} picks made)`
-                : 'Fill out your bracket before the lock.'}
-          </div>
-          <div className="text-xs text-text-muted mb-3">
-            Locks: {new Date(tournament.locks_at).toLocaleString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-          </div>
-          <button
-            onClick={() => setShowPicker(true)}
-            className="px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
-          >
-            {hasSubmitted ? 'Edit Bracket' : savedDraft ? 'Continue Bracket' : 'Fill Your Bracket'}
-          </button>
-        </div>
-      )}
+        <div className="relative z-10 p-4">
+          {/* Picks not available yet banner */}
+          {picksBlocked && (
+            <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-center">
+              <div className="text-sm text-text-secondary font-semibold mb-1">
+                Picks open {new Date(picksAvailableAt).toLocaleString('en-US', {
+                  month: 'long', day: 'numeric', year: 'numeric',
+                  hour: 'numeric', minute: '2-digit',
+                })}
+              </div>
+              <div className="text-xs text-text-muted">Review the bracket in the meantime!</div>
+            </div>
+          )}
 
-      {isLocked && !hasSubmitted && (
-        <div className="bg-bg-card border border-border rounded-xl p-5 mb-4 text-center">
-          <div className="text-sm text-text-primary font-semibold mb-2">Bracket not submitted in time</div>
-          <div className="text-xs text-text-muted leading-relaxed">
-            You didn't get your bracket in before this tournament locked. But don't worry — I KNOW BALL has plenty of ways to compete and showcase your sports prediction powers!
-          </div>
+          {/* Status banner */}
+          {!isLocked && !picksBlocked && (
+            <div className={`${showCourtBg ? 'bg-bg-card/60 backdrop-blur-sm' : 'bg-bg-card'} rounded-xl border border-border p-4 text-center`}>
+              <div className="text-sm text-text-secondary mb-2">
+                {hasSubmitted
+                  ? 'Your bracket has been submitted!'
+                  : savedDraft
+                    ? `You have a bracket in progress (${savedDraft.pickCount} picks made)`
+                    : 'Fill out your bracket before the lock.'}
+              </div>
+              <div className="text-xs text-text-muted mb-3">
+                Locks: {new Date(tournament.locks_at).toLocaleString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </div>
+              <button
+                onClick={() => setShowPicker(true)}
+                className="px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+              >
+                {hasSubmitted ? 'Edit Bracket' : savedDraft ? 'Continue Bracket' : 'Fill Your Bracket'}
+              </button>
+            </div>
+          )}
+
+          {isLocked && !hasSubmitted && (
+            <div className={`${showCourtBg ? 'bg-bg-card/60 backdrop-blur-sm' : 'bg-bg-card'} border border-border rounded-xl p-5 text-center`}>
+              <div className="text-sm text-text-primary font-semibold mb-2">Bracket not submitted in time</div>
+              <div className="text-xs text-text-muted leading-relaxed">
+                You didn't get your bracket in before this tournament locked. But don't worry — I KNOW BALL has plenty of ways to compete and showcase your sports prediction powers!
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {viewTab === 'bracket' && (
         <div>
