@@ -49,6 +49,20 @@ function extractYoutubeVideoId(urlStr) {
   }
 }
 
+function extractTweetId(urlStr) {
+  try {
+    const parsed = new URL(urlStr)
+    const host = parsed.hostname.replace('www.', '')
+    if (host === 'twitter.com' || host === 'x.com') {
+      const match = parsed.pathname.match(/\/\w+\/status\/(\d+)/)
+      if (match) return match[1]
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 function parseOgTags(html, baseUrl) {
   const meta = {}
   // Match og: meta tags
@@ -117,11 +131,13 @@ router.get('/', requireAuth, async (req, res, next) => {
         image: cached.image,
         siteName: cached.site_name,
         youtubeVideoId: cached.youtube_video_id,
+        tweetId: cached.tweet_id,
       })
     }
 
-    // Extract YouTube video ID
+    // Extract YouTube video ID or tweet ID
     const youtubeVideoId = extractYoutubeVideoId(url)
+    const tweetId = extractTweetId(url)
 
     // Fetch the URL
     let html = ''
@@ -166,6 +182,7 @@ router.get('/', requireAuth, async (req, res, next) => {
       image: og.image || null,
       siteName: og.site_name || null,
       youtubeVideoId,
+      tweetId,
     }
 
     // Upsert into cache
@@ -177,6 +194,7 @@ router.get('/', requireAuth, async (req, res, next) => {
         image: result.image,
         site_name: result.siteName,
         youtube_video_id: result.youtubeVideoId,
+        tweet_id: result.tweetId,
         fetched_at: new Date().toISOString(),
       },
       { onConflict: 'url' }

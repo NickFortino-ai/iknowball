@@ -1,0 +1,1 @@
+ALTER TABLE link_previews ADD COLUMN IF NOT EXISTS tweet_id TEXT;

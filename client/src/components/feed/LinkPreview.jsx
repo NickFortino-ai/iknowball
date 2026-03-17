@@ -1,6 +1,80 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLinkPreview } from '../../hooks/useLinkPreview'
 import { displayUrl } from '../../lib/urlUtils'
+
+function TweetEmbed({ tweetId, url }) {
+  const containerRef = useRef(null)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!tweetId || !containerRef.current) return
+
+    // Load Twitter widget.js if not already loaded
+    function renderTweet() {
+      if (window.twttr?.widgets) {
+        containerRef.current.innerHTML = ''
+        window.twttr.widgets
+          .createTweet(tweetId, containerRef.current, {
+            theme: 'dark',
+            conversation: 'none',
+            dnt: true,
+          })
+          .then(() => setLoaded(true))
+          .catch(() => setLoaded(false))
+      }
+    }
+
+    if (window.twttr?.widgets) {
+      renderTweet()
+    } else {
+      // Load the script once
+      if (!document.getElementById('twitter-wjs')) {
+        const script = document.createElement('script')
+        script.id = 'twitter-wjs'
+        script.src = 'https://platform.twitter.com/widgets.js'
+        script.async = true
+        script.onload = () => {
+          // widgets.js sets window.twttr after load, but needs a tick
+          const check = setInterval(() => {
+            if (window.twttr?.widgets) {
+              clearInterval(check)
+              renderTweet()
+            }
+          }, 100)
+          setTimeout(() => clearInterval(check), 5000)
+        }
+        document.head.appendChild(script)
+      } else {
+        // Script tag exists but hasn't loaded yet
+        const check = setInterval(() => {
+          if (window.twttr?.widgets) {
+            clearInterval(check)
+            renderTweet()
+          }
+        }, 100)
+        setTimeout(() => clearInterval(check), 5000)
+      }
+    }
+  }, [tweetId])
+
+  return (
+    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+      <div ref={containerRef} className="max-w-full [&>*]:!m-0" />
+      {!loaded && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block border border-border rounded-lg px-3 py-2.5 bg-bg-card hover:bg-bg-card-hover transition-colors"
+        >
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-0.5">X (Twitter)</div>
+          <div className="text-sm text-accent">View post &rarr;</div>
+          <div className="text-[10px] text-text-muted mt-1">{displayUrl(url)}</div>
+        </a>
+      )}
+    </div>
+  )
+}
 
 export default function LinkPreview({ url }) {
   const { data, isLoading } = useLinkPreview(url)
@@ -10,7 +84,12 @@ export default function LinkPreview({ url }) {
     return <div className="mt-2 h-20 bg-bg-secondary rounded-lg animate-pulse" />
   }
 
-  if (!data || (!data.title && !data.youtubeVideoId)) return null
+  if (!data || (!data.title && !data.youtubeVideoId && !data.tweetId)) return null
+
+  // Tweet embed
+  if (data.tweetId) {
+    return <TweetEmbed tweetId={data.tweetId} url={url} />
+  }
 
   // YouTube embed
   if (data.youtubeVideoId) {
