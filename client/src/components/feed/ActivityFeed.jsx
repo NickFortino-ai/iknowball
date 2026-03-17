@@ -235,6 +235,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
                         onUserTap={onUserTap}
                         onStreakTap={setSelectedStreakId}
                         onH2HTap={setSelectedH2HItem}
+                        onRecordTap={setSelectedRecordId}
                         bookmarkStatus={bookmarkStatus}
                         onBookmarkToggle={handleBookmarkToggle}
                       />
@@ -267,7 +268,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
   )
 }
 
-function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, bookmarkStatus, onBookmarkToggle }) {
+function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, onRecordTap, bookmarkStatus, onBookmarkToggle }) {
   if (item.grouped) {
     return (
       <GroupedPickFeedCard
@@ -337,7 +338,7 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, bookma
           item={item}
           reactions={getReactions('record_history', item.record.id)}
           onUserTap={onUserTap}
-          onRecordTap={setSelectedRecordId}
+          onRecordTap={onRecordTap}
         />
       )
     case 'futures_pick':
