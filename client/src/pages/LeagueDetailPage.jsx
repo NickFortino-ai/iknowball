@@ -11,15 +11,17 @@ import BracketView from '../components/leagues/BracketView'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 
-function getLeagueTabs(league) {
+function getLeagueTabs(league, isBracketLocked) {
   if (league.format === 'pickem' && league.use_league_picks) {
     return ['Picks', 'Standings', 'Members']
+  }
+  if (league.format === 'bracket') {
+    return isBracketLocked ? ['Bracket', 'Standings'] : ['Bracket', 'Standings', 'Members']
   }
   const TABS = {
     pickem: ['Standings', 'Members'],
     survivor: ['Board', 'Members'],
     squares: ['Board', 'Members'],
-    bracket: ['Bracket', 'Standings', 'Members'],
   }
   return TABS[league.format] || ['Members']
 }
@@ -466,7 +468,9 @@ export default function LeagueDetailPage() {
   if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
   if (!league) return null
 
-  const tabs = getLeagueTabs(league)
+  const isBracketLocked = league.format === 'bracket' && tournament &&
+    (tournament.status !== 'open' || new Date(tournament.locks_at) <= new Date())
+  const tabs = getLeagueTabs(league, isBracketLocked)
   const isCommissioner = league.commissioner_id === profile?.id
 
   return (
@@ -497,7 +501,7 @@ export default function LeagueDetailPage() {
       </div>
 
       {/* Invite Actions */}
-      {league.format === 'bracket' ? (
+      {league.format === 'bracket' && !isBracketLocked ? (
         <div className="flex items-center gap-2 mb-4">
           <button
             onClick={async () => {
