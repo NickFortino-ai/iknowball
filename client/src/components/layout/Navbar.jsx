@@ -77,7 +77,7 @@ function getNotificationRoute(notification) {
     case 'league_invitation':
       return '/leagues'
     case 'headlines':
-      return '/hall-of-fame'
+      return '/?headlines=1'
     case 'record_broken':
       return '/hall-of-fame?section=records'
     case 'survivor_win':

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import HeadlinesCard from '../components/home/HeadlinesCard'
@@ -94,6 +94,8 @@ function WelcomeCard({ userId }) {
 
 export default function HomePage() {
   const { isAuthenticated, profile, session } = useAuth()
+  const [searchParams] = useSearchParams()
+  const forceHeadlines = searchParams.get('headlines') === '1'
   const [selectedTier, setSelectedTier] = useState(null)
 
   // Redirect authenticated but unpaid users to payment
@@ -139,7 +141,7 @@ export default function HomePage() {
           <div className="mb-8">
             <FeaturedPropSection date={new Date()} fallback />
           </div>
-          <HeadlinesCard />
+          <HeadlinesCard forceExpanded={forceHeadlines} />
         </>
       )}
 

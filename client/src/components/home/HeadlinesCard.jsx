@@ -71,7 +71,7 @@ function parseRecapContent(content) {
   return { rankings, awards, records }
 }
 
-export default function HeadlinesCard() {
+export default function HeadlinesCard({ forceExpanded }) {
   const { data: recap, isLoading } = useLatestRecap()
   const { profile } = useAuth()
   const updateRecap = useUpdateRecap()
@@ -101,7 +101,7 @@ export default function HeadlinesCard() {
   }, [tuesdayCutoff])
 
   const isPastTuesday = tuesdayCutoff ? now > tuesdayCutoff : false
-  const isExpanded = expanded !== null ? expanded : !isPastTuesday
+  const isExpanded = forceExpanded || (expanded !== null ? expanded : !isPastTuesday)
 
   const { rankings, awards, records } = useMemo(
     () => parseRecapContent(recap?.recap_content),
