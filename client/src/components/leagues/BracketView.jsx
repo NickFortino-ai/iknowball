@@ -126,9 +126,9 @@ export default function BracketView({ league, tab = 'bracket', onTabChange }) {
             <img
               src="/bracket-bg.png"
               alt=""
-              className="absolute inset-0 w-full h-full object-cover object-top opacity-15 pointer-events-none"
+              className="absolute inset-0 w-full h-full object-cover object-bottom opacity-40 pointer-events-none"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/80 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/70 via-transparent to-bg-primary pointer-events-none" />
           </>
         )}
 
