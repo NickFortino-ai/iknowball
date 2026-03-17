@@ -53,7 +53,7 @@ const TEAM_COLORS = {
   'Oklahoma City Thunder': '#007AC1',
   'Orlando Magic': '#0077C0',
   'Philadelphia 76ers': '#006BB6',
-  'Phoenix Suns': '#1D1160',
+  'Phoenix Suns': '#E56020',
   'Portland Trail Blazers': '#E03A3E',
   'Sacramento Kings': '#5A2D81',
   'San Antonio Spurs': '#C4CED4',
