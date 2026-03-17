@@ -49,7 +49,7 @@ const TEAM_COLORS = {
   'Milwaukee Bucks': '#00471B',
   'Minnesota Timberwolves': '#0C2340',
   'New Orleans Pelicans': '#0C2340',
-  'New York Knicks': '#006BB6',
+  'New York Knicks': '#F58426',
   'Oklahoma City Thunder': '#007AC1',
   'Orlando Magic': '#0077C0',
   'Philadelphia 76ers': '#006BB6',
