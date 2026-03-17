@@ -25,8 +25,10 @@ function extractBasketballData(data) {
 
   const starters = []
   const injuredMap = new Map()
+  const usedStarters = new Set()
 
   // Extract depth chart for the 5 positions (starter + backups)
+  // Skip players already listed at a previous position
   for (const posKey of NBA_POSITIONS) {
     const pos = chart.positions[posKey]
     if (!pos?.athletes?.length) continue
@@ -35,12 +37,16 @@ function extractBasketballData(data) {
       name: a.displayName,
       shortName: a.shortName,
     }))
-    starters.push({
-      position: posLabel,
-      name: depth[0].name,
-      shortName: depth[0].shortName,
-      depth,
-    })
+    const starter = depth.find((p) => !usedStarters.has(p.name))
+    if (starter) {
+      usedStarters.add(starter.name)
+      starters.push({
+        position: posLabel,
+        name: starter.name,
+        shortName: starter.shortName,
+        depth,
+      })
+    }
   }
 
   // Scan all positions for injuries

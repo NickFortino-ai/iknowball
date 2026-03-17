@@ -120,11 +120,15 @@ function TeamSection({ teamName, starters, injuries }) {
   }
 
   // Build today's starters: promote next man up when starter is Out/Doubtful
+  // Skip players already used at a previous position
+  const usedPlayers = new Set()
   const todayStarters = (starters || []).map((s) => {
     const depth = s.depth || [{ name: s.name, shortName: s.shortName }]
     for (const player of depth) {
+      if (usedPlayers.has(player.name)) continue
       const status = injuryMap[player.name] || injuryMap[player.shortName]
       if (status === 'Out' || status === 'Doubtful') continue
+      usedPlayers.add(player.name)
       return { position: s.position, name: player.name, shortName: player.shortName, status: status || null }
     }
     // All available players at this position are out
