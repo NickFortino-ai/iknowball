@@ -12,7 +12,7 @@ import BracketStandings from './BracketStandings'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 
-export default function BracketView({ league }) {
+export default function BracketView({ league, tab = 'bracket', onTabChange }) {
   const { profile } = useAuth()
   const { data: tournament, isLoading: tournamentLoading } = useBracketTournament(league.id)
   const { data: myEntry } = useBracketEntry(league.id)
@@ -31,7 +31,7 @@ export default function BracketView({ league }) {
 
   const [showPicker, setShowPicker] = useState(!!savedDraft)
   const [viewingUserId, setViewingUserId] = useState(null)
-  const [viewTab, setViewTab] = useState('bracket') // bracket | standings
+  const viewTab = tab
 
   const { data: viewedEntry } = useViewBracketEntry(
     league.id,
@@ -167,26 +167,6 @@ export default function BracketView({ league }) {
         </div>
       )}
 
-      {/* Sub-tabs */}
-      <div className="flex gap-1 mb-4">
-        <button
-          onClick={() => setViewTab('bracket')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            viewTab === 'bracket' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Bracket
-        </button>
-        <button
-          onClick={() => setViewTab('standings')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            viewTab === 'standings' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Standings
-        </button>
-      </div>
-
       {viewTab === 'bracket' && (
         <div>
           {/* User bracket selector (after lock) */}
@@ -231,7 +211,7 @@ export default function BracketView({ league }) {
           championshipTotalScore={tournament?.championship_total_score}
           onViewBracket={isLocked ? (userId) => {
             setViewingUserId(userId)
-            setViewTab('bracket')
+            onTabChange?.('bracket')
           } : null}
         />
       )}

@@ -19,7 +19,7 @@ function getLeagueTabs(league) {
     pickem: ['Standings', 'Members'],
     survivor: ['Board', 'Members'],
     squares: ['Board', 'Members'],
-    bracket: ['Bracket', 'Members'],
+    bracket: ['Bracket', 'Standings', 'Members'],
   }
   return TABS[league.format] || ['Members']
 }
@@ -730,8 +730,15 @@ export default function LeagueDetailPage() {
         <SquaresView league={league} isCommissioner={isCommissioner} />
       )}
 
-      {tabs[activeTab] === 'Bracket' && league.format === 'bracket' && (
-        <BracketView league={league} />
+      {(tabs[activeTab] === 'Bracket' || tabs[activeTab] === 'Standings') && league.format === 'bracket' && (
+        <BracketView
+          league={league}
+          tab={tabs[activeTab] === 'Standings' ? 'standings' : 'bracket'}
+          onTabChange={(t) => {
+            const idx = tabs.indexOf(t === 'bracket' ? 'Bracket' : 'Standings')
+            if (idx !== -1) setActiveTab(idx)
+          }}
+        />
       )}
 
       {/* Delete League */}
