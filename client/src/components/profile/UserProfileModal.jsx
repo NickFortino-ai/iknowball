@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useUserProfile, useUserPickHistory, useUserParlayHistory, useUserPropPickHistory, useUserBonusHistory, useHeadToHead } from '../../hooks/useUserProfile'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus, useSendConnectionRequest } from '../../hooks/useConnections'
+import HeadToHeadDetailModal from '../feed/HeadToHeadDetailModal'
 import { useUserHotTakes, useRemindHotTake } from '../../hooks/useHotTakes'
 import { timeAgo } from '../../lib/time'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
@@ -266,6 +267,7 @@ export default function UserProfileModal({ userId, onClose }) {
   const { data: parlays, isLoading: parlaysLoading } = useUserParlayHistory(userId)
   const { data: propPicks, isLoading: propsLoading } = useUserPropPickHistory(userId)
   const { data: bonuses, isLoading: bonusesLoading } = useUserBonusHistory(userId)
+  const [showH2HDetail, setShowH2HDetail] = useState(false)
   const isViewingOther = userId && session?.user?.id !== userId
   const { data: h2h } = useHeadToHead(isViewingOther ? userId : null)
   const { data: connectionStatus } = useConnectionStatus(isViewingOther ? userId : null)
@@ -492,8 +494,14 @@ export default function UserProfileModal({ userId, onClose }) {
 
             {/* Head-to-Head */}
             {h2h && h2h.total > 0 && (
-              <div className="bg-bg-primary rounded-xl p-4 mb-4">
-                <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Head-to-Head</h3>
+              <div
+                className="bg-bg-primary rounded-xl p-4 mb-4 cursor-pointer hover:bg-bg-secondary transition-colors"
+                onClick={() => setShowH2HDetail(true)}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs text-text-muted uppercase tracking-wider">Head-to-Head</h3>
+                  <span className="text-xs text-accent">View History &rarr;</span>
+                </div>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
                     <div className="font-display text-xl text-correct">{h2h.wins}</div>
@@ -512,6 +520,13 @@ export default function UserProfileModal({ userId, onClose }) {
                   {h2h.total} games in common
                 </div>
               </div>
+            )}
+
+            {showH2HDetail && (
+              <HeadToHeadDetailModal
+                item={{ matchup: { userA: { userId: session?.user?.id }, userB: { userId } } }}
+                onClose={() => setShowH2HDetail(false)}
+              />
             )}
 
             {/* Pick History */}
