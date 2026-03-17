@@ -477,10 +477,11 @@ export default function LeagueDetailPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className={`mb-6 ${league.format === 'bracket' ? 'text-center' : ''}`}>
+      <div className="mb-6">
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
+        <div className={league.format === 'bracket' ? 'text-center' : ''}>
         <h1 className="font-display text-3xl mt-2">{league.name}</h1>
         <div className={`flex flex-wrap items-center gap-3 mt-2 ${league.format === 'bracket' ? 'justify-center' : ''}`}>
           <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
@@ -498,6 +499,7 @@ export default function LeagueDetailPage() {
               Commissioner
             </span>
           )}
+        </div>
         </div>
       </div>
 
