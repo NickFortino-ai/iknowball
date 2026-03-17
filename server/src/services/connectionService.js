@@ -397,7 +397,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   const skipForHotTakes = (isHotTakes || isUserHotTakes) ? Promise.resolve({ data: [] }) : null
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
-  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes] = await Promise.all([
+  const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes, futuresPicks] = await Promise.all([
     // Source 1: Notable picks — settled where (correct AND odds >= 250) OR (multiplier >= 3)
     // Fetches at +250 threshold; "all" scope filters to +300 during processing
     skipForHotTakes ||
@@ -507,6 +507,15 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .from('hot_take_reminders')
       .select('hot_take_id')
       .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
+
+    // Source 13: Futures picks — new submissions + settled results
+    skipForHotTakes ||
+    applyBefore(filterByUser(supabase
+      .from('futures_picks')
+      .select('id, user_id, picked_outcome, odds_at_submission, risk_at_submission, reward_at_submission, status, is_correct, points_earned, created_at, updated_at, futures_markets(title, sport_key)'),
+      'user_id', connectedIds), 'created_at')
+      .order('created_at', { ascending: false })
+      .limit(20),
   ])
 
   // For 'all' / 'hot_takes' / 'user_hot_takes' scope, batch-fetch user data from query results
@@ -521,6 +530,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     for (const pick of h2hPicks.data || []) userIdSet.add(pick.user_id)
     for (const take of hotTakes.data || []) userIdSet.add(take.user_id)
     for (const win of leagueWins.data || []) userIdSet.add(win.user_id)
+    for (const fp of futuresPicks.data || []) userIdSet.add(fp.user_id)
     // viralHotTakes user IDs are added after we fetch the actual hot takes below
     userIdSet.delete(undefined)
     for (const id of blockedSet) userIdSet.delete(id)
@@ -720,6 +730,52 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         record_key: record.record_key,
       },
     })
+  }
+
+  // Process futures picks
+  for (const fp of futuresPicks.data || []) {
+    const user = userMap[fp.user_id]
+    if (!user) continue
+
+    if (fp.status === 'settled' && fp.is_correct) {
+      // Winning futures pick — always featured prominently
+      feed.push({
+        type: 'futures_hit',
+        id: fp.id,
+        userId: fp.user_id,
+        ...buildUserFields(user),
+        timestamp: fp.updated_at,
+        futures: {
+          id: fp.id,
+          picked_outcome: fp.picked_outcome,
+          market_title: fp.futures_markets?.title,
+          sport_key: fp.futures_markets?.sport_key,
+          odds_at_submission: fp.odds_at_submission,
+          points_earned: fp.points_earned,
+          status: fp.status,
+          is_correct: fp.is_correct,
+        },
+      })
+    } else if (fp.status === 'locked') {
+      // Pending futures pick — show that user made a bold call
+      feed.push({
+        type: 'futures_pick',
+        id: fp.id,
+        userId: fp.user_id,
+        ...buildUserFields(user),
+        timestamp: fp.created_at,
+        futures: {
+          id: fp.id,
+          picked_outcome: fp.picked_outcome,
+          market_title: fp.futures_markets?.title,
+          sport_key: fp.futures_markets?.sport_key,
+          odds_at_submission: fp.odds_at_submission,
+          points_earned: fp.points_earned,
+          status: fp.status,
+          is_correct: fp.is_correct,
+        },
+      })
+    }
   }
 
   // Process pick shares

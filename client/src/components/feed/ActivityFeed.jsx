@@ -21,6 +21,7 @@ import DailyDigestFeedCard from './DailyDigestFeedCard'
 import SweatFeedCard from './SweatFeedCard'
 import SweatResultFeedCard from './SweatResultFeedCard'
 import CalledShotFeedCard from './CalledShotFeedCard'
+import FuturesFeedCard from './FuturesFeedCard'
 import StreakDetailModal from './StreakDetailModal'
 import RecordDetailModal from './RecordDetailModal'
 import HeadToHeadDetailModal from './HeadToHeadDetailModal'
@@ -339,6 +340,9 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, bookma
           onRecordTap={setSelectedRecordId}
         />
       )
+    case 'futures_pick':
+    case 'futures_hit':
+      return <FuturesFeedCard item={item} onUserTap={onUserTap} />
     case 'head_to_head':
       return (
         <HeadToHeadFeedCard
