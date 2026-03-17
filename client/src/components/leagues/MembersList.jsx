@@ -2,7 +2,7 @@ import TierBadge from '../ui/TierBadge'
 import Avatar from '../ui/Avatar'
 import { getTier } from '../../lib/scoring'
 
-export default function MembersList({ members, pendingInvitations, commissionerId, leagueId, isCommissioner }) {
+export default function MembersList({ members, pendingInvitations, commissionerId, leagueId, isCommissioner, onUserTap }) {
   const hasMembers = members?.length > 0
   const hasPending = pendingInvitations?.length > 0
 
@@ -18,7 +18,8 @@ export default function MembersList({ members, pendingInvitations, commissionerI
         return (
           <div
             key={m.id}
-            className="bg-bg-card rounded-xl border border-border px-4 py-3 flex items-center justify-between"
+            className={`bg-bg-card rounded-xl border border-border px-4 py-3 flex items-center justify-between${onUserTap ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
+            onClick={() => onUserTap?.(m.user_id)}
           >
             <div className="flex items-center gap-3 min-w-0">
               <Avatar user={user} size="xl" />

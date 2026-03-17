@@ -8,6 +8,7 @@ import PickemView from '../components/leagues/PickemView'
 import SurvivorView from '../components/leagues/SurvivorView'
 import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
+import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 
@@ -457,6 +458,7 @@ export default function LeagueDetailPage() {
   const [editingNote, setEditingNote] = useState(false)
   const [noteText, setNoteText] = useState('')
   const noteRef = useRef(null)
+  const [selectedUserId, setSelectedUserId] = useState(null)
   const updateLeague = useUpdateLeague()
   const deleteLeague = useDeleteLeague()
 
@@ -609,6 +611,10 @@ export default function LeagueDetailPage() {
       {/* League Conditions (hidden for bracket leagues) */}
       {league.format !== 'bracket' && <LeagueConditions league={league} />}
 
+      {selectedUserId && (
+        <UserProfileModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
+      )}
+
       {showInviteModal && (
         <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} format={league.format} onClose={() => {
           setShowInviteModal(false)
@@ -720,6 +726,7 @@ export default function LeagueDetailPage() {
           commissionerId={league.commissioner_id}
           leagueId={league.id}
           isCommissioner={isCommissioner}
+          onUserTap={setSelectedUserId}
         />
       )}
 
