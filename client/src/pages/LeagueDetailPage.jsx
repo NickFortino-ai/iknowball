@@ -616,7 +616,7 @@ export default function LeagueDetailPage() {
       )}
 
       {showInviteModal && (
-        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} format={league.format} onClose={() => {
+        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} format={league.format} memberIds={league.members?.map(m => m.user_id) || []} onClose={() => {
           setShowInviteModal(false)
           if (searchParams.has('invite')) {
             searchParams.delete('invite')

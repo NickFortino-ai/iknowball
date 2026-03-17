@@ -351,6 +351,14 @@ export async function joinLeague(userId, inviteCode) {
     throw error
   }
 
+  // Clean up any pending invitations for this user in this league
+  await supabase
+    .from('league_invitations')
+    .delete()
+    .eq('league_id', league.id)
+    .eq('recipient_id', userId)
+    .eq('status', 'pending')
+
   return league
 }
 

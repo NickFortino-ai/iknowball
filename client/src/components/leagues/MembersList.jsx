@@ -4,7 +4,10 @@ import { getTier } from '../../lib/scoring'
 
 export default function MembersList({ members, pendingInvitations, commissionerId, leagueId, isCommissioner, onUserTap }) {
   const hasMembers = members?.length > 0
-  const hasPending = pendingInvitations?.length > 0
+  // Filter out pending invitations for users who already joined
+  const memberUserIds = new Set((members || []).map(m => m.user_id))
+  const filteredPending = (pendingInvitations || []).filter(inv => !memberUserIds.has(inv.user_id))
+  const hasPending = filteredPending.length > 0
 
   if (!hasMembers && !hasPending) return null
 
@@ -50,7 +53,7 @@ export default function MembersList({ members, pendingInvitations, commissionerI
       {hasPending && (
         <>
           <div className="text-[10px] text-text-muted uppercase tracking-wider mt-4 mb-1">Pending</div>
-          {pendingInvitations.map((inv) => {
+          {filteredPending.map((inv) => {
             const user = inv.user
             if (!user) return null
 

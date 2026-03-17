@@ -10,7 +10,7 @@ const STATUS_STYLES = {
   declined: 'bg-text-muted/20 text-text-muted',
 }
 
-export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, format, onClose }) {
+export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, format, memberIds = [], onClose }) {
   const [query, setQuery] = useState('')
   const [email, setEmail] = useState('')
   const [linkCopied, setLinkCopied] = useState(false)
@@ -54,9 +54,10 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, fo
   const pendingInvites = (invitations || []).filter((i) => i.status === 'pending')
   const pastInvites = (invitations || []).filter((i) => i.status !== 'pending')
 
-  // Filter connections: exclude users already invited (pending/accepted)
+  // Filter connections: exclude users already invited or already members
   const invitedUsernames = new Set((invitations || []).map((i) => i.user?.username))
-  const availableConnections = (connections || []).filter((c) => !invitedUsernames.has(c.username))
+  const memberIdSet = new Set(memberIds)
+  const availableConnections = (connections || []).filter((c) => !invitedUsernames.has(c.username) && !memberIdSet.has(c.id))
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
