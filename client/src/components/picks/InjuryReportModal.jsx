@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useInjuryDetail } from '../../hooks/useInjuries'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -109,6 +109,28 @@ const TEAM_COLORS = {
   'Washington Mystics': '#C8102E',
 }
 
+function InjuryRow({ inj }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div
+      className={`border-l-2 ${BORDER_COLORS[inj.status] || 'border-text-muted'} pl-2 py-0.5${inj.detail ? ' cursor-pointer' : ''}`}
+      onClick={() => inj.detail && setExpanded((e) => !e)}
+    >
+      <div className="flex items-center gap-1.5 text-sm">
+        <span className="text-text-muted text-xs w-6 shrink-0">{inj.position}</span>
+        <span className="text-text-primary truncate">{inj.shortName}</span>
+        <span className={`text-xs font-semibold shrink-0 ${STATUS_STYLES[inj.status] || 'text-text-muted'}`}>
+          {STATUS_LABELS[inj.status] || inj.status}
+        </span>
+      </div>
+      {inj.detail && (
+        <div className={`text-xs text-text-muted ml-[1.875rem] ${expanded ? '' : 'truncate'}`}>{inj.detail}</div>
+      )}
+    </div>
+  )
+}
+
 function TeamSection({ teamName, starters, injuries }) {
   const hasInjuries = injuries?.length > 0
 
@@ -165,21 +187,7 @@ function TeamSection({ teamName, starters, injuries }) {
         {hasInjuries ? (
           <div className="space-y-1.5">
             {injuries.map((inj) => (
-              <div
-                key={inj.name}
-                className={`border-l-2 ${BORDER_COLORS[inj.status] || 'border-text-muted'} pl-2 py-0.5`}
-              >
-                <div className="flex items-center gap-1.5 text-sm">
-                  <span className="text-text-muted text-xs w-6 shrink-0">{inj.position}</span>
-                  <span className="text-text-primary truncate">{inj.shortName}</span>
-                  <span className={`text-xs font-semibold shrink-0 ${STATUS_STYLES[inj.status] || 'text-text-muted'}`}>
-                    {STATUS_LABELS[inj.status] || inj.status}
-                  </span>
-                </div>
-                {inj.detail && (
-                  <div className="text-xs text-text-muted ml-[1.875rem] truncate">{inj.detail}</div>
-                )}
-              </div>
+              <InjuryRow key={inj.name} inj={inj} />
             ))}
           </div>
         ) : (
