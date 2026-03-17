@@ -476,12 +476,12 @@ export default function LeagueDetailPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="mb-6">
+      <div className={`mb-6 ${league.format === 'bracket' ? 'text-center' : ''}`}>
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
         <h1 className="font-display text-3xl mt-2">{league.name}</h1>
-        <div className="flex flex-wrap items-center gap-3 mt-2">
+        <div className={`flex flex-wrap items-center gap-3 mt-2 ${league.format === 'bracket' ? 'justify-center' : ''}`}>
           <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
             {FORMAT_LABELS[league.format]}
           </span>
@@ -502,16 +502,16 @@ export default function LeagueDetailPage() {
 
       {/* Invite Actions */}
       {league.format === 'bracket' && !isBracketLocked ? (
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center justify-center gap-3 mb-4">
           <button
             onClick={async () => {
               const url = `${window.location.origin}/join/${league.invite_code}?t=bracket`
               await navigator.clipboard.writeText(url)
               toast('Invite link copied!', 'success')
             }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+            className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
             </svg>
@@ -527,9 +527,9 @@ export default function LeagueDetailPage() {
                   // user cancelled share sheet
                 }
               }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-bg-card border border-border text-text-primary hover:bg-bg-card-hover transition-colors"
+              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <circle cx="18" cy="5" r="3" />
                 <circle cx="6" cy="12" r="3" />
                 <circle cx="18" cy="19" r="3" />
@@ -542,9 +542,9 @@ export default function LeagueDetailPage() {
           {isCommissioner && (
             <button
               onClick={() => setShowInviteModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-bg-card border border-border text-text-primary hover:bg-bg-card-hover transition-colors"
+              className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
               Invite
@@ -603,8 +603,8 @@ export default function LeagueDetailPage() {
         </div>
       )}
 
-      {/* League Conditions */}
-      <LeagueConditions league={league} />
+      {/* League Conditions (hidden for bracket leagues) */}
+      {league.format !== 'bracket' && <LeagueConditions league={league} />}
 
       {showInviteModal && (
         <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} format={league.format} onClose={() => {
