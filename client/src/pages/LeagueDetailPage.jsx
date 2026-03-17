@@ -451,6 +451,7 @@ export default function LeagueDetailPage() {
   const navigate = useNavigate()
   const { data: league, isLoading } = useLeague(id)
   const { data: standings } = useLeagueStandings(id)
+  const { data: bracketTournament } = useBracketTournament(league?.format === 'bracket' ? id : null)
   const [activeTab, setActiveTab] = useState(0)
   const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
   const [editingNote, setEditingNote] = useState(false)
@@ -468,8 +469,8 @@ export default function LeagueDetailPage() {
   if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
   if (!league) return null
 
-  const isBracketLocked = league.format === 'bracket' && tournament &&
-    (tournament.status !== 'open' || new Date(tournament.locks_at) <= new Date())
+  const isBracketLocked = league.format === 'bracket' && bracketTournament &&
+    (bracketTournament.status !== 'open' || new Date(bracketTournament.locks_at) <= new Date())
   const tabs = getLeagueTabs(league, isBracketLocked)
   const isCommissioner = league.commissioner_id === profile?.id
 
