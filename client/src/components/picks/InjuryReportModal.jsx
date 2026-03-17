@@ -27,6 +27,88 @@ const BORDER_COLORS = {
   'Day-To-Day': 'border-text-muted',
 }
 
+// Primary team colors (official brand colors)
+const TEAM_COLORS = {
+  // NBA
+  'Atlanta Hawks': '#E03A3E',
+  'Boston Celtics': '#007A33',
+  'Brooklyn Nets': '#000000',
+  'Charlotte Hornets': '#1D1160',
+  'Chicago Bulls': '#CE1141',
+  'Cleveland Cavaliers': '#860038',
+  'Dallas Mavericks': '#00538C',
+  'Denver Nuggets': '#0E2240',
+  'Detroit Pistons': '#C8102E',
+  'Golden State Warriors': '#1D428A',
+  'Houston Rockets': '#CE1141',
+  'Indiana Pacers': '#002D62',
+  'LA Clippers': '#C8102E',
+  'Los Angeles Lakers': '#552583',
+  'Memphis Grizzlies': '#5D76A9',
+  'Miami Heat': '#98002E',
+  'Milwaukee Bucks': '#00471B',
+  'Minnesota Timberwolves': '#0C2340',
+  'New Orleans Pelicans': '#0C2340',
+  'New York Knicks': '#006BB6',
+  'Oklahoma City Thunder': '#007AC1',
+  'Orlando Magic': '#0077C0',
+  'Philadelphia 76ers': '#006BB6',
+  'Phoenix Suns': '#1D1160',
+  'Portland Trail Blazers': '#E03A3E',
+  'Sacramento Kings': '#5A2D81',
+  'San Antonio Spurs': '#C4CED4',
+  'Toronto Raptors': '#CE1141',
+  'Utah Jazz': '#002B5C',
+  'Washington Wizards': '#002B5C',
+  // NFL
+  'Arizona Cardinals': '#97233F',
+  'Atlanta Falcons': '#A71930',
+  'Baltimore Ravens': '#241773',
+  'Buffalo Bills': '#00338D',
+  'Carolina Panthers': '#0085CA',
+  'Chicago Bears': '#0B162A',
+  'Cincinnati Bengals': '#FB4F14',
+  'Cleveland Browns': '#FF3C00',
+  'Dallas Cowboys': '#003594',
+  'Denver Broncos': '#FB4F14',
+  'Detroit Lions': '#0076B6',
+  'Green Bay Packers': '#203731',
+  'Houston Texans': '#03202F',
+  'Indianapolis Colts': '#002C5F',
+  'Jacksonville Jaguars': '#006778',
+  'Kansas City Chiefs': '#E31837',
+  'Las Vegas Raiders': '#A5ACAF',
+  'Los Angeles Chargers': '#0080C6',
+  'Los Angeles Rams': '#003594',
+  'Miami Dolphins': '#008E97',
+  'Minnesota Vikings': '#4F2683',
+  'New England Patriots': '#002244',
+  'New Orleans Saints': '#D3BC8D',
+  'New York Giants': '#0B2265',
+  'New York Jets': '#125740',
+  'Philadelphia Eagles': '#004C54',
+  'Pittsburgh Steelers': '#FFB612',
+  'San Francisco 49ers': '#AA0000',
+  'Seattle Seahawks': '#002244',
+  'Tampa Bay Buccaneers': '#D50A0A',
+  'Tennessee Titans': '#0C2340',
+  'Washington Commanders': '#5A1414',
+  // WNBA
+  'Atlanta Dream': '#E31837',
+  'Chicago Sky': '#418FDE',
+  'Connecticut Sun': '#F05023',
+  'Dallas Wings': '#C4D600',
+  'Golden State Valkyries': '#1D428A',
+  'Indiana Fever': '#002D62',
+  'Las Vegas Aces': '#A7A8AA',
+  'Los Angeles Sparks': '#552583',
+  'Minnesota Lynx': '#0C2340',
+  'New York Liberty': '#6ECEB2',
+  'Phoenix Mercury': '#CB6015',
+  'Seattle Storm': '#2C5234',
+  'Washington Mystics': '#C8102E',
+}
+
 function TeamSection({ teamName, starters, injuries }) {
   const hasInjuries = injuries?.length > 0
 
@@ -52,7 +134,10 @@ function TeamSection({ teamName, starters, injuries }) {
 
   return (
     <div className="min-w-0">
-      <h3 className="font-display text-base mb-3 truncate">{teamName}</h3>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-1 h-5 rounded-full shrink-0" style={{ backgroundColor: TEAM_COLORS[teamName] || '#888' }} />
+        <h3 className="font-display text-base truncate">{teamName}</h3>
+      </div>
 
       {hasStarters && (
         <div className="mb-4">
