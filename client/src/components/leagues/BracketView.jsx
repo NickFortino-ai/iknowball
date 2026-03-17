@@ -12,7 +12,7 @@ import BracketStandings from './BracketStandings'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 
-export default function BracketView({ league, tab = 'bracket', onTabChange }) {
+export default function BracketView({ league, tab = 'bracket', onTabChange, tabs: heroTabs, activeTabIndex, onTabSelect }) {
   const { profile } = useAuth()
   const { data: tournament, isLoading: tournamentLoading } = useBracketTournament(league.id)
   const { data: myEntry } = useBracketEntry(league.id)
@@ -180,6 +180,25 @@ export default function BracketView({ league, tab = 'bracket', onTabChange }) {
               <div className="text-xs text-text-muted leading-relaxed">
                 You didn't get your bracket in before this tournament locked. But don't worry — I KNOW BALL has plenty of ways to compete and showcase your sports prediction powers!
               </div>
+            </div>
+          )}
+
+          {/* Tabs inside hero area (when locked, parent hides its own tabs) */}
+          {heroTabs && (
+            <div className="flex gap-2 mt-3">
+              {heroTabs.map((t, i) => (
+                <button
+                  key={t}
+                  onClick={() => onTabSelect?.(i)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    activeTabIndex === i
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-card/60 backdrop-blur-sm text-text-secondary hover:bg-bg-card-hover/60'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
             </div>
           )}
         </div>

@@ -690,7 +690,8 @@ export default function LeagueDetailPage() {
         <LeagueSettingsEditor league={league} updateLeague={updateLeague} hasLockedPicks={league.has_locked_picks} />
       )}
 
-      {/* Tabs */}
+      {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero) */}
+      {!(league.format === 'bracket' && isBracketLocked) && (
       <div className="flex gap-2 mb-6">
         {tabs.map((tab, i) => (
           <button
@@ -706,6 +707,7 @@ export default function LeagueDetailPage() {
           </button>
         ))}
       </div>
+      )}
 
       {/* Tab content */}
       {tabs[activeTab] === 'Members' && (
@@ -742,6 +744,9 @@ export default function LeagueDetailPage() {
             const idx = tabs.indexOf(t === 'bracket' ? 'Bracket' : 'Standings')
             if (idx !== -1) setActiveTab(idx)
           }}
+          tabs={isBracketLocked ? tabs : null}
+          activeTabIndex={activeTab}
+          onTabSelect={setActiveTab}
         />
       )}
 
