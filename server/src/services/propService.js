@@ -512,11 +512,12 @@ export async function voidProp(propId) {
     }
   }
 
-  // Mark prop as voided
+  // Mark prop as voided and clear featured date so the slot is freed
   const { error: voidError } = await supabase
     .from('player_props')
     .update({
       status: 'voided',
+      featured_date: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', propId)
