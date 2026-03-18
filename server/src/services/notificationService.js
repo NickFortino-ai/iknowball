@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { sendPushNotification } from './pushService.js'
 
-const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'headlines', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'league_win', 'league_invitation']
+const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'headlines', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'league_win', 'league_invitation', 'direct_message']
 
 export async function createNotification(userId, type, message, metadata = {}) {
   // Self-notification guard
@@ -31,7 +31,8 @@ export async function createNotification(userId, type, message, metadata = {}) {
       const prefs = user?.push_preferences
       // null preferences = all on; otherwise check the specific type
       if (!prefs || prefs[type] !== false) {
-        const pushUrl = type === 'record_broken' ? '/hall-of-fame?section=records'
+        const pushUrl = type === 'direct_message' ? '/messages'
+        : type === 'record_broken' ? '/hall-of-fame?section=records'
         : metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
         await sendPushNotification(userId, 'I KNOW BALL', message, pushUrl)
       }

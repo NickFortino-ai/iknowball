@@ -7,6 +7,7 @@ import { useAccountSwitcher } from '../../hooks/useAccountSwitcher'
 import { useMyInvitations, useAcceptInvitation, useDeclineInvitation } from '../../hooks/useInvitations'
 import { usePendingConnectionRequests, useAcceptConnectionRequest, useDeclineConnectionRequest } from '../../hooks/useConnections'
 import { useNotifications, useUnreadNotificationCount, useMarkAllNotificationsRead } from '../../hooks/useNotifications'
+import { useUnreadMessageCount } from '../../hooks/useMessages'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
 import PickDetailModal from '../social/PickDetailModal'
@@ -74,6 +75,8 @@ function getNotificationRoute(notification) {
       return '/hub'
     case 'hot_take_callout':
       return null
+    case 'direct_message':
+      return '/messages'
     case 'league_invitation':
       return '/leagues'
     case 'headlines':
@@ -129,10 +132,12 @@ export default function Navbar() {
   const { data: notifications } = useNotifications(isAuthenticated)
   const { data: unreadData } = useUnreadNotificationCount(isAuthenticated)
   const markAllRead = useMarkAllNotificationsRead()
+  const { data: unreadMessages } = useUnreadMessageCount(isAuthenticated)
 
   const inviteCount = invitations?.length || 0
   const connectionCount = pendingConnections?.length || 0
   const notificationCount = unreadData?.count || 0
+  const messageCount = unreadMessages?.count || 0
   const pendingCount = inviteCount + connectionCount + notificationCount
 
   // Close dropdown when clicking outside
@@ -272,6 +277,21 @@ export default function Navbar() {
             </div>
 
             <div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-border">
+              {/* Messages — desktop */}
+              <Link
+                to="/messages"
+                className="relative p-1.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                aria-label="Messages"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                {messageCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {messageCount > 9 ? '9+' : messageCount}
+                  </span>
+                )}
+              </Link>
               {/* Notification Bell — desktop */}
               <div className="relative" ref={dropdownRef}>
                 <button
@@ -590,8 +610,23 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Mobile: notification bell + hamburger */}
+            {/* Mobile: messages + notification bell + hamburger */}
             <div className="flex items-center gap-1 md:hidden">
+              {/* Messages — mobile */}
+              <Link
+                to="/messages"
+                className="relative p-2.5 -m-0.5 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
+                aria-label="Messages"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                {messageCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {messageCount > 9 ? '9+' : messageCount}
+                  </span>
+                )}
+              </Link>
               {/* Notification bell — mobile */}
               <button
                 onClick={() => { setShowMobileMenu(false); setShowInvites(!showInvites) }}

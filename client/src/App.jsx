@@ -27,6 +27,8 @@ import UnsubscribePage from './pages/UnsubscribePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import HallOfFamePage from './pages/HallOfFamePage'
+import MessagesPage from './pages/MessagesPage'
+import MessageThreadPage from './pages/MessageThreadPage'
 import GuidelinesPage from './pages/GuidelinesPage'
 import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
 import InstallPrompt from './components/pwa/InstallPrompt'
@@ -72,6 +74,8 @@ function AppRoutes() {
         <Route path="/leagues/create" element={<ProtectedRoute><CreateLeaguePage /></ProtectedRoute>} />
         <Route path="/leagues/:id" element={<ProtectedRoute><LeagueDetailPage /></ProtectedRoute>} />
         <Route path="/hall-of-fame" element={<ProtectedRoute><HallOfFamePage /></ProtectedRoute>} />
+        <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
+        <Route path="/messages/:partnerId" element={<ProtectedRoute><MessageThreadPage /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
       </Routes>
     </AppShell>
