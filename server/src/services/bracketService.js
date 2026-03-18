@@ -560,8 +560,8 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     throw err
   }
 
-  // Check if tournament is still open
-  if (tournament.status !== 'open' || new Date(tournament.locks_at) <= new Date()) {
+  // Check if tournament lock deadline has passed
+  if (new Date(tournament.locks_at) <= new Date()) {
     const err = new Error('This bracket is locked and no longer accepting entries')
     err.status = 400
     throw err

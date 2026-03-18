@@ -194,7 +194,7 @@ export async function acceptInvitation(invitationId, userId) {
       .eq('league_id', invitation.leagues.id)
       .single()
 
-    if (tournament && (tournament.status !== 'open' || new Date(tournament.locks_at) <= new Date())) {
+    if (tournament && new Date(tournament.locks_at) <= new Date()) {
       const err = new Error('This bracket is locked and no longer accepting entries')
       err.status = 400
       throw err
