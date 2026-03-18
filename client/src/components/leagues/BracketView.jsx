@@ -97,8 +97,8 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
   // State B: Bracket populated but picks not available yet
   const picksBlocked = !picksAvailableNow && !isLocked
 
-  // Show picker if user chose to fill bracket (only if picks are available)
-  if (showPicker && !isLocked && picksAvailableNow) {
+  // Show picker if user chose to fill bracket (only if picks are available and on bracket tab)
+  if (showPicker && !isLocked && picksAvailableNow && viewTab === 'bracket') {
     return (
       <BracketPicker
         league={league}
