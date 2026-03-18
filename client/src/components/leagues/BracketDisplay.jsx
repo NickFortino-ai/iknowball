@@ -512,7 +512,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
             <img
               src="/ncaa-bracket-ball.png"
               alt=""
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full w-[500px] h-auto opacity-50 pointer-events-none z-0"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[calc(100%+3rem)] w-[500px] h-auto opacity-50 pointer-events-none z-0"
             />
             <div className="relative z-10 flex min-w-max w-full">
               {renderBracketHalf(facingLayout.left, false, 'left')}
