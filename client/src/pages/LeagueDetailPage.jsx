@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useUpdateBracketTournament, useToggleAutoConnect } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -453,6 +453,7 @@ export default function LeagueDetailPage() {
   const { data: league, isLoading } = useLeague(id)
   const { data: standings } = useLeagueStandings(id)
   const { data: bracketTournament } = useBracketTournament(league?.format === 'bracket' ? id : null)
+  const { data: bracketEntries } = useBracketEntries(league?.format === 'bracket' ? id : null)
   const [activeTab, setActiveTab] = useState(0)
   const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
   const [editingNote, setEditingNote] = useState(false)
@@ -727,6 +728,7 @@ export default function LeagueDetailPage() {
           leagueId={league.id}
           isCommissioner={isCommissioner}
           onUserTap={setSelectedUserId}
+          bracketSubmittedIds={!isBracketLocked && league.format === 'bracket' ? new Set((bracketEntries || []).map(e => e.user_id)) : null}
         />
       )}
 

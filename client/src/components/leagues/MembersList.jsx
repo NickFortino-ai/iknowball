@@ -2,7 +2,7 @@ import TierBadge from '../ui/TierBadge'
 import Avatar from '../ui/Avatar'
 import { getTier } from '../../lib/scoring'
 
-export default function MembersList({ members, pendingInvitations, commissionerId, leagueId, isCommissioner, onUserTap }) {
+export default function MembersList({ members, pendingInvitations, commissionerId, leagueId, isCommissioner, onUserTap, bracketSubmittedIds }) {
   const hasMembers = members?.length > 0
   // Filter out pending invitations for users who already joined
   const memberUserIds = new Set((members || []).map(m => m.user_id))
@@ -44,6 +44,11 @@ export default function MembersList({ members, pendingInvitations, commissionerI
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-incorrect/20 text-incorrect">
                   Eliminated
                 </span>
+              )}
+              {bracketSubmittedIds && (
+                bracketSubmittedIds.has(m.user_id)
+                  ? <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-correct/15 text-correct">Complete</span>
+                  : <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-text-muted/15 text-text-muted">Incomplete</span>
               )}
             </div>
           </div>
