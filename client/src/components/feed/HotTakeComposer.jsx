@@ -161,7 +161,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     }
 
     createHotTake.mutate(
-      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, image_url: imageUrl, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
+      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
       {
         onSuccess: () => {
           setContent('')

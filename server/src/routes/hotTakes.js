@@ -13,6 +13,7 @@ const router = Router()
 const hotTakeSchema = z.object({
   content: z.string().min(1).max(280),
   team_tags: z.array(z.string().max(50)).max(5).optional(),
+  sport_key: z.string().max(50).optional(),
   image_url: z.string().url().optional(),
   video_url: z.string().url().optional(),
   user_tags: z.array(z.string().uuid()).max(3).optional(),
@@ -30,7 +31,7 @@ router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.image_url, req.validated.user_tags, req.validated.video_url)
+  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url)
   res.status(201).json(hotTake)
 })
 
@@ -58,10 +59,11 @@ router.get('/sport', requireAuth, async (req, res) => {
     .eq('blocker_id', req.user.id)
   const blockedIds = (blocks || []).map((b) => b.blocked_id)
 
+  // Match hot takes by sport_key (new) or by team name overlap (legacy, no sport_key)
   let query = supabase
     .from('hot_takes')
     .select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at')
-    .overlaps('team_tags', teamList)
+    .or(`sport_key.eq.${sport},and(sport_key.is.null,team_tags.ov.{${teamList.map((t) => `"${t}"`).join(',')}})`)
     .order('created_at', { ascending: false })
     .limit(20)
 
@@ -339,7 +341,7 @@ router.patch('/:id', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tags, req.validated.image_url, req.validated.user_tags, req.validated.video_url)
+  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url)
   res.json(hotTake)
 })
 
