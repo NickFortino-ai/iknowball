@@ -20,7 +20,7 @@ export default function PickButton({ team, odds, score, isLive, state = 'default
     <button
       onClick={onClick}
       disabled={disabled || state === 'locked' || state === 'locked-picked' || state === 'correct' || state === 'incorrect'}
-      className={`w-full min-w-0 p-4 rounded-xl border transition-all ${bgOverride || style} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`w-full min-w-0 p-4 rounded-xl border transition-all ${bgOverride || style} ${disabled && !hasResult ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <div className={`font-semibold text-xs sm:text-sm mb-1 truncate ${
         state === 'correct' ? 'text-correct'
