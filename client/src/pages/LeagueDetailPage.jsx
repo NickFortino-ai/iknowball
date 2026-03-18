@@ -472,7 +472,7 @@ export default function LeagueDetailPage() {
   if (!league) return null
 
   const isBracketLocked = league.format === 'bracket' && bracketTournament &&
-    (bracketTournament.status !== 'open' || new Date(bracketTournament.locks_at) <= new Date())
+    new Date(bracketTournament.locks_at) <= new Date()
   const tabs = getLeagueTabs(league, isBracketLocked)
   const isCommissioner = league.commissioner_id === profile?.id
 

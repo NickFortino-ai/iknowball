@@ -41,7 +41,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
   if (tournamentLoading) return <LoadingSpinner />
   if (!tournament) return <EmptyState title="No tournament" message="Tournament data not available" />
 
-  const isLocked = tournament.status !== 'open' || new Date(tournament.locks_at) <= new Date()
+  const isLocked = new Date(tournament.locks_at) <= new Date()
   const hasSubmitted = !!myEntry
   const rounds = tournament.bracket_templates?.rounds || []
 
