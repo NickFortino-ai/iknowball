@@ -313,7 +313,7 @@ export default function UserProfileModal({ userId, onClose }) {
 
   async function handleRemind(hotTakeId) {
     try {
-      await remindHotTake.mutateAsync(hotTakeId)
+      await remindHotTake.mutateAsync({ hotTakeId })
       toast('Reminder posted to the feed', 'success')
     } catch (err) {
       toast(err.message || 'Failed to remind', 'error')
