@@ -430,7 +430,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
 
   // ── Facing bracket: render a center column matchup (FF or Championship) ──
 
-  function renderCenterMatchup(matchup, size, roundNum) {
+  function renderCenterMatchup(matchup, size, roundNum, { showBracketBall } = {}) {
     if (!matchup) return null
     return (
       <div className="flex flex-col items-center">
@@ -445,7 +445,18 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
           style={{ gridTemplateRows: facingGridTemplate }}
         >
           <div style={{ gridRow: '1 / -1' }} className="flex items-center">
-            {renderCard(matchup, size)}
+            {showBracketBall ? (
+              <div className="flex flex-col items-center">
+                <img
+                  src="/ncaa-bracket-ball.png"
+                  alt=""
+                  className="w-40 h-auto opacity-60 pointer-events-none -mb-3"
+                />
+                {renderCard(matchup, size)}
+              </div>
+            ) : (
+              renderCard(matchup, size)
+            )}
           </div>
         </div>
       </div>
@@ -513,7 +524,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
             {renderCenterMatchup(centerMatchups.ffLeft, 'lg', centerMatchups.ffRound)}
             {centerMatchups.championship && renderCenterLine()}
             {centerMatchups.championship &&
-              renderCenterMatchup(centerMatchups.championship, 'xl', centerMatchups.champRound)}
+              renderCenterMatchup(centerMatchups.championship, 'xl', centerMatchups.champRound, { showBracketBall: true })}
             {centerMatchups.championship && renderCenterLine()}
             {renderCenterMatchup(centerMatchups.ffRight, 'lg', centerMatchups.ffRound)}
             {renderBracketHalf(facingLayout.right, true, 'right')}
