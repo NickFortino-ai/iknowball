@@ -290,13 +290,13 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
       return (
         <>
           <div className="w-3 flex flex-col">
-            <div className="flex-1 border-b border-border/40" />
+            <div className="flex-1 border-b border-border/70" />
             <div className="flex-1" />
           </div>
           <div className="w-3 flex flex-col">
             <div className="flex-1" />
-            <div className="flex-1 border-t border-l border-border/40" />
-            <div className="flex-1 border-b border-l border-border/40" />
+            <div className="flex-1 border-t border-l border-border/70" />
+            <div className="flex-1 border-b border-l border-border/70" />
             <div className="flex-1" />
           </div>
         </>
@@ -306,12 +306,12 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
       <>
         <div className="w-3 flex flex-col">
           <div className="flex-1" />
-          <div className="flex-1 border-t border-r border-border/40" />
-          <div className="flex-1 border-b border-r border-border/40" />
+          <div className="flex-1 border-t border-r border-border/70" />
+          <div className="flex-1 border-b border-r border-border/70" />
           <div className="flex-1" />
         </div>
         <div className="w-3 flex flex-col">
-          <div className="flex-1 border-b border-border/40" />
+          <div className="flex-1 border-b border-border/70" />
           <div className="flex-1" />
         </div>
       </>
@@ -464,7 +464,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
           style={{ gridTemplateRows: facingGridTemplate }}
         >
           <div style={{ gridRow: '1 / -1' }} className="flex items-center">
-            <div className="w-4 h-px bg-border/40" />
+            <div className="w-4 h-px bg-border/70" />
           </div>
         </div>
       </div>
@@ -608,13 +608,13 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
                             {/* Left: horizontal arms from feeder matchups + vertical bar */}
                             <div className="w-3 flex flex-col">
                               <div className="flex-1" />
-                              <div className="flex-1 border-t border-r border-border/40" />
-                              <div className="flex-1 border-b border-r border-border/40" />
+                              <div className="flex-1 border-t border-r border-border/70" />
+                              <div className="flex-1 border-b border-r border-border/70" />
                               <div className="flex-1" />
                             </div>
                             {/* Right: horizontal line from midpoint to next matchup */}
                             <div className="w-3 flex flex-col">
-                              <div className="flex-1 border-b border-border/40" />
+                              <div className="flex-1 border-b border-border/70" />
                               <div className="flex-1" />
                             </div>
                           </div>
