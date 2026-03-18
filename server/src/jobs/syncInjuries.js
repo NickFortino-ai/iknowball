@@ -49,12 +49,22 @@ function extractBasketballData(data) {
     }
   }
 
-  // Scan all positions for injuries
+  // Build roster set from the 5 standard positions (only these are trustworthy)
+  const rosterIds = new Set()
+  for (const posKey of NBA_POSITIONS) {
+    const pos = chart.positions[posKey]
+    for (const athlete of pos?.athletes || []) {
+      rosterIds.add(athlete.id)
+    }
+  }
+
+  // Scan positions for injuries, but only for players on this team's depth chart
   for (const [, pos] of Object.entries(chart.positions)) {
     const posLabel = pos.position?.abbreviation || ''
     for (const athlete of pos.athletes || []) {
       if (!athlete.injuries?.length) continue
       if (injuredMap.has(athlete.id)) continue
+      if (!rosterIds.has(athlete.id)) continue
       const inj = athlete.injuries[0]
       injuredMap.set(athlete.id, {
         name: athlete.displayName,
