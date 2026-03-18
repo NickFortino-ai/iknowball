@@ -430,7 +430,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
 
   // ── Facing bracket: render a center column matchup (FF or Championship) ──
 
-  function renderCenterMatchup(matchup, size, roundNum, { showBracketBall } = {}) {
+  function renderCenterMatchup(matchup, size, roundNum) {
     if (!matchup) return null
     return (
       <div className="flex flex-col items-center">
@@ -445,18 +445,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
           style={{ gridTemplateRows: facingGridTemplate }}
         >
           <div style={{ gridRow: '1 / -1' }} className="flex items-center">
-            {showBracketBall ? (
-              <div className="flex flex-col items-center">
-                <img
-                  src="/ncaa-bracket-ball.png"
-                  alt=""
-                  className="w-40 h-auto opacity-60 pointer-events-none -mb-3"
-                />
-                {renderCard(matchup, size)}
-              </div>
-            ) : (
-              renderCard(matchup, size)
-            )}
+            {renderCard(matchup, size)}
           </div>
         </div>
       </div>
@@ -516,18 +505,25 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div className={`overflow-x-auto ${useFacing ? 'bg-black rounded-xl' : ''}`}>
         {useFacing ? (
           /* ── Facing bracket layout ── */
-          <div className="flex min-w-max py-2">
-            {renderBracketHalf(facingLayout.left, false, 'left')}
-            {renderCenterMatchup(centerMatchups.ffLeft, 'lg', centerMatchups.ffRound)}
-            {centerMatchups.championship && renderCenterLine()}
-            {centerMatchups.championship &&
-              renderCenterMatchup(centerMatchups.championship, 'xl', centerMatchups.champRound, { showBracketBall: true })}
-            {centerMatchups.championship && renderCenterLine()}
-            {renderCenterMatchup(centerMatchups.ffRight, 'lg', centerMatchups.ffRound)}
-            {renderBracketHalf(facingLayout.right, true, 'right')}
+          <div className="relative flex min-w-max py-2">
+            <img
+              src="/ncaa-bracket-ball.png"
+              alt=""
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[60%] w-[500px] h-auto opacity-50 pointer-events-none z-0"
+            />
+            <div className="relative z-10 flex min-w-max w-full">
+              {renderBracketHalf(facingLayout.left, false, 'left')}
+              {renderCenterMatchup(centerMatchups.ffLeft, 'lg', centerMatchups.ffRound)}
+              {centerMatchups.championship && renderCenterLine()}
+              {centerMatchups.championship &&
+                renderCenterMatchup(centerMatchups.championship, 'xl', centerMatchups.champRound)}
+              {centerMatchups.championship && renderCenterLine()}
+              {renderCenterMatchup(centerMatchups.ffRight, 'lg', centerMatchups.ffRound)}
+              {renderBracketHalf(facingLayout.right, true, 'right')}
+            </div>
           </div>
         ) : (
           /* ── Linear layout (single region or small bracket) ── */
