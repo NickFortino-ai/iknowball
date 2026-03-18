@@ -42,7 +42,7 @@ const TEAM_COLORS = {
   'Golden State Warriors': '#1D428A',
   'Houston Rockets': '#CE1141',
   'Indiana Pacers': '#002D62',
-  'LA Clippers': '#C8102E',
+  'Los Angeles Clippers': '#C8102E',
   'Los Angeles Lakers': '#552583',
   'Memphis Grizzlies': '#5D76A9',
   'Miami Heat': '#98002E',

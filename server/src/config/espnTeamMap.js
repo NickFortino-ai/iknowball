@@ -15,7 +15,7 @@ export const ESPN_TEAMS = {
     '9':  'Golden State Warriors',
     '10': 'Houston Rockets',
     '11': 'Indiana Pacers',
-    '12': 'LA Clippers',
+    '12': 'Los Angeles Clippers',
     '13': 'Los Angeles Lakers',
     '29': 'Memphis Grizzlies',
     '14': 'Miami Heat',
