@@ -36,9 +36,9 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
             >
               <span className="px-4 py-3 text-text-muted font-semibold w-10">{i + 1}</span>
               <div className="px-4 py-3 flex-1 min-w-0 flex items-center gap-2">
-                <TierBadge tier={getTier(e.user?.total_points || 0).name} size="xs" />
+                <TierBadge tier={getTier(e.users?.total_points || 0).name} size="xs" />
                 <span className="font-semibold truncate">
-                  {e.user?.display_name || e.user?.username}
+                  {e.users?.display_name || e.users?.username}
                 </span>
                 {onViewBracket && (
                   <svg
