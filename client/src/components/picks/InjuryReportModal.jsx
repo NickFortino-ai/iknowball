@@ -218,7 +218,7 @@ export default function InjuryReportModal({ gameId, onClose }) {
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-xl leading-none"
+          className="absolute top-2 right-2 w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-primary text-xl leading-none rounded-full hover:bg-bg-secondary transition-colors"
         >
           &times;
         </button>
