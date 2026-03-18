@@ -5,7 +5,7 @@ function formatOdds(odds) {
   return odds > 0 ? `+${odds}` : `${odds}`
 }
 
-export default function FuturesFeedCard({ item, onUserTap }) {
+export default function FuturesFeedCard({ item, reactions, onUserTap }) {
   const { futures } = item
   const isHit = item.type === 'futures_hit'
 
@@ -13,7 +13,11 @@ export default function FuturesFeedCard({ item, onUserTap }) {
     <FeedCardWrapper
       item={item}
       borderColor={isHit ? 'gold' : undefined}
+      targetType="futures_pick"
+      targetId={futures.id}
+      reactions={reactions}
       onUserTap={onUserTap}
+      commentCount={item.commentCount}
     >
       {isHit ? (
         <>

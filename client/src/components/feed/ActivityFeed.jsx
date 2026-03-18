@@ -343,7 +343,7 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, onReco
       )
     case 'futures_pick':
     case 'futures_hit':
-      return <FuturesFeedCard item={item} onUserTap={onUserTap} />
+      return <FuturesFeedCard item={item} reactions={getReactions('futures_pick', item.futures.id)} onUserTap={onUserTap} />
     case 'head_to_head':
       return (
         <HeadToHeadFeedCard
