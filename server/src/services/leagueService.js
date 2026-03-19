@@ -438,13 +438,15 @@ export async function getLeagueDetails(leagueId, userId) {
     .eq('league_id', leagueId)
     .order('joined_at', { ascending: true })
 
-  // Get pending invitations
-  const { data: pendingInvitations } = await supabase
+  // Get pending invitations, excluding users who already joined
+  const memberUserIds = new Set((members || []).map((m) => m.users?.id).filter(Boolean))
+  const { data: rawPendingInvitations } = await supabase
     .from('league_invitations')
     .select('id, status, created_at, user:invited_user_id(id, username, display_name, avatar_url, avatar_emoji)')
     .eq('league_id', leagueId)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
+  const pendingInvitations = (rawPendingInvitations || []).filter((inv) => !memberUserIds.has(inv.user?.id))
 
   // Get current week (active period that covers now)
   const now = new Date().toISOString()
