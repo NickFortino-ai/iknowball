@@ -1,7 +1,7 @@
 import OddsDisplay from './OddsDisplay'
 
 const stateStyles = {
-  default: 'bg-bg-card hover:bg-bg-card-hover border-border hover:border-border-hover',
+  default: 'bg-bg-primary hover:bg-bg-card-hover border-border hover:border-border-hover',
   selected: 'bg-accent/20 border-accent',
   locked: 'bg-bg-primary border-border opacity-60 cursor-not-allowed',
   'locked-picked': 'bg-bg-primary border-accent/50 cursor-not-allowed',
