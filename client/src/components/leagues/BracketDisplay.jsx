@@ -240,9 +240,20 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     if (!ffRound) return null
 
     const ffMatchups = [...(byRound[ffRound] || [])].sort((a, b) => a.position - b.position)
+
+    // Determine which FF matchup goes on which side by checking which E8 regions feed into it
+    // E8 matchups sorted by position pair into FF: [0,1] → FF[0], [2,3] → FF[1]
+    const lastRegRound = facingLayout.regionalRounds[facingLayout.regionalRounds.length - 1]
+    const e8 = [...(byRound[lastRegRound] || [])].sort((a, b) => a.position - b.position)
+    const ff0Regions = [e8[0]?.region, e8[1]?.region].filter(Boolean)
+
+    // Check if FF[0]'s feeder regions overlap with the left side
+    const leftSet = new Set(facingLayout.left)
+    const ff0IsLeft = ff0Regions.some((r) => leftSet.has(r))
+
     return {
-      ffLeft: ffMatchups[0],
-      ffRight: ffMatchups[1],
+      ffLeft: ff0IsLeft ? ffMatchups[0] : ffMatchups[1],
+      ffRight: ff0IsLeft ? ffMatchups[1] : ffMatchups[0],
       championship: champRound ? byRound[champRound]?.[0] : null,
       ffRound,
       champRound,
