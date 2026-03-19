@@ -208,18 +208,53 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
   const facingLayout = useMemo(() => {
     if (selectedRegion || !regions || regions.length < 4) return null
 
-    // Find min position per region in round 1 to determine left/right pairing
-    const regionMinPos = {}
-    for (const m of matchups || []) {
-      if (m.round_number === 1 && m.region) {
-        if (!regionMinPos[m.region] || m.position < regionMinPos[m.region]) {
-          regionMinPos[m.region] = m.position
+    // Determine left/right pairing from Final Four matchup feeds
+    // Regions that feed into the same FF matchup go on the same side
+    const lastRegionalRound = Math.max(
+      ...(matchups || []).filter((m) => m.region && m.round_number > 0).map((m) => m.round_number)
+    )
+    const eliteEightMatchups = (matchups || []).filter((m) => m.round_number === lastRegionalRound && m.region)
+
+    // Group regions by which FF matchup they feed into (via position pairing)
+    const ffRound = lastRegionalRound + 1
+    const ffMatchups = (matchups || []).filter((m) => m.round_number === ffRound)
+
+    // Build region→FF matchup mapping using position-based logic
+    // FF matchups are sorted by position; Elite 8 matchups feed in order
+    const e8Sorted = [...eliteEightMatchups].sort((a, b) => a.position - b.position)
+    const ffSorted = [...ffMatchups].sort((a, b) => a.position - b.position)
+
+    const ffRegionGroups = {}
+    for (let i = 0; i < e8Sorted.length; i++) {
+      const ffIdx = Math.floor(i / 2)
+      const ffId = ffSorted[ffIdx]?.id
+      if (ffId) {
+        if (!ffRegionGroups[ffId]) ffRegionGroups[ffId] = []
+        if (e8Sorted[i].region && !ffRegionGroups[ffId].includes(e8Sorted[i].region)) {
+          ffRegionGroups[ffId].push(e8Sorted[i].region)
         }
       }
     }
 
-    // Sort by position — first 2 go left, last 2 go right
-    const sorted = [...regions].sort((a, b) => (regionMinPos[a] || 0) - (regionMinPos[b] || 0))
+    const groups = Object.values(ffRegionGroups)
+    let left, right
+    if (groups.length >= 2) {
+      left = groups[0]
+      right = groups[1]
+    } else {
+      // Fallback to position-based ordering
+      const regionMinPos = {}
+      for (const m of matchups || []) {
+        if (m.round_number === 1 && m.region) {
+          if (!regionMinPos[m.region] || m.position < regionMinPos[m.region]) {
+            regionMinPos[m.region] = m.position
+          }
+        }
+      }
+      const sorted = [...regions].sort((a, b) => (regionMinPos[a] || 0) - (regionMinPos[b] || 0))
+      left = [sorted[0], sorted[1]]
+      right = [sorted[2], sorted[3]]
+    }
 
     // Determine which rounds have regional matchups vs cross-region
     const regionalRoundSet = new Set()
@@ -232,8 +267,8 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     }
 
     return {
-      left: [sorted[0], sorted[1]],
-      right: [sorted[2], sorted[3]],
+      left,
+      right,
       regionalRounds: [...regionalRoundSet].sort((a, b) => a - b),
       crossRounds: [...crossRoundSet].sort((a, b) => a - b),
     }
