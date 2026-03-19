@@ -3,7 +3,7 @@ import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagu
 import { toast } from '../ui/Toast'
 import BracketDisplay from './BracketDisplay'
 
-export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose }) {
+export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose, ffOnlyMode = false }) {
   const submitBracket = useSubmitBracket()
   const { data: otherEntries } = useMyOtherBracketEntries(league?.id)
   const draftKey = `bracket-draft-${league?.id}`
@@ -146,8 +146,14 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       }
     }
 
+    if (ffOnlyMode) {
+      const maxRound = Math.max(...roundNums.filter((r) => r > 0))
+      const ffMin = maxRound - 1
+      return result.filter((s) => s.roundNum >= ffMin)
+    }
+
     return result
-  }, [matchups, regions, rounds, templateMatchups])
+  }, [matchups, regions, rounds, templateMatchups, ffOnlyMode])
 
   // Helper: get pickable matchups for a step
   const getPickableMatchups = useCallback((step) => {

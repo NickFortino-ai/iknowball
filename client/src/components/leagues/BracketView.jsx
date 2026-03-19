@@ -43,6 +43,16 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
   const isLocked = new Date(tournament.locks_at) <= new Date()
   const hasSubmitted = !!myEntry
+
+  // Detect missing FF/Championship picks for grace period
+  const maxRound = Math.max(...(rounds.map((r) => r.round_number) || [0]))
+  const ffMinRound = maxRound - 1
+  const hasMissingFFPicks = hasSubmitted && isLocked && (tournament.matchups || [])
+    .filter((m) => m.round_number >= ffMinRound)
+    .some((m) => {
+      const pick = myEntry?.picks?.find((p) => p.template_matchup_id === m.template_matchup_id)
+      return !pick
+    })
   const rounds = tournament.bracket_templates?.rounds || []
 
   // Check if bracket is populated (first-round matchups have teams)
@@ -97,8 +107,8 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
   // State B: Bracket populated but picks not available yet
   const picksBlocked = !picksAvailableNow && !isLocked
 
-  // Show picker if user chose to fill bracket (only if picks are available and on bracket tab)
-  if (showPicker && !isLocked && picksAvailableNow && viewTab === 'bracket') {
+  // Show picker if user chose to fill bracket
+  if (showPicker && viewTab === 'bracket' && (!isLocked || hasMissingFFPicks) && picksAvailableNow) {
     return (
       <BracketPicker
         league={league}
@@ -107,6 +117,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
         existingPicks={myEntry?.picks}
         existingTiebreakerScore={myEntry?.tiebreaker_score}
         onClose={() => setShowPicker(false)}
+        ffOnlyMode={isLocked && hasMissingFFPicks}
       />
     )
   }
@@ -170,6 +181,20 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                 className="px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
               >
                 {hasSubmitted ? 'Edit Bracket' : savedDraft ? 'Continue Bracket' : 'Fill Your Bracket'}
+              </button>
+            </div>
+          )}
+
+          {hasMissingFFPicks && (
+            <div className={`${showCourtBg ? '' : 'bg-bg-card rounded-xl border border-border'} p-4 text-center`}>
+              <div className="text-sm text-text-secondary mb-2">
+                Your Final Four and Championship picks are incomplete
+              </div>
+              <button
+                onClick={() => setShowPicker(true)}
+                className="px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+              >
+                Complete Bracket
               </button>
             </div>
           )}
