@@ -21,7 +21,7 @@ export default function MessagesPage() {
   const newMessageTargets = (connections || []).filter((c) => !existingPartnerIds.has(c.user_id))
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg mx-auto px-4 pt-2">
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-display text-2xl">Messages</h1>
         <button
