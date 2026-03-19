@@ -30,9 +30,9 @@ export const ESPN_TEAMS = {
     '22': 'Portland Trail Blazers',
     '23': 'Sacramento Kings',
     '24': 'San Antonio Spurs',
-    '26': 'Toronto Raptors',
-    '27': 'Utah Jazz',
-    '28': 'Washington Wizards',
+    '26': 'Utah Jazz',
+    '27': 'Washington Wizards',
+    '28': 'Toronto Raptors',
   },
   basketball_wnba: {
     '20':     'Atlanta Dream',
