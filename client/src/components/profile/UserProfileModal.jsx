@@ -546,51 +546,6 @@ export default function UserProfileModal({ userId, onClose }) {
                   else if (type === 'prop') setSelectedPropPickId(id)
                 }} />
 
-            {/* Hot Takes */}
-            {hotTakes?.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Hot Takes</h3>
-                <div className="space-y-2">
-                  {(showAllHotTakes ? hotTakes : hotTakes.slice(0, 1)).map((take) => (
-                    <div
-                      key={take.id}
-                      className="bg-bg-primary rounded-lg border-l-4 border-l-accent px-4 py-3"
-                    >
-                      <div className="text-sm text-text-primary leading-relaxed">
-                        <RichContent text={take.content} />
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-2">
-                          {take.team_tags?.length > 0 && take.team_tags.map((tag) => (
-                            <span key={tag} className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full">
-                              {tag}
-                            </span>
-                          ))}
-                          <span className="text-xs text-text-muted">{timeAgo(take.created_at)}</span>
-                        </div>
-                        {isViewingOther && connStatus === 'connected' && (
-                          <button
-                            onClick={() => handleRemind(take.id)}
-                            disabled={remindHotTake.isPending}
-                            className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-50 transition-colors"
-                          >
-                            Remind
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {!showAllHotTakes && hotTakes.length > 1 && (
-                    <button
-                      onClick={() => setShowAllHotTakes(true)}
-                      className="w-full text-center text-xs text-text-muted hover:text-text-secondary py-1"
-                    >
-                      Show all {hotTakes.length} hot takes
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Report / Block — other users only */}
             {isViewingOther && (
@@ -638,7 +593,7 @@ export default function UserProfileModal({ userId, onClose }) {
                 onClose()
                 navigate(`/hub?tab=user_feeds&user=${userId}`)
               }}
-              className="w-full text-center text-xs text-accent hover:text-accent/80 font-semibold py-2 mt-4"
+              className="w-full text-center text-sm text-accent hover:bg-accent/10 font-semibold py-3 mt-4 rounded-xl border border-accent/30 transition-colors"
             >
               View {user.display_name || user.username}'s feed
             </button>
