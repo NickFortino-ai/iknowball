@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus, useSendConnectionRequest } from '../../hooks/useConnections'
 import HeadToHeadDetailModal from '../feed/HeadToHeadDetailModal'
 import { useUserHotTakes, useRemindHotTake } from '../../hooks/useHotTakes'
+import RichContent from '../feed/RichContent'
 import { timeAgo } from '../../lib/time'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useMemo } from 'react'
@@ -556,7 +557,7 @@ export default function UserProfileModal({ userId, onClose }) {
                       className="bg-bg-primary rounded-lg border-l-4 border-l-accent px-4 py-3"
                     >
                       <div className="text-sm text-text-primary leading-relaxed">
-                        &ldquo;{take.content}&rdquo;
+                        <RichContent text={take.content} />
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center gap-2">
