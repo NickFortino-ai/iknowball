@@ -261,7 +261,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
           <BracketDisplay
             matchups={tournament.matchups}
-            picks={viewingUserId ? displayPicks : (myEntry?.picks || null)}
+            picks={viewingUserId ? displayPicks : null}
             rounds={rounds}
             regions={tournament.bracket_templates?.regions}
           />
