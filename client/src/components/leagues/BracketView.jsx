@@ -43,17 +43,18 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
   const isLocked = new Date(tournament.locks_at) <= new Date()
   const hasSubmitted = !!myEntry
+  const rounds = tournament.bracket_templates?.rounds || []
 
   // Detect missing FF/Championship picks for grace period
-  const maxRound = Math.max(...(rounds.map((r) => r.round_number) || [0]))
+  const roundNumbers = rounds.map((r) => r.round_number)
+  const maxRound = roundNumbers.length ? Math.max(...roundNumbers) : 0
   const ffMinRound = maxRound - 1
-  const hasMissingFFPicks = hasSubmitted && isLocked && (tournament.matchups || [])
+  const hasMissingFFPicks = hasSubmitted && isLocked && maxRound > 0 && (tournament.matchups || [])
     .filter((m) => m.round_number >= ffMinRound)
     .some((m) => {
       const pick = myEntry?.picks?.find((p) => p.template_matchup_id === m.template_matchup_id)
       return !pick
     })
-  const rounds = tournament.bracket_templates?.rounds || []
 
   // Check if bracket is populated (first-round matchups have teams)
   const firstRoundMatchups = (tournament.matchups || []).filter((m) => m.round_number === 1 || m.round_number === 0)
