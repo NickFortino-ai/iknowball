@@ -561,10 +561,48 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
   }
 
   // Check if tournament lock deadline has passed
-  if (new Date(tournament.locks_at) <= new Date()) {
-    const err = new Error('This bracket is locked and no longer accepting entries')
-    err.status = 400
-    throw err
+  const isLocked = new Date(tournament.locks_at) <= new Date()
+  let ffGraceMode = false
+
+  if (isLocked) {
+    // Allow FF grace period: if user has an existing entry with missing FF/Championship picks,
+    // they can still submit those picks (but not change earlier rounds)
+    const { data: existingEntry } = await supabase
+      .from('bracket_entries')
+      .select('id')
+      .eq('tournament_id', tournamentId)
+      .eq('user_id', userId)
+      .single()
+
+    if (!existingEntry) {
+      const err = new Error('This bracket is locked and no longer accepting entries')
+      err.status = 400
+      throw err
+    }
+
+    // Check if they have missing FF/Championship picks
+    const { data: existingPicks } = await supabase
+      .from('bracket_picks')
+      .select('round_number')
+      .eq('entry_id', existingEntry.id)
+
+    const existingRounds = new Set((existingPicks || []).map((p) => p.round_number))
+    const templateRounds = [...new Set(
+      (await supabase.from('bracket_template_matchups').select('round_number').eq('template_id', tournament.template_id))
+        .data?.map((m) => m.round_number) || []
+    )]
+    const maxRound = Math.max(...templateRounds)
+    const ffRounds = templateRounds.filter((r) => r >= maxRound - 1) // FF + Championship
+
+    const hasMissingFFPicks = ffRounds.some((r) => !existingRounds.has(r))
+
+    if (!hasMissingFFPicks) {
+      const err = new Error('This bracket is locked and no longer accepting changes')
+      err.status = 400
+      throw err
+    }
+
+    ffGraceMode = true
   }
 
   // Verify membership
@@ -642,18 +680,20 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     }
   }
 
-  // Validate pick count: rounds >= 1 are required, round 0 (play-in) is optional bonus
-  const nonByeMatchups = templateMatchups.filter((m) => !m.is_bye)
-  const requiredMatchups = nonByeMatchups.filter((m) => m.round_number >= 1)
-  if (picks.length < requiredMatchups.length) {
-    const err = new Error(`Must fill at least ${requiredMatchups.length} bracket slots (got ${picks.length})`)
-    err.status = 400
-    throw err
-  }
-  if (picks.length > nonByeMatchups.length) {
-    const err = new Error(`Too many picks: max ${nonByeMatchups.length} slots (got ${picks.length})`)
-    err.status = 400
-    throw err
+  // Validate pick count (skip in FF grace mode — user is only submitting FF picks)
+  if (!ffGraceMode) {
+    const nonByeMatchups = templateMatchups.filter((m) => !m.is_bye)
+    const requiredMatchups = nonByeMatchups.filter((m) => m.round_number >= 1)
+    if (picks.length < requiredMatchups.length) {
+      const err = new Error(`Must fill at least ${requiredMatchups.length} bracket slots (got ${picks.length})`)
+      err.status = 400
+      throw err
+    }
+    if (picks.length > nonByeMatchups.length) {
+      const err = new Error(`Too many picks: max ${nonByeMatchups.length} slots (got ${picks.length})`)
+      err.status = 400
+      throw err
+    }
   }
 
   // Calculate possible points
@@ -690,7 +730,78 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     throw entryError
   }
 
-  // Delete existing picks and re-insert
+  if (ffGraceMode) {
+    // FF grace mode: only insert/update FF and Championship picks, keep earlier rounds
+    const templateRoundsData = await supabase
+      .from('bracket_template_matchups')
+      .select('round_number')
+      .eq('template_id', tournament.template_id)
+    const maxRound = Math.max(...(templateRoundsData.data || []).map((m) => m.round_number))
+    const ffMinRound = maxRound - 1 // FF round
+
+    // Only accept picks for FF+ rounds
+    const ffPicks = picks.filter((p) => {
+      const matchup = matchupMap[p.template_matchup_id]
+      return matchup && matchup.round_number >= ffMinRound
+    })
+
+    // Validate FF picks come from user's existing earlier-round picks
+    const { data: existingPickRows } = await supabase
+      .from('bracket_picks')
+      .select('template_matchup_id, picked_team')
+      .eq('entry_id', entry.id)
+    const existingPickMap = {}
+    for (const p of existingPickRows || []) {
+      existingPickMap[p.template_matchup_id] = p.picked_team
+    }
+
+    for (const p of ffPicks) {
+      const matchup = matchupMap[p.template_matchup_id]
+      if (!matchup) continue
+      const feeders = templateMatchups.filter((f) => f.feeds_into_matchup_id === matchup.id)
+      if (feeders.length === 0) continue
+      const pickedInExisting = feeders.some((f) => existingPickMap[f.id] === p.picked_team)
+      const directTeams = [matchup.team_top, matchup.team_bottom].filter(Boolean)
+      const isDirectTeam = directTeams.includes(p.picked_team)
+      if (!pickedInExisting && !isDirectTeam) {
+        const err = new Error(`You can only pick teams from your existing bracket selections`)
+        err.status = 400
+        throw err
+      }
+    }
+
+    // Delete only FF+ picks and re-insert
+    await supabase
+      .from('bracket_picks')
+      .delete()
+      .eq('entry_id', entry.id)
+      .gte('round_number', ffMinRound)
+
+    const pickRows = ffPicks.map((p) => {
+      const matchup = matchupMap[p.template_matchup_id]
+      return {
+        entry_id: entry.id,
+        template_matchup_id: p.template_matchup_id,
+        round_number: matchup?.round_number || 0,
+        position: matchup?.position || 0,
+        picked_team: p.picked_team,
+      }
+    })
+
+    if (pickRows.length) {
+      const { error: pickError } = await supabase
+        .from('bracket_picks')
+        .insert(pickRows)
+      if (pickError) {
+        logger.error({ pickError }, 'Failed to insert FF grace picks')
+        throw pickError
+      }
+    }
+
+    return { entry, picks: pickRows }
+  }
+
+  // Normal mode: delete existing picks and re-insert all
   await supabase
     .from('bracket_picks')
     .delete()
