@@ -187,27 +187,16 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Support Section */}
-      <div id="support" className="mt-16 bg-bg-card rounded-2xl border border-border p-6 text-center">
-        <h2 className="font-display text-2xl mb-3">Support</h2>
-        <p className="text-text-secondary text-sm mb-4">
-          Need help? Contact us at{' '}
-          <a href="mailto:admin@iknowball.club" className="text-accent hover:underline">
-            admin@iknowball.club
-          </a>
-        </p>
-        <Link to="/faq" className="text-accent hover:underline text-sm">
-          Check out our FAQ for common questions
-        </Link>
-      </div>
-
       {/* Footer */}
-      <footer className="mt-12 mb-4 flex items-center justify-center gap-4 text-xs text-text-muted">
-        <a href="#support" className="hover:text-text-secondary transition-colors">Support</a>
-        <span>·</span>
-        <Link to="/faq" className="hover:text-text-secondary transition-colors">FAQ</Link>
-        <span>·</span>
-        <Link to="/privacy" className="hover:text-text-secondary transition-colors">Privacy</Link>
+      <footer className="mt-16 mb-4 flex flex-col items-center gap-2 text-xs text-text-muted">
+        <p>
+          Need help? <a href="mailto:admin@iknowball.club" className="text-accent hover:underline">admin@iknowball.club</a>
+        </p>
+        <div className="flex items-center gap-4">
+          <Link to="/faq" className="hover:text-text-secondary transition-colors">FAQ</Link>
+          <span>·</span>
+          <Link to="/privacy" className="hover:text-text-secondary transition-colors">Privacy</Link>
+        </div>
       </footer>
 
       <TierUsersModal tier={selectedTier} onClose={() => setSelectedTier(null)} />
