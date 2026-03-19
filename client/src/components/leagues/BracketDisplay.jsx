@@ -116,7 +116,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     return map
   }, [matchups])
 
-  // Build position-based feeder map for resolving team names from picks
+  // Build feeder map for resolving team names from picks
   const feederMap = useMemo(() => {
     const map = {}
     const all = (matchups || []).filter((m) => m.round_number > 0)
@@ -128,18 +128,31 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     for (const key in byRoundLocal) {
       byRoundLocal[key].sort((a, b) => a.position - b.position)
     }
+
+    // Build region order index for sorting cross-region feeders
+    const regionOrder = {}
+    if (regions) {
+      for (let i = 0; i < regions.length; i++) regionOrder[regions[i]] = i
+    }
+
     for (const m of all) {
       if (m.round_number <= 1) continue
       const prevRound = byRoundLocal[m.round_number - 1]
       if (!prevRound?.length) continue
-      const prevMatchups = m.region ? prevRound.filter((p) => p.region === m.region) : prevRound
+      let prevMatchups
+      if (m.region) {
+        prevMatchups = prevRound.filter((p) => p.region === m.region)
+      } else {
+        // Cross-region: sort by regions array order so FF pairs match left/right sides
+        prevMatchups = [...prevRound].sort((a, b) => (regionOrder[a.region] ?? 99) - (regionOrder[b.region] ?? 99))
+      }
       const myRound = byRoundLocal[m.round_number]
       const sameGroup = m.region ? myRound.filter((p) => p.region === m.region) : myRound
       const myIdx = sameGroup.indexOf(m)
       map[m.id] = { top: prevMatchups[myIdx * 2] || null, bottom: prevMatchups[myIdx * 2 + 1] || null }
     }
     return map
-  }, [matchups])
+  }, [matchups, regions])
 
   // Resolve team names from picks for matchups with null teams
   const resolvedMatchups = useMemo(() => {
