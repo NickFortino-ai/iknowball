@@ -745,31 +745,6 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
       return matchup && matchup.round_number >= ffMinRound
     })
 
-    // Validate FF picks come from user's existing earlier-round picks
-    const { data: existingPickRows } = await supabase
-      .from('bracket_picks')
-      .select('template_matchup_id, picked_team')
-      .eq('entry_id', entry.id)
-    const existingPickMap = {}
-    for (const p of existingPickRows || []) {
-      existingPickMap[p.template_matchup_id] = p.picked_team
-    }
-
-    for (const p of ffPicks) {
-      const matchup = matchupMap[p.template_matchup_id]
-      if (!matchup) continue
-      const feeders = templateMatchups.filter((f) => f.feeds_into_matchup_id === matchup.id)
-      if (feeders.length === 0) continue
-      const pickedInExisting = feeders.some((f) => existingPickMap[f.id] === p.picked_team)
-      const directTeams = [matchup.team_top, matchup.team_bottom].filter(Boolean)
-      const isDirectTeam = directTeams.includes(p.picked_team)
-      if (!pickedInExisting && !isDirectTeam) {
-        const err = new Error(`You can only pick teams from your existing bracket selections`)
-        err.status = 400
-        throw err
-      }
-    }
-
     // Delete only FF+ picks and re-insert
     await supabase
       .from('bracket_picks')
