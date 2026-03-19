@@ -26,12 +26,13 @@ export default function SurvivorView({ league }) {
   const session = useAuthStore((s) => s.session)
   const currentUserId = session?.user?.id
   const [showPickForm, setShowPickForm] = useState(false)
+  const [localPickTeam, setLocalPickTeam] = useState(null)
 
   const currentWeek = league.current_week
   // Use pick_week from board (advances past locked picks) with fallback to current_week
   const pickWeek = board?.pick_week || currentWeek
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
-  const currentPickTeam = board?.current_pick?.team_name
+  const currentPickTeam = localPickTeam || board?.current_pick?.team_name
 
   // Winner detection
   const isWinner = board?.survivor_winner?.user_id === currentUserId
@@ -57,6 +58,8 @@ export default function SurvivorView({ league }) {
 
   async function handlePick(gameId, pickedTeam) {
     if (!pickWeek) return
+    const game = pickWeekGames.find((g) => g.id === gameId)
+    const teamName = pickedTeam === 'home' ? game?.home_team : game?.away_team
     try {
       await submitPick.mutateAsync({
         leagueId: league.id,
@@ -64,12 +67,17 @@ export default function SurvivorView({ league }) {
         gameId,
         pickedTeam,
       })
+      setLocalPickTeam(teamName)
       toast('Survivor pick submitted!', 'success')
-      setShowPickForm(false)
     } catch (err) {
       toast(err.message || 'Failed to submit pick', 'error')
     }
   }
+
+  // Clear local pick when board refreshes with server data
+  useEffect(() => {
+    if (board?.current_pick?.team_name) setLocalPickTeam(null)
+  }, [board?.current_pick?.team_name])
 
   // Auto-expand pick form if user hasn't picked yet
   useEffect(() => {
