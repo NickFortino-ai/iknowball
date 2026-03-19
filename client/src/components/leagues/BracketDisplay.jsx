@@ -157,28 +157,32 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     const resolved = {}
 
     // Resolve play-in picks into Round 1 null slots
+    // Match by region + seed: a play-in between two 16-seeds feeds the 1-vs-16 R1 slot
     const playIns = (matchups || []).filter((m) => m.round_number === 0)
     if (playIns.length) {
       const r1WithNull = (matchups || []).filter((m) => m.round_number === 1 && (!m.team_top || !m.team_bottom))
-      const usedPlayIns = new Set()
 
       for (const r1 of r1WithNull) {
-        const regionPlayIns = playIns
-          .filter((p) => p.region === r1.region && !usedPlayIns.has(p.id))
-          .sort((a, b) => a.position - b.position)
+        // Determine the expected seed for the null slot
+        const nullIsTop = !r1.team_top
+        const expectedSeed = nullIsTop ? r1.seed_top : r1.seed_bottom
 
-        for (const playIn of regionPlayIns) {
-          const resolvedTeam = resolveFromFeeder(playIn)
-          if (!resolvedTeam) continue
-          usedPlayIns.add(playIn.id)
+        // Find the play-in in the same region whose teams have the matching seed
+        const matchingPlayIn = playIns.find((p) =>
+          p.region === r1.region &&
+          expectedSeed != null &&
+          (p.seed_top === expectedSeed || p.seed_bottom === expectedSeed)
+        )
 
-          resolved[r1.id] = {
-            team_top: r1.team_top || (!r1.team_top ? resolvedTeam : null),
-            team_bottom: r1.team_bottom || (!r1.team_bottom ? resolvedTeam : null),
-            seed_top: !r1.team_top ? (teamSeedMap[resolvedTeam] ?? null) : r1.seed_top,
-            seed_bottom: !r1.team_bottom ? (teamSeedMap[resolvedTeam] ?? null) : r1.seed_bottom,
-          }
-          break
+        if (!matchingPlayIn) continue
+        const resolvedTeam = resolveFromFeeder(matchingPlayIn)
+        if (!resolvedTeam) continue
+
+        resolved[r1.id] = {
+          team_top: nullIsTop ? resolvedTeam : r1.team_top,
+          team_bottom: nullIsTop ? r1.team_bottom : resolvedTeam,
+          seed_top: nullIsTop ? (expectedSeed ?? teamSeedMap[resolvedTeam] ?? null) : r1.seed_top,
+          seed_bottom: nullIsTop ? r1.seed_bottom : (expectedSeed ?? teamSeedMap[resolvedTeam] ?? null),
         }
       }
     }
