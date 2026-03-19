@@ -1,6 +1,6 @@
 import { useMemo, useState, Fragment } from 'react'
 
-function MatchupCard({ matchup, pick, eliminated, showPick, onTap, size = 'default' }) {
+function MatchupCard({ matchup, pick, eliminated, showPick, onTap, size = 'default', playInPickResults = {} }) {
   const [showScore, setShowScore] = useState(false)
 
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -26,6 +26,9 @@ function MatchupCard({ matchup, pick, eliminated, showPick, onTap, size = 'defau
       if (eliminated) return 'text-text-muted line-through'
       return 'text-accent font-semibold'
     }
+    // Show play-in pick result on Round 1 teams
+    if (showPick && playInPickResults[team] === 'correct') return 'text-correct font-semibold'
+    if (showPick && playInPickResults[team] === 'incorrect') return 'text-incorrect line-through'
     if (matchup.status === 'completed') {
       const isWinner = (isTop && matchup.winner === 'top') || (!isTop && matchup.winner === 'bottom')
       return isWinner ? 'font-semibold text-text-primary' : 'text-text-muted'
@@ -77,7 +80,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     return map
   }, [picks])
 
-  // Group matchups by round (exclude play-in round 0 from full bracket view)
+  // Group matchups by round (exclude play-in round 0 from bracket view)
   const byRound = useMemo(() => {
     const grouped = {}
     for (const m of matchups || []) {
@@ -152,6 +155,35 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     }
 
     const resolved = {}
+
+    // Resolve play-in picks into Round 1 null slots
+    const playIns = (matchups || []).filter((m) => m.round_number === 0)
+    if (playIns.length) {
+      const r1WithNull = (matchups || []).filter((m) => m.round_number === 1 && (!m.team_top || !m.team_bottom))
+      const usedPlayIns = new Set()
+
+      for (const r1 of r1WithNull) {
+        const regionPlayIns = playIns
+          .filter((p) => p.region === r1.region && !usedPlayIns.has(p.id))
+          .sort((a, b) => a.position - b.position)
+
+        for (const playIn of regionPlayIns) {
+          const resolvedTeam = resolveFromFeeder(playIn)
+          if (!resolvedTeam) continue
+          usedPlayIns.add(playIn.id)
+
+          resolved[r1.id] = {
+            team_top: r1.team_top || (!r1.team_top ? resolvedTeam : null),
+            team_bottom: r1.team_bottom || (!r1.team_bottom ? resolvedTeam : null),
+            seed_top: !r1.team_top ? (teamSeedMap[resolvedTeam] ?? null) : r1.seed_top,
+            seed_bottom: !r1.team_bottom ? (teamSeedMap[resolvedTeam] ?? null) : r1.seed_bottom,
+          }
+          break
+        }
+      }
+    }
+
+    // Resolve later rounds (Round 2+) from picks
     for (const m of matchups || []) {
       if (m.round_number <= 1 || (m.team_top && m.team_bottom)) continue
       const feeders = feederMap[m.id]
@@ -254,6 +286,25 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     return r?.points_per_correct || 0
   }
 
+  // Build play-in pick results: team name → 'correct' | 'incorrect'
+  // So Round 1 matchup cards can show green/red for play-in winners
+  const playInPickResults = useMemo(() => {
+    const map = {}
+    const playInMatchups = (matchups || []).filter((m) => m.round_number === 0)
+    for (const m of playInMatchups) {
+      const pick = pickMap[m.template_matchup_id]
+      if (!pick || m.status !== 'completed' || !m.winner) continue
+      const winningTeam = m.winner === 'top' ? m.team_top : m.team_bottom
+      if (pick.team === winningTeam) {
+        map[winningTeam] = 'correct'
+      } else {
+        map[pick.team] = 'incorrect'
+        map[winningTeam] = 'unpicked'
+      }
+    }
+    return map
+  }, [matchups, pickMap])
+
   const hasPicks = picks && picks.length > 0
   const showRegionTabs = regions && regions.length >= 2
 
@@ -279,6 +330,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
         showPick={hasPicks}
         onTap={onMatchupTap}
         size={size}
+        playInPickResults={playInPickResults}
       />
     )
   }
@@ -582,6 +634,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
                               showPick={hasPicks}
                               onTap={onMatchupTap}
                               size={cardSize}
+                              playInPickResults={playInPickResults}
                             />
                           </div>
                         )
