@@ -31,6 +31,18 @@ export default function OnboardingTutorial() {
     }
   }, [profile])
 
+  // Allow re-triggering tutorial via custom event (e.g. from FAQ page)
+  useEffect(() => {
+    function handleReplay() {
+      returnPathRef.current = location.pathname
+      setStep(0)
+      setActive(true)
+      requestAnimationFrame(() => setMounted(true))
+    }
+    window.addEventListener('replay-tutorial', handleReplay)
+    return () => window.removeEventListener('replay-tutorial', handleReplay)
+  }, [location.pathname])
+
   const currentStep = ONBOARDING_STEPS[step]
 
   // Measure target element
