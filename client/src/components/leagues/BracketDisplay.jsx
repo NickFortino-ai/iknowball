@@ -687,13 +687,13 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
 
         {/* Legend */}
         {hasPicks && (
-          <div className="flex gap-4 mt-4 text-[10px] text-text-muted">
+          <div className="flex gap-4 mt-4 ml-2 text-[10px] text-text-muted">
             <span>
               <span className="inline-block w-2 h-2 bg-correct rounded-full mr-1" />
               Correct
             </span>
             <span>
-              <span className="inline-block w-2 h-2 bg-incorrect rounded-full mr-1" />
+              <span className="inline-block w-2 h-2 bg-red-700 rounded-full mr-1" />
               Wrong
             </span>
             <span>
