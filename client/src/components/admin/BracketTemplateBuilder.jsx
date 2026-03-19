@@ -462,9 +462,9 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   }
 
   async function handleSaveMatchups() {
-    // Validate play-in count for 68-team brackets (only if teams have been entered)
+    // Validate play-in count for 68-team brackets (only for new templates, not edits)
     const hasAnyTeams = matchups.some((m) => m.team_top || m.team_bottom)
-    if (teamCount === 68 && hasAnyTeams && playInCount !== 4) {
+    if (teamCount === 68 && hasAnyTeams && playInCount !== 4 && !savedTemplateId) {
       toast(`Must assign exactly 4 play-in games (currently ${playInCount})`, 'error')
       return
     }
