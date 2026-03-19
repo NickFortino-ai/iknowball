@@ -601,7 +601,20 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     matchupMap[m.id] = m
   }
 
+  // Get completed tournament matchups to skip chain validation for settled games
+  const { data: tournamentMatchups } = await supabase
+    .from('bracket_matchups')
+    .select('template_matchup_id, status, winner')
+    .eq('tournament_id', tournamentId)
+
+  const completedTemplateIds = new Set(
+    (tournamentMatchups || [])
+      .filter((m) => m.status === 'completed')
+      .map((m) => m.template_matchup_id)
+  )
+
   // Validate pick chains: picked team must come from a feeder pick or be a direct team on the matchup
+  // Skip validation for matchups whose feeder games are already completed (picks are locked)
   for (const m of templateMatchups) {
     if (m.is_bye) continue
     const feeders = templateMatchups.filter(
@@ -611,6 +624,11 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
 
     const pick = pickMap[m.id]
     if (!pick) continue
+
+    // If any feeder game is completed, skip chain validation for this matchup
+    // (the user can't change those picks, so broken chains from settled games are accepted)
+    const hasCompletedFeeder = feeders.some((f) => completedTemplateIds.has(f.id))
+    if (hasCompletedFeeder) continue
 
     // The picked team must be picked in a feeder OR be a directly-set team on this matchup
     const pickedInFeeder = feeders.some((f) => pickMap[f.id] === pick)
