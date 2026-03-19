@@ -3,7 +3,7 @@ import { useState } from 'react'
 const faqs = [
   {
     q: 'What is I KNOW BALL?',
-    a: 'I KNOW BALL is a sports prediction platform where you pick winners of real games using live Vegas odds, earn or lose points based on your accuracy, and climb from Rookie to GOAT status. Every pick you make is permanently tracked \u2014 no hiding from bad takes, no rewriting history.',
+    a: 'I KNOW BALL is a socially engaging sports prediction platform where you pick winners of real games using live Vegas odds, earn or lose points based on your accuracy, and climb from Rookie to GOAT status. Every pick you make is permanently tracked \u2014 no hiding from bad takes, no rewriting history.',
   },
   {
     q: 'Is this gambling?',
