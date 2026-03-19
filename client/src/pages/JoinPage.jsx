@@ -16,6 +16,7 @@ const SPORT_LABELS = {
   basketball_nba: 'NBA',
   baseball_mlb: 'MLB',
   basketball_ncaab: 'NCAAB',
+  basketball_wncaab: 'WNCAAB',
   americanfootball_ncaaf: 'NCAAF',
   basketball_wnba: 'WNBA',
   all: 'All Sports',
