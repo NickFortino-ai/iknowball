@@ -959,6 +959,41 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         }
       }
 
+      // Compute streaks per pair: track who won each H2H game in order
+      const pairResults = {} // key -> [{winnerId, gameId}] ordered by game time
+      for (const [gameId, picks] of Object.entries(picksByGame)) {
+        const home = picks.filter(p => p.picked_team === 'home')
+        const away = picks.filter(p => p.picked_team === 'away')
+        for (const h of home) {
+          for (const a of away) {
+            if (h.user_id === a.user_id) continue
+            const key = [h.user_id, a.user_id].sort().join('-')
+            if (!pairSet.has(key)) continue
+            // Determine winner of this H2H
+            let winnerId = null
+            if (h.is_correct && !a.is_correct) winnerId = h.user_id
+            else if (a.is_correct && !h.is_correct) winnerId = a.user_id
+            if (winnerId) {
+              if (!pairResults[key]) pairResults[key] = []
+              pairResults[key].push({ winnerId, gameId })
+            }
+          }
+        }
+      }
+
+      // Compute current streak per pair
+      const pairStreaks = {}
+      for (const [key, results] of Object.entries(pairResults)) {
+        if (!results.length) continue
+        let streak = 1
+        const lastWinner = results[results.length - 1].winnerId
+        for (let i = results.length - 2; i >= 0; i--) {
+          if (results[i].winnerId === lastWinner) streak++
+          else break
+        }
+        pairStreaks[key] = { userId: lastWinner, streak }
+      }
+
       for (const item of h2hItems) {
         const a = item.matchup.userA.userId
         const b = item.matchup.userB.userId
@@ -970,7 +1005,31 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
             userBWins: rec[b] || 0,
           }
         }
+        if (pairStreaks[key]) {
+          item.matchup.streak = pairStreaks[key]
+        }
       }
+
+      // Quality filter: only show H2H in feed when notable
+      // 1. Milestone: total matchups is a multiple of 5
+      // 2. Dominance streak: 4+ in a row, only at even numbers (4, 6, 8...)
+      const filteredFeed = feed.filter((item) => {
+        if (item.type !== 'head_to_head') return true
+        const rec = item.matchup.record
+        if (!rec) return false
+        const total = (rec.userAWins || 0) + (rec.userBWins || 0)
+        const streak = item.matchup.streak
+
+        // Milestone: every 5th matchup
+        if (total > 0 && total % 5 === 0) return true
+
+        // Dominance streak: 4+ and even
+        if (streak && streak.streak >= 4 && streak.streak % 2 === 0) return true
+
+        return false
+      })
+      feed.length = 0
+      feed.push(...filteredFeed)
     }
   }
 
@@ -990,6 +1049,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         team_tags: take.team_tags,
         user_tags: take.user_tags,
         image_url: take.image_url,
+        image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
       },
     })
