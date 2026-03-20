@@ -331,10 +331,11 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
   }, [matchups, pickMap])
 
   // Build set of eliminated team names from picks
+  // Includes teams from incorrect picks (lost their game) and explicitly eliminated downstream picks
   const eliminatedTeams = useMemo(() => {
     const set = new Set()
     for (const p of picks || []) {
-      if (p.is_eliminated) set.add(p.picked_team)
+      if (p.is_eliminated || p.is_correct === false) set.add(p.picked_team)
     }
     return set
   }, [picks])
