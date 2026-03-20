@@ -8,8 +8,8 @@ export function useCreateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ content, team_tags, sport_key, image_url, video_url, user_tags }) =>
-      api.post('/hot-takes', { content, team_tags, sport_key, image_url, video_url, user_tags }),
+    mutationFn: ({ content, team_tags, sport_key, image_url, image_urls, video_url, user_tags }) =>
+      api.post('/hot-takes', { content, team_tags, sport_key, image_url, image_urls, video_url, user_tags }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },
@@ -180,6 +180,8 @@ export function useHotTakeImageUpload() {
   const [uploading, setUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [imageFile, setImageFile] = useState(null)
+  const [imageFiles, setImageFiles] = useState([])
+  const [previewUrls, setPreviewUrls] = useState([])
 
   async function selectImage(file) {
     if (!file) return
@@ -194,38 +196,69 @@ export function useHotTakeImageUpload() {
       return
     }
 
-    setImageFile(file)
-    setPreviewUrl(URL.createObjectURL(file))
+    if (imageFiles.length >= 4) {
+      toast('Maximum 4 images per post', 'error')
+      return
+    }
+
+    const url = URL.createObjectURL(file)
+    setImageFiles((prev) => [...prev, file])
+    setPreviewUrls((prev) => [...prev, url])
+    // Keep single-image compat
+    if (!imageFile) {
+      setImageFile(file)
+      setPreviewUrl(url)
+    }
   }
 
-  function removeImage() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setImageFile(null)
-    setPreviewUrl(null)
+  function selectImages(files) {
+    for (const file of files) {
+      selectImage(file)
+    }
+  }
+
+  function removeImage(index) {
+    if (index === undefined) {
+      // Remove all (backward compat)
+      previewUrls.forEach((url) => URL.revokeObjectURL(url))
+      setImageFiles([])
+      setPreviewUrls([])
+      setImageFile(null)
+      setPreviewUrl(null)
+      return
+    }
+    URL.revokeObjectURL(previewUrls[index])
+    const newFiles = imageFiles.filter((_, i) => i !== index)
+    const newUrls = previewUrls.filter((_, i) => i !== index)
+    setImageFiles(newFiles)
+    setPreviewUrls(newUrls)
+    setImageFile(newFiles[0] || null)
+    setPreviewUrl(newUrls[0] || null)
   }
 
   async function uploadImage() {
-    if (!imageFile) return null
+    if (!imageFiles.length) return null
     setUploading(true)
     try {
-      const blob = await resizeImage(imageFile)
-
       const { data: { session } } = await supabase.auth.getSession()
       const userId = session?.user?.id
       if (!userId) throw new Error('Not authenticated')
 
-      const fileName = `${userId}/${Date.now()}.webp`
-      const { error: uploadError } = await supabase.storage
-        .from('hot-take-images')
-        .upload(fileName, blob, { contentType: 'image/webp' })
+      const urls = []
+      for (const file of imageFiles) {
+        const blob = await resizeImage(file)
+        const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.webp`
+        const { error: uploadError } = await supabase.storage
+          .from('hot-take-images')
+          .upload(fileName, blob, { contentType: 'image/webp' })
+        if (uploadError) throw uploadError
+        const { data: { publicUrl } } = supabase.storage
+          .from('hot-take-images')
+          .getPublicUrl(fileName)
+        urls.push(publicUrl)
+      }
 
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('hot-take-images')
-        .getPublicUrl(fileName)
-
-      return publicUrl
+      return urls
     } catch (err) {
       toast(err.message || 'Failed to upload image', 'error')
       return null
@@ -234,7 +267,7 @@ export function useHotTakeImageUpload() {
     }
   }
 
-  return { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage: !!imageFile }
+  return { uploading, previewUrl, previewUrls, selectImage, selectImages, removeImage, uploadImage, hasImage: imageFiles.length > 0, imageCount: imageFiles.length }
 }
 
 export function useHotTakeVideoUpload() {

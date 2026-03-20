@@ -177,6 +177,9 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   const { session } = useAuth()
   const navigate = useNavigate()
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  const allImages = hot_take.image_urls?.length ? hot_take.image_urls : hot_take.image_url ? [hot_take.image_url] : []
   const [editing, setEditing] = useState(false)
   const [reminded, setReminded] = useState(false)
   const [showRemindInput, setShowRemindInput] = useState(false)
@@ -580,18 +583,48 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           {/* Tweet-style content */}
           <RichContent text={hot_take.content} className="text-sm text-text-primary leading-relaxed" />
 
-          {/* Image */}
-          {hot_take.image_url && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setLightboxOpen(true) }}
-              className="mt-2 block w-full"
-            >
-              <img
-                src={hot_take.image_url}
-                alt=""
-                className="w-full rounded-lg"
-              />
-            </button>
+          {/* Images */}
+          {allImages.length > 0 && (
+            <div className="relative mt-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(carouselIndex); setLightboxOpen(true) }}
+                className="block w-full"
+              >
+                <img
+                  src={allImages[carouselIndex]}
+                  alt=""
+                  className="w-full rounded-lg"
+                />
+              </button>
+              {allImages.length > 1 && (
+                <>
+                  {carouselIndex > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setCarouselIndex((i) => i - 1) }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                    >
+                      &#8249;
+                    </button>
+                  )}
+                  {carouselIndex < allImages.length - 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setCarouselIndex((i) => i + 1) }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                    >
+                      &#8250;
+                    </button>
+                  )}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {allImages.map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-1.5 h-1.5 rounded-full transition-colors ${i === carouselIndex ? 'bg-white' : 'bg-white/40'}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           {/* Video */}
@@ -678,9 +711,9 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           )}
 
           {/* Lightbox */}
-          {lightboxOpen && hot_take.image_url && (
+          {lightboxOpen && allImages.length > 0 && (
             <ImageLightbox
-              src={hot_take.image_url}
+              src={allImages[lightboxIndex]}
               onClose={() => setLightboxOpen(false)}
             />
           )}

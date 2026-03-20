@@ -34,7 +34,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   const createHotTake = useCreateHotTake()
   const queryClient = useQueryClient()
   const { data: profile } = useProfile()
-  const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
+  const { uploading, previewUrls, selectImage, removeImage, uploadImage, hasImage, imageCount } = useHotTakeImageUpload()
   const { uploading: videoUploading, previewUrl: videoPreviewUrl, selectVideo, removeVideo, uploadVideo, hasVideo } = useHotTakeVideoUpload()
   const fileInputRef = useRef(null)
   const textareaRef = useRef(null)
@@ -149,9 +149,12 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     if (!canPost) return
 
     let imageUrl = undefined
+    let imageUrls = undefined
     if (hasImage) {
-      imageUrl = await uploadImage()
-      if (!imageUrl && hasImage) return // upload failed
+      const urls = await uploadImage()
+      if (!urls && hasImage) return // upload failed
+      imageUrls = urls
+      imageUrl = urls?.[0]
     }
 
     let videoUrl = undefined
@@ -161,7 +164,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     }
 
     createHotTake.mutate(
-      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
+      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
       {
         onSuccess: () => {
           setContent('')
@@ -200,14 +203,17 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   }
 
   function handleFileChange(e) {
-    const file = e.target.files?.[0]
-    if (!file) { e.target.value = ''; return }
-    if (file.type.startsWith('video/')) {
-      removeImage()
-      selectVideo(file)
-    } else {
-      removeVideo()
-      selectImage(file)
+    const files = e.target.files
+    if (!files?.length) { e.target.value = ''; return }
+    for (const file of files) {
+      if (file.type.startsWith('video/')) {
+        removeImage()
+        selectVideo(file)
+        break
+      } else {
+        removeVideo()
+        selectImage(file)
+      }
     }
     e.target.value = ''
   }
@@ -326,20 +332,32 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
             )}
           </div>
 
-          {/* Image preview */}
-          {previewUrl && (
-            <div className="relative mt-2 inline-block">
-              <img
-                src={previewUrl}
-                alt="Upload preview"
-                className="max-h-32 rounded-lg object-cover"
-              />
-              <button
-                onClick={removeImage}
-                className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/90 transition-colors"
-              >
-                ×
-              </button>
+          {/* Image previews */}
+          {previewUrls.length > 0 && (
+            <div className="flex gap-2 mt-2 overflow-x-auto">
+              {previewUrls.map((url, i) => (
+                <div key={url} className="relative shrink-0">
+                  <img
+                    src={url}
+                    alt={`Upload preview ${i + 1}`}
+                    className="h-24 w-24 rounded-lg object-cover"
+                  />
+                  <button
+                    onClick={() => removeImage(i)}
+                    className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/90 transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {imageCount < 4 && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-24 w-24 rounded-lg border border-dashed border-border flex items-center justify-center text-text-muted hover:border-accent/50 hover:text-accent transition-colors shrink-0"
+                >
+                  <span className="text-xl">+</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -461,6 +479,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                     ref={fileInputRef}
                     type="file"
                     accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                    multiple
                     onChange={handleFileChange}
                     className="hidden"
                   />

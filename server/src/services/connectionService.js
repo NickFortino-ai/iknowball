@@ -474,10 +474,10 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     // Source 9: Hot takes
     applyBefore(
       isHotTakes
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at')
+        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at')
         : isUserHotTakes && targetUserId
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at').eq('user_id', targetUserId)
-        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at'), 'user_id', allIds),
+        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at').eq('user_id', targetUserId)
+        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at'), 'user_id', allIds),
       'created_at')
       .order('created_at', { ascending: false })
       .limit((isHotTakes || isUserHotTakes) ? 30 : 15),

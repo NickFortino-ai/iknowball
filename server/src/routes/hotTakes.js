@@ -15,6 +15,7 @@ const hotTakeSchema = z.object({
   team_tags: z.array(z.string().max(50)).max(5).optional(),
   sport_key: z.string().max(50).optional(),
   image_url: z.string().url().optional(),
+  image_urls: z.array(z.string().url()).max(4).optional(),
   video_url: z.string().url().optional(),
   user_tags: z.array(z.string().uuid()).max(3).optional(),
 })
@@ -31,7 +32,7 @@ router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url)
+  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls)
   res.status(201).json(hotTake)
 })
 
@@ -62,7 +63,7 @@ router.get('/sport', requireAuth, async (req, res) => {
   // Match hot takes by sport_key (new) or by team name overlap (legacy, no sport_key)
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at')
     .or(`sport_key.eq.${sport},and(sport_key.is.null,team_tags.ov.{${teamList.map((t) => `"${t}"`).join(',')}})`)
     .order('created_at', { ascending: false })
     .limit(20)
@@ -142,6 +143,7 @@ router.get('/sport', requireAuth, async (req, res) => {
         team_tags: take.team_tags,
         user_tags: take.user_tags,
         image_url: take.image_url,
+        image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
         tagged_users,
       },
@@ -167,7 +169,7 @@ router.get('/team', requireAuth, async (req, res) => {
 
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at')
     .contains('team_tags', [team])
     .order('created_at', { ascending: false })
     .limit(20)
@@ -247,6 +249,7 @@ router.get('/team', requireAuth, async (req, res) => {
         team_tags: take.team_tags,
         user_tags: take.user_tags,
         image_url: take.image_url,
+        image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
         tagged_users,
       },
@@ -286,7 +289,7 @@ router.post('/ask/:userId', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   const { data: take, error } = await supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, video_url, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at')
     .eq('id', req.params.id)
     .single()
 
@@ -341,7 +344,7 @@ router.patch('/:id', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url)
+  const hotTake = await updateHotTake(req.user.id, req.params.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls)
   res.json(hotTake)
 })
 
