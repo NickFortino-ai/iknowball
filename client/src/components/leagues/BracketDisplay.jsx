@@ -208,8 +208,11 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
       if (m.round_number <= 1) continue
       const feeders = feederMap[m.id]
       if (!feeders) continue
-      const topTeam = resolveFromFeeder(feeders.top) || m.team_top
-      const bottomTeam = resolveFromFeeder(feeders.bottom) || m.team_bottom
+      const topResolved = resolveFromFeeder(feeders.top)
+      const bottomResolved = resolveFromFeeder(feeders.bottom)
+      // When viewing picks, don't fall back to actual matchup teams — show TBD for unpicked slots
+      const topTeam = topResolved || (!picks?.length ? m.team_top : null)
+      const bottomTeam = bottomResolved || (!picks?.length ? m.team_bottom : null)
       if (topTeam !== m.team_top || bottomTeam !== m.team_bottom) {
         resolved[m.id] = {
           team_top: topTeam,
