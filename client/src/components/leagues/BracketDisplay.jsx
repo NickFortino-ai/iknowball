@@ -163,10 +163,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     function resolveFromFeeder(feeder) {
       if (!feeder) return null
       const pick = pickMap[feeder.template_matchup_id]?.team
-      if (pick) return pick
-      if (feeder.winner === 'top') return feeder.team_top
-      if (feeder.winner === 'bottom') return feeder.team_bottom
-      return null
+      return pick || null
     }
 
     const resolved = {}
