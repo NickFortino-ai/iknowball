@@ -773,6 +773,9 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
       }
     }
 
+    // Mark any picks as eliminated if the team has already lost in an earlier round
+    await eliminateAlreadyLostPicks(entry.id, tournament.template_id)
+
     return { entry, picks: pickRows }
   }
 
@@ -801,6 +804,9 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     logger.error({ pickError }, 'Failed to insert bracket picks')
     throw pickError
   }
+
+  // Mark any picks as eliminated if the team has already lost in an earlier round
+  await eliminateAlreadyLostPicks(entry.id, tournament.template_id)
 
   return { entry, picks: pickRows }
 }
@@ -1012,6 +1018,47 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
 
   await recalculateEntryPoints(tournamentId, rounds)
   await updateTournamentStatus(tournamentId)
+}
+
+async function eliminateAlreadyLostPicks(entryId, templateId) {
+  // Find all teams that have lost (settled matchups where we know the loser)
+  const { data: settledMatchups } = await supabase
+    .from('bracket_template_matchups')
+    .select('*')
+    .eq('template_id', templateId)
+    .not('winner', 'is', null)
+
+  // Map: teamName → earliest round they lost in
+  const lostInRound = {}
+  for (const m of settledMatchups || []) {
+    const loser = m.winner === 'top' ? m.team_bottom : m.team_top
+    if (loser) {
+      const prev = lostInRound[loser]
+      if (prev === undefined || m.round_number < prev) {
+        lostInRound[loser] = m.round_number
+      }
+    }
+  }
+
+  if (!Object.keys(lostInRound).length) return
+
+  // Get all unscored, non-eliminated picks for this entry
+  const { data: picks } = await supabase
+    .from('bracket_picks')
+    .select('*')
+    .eq('entry_id', entryId)
+    .is('is_correct', null)
+    .eq('is_eliminated', false)
+
+  for (const pick of picks || []) {
+    const teamLostIn = lostInRound[pick.picked_team]
+    if (teamLostIn !== undefined && teamLostIn <= pick.round_number) {
+      await supabase
+        .from('bracket_picks')
+        .update({ is_eliminated: true })
+        .eq('id', pick.id)
+    }
+  }
 }
 
 async function eliminateDownstreamPicks(entryId, teamName, fromRound, tournamentId) {
