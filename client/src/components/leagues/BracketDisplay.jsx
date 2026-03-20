@@ -28,9 +28,9 @@ function MatchupCard({ matchup, pick, eliminated, eliminatedTeams, showPick, onT
     }
     // Show resolved teams that are eliminated (picked in feeder but lost)
     if (showPick && eliminatedTeams?.has(team)) return 'text-text-muted line-through'
-    // Show play-in pick result on Round 1 teams
-    if (showPick && playInPickResults[team] === 'correct') return 'text-correct font-semibold'
-    if (showPick && playInPickResults[team] === 'incorrect') return 'text-incorrect line-through'
+    // Show play-in pick result on Round 1 teams only
+    if (showPick && matchup.round_number <= 1 && playInPickResults[team] === 'correct') return 'text-correct font-semibold'
+    if (showPick && matchup.round_number <= 1 && playInPickResults[team] === 'incorrect') return 'text-incorrect line-through'
     if (matchup.status === 'completed') {
       const isWinner = (isTop && matchup.winner === 'top') || (!isTop && matchup.winner === 'bottom')
       return isWinner ? 'font-semibold text-text-primary' : 'text-text-muted'
