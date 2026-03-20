@@ -350,10 +350,10 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     const dm = resolved
       ? {
           ...matchup,
-          team_top: resolved.team_top || matchup.team_top,
-          team_bottom: resolved.team_bottom || matchup.team_bottom,
-          seed_top: resolved.seed_top ?? matchup.seed_top,
-          seed_bottom: resolved.seed_bottom ?? matchup.seed_bottom,
+          team_top: 'team_top' in resolved ? resolved.team_top : matchup.team_top,
+          team_bottom: 'team_bottom' in resolved ? resolved.team_bottom : matchup.team_bottom,
+          seed_top: 'seed_top' in resolved ? resolved.seed_top : matchup.seed_top,
+          seed_bottom: 'seed_bottom' in resolved ? resolved.seed_bottom : matchup.seed_bottom,
         }
       : matchup
 
@@ -651,10 +651,10 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
                         const displayMatchup = resolved
                           ? {
                               ...matchup,
-                              team_top: resolved.team_top || matchup.team_top,
-                              team_bottom: resolved.team_bottom || matchup.team_bottom,
-                              seed_top: resolved.seed_top ?? matchup.seed_top,
-                              seed_bottom: resolved.seed_bottom ?? matchup.seed_bottom,
+                              team_top: 'team_top' in resolved ? resolved.team_top : matchup.team_top,
+                              team_bottom: 'team_bottom' in resolved ? resolved.team_bottom : matchup.team_bottom,
+                              seed_top: 'seed_top' in resolved ? resolved.seed_top : matchup.seed_top,
+                              seed_bottom: 'seed_bottom' in resolved ? resolved.seed_bottom : matchup.seed_bottom,
                             }
                           : matchup
                         return (
