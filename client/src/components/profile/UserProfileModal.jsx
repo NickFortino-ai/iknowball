@@ -547,44 +547,27 @@ export default function UserProfileModal({ userId, onClose }) {
                 }} />
 
 
-            {/* Report / Block — other users only */}
+            {/* H2H Matchups link */}
+            {isViewingOther && h2h && h2h.total > 0 && (
+              <button
+                onClick={() => setShowH2HDetail(true)}
+                className="w-full text-center text-sm text-accent hover:bg-accent/10 font-semibold py-3 mt-4 rounded-xl border border-accent/30 transition-colors"
+              >
+                See H2H Matchups
+              </button>
+            )}
+
+            {/* View highlights link */}
             {isViewingOther && (
-              <div className="mt-6 pt-4 border-t border-border flex items-center justify-center gap-4">
-                <button
-                  onClick={() => setShowReportModal(true)}
-                  className="text-xs text-text-muted hover:text-text-secondary transition-colors flex items-center gap-1"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                    <line x1="4" y1="22" x2="4" y2="15" />
-                  </svg>
-                  Report Profile
-                </button>
-                {!confirmBlock ? (
-                  <button
-                    onClick={() => setConfirmBlock(true)}
-                    className="text-xs text-text-muted hover:text-incorrect transition-colors"
-                  >
-                    Block User
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleBlock}
-                      disabled={blockUser.isPending}
-                      className="text-xs font-semibold text-incorrect hover:underline disabled:opacity-50"
-                    >
-                      {blockUser.isPending ? 'Blocking...' : 'Confirm Block'}
-                    </button>
-                    <button
-                      onClick={() => setConfirmBlock(false)}
-                      className="text-xs text-text-muted hover:text-text-secondary"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={() => {
+                  onClose()
+                  navigate(`/hub?tab=user_highlights&user=${userId}`)
+                }}
+                className="w-full text-center text-sm text-accent hover:bg-accent/10 font-semibold py-3 mt-3 rounded-xl border border-accent/30 transition-colors"
+              >
+                See {user.display_name || user.username}'s Highlights
+              </button>
             )}
 
             {/* View feed link */}
@@ -593,15 +576,55 @@ export default function UserProfileModal({ userId, onClose }) {
                 onClose()
                 navigate(`/hub?tab=user_feeds&user=${userId}`)
               }}
-              className="w-full text-center text-sm text-accent hover:bg-accent/10 font-semibold py-3 mt-4 rounded-xl border border-accent/30 transition-colors"
+              className="w-full text-center text-sm text-accent hover:bg-accent/10 font-semibold py-3 mt-3 rounded-xl border border-accent/30 transition-colors"
             >
-              View {user.display_name || user.username}'s feed
+              View {user.display_name || user.username}'s Feed
             </button>
 
             {/* Member since */}
-            <div className="text-text-muted text-xs text-center">
+            <div className="text-text-muted text-xs text-center mt-3">
               Member since {new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </div>
+
+            {/* Report / Block — other users only */}
+            {isViewingOther && (
+              <div className="mt-4 pt-3 border-t border-border flex items-center justify-center gap-4">
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="text-[11px] text-text-muted/60 hover:text-text-secondary transition-colors flex items-center gap-1"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                    <line x1="4" y1="22" x2="4" y2="15" />
+                  </svg>
+                  Report
+                </button>
+                {!confirmBlock ? (
+                  <button
+                    onClick={() => setConfirmBlock(true)}
+                    className="text-[11px] text-text-muted/60 hover:text-incorrect transition-colors"
+                  >
+                    Block
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleBlock}
+                      disabled={blockUser.isPending}
+                      className="text-[11px] font-semibold text-incorrect hover:underline disabled:opacity-50"
+                    >
+                      {blockUser.isPending ? 'Blocking...' : 'Confirm Block'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmBlock(false)}
+                      className="text-[11px] text-text-muted/60 hover:text-text-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
         </div>
