@@ -557,19 +557,6 @@ export default function UserProfileModal({ userId, onClose }) {
               </button>
             )}
 
-            {/* View highlights link */}
-            {isViewingOther && (
-              <button
-                onClick={() => {
-                  onClose()
-                  navigate(`/hub?tab=user_highlights&user=${userId}`)
-                }}
-                className="w-full text-center text-sm text-accent hover:bg-accent/10 font-semibold py-3 mt-3 rounded-xl border border-accent/30 transition-colors"
-              >
-                See {user.display_name || user.username}'s Highlights
-              </button>
-            )}
-
             {/* View feed link */}
             <button
               onClick={() => {
