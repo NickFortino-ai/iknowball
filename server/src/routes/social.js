@@ -225,8 +225,8 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
       if (p.is_correct === true) {
         currentRun.push(p)
       } else if (p.is_correct === false) {
-        if (currentRun.length === streakEvent.streak_length) {
-          streakPicks = currentRun
+        if (currentRun.length >= streakEvent.streak_length) {
+          streakPicks = currentRun.slice(0, streakEvent.streak_length)
           break
         }
         currentRun = []
@@ -234,8 +234,8 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
       // is_correct === null (push) — skip without breaking
     }
     // Check the last run if we didn't break
-    if (streakPicks.length === 0 && currentRun.length === streakEvent.streak_length) {
-      streakPicks = currentRun
+    if (streakPicks.length === 0 && currentRun.length >= streakEvent.streak_length) {
+      streakPicks = currentRun.slice(0, streakEvent.streak_length)
     }
     // Fallback: if no exact match, take the first run >= streak_length
     if (streakPicks.length === 0) {
