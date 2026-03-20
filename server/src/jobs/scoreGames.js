@@ -99,7 +99,7 @@ async function scoreSport(sportKey) {
 
       if (winner) {
         try {
-          await scoreBracketMatchups(game.home_team, game.away_team, winner, homePoints, awayPoints)
+          await scoreBracketMatchups(game.home_team, game.away_team, winner, homePoints, awayPoints, sportKey)
         } catch (err) {
           logger.error({ err, gameId: game.id }, 'Failed to auto-settle bracket matchups')
         }

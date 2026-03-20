@@ -94,7 +94,7 @@ async function finalizeStuckGames() {
 
         if (winner) {
           try {
-            await scoreBracketMatchups(game.home_team, game.away_team, winner, match.homeScore, match.awayScore)
+            await scoreBracketMatchups(game.home_team, game.away_team, winner, match.homeScore, match.awayScore, sportKey)
           } catch (err) {
             logger.error({ err, gameId: game.id }, 'Failed to auto-settle bracket matchups for stuck game')
           }

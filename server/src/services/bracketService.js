@@ -1267,15 +1267,22 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
 // Standings
 // ============================================
 
-export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore, awayScore) {
+export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore, awayScore, sportKey) {
   // Find unsettled template matchups where both teams match this game
-  const { data: matchups, error } = await supabase
+  let query = supabase
     .from('bracket_template_matchups')
-    .select('*, bracket_templates!inner(id, is_active)')
+    .select('*, bracket_templates!inner(id, is_active, sport)')
     .is('winner', null)
     .not('team_top', 'is', null)
     .not('team_bottom', 'is', null)
     .eq('bracket_templates.is_active', true)
+
+  // Filter by sport to prevent cross-sport contamination (e.g. ncaab vs wncaab)
+  if (sportKey) {
+    query = query.eq('bracket_templates.sport', sportKey)
+  }
+
+  const { data: matchups, error } = await query
 
   if (error || !matchups?.length) return
 
