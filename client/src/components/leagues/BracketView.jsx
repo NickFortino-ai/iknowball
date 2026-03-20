@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   useBracketTournament,
   useBracketEntry,
@@ -31,7 +31,16 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
   const [showPicker, setShowPicker] = useState(!!savedDraft)
   const [viewingUserId, setViewingUserId] = useState(null)
+  const [hasDefaulted, setHasDefaulted] = useState(false)
   const viewTab = tab
+
+  // Default to user's own bracket once data loads
+  useEffect(() => {
+    if (!hasDefaulted && myEntry && profile?.id) {
+      setViewingUserId(profile.id)
+      setHasDefaulted(true)
+    }
+  }, [myEntry, profile?.id, hasDefaulted])
 
   const { data: viewedEntry } = useViewBracketEntry(
     league.id,
