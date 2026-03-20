@@ -1,6 +1,6 @@
 import { useMemo, useState, Fragment } from 'react'
 
-function MatchupCard({ matchup, pick, eliminated, showPick, onTap, size = 'default', playInPickResults = {} }) {
+function MatchupCard({ matchup, pick, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {} }) {
   const [showScore, setShowScore] = useState(false)
 
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -26,6 +26,8 @@ function MatchupCard({ matchup, pick, eliminated, showPick, onTap, size = 'defau
       if (eliminated) return 'text-text-muted line-through'
       return 'text-accent font-semibold'
     }
+    // Show resolved teams that are eliminated (picked in feeder but lost)
+    if (showPick && eliminatedTeams?.has(team)) return 'text-text-muted line-through'
     // Show play-in pick result on Round 1 teams
     if (showPick && playInPickResults[team] === 'correct') return 'text-correct font-semibold'
     if (showPick && playInPickResults[team] === 'incorrect') return 'text-incorrect line-through'
@@ -328,6 +330,15 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     return map
   }, [matchups, pickMap])
 
+  // Build set of eliminated team names from picks
+  const eliminatedTeams = useMemo(() => {
+    const set = new Set()
+    for (const p of picks || []) {
+      if (p.is_eliminated) set.add(p.picked_team)
+    }
+    return set
+  }, [picks])
+
   const hasPicks = picks && picks.length > 0
   const showRegionTabs = regions && regions.length >= 2
 
@@ -350,6 +361,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
         matchup={dm}
         pick={pickMap[matchup.template_matchup_id]?.team}
         eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
+        eliminatedTeams={eliminatedTeams}
         showPick={hasPicks}
         onTap={onMatchupTap}
         size={size}
@@ -654,6 +666,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
                               matchup={displayMatchup}
                               pick={pickMap[matchup.template_matchup_id]?.team}
                               eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
+                              eliminatedTeams={eliminatedTeams}
                               showPick={hasPicks}
                               onTap={onMatchupTap}
                               size={cardSize}
