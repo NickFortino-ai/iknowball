@@ -201,17 +201,20 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
     }
 
     // Resolve later rounds (Round 2+) from picks
+    // Always show the user's picked teams, not the actual advanced teams
     for (const m of matchups || []) {
-      if (m.round_number <= 1 || (m.team_top && m.team_bottom)) continue
+      if (m.round_number <= 1) continue
       const feeders = feederMap[m.id]
       if (!feeders) continue
-      const topTeam = m.team_top || resolveFromFeeder(feeders.top)
-      const bottomTeam = m.team_bottom || resolveFromFeeder(feeders.bottom)
-      resolved[m.id] = {
-        team_top: topTeam,
-        team_bottom: bottomTeam,
-        seed_top: topTeam ? (m.seed_top ?? teamSeedMap[topTeam] ?? null) : null,
-        seed_bottom: bottomTeam ? (m.seed_bottom ?? teamSeedMap[bottomTeam] ?? null) : null,
+      const topTeam = resolveFromFeeder(feeders.top) || m.team_top
+      const bottomTeam = resolveFromFeeder(feeders.bottom) || m.team_bottom
+      if (topTeam !== m.team_top || bottomTeam !== m.team_bottom) {
+        resolved[m.id] = {
+          team_top: topTeam,
+          team_bottom: bottomTeam,
+          seed_top: topTeam ? (teamSeedMap[topTeam] ?? m.seed_top ?? null) : null,
+          seed_bottom: bottomTeam ? (teamSeedMap[bottomTeam] ?? m.seed_bottom ?? null) : null,
+        }
       }
     }
     return resolved
