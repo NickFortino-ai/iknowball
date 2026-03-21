@@ -27,6 +27,11 @@ function parlayHasGameOnDate(parlay, dateKey) {
   })
 }
 
+function parlaySettledOnDate(parlay, dateKey) {
+  // A settled parlay belongs to "today" if it was settled today (updated_at)
+  return parlay.status === 'settled' && parlay.updated_at && getLocalDateKey(parlay.updated_at) === dateKey
+}
+
 function getLocalDateKey(dateStr) {
   const d = new Date(dateStr)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -112,7 +117,7 @@ export default function ResultsPage() {
 
     return {
       todayPicks: allPicks.filter(p => getLocalDateKey(p.games?.starts_at) === todayKey),
-      todayParlays: allParlays.filter(p => parlayHasGameOnDate(p, todayKey)),
+      todayParlays: allParlays.filter(p => parlayHasGameOnDate(p, todayKey) && (p.status === 'locked' || parlaySettledOnDate(p, todayKey))),
       todayProps: allProps.filter(p => getLocalDateKey(p.player_props?.games?.starts_at || p.created_at) === todayKey),
       olderSettledPicks: allPicks.filter(p => p.status === 'settled' && getLocalDateKey(p.games?.starts_at) !== todayKey),
       olderSettledParlays: allParlays.filter(p => p.status === 'settled' && !parlayHasGameOnDate(p, todayKey)),
