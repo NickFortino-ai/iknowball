@@ -651,9 +651,10 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         },
       })
     } else {
-      // Check for bad beat: 4+ leg parlay with exactly 1 lost leg
+      // Check for bad beat: fully settled 4+ leg parlay with exactly 1 lost leg (all others won)
       const lostLegs = parlay.parlay_legs?.filter((l) => l.status === 'lost') || []
-      if (lostLegs.length === 1 && parlay.leg_count >= 4) {
+      const wonLegs = parlay.parlay_legs?.filter((l) => l.status === 'won') || []
+      if (lostLegs.length === 1 && wonLegs.length === parlay.leg_count - 1 && parlay.leg_count >= 4) {
         feed.push({
           type: 'bad_beat',
           id: parlay.id,
