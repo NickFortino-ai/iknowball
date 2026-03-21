@@ -381,7 +381,13 @@ router.get('/me', requireAuth, async (req, res) => {
     return res.status(404).json({ error: 'User profile not found' })
   }
 
-  res.json(data)
+  // Compute global rank
+  const { count } = await supabase
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .gt('total_points', data.total_points || 0)
+
+  res.json({ ...data, rank: (count || 0) + 1 })
 })
 
 router.get('/me/sports', requireAuth, async (req, res) => {
