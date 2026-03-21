@@ -324,21 +324,36 @@ export default function HubPage() {
           </div>
         ) : squadExpanded && (
           <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
-            {[...connections].sort((a, b) => (b.total_points || 0) - (a.total_points || 0)).map((conn, idx) => (
+            {(() => {
+              const selfEntry = profile ? {
+                connection_id: 'self',
+                user_id: profile.id,
+                username: profile.username,
+                display_name: profile.display_name,
+                avatar_url: profile.avatar_url,
+                avatar_emoji: profile.avatar_emoji,
+                total_points: profile.total_points,
+                rank: profile.rank,
+                tier: getTier(profile.total_points).name,
+                current_streak: 0,
+                isSelf: true,
+              } : null
+              const withSelf = selfEntry ? [...connections, selfEntry] : [...connections]
+              return withSelf.sort((a, b) => (b.total_points || 0) - (a.total_points || 0)).map((conn, idx) => (
               <div
                 key={conn.connection_id}
-                onClick={() => !filterMode && setSelectedUserId(conn.user_id)}
-                className={`px-4 py-3 flex items-center gap-3 border-b border-border last:border-b-0 transition-colors ${filterMode ? '' : 'cursor-pointer hover:bg-bg-card-hover'}`}
+                onClick={() => !filterMode && !conn.isSelf && setSelectedUserId(conn.user_id)}
+                className={`px-4 py-3 flex items-center gap-3 border-b border-border last:border-b-0 transition-colors ${conn.isSelf ? 'bg-accent/5' : filterMode ? '' : 'cursor-pointer hover:bg-bg-card-hover'}`}
               >
                 <div className="w-6 text-center shrink-0">
                   <div className="text-sm font-bold text-accent">{idx + 1}</div>
                 </div>
                 <Avatar user={conn} size="xl" />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm truncate">{conn.display_name || conn.username}</div>
+                  <div className={`font-medium text-sm truncate ${conn.isSelf ? 'text-accent' : ''}`}>{conn.isSelf ? `${conn.display_name || conn.username} (You)` : conn.display_name || conn.username}</div>
                   <div className="text-xs text-text-muted">@{conn.username}{conn.rank ? ` · ovr ${conn.rank}` : ''}</div>
                 </div>
-                {filterMode ? (
+                {filterMode && !conn.isSelf ? (
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -364,7 +379,8 @@ export default function HubPage() {
                   </div>
                 )}
               </div>
-            ))}
+            ))
+            })()}
           </div>
         )}
       </div>
