@@ -20,6 +20,13 @@ function getParlayGameDate(parlay) {
   return starts[0] || parlay.created_at
 }
 
+function parlayHasGameOnDate(parlay, dateKey) {
+  return (parlay.parlay_legs || []).some((l) => {
+    const start = l.games?.starts_at
+    return start && getLocalDateKey(start) === dateKey
+  })
+}
+
 function getLocalDateKey(dateStr) {
   const d = new Date(dateStr)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -105,10 +112,10 @@ export default function ResultsPage() {
 
     return {
       todayPicks: allPicks.filter(p => getLocalDateKey(p.games?.starts_at) === todayKey),
-      todayParlays: allParlays.filter(p => getLocalDateKey(getParlayGameDate(p)) === todayKey),
+      todayParlays: allParlays.filter(p => parlayHasGameOnDate(p, todayKey)),
       todayProps: allProps.filter(p => getLocalDateKey(p.player_props?.games?.starts_at || p.created_at) === todayKey),
       olderSettledPicks: allPicks.filter(p => p.status === 'settled' && getLocalDateKey(p.games?.starts_at) !== todayKey),
-      olderSettledParlays: allParlays.filter(p => p.status === 'settled' && getLocalDateKey(getParlayGameDate(p)) !== todayKey),
+      olderSettledParlays: allParlays.filter(p => p.status === 'settled' && !parlayHasGameOnDate(p, todayKey)),
       olderSettledProps: allProps.filter(p => p.status === 'settled' && getLocalDateKey(p.player_props?.games?.starts_at || p.created_at) !== todayKey),
       settledFutures: (futuresPicks || []).filter(p => p.status === 'settled'),
     }
