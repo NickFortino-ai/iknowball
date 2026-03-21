@@ -94,6 +94,21 @@ export async function getMyConnections(userId) {
     .select('id, username, display_name, avatar_url, avatar_emoji, total_points, tier, updated_at')
     .in('id', otherUserIds)
 
+  // Get global rank for each user via RPC or count
+  const rankMap = {}
+  const uniquePoints = [...new Set((users || []).map((u) => u.total_points || 0))]
+  const rankCounts = {}
+  for (const pts of uniquePoints) {
+    const { count } = await supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .gt('total_points', pts)
+    rankCounts[pts] = (count || 0) + 1
+  }
+  for (const u of users || []) {
+    rankMap[u.id] = rankCounts[u.total_points || 0]
+  }
+
   // Get max current_streak per user
   const { data: stats } = await supabase
     .from('user_sport_stats')
@@ -126,6 +141,7 @@ export async function getMyConnections(userId) {
         avatar_url: user.avatar_url,
       avatar_emoji: user.avatar_emoji,
         total_points: user.total_points,
+        rank: rankMap[otherId] || null,
         tier: user.tier,
         current_streak: streakMap[otherId] || 0,
         updated_at: user.updated_at,
