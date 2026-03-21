@@ -346,7 +346,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
       setReminded(true)
       setShowRemindInput(false)
       setRemindComment('')
-      toast(`@${item.username} has been reminded about this take`, 'success')
+      toast(isOwnTake ? 'Your take has been resurfaced to the feed' : `@${item.username} has been reminded about this take`, 'success')
     } catch (err) {
       if (err.status === 403) {
         toast('You must be connected to this user to remind them', 'error')
@@ -659,12 +659,12 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               ))}
             </div>
             <div className="flex items-center gap-2">
-              {!isOwnTake && !reminded && !showRemindInput && (
+              {!reminded && !showRemindInput && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowRemindInput(true) }}
                   className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
                 >
-                  Remind
+                  {isOwnTake ? 'Called It' : 'Remind'}
                 </button>
               )}
               {onBookmarkToggle && (

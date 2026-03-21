@@ -60,15 +60,12 @@ export async function createReminder(actorId, hotTakeId, comment) {
     throw err
   }
 
-  // Prevent self-remind
-  if (hotTake.user_id === actorId) {
-    const err = new Error('You cannot remind yourself of your own hot take')
-    err.status = 400
-    throw err
-  }
+  const isSelfRemind = hotTake.user_id === actorId
 
-  // Must be connected (squad members only)
-  await assertConnected(actorId, hotTake.user_id)
+  // Must be connected (squad members only) — skip for self-remind
+  if (!isSelfRemind) {
+    await assertConnected(actorId, hotTake.user_id)
+  }
 
   // Insert reminder
   const { data, error } = await supabase
@@ -79,19 +76,21 @@ export async function createReminder(actorId, hotTakeId, comment) {
 
   if (error) throw error
 
-  // Notify the take author
-  try {
-    const { data: actor } = await supabase
-      .from('users')
-      .select('username')
-      .eq('id', actorId)
-      .single()
-    const username = actor?.username || 'Someone'
-    await createNotification(hotTake.user_id, 'hot_take_reminder', `${username} reminded you of your hot take`, {
-      actorId,
-      hotTakeId,
-    })
-  } catch (_) { /* notification is best-effort */ }
+  // Notify the take author (skip for self-remind)
+  if (!isSelfRemind) {
+    try {
+      const { data: actor } = await supabase
+        .from('users')
+        .select('username')
+        .eq('id', actorId)
+        .single()
+      const username = actor?.username || 'Someone'
+      await createNotification(hotTake.user_id, 'hot_take_reminder', `${username} reminded you of your hot take`, {
+        actorId,
+        hotTakeId,
+      })
+    } catch (_) { /* notification is best-effort */ }
+  }
 
   return data
 }
