@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   useBracketTournament,
   useBracketEntry,
@@ -11,6 +11,7 @@ import BracketPicker from './BracketPicker'
 import BracketStandings from './BracketStandings'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
+import { toast } from '../ui/Toast'
 
 export default function BracketView({ league, tab = 'bracket', onTabChange, tabs: heroTabs, activeTabIndex, onTabSelect }) {
   const { profile } = useAuth()
@@ -46,6 +47,93 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
     league.id,
     viewingUserId && viewingUserId !== profile?.id ? viewingUserId : null
   )
+
+  const bracketRef = useRef(null)
+  const [sharing, setSharing] = useState(false)
+
+  const handleShareBracket = useCallback(async () => {
+    if (!bracketRef.current || sharing) return
+    setSharing(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const el = bracketRef.current
+
+      // Temporarily expand to full size for capture
+      const prevOverflow = el.style.overflow
+      const prevWidth = el.style.width
+      el.style.overflow = 'visible'
+      el.style.width = `${el.scrollWidth}px`
+
+      const canvas = await html2canvas(el, {
+        backgroundColor: '#000000',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+
+      // Restore
+      el.style.overflow = prevOverflow
+      el.style.width = prevWidth
+
+      // Add branding header/footer
+      const finalCanvas = document.createElement('canvas')
+      const headerHeight = 80
+      const footerHeight = 50
+      finalCanvas.width = canvas.width
+      finalCanvas.height = canvas.height + headerHeight + footerHeight
+      const ctx = finalCanvas.getContext('2d')
+
+      // Background
+      ctx.fillStyle = '#000000'
+      ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
+
+      // Header
+      ctx.fillStyle = '#e86833'
+      ctx.font = 'bold 36px system-ui, sans-serif'
+      ctx.textAlign = 'center'
+      const viewingName = viewingUserId
+        ? viewingUserId === profile?.id
+          ? profile?.display_name || profile?.username || 'My Bracket'
+          : entries?.find((e) => e.user_id === viewingUserId)?.users?.display_name || 'Bracket'
+        : 'Master Bracket'
+      ctx.fillText(viewingName, finalCanvas.width / 2, 50)
+
+      // Bracket image
+      ctx.drawImage(canvas, 0, headerHeight)
+
+      // Footer
+      ctx.fillStyle = '#888888'
+      ctx.font = '24px system-ui, sans-serif'
+      ctx.fillText('I KNOW BALL', finalCanvas.width / 2, canvas.height + headerHeight + 35)
+
+      finalCanvas.toBlob(async (blob) => {
+        if (!blob) { toast('Failed to generate image', 'error'); return }
+        const file = new File([blob], 'bracket.png', { type: 'image/png' })
+
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: 'My Bracket — I KNOW BALL' })
+          } catch (e) {
+            if (e.name !== 'AbortError') toast('Share cancelled', 'error')
+          }
+        } else {
+          // Download fallback
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `bracket-${viewingName.replace(/\s+/g, '-').toLowerCase()}.png`
+          a.click()
+          URL.revokeObjectURL(url)
+          toast('Bracket image downloaded', 'success')
+        }
+      }, 'image/png')
+    } catch (err) {
+      console.error('Share bracket failed:', err)
+      toast('Failed to generate bracket image', 'error')
+    } finally {
+      setSharing(false)
+    }
+  }, [sharing, viewingUserId, profile, entries])
 
   if (tournamentLoading) return <LoadingSpinner />
   if (!tournament) return <EmptyState title="No tournament" message="Tournament data not available" />
@@ -268,7 +356,24 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             </div>
           )}
 
+          {/* Share bracket button */}
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={handleShareBracket}
+              disabled={sharing}
+              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-accent transition-colors disabled:opacity-50"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" y1="2" x2="12" y2="15" />
+              </svg>
+              {sharing ? 'Generating...' : 'Share Bracket'}
+            </button>
+          </div>
+
           <BracketDisplay
+            ref={bracketRef}
             matchups={tournament.matchups}
             picks={viewingUserId ? displayPicks : null}
             rounds={rounds}

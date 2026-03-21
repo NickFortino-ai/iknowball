@@ -1,4 +1,4 @@
-import { useMemo, useState, Fragment } from 'react'
+import { useMemo, useState, useRef, forwardRef, useImperativeHandle, Fragment } from 'react'
 
 function MatchupCard({ matchup, pick, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {} }) {
   const [showScore, setShowScore] = useState(false)
@@ -70,7 +70,7 @@ function MatchupCard({ matchup, pick, eliminated, eliminatedTeams, showPick, onT
   )
 }
 
-export default function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion }) {
+export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion }, ref) {
   const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
 
   // Build pick lookup by template_matchup_id
@@ -593,7 +593,7 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
         </div>
       )}
 
-      <div className={`overflow-x-auto ${useFacing ? 'bg-black rounded-xl' : ''}`}>
+      <div ref={ref} className={`overflow-x-auto ${useFacing ? 'bg-black rounded-xl' : ''}`}>
         {useFacing ? (
           /* ── Facing bracket layout ── */
           <div className="relative flex min-w-max py-2">
@@ -741,4 +741,4 @@ export default function BracketDisplay({ matchups, picks, rounds, regions, onMat
       </div>
     </div>
   )
-}
+})
