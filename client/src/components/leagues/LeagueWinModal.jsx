@@ -77,10 +77,6 @@ export default function LeagueWinModal({ data, onClose }) {
                   <div className="text-xs text-text-muted">Players Outlasted</div>
                 </div>
               </div>
-
-              <p className="text-xs text-text-muted pt-2">
-                Keep picking to extend your streak!
-              </p>
             </>
           ) : isSurvivorStreakEnd ? (
             <>

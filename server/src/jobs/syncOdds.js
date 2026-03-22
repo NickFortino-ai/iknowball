@@ -72,6 +72,11 @@ async function syncSport(sportKey, { force = false } = {}) {
     const homeOutcome = outcomes.find((o) => o.name === event.home_team)
     const awayOutcome = outcomes.find((o) => o.name === event.away_team)
 
+    // Skip events with no odds — these are typically bad duplicates from the API
+    if (!homeOutcome?.price && !awayOutcome?.price) {
+      continue
+    }
+
     // Check if game already exists and has started — don't overwrite pre-game odds
     const { data: existing } = await supabase
       .from('games')
