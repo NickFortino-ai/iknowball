@@ -9,6 +9,35 @@ function formatGameTime(dateStr) {
     d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
+function formatPeriod(period, sportKey) {
+  const p = parseInt(period, 10)
+  if (!p) return null
+  const isCollegeBball = sportKey === 'basketball_ncaab' || sportKey === 'basketball_wncaab'
+  if (sportKey === 'basketball_nba' || sportKey === 'basketball_wnba') {
+    const labels = ['1st', '2nd', '3rd', '4th']
+    return p <= 4 ? `${labels[p - 1]} Qtr` : `OT${p - 4}`
+  }
+  if (isCollegeBball) {
+    return p <= 2 ? (p === 1 ? '1st Half' : '2nd Half') : `OT${p - 2}`
+  }
+  if (sportKey?.startsWith('americanfootball')) {
+    const labels = ['1st', '2nd', '3rd', '4th']
+    return p <= 4 ? `${labels[p - 1]} Qtr` : `OT${p - 4}`
+  }
+  if (sportKey?.startsWith('icehockey')) {
+    const labels = ['1st', '2nd', '3rd']
+    return p <= 3 ? `${labels[p - 1]} Period` : `OT${p - 3}`
+  }
+  if (sportKey?.startsWith('baseball')) {
+    const labels = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th']
+    return p <= 9 ? labels[p - 1] : `${p}th`
+  }
+  if (sportKey?.startsWith('soccer')) {
+    return p === 1 ? '1st Half' : p === 2 ? '2nd Half' : `ET${p - 2}`
+  }
+  return `P${p}`
+}
+
 function LegModal({ game, onClose }) {
   useEffect(() => {
     lockScroll()
@@ -47,6 +76,13 @@ function LegModal({ game, onClose }) {
                 <div className="text-3xl font-display">{game.live_home_score}</div>
               </div>
             </div>
+            {(game.period || game.clock) && (
+              <div className="text-xs text-text-muted">
+                {game.period && <span>{formatPeriod(game.period, game.sports?.key)}</span>}
+                {game.period && game.clock && <span> · </span>}
+                {game.clock && <span>{game.clock}</span>}
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center space-y-2 py-2">
