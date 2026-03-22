@@ -64,14 +64,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
 
   return (
     <div className={`bg-bg-card rounded-2xl border ${pick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4`}>
-      <div className="flex items-center gap-3 mb-3">
-        {prop.player_headshot_url && (
-          <img
-            src={prop.player_headshot_url}
-            alt={prop.player_name}
-            className="w-12 h-12 rounded-full object-cover bg-bg-secondary shrink-0"
-          />
-        )}
+      <div className="flex items-center justify-between mb-3">
         <div className="flex-1 min-w-0">
           <span className="font-semibold text-sm text-text-primary">
             Will {prop.player_name} go over or under {prop.line} {prop.market_label}?
@@ -83,56 +76,65 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
           )}
         </div>
         {prop.games && (
-          <span className="text-xs text-text-muted whitespace-nowrap">
+          <span className="text-xs text-text-muted whitespace-nowrap ml-2">
             {abbreviateTeam(prop.games.away_team)} @ {abbreviateTeam(prop.games.home_team)}
           </span>
         )}
       </div>
 
-      <div className="flex gap-3">
-        <button
-          onClick={() => handleClick('over')}
-          disabled={isLocked || isSubmitting || overState === 'locked' || overState === 'correct' || overState === 'incorrect'}
-          className={`flex-1 p-3 rounded-xl border transition-all ${sideStyles[overState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <div className={`font-semibold text-sm mb-1 ${overState === 'correct' ? 'text-correct' : overState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
-            Over
-          </div>
-          {prop.over_odds && (
-            <div className="text-center">
-              <div className={`font-semibold text-sm ${overState === 'selected' ? 'text-white' : ''}`}>
-                <span className="text-incorrect">-{calculateRiskPoints(prop.over_odds)}</span>
-                <span className={overState === 'selected' ? 'text-white/70' : 'text-text-muted'}> → </span>
-                <span className="text-correct">+{calculateRewardPoints(prop.over_odds)}</span>
-              </div>
-              <div className={`text-xs ${overState === 'selected' ? 'text-white/70' : 'text-text-muted'}`}>
-                {formatOdds(prop.over_odds)}
-              </div>
+      <div className="flex items-center gap-3">
+        {prop.player_headshot_url && (
+          <img
+            src={prop.player_headshot_url}
+            alt={prop.player_name}
+            className="w-20 h-20 rounded-full object-cover bg-bg-secondary shrink-0"
+          />
+        )}
+        <div className="flex gap-2 flex-1">
+          <button
+            onClick={() => handleClick('over')}
+            disabled={isLocked || isSubmitting || overState === 'locked' || overState === 'correct' || overState === 'incorrect'}
+            className={`flex-1 p-2.5 rounded-xl border transition-all ${sideStyles[overState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className={`font-semibold text-xs mb-0.5 ${overState === 'correct' ? 'text-correct' : overState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
+              Over
             </div>
-          )}
-        </button>
+            {prop.over_odds && (
+              <div className="text-center">
+                <div className={`font-semibold text-xs ${overState === 'selected' ? 'text-white' : ''}`}>
+                  <span className="text-incorrect">-{calculateRiskPoints(prop.over_odds)}</span>
+                  <span className={overState === 'selected' ? 'text-white/70' : 'text-text-muted'}> → </span>
+                  <span className="text-correct">+{calculateRewardPoints(prop.over_odds)}</span>
+                </div>
+                <div className={`text-xs ${overState === 'selected' ? 'text-white/70' : 'text-text-muted'}`}>
+                  {formatOdds(prop.over_odds)}
+                </div>
+              </div>
+            )}
+          </button>
 
-        <button
-          onClick={() => handleClick('under')}
-          disabled={isLocked || isSubmitting || underState === 'locked' || underState === 'correct' || underState === 'incorrect'}
-          className={`flex-1 p-3 rounded-xl border transition-all ${sideStyles[underState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <div className={`font-semibold text-sm mb-1 ${underState === 'correct' ? 'text-correct' : underState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
-            Under
-          </div>
-          {prop.under_odds && (
-            <div className="text-center">
-              <div className={`font-semibold text-sm ${underState === 'selected' ? 'text-white' : ''}`}>
-                <span className="text-incorrect">-{calculateRiskPoints(prop.under_odds)}</span>
-                <span className={underState === 'selected' ? 'text-white/70' : 'text-text-muted'}> → </span>
-                <span className="text-correct">+{calculateRewardPoints(prop.under_odds)}</span>
-              </div>
-              <div className={`text-xs ${underState === 'selected' ? 'text-white/70' : 'text-text-muted'}`}>
-                {formatOdds(prop.under_odds)}
-              </div>
+          <button
+            onClick={() => handleClick('under')}
+            disabled={isLocked || isSubmitting || underState === 'locked' || underState === 'correct' || underState === 'incorrect'}
+            className={`flex-1 p-2.5 rounded-xl border transition-all ${sideStyles[underState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className={`font-semibold text-xs mb-0.5 ${underState === 'correct' ? 'text-correct' : underState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
+              Under
             </div>
-          )}
-        </button>
+            {prop.under_odds && (
+              <div className="text-center">
+                <div className={`font-semibold text-xs ${underState === 'selected' ? 'text-white' : ''}`}>
+                  <span className="text-incorrect">-{calculateRiskPoints(prop.under_odds)}</span>
+                  <span className={underState === 'selected' ? 'text-white/70' : 'text-text-muted'}> → </span>
+                  <span className="text-correct">+{calculateRewardPoints(prop.under_odds)}</span>
+                </div>
+                <div className={`text-xs ${underState === 'selected' ? 'text-white/70' : 'text-text-muted'}`}>
+                  {formatOdds(prop.under_odds)}
+                </div>
+              </div>
+            )}
+          </button>
+        </div>
       </div>
 
       {pick?.status === 'settled' && pick.points_earned !== null && (
