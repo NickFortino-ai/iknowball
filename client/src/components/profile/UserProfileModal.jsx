@@ -402,9 +402,20 @@ export default function UserProfileModal({ userId, onClose }) {
               </span>
             )}
             {isViewingOther && connStatus === 'connected' && (
-              <span className="inline-block text-xs font-semibold px-4 py-1.5 rounded-full bg-bg-primary text-correct mb-4">
-                Connected
-              </span>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="inline-block text-xs font-semibold px-4 py-1.5 rounded-full bg-bg-primary text-correct">
+                  Connected
+                </span>
+                <button
+                  onClick={() => { onClose(); navigate(`/messages/${userId}`) }}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-bg-primary text-text-secondary hover:text-accent transition-colors"
+                  title="Message"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </button>
+              </div>
             )}
 
             {/* Bio */}
