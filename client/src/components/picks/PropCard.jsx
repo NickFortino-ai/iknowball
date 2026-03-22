@@ -29,6 +29,14 @@ function getSideState(prop, pick, side) {
 
 const TEAM_ABBREVS = {
   'Oklahoma City Thunder': 'OKC',
+  'Brooklyn Nets': 'BKN',
+  'Golden State Warriors': 'GSW',
+  'New York Knicks': 'NYK',
+  'New Orleans Pelicans': 'NOP',
+  'Los Angeles Lakers': 'LAL',
+  'Los Angeles Clippers': 'LAC',
+  'San Antonio Spurs': 'SAS',
+  'Portland Trail Blazers': 'POR',
 }
 
 function abbreviateTeam(name) {
