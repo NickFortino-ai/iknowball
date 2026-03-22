@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createNotification } from './notificationService.js'
 
 export async function connectUsers(userA, userB, source) {
   // Canonicalize ordering so user_id_1 < user_id_2
@@ -269,6 +270,19 @@ export async function acceptConnectionRequest(connectionId, userId) {
     .single()
 
   if (error) throw error
+
+  // Notify the requester that their request was accepted
+  const { data: acceptor } = await supabase
+    .from('users')
+    .select('display_name, username')
+    .eq('id', userId)
+    .single()
+
+  const acceptorName = acceptor?.display_name || acceptor?.username || 'Someone'
+  await createNotification(connection.requested_by, 'connection_accepted',
+    `${acceptorName} accepted your connection request!`,
+    { actorId: userId })
+
   return data
 }
 
