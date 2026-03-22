@@ -540,15 +540,21 @@ export async function getLatestRecap({ isAdmin = false } = {}) {
   const names = nameMatches.map((m) => m.replace(/^### \d+\.\s+/, '').replace(/\s+\($/, ''))
 
   if (names.length > 0) {
+    // Look up by display_name OR username since recaps may use either
     const { data: users } = await supabase
       .from('users')
       .select('display_name, username, avatar_url, avatar_emoji')
-      .in('display_name', names)
+      .or(names.map((n) => `display_name.eq.${n},username.eq.${n}`).join(','))
 
     if (users?.length) {
       const avatarMap = {}
       for (const u of users) {
-        avatarMap[u.display_name] = { avatar_url: u.avatar_url, avatar_emoji: u.avatar_emoji, username: u.username }
+        // Map by whichever name appears in the recap
+        for (const name of names) {
+          if (u.display_name === name || u.username === name) {
+            avatarMap[name] = { avatar_url: u.avatar_url, avatar_emoji: u.avatar_emoji, username: u.username }
+          }
+        }
       }
       data.user_avatars = avatarMap
     }
