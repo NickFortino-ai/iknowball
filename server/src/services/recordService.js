@@ -557,41 +557,23 @@ async function calcGreatClimb() {
 async function calcLongestCrownTenure() {
   const { data: snapshots, error } = await supabase
     .from('crown_snapshots')
-    .select('scope, user_id, snapshot_date')
-    .order('scope', { ascending: true })
+    .select('user_id, snapshot_date')
+    .eq('scope', 'global')
     .order('snapshot_date', { ascending: true })
 
   if (error || !snapshots?.length) return null
 
   let bestUserId = null
   let bestStreak = 0
-  let bestScope = null
 
-  let currentScope = null
   let currentUserId = null
   let currentStreak = 0
   let lastDate = null
 
   for (const snap of snapshots) {
-    if (snap.scope !== currentScope) {
-      // Check if previous run was the best
-      if (currentStreak > bestStreak) {
-        bestStreak = currentStreak
-        bestUserId = currentUserId
-        bestScope = currentScope
-      }
-      // Reset for new scope
-      currentScope = snap.scope
-      currentUserId = snap.user_id
-      currentStreak = 1
-      lastDate = snap.snapshot_date
-      continue
-    }
-
-    // Same scope — check if same user and consecutive day
-    const prevDate = new Date(lastDate)
+    const prevDate = lastDate ? new Date(lastDate) : null
     const currDate = new Date(snap.snapshot_date)
-    const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24))
+    const diffDays = prevDate ? Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24)) : 0
 
     if (snap.user_id === currentUserId && diffDays === 1) {
       currentStreak++
@@ -599,7 +581,6 @@ async function calcLongestCrownTenure() {
       if (currentStreak > bestStreak) {
         bestStreak = currentStreak
         bestUserId = currentUserId
-        bestScope = currentScope
       }
       currentUserId = snap.user_id
       currentStreak = 1
@@ -611,11 +592,10 @@ async function calcLongestCrownTenure() {
   if (currentStreak > bestStreak) {
     bestStreak = currentStreak
     bestUserId = currentUserId
-    bestScope = currentScope
   }
 
   if (!bestUserId || bestStreak === 0) return null
-  return { holderId: bestUserId, value: bestStreak, metadata: { scope: bestScope } }
+  return { holderId: bestUserId, value: bestStreak, metadata: { scope: 'global' } }
 }
 
 async function calcBestFuturesHit(sportKey) {
