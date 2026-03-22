@@ -1366,28 +1366,19 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       return ts >= yesterdayStart && ts < yesterdayEnd
     })
 
-    if (yesterdayItems.length >= 3) {
-      let totalPicks = 0, wins = 0, losses = 0
+    if (yesterdayItems.length > 0) {
       let biggestUnderdog = null, bestParlay = null
       const streakItems = []
       const recordItems = []
 
       for (const item of yesterdayItems) {
-        if (item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') {
-          totalPicks++
-          if (item.pick?.is_correct) wins++
-          else losses++
-          if (item.type === 'underdog_hit' && (!biggestUnderdog || item.pick.odds_at_pick > biggestUnderdog.odds)) {
-            biggestUnderdog = { username: item.username, team: item.pick.picked_team_name, odds: item.pick.odds_at_pick, points: item.pick.points_earned }
-          }
+        if (item.type === 'underdog_hit' && (!biggestUnderdog || item.pick.odds_at_pick > biggestUnderdog.odds)) {
+          biggestUnderdog = { username: item.username, team: item.pick.picked_team_name, odds: item.pick.odds_at_pick, points: item.pick.points_earned }
         } else if (item.type === 'parlay' && item.parlay?.is_correct) {
-          totalPicks++
-          wins++
           if (!bestParlay || item.parlay.points_earned > bestParlay.points) {
             bestParlay = { username: item.username, legs: item.parlay.leg_count, points: item.parlay.points_earned }
           }
         } else if (item.type === 'streak') {
-          // Deduplicate: keep only the highest streak per user+sport
           const dupeIdx = streakItems.findIndex(s => s.username === item.username && s.sport === item.streak.sport_name)
           if (dupeIdx >= 0) {
             if (item.streak.streak_length > streakItems[dupeIdx].length) {
@@ -1401,18 +1392,13 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         }
       }
 
-      if (totalPicks > 0) {
+      const hasHighlights = biggestUnderdog || bestParlay || streakItems.length > 0 || recordItems.length > 0
+      if (hasHighlights) {
         feed.push({
           type: 'daily_digest',
           id: `digest-${yesterdayISO}`,
           userId: null,
           timestamp: now.toISOString(),
-          stats: {
-            totalPicks,
-            wins,
-            losses,
-            winRate: Math.round((wins / totalPicks) * 100),
-          },
           highlights: {
             biggestUnderdog,
             bestParlay,
