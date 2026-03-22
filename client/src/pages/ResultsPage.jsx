@@ -4,6 +4,7 @@ import { useParlayHistory } from '../hooks/useParlays'
 import { usePropPickHistory } from '../hooks/useProps'
 import { useFuturesPickHistory } from '../hooks/useFutures'
 import { usePickReactionsBatch } from '../hooks/useSocial'
+import { useAuth } from '../hooks/useAuth'
 import GameCard from '../components/picks/GameCard'
 import ParlayCard from '../components/picks/ParlayCard'
 import PropCard from '../components/picks/PropCard'
@@ -89,6 +90,7 @@ function loadCollapsed() {
 }
 
 export default function ResultsPage() {
+  const { profile } = useAuth()
   const [collapsed, setCollapsed] = useState(loadCollapsed)
   const [selectedGame, setSelectedGame] = useState(null)
   const [selectedPick, setSelectedPick] = useState(null)
@@ -140,15 +142,15 @@ export default function ResultsPage() {
 
   const weeklyStats = useMemo(() => {
     if (!allSettledPicks.length && !allSettledParlays.length && !allSettledProps.length && !settledFutures.length && !leaguePoints) return null
-    let wins = 0, losses = 0, netPoints = 0
+    let wins = 0, losses = 0
     for (const item of [...allSettledPicks, ...allSettledParlays, ...allSettledProps, ...settledFutures]) {
       if (item.is_correct === true) wins++
       else if (item.is_correct === false) losses++
-      netPoints += item.points_earned || 0
     }
-    netPoints += leaguePoints
+    // Use authoritative total_points from the server instead of client-side sum
+    const netPoints = profile?.total_points ?? 0
     return { wins, losses, leaguePoints, netPoints, total: allSettledPicks.length + allSettledParlays.length + allSettledProps.length + settledFutures.length }
-  }, [allSettledPicks, allSettledParlays, allSettledProps, settledFutures, leaguePoints])
+  }, [allSettledPicks, allSettledParlays, allSettledProps, settledFutures, leaguePoints, profile?.total_points])
 
   const settledPickIds = useMemo(() => {
     return allSettledPicks.map((p) => p.id)
