@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useFeaturedProps, useMyPropPicks, useSubmitPropPick, useDeletePropPick } from '../../hooks/useProps'
 import PropCard from './PropCard'
 import { toast } from '../ui/Toast'
@@ -10,6 +10,7 @@ export default function FeaturedPropSection({ date, sportKey, fallback = false }
   const { data: myPropPicks } = useMyPropPicks()
   const submitPick = useSubmitPropPick()
   const deletePick = useDeletePropPick()
+  const [expanded, setExpanded] = useState(false)
 
   const activeProps = useMemo(() => {
     if (!props?.length) return []
@@ -46,27 +47,58 @@ export default function FeaturedPropSection({ date, sportKey, fallback = false }
     }
   }
 
+  // Single prop: show inline, no collapse
+  if (activeProps.length === 1) {
+    return (
+      <div data-onboarding="featured-prop" className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+          <h2 className="font-display text-lg">Daily Featured Player Prop</h2>
+        </div>
+        <PropCard
+          prop={activeProps[0]}
+          pick={getPick(activeProps[0].id)}
+          onPick={handlePick}
+          onUndoPick={handleUndoPick}
+          isSubmitting={submitPick.isPending || deletePick.isPending}
+          compact
+        />
+      </div>
+    )
+  }
+
+  // Multiple props: collapsible
   return (
     <div data-onboarding="featured-prop" className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-        <h2 className="font-display text-lg">
-          {activeProps.length === 1 ? 'Daily Featured Player Prop' : 'Daily Featured Player Props'}
-        </h2>
-      </div>
-      <div className="space-y-3">
-        {activeProps.map((prop) => (
-          <PropCard
-            key={prop.id}
-            prop={prop}
-            pick={getPick(prop.id)}
-            onPick={handlePick}
-            onUndoPick={handleUndoPick}
-            isSubmitting={submitPick.isPending || deletePick.isPending}
-            compact
-          />
-        ))}
-      </div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center justify-between w-full bg-bg-card rounded-xl border border-border px-4 py-3"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+          <span className="font-display text-base text-text-primary">
+            {activeProps.length} Featured Player Props
+          </span>
+        </div>
+        <svg className={`w-4 h-4 text-text-muted transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {expanded && (
+        <div className="space-y-3 mt-3">
+          {activeProps.map((prop) => (
+            <PropCard
+              key={prop.id}
+              prop={prop}
+              pick={getPick(prop.id)}
+              onPick={handlePick}
+              onUndoPick={handleUndoPick}
+              isSubmitting={submitPick.isPending || deletePick.isPending}
+              compact
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
