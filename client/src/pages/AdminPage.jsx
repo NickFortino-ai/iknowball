@@ -178,14 +178,14 @@ export default function AdminPage() {
 
   const upcomingGames = games || []
 
-  // Build 7-day schedule: map each date to its featured prop (if any)
+  // Build 7-day schedule: map each date to its featured props
   const scheduleDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() + i)
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
-    const prop = (featuredProps || []).find((p) => p.featured_date === dateStr) || null
-    return { dateStr, label, prop }
+    const dayProps = (featuredProps || []).filter((p) => p.featured_date === dateStr)
+    return { dateStr, label, props: dayProps }
   })
 
   return (
@@ -475,13 +475,16 @@ export default function AdminPage() {
       <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
         <h2 className="font-semibold text-sm mb-3">Featured Schedule</h2>
         <div className="space-y-1">
-          {scheduleDays.map(({ dateStr, label, prop }) => (
-            <div key={dateStr} className={`flex items-center gap-3 p-2.5 rounded-lg ${
-              prop ? 'bg-accent/5 border border-accent/20' : 'bg-bg-secondary/50'
+          {scheduleDays.map(({ dateStr, label, props: dayProps }) => (
+            <div key={dateStr} className={`p-2.5 rounded-lg ${
+              dayProps.length ? 'bg-accent/5 border border-accent/20' : 'bg-bg-secondary/50'
             }`}>
-              <div className="w-20 shrink-0 text-xs font-semibold text-text-secondary">{label}</div>
-              {prop ? (
-                <>
+              <div className="flex items-center gap-3">
+                <div className="w-20 shrink-0 text-xs font-semibold text-text-secondary">{label}</div>
+                {!dayProps.length && <span className="text-xs text-text-muted">—</span>}
+              </div>
+              {dayProps.map((prop) => (
+                <div key={prop.id} className="flex items-center gap-3 mt-1 first:mt-0 ml-20">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
                       {prop.player_name} — {prop.market_label} ({prop.line})
@@ -490,7 +493,6 @@ export default function AdminPage() {
                       {prop.games?.away_team} @ {prop.games?.home_team}
                     </div>
                   </div>
-                  {/* Settle buttons for published/locked */}
                   {(prop.status === 'published' || prop.status === 'locked') && (
                     <div className="flex gap-1">
                       {['over', 'under', 'push'].map((outcome) => (
@@ -511,7 +513,6 @@ export default function AdminPage() {
                       ))}
                     </div>
                   )}
-                  {/* Outcome badge for settled */}
                   {prop.outcome && (
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                       prop.outcome === 'over' ? 'bg-correct/20 text-correct'
@@ -521,7 +522,6 @@ export default function AdminPage() {
                       {prop.outcome.toUpperCase()}
                     </span>
                   )}
-                  {/* Voided badge */}
                   {prop.status === 'voided' && (
                     <span className="text-xs font-semibold px-2 py-0.5 rounded bg-text-muted/20 text-text-muted">
                       VOIDED
@@ -536,10 +536,8 @@ export default function AdminPage() {
                       Void
                     </button>
                   )}
-                </>
-              ) : (
-                <span className="text-xs text-text-muted">—</span>
-              )}
+                </div>
+              ))}
             </div>
           ))}
         </div>
