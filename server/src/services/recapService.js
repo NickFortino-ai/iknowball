@@ -536,7 +536,7 @@ export async function getLatestRecap({ isAdmin = false } = {}) {
   if (!data) return null
 
   // Extract display names from rankings in content and attach avatar data
-  const nameMatches = (data.content || '').match(/^### \d+\.\s+(.+?)\s+\(/gm) || []
+  const nameMatches = (data.recap_content || '').match(/^### \d+\.\s+(.+?)\s+\(/gm) || []
   const names = nameMatches.map((m) => m.replace(/^### \d+\.\s+/, '').replace(/\s+\($/, ''))
 
   if (names.length > 0) {
