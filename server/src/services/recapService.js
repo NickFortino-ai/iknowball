@@ -543,7 +543,7 @@ export async function getLatestRecap({ isAdmin = false } = {}) {
     // Look up by display_name OR username since recaps may use either
     const { data: users } = await supabase
       .from('users')
-      .select('display_name, username, avatar_url, avatar_emoji')
+      .select('id, display_name, username, avatar_url, avatar_emoji')
       .or(names.map((n) => `display_name.eq.${n},username.eq.${n}`).join(','))
 
     if (users?.length) {
@@ -552,7 +552,7 @@ export async function getLatestRecap({ isAdmin = false } = {}) {
         // Map by whichever name appears in the recap
         for (const name of names) {
           if (u.display_name === name || u.username === name) {
-            avatarMap[name] = { avatar_url: u.avatar_url, avatar_emoji: u.avatar_emoji, username: u.username }
+            avatarMap[name] = { id: u.id, avatar_url: u.avatar_url, avatar_emoji: u.avatar_emoji, username: u.username }
           }
         }
       }

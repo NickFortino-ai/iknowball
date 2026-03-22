@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useUpdateRecap } from '../../hooks/useAdmin'
 import { toast } from '../ui/Toast'
 import Avatar from '../ui/Avatar'
+import UserProfileModal from '../profile/UserProfileModal'
 
 function formatDateRange(weekStart, weekEnd) {
   const start = new Date(weekStart + 'T00:00:00')
@@ -79,6 +80,7 @@ export default function HeadlinesCard({ forceExpanded }) {
   const [expanded, setExpanded] = useState(null) // null = auto, true/false = manual
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
+  const [profileUserId, setProfileUserId] = useState(null)
   const isAdmin = profile?.is_admin
 
   const [now, setNow] = useState(() => new Date())
@@ -220,8 +222,17 @@ export default function HeadlinesCard({ forceExpanded }) {
                 return (
                   <div key={r.rank || r.name} className="bg-bg-primary rounded-xl p-4">
                     <div className="flex items-center gap-3 mb-1">
-                      {avatarUser && <Avatar user={avatarUser} size="xl" />}
-                      <span className="font-display text-lg">{r.name}</span>
+                      {avatarData?.id ? (
+                        <button onClick={() => setProfileUserId(avatarData.id)} className="flex items-center gap-3 min-w-0">
+                          {avatarUser && <Avatar user={avatarUser} size="xl" />}
+                          <span className="font-display text-lg text-accent">{r.name}</span>
+                        </button>
+                      ) : (
+                        <>
+                          {avatarUser && <Avatar user={avatarUser} size="xl" />}
+                          <span className="font-display text-lg">{r.name}</span>
+                        </>
+                      )}
                       <span className="text-text-muted text-sm ml-auto">{r.record}</span>
                       <span className="font-semibold text-accent text-sm">{r.points} pts</span>
                     </div>
@@ -262,6 +273,10 @@ export default function HeadlinesCard({ forceExpanded }) {
           </>
         )}
       </div>
+
+      {profileUserId && (
+        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+      )}
     </div>
   )
 }
