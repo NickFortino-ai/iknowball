@@ -533,5 +533,26 @@ export async function getLatestRecap({ isAdmin = false } = {}) {
     return null
   }
 
+  if (!data) return null
+
+  // Extract display names from rankings in content and attach avatar data
+  const nameMatches = (data.content || '').match(/^### \d+\.\s+(.+?)\s+\(/gm) || []
+  const names = nameMatches.map((m) => m.replace(/^### \d+\.\s+/, '').replace(/\s+\($/, ''))
+
+  if (names.length > 0) {
+    const { data: users } = await supabase
+      .from('users')
+      .select('display_name, username, avatar_url, avatar_emoji')
+      .in('display_name', names)
+
+    if (users?.length) {
+      const avatarMap = {}
+      for (const u of users) {
+        avatarMap[u.display_name] = { avatar_url: u.avatar_url, avatar_emoji: u.avatar_emoji, username: u.username }
+      }
+      data.user_avatars = avatarMap
+    }
+  }
+
   return data
 }

@@ -3,6 +3,7 @@ import { useLatestRecap } from '../../hooks/useRecaps'
 import { useAuth } from '../../hooks/useAuth'
 import { useUpdateRecap } from '../../hooks/useAdmin'
 import { toast } from '../ui/Toast'
+import Avatar from '../ui/Avatar'
 
 function formatDateRange(weekStart, weekEnd) {
   const start = new Date(weekStart + 'T00:00:00')
@@ -213,18 +214,23 @@ export default function HeadlinesCard({ forceExpanded }) {
           <>
             {/* Rankings */}
             <div className="space-y-4 mb-6">
-              {rankings.map((r) => (
-                <div key={r.rank || r.name} className="bg-bg-primary rounded-xl p-4">
-                  <div className="flex items-baseline gap-3 mb-1">
-                    <span className="font-display text-lg">{r.name}</span>
-                    <span className="text-text-muted text-sm ml-auto">{r.record}</span>
-                    <span className="font-semibold text-accent text-sm">{r.points} pts</span>
+              {rankings.map((r) => {
+                const avatarData = recap?.user_avatars?.[r.name]
+                const avatarUser = avatarData ? { avatar_url: avatarData.avatar_url, avatar_emoji: avatarData.avatar_emoji, display_name: r.name } : null
+                return (
+                  <div key={r.rank || r.name} className="bg-bg-primary rounded-xl p-4">
+                    <div className="flex items-center gap-3 mb-1">
+                      {avatarUser && <Avatar user={avatarUser} size="xl" />}
+                      <span className="font-display text-lg">{r.name}</span>
+                      <span className="text-text-muted text-sm ml-auto">{r.record}</span>
+                      <span className="font-semibold text-accent text-sm">{r.points} pts</span>
+                    </div>
+                    {r.narrative && (
+                      <p className="text-text-secondary text-sm leading-relaxed">{r.narrative}</p>
+                    )}
                   </div>
-                  {r.narrative && (
-                    <p className="text-text-secondary text-sm leading-relaxed">{r.narrative}</p>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Awards */}
