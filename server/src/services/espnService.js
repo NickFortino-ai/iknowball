@@ -68,10 +68,11 @@ export async function fetchESPNScoreboard(sportKey, date = null) {
     if (!homeComp || !awayComp) return null
 
     const status = competition.status || event.status
-    const statusType = status?.type?.name // STATUS_IN_PROGRESS, STATUS_FINAL, STATUS_SCHEDULED
-    const state = statusType === 'STATUS_IN_PROGRESS' ? 'in'
-      : statusType === 'STATUS_FINAL' ? 'post'
-      : statusType === 'STATUS_END_PERIOD' ? 'in'
+    const statusType = status?.type?.name
+    const liveStatuses = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_FIRST_HALF', 'STATUS_SECOND_HALF', 'STATUS_HALFTIME', 'STATUS_OVERTIME']
+    const finalStatuses = ['STATUS_FINAL', 'STATUS_FULL_TIME', 'STATUS_POSTPONED', 'STATUS_CANCELED']
+    const state = liveStatuses.includes(statusType) ? 'in'
+      : finalStatuses.includes(statusType) ? 'post'
       : 'pre'
 
     return {
