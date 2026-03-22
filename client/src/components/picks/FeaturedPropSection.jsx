@@ -4,13 +4,13 @@ import PropCard from './PropCard'
 import { toast } from '../ui/Toast'
 import { triggerHaptic } from '../../lib/haptics'
 
-export default function FeaturedPropSection({ date, sportKey, fallback = false }) {
+export default function FeaturedPropSection({ date, sportKey, fallback = false, defaultExpanded = false }) {
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   const { data: props, isLoading } = useFeaturedProps(dateStr, { fallback })
   const { data: myPropPicks } = useMyPropPicks()
   const submitPick = useSubmitPropPick()
   const deletePick = useDeletePropPick()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(defaultExpanded)
 
   const activeProps = useMemo(() => {
     if (!props?.length) return []

@@ -139,7 +139,7 @@ export default function HomePage() {
       {isAuthenticated && (
         <>
           <div className="mb-8">
-            <FeaturedPropSection date={new Date()} fallback />
+            <FeaturedPropSection date={new Date()} fallback defaultExpanded />
           </div>
           <HeadlinesCard forceExpanded={forceHeadlines} />
         </>
