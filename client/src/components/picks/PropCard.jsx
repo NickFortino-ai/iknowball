@@ -56,7 +56,14 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
 
   return (
     <div className={`bg-bg-card rounded-2xl border ${pick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4`}>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-3 mb-3">
+        {prop.player_headshot_url && (
+          <img
+            src={prop.player_headshot_url}
+            alt={prop.player_name}
+            className="w-12 h-12 rounded-full object-cover bg-bg-secondary shrink-0"
+          />
+        )}
         <div className="flex-1 min-w-0">
           <span className="font-semibold text-sm text-text-primary">
             Will {prop.player_name} go over or under {prop.line} {prop.market_label}?

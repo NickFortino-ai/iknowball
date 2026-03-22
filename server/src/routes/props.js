@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import {
-  getFeaturedProp,
+  getFeaturedProps,
   submitPropPick,
   deletePropPick,
   getUserPropPicks,
@@ -13,14 +13,14 @@ const router = Router()
 
 router.use(requireAuth)
 
-// Get featured prop for a specific date
+// Get featured props for a specific date
 router.get('/featured', async (req, res) => {
   const { date, fallback } = req.query
   if (!date) {
     return res.status(400).json({ error: 'date query parameter is required' })
   }
-  const prop = await getFeaturedProp(date, { fallback: fallback === 'true' })
-  res.json(prop)
+  const props = await getFeaturedProps(date, { fallback: fallback === 'true' })
+  res.json(props)
 })
 
 // Submit a prop pick

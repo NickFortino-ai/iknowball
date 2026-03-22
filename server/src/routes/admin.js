@@ -13,8 +13,9 @@ import {
   unfeatureProp,
   voidProp,
   settleProps,
-  getFeaturedProps,
+  getAllFeaturedProps,
 } from '../services/propService.js'
+import { getPlayerHeadshotUrl, refreshPlayerHeadshotCache } from '../services/espnService.js'
 import { supabase } from '../config/supabase.js'
 import {
   createTemplate,
@@ -216,7 +217,7 @@ router.get('/props/game/:gameId', async (req, res) => {
 })
 
 router.get('/props/featured', async (req, res) => {
-  const props = await getFeaturedProps()
+  const props = await getAllFeaturedProps()
   res.json(props)
 })
 
@@ -225,7 +226,21 @@ router.post('/props/feature', async (req, res) => {
   if (!propId || !featuredDate) {
     return res.status(400).json({ error: 'propId and featuredDate are required' })
   }
-  const result = await featureProp(propId, featuredDate)
+
+  // Look up player headshot from ESPN
+  const { data: prop } = await supabase
+    .from('player_props')
+    .select('player_name')
+    .eq('id', propId)
+    .single()
+
+  let headshot = null
+  if (prop?.player_name) {
+    await refreshPlayerHeadshotCache()
+    headshot = getPlayerHeadshotUrl(prop.player_name)
+  }
+
+  const result = await featureProp(propId, featuredDate, headshot)
   res.json(result)
 })
 

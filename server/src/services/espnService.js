@@ -92,3 +92,54 @@ export function matchESPNToGame(espnEvent, game) {
     (teamsMatch(espnEvent.homeTeam, game.home_team) && teamsMatch(espnEvent.awayTeam, game.away_team))
   )
 }
+
+// NBA team abbreviations for ESPN roster API
+const NBA_TEAMS = [
+  'atl', 'bos', 'bkn', 'cha', 'chi', 'cle', 'dal', 'den', 'det', 'gs',
+  'hou', 'ind', 'lac', 'lal', 'mem', 'mia', 'mil', 'min', 'no', 'ny',
+  'okc', 'orl', 'phi', 'phx', 'por', 'sac', 'sa', 'tor', 'uta', 'wsh',
+]
+
+// In-memory cache of player name → headshot URL (refreshed on demand)
+let playerHeadshotCache = {}
+let cacheLastRefreshed = 0
+
+function normalizePlayerName(name) {
+  return name.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim()
+}
+
+export async function refreshPlayerHeadshotCache() {
+  const now = Date.now()
+  // Only refresh every 24 hours
+  if (now - cacheLastRefreshed < 24 * 60 * 60 * 1000 && Object.keys(playerHeadshotCache).length > 0) {
+    return playerHeadshotCache
+  }
+
+  const cache = {}
+  for (const team of NBA_TEAMS) {
+    try {
+      const url = `${ESPN_BASE}/basketball/nba/teams/${team}/roster`
+      const res = await fetch(url)
+      if (!res.ok) continue
+      const data = await res.json()
+      for (const athlete of (data.athletes || [])) {
+        const name = athlete.displayName || athlete.fullName
+        if (name && athlete.headshot?.href) {
+          cache[normalizePlayerName(name)] = athlete.headshot.href
+        }
+      }
+    } catch (err) {
+      logger.warn({ team, err: err.message }, 'Failed to fetch ESPN roster for headshots')
+    }
+  }
+
+  playerHeadshotCache = cache
+  cacheLastRefreshed = now
+  logger.info({ players: Object.keys(cache).length }, 'Refreshed NBA player headshot cache')
+  return cache
+}
+
+export function getPlayerHeadshotUrl(playerName) {
+  const normalized = normalizePlayerName(playerName)
+  return playerHeadshotCache[normalized] || null
+}

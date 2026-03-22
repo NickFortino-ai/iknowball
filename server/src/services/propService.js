@@ -106,28 +106,17 @@ export async function getAllPropsForGame(gameId) {
   return data || []
 }
 
-export async function featureProp(propId, featuredDate) {
-  // Check if another prop is already featured for this date
-  const { data: existing } = await supabase
-    .from('player_props')
-    .select('id')
-    .eq('featured_date', featuredDate)
-    .neq('id', propId)
-    .maybeSingle()
-
-  if (existing) {
-    const err = new Error('Another prop is already featured for this date. Unfeature it first.')
-    err.status = 400
-    throw err
+export async function featureProp(propId, featuredDate, headshot = null) {
+  const updateData = {
+    status: 'published',
+    featured_date: featuredDate,
+    updated_at: new Date().toISOString(),
   }
+  if (headshot) updateData.player_headshot_url = headshot
 
   const { data, error } = await supabase
     .from('player_props')
-    .update({
-      status: 'published',
-      featured_date: featuredDate,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', propId)
     .select()
     .single()
@@ -164,35 +153,41 @@ export async function unfeatureProp(propId) {
   return data
 }
 
-export async function getFeaturedProp(date, { fallback = false } = {}) {
+export async function getFeaturedProps(date, { fallback = false } = {}) {
   const { data, error } = await supabase
     .from('player_props')
     .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
     .eq('featured_date', date)
     .in('status', ['published', 'locked', 'settled'])
-    .maybeSingle()
 
   if (error) throw error
 
-  // If fallback enabled and today's prop is settled or missing, return next upcoming prop
-  if (fallback && (!data || data.status === 'settled')) {
-    const { data: nextProp, error: nextError } = await supabase
+  const props = data || []
+
+  // If fallback enabled and all today's props are settled or none exist, return next upcoming
+  const hasActive = props.some((p) => p.status !== 'settled')
+  if (fallback && !hasActive) {
+    const { data: nextProps, error: nextError } = await supabase
       .from('player_props')
       .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
       .gt('featured_date', date)
       .in('status', ['published', 'locked'])
       .order('featured_date', { ascending: true })
-      .limit(1)
-      .maybeSingle()
+      .limit(5)
 
     if (nextError) throw nextError
-    return nextProp || null
+
+    if (nextProps?.length) {
+      const nextDate = nextProps[0].featured_date
+      return nextProps.filter((p) => p.featured_date === nextDate)
+    }
+    return []
   }
 
-  return data || null
+  return props
 }
 
-export async function getFeaturedProps() {
+export async function getAllFeaturedProps() {
   const { data, error } = await supabase
     .from('player_props')
     .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')

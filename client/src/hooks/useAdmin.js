@@ -37,7 +37,7 @@ export function useFeatureProp() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProps'] })
       queryClient.invalidateQueries({ queryKey: ['adminFeaturedProps'] })
-      queryClient.invalidateQueries({ queryKey: ['featuredProp'] })
+      queryClient.invalidateQueries({ queryKey: ['featuredProps'] })
     },
   })
 }
@@ -50,7 +50,7 @@ export function useUnfeatureProp() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProps'] })
       queryClient.invalidateQueries({ queryKey: ['adminFeaturedProps'] })
-      queryClient.invalidateQueries({ queryKey: ['featuredProp'] })
+      queryClient.invalidateQueries({ queryKey: ['featuredProps'] })
     },
   })
 }
@@ -63,7 +63,7 @@ export function useVoidProp() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProps'] })
       queryClient.invalidateQueries({ queryKey: ['adminFeaturedProps'] })
-      queryClient.invalidateQueries({ queryKey: ['featuredProp'] })
+      queryClient.invalidateQueries({ queryKey: ['featuredProps'] })
       queryClient.invalidateQueries({ queryKey: ['propPicks'] })
     },
   })
@@ -77,7 +77,7 @@ export function useSettleProps() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProps'] })
       queryClient.invalidateQueries({ queryKey: ['adminFeaturedProps'] })
-      queryClient.invalidateQueries({ queryKey: ['featuredProp'] })
+      queryClient.invalidateQueries({ queryKey: ['featuredProps'] })
       queryClient.invalidateQueries({ queryKey: ['propPicks'] })
     },
   })
