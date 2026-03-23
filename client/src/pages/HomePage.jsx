@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
@@ -97,6 +97,16 @@ export default function HomePage() {
   const [searchParams] = useSearchParams()
   const forceHeadlines = searchParams.get('headlines') === '1'
   const [selectedTier, setSelectedTier] = useState(null)
+  const headlinesRef = useRef(null)
+
+  // Auto-scroll to headlines when coming from notification
+  useEffect(() => {
+    if (forceHeadlines && headlinesRef.current) {
+      setTimeout(() => {
+        headlinesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 300)
+    }
+  }, [forceHeadlines])
 
   // Redirect authenticated but unpaid users to payment
   if (isAuthenticated && profile && !profile.is_paid) {
@@ -141,7 +151,9 @@ export default function HomePage() {
           <div className="mb-8">
             <FeaturedPropSection date={new Date()} fallback defaultExpanded />
           </div>
-          <HeadlinesCard forceExpanded={forceHeadlines} />
+          <div ref={headlinesRef}>
+            <HeadlinesCard forceExpanded={forceHeadlines} />
+          </div>
         </>
       )}
 
