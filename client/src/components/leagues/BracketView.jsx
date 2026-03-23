@@ -80,7 +80,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
       const finalCanvas = document.createElement('canvas')
       const headerHeight = 80
-      const footerHeight = 100
+      const footerHeight = 120
       finalCanvas.width = img.width
       finalCanvas.height = img.height + headerHeight + footerHeight
       const ctx = finalCanvas.getContext('2d')
@@ -103,10 +103,19 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
       // Bracket image
       ctx.drawImage(img, 0, headerHeight)
 
-      // Footer
-      ctx.fillStyle = '#e86833'
-      ctx.font = 'bold 64px system-ui, sans-serif'
-      ctx.fillText('I KNOW BALL', finalCanvas.width / 2, img.height + headerHeight + 55)
+      // Footer — render brand logo image
+      const brandImg = new Image()
+      brandImg.src = '/ikb-brand.png'
+      await new Promise((resolve) => { brandImg.onload = resolve; brandImg.onerror = resolve })
+      if (brandImg.complete && brandImg.naturalWidth > 0) {
+        const brandHeight = footerHeight * 0.7
+        const brandWidth = (brandImg.naturalWidth / brandImg.naturalHeight) * brandHeight
+        ctx.drawImage(brandImg, (finalCanvas.width - brandWidth) / 2, img.height + headerHeight + (footerHeight - brandHeight) / 2, brandWidth, brandHeight)
+      } else {
+        ctx.fillStyle = '#e86833'
+        ctx.font = 'bold 64px system-ui, sans-serif'
+        ctx.fillText('I KNOW BALL', finalCanvas.width / 2, img.height + headerHeight + 55)
+      }
 
       finalCanvas.toBlob(async (blob) => {
         if (!blob) { toast('Failed to generate image', 'error'); return }
