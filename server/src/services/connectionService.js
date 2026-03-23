@@ -473,8 +473,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .order('broken_at', { ascending: false })
       .limit(10),
 
-    // Source 6: Pick shares (squad only — not relevant for highlights/hot_takes)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
+    // Source 6: Pick shares (squad only)
+    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(game_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, games(home_team, away_team, sports(name)))')
@@ -524,7 +524,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     })(),
 
     // Source 10: Hot take reminders (squad only)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('hot_take_reminders')
       .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, user_tags, created_at)')
@@ -533,7 +533,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .limit(15),
 
     // Source 11: All pick shares for sweat cards (squad only)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
     supabase
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(id, home_team, away_team, starts_at, sports(name)))')
