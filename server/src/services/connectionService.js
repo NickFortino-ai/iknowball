@@ -422,7 +422,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
   // Helper: for 'all'/'hot_takes' scope, skip user filter; for 'squad'/'highlights', filter by user ids
   function filterByUser(query, col, ids) {
-    return (isAll || isHotTakes || isUserHotTakes) ? query : query.in(col, ids)
+    return (isAll || isHotTakes || isUserHotTakes || isPolls || isPredictions) ? query : query.in(col, ids)
   }
 
   // For hot_takes/user_hot_takes scope, only run Source 9; everything else resolves to empty
@@ -452,12 +452,12 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .order('updated_at', { ascending: false })
       .limit(20),
 
-    // Source 3: Streak events (squad/highlights only)
-    (isAll || isHotTakes || isUserHotTakes || isUserHighlights) ? Promise.resolve({ data: [] }) :
-    applyBefore(supabase
+    // Source 3: Streak events (squad/highlights + all scope for 10+ streaks)
+    (isHotTakes || isUserHotTakes || isUserHighlights || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
+    applyBefore(filterByUser(supabase
       .from('streak_events')
-      .select('id, user_id, streak_length, created_at, sports(key, name)')
-      .in('user_id', connectedIds), 'created_at')
+      .select('id, user_id, streak_length, created_at, sports(key, name)'),
+      'user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(20),
 
@@ -668,8 +668,9 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       away_team: leg.games?.away_team,
     }))
 
-    // Only feature parlays with 4+ legs
+    // Only feature parlays with 4+ legs; "all" scope requires 4x+ multiplier
     if (parlay.leg_count < 4) continue
+    if (isAll && (parlay.combined_multiplier || 0) < 4) continue
 
     if (parlay.is_correct) {
       // Won parlay
@@ -719,10 +720,12 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     }
   }
 
-  // Process streak events — filter to thresholds [3, 5, 10, 15, 20, 25...]
+  // Process streak events — filter to thresholds; "all" requires 10+
   const STREAK_THRESHOLDS = new Set([5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
+  const streakMin = isAll ? 10 : 0
   for (const event of streakEvents.data || []) {
     if (!STREAK_THRESHOLDS.has(event.streak_length)) continue
+    if (event.streak_length < streakMin) continue
     const user = userMap[event.user_id]
     if (!user) continue
     feed.push({
