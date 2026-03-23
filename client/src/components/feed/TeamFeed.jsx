@@ -101,8 +101,8 @@ function addRecentTeam(teamName) {
   localStorage.setItem(RECENT_TEAMS_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)))
 }
 
-export default function TeamFeed({ onUserTap, initialTeam = null, onTeamConsumed }) {
-  const [selectedSport, setSelectedSport] = useState(null)
+export default function TeamFeed({ onUserTap, initialTeam = null, initialSport = null, onTeamConsumed }) {
+  const [selectedSport, setSelectedSport] = useState(initialSport)
   const [selectedTeam, setSelectedTeam] = useState(initialTeam)
   const [searchValue, setSearchValue] = useState('')
   const [recentTeams, setRecentTeams] = useState(getRecentTeams)

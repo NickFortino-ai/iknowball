@@ -10,6 +10,7 @@ import { useActiveSports } from '../../hooks/useGames'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import RichContent from './RichContent'
+import PollDisplay from './PollDisplay'
 import LinkPreview from './LinkPreview'
 import { extractFirstUrl } from '../../lib/urlUtils'
 
@@ -580,8 +581,21 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
             </div>
           )}
 
-          {/* Tweet-style content */}
+          {/* Post type badge */}
+          {hot_take.post_type === 'prediction' && (
+            <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 mb-1">Prediction</span>
+          )}
+          {hot_take.post_type === 'poll' && (
+            <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 mb-1">Poll</span>
+          )}
+
+          {/* Content */}
           <RichContent text={hot_take.content} className="text-sm text-text-primary leading-relaxed" />
+
+          {/* Poll options */}
+          {hot_take.post_type === 'poll' && (
+            <PollDisplay hotTakeId={hot_take.id} />
+          )}
 
           {/* Images */}
           {allImages.length > 0 && (
