@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, forwardRef, useImperativeHandle, Fragment } from 'react'
 
-function MatchupCard({ matchup, pick, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {} }) {
+function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {} }) {
   const [showScore, setShowScore] = useState(false)
 
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -62,8 +62,11 @@ function MatchupCard({ matchup, pick, eliminated, eliminatedTeams, showPick, onT
         )}
       </div>
       {showScore && (
-        <div className="border-t border-border bg-bg-card-hover px-2 py-1 text-center text-text-muted">
-          {matchup.score_top} - {matchup.score_bottom}
+        <div className="border-t border-border bg-bg-card-hover px-2 py-1 flex items-center justify-center gap-2 text-text-muted">
+          <span>{matchup.score_top} - {matchup.score_bottom}</span>
+          {pickData?.is_correct && pickData.points_earned > 0 && (
+            <span className="text-correct font-semibold">+{pickData.points_earned}</span>
+          )}
         </div>
       )}
     </div>
@@ -77,7 +80,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
   const pickMap = useMemo(() => {
     const map = {}
     for (const p of picks || []) {
-      map[p.template_matchup_id] = { team: p.picked_team, eliminated: p.is_eliminated }
+      map[p.template_matchup_id] = { team: p.picked_team, eliminated: p.is_eliminated, points_earned: p.points_earned, is_correct: p.is_correct }
     }
     return map
   }, [picks])
@@ -361,6 +364,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
       <MatchupCard
         matchup={dm}
         pick={pickMap[matchup.template_matchup_id]?.team}
+        pickData={pickMap[matchup.template_matchup_id]}
         eliminated={pickMap[matchup.template_matchup_id]?.eliminated}
         eliminatedTeams={eliminatedTeams}
         showPick={hasPicks}
