@@ -12,12 +12,12 @@ function formatGameTime(dateStr) {
 function formatPeriod(period, sportKey) {
   const p = parseInt(period, 10)
   if (!p) return null
-  const isCollegeBball = sportKey === 'basketball_ncaab' || sportKey === 'basketball_wncaab'
-  if (sportKey === 'basketball_nba' || sportKey === 'basketball_wnba') {
+  // WNCAAB uses quarters, NCAAB uses halves
+  if (sportKey === 'basketball_nba' || sportKey === 'basketball_wnba' || sportKey === 'basketball_wncaab') {
     const labels = ['1st', '2nd', '3rd', '4th']
     return p <= 4 ? `${labels[p - 1]} Qtr` : `OT${p - 4}`
   }
-  if (isCollegeBball) {
+  if (sportKey === 'basketball_ncaab') {
     return p <= 2 ? (p === 1 ? '1st Half' : '2nd Half') : `OT${p - 2}`
   }
   if (sportKey?.startsWith('americanfootball')) {
