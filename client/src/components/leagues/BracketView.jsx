@@ -80,7 +80,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
       const finalCanvas = document.createElement('canvas')
       const headerHeight = 80
-      const footerHeight = 50
+      const footerHeight = 100
       finalCanvas.width = img.width
       finalCanvas.height = img.height + headerHeight + footerHeight
       const ctx = finalCanvas.getContext('2d')
@@ -104,9 +104,9 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
       ctx.drawImage(img, 0, headerHeight)
 
       // Footer
-      ctx.fillStyle = '#888888'
-      ctx.font = '24px system-ui, sans-serif'
-      ctx.fillText('I KNOW BALL', finalCanvas.width / 2, img.height + headerHeight + 35)
+      ctx.fillStyle = '#e86833'
+      ctx.font = 'bold 64px system-ui, sans-serif'
+      ctx.fillText('I KNOW BALL', finalCanvas.width / 2, img.height + headerHeight + 55)
 
       finalCanvas.toBlob(async (blob) => {
         if (!blob) { toast('Failed to generate image', 'error'); return }
