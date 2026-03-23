@@ -8,23 +8,24 @@ import PickemView from '../components/leagues/PickemView'
 import SurvivorView from '../components/leagues/SurvivorView'
 import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
+import LeagueThread from '../components/leagues/LeagueThread'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 
 function getLeagueTabs(league, isBracketLocked) {
   if (league.format === 'pickem' && league.use_league_picks) {
-    return ['Picks', 'Standings', 'Members']
+    return ['Picks', 'Standings', 'Members', 'Thread']
   }
   if (league.format === 'bracket') {
-    return isBracketLocked ? ['Bracket', 'Standings'] : ['Bracket', 'Standings', 'Members']
+    return isBracketLocked ? ['Bracket', 'Standings', 'Thread'] : ['Bracket', 'Standings', 'Members', 'Thread']
   }
   const TABS = {
-    pickem: ['Standings', 'Members'],
-    survivor: ['Board', 'Members'],
-    squares: ['Board', 'Members'],
+    pickem: ['Standings', 'Members', 'Thread'],
+    survivor: ['Board', 'Members', 'Thread'],
+    squares: ['Board', 'Members', 'Thread'],
   }
-  return TABS[league.format] || ['Members']
+  return TABS[league.format] || ['Members', 'Thread']
 }
 
 const FORMAT_LABELS = {
@@ -761,6 +762,10 @@ export default function LeagueDetailPage() {
           activeTabIndex={activeTab}
           onTabSelect={setActiveTab}
         />
+      )}
+
+      {tabs[activeTab] === 'Thread' && (
+        <LeagueThread league={league} />
       )}
 
       {/* Delete League */}

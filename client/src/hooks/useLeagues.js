@@ -1,5 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { api } from '../lib/api'
+import { supabase } from '../lib/supabase'
 
 export function useMyLeagues() {
   return useQuery({
@@ -402,4 +404,47 @@ export function useBracketTemplatesActive(sport) {
     queryKey: ['bracketTemplates', 'active', sport],
     queryFn: () => api.get(`/leagues/bracket-templates/active${sport ? `?sport=${sport}` : ''}`),
   })
+}
+
+// ── League Thread ──
+
+export function useLeagueThread(leagueId) {
+  return useInfiniteQuery({
+    queryKey: ['leagues', leagueId, 'thread'],
+    queryFn: ({ pageParam }) =>
+      api.get(`/leagues/${leagueId}/thread${pageParam ? `?before=${pageParam}` : ''}`),
+    getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+    enabled: !!leagueId,
+  })
+}
+
+export function useSendThreadMessage() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, content, user_tags }) =>
+      api.post(`/leagues/${leagueId}/thread`, { content, user_tags }),
+    onSuccess: (_data, { leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'thread'] })
+    },
+  })
+}
+
+export function useRealtimeLeagueThread(leagueId) {
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!leagueId) return
+    const channel = supabase
+      .channel(`league-thread-${leagueId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'league_messages',
+        filter: `league_id=eq.${leagueId}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'thread'] })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [leagueId, queryClient])
 }

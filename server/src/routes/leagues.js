@@ -568,4 +568,31 @@ router.post('/:id/bracket/entry', requireAuth, validate(submitBracketSchema), as
   res.status(201).json(result)
 })
 
+// ============================================
+// Thread (League Chat)
+// ============================================
+
+import { getThreadMessages, postThreadMessage } from '../services/leagueThreadService.js'
+
+const threadMessageSchema = z.object({
+  content: z.string().min(1).max(2000),
+  user_tags: z.array(z.string().uuid()).max(10).optional(),
+})
+
+router.get('/:id/thread', requireAuth, async (req, res) => {
+  const before = req.query.before || null
+  const result = await getThreadMessages(req.params.id, req.user.id, before)
+  res.json(result)
+})
+
+router.post('/:id/thread', requireAuth, validate(threadMessageSchema), async (req, res) => {
+  const message = await postThreadMessage(
+    req.params.id,
+    req.user.id,
+    req.validated.content,
+    req.validated.user_tags || []
+  )
+  res.status(201).json(message)
+})
+
 export default router
