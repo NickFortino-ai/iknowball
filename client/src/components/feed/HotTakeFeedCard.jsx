@@ -673,7 +673,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               ))}
             </div>
             <div className="flex items-center gap-2">
-              {!reminded && !showRemindInput && (
+              {!reminded && !showRemindInput && hot_take.post_type === 'prediction' && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowRemindInput(true) }}
                   className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
