@@ -537,7 +537,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                    accept="image/*,video/*"
                     multiple
                     onChange={handleFileChange}
                     className="hidden"
