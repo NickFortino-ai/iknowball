@@ -46,6 +46,19 @@ export const useAuthStore = create((set, get) => ({
       set({ profileError: false })
       const profile = await api.get('/users/me')
       set({ profile })
+
+      // Auto-sync timezone if it differs from the browser's detected timezone
+      try {
+        const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        if (detectedTz && profile.timezone !== detectedTz) {
+          await api.patch('/users/me', { timezone: detectedTz })
+          set((state) => ({
+            profile: state.profile ? { ...state.profile, timezone: detectedTz } : null,
+          }))
+        }
+      } catch {
+        // Silent fail — timezone sync is non-critical
+      }
     } catch {
       set({ profile: null, profileError: true })
     }

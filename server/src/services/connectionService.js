@@ -325,7 +325,7 @@ export async function declineConnectionRequest(connectionId, userId) {
   if (error) throw error
 }
 
-export async function getConnectionActivity(userId, before, scope = 'squad', targetUserId = null) {
+export async function getConnectionActivity(userId, before, scope = 'squad', targetUserId = null, userTimezone = null) {
   const isAll = scope === 'all'
   const isHighlights = scope === 'highlights'
   const isHotTakes = scope === 'hot_takes'
@@ -1369,16 +1369,19 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
   // Daily digest: summarize yesterday's squad activity (first page, squad scope only)
   if (!before && !isAll && !isHighlights && !isHotTakes && !isUserHighlights && !isUserHotTakes) {
+    const tz = userTimezone || 'America/New_York'
+    // Get today's and yesterday's date strings in the user's timezone
     const now = new Date()
-    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-    const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const yesterdayISO = yesterdayStart.toISOString()
-    const todayISO = yesterdayEnd.toISOString()
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: tz })
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: tz })
 
+    // Filter feed items that fall on "yesterday" in the user's timezone
     const yesterdayItems = feed.filter(item => {
-      const ts = new Date(item.timestamp)
-      return ts >= yesterdayStart && ts < yesterdayEnd
+      const itemDate = new Date(item.timestamp).toLocaleDateString('en-CA', { timeZone: tz })
+      return itemDate === yesterdayStr
     })
+    const yesterdayISO = new Date(`${yesterdayStr}T00:00:00`).toISOString()
 
     if (yesterdayItems.length > 0) {
       let biggestUnderdog = null, bestParlay = null
