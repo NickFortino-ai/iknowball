@@ -55,7 +55,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
     if (!bracketRef.current || sharing) return
     setSharing(true)
     try {
-      const html2canvas = (await import('html2canvas')).default
+      const { toPng } = await import('html-to-image')
       const el = bracketRef.current
 
       // Temporarily expand to full size for capture
@@ -64,23 +64,25 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
       el.style.overflow = 'visible'
       el.style.width = `${el.scrollWidth}px`
 
-      const canvas = await html2canvas(el, {
+      const dataUrl = await toPng(el, {
         backgroundColor: '#000000',
-        scale: 2,
-        useCORS: true,
-        logging: false,
+        pixelRatio: 2,
       })
 
       // Restore
       el.style.overflow = prevOverflow
       el.style.width = prevWidth
 
-      // Add branding header/footer
+      // Load the captured image onto a canvas to add branding
+      const img = new Image()
+      img.src = dataUrl
+      await new Promise((resolve) => { img.onload = resolve })
+
       const finalCanvas = document.createElement('canvas')
       const headerHeight = 80
       const footerHeight = 50
-      finalCanvas.width = canvas.width
-      finalCanvas.height = canvas.height + headerHeight + footerHeight
+      finalCanvas.width = img.width
+      finalCanvas.height = img.height + headerHeight + footerHeight
       const ctx = finalCanvas.getContext('2d')
 
       // Background
@@ -99,12 +101,12 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
       ctx.fillText(viewingName, finalCanvas.width / 2, 50)
 
       // Bracket image
-      ctx.drawImage(canvas, 0, headerHeight)
+      ctx.drawImage(img, 0, headerHeight)
 
       // Footer
       ctx.fillStyle = '#888888'
       ctx.font = '24px system-ui, sans-serif'
-      ctx.fillText('I KNOW BALL', finalCanvas.width / 2, canvas.height + headerHeight + 35)
+      ctx.fillText('I KNOW BALL', finalCanvas.width / 2, img.height + headerHeight + 35)
 
       finalCanvas.toBlob(async (blob) => {
         if (!blob) { toast('Failed to generate image', 'error'); return }
