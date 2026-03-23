@@ -683,7 +683,7 @@ export default function LeagueDetailPage() {
               </button>
             )}
           </div>
-          <p className="text-sm text-text-secondary whitespace-pre-wrap">{league.commissioner_note}</p>
+          <p className="text-sm text-text-primary whitespace-pre-wrap">{league.commissioner_note}</p>
         </div>
       ) : isCommissioner ? (
         <div className="mb-6">
