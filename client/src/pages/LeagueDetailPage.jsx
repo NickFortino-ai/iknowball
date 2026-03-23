@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -456,6 +456,7 @@ export default function LeagueDetailPage() {
   const { data: standings } = useLeagueStandings(id)
   const { data: bracketTournament } = useBracketTournament(league?.format === 'bracket' ? id : null)
   const { data: bracketEntries } = useBracketEntries(league?.format === 'bracket' ? id : null)
+  const { data: threadUnread } = useThreadUnread(id)
   const [activeTab, setActiveTab] = useState(0)
   const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
   const [editingNote, setEditingNote] = useState(false)
@@ -709,13 +710,16 @@ export default function LeagueDetailPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(i)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               activeTab === i
                 ? 'bg-accent text-white'
                 : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
             }`}
           >
             {tab}
+            {tab === 'Thread' && threadUnread?.unread && activeTab !== i && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
+            )}
           </button>
         ))}
       </div>
@@ -760,6 +764,7 @@ export default function LeagueDetailPage() {
           }}
           tabs={isBracketLocked ? tabs : null}
           activeTabIndex={activeTab}
+          threadUnread={threadUnread?.unread}
           onTabSelect={setActiveTab}
         />
       )}

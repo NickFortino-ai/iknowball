@@ -448,3 +448,22 @@ export function useRealtimeLeagueThread(leagueId) {
     return () => { supabase.removeChannel(channel) }
   }, [leagueId, queryClient])
 }
+
+export function useThreadUnread(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'thread', 'unread'],
+    queryFn: () => api.get(`/leagues/${leagueId}/thread/unread`),
+    enabled: !!leagueId,
+    staleTime: 30_000,
+  })
+}
+
+export function useMarkThreadRead() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/thread/read`),
+    onSuccess: (_data, leagueId) => {
+      queryClient.setQueryData(['leagues', leagueId, 'thread', 'unread'], { unread: false })
+    },
+  })
+}

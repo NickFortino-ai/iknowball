@@ -13,7 +13,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 
-export default function BracketView({ league, tab = 'bracket', onTabChange, tabs: heroTabs, activeTabIndex, onTabSelect }) {
+export default function BracketView({ league, tab = 'bracket', onTabChange, tabs: heroTabs, activeTabIndex, onTabSelect, threadUnread }) {
   const { profile } = useAuth()
   const { data: tournament, isLoading: tournamentLoading } = useBracketTournament(league.id)
   const { data: myEntry } = useBracketEntry(league.id)
@@ -324,13 +324,16 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                 <button
                   key={t}
                   onClick={() => onTabSelect?.(i)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     activeTabIndex === i
                       ? 'bg-accent text-white'
                       : 'bg-bg-card/60 backdrop-blur-sm text-text-secondary hover:bg-bg-card-hover/60'
                   }`}
                 >
                   {t}
+                  {t === 'Thread' && threadUnread && activeTabIndex !== i && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
+                  )}
                 </button>
               ))}
             </div>

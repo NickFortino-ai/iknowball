@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useLeagueThread, useSendThreadMessage, useRealtimeLeagueThread } from '../../hooks/useLeagues'
+import { useLeagueThread, useSendThreadMessage, useRealtimeLeagueThread, useMarkThreadRead } from '../../hooks/useLeagues'
 import { useSearchUsers } from '../../hooks/useInvitations'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
@@ -55,7 +55,13 @@ export default function LeagueThread({ league }) {
   const { profile } = useAuth()
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useLeagueThread(league.id)
   const sendMessage = useSendThreadMessage()
+  const markRead = useMarkThreadRead()
   useRealtimeLeagueThread(league.id)
+
+  // Mark thread as read when opened
+  useEffect(() => {
+    markRead.mutate(league.id)
+  }, [league.id])
 
   const [input, setInput] = useState('')
   const [mentionQuery, setMentionQuery] = useState('')

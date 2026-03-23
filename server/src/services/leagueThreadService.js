@@ -142,3 +142,43 @@ export async function postThreadMessage(leagueId, userId, content, userTags = []
 
   return { ...message, user: author, tagged_users: [] }
 }
+
+export async function markThreadRead(leagueId, userId) {
+  await supabase
+    .from('league_thread_reads')
+    .upsert({ league_id: leagueId, user_id: userId, last_read_at: new Date().toISOString() }, { onConflict: 'league_id,user_id' })
+}
+
+export async function hasUnreadMessages(leagueId, userId) {
+  // Get last read timestamp
+  const { data: readRecord } = await supabase
+    .from('league_thread_reads')
+    .select('last_read_at')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  // Get latest message (not from this user)
+  let query = supabase
+    .from('league_messages')
+    .select('created_at')
+    .eq('league_id', leagueId)
+    .neq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (readRecord?.last_read_at) {
+    query = supabase
+      .from('league_messages')
+      .select('created_at')
+      .eq('league_id', leagueId)
+      .neq('user_id', userId)
+      .gt('created_at', readRecord.last_read_at)
+      .limit(1)
+      .maybeSingle()
+  }
+
+  const { data: unread } = await query
+  return !!unread
+}
