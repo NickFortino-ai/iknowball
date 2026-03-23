@@ -558,7 +558,7 @@ export default function LeagueDetailPage() {
             </button>
           )}
         </div>
-      ) : (
+      ) : league.format !== 'bracket' ? (
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={async () => {
@@ -608,7 +608,7 @@ export default function LeagueDetailPage() {
             </button>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* League Conditions (hidden for bracket leagues) */}
       {league.format !== 'bracket' && <LeagueConditions league={league} />}
