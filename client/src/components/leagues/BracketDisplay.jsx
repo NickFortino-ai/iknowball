@@ -21,9 +21,10 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   function teamClass(team, isTop) {
     if (!team) return 'text-text-muted'
     if (showPick && pick === team) {
+      // If pick was eliminated in a previous round, always show gray strikethrough
+      if (eliminated) return 'text-text-muted line-through'
       if (isTop ? topCorrect : bottomCorrect) return 'text-correct font-semibold'
       if (isTop ? topWrong : bottomWrong) return 'text-incorrect line-through'
-      if (eliminated) return 'text-text-muted line-through'
       return 'text-accent font-semibold'
     }
     // Show resolved teams that are eliminated (picked in feeder but lost)
