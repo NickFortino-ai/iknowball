@@ -76,57 +76,19 @@ async function getTargetOwner(targetType, targetId) {
 const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'hot take', head_to_head: 'head-to-head', hot_take_reminder: 'hot take reminder' }
 
 export async function toggleReaction(userId, pickId, reactionType) {
-  const ownerId = await getTargetOwner('pick', pickId)
-
-  // Check if reaction already exists
-  const { data: existing } = await supabase
-    .from('pick_reactions')
-    .select('id')
-    .eq('pick_id', pickId)
-    .eq('user_id', userId)
-    .eq('reaction_type', reactionType)
-    .single()
-
-  if (existing) {
-    await supabase.from('pick_reactions').delete().eq('id', existing.id)
-    return { toggled: 'off' }
-  }
-
-  await supabase.from('pick_reactions').insert({
-    pick_id: pickId,
-    user_id: userId,
-    reaction_type: reactionType,
-  })
-
-  // Notify pick owner on reaction (skip self)
-  if (userId !== ownerId) {
-    try {
-      const { data: actor } = await supabase
-        .from('users')
-        .select('username')
-        .eq('id', userId)
-        .single()
-      const username = actor?.username || 'Someone'
-      await createNotification(ownerId, 'reaction', `${username} reacted ${reactionType} to your pick`, {
-        actorId: userId,
-        pickId,
-        reactionType,
-      })
-    } catch (_) { /* notification is best-effort */ }
-  }
-
-  return { toggled: 'on' }
+  // Unified: use feed_reactions with target_type='pick'
+  return toggleFeedReaction(userId, 'pick', pickId, reactionType)
 }
 
 export async function getReactionsForPick(pickId) {
   const { data, error } = await supabase
-    .from('pick_reactions')
+    .from('feed_reactions')
     .select('reaction_type, user_id, users(username)')
-    .eq('pick_id', pickId)
+    .eq('target_type', 'pick')
+    .eq('target_id', pickId)
 
   if (error) throw error
 
-  // Group by reaction type
   const grouped = {}
   for (const row of data || []) {
     if (!grouped[row.reaction_type]) {
@@ -145,20 +107,21 @@ export async function getReactionsForPicks(pickIds) {
   if (!pickIds.length) return {}
 
   const { data, error } = await supabase
-    .from('pick_reactions')
-    .select('pick_id, reaction_type, user_id, users(username)')
-    .in('pick_id', pickIds)
+    .from('feed_reactions')
+    .select('target_id, reaction_type, user_id, users(username)')
+    .eq('target_type', 'pick')
+    .in('target_id', pickIds)
 
   if (error) throw error
 
   const result = {}
   for (const row of data || []) {
-    if (!result[row.pick_id]) result[row.pick_id] = {}
-    if (!result[row.pick_id][row.reaction_type]) {
-      result[row.pick_id][row.reaction_type] = { type: row.reaction_type, count: 0, users: [] }
+    if (!result[row.target_id]) result[row.target_id] = {}
+    if (!result[row.target_id][row.reaction_type]) {
+      result[row.target_id][row.reaction_type] = { type: row.reaction_type, count: 0, users: [] }
     }
-    result[row.pick_id][row.reaction_type].count++
-    result[row.pick_id][row.reaction_type].users.push({
+    result[row.target_id][row.reaction_type].count++
+    result[row.target_id][row.reaction_type].users.push({
       userId: row.user_id,
       username: row.users.username,
     })
