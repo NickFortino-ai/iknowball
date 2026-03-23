@@ -80,7 +80,7 @@ router.get('/sport', requireAuth, async (req, res) => {
   // Match hot takes by sport_key (new) or by team name overlap (legacy, no sport_key)
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at')
     .or(`sport_key.eq.${sport},and(sport_key.is.null,team_tags.ov.{${teamList.map((t) => `"${t}"`).join(',')}})`)
     .order('created_at', { ascending: false })
     .limit(20)
@@ -162,6 +162,7 @@ router.get('/sport', requireAuth, async (req, res) => {
         image_url: take.image_url,
         image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
+        post_type: take.post_type || 'post',
         tagged_users,
       },
     }
@@ -186,7 +187,7 @@ router.get('/team', requireAuth, async (req, res) => {
 
   let query = supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at')
     .contains('team_tags', [team])
     .order('created_at', { ascending: false })
     .limit(20)
@@ -268,6 +269,7 @@ router.get('/team', requireAuth, async (req, res) => {
         image_url: take.image_url,
         image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
+        post_type: take.post_type || 'post',
         tagged_users,
       },
     }
@@ -383,7 +385,7 @@ router.post('/ask/:userId', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   const { data: take, error } = await supabase
     .from('hot_takes')
-    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at')
+    .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at')
     .eq('id', req.params.id)
     .single()
 

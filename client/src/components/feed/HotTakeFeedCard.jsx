@@ -365,7 +365,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   return (
     <FeedCardWrapper
       item={item}
-      borderColor="purple"
+      borderColor={hot_take.post_type === 'prediction' ? 'green' : hot_take.post_type === 'poll' ? 'orange' : 'purple'}
       targetType="hot_take"
       targetId={hot_take.id}
       reactions={reactions}
