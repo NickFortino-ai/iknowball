@@ -702,8 +702,8 @@ export default function LeagueDetailPage() {
         <LeagueSettingsEditor league={league} updateLeague={updateLeague} hasLockedPicks={league.has_locked_picks} />
       )}
 
-      {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero) */}
-      {!(league.format === 'bracket' && isBracketLocked) && (
+      {/* Tabs (hidden for locked bracket leagues unless on Thread tab — rendered inside BracketView hero) */}
+      {(!(league.format === 'bracket' && isBracketLocked) || tabs[activeTab] === 'Thread') && (
       <div className="flex gap-2 mb-6">
         {tabs.map((tab, i) => (
           <button
