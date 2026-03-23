@@ -80,7 +80,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
       const finalCanvas = document.createElement('canvas')
       const headerHeight = 80
-      const footerHeight = 120
+      const footerHeight = 200
       finalCanvas.width = img.width
       finalCanvas.height = img.height + headerHeight + footerHeight
       const ctx = finalCanvas.getContext('2d')
@@ -108,7 +108,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
       brandImg.src = '/ikb-brand.png'
       await new Promise((resolve) => { brandImg.onload = resolve; brandImg.onerror = resolve })
       if (brandImg.complete && brandImg.naturalWidth > 0) {
-        const brandHeight = footerHeight * 0.7
+        const brandHeight = footerHeight * 0.5
         const brandWidth = (brandImg.naturalWidth / brandImg.naturalHeight) * brandHeight
         ctx.drawImage(brandImg, (finalCanvas.width - brandWidth) / 2, img.height + headerHeight + (footerHeight - brandHeight) / 2, brandWidth, brandHeight)
       } else {
