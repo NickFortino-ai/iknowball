@@ -704,7 +704,7 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues unless on Thread tab — rendered inside BracketView hero) */}
       {(!(league.format === 'bracket' && isBracketLocked) || tabs[activeTab] === 'Thread') && (
-      <div className="flex gap-2 mb-6">
+      <div className="flex justify-center gap-2 mb-6">
         {tabs.map((tab, i) => (
           <button
             key={tab}
