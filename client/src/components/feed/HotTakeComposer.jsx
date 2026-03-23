@@ -24,7 +24,7 @@ const sportTabs = [
 ]
 
 const POST_TYPES = [
-  { key: 'post', color: 'bg-blue-500', label: 'Post', placeholder: 'Talk to us.' },
+  { key: 'post', color: 'bg-purple-500', label: 'Post', placeholder: 'Talk to us.' },
   { key: 'prediction', color: 'bg-green-500', label: 'Prediction', placeholder: "What's your prediction?" },
   { key: 'poll', color: 'bg-orange-500', label: 'Poll', placeholder: 'Create a poll' },
 ]
