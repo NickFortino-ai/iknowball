@@ -455,11 +455,9 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
       // Round column
       elements.push(
         <div key={`${side}-r-${roundNum}`} className="flex flex-col items-center">
-          <div className="text-xs font-semibold text-text-secondary mb-1">
-            {getRoundName(roundNum)}
-          </div>
-          <div className="text-[10px] text-text-muted mb-3">
-            {getRoundPoints(roundNum)} pts
+          <div className="text-center mb-3">
+            <div className="text-xs font-semibold text-text-secondary">{getRoundName(roundNum)}</div>
+            <div className="text-xs text-text-muted">{getRoundPoints(roundNum)} pts</div>
           </div>
           <div
             className="grid gap-y-1"
