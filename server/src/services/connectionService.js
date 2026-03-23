@@ -1098,6 +1098,32 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     })
   }
 
+  // For polls scope, re-sort by recent vote activity (engagement velocity)
+  if (isPolls) {
+    const pollIds = feed.filter((f) => f.hot_take?.post_type === 'poll').map((f) => f.hot_take.id)
+    if (pollIds.length > 0) {
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+      const { data: recentVotes } = await supabase
+        .from('poll_votes')
+        .select('hot_take_id')
+        .in('hot_take_id', pollIds)
+        .gte('created_at', threeDaysAgo)
+
+      const voteCountMap = {}
+      for (const v of (recentVotes || [])) {
+        voteCountMap[v.hot_take_id] = (voteCountMap[v.hot_take_id] || 0) + 1
+      }
+
+      // Sort: most recent votes first, then by creation date
+      feed.sort((a, b) => {
+        const aVotes = voteCountMap[a.hot_take?.id] || 0
+        const bVotes = voteCountMap[b.hot_take?.id] || 0
+        if (bVotes !== aVotes) return bVotes - aVotes
+        return new Date(b.timestamp) - new Date(a.timestamp)
+      })
+    }
+  }
+
   // Process hot take reminders
   for (const reminder of hotTakeReminders.data || []) {
     const user = userMap[reminder.reminder_user_id]
