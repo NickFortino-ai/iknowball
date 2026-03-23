@@ -319,7 +319,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
           {/* Tabs inside hero area (when locked, parent hides its own tabs) */}
           {heroTabs && (
-            <div className="flex gap-2 mt-3">
+            <div className="flex justify-center gap-2 mt-3">
               {heroTabs.map((t, i) => (
                 <button
                   key={t}
