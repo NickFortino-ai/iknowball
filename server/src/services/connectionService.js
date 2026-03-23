@@ -493,7 +493,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .limit(10),
 
     // Source 8: H2H — settled picks in last 3 days (squad only)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('picks')
       .select('id, user_id, picked_team, game_id, is_correct, odds_at_pick, points_earned, risk_points, multiplier, updated_at, games(home_team, away_team, sports(name))')
@@ -543,7 +543,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .limit(50),
 
     // Source 12: Hot take reminder counts — to find viral takes (5+ reminds)
-    (isHighlights || isUserHighlights) ? Promise.resolve({ data: [] }) :
+    (isHighlights || isUserHighlights || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
     supabase
       .from('hot_take_reminders')
       .select('hot_take_id')
