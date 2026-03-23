@@ -438,10 +438,10 @@ async function calcMostParlayLegs() {
 async function calcFewestPicksToTier(tierMinPoints) {
   // Get all settled items across types, ordered chronologically
   const [picksRes, parlaysRes, propsRes, futuresRes] = await Promise.all([
-    supabase.from('picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null),
-    supabase.from('parlays').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null),
-    supabase.from('prop_picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null),
-    supabase.from('futures_picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null),
+    supabase.from('picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at').limit(10000),
+    supabase.from('parlays').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at').limit(10000),
+    supabase.from('prop_picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at').limit(10000),
+    supabase.from('futures_picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at').limit(10000),
   ])
 
   const allItems = [
@@ -620,10 +620,10 @@ async function calcBestFuturesHit(sportKey) {
 async function calcHighestOverallWinPct() {
   // Gather all settled items
   const [picksRes, parlaysRes, propsRes, futuresRes] = await Promise.all([
-    supabase.from('picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null),
-    supabase.from('parlays').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null),
-    supabase.from('prop_picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null),
-    supabase.from('futures_picks').select('user_id, is_correct').eq('status', 'settled'),
+    supabase.from('picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).limit(10000),
+    supabase.from('parlays').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).limit(10000),
+    supabase.from('prop_picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).limit(10000),
+    supabase.from('futures_picks').select('user_id, is_correct').eq('status', 'settled').limit(10000),
   ])
 
   const stats = {}
