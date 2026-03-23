@@ -168,17 +168,17 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
           </div>
           <div className="text-sm text-text-primary font-medium mb-1">
             {scope === 'user_hot_takes' && targetUserId && targetUserId !== session?.user?.id
-              ? 'No hot takes yet!'
+              ? 'No posts yet!'
               : scope === 'user_highlights' ? 'No highlights yet'
               : scope === 'highlights' ? 'No highlights yet'
-              : scope === 'hot_takes' ? 'No hot takes yet'
+              : scope === 'hot_takes' ? 'No posts yet'
               : scope === 'all' ? 'No activity yet'
               : 'Your feed is empty'}
           </div>
           <div className="text-xs text-text-muted">
             {scope === 'user_hot_takes' && targetUserId && targetUserId !== session?.user?.id ? (
               <>
-                This user hasn't dropped any hot takes yet!{' '}
+                This user hasn't posted yet!{' '}
                 {!asked ? (
                   <button
                     onClick={async () => {
@@ -205,9 +205,9 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
               : scope === 'highlights'
               ? 'Make some picks and your notable activity will show up here.'
               : scope === 'hot_takes'
-              ? 'Be the first to drop a hot take!'
+              ? 'Be the first to post!'
               : scope === 'all'
-              ? 'Be the first to drop a hot take!'
+              ? 'Be the first to post!'
               : 'Connect with other users to see their activity here.'}
           </div>
         </div>

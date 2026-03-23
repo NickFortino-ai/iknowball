@@ -27,7 +27,7 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
     >
       {/* Header text */}
       <div className="text-sm text-text-secondary mb-2">
-        reminded <span className="font-semibold text-accent">@{reminded_user?.username || 'unknown'}</span> of {possessive} hot take
+        reminded <span className="font-semibold text-accent">@{reminded_user?.username || 'unknown'}</span> of {possessive} prediction
       </div>
 
       {/* Reminder comment */}

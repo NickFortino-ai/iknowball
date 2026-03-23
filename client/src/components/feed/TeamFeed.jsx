@@ -250,7 +250,7 @@ export default function TeamFeed({ onUserTap, initialTeam = null, initialSport =
         <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
           <div className="text-2xl mb-2">{'\uD83C\uDFC8'}</div>
           <div className="text-sm text-text-primary font-medium mb-1">Select a sport</div>
-          <div className="text-xs text-text-muted">Pick a sport above to browse hot takes</div>
+          <div className="text-xs text-text-muted">Pick a sport above to browse posts</div>
         </div>
       )}
 
@@ -267,10 +267,10 @@ export default function TeamFeed({ onUserTap, initialTeam = null, initialSport =
               <div className="text-sm text-text-primary font-medium mb-2">
                 {selectedTeam
                   ? `Be the first to say something about ${selectedTeam}!`
-                  : 'No hot takes yet for this sport!'}
+                  : 'No posts yet for this sport!'}
               </div>
               <div className="text-xs text-text-muted leading-relaxed max-w-xs mx-auto">
-                Drop a hot take above and get the conversation started.
+                Drop a post above and get the conversation started.
               </div>
             </div>
           ) : (

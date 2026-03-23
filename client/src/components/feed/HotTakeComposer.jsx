@@ -533,7 +533,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                       <polyline points="21 15 16 10 5 21" />
                     </svg>
                   </button>
-                  <InfoTooltip text="Hot takes are your bold predictions and opinions. Tag teams so fans can find them in the Team Feed. Your squad can react, comment, and remind you of your takes later. Bookmark other people's takes to save receipts for when it's time to hold them accountable." />
+                  <InfoTooltip text="Share posts, predictions, and polls. Tag teams so fans can find them. Your squad can react, comment, and remind you of your predictions later. Bookmark predictions to save receipts." />
                   <input
                     ref={fileInputRef}
                     type="file"

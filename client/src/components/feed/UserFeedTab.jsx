@@ -54,11 +54,11 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
           </button>
         </div>
 
-        {/* All / Hot Takes toggle */}
+        {/* All / Posts toggle */}
         <div className="flex gap-1 mb-3">
           {[
             { key: 'all', label: 'All' },
-            { key: 'hot_takes', label: 'Hot Takes' },
+            { key: 'hot_takes', label: 'Posts' },
           ].map((f) => (
             <button
               key={f.key}

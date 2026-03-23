@@ -37,7 +37,7 @@ export default function ReceiptsTab({ onUserTap }) {
         <div className="text-2xl mb-2">{'\uD83E\uDDFE'}</div>
         <div className="text-sm text-text-primary font-medium mb-2">No receipts yet</div>
         <div className="text-xs text-text-muted leading-relaxed max-w-xs mx-auto">
-          Take receipts by bookmarking people's hot takes. When it's time to remind them — whether they wanted to be reminded or not — hit remind and let the feed do the talking.
+          Take receipts by bookmarking predictions. When it's time to remind them — whether they wanted to be reminded or not — hit remind and let the feed do the talking.
         </div>
       </div>
     )
