@@ -80,8 +80,14 @@ function getNotificationRoute(notification) {
       return '/messages'
     case 'league_invitation':
       return '/leagues'
-    case 'headlines':
+    case 'headlines': {
+      // If the headline week is more than 10 days old, it's archived
+      const weekEnd = metadata?.weekEnd
+      if (weekEnd && (Date.now() - new Date(weekEnd + 'T00:00:00').getTime()) > 10 * 24 * 60 * 60 * 1000) {
+        return '/hall-of-fame?section=headlines'
+      }
       return '/?headlines=1'
+    }
     case 'record_broken':
       return '/hall-of-fame?section=records'
     case 'survivor_win':
