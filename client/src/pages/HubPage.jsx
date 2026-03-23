@@ -476,50 +476,24 @@ export default function HubPage() {
             ))}
           </div>
         </div>
-        {/* Filter bar for All of IKB */}
+        {/* Filter toggle for All of IKB */}
         {feedScope === 'all' && (
           <div className="mb-3">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { setShowFilterPanel(!showFilterPanel); if (showFilterPanel) { setFilterSport(null); setFilterTeam(null); setFilterTeamSearch('') } }}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-                  filterSport || filterTeam ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-                }`}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
-                  <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
-                  <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
-                  <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" />
-                  <line x1="17" y1="16" x2="23" y2="16" />
-                </svg>
-                Filter
-              </button>
-              {filterSport && (
-                <span className="text-xs font-semibold text-accent">{filterSport.replace(/.*_/, '').toUpperCase()}</span>
-              )}
-              {filterTeam && (
-                <span className="text-xs text-text-secondary">{filterTeam}</span>
-              )}
-              {(filterSport || filterTeam) && (
-                <button
-                  onClick={() => { setFilterSport(null); setFilterTeam(null); setFilterTeamSearch('') }}
-                  className="text-xs text-text-muted hover:text-incorrect"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            {showFilterPanel && (
-              <FilterPanel
-                filterSport={filterSport}
-                filterTeam={filterTeam}
-                filterTeamSearch={filterTeamSearch}
-                onSelectSport={(sport) => { setFilterSport(sport); setFilterTeam(null); setFilterTeamSearch('') }}
-                onSelectTeam={(team) => { setFilterTeam(team); setShowFilterPanel(false) }}
-                onTeamSearchChange={setFilterTeamSearch}
-              />
-            )}
+            <button
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                showFilterPanel ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
+                <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
+                <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" />
+                <line x1="17" y1="16" x2="23" y2="16" />
+              </svg>
+              {showFilterPanel ? 'Show All' : 'Filter by Sport'}
+            </button>
           </div>
         )}
 
@@ -548,8 +522,8 @@ export default function HubPage() {
             scrollToItemId={scrollToItem}
             onScrollComplete={() => setScrollToItem(null)}
           />
-        ) : feedScope === 'all' && (filterTeam || filterSport) ? (
-          <TeamFeed key={filterTeam || filterSport} onUserTap={setSelectedUserId} initialTeam={filterTeam} initialSport={filterSport} />
+        ) : feedScope === 'all' && showFilterPanel ? (
+          <TeamFeed onUserTap={setSelectedUserId} />
         ) : (
           <ActivityFeed
             onUserTap={setSelectedUserId}
