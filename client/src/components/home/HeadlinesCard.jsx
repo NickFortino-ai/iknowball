@@ -237,7 +237,7 @@ export default function HeadlinesCard({ forceExpanded }) {
                       <span className="font-semibold text-accent text-sm">{r.points} pts</span>
                     </div>
                     {r.narrative && (
-                      <p className="text-text-secondary text-sm leading-relaxed">{r.narrative}</p>
+                      <p className="text-text-primary text-sm leading-relaxed">{r.narrative}</p>
                     )}
                   </div>
                 )
