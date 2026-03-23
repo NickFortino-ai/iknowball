@@ -2,12 +2,12 @@ import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { createNotification } from './notificationService.js'
 
-export async function createHotTake(userId, content, teamTags, sportKey, imageUrl, userTags, videoUrl, imageUrls) {
+export async function createHotTake(userId, content, teamTags, sportKey, imageUrl, userTags, videoUrl, imageUrls, postType = 'post') {
   // Support both single image_url and multi image_urls
   const resolvedImageUrls = imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : null
   const { data, error } = await supabase
     .from('hot_takes')
-    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, sport_key: sportKey || null, image_url: resolvedImageUrls?.[0] || null, image_urls: resolvedImageUrls, user_tags: userTags?.length ? userTags : null, video_url: videoUrl || null })
+    .insert({ user_id: userId, content, team_tags: teamTags?.length ? teamTags : null, sport_key: sportKey || null, image_url: resolvedImageUrls?.[0] || null, image_urls: resolvedImageUrls, user_tags: userTags?.length ? userTags : null, video_url: videoUrl || null, post_type: postType || 'post' })
     .select()
     .single()
 

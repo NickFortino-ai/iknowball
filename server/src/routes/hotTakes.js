@@ -18,6 +18,8 @@ const hotTakeSchema = z.object({
   image_urls: z.array(z.string().url()).max(4).optional(),
   video_url: z.string().url().optional(),
   user_tags: z.array(z.string().uuid()).max(3).optional(),
+  post_type: z.enum(['post', 'prediction', 'poll']).optional(),
+  poll_options: z.array(z.string().min(1).max(100)).min(2).max(6).optional(),
 })
 
 router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
@@ -32,7 +34,22 @@ router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
     return res.status(400).json({ error: 'Your post contains inappropriate language. Please revise and try again.' })
   }
 
-  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls)
+  const hotTake = await createHotTake(req.user.id, req.validated.content, req.validated.team_tags, req.validated.sport_key, req.validated.image_url, req.validated.user_tags, req.validated.video_url, req.validated.image_urls, req.validated.post_type)
+
+  // Create poll options if poll type
+  if (req.validated.post_type === 'poll' && req.validated.poll_options?.length) {
+    const optionRows = req.validated.poll_options.map((label, i) => ({
+      hot_take_id: hotTake.id,
+      label,
+      position: i,
+    }))
+    const { data: options } = await supabase
+      .from('poll_options')
+      .insert(optionRows)
+      .select()
+    hotTake.poll_options = options
+  }
+
   res.status(201).json(hotTake)
 })
 
@@ -274,6 +291,83 @@ router.get('/bookmarks/check', requireAuth, async (req, res) => {
   const ids = req.query.ids ? req.query.ids.split(',') : []
   const result = await getBookmarkStatusBatch(req.user.id, ids)
   res.json(result)
+})
+
+// Vote on a poll
+router.post('/:id/vote', requireAuth, async (req, res) => {
+  const { option_id } = req.body
+  if (!option_id) return res.status(400).json({ error: 'option_id is required' })
+
+  // Verify option belongs to this hot take
+  const { data: option } = await supabase
+    .from('poll_options')
+    .select('id')
+    .eq('id', option_id)
+    .eq('hot_take_id', req.params.id)
+    .maybeSingle()
+
+  if (!option) return res.status(404).json({ error: 'Poll option not found' })
+
+  const { error } = await supabase
+    .from('poll_votes')
+    .insert({ option_id, hot_take_id: req.params.id, user_id: req.user.id })
+
+  if (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'You already voted on this poll' })
+    throw error
+  }
+
+  // Return updated results
+  const { data: options } = await supabase
+    .from('poll_options')
+    .select('id, label, position')
+    .eq('hot_take_id', req.params.id)
+    .order('position')
+
+  const { data: votes } = await supabase
+    .from('poll_votes')
+    .select('option_id')
+    .eq('hot_take_id', req.params.id)
+
+  const voteCounts = {}
+  for (const v of (votes || [])) {
+    voteCounts[v.option_id] = (voteCounts[v.option_id] || 0) + 1
+  }
+
+  const results = (options || []).map((o) => ({
+    ...o,
+    votes: voteCounts[o.id] || 0,
+  }))
+
+  res.json({ options: results, userVote: option_id, totalVotes: votes?.length || 0 })
+})
+
+// Get poll results
+router.get('/:id/poll', requireAuth, async (req, res) => {
+  const { data: options } = await supabase
+    .from('poll_options')
+    .select('id, label, position')
+    .eq('hot_take_id', req.params.id)
+    .order('position')
+
+  const { data: votes } = await supabase
+    .from('poll_votes')
+    .select('option_id, user_id')
+    .eq('hot_take_id', req.params.id)
+
+  const voteCounts = {}
+  for (const v of (votes || [])) {
+    voteCounts[v.option_id] = (voteCounts[v.option_id] || 0) + 1
+  }
+
+  const userVote = (votes || []).find((v) => v.user_id === req.user.id)?.option_id || null
+
+  const results = (options || []).map((o) => ({
+    ...o,
+    votes: voteCounts[o.id] || 0,
+  }))
+
+  res.json({ options: results, userVote, totalVotes: votes?.length || 0 })
 })
 
 router.post('/:id/remind', requireAuth, async (req, res) => {

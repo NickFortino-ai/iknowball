@@ -8,8 +8,8 @@ export function useCreateHotTake() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ content, team_tags, sport_key, image_url, image_urls, video_url, user_tags }) =>
-      api.post('/hot-takes', { content, team_tags, sport_key, image_url, image_urls, video_url, user_tags }),
+    mutationFn: ({ content, team_tags, sport_key, image_url, image_urls, video_url, user_tags, post_type, poll_options }) =>
+      api.post('/hot-takes', { content, team_tags, sport_key, image_url, image_urls, video_url, user_tags, post_type, poll_options }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
     },
@@ -328,4 +328,23 @@ export function useHotTakeVideoUpload() {
   }
 
   return { uploading, previewUrl, selectVideo, removeVideo, uploadVideo, hasVideo: !!videoFile }
+}
+
+export function usePollVote() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ hotTakeId, optionId }) =>
+      api.post(`/hot-takes/${hotTakeId}/vote`, { option_id: optionId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
+    },
+  })
+}
+
+export function usePollResults(hotTakeId) {
+  return useQuery({
+    queryKey: ['poll', hotTakeId],
+    queryFn: () => api.get(`/hot-takes/${hotTakeId}/poll`),
+    enabled: !!hotTakeId,
+  })
 }
