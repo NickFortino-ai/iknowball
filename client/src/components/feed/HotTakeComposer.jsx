@@ -23,8 +23,16 @@ const sportTabs = [
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
 
+const POST_TYPES = [
+  { key: 'post', color: 'bg-blue-500', label: 'Post', placeholder: 'Talk to us.' },
+  { key: 'prediction', color: 'bg-green-500', label: 'Prediction', placeholder: "What's your prediction?" },
+  { key: 'poll', color: 'bg-orange-500', label: 'Poll', placeholder: 'Create a poll' },
+]
+
 export default function HotTakeComposer({ initialTeamTags = [] }) {
   const [content, setContent] = useState('')
+  const [postType, setPostType] = useState('post')
+  const [pollOptions, setPollOptions] = useState(['', ''])
   const [teamTags, setTeamTags] = useState(initialTeamTags)
   const [selectedSport, setSelectedSport] = useState(null)
   const [teamSearch, setTeamSearch] = useState('')
@@ -143,7 +151,8 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   }
 
   const charCount = content.length
-  const canPost = charCount > 0 && charCount <= MAX_CHARS && !createHotTake.isPending && !uploading && !videoUploading
+  const pollValid = postType !== 'poll' || pollOptions.filter((o) => o.trim()).length >= 2
+  const canPost = charCount > 0 && charCount <= MAX_CHARS && !createHotTake.isPending && !uploading && !videoUploading && pollValid
 
   async function handlePost() {
     if (!canPost) return
@@ -163,11 +172,15 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
       if (!videoUrl && hasVideo) return // upload failed
     }
 
+    const trimmedPollOptions = postType === 'poll' ? pollOptions.filter((o) => o.trim()).map((o) => o.trim()) : undefined
+
     createHotTake.mutate(
-      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined },
+      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined, post_type: postType, poll_options: trimmedPollOptions },
       {
         onSuccess: () => {
           setContent('')
+          setPostType('post')
+          setPollOptions(['', ''])
           setTeamTags(initialTeamTags)
           setUserTags([])
           setMentionQuery('')
@@ -193,6 +206,8 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   function handleCancel() {
     setExpanded(false)
     setContent('')
+    setPostType('post')
+    setPollOptions(['', ''])
     setTeamTags(initialTeamTags)
     setUserTags([])
     setMentionQuery('')
@@ -268,12 +283,19 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
       onDrop={handleDrop}
     >
       <div className="flex gap-3">
-        {/* User avatar */}
-        {profile && (
-          <div className="flex-shrink-0 pt-0.5">
-            <Avatar user={profile} size="md" />
-          </div>
-        )}
+        {/* Post type selector */}
+        <div className="flex flex-col gap-1.5 pt-1">
+          {POST_TYPES.map((type) => (
+            <button
+              key={type.key}
+              onClick={() => { setPostType(type.key); if (!expanded) setExpanded(true) }}
+              title={type.label}
+              className={`w-7 h-7 rounded-full transition-all ${type.color} ${
+                postType === type.key ? 'ring-2 ring-white scale-110' : 'opacity-40 hover:opacity-70'
+              }`}
+            />
+          ))}
+        </div>
 
         <div className="flex-1 min-w-0">
           {/* Textarea with inline autocomplete */}
@@ -284,7 +306,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               onChange={handleContentChange}
               onPaste={handlePaste}
               onFocus={() => setExpanded(true)}
-              placeholder="Drop a hot take..."
+              placeholder={POST_TYPES.find((t) => t.key === postType)?.placeholder || 'Talk to us.'}
               maxLength={MAX_CHARS}
               rows={expanded ? 3 : 1}
               className="w-full bg-transparent text-sm text-text-primary placeholder-text-muted resize-none outline-none transition-all"
@@ -375,6 +397,43 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               >
                 ×
               </button>
+            </div>
+          )}
+
+          {/* Poll options */}
+          {postType === 'poll' && expanded && (
+            <div className="mt-2 space-y-1.5">
+              {pollOptions.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    value={opt}
+                    onChange={(e) => {
+                      const next = [...pollOptions]
+                      next[i] = e.target.value
+                      setPollOptions(next)
+                    }}
+                    placeholder={`Option ${i + 1}`}
+                    maxLength={100}
+                    className="flex-1 bg-bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      onClick={() => setPollOptions(pollOptions.filter((_, j) => j !== i))}
+                      className="text-text-muted hover:text-incorrect text-xs"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 6 && (
+                <button
+                  onClick={() => setPollOptions([...pollOptions, ''])}
+                  className="text-xs text-accent hover:text-accent-hover transition-colors"
+                >
+                  + Add option
+                </button>
+              )}
             </div>
           )}
 

@@ -329,6 +329,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   const isAll = scope === 'all'
   const isHighlights = scope === 'highlights'
   const isHotTakes = scope === 'hot_takes'
+  const isPolls = scope === 'polls'
+  const isPredictions = scope === 'predictions'
   const isUserHighlights = scope === 'user_highlights'
   const isUserHotTakes = scope === 'user_hot_takes'
 
@@ -424,7 +426,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   }
 
   // For hot_takes/user_hot_takes scope, only run Source 9; everything else resolves to empty
-  const skipForHotTakes = (isHotTakes || isUserHotTakes) ? Promise.resolve({ data: [] }) : null
+  const skipForHotTakes = (isHotTakes || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) : null
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes, futuresPicks] = await Promise.all([
@@ -501,16 +503,25 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .order('updated_at', { ascending: false })
       .limit(100),
 
-    // Source 9: Hot takes
-    applyBefore(
-      isHotTakes
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at')
-        : isUserHotTakes && targetUserId
-        ? supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at').eq('user_id', targetUserId)
-        : filterByUser(supabase.from('hot_takes').select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, created_at'), 'user_id', allIds),
-      'created_at')
-      .order('created_at', { ascending: false })
-      .limit((isHotTakes || isUserHotTakes) ? 30 : 15),
+    // Source 9: Hot takes (posts, predictions, polls)
+    (() => {
+      const htSelect = 'id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at'
+      let htQuery
+      if (isPolls) {
+        htQuery = supabase.from('hot_takes').select(htSelect).eq('post_type', 'poll')
+      } else if (isPredictions) {
+        htQuery = supabase.from('hot_takes').select(htSelect).eq('post_type', 'prediction')
+      } else if (isHotTakes) {
+        htQuery = supabase.from('hot_takes').select(htSelect)
+      } else if (isUserHotTakes && targetUserId) {
+        htQuery = supabase.from('hot_takes').select(htSelect).eq('user_id', targetUserId)
+      } else {
+        htQuery = filterByUser(supabase.from('hot_takes').select(htSelect), 'user_id', allIds)
+      }
+      return applyBefore(htQuery, 'created_at')
+        .order('created_at', { ascending: false })
+        .limit((isHotTakes || isUserHotTakes || isPolls || isPredictions) ? 30 : 15)
+    })(),
 
     // Source 10: Hot take reminders (squad only)
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes) ? Promise.resolve({ data: [] }) :
@@ -549,7 +560,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   ])
 
   // For 'all' / 'hot_takes' / 'user_hot_takes' scope, batch-fetch user data from query results
-  if (isAll || isHotTakes || isUserHotTakes) {
+  if (isAll || isHotTakes || isUserHotTakes || isPolls || isPredictions) {
     const userIdSet = new Set()
     for (const pick of notablePicks.data || []) userIdSet.add(pick.user_id)
     for (const parlay of settledParlays.data || []) userIdSet.add(parlay.user_id)
@@ -1082,6 +1093,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         image_url: take.image_url,
         image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
+        post_type: take.post_type || 'post',
       },
     })
   }

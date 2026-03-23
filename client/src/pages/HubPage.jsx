@@ -48,7 +48,7 @@ function MyProfileBanner({ profile, onTap }) {
   )
 }
 
-const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'hot_takes', 'team_feed', 'receipts', 'user_feeds'])
+const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds'])
 
 export default function HubPage() {
   const { session } = useAuth()
@@ -392,11 +392,11 @@ export default function HubPage() {
           <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar">
             {[
               { key: 'squad', label: 'My Squad' },
+              { key: 'highlights', label: 'Me' },
               { key: 'all', label: 'All of IKB' },
-              { key: 'highlights', label: 'My Highlights' },
-              { key: 'hot_takes', label: 'Hot Takes' },
-              { key: 'team_feed', label: 'Sports' },
               { key: 'user_feeds', label: 'User Feeds' },
+              { key: 'polls', label: 'Polls' },
+              { key: 'predictions', label: 'Predictions' },
               { key: 'receipts', label: 'Receipts' },
             ].map((tab) => (
               <button
@@ -411,36 +411,28 @@ export default function HubPage() {
             ))}
           </div>
         </div>
-        {/* All / Hot Takes toggle for My Highlights */}
-        {feedScope === 'highlights' && (
-          <div className="flex gap-1 mb-3">
-            {[
-              { key: 'all', label: 'All' },
-              { key: 'hot_takes', label: 'Hot Takes' },
-            ].map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setHighlightsFilter(f.key)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                  highlightsFilter === f.key ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {feedScope === 'team_feed' ? (
-          <TeamFeed onUserTap={setSelectedUserId} initialTeam={initialTeam} onTeamConsumed={() => setInitialTeam(null)} />
-        ) : feedScope === 'receipts' ? (
+        {feedScope === 'receipts' ? (
           <ReceiptsTab onUserTap={setSelectedUserId} />
         ) : feedScope === 'user_feeds' ? (
           <UserFeedTab onUserTap={setSelectedUserId} initialUserId={initialFeedUserId} />
         ) : feedScope === 'highlights' ? (
           <ActivityFeed
             onUserTap={setSelectedUserId}
-            scope={highlightsFilter === 'hot_takes' ? 'user_hot_takes' : 'highlights'}
-            targetUserId={highlightsFilter === 'hot_takes' ? session?.user?.id : null}
+            scope="highlights"
+            scrollToItemId={scrollToItem}
+            onScrollComplete={() => setScrollToItem(null)}
+          />
+        ) : feedScope === 'polls' ? (
+          <ActivityFeed
+            onUserTap={setSelectedUserId}
+            scope="polls"
+            scrollToItemId={scrollToItem}
+            onScrollComplete={() => setScrollToItem(null)}
+          />
+        ) : feedScope === 'predictions' ? (
+          <ActivityFeed
+            onUserTap={setSelectedUserId}
+            scope="predictions"
             scrollToItemId={scrollToItem}
             onScrollComplete={() => setScrollToItem(null)}
           />
