@@ -3,6 +3,21 @@ import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
 import { sendEmailToUserIds } from './emailService.js'
 
+// Paginated fetch to bypass Supabase 1000-row server limit
+async function fetchAll(query) {
+  const PAGE = 1000
+  let all = []
+  let offset = 0
+  while (true) {
+    const { data, error } = await query.range(offset, offset + PAGE - 1)
+    if (error) throw error
+    all = all.concat(data || [])
+    if (!data || data.length < PAGE) break
+    offset += PAGE
+  }
+  return all
+}
+
 // Tier thresholds (mirrored from client scoring.js)
 const TIER_THRESHOLDS = [
   { name: 'GOAT', minPoints: 3000 },
@@ -437,19 +452,15 @@ async function calcMostParlayLegs() {
 
 async function calcFewestPicksToTier(tierMinPoints) {
   // Get all settled items across types, ordered chronologically
-  const [picksRes, parlaysRes, propsRes, futuresRes] = await Promise.all([
-    supabase.from('picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at').limit(10000),
-    supabase.from('parlays').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at').limit(10000),
-    supabase.from('prop_picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at').limit(10000),
-    supabase.from('futures_picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at').limit(10000),
+  const [picks, parlays, props, futures] = await Promise.all([
+    fetchAll(supabase.from('picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at')),
+    fetchAll(supabase.from('parlays').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at')),
+    fetchAll(supabase.from('prop_picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at')),
+    fetchAll(supabase.from('futures_picks').select('user_id, points_earned, updated_at').eq('status', 'settled').not('points_earned', 'is', null).order('updated_at')),
   ])
 
-  const allItems = [
-    ...(picksRes.data || []),
-    ...(parlaysRes.data || []),
-    ...(propsRes.data || []),
-    ...(futuresRes.data || []),
-  ].sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at))
+  const allItems = [...picks, ...parlays, ...props, ...futures]
+    .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at))
 
   if (!allItems.length) return null
 
@@ -619,15 +630,15 @@ async function calcBestFuturesHit(sportKey) {
 
 async function calcHighestOverallWinPct() {
   // Gather all settled items
-  const [picksRes, parlaysRes, propsRes, futuresRes] = await Promise.all([
-    supabase.from('picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).limit(10000),
-    supabase.from('parlays').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).limit(10000),
-    supabase.from('prop_picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null).limit(10000),
-    supabase.from('futures_picks').select('user_id, is_correct').eq('status', 'settled').limit(10000),
+  const [picksAll, parlaysAll, propsAll, futuresAll] = await Promise.all([
+    fetchAll(supabase.from('picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null)),
+    fetchAll(supabase.from('parlays').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null)),
+    fetchAll(supabase.from('prop_picks').select('user_id, is_correct').eq('status', 'settled').not('is_correct', 'is', null)),
+    fetchAll(supabase.from('futures_picks').select('user_id, is_correct').eq('status', 'settled')),
   ])
 
   const stats = {}
-  for (const item of [...(picksRes.data || []), ...(parlaysRes.data || []), ...(propsRes.data || []), ...(futuresRes.data || [])]) {
+  for (const item of [...picksAll, ...parlaysAll, ...propsAll, ...futuresAll]) {
     if (!stats[item.user_id]) stats[item.user_id] = { total: 0, correct: 0 }
     stats[item.user_id].total++
     if (item.is_correct) stats[item.user_id].correct++
