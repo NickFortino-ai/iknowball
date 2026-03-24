@@ -90,7 +90,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
       ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
 
       // Header
-      ctx.fillStyle = '#e86833'
+      ctx.fillStyle = '#FF4D00'
       ctx.font = 'bold 36px system-ui, sans-serif'
       ctx.textAlign = 'center'
       const viewingName = viewingUserId
