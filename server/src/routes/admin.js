@@ -470,4 +470,38 @@ router.post('/users/:id/unmute', async (req, res) => {
   res.json({ message: 'User unmuted' })
 })
 
+// ============================================
+// Fantasy Football - Sleeper Sync
+// ============================================
+
+import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, getNFLState } from '../services/sleeperService.js'
+
+router.post('/fantasy/sync-players', async (req, res) => {
+  const result = await syncPlayers()
+  res.json(result)
+})
+
+router.post('/fantasy/sync-schedule', async (req, res) => {
+  const season = req.body.season || 2026
+  const result = await syncSchedule(season)
+  res.json(result)
+})
+
+router.post('/fantasy/sync-stats', async (req, res) => {
+  const { season = 2026, week = 1 } = req.body
+  const result = await syncWeeklyStats(season, week)
+  res.json(result)
+})
+
+router.post('/fantasy/sync-projections', async (req, res) => {
+  const season = req.body.season || 2026
+  const result = await syncProjections(season)
+  res.json(result)
+})
+
+router.get('/fantasy/nfl-state', async (req, res) => {
+  const state = await getNFLState()
+  res.json(state)
+})
+
 export default router
