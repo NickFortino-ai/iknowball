@@ -594,7 +594,7 @@ export default function LeagueDetailPage() {
       )}
 
       {/* Invite Actions */}
-      {league.format === 'bracket' && !isBracketLocked ? (
+      {league.status === 'completed' ? null : league.format === 'bracket' && !isBracketLocked ? (
         <div className="flex items-center justify-center gap-3 mb-4">
           <button
             onClick={async () => {
