@@ -22,6 +22,7 @@ import AdminPage from './pages/AdminPage'
 import PaymentPage from './pages/PaymentPage'
 import JoinPage from './pages/JoinPage'
 import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 import FAQPage from './pages/FAQPage'
 import UnsubscribePage from './pages/UnsubscribePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
@@ -60,6 +61,7 @@ function AppRoutes() {
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/guidelines" element={<GuidelinesPage />} />
         <Route path="/unsubscribe" element={<UnsubscribePage />} />
