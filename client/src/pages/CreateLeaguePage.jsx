@@ -192,12 +192,12 @@ export default function CreateLeaguePage() {
                   setSport(opt.value)
                   if (!DAILY_ELIGIBLE_SPORTS.has(opt.value)) setPickFrequency('weekly')
                 }}
-                className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                className={`flex-shrink-0 px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
                   sport === opt.value
-                    ? 'bg-accent text-white'
+                    ? 'bg-accent text-white border-accent'
                     : isFantasyLocked
-                    ? 'bg-bg-card text-text-muted/30 cursor-not-allowed'
-                    : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                    ? 'border-text-primary/10 text-text-muted/30 cursor-not-allowed'
+                    : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
                 }`}
               >
                 {opt.label}
@@ -207,7 +207,8 @@ export default function CreateLeaguePage() {
           </div>
         </div>
 
-        {/* Duration */}
+        {/* Duration (not for fantasy — always full season) */}
+        {format !== 'fantasy' && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
@@ -251,9 +252,10 @@ export default function CreateLeaguePage() {
             </div>
           </div>
         )}
+        </>}
 
-        {/* Max Members */}
-        <div>
+        {/* Max Members (not for fantasy — team count is in settings) */}
+        {format !== 'fantasy' && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">
             Max Members <span className="text-text-muted font-normal">(optional)</span>
           </label>
@@ -265,7 +267,7 @@ export default function CreateLeaguePage() {
             min={2}
             className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
-        </div>
+        </div>}
 
         {/* Format-specific settings */}
         {format === 'pickem' && (
