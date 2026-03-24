@@ -122,14 +122,28 @@ function LeagueConditions({ league }) {
   function buildNarrative() {
     const lives = settings.lives || 1
     const freq = isDaily ? 'day' : 'week'
-    const durationText = DURATION_LABELS[league.duration] || formatDateRange(league.starts_at, league.ends_at) || ''
+    const dateRange = formatDateRange(league.starts_at, league.ends_at)
+
+    function durationSentence(endCondition) {
+      if (league.duration === 'full_season') {
+        return `This league runs through the remainder of the season${endCondition ? ` or ${endCondition}` : ''}.`
+      }
+      if (league.duration === 'playoffs_only') {
+        return `This league runs through the playoffs${endCondition ? ` or ${endCondition}` : ''}.`
+      }
+      if (dateRange) {
+        return `This league runs ${dateRange}${endCondition ? ` or ${endCondition}` : ''}.`
+      }
+      return ''
+    }
 
     if (league.format === 'survivor') {
       const lifeText = lives === 1 ? '1 life' : `${lives} lives`
       const allElimRule = settings.all_eliminated_survive
         ? ` If all remaining players are eliminated on the same ${freq}, everyone survives.`
         : ''
-      return `Pick one winning team each ${freq}. You have ${lifeText} — pick wrong and you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. Duration: ${durationText}.`
+      const duration = durationSentence('until there is one last survivor')
+      return `Pick one winning team each ${freq}. You have ${lifeText} — pick wrong and you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
     }
 
     if (league.format === 'pickem') {
@@ -137,11 +151,13 @@ function LeagueConditions({ league }) {
         ? `Pick up to ${settings.games_per_week} games per ${freq}.`
         : `Pick as many games as you want each ${freq}.`
       const oddsText = settings.lock_odds_at === 'submission' ? ' Odds are locked at the time of submission.' : ''
-      return `${gamesText}${oddsText} The player with the most points at the end wins and earns bonus points on the global leaderboard. Duration: ${durationText}.`
+      const duration = durationSentence(null)
+      return `${gamesText}${oddsText} The player with the most points at the end wins and earns bonus points on the global leaderboard. ${duration}`
     }
 
     if (league.format === 'squares') {
-      return `Squares are assigned randomly. Payouts are awarded at the end of each quarter based on the last digit of each team's score. Duration: ${durationText}.`
+      const duration = durationSentence(null)
+      return `Squares are assigned randomly. Payouts are awarded at the end of each quarter based on the last digit of each team's score. ${duration}`
     }
 
     return null
