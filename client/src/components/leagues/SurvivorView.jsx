@@ -113,13 +113,6 @@ export default function SurvivorView({ league }) {
         </div>
       </div>
 
-      {/* Winner badge */}
-      {isWinner && board.survivor_winner && (
-        <div className="bg-bg-card rounded-xl border border-correct/30 px-4 py-3 mb-4 flex items-center gap-2">
-          <span className="text-lg">{'\uD83D\uDC51'}</span>
-          <span className="text-sm text-correct font-semibold">You won this league! +{board.survivor_winner.points} pts</span>
-        </div>
-      )}
 
       {/* No active period */}
       {!pickWeek && (
