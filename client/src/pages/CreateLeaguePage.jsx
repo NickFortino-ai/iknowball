@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateLeague, useBracketTemplatesActive } from '../hooks/useLeagues'
 import { useGames } from '../hooks/useGames'
@@ -64,6 +64,11 @@ export default function CreateLeaguePage() {
   const [pointsPerQuarter, setPointsPerQuarter] = useState([25, 25, 25, 50])
   const [rowTeamName, setRowTeamName] = useState('')
   const [colTeamName, setColTeamName] = useState('')
+
+  // Auto-select NFL for fantasy format
+  useEffect(() => {
+    if (format === 'fantasy') setSport('americanfootball_nfl')
+  }, [format])
 
   // Fantasy settings
   const [scoringFormat, setScoringFormat] = useState('half_ppr')
@@ -158,10 +163,7 @@ export default function CreateLeaguePage() {
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => {
-                  setFormat(opt.value)
-                  if (opt.value === 'fantasy') setSport('americanfootball_nfl')
-                }}
+                onClick={() => setFormat(opt.value)}
                 className={`w-full text-left p-4 rounded-xl border transition-colors ${
                   format === opt.value
                     ? 'border-accent bg-accent/10'
