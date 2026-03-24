@@ -9,6 +9,7 @@ import SurvivorView from '../components/leagues/SurvivorView'
 import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
 import LeagueThread from '../components/leagues/LeagueThread'
+import FantasyDraftRoom from '../components/leagues/FantasyDraftRoom'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -856,6 +857,18 @@ export default function LeagueDetailPage() {
           threadUnread={threadUnread?.unread}
           onTabSelect={setActiveTab}
         />
+      )}
+
+      {tabs[activeTab] === 'Draft' && league.format === 'fantasy' && (
+        <FantasyDraftRoom league={league} />
+      )}
+
+      {tabs[activeTab] === 'My Team' && league.format === 'fantasy' && (
+        <div className="text-center py-8 text-text-muted text-sm">Roster management coming soon</div>
+      )}
+
+      {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (
+        <div className="text-center py-8 text-text-muted text-sm">Weekly matchups coming soon</div>
       )}
 
       {tabs[activeTab] === 'Thread' && (

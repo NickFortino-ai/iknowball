@@ -467,3 +467,93 @@ export function useMarkThreadRead() {
     },
   })
 }
+
+// ── Fantasy Football ──
+
+export function useFantasySettings(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'settings'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/settings`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useDraftBoard(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'draft'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/draft`),
+    enabled: !!leagueId,
+    refetchInterval: 5000, // Poll during draft
+  })
+}
+
+export function useFantasyRoster(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'roster'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/roster`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useAvailablePlayers(leagueId, query, position) {
+  const params = new URLSearchParams()
+  if (query) params.set('q', query)
+  if (position) params.set('position', position)
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'players', query, position],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/players?${params}`),
+    enabled: !!leagueId,
+    staleTime: 10_000,
+  })
+}
+
+export function useInitDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/fantasy/draft/init`),
+    onSuccess: (_data, leagueId) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}
+
+export function useStartDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/fantasy/draft/start`),
+    onSuccess: (_data, leagueId) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}
+
+export function useMakeDraftPick() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, playerId }) => api.post(`/leagues/${leagueId}/fantasy/draft/pick`, { playerId }),
+    onSuccess: (_data, { leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}
+
+export function useRealtimeDraft(leagueId) {
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!leagueId) return
+    const channel = supabase
+      .channel(`fantasy-draft-${leagueId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'fantasy_draft_picks',
+        filter: `league_id=eq.${leagueId}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'draft'] })
+        queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'players'] })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [leagueId, queryClient])
+}
