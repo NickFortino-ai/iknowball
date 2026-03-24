@@ -158,7 +158,10 @@ export default function CreateLeaguePage() {
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setFormat(opt.value)}
+                onClick={() => {
+                  setFormat(opt.value)
+                  if (opt.value === 'fantasy') setSport('americanfootball_nfl')
+                }
                 className={`w-full text-left p-4 rounded-xl border transition-colors ${
                   format === opt.value
                     ? 'border-accent bg-accent/10'
@@ -176,10 +179,13 @@ export default function CreateLeaguePage() {
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
-            {SPORT_OPTIONS.map((opt) => (
+            {SPORT_OPTIONS.map((opt) => {
+              const isFantasyLocked = format === 'fantasy' && opt.value !== 'americanfootball_nfl'
+              return (
               <button
                 key={opt.value}
                 type="button"
+                disabled={isFantasyLocked}
                 onClick={() => {
                   setSport(opt.value)
                   if (!DAILY_ELIGIBLE_SPORTS.has(opt.value)) setPickFrequency('weekly')
@@ -187,11 +193,15 @@ export default function CreateLeaguePage() {
                 className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                   sport === opt.value
                     ? 'bg-accent text-white'
+                    : isFantasyLocked
+                    ? 'bg-bg-card text-text-muted/30 cursor-not-allowed'
                     : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
                 }`}
               >
                 {opt.label}
               </button>
+              )
+            }
             ))}
           </div>
         </div>
