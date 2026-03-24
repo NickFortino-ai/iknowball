@@ -188,6 +188,17 @@ export default function AdminPage() {
     return { dateStr, label, props: dayProps }
   })
 
+  // Build previous 7 days
+  const previousDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (i + 1))
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const label = i === 0 ? 'Yesterday' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
+    const dayProps = (featuredProps || []).filter((p) => p.featured_date === dateStr)
+    return { dateStr, label, props: dayProps }
+  })
+  const [showPrevious, setShowPrevious] = useState(false)
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-4">Admin Panel</h1>
@@ -547,6 +558,73 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
+        <button
+          onClick={() => setShowPrevious(!showPrevious)}
+          className="text-xs text-accent hover:text-accent-hover mt-2"
+        >
+          {showPrevious ? 'Hide previous props' : 'See previous props'}
+        </button>
+        {showPrevious && (
+          <div className="space-y-1 mt-2">
+            {previousDays.map(({ dateStr, label, props: dayProps }) => (
+              <div key={dateStr} className={`p-2.5 rounded-lg ${
+                dayProps.length ? 'bg-bg-secondary/50 border border-border' : 'bg-bg-secondary/30'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-20 shrink-0 text-xs font-semibold text-text-secondary">{label}</div>
+                  {!dayProps.length && <span className="text-xs text-text-muted">—</span>}
+                </div>
+                {dayProps.map((prop) => {
+                  const nameParts = prop.player_name?.split(' ') || []
+                  const shortName = nameParts.length >= 2
+                    ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
+                    : prop.player_name
+                  return (
+                    <div key={prop.id} className="flex items-center gap-2 mt-1 first:mt-0 ml-20 sm:ml-20">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {shortName} — {prop.market_label} ({prop.line})
+                        </div>
+                        <div className="text-xs text-text-muted truncate">
+                          {prop.games?.away_team} @ {prop.games?.home_team}
+                        </div>
+                      </div>
+                      {(prop.status === 'published' || prop.status === 'locked') && (
+                        <div className="flex gap-1">
+                          {['over', 'under', 'push'].map((outcome) => (
+                            <button
+                              key={outcome}
+                              onClick={() => handleSettle(prop.id, outcome)}
+                              disabled={settleProps.isPending}
+                              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors disabled:opacity-50 ${
+                                outcome === 'over'
+                                  ? 'bg-correct/20 text-correct hover:bg-correct/30'
+                                  : outcome === 'under'
+                                    ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
+                                    : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
+                              }`}
+                            >
+                              {outcome.charAt(0).toUpperCase() + outcome.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {prop.outcome && (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                          prop.outcome === 'over' ? 'bg-correct/20 text-correct'
+                            : prop.outcome === 'under' ? 'bg-incorrect/20 text-incorrect'
+                            : 'bg-text-muted/20 text-text-muted'
+                        }`}>
+                          {prop.outcome.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Props Manager */}
