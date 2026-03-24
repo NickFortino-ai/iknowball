@@ -157,7 +157,7 @@ function LeagueConditions({ league }) {
 
     if (league.format === 'squares') {
       const duration = durationSentence(null)
-      return `Squares are assigned randomly. Payouts are awarded at the end of each quarter based on the last digit of each team's score. ${duration}`
+      return `Select your squares on the board. Payouts are awarded at the end of each quarter based on the last digit of each team's score. ${duration}`
     }
 
     return null
