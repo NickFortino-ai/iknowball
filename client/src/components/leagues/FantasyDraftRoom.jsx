@@ -303,44 +303,83 @@ export default function FantasyDraftRoom({ league }) {
   )
 }
 
+const POS_COLORS = {
+  QB: 'bg-red-500/20 border-red-500/40 text-red-300',
+  RB: 'bg-green-500/20 border-green-500/40 text-green-300',
+  WR: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300',
+  TE: 'bg-blue-500/20 border-blue-500/40 text-blue-300',
+  K: 'bg-gray-500/20 border-gray-500/40 text-gray-300',
+  DEF: 'bg-purple-500/20 border-purple-500/40 text-purple-300',
+}
+
 function DraftBoard({ picks, settings, profileId }) {
   const numTeams = settings?.num_teams || 10
+  const draftOrder = settings?.draft_order || []
   const totalRounds = Math.ceil(picks.length / numTeams)
 
-  // Group picks by user
-  const userPicks = {}
+  // Build grid: rows = rounds, columns = draft order position
+  const grid = []
+  for (let r = 0; r < totalRounds; r++) {
+    const row = []
+    const isReverse = r % 2 === 1 // snake
+    for (let c = 0; c < numTeams; c++) {
+      const colIdx = isReverse ? numTeams - 1 - c : c
+      const pickNum = r * numTeams + colIdx + 1
+      const pick = picks.find((p) => p.pick_number === pickNum)
+      row.push(pick || null)
+    }
+    grid.push(row)
+  }
+
+  // Map user IDs to display names
+  const userNames = {}
   for (const pick of picks) {
-    if (!userPicks[pick.user_id]) userPicks[pick.user_id] = { user: pick.users, picks: [] }
-    userPicks[pick.user_id].picks.push(pick)
+    if (pick.users) userNames[pick.user_id] = pick.users.display_name || pick.users.username
   }
 
   return (
     <div className="overflow-x-auto">
-      <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Draft Results</div>
-      <div className="space-y-2">
-        {Object.values(userPicks).map((team) => (
-          <div
-            key={team.user?.id}
-            className={`rounded-lg border p-3 ${team.user?.id === profileId ? 'border-accent/30 bg-accent/5' : 'border-border'}`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Avatar user={team.user} size="xs" />
-              <span className="text-sm font-semibold text-text-primary">{team.user?.display_name || team.user?.username}</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {team.picks.map((pick) => (
-                <div key={pick.id} className="flex items-center gap-1.5 bg-bg-secondary rounded px-2 py-1">
-                  {pick.nfl_players?.headshot_url && (
-                    <img src={pick.nfl_players.headshot_url} alt="" className="w-5 h-5 rounded-full object-cover" onError={(e) => { e.target.style.display = 'none' }} />
-                  )}
-                  <span className="text-xs text-text-primary">{pick.nfl_players?.full_name}</span>
-                  <span className="text-xs text-text-muted">{pick.nfl_players?.position}</span>
+      <table className="text-xs border-collapse min-w-full">
+        <thead>
+          <tr>
+            <th className="px-1 py-2 text-text-muted font-semibold text-center w-8 border border-border">Rd.</th>
+            {draftOrder.map((userId, i) => (
+              <th key={userId} className={`px-2 py-2 font-semibold text-center border border-border whitespace-nowrap ${userId === profileId ? 'text-accent' : 'text-text-secondary'}`}>
+                <div className="text-text-muted text-[10px]">{i + 1}</div>
+                {userNames[userId] || 'Team'}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grid.map((row, roundIdx) => (
+            <tr key={roundIdx}>
+              <td className="px-1 py-1 text-center text-text-muted font-semibold border border-border">
+                <div className="flex items-center gap-0.5 justify-center">
+                  {roundIdx + 1}
+                  <span className="text-[8px]">{roundIdx % 2 === 0 ? '→' : '←'}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+              </td>
+              {row.map((pick, colIdx) => {
+                const pos = pick?.nfl_players?.position
+                const colorClass = pos ? POS_COLORS[pos] || '' : ''
+                return (
+                  <td key={colIdx} className={`px-1.5 py-1.5 border border-border ${pick ? colorClass : ''}`}>
+                    {pick?.nfl_players ? (
+                      <div className="min-w-[80px]">
+                        <div className="font-semibold truncate">{pick.nfl_players.full_name}</div>
+                        <div className="text-[10px] opacity-70">{pos} ({pick.nfl_players.team})</div>
+                      </div>
+                    ) : (
+                      <div className="min-w-[80px] text-text-muted text-center">—</div>
+                    )}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
