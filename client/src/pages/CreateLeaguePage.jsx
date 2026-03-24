@@ -151,7 +151,7 @@ export default function CreateLeaguePage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="My Awesome League"
             maxLength={50}
-            className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            className="w-full bg-transparent border border-text-primary/20 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
 
