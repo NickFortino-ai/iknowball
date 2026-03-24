@@ -118,8 +118,39 @@ function LeagueConditions({ league }) {
   const autoConnect = league.my_auto_connect ?? true
   const isBracket = league.format === 'bracket'
 
+  // Build narrative description
+  function buildNarrative() {
+    const lives = settings.lives || 1
+    const freq = isDaily ? 'day' : 'week'
+    const durationText = DURATION_LABELS[league.duration] || formatDateRange(league.starts_at, league.ends_at) || ''
+
+    if (league.format === 'survivor') {
+      const lifeText = lives === 1 ? '1 life' : `${lives} lives`
+      const allElimRule = settings.all_eliminated_survive
+        ? ` If all remaining players are eliminated on the same ${freq}, everyone survives.`
+        : ''
+      return `Pick one winning team each ${freq}. You have ${lifeText} — pick wrong and you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. Duration: ${durationText}.`
+    }
+
+    if (league.format === 'pickem') {
+      const gamesText = settings.games_per_week
+        ? `Pick up to ${settings.games_per_week} games per ${freq}.`
+        : `Pick as many games as you want each ${freq}.`
+      const oddsText = settings.lock_odds_at === 'submission' ? ' Odds are locked at the time of submission.' : ''
+      return `${gamesText}${oddsText} The player with the most points at the end wins and earns bonus points on the global leaderboard. Duration: ${durationText}.`
+    }
+
+    if (league.format === 'squares') {
+      return `Squares are assigned randomly. Payouts are awarded at the end of each quarter based on the last digit of each team's score. Duration: ${durationText}.`
+    }
+
+    return null
+  }
+
+  const narrative = buildNarrative()
+
   return (
-    <div className={isBracket ? 'mb-4' : 'bg-bg-card rounded-xl border border-border p-4 mb-6'}>
+    <div className={isBracket ? 'mb-4' : 'rounded-xl border border-text-primary/20 p-4 mb-6'}>
       {isBracket ? (
         <div className="flex items-center gap-3 text-xs text-text-muted">
           {items.map((item, i) => (
@@ -129,6 +160,8 @@ function LeagueConditions({ league }) {
             </span>
           ))}
         </div>
+      ) : narrative ? (
+        <p className="text-sm text-text-primary leading-relaxed">{narrative}</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {items.map((item) => (
@@ -138,13 +171,6 @@ function LeagueConditions({ league }) {
             </div>
           ))}
         </div>
-      )}
-      {league.format === 'pickem' && (
-        <p className="text-xs text-text-muted mt-2">
-          {settings.games_per_week
-            ? `Pick up to ${settings.games_per_week} games per ${isDaily ? 'day' : 'week'}`
-            : `Pick as many games as you want each ${isDaily ? 'day' : 'week'}`}
-        </p>
       )}
       {league.status !== 'completed' && !league.all_members_connected && (
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
