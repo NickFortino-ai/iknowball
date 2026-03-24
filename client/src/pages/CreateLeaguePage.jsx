@@ -203,8 +203,7 @@ export default function CreateLeaguePage() {
                 {opt.label}
               </button>
               )
-            }
-            ))}
+            })}
           </div>
         </div>
 
