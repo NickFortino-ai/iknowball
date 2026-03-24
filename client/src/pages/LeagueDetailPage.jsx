@@ -10,6 +10,7 @@ import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
 import LeagueThread from '../components/leagues/LeagueThread'
 import FantasyDraftRoom from '../components/leagues/FantasyDraftRoom'
+import FantasyMyTeam from '../components/leagues/FantasyMyTeam'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -868,7 +869,7 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'My Team' && league.format === 'fantasy' && (
-        <div className="text-center py-8 text-text-muted text-sm">Roster management coming soon</div>
+        <FantasyMyTeam league={league} />
       )}
 
       {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (
