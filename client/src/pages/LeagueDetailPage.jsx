@@ -113,8 +113,6 @@ function LeagueConditions({ league }) {
     items.push({ label: 'Odds', value: 'Locked at submission' })
   }
 
-  if (items.length === 0) return null
-
   const autoConnect = league.my_auto_connect ?? true
   const isBracket = league.format === 'bracket'
 
@@ -164,6 +162,8 @@ function LeagueConditions({ league }) {
   }
 
   const narrative = buildNarrative()
+
+  if (!narrative && items.length === 0) return null
 
   return (
     <div className={isBracket ? 'mb-4' : 'rounded-xl border border-text-primary/20 p-4 mb-6'}>
