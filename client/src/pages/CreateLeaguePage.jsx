@@ -364,7 +364,7 @@ export default function CreateLeaguePage() {
             <div>
               <label className="text-xs text-text-muted block mb-1">Number of Teams</label>
               <div className="flex gap-2">
-                {[6, 8, 10, 12, 14].map((n) => (
+                {[6, 8, 10, 12, 14, 16, 20].map((n) => (
                   <button
                     key={n}
                     type="button"
@@ -443,7 +443,7 @@ export default function CreateLeaguePage() {
             <div>
               <label className="text-xs text-text-muted block mb-1">Playoff Teams</label>
               <div className="flex gap-2">
-                {[4, 6].map((n) => (
+                {[4, 6, 8].map((n) => (
                   <button
                     key={n}
                     type="button"
