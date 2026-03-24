@@ -87,9 +87,9 @@ router.get('/preview/:code', async (req, res) => {
 
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
-  format: z.enum(['pickem', 'survivor', 'squares', 'bracket']),
+  format: z.enum(['pickem', 'survivor', 'squares', 'bracket', 'fantasy']),
   sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'basketball_wncaab', 'icehockey_nhl', 'soccer_usa_mls', 'all']),
-  duration: z.enum(['this_week', 'custom_range', 'full_season', 'playoffs_only']),
+  duration: z.enum(['this_week', 'custom_range', 'full_season', 'playoffs_only']).optional(),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
   max_members: z.number().int().min(2).optional(),
@@ -108,6 +108,14 @@ const createLeagueSchema = z.object({
     col_team_name: z.string().min(1).max(50).optional(),
     template_id: z.string().uuid().optional(),
     locks_at: z.string().optional(),
+  }).optional(),
+  fantasy_settings: z.object({
+    scoring_format: z.enum(['ppr', 'half_ppr', 'standard']).optional(),
+    num_teams: z.number().int().min(2).max(20).optional(),
+    draft_pick_timer: z.number().int().optional(),
+    waiver_type: z.enum(['priority', 'rolling']).optional(),
+    trade_review: z.enum(['commissioner', 'league_vote', 'none']).optional(),
+    playoff_teams: z.number().int().optional(),
   }).optional(),
 })
 
