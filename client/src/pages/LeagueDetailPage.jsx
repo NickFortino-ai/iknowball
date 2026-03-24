@@ -165,6 +165,17 @@ function LeagueConditions({ league }) {
 
   if (!narrative && items.length === 0) return null
 
+  const storageKey = `league-conditions-collapsed-${league.id}`
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(storageKey) === '1' } catch { return false }
+  })
+
+  function toggleCollapsed() {
+    const next = !collapsed
+    setCollapsed(next)
+    try { localStorage.setItem(storageKey, next ? '1' : '0') } catch {}
+  }
+
   return (
     <div className={isBracket ? 'mb-4' : 'rounded-xl border border-text-primary/20 p-4 mb-6'}>
       {isBracket ? (
@@ -176,16 +187,17 @@ function LeagueConditions({ league }) {
             </span>
           ))}
         </div>
-      ) : narrative ? (
-        <p className="text-sm text-text-primary leading-relaxed">{narrative}</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {items.map((item) => (
-            <div key={item.label}>
-              <div className="text-[10px] text-text-muted uppercase tracking-wider">{item.label}</div>
-              <div className="text-sm font-semibold text-text-primary mt-0.5">{item.value}</div>
-            </div>
-          ))}
+        <div>
+          <button onClick={toggleCollapsed} className="flex items-center justify-between w-full">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">How this league works</span>
+            <svg className={`w-4 h-4 text-text-muted transition-transform ${collapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {!collapsed && narrative && (
+            <p className="text-sm text-text-primary leading-relaxed mt-3">{narrative}</p>
+          )}
         </div>
       )}
       {league.status !== 'completed' && !league.all_members_connected && (
