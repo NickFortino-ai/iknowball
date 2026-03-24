@@ -168,6 +168,7 @@ function LeagueConditions({ league }) {
 
   const storageKey = `league-conditions-collapsed-${league.id}`
   const [collapsed, setCollapsed] = useState(() => {
+    if (league.status === 'completed') return true
     try { return localStorage.getItem(storageKey) === '1' } catch { return false }
   })
 
