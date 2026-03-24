@@ -673,8 +673,8 @@ export default function LeagueDetailPage() {
 
       {/* Commissioner's Note */}
       {editingNote ? (
-        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
-          <div className="text-xs font-semibold text-text-muted mb-2">Commissioner's Note</div>
+        <div className="rounded-xl border border-text-primary/20 p-4 mb-6">
+          <div className="text-xs font-semibold text-text-secondary mb-2">Commissioner's Note</div>
           <textarea
             ref={noteRef}
             value={noteText}
@@ -715,9 +715,9 @@ export default function LeagueDetailPage() {
           </div>
         </div>
       ) : league.commissioner_note ? (
-        <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+        <div className="rounded-xl border border-text-primary/20 p-4 mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-text-muted">Commissioner's Note</span>
+            <span className="text-xs font-semibold text-text-secondary">Commissioner's Note</span>
             {isCommissioner && (
               <button
                 onClick={() => { setNoteText(league.commissioner_note); setEditingNote(true) }}
