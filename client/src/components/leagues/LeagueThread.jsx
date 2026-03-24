@@ -212,7 +212,7 @@ export default function LeagueThread({ league }) {
                       <span className="text-xs text-text-muted">{formatTime(msg.created_at)}</span>
                     </div>
                   )}
-                  <div className="text-sm text-text-secondary leading-relaxed">
+                  <div className="text-sm text-text-primary leading-relaxed">
                     {renderContent(msg.content, msg.tagged_users)}
                   </div>
                 </div>
