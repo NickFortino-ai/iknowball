@@ -133,7 +133,7 @@ export default function CreateLeaguePage() {
     }
   }
 
-  const canSubmit = name && format && sport && duration
+  const canSubmit = name && format && sport && (format === 'fantasy' || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
 
