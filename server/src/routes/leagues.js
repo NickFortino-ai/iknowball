@@ -605,4 +605,84 @@ router.get('/:id/thread/unread', requireAuth, async (req, res) => {
   res.json({ unread })
 })
 
+// ============================================
+// Fantasy Football
+// ============================================
+
+import {
+  createFantasySettings,
+  getFantasySettings,
+  updateFantasySettings,
+  initializeDraft,
+  startDraft,
+  makeDraftPick,
+  getDraftBoard,
+  getRoster,
+  searchAvailablePlayers,
+  generateMatchups,
+} from '../services/fantasyService.js'
+
+// Get fantasy settings
+router.get('/:id/fantasy/settings', requireAuth, async (req, res) => {
+  const data = await getFantasySettings(req.params.id)
+  res.json(data)
+})
+
+// Update fantasy settings (commissioner, pre-draft)
+router.patch('/:id/fantasy/settings', requireAuth, async (req, res) => {
+  const data = await updateFantasySettings(req.params.id, req.body)
+  res.json(data)
+})
+
+// Initialize draft (randomize order, create pick slots)
+router.post('/:id/fantasy/draft/init', requireAuth, async (req, res) => {
+  const result = await initializeDraft(req.params.id)
+  res.json(result)
+})
+
+// Start the draft
+router.post('/:id/fantasy/draft/start', requireAuth, async (req, res) => {
+  const result = await startDraft(req.params.id)
+  res.json(result)
+})
+
+// Make a draft pick
+router.post('/:id/fantasy/draft/pick', requireAuth, async (req, res) => {
+  const { playerId } = req.body
+  if (!playerId) return res.status(400).json({ error: 'playerId is required' })
+  const result = await makeDraftPick(req.params.id, req.user.id, playerId)
+  res.json(result)
+})
+
+// Get draft board
+router.get('/:id/fantasy/draft', requireAuth, async (req, res) => {
+  const data = await getDraftBoard(req.params.id)
+  res.json(data)
+})
+
+// Get user's roster
+router.get('/:id/fantasy/roster', requireAuth, async (req, res) => {
+  const data = await getRoster(req.params.id, req.user.id)
+  res.json(data)
+})
+
+// Get another user's roster
+router.get('/:id/fantasy/roster/:userId', requireAuth, async (req, res) => {
+  const data = await getRoster(req.params.id, req.params.userId)
+  res.json(data)
+})
+
+// Search available players
+router.get('/:id/fantasy/players', requireAuth, async (req, res) => {
+  const { q, position } = req.query
+  const data = await searchAvailablePlayers(req.params.id, q, position)
+  res.json(data)
+})
+
+// Generate matchups (commissioner, after draft)
+router.post('/:id/fantasy/matchups/generate', requireAuth, async (req, res) => {
+  const result = await generateMatchups(req.params.id)
+  res.json(result)
+})
+
 export default router

@@ -25,6 +25,7 @@ function getLeagueTabs(league, isBracketLocked) {
     pickem: ['Standings', 'Members', 'Thread'],
     survivor: ['Board', 'Members', 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
+    fantasy: ['My Team', 'Matchups', 'Standings', 'Draft', 'Members', 'Thread'],
   }
   return TABS[league.format] || ['Members', 'Thread']
 }
@@ -34,6 +35,7 @@ const FORMAT_LABELS = {
   survivor: 'Survivor',
   squares: 'Squares',
   bracket: 'Bracket',
+  fantasy: 'Fantasy Football',
 }
 
 const SPORT_LABELS = {

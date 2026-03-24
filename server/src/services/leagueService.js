@@ -125,6 +125,12 @@ export async function createLeague(userId, data) {
     await createTournament(league.id, league.settings.template_id, league.settings.locks_at)
   }
 
+  // Create fantasy settings if format is fantasy
+  if (league.format === 'fantasy') {
+    const { createFantasySettings } = await import('./fantasyService.js')
+    await createFantasySettings(league.id, data.fantasy_settings || {})
+  }
+
   return league
 }
 

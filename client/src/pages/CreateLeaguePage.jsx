@@ -5,6 +5,7 @@ import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 
 const FORMAT_OPTIONS = [
+  { value: 'fantasy', label: 'Fantasy Football', description: 'Draft players, set lineups, and compete head-to-head each week' },
   { value: 'pickem', label: "Pick'em", description: 'Pick winners against the spread with odds-based scoring' },
   { value: 'survivor', label: 'Survivor', description: 'Pick one team per week — lose and you are eliminated' },
   { value: 'bracket', label: 'Bracket', description: 'Fill out a tournament bracket with escalating points per round' },
@@ -64,6 +65,14 @@ export default function CreateLeaguePage() {
   const [rowTeamName, setRowTeamName] = useState('')
   const [colTeamName, setColTeamName] = useState('')
 
+  // Fantasy settings
+  const [scoringFormat, setScoringFormat] = useState('half_ppr')
+  const [numTeams, setNumTeams] = useState(10)
+  const [draftPickTimer, setDraftPickTimer] = useState(90)
+  const [waiverType, setWaiverType] = useState('priority')
+  const [tradeReview, setTradeReview] = useState('commissioner')
+  const [playoffTeams, setPlayoffTeams] = useState(4)
+
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -90,16 +99,27 @@ export default function CreateLeaguePage() {
       settings.locks_at = locksAt ? new Date(locksAt).toISOString() : undefined
     }
 
+    // Fantasy settings passed separately
+    const fantasySettings = format === 'fantasy' ? {
+      scoring_format: scoringFormat,
+      num_teams: numTeams,
+      draft_pick_timer: draftPickTimer,
+      waiver_type: waiverType,
+      trade_review: tradeReview,
+      playoff_teams: playoffTeams,
+    } : undefined
+
     try {
       const league = await createLeague.mutateAsync({
         name,
         format,
-        sport,
-        duration,
-        max_members: maxMembers ? parseInt(maxMembers, 10) : undefined,
+        sport: format === 'fantasy' ? 'americanfootball_nfl' : sport,
+        duration: format === 'fantasy' ? 'full_season' : duration,
+        max_members: format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: startsAt || undefined,
         ends_at: endsAt || undefined,
         settings,
+        fantasy_settings: fantasySettings,
       })
       toast('League created!', 'success')
       navigate(`/leagues/${league.id}?invite=1`)
@@ -301,6 +321,129 @@ export default function CreateLeaguePage() {
                 {lockOddsAt === 'submission'
                   ? 'Standings use odds from when each pick was submitted'
                   : 'Standings use odds from when the game starts (default)'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {format === 'fantasy' && (
+          <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-secondary mb-1">Fantasy Settings</h3>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Scoring Format</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'half_ppr', label: 'Half PPR' },
+                  { value: 'ppr', label: 'PPR' },
+                  { value: 'standard', label: 'Standard' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setScoringFormat(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      scoringFormat === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Number of Teams</label>
+              <div className="flex gap-2">
+                {[6, 8, 10, 12, 14].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNumTeams(n)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      numTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Draft Pick Timer</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 60, label: '60s' },
+                  { value: 90, label: '90s' },
+                  { value: 120, label: '2min' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setDraftPickTimer(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      draftPickTimer === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Waiver System</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'priority', label: 'Priority' },
+                  { value: 'faab', label: 'FAAB ($100)' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setWaiverType(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      waiverType === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Trade Review</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'commissioner', label: 'Commissioner' },
+                  { value: 'league_vote', label: 'League Vote' },
+                  { value: 'none', label: 'None' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setTradeReview(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      tradeReview === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Playoff Teams</label>
+              <div className="flex gap-2">
+                {[4, 6].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPlayoffTeams(n)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      playoffTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    Top {n}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
