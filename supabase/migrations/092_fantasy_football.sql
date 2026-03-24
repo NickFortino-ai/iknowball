@@ -114,8 +114,7 @@ CREATE TABLE fantasy_settings (
   draft_pick_timer INTEGER DEFAULT 90, -- seconds per pick
   draft_order TEXT[], -- array of user_ids in draft order
   draft_status TEXT DEFAULT 'pending' CHECK (draft_status IN ('pending', 'in_progress', 'completed')),
-  waiver_type TEXT DEFAULT 'priority' CHECK (waiver_type IN ('priority', 'faab')),
-  faab_budget INTEGER DEFAULT 100,
+  waiver_type TEXT DEFAULT 'priority' CHECK (waiver_type IN ('priority', 'rolling')),
   trade_deadline DATE,
   trade_review TEXT DEFAULT 'commissioner' CHECK (trade_review IN ('commissioner', 'league_vote', 'none')),
   playoff_teams INTEGER DEFAULT 4,

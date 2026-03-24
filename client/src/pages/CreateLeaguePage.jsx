@@ -403,7 +403,7 @@ export default function CreateLeaguePage() {
               <div className="flex gap-2">
                 {[
                   { value: 'priority', label: 'Priority' },
-                  { value: 'faab', label: 'FAAB ($100)' },
+                  { value: 'rolling', label: 'Rolling' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
