@@ -157,6 +157,10 @@ function LeagueConditions({ league }) {
       return `${gamesText}${oddsText} The player with the most points at the end wins and earns bonus points on the global leaderboard. ${duration}`
     }
 
+    if (league.format === 'fantasy') {
+      return `Draft your team, set your lineup each week, and compete head-to-head. Top finishers earn bonus points on the global leaderboard.`
+    }
+
     if (league.format === 'squares') {
       const duration = durationSentence(null)
       return `Select your squares on the board. Payouts are awarded at the end of each quarter based on the last digit of each team's score. ${duration}`
