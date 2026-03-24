@@ -141,7 +141,7 @@ function LeagueConditions({ league }) {
         ? ` If all remaining players are eliminated on the same ${freq}, everyone survives.`
         : ''
       const duration = durationSentence('until there is one last survivor')
-      return `Pick one winning team each ${freq}. You have ${lifeText} — pick wrong and you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
+      return `Pick one winning team each ${freq}. You can only pick each team once unless you've used them all. You have ${lifeText} — pick wrong and you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
     }
 
     if (league.format === 'pickem') {
