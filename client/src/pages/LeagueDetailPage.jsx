@@ -11,6 +11,7 @@ import BracketView from '../components/leagues/BracketView'
 import LeagueThread from '../components/leagues/LeagueThread'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import Avatar from '../components/ui/Avatar'
 import { toast } from '../components/ui/Toast'
 
 function getLeagueTabs(league, isBracketLocked) {
@@ -562,6 +563,35 @@ export default function LeagueDetailPage() {
         </div>
         </div>
       </div>
+
+      {/* Champion Card */}
+      {league.champion && (
+        <div className="mb-6 rounded-xl border-2 border-yellow-500 p-5 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
+          <div className="relative">
+            <div className="text-3xl mb-2">{'\uD83C\uDFC6'}</div>
+            {league.champion.user.avatar_url ? (
+              <img
+                src={league.champion.user.avatar_url}
+                alt={league.champion.user.display_name}
+                className="w-20 h-20 rounded-full object-cover mx-auto mb-3 ring-2 ring-yellow-500"
+              />
+            ) : (
+              <Avatar user={league.champion.user} size="2xl" className="mx-auto mb-3" />
+            )}
+            <div className="font-display text-xl text-yellow-400">
+              {league.champion.user.display_name || league.champion.user.username}
+            </div>
+            <div className="text-sm text-text-secondary">won this league!</div>
+            <div className="text-sm text-yellow-400 font-semibold mt-2">
+              +{league.champion.points} pts earned
+            </div>
+            {league.champion.label && (
+              <div className="text-xs text-text-muted mt-1">{league.champion.label}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Invite Actions */}
       {league.format === 'bracket' && !isBracketLocked ? (

@@ -15,9 +15,10 @@ export default function LeaguesPage() {
 
   const { active, completed } = useMemo(() => {
     if (!leagues) return { active: [], completed: [] }
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
     return {
-      active: leagues.filter((l) => l.status !== 'completed'),
-      completed: leagues.filter((l) => l.status === 'completed'),
+      active: leagues.filter((l) => l.status !== 'completed' || (l.updated_at && new Date(l.updated_at).getTime() > oneDayAgo)),
+      completed: leagues.filter((l) => l.status === 'completed' && (!l.updated_at || new Date(l.updated_at).getTime() <= oneDayAgo)),
     }
   }, [leagues])
 

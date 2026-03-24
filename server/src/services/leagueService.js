@@ -497,6 +497,27 @@ export async function getLeagueDetails(leagueId, userId) {
     allConnected = true
   }
 
+  // Get champion data for completed leagues
+  let champion = null
+  if (league.status === 'completed' && league.format !== 'squares') {
+    const { data: winBonus } = await supabase
+      .from('bonus_points')
+      .select('user_id, points, label, users(id, username, display_name, avatar_url, avatar_emoji)')
+      .eq('league_id', leagueId)
+      .eq('type', 'league_win')
+      .order('points', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (winBonus?.users) {
+      champion = {
+        user: winBonus.users,
+        points: winBonus.points,
+        label: winBonus.label,
+      }
+    }
+  }
+
   return {
     ...league,
     my_role: member.role,
@@ -507,6 +528,7 @@ export async function getLeagueDetails(leagueId, userId) {
     current_week: activeWeek || null,
     settings_editable: settingsEditable,
     has_locked_picks: hasLockedPicks,
+    champion,
   }
 }
 
