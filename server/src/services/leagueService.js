@@ -504,7 +504,7 @@ export async function getLeagueDetails(leagueId, userId) {
       .from('bonus_points')
       .select('user_id, points, label, users(id, username, display_name, avatar_url, avatar_emoji)')
       .eq('league_id', leagueId)
-      .eq('type', 'league_win')
+      .in('type', ['league_win', 'survivor_win'])
       .order('points', { ascending: false })
       .limit(1)
       .maybeSingle()
