@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useMyLeagueWins } from '../../hooks/useLeagues'
 
 function getTrophyTier(memberCount) {
@@ -272,12 +272,19 @@ export default function TrophyCase() {
     return [...wins].sort((a, b) => b.member_count - a.member_count)
   }, [wins])
 
+  const [expanded, setExpanded] = useState(true)
+
   if (!sorted.length) return null
 
   return (
     <div className="mt-6 mb-6">
-      <h2 className="font-display text-xl text-center mb-4">Trophy Case</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-center gap-2 mb-4">
+        <h2 className="font-display text-xl">Trophy Case</h2>
+        <svg className={`w-4 h-4 text-text-muted transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {expanded && <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
         {sorted.map((win) => {
           const tier = getTrophyTier(win.member_count)
           return (
@@ -295,7 +302,7 @@ export default function TrophyCase() {
             </div>
           )
         })}
-      </div>
+      </div>}
     </div>
   )
 }
