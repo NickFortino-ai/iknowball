@@ -167,11 +167,11 @@ export default function CreateLeaguePage() {
                 className={`w-full text-left p-4 rounded-xl border transition-colors ${
                   format === opt.value
                     ? 'border-accent bg-accent/10'
-                    : 'border-border bg-bg-card hover:bg-bg-card-hover'
+                    : 'border-text-primary/20 hover:border-text-primary/40'
                 }`}
               >
-                <div className="font-semibold text-sm">{opt.label}</div>
-                <div className="text-xs text-text-muted mt-1">{opt.description}</div>
+                <div className="font-semibold text-sm text-text-primary">{opt.label}</div>
+                <div className="text-xs text-text-secondary mt-1">{opt.description}</div>
               </button>
             ))}
           </div>
@@ -216,10 +216,10 @@ export default function CreateLeaguePage() {
                 key={opt.value}
                 type="button"
                 onClick={() => setDuration(opt.value)}
-                className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                className={`px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors ${
                   duration === opt.value
-                    ? 'bg-accent text-white'
-                    : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                    ? 'bg-accent text-white border-accent'
+                    : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
                 }`}
               >
                 {opt.label}
@@ -269,8 +269,8 @@ export default function CreateLeaguePage() {
 
         {/* Format-specific settings */}
         {format === 'pickem' && (
-          <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
-            <h3 className="font-display text-sm text-text-secondary mb-1">Pick'em Settings</h3>
+          <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-primary mb-1">Pick'em Settings</h3>
             {DAILY_ELIGIBLE_SPORTS.has(sport) && (
               <div>
                 <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
@@ -338,8 +338,8 @@ export default function CreateLeaguePage() {
         )}
 
         {format === 'fantasy' && (
-          <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
-            <h3 className="font-display text-sm text-text-secondary mb-1">Fantasy Settings</h3>
+          <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-primary mb-1">Fantasy Settings</h3>
             <div>
               <label className="text-xs text-text-muted block mb-1">Scoring Format</label>
               <div className="flex gap-2">
@@ -461,8 +461,8 @@ export default function CreateLeaguePage() {
         )}
 
         {format === 'survivor' && (
-          <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
-            <h3 className="font-display text-sm text-text-secondary mb-1">Survivor Settings</h3>
+          <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-primary mb-1">Survivor Settings</h3>
             <div>
               <label className="block text-xs text-text-muted mb-2">Lives</label>
               <div className="flex gap-2">
@@ -525,8 +525,8 @@ export default function CreateLeaguePage() {
         )}
 
         {format === 'squares' && (
-          <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
-            <h3 className="font-display text-sm text-text-secondary mb-1">Squares Settings</h3>
+          <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-primary mb-1">Squares Settings</h3>
             <div>
               <label className="block text-xs text-text-muted mb-2">Game</label>
               {sport === 'all' ? (
@@ -630,8 +630,8 @@ export default function CreateLeaguePage() {
         )}
 
         {format === 'bracket' && (
-          <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
-            <h3 className="font-display text-sm text-text-secondary mb-1">Bracket Settings</h3>
+          <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-primary mb-1">Bracket Settings</h3>
             <div>
               <label className="block text-xs text-text-muted mb-2">Tournament Template</label>
               {bracketTemplates?.length > 0 ? (
