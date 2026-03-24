@@ -161,7 +161,7 @@ export default function CreateLeaguePage() {
                 onClick={() => {
                   setFormat(opt.value)
                   if (opt.value === 'fantasy') setSport('americanfootball_nfl')
-                }
+                }}
                 className={`w-full text-left p-4 rounded-xl border transition-colors ${
                   format === opt.value
                     ? 'border-accent bg-accent/10'
