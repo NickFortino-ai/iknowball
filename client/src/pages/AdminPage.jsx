@@ -483,11 +483,16 @@ export default function AdminPage() {
                 <div className="w-20 shrink-0 text-xs font-semibold text-text-secondary">{label}</div>
                 {!dayProps.length && <span className="text-xs text-text-muted">—</span>}
               </div>
-              {dayProps.map((prop) => (
-                <div key={prop.id} className="flex items-center gap-3 mt-1 first:mt-0 ml-20">
+              {dayProps.map((prop) => {
+                const nameParts = prop.player_name?.split(' ') || []
+                const shortName = nameParts.length >= 2
+                  ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
+                  : prop.player_name
+                return (
+                <div key={prop.id} className="flex items-center gap-2 mt-1 first:mt-0 ml-20 sm:ml-20">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
-                      {prop.player_name} — {prop.market_label} ({prop.line})
+                      {shortName} — {prop.market_label} ({prop.line})
                     </div>
                     <div className="text-xs text-text-muted truncate">
                       {prop.games?.away_team} @ {prop.games?.home_team}
@@ -537,7 +542,8 @@ export default function AdminPage() {
                     </button>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           ))}
         </div>
