@@ -6,6 +6,7 @@ import { toast } from '../components/ui/Toast'
 
 const FORMAT_OPTIONS = [
   { value: 'fantasy', label: 'Fantasy Football', description: 'Draft players, set lineups, and compete head-to-head each week' },
+  { value: 'nba_dfs', label: 'NBA Daily Fantasy', description: 'Build a nightly NBA lineup under a salary cap and compete for the highest score' },
   { value: 'pickem', label: "Pick'em", description: 'Pick winners against the spread with odds-based scoring' },
   { value: 'survivor', label: 'Survivor', description: 'Pick one team per week — lose and you are eliminated' },
   { value: 'bracket', label: 'Bracket', description: 'Fill out a tournament bracket with escalating points per round' },
@@ -114,27 +115,28 @@ export default function CreateLeaguePage() {
     }
 
     // Fantasy settings passed separately
-    const fantasySettings = format === 'fantasy' ? {
-      format: fantasyFormat,
-      scoring_format: fantasyFormat === 'salary_cap' ? 'ppr' : scoringFormat,
+    const isFantasyFormat = format === 'fantasy' || format === 'nba_dfs'
+    const fantasySettings = isFantasyFormat ? {
+      format: format === 'nba_dfs' ? 'salary_cap' : fantasyFormat,
+      scoring_format: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? 'ppr' : scoringFormat,
       num_teams: numTeams,
-      draft_pick_timer: fantasyFormat === 'traditional' ? draftPickTimer : undefined,
-      waiver_type: fantasyFormat === 'traditional' ? waiverType : undefined,
-      trade_review: fantasyFormat === 'traditional' ? tradeReview : undefined,
-      playoff_teams: fantasyFormat === 'traditional' ? playoffTeams : undefined,
-      salary_cap: fantasyFormat === 'salary_cap' ? salaryCap : undefined,
-      season_type: fantasyFormat === 'salary_cap' ? seasonType : undefined,
-      champion_metric: fantasyFormat === 'salary_cap' && seasonType === 'full_season' ? championMetric : undefined,
-      single_week: fantasyFormat === 'salary_cap' && seasonType === 'single_week' ? singleWeek : undefined,
+      draft_pick_timer: format === 'fantasy' && fantasyFormat === 'traditional' ? draftPickTimer : undefined,
+      waiver_type: format === 'fantasy' && fantasyFormat === 'traditional' ? waiverType : undefined,
+      trade_review: format === 'fantasy' && fantasyFormat === 'traditional' ? tradeReview : undefined,
+      playoff_teams: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffTeams : undefined,
+      salary_cap: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
+      season_type: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
+      champion_metric: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'full_season' ? championMetric : undefined,
+      single_week: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'single_week' ? singleWeek : undefined,
     } : undefined
 
     try {
       const league = await createLeague.mutateAsync({
         name,
-        format,
-        sport: format === 'fantasy' ? 'americanfootball_nfl' : sport,
-        duration: format === 'fantasy' ? 'full_season' : duration,
-        max_members: format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
+        format: format === 'nba_dfs' ? 'nba_dfs' : format,
+        sport: format === 'nba_dfs' ? 'basketball_nba' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
+        duration: isFantasyFormat ? 'full_season' : duration,
+        max_members: isFantasyFormat ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: startsAt || undefined,
         ends_at: endsAt || undefined,
         settings,
@@ -149,7 +151,7 @@ export default function CreateLeaguePage() {
     }
   }
 
-  const canSubmit = name && format && sport && (format === 'fantasy' || duration)
+  const canSubmit = name && format && (sport || format === 'nba_dfs') && (format === 'fantasy' || format === 'nba_dfs' || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
 
@@ -193,8 +195,8 @@ export default function CreateLeaguePage() {
           </div>
         </div>
 
-        {/* Sport */}
-        <div>
+        {/* Sport (hidden for NBA DFS — always NBA) */}
+        {format !== 'nba_dfs' && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
@@ -222,10 +224,10 @@ export default function CreateLeaguePage() {
               )
             })}
           </div>
-        </div>
+        </div>}
 
-        {/* Duration (not for fantasy — always full season) */}
-        {format !== 'fantasy' && <>
+        {/* Duration (not for fantasy/nba_dfs — always full season) */}
+        {format !== 'fantasy' && format !== 'nba_dfs' && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
@@ -272,7 +274,7 @@ export default function CreateLeaguePage() {
         </>}
 
         {/* Max Members (not for fantasy — team count is in settings) */}
-        {format !== 'fantasy' && <div>
+        {format !== 'fantasy' && format !== 'nba_dfs' && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">
             Max Members <span className="text-text-muted font-normal">(optional)</span>
           </label>
@@ -297,7 +299,7 @@ export default function CreateLeaguePage() {
                 visibility === 'closed' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
               }`}
             >
-              Closed
+              Invite Only
             </button>
             <button
               type="button"
@@ -633,6 +635,82 @@ export default function CreateLeaguePage() {
               </div>
             </div>
             </>}
+          </div>
+        )}
+
+        {format === 'nba_dfs' && (
+          <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-primary mb-1">NBA Daily Fantasy Settings</h3>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Salary Cap</label>
+              <div className="flex gap-2">
+                {[50000, 60000, 75000].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setSalaryCap(n)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      salaryCap === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    ${n.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Season Type</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'full_season', label: 'Full Season' },
+                  { value: 'single_week', label: 'Single Night' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSeasonType(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      seasonType === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {seasonType === 'full_season' && (
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Champion Determined By</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'total_points', label: 'Most Total Points' },
+                    { value: 'most_wins', label: 'Most Nightly Wins' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setChampionMetric(opt.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        championMetric === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Max Members</label>
+              <input
+                type="number"
+                value={maxMembers}
+                onChange={(e) => setMaxMembers(e.target.value)}
+                placeholder="No limit"
+                min={2}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+            </div>
           </div>
         )}
 

@@ -41,6 +41,7 @@ const FORMAT_LABELS = {
   squares: 'Squares',
   bracket: 'Bracket',
   fantasy: 'Fantasy Football',
+  nba_dfs: 'NBA Daily Fantasy',
 }
 
 const SPORT_LABELS = {

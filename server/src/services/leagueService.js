@@ -128,7 +128,7 @@ export async function createLeague(userId, data) {
   }
 
   // Create fantasy settings if format is fantasy
-  if (league.format === 'fantasy') {
+  if (league.format === 'fantasy' || league.format === 'nba_dfs') {
     const { createFantasySettings } = await import('./fantasyService.js')
     await createFantasySettings(league.id, data.fantasy_settings || {})
   }
