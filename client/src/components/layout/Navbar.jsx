@@ -89,7 +89,7 @@ function getNotificationRoute(notification) {
       return '/?headlines=1'
     }
     case 'record_broken':
-      return '/hall-of-fame?section=records'
+      return `/hall-of-fame?section=records${metadata?.recordKey ? `&record=${metadata.recordKey}` : ''}`
     case 'survivor_win':
     case 'league_win':
       return null // handled by modal

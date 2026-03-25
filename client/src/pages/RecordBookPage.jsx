@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRecords, useRecordPick, useRecordParlay, useRecordFuturesPick } from '../hooks/useRecords'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -133,7 +133,7 @@ function RecordCard({ record, onUserTap }) {
   }
 
   return (
-    <div className="bg-bg-card border border-border rounded-2xl overflow-hidden">
+    <div id={`record-${record.record_key}`} className="bg-bg-card border border-border rounded-2xl overflow-hidden">
       <div
         className={`p-4 ${hasSubs || isTappable ? 'cursor-pointer' : ''}`}
         onClick={handleCardClick}
@@ -238,9 +238,18 @@ function RecordCard({ record, onUserTap }) {
   )
 }
 
-export function RecordBookContent() {
+export function RecordBookContent({ scrollToRecord = null }) {
   const { data: records, isLoading, isError, refetch } = useRecords()
   const [profileUserId, setProfileUserId] = useState(null)
+
+  useEffect(() => {
+    if (scrollToRecord && records) {
+      setTimeout(() => {
+        const el = document.getElementById(`record-${scrollToRecord}`)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 300)
+    }
+  }, [scrollToRecord, records])
 
   // Group records by category — only show records that have a holder
   const grouped = {}

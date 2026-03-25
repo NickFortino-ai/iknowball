@@ -25,6 +25,7 @@ function SectionToggle({ title, open, onToggle }) {
 export default function HallOfFamePage() {
   const [searchParams] = useSearchParams()
   const section = searchParams.get('section')
+  const recordParam = searchParams.get('record')
   const [openSections, setOpenSections] = useState(
     section === 'records' ? { records: true } : { royalty: true }
   )
@@ -55,7 +56,7 @@ export default function HallOfFamePage() {
         <SectionToggle title="Record Book" open={openSections.records} onToggle={() => toggle('records')} />
         {openSections.records && (
           <div className="pb-4">
-            <RecordBookContent />
+            <RecordBookContent scrollToRecord={recordParam} />
           </div>
         )}
       </div>
