@@ -144,7 +144,7 @@ export default function JoinLeagueModal({ onClose }) {
 
         {/* Invite Code Section */}
         <form onSubmit={handleCodeSubmit}>
-          <label className="block text-sm text-text-secondary mb-2">Have an invite code?</label>
+          <label className="block text-xs text-text-muted mb-1.5">Have an invite code?</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -152,12 +152,12 @@ export default function JoinLeagueModal({ onClose }) {
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="e.g. A3K9F2MX"
               maxLength={8}
-              className="flex-1 bg-bg-input border border-border rounded-lg px-4 py-3 text-center font-display text-lg tracking-widest text-text-primary placeholder-text-muted focus:outline-none focus:border-accent uppercase"
+              className="flex-1 bg-bg-input border border-border rounded-lg px-3 py-2 text-center font-display text-sm tracking-widest text-text-primary placeholder-text-muted focus:outline-none focus:border-accent uppercase"
             />
             <button
               type="submit"
               disabled={code.trim().length < 4 || joinLeague.isPending}
-              className="px-5 py-3 rounded-lg font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="px-4 py-2 rounded-lg font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs"
             >
               {joinLeague.isPending ? '...' : 'Join'}
             </button>
