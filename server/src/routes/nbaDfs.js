@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { supabase } from '../config/supabase.js'
 import {
   getNBAPlayerPool,
   getNBADFSRoster,
@@ -32,6 +33,34 @@ router.get('/roster', async (req, res) => {
 router.post('/roster', async (req, res) => {
   const { league_id, date, season, slots } = req.body
   if (!league_id || !date) return res.status(400).json({ error: 'league_id and date required' })
+
+  // Check league start date — can't submit roster for dates before league starts
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('starts_at')
+    .eq('id', league_id)
+    .single()
+
+  if (league?.starts_at) {
+    const leagueStart = new Date(league.starts_at).toISOString().split('T')[0]
+    if (date < leagueStart) {
+      return res.status(400).json({ error: 'Cannot submit a roster before the league start date' })
+    }
+  }
+
+  // Check if first game of the day has started — rosters lock at first tip-off
+  const { data: firstGame } = await supabase
+    .from('nba_dfs_salaries')
+    .select('game_starts_at')
+    .eq('game_date', date)
+    .not('game_starts_at', 'is', null)
+    .order('game_starts_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (firstGame?.game_starts_at && new Date(firstGame.game_starts_at) <= new Date()) {
+    return res.status(400).json({ error: 'Rosters are locked — the first game has already started' })
+  }
 
   const settings = await getFantasySettings(league_id)
   const salaryCap = settings.salary_cap || 60000

@@ -88,6 +88,21 @@ export default function CreateLeaguePage() {
   const [visibility, setVisibility] = useState('closed')
   const [joinsLockedAt, setJoinsLockedAt] = useState('')
 
+  // NBA DFS start date
+  const [dfsStartOption, setDfsStartOption] = useState('today')
+  const [dfsStartCustom, setDfsStartCustom] = useState('')
+
+  function getDfsStartDate() {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    if (dfsStartOption === 'today') return today
+    if (dfsStartOption === 'tomorrow') {
+      const d = new Date()
+      d.setDate(d.getDate() + 1)
+      return d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    }
+    return dfsStartCustom || today
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -137,12 +152,14 @@ export default function CreateLeaguePage() {
         sport: format === 'nba_dfs' ? 'basketball_nba' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
         duration: isFantasyFormat ? 'full_season' : duration,
         max_members: isFantasyFormat ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
-        starts_at: startsAt || undefined,
+        starts_at: format === 'nba_dfs' ? getDfsStartDate() : startsAt || undefined,
         ends_at: endsAt || undefined,
         settings,
         fantasy_settings: fantasySettings,
         visibility,
-        joins_locked_at: visibility === 'open' && joinsLockedAt ? joinsLockedAt : undefined,
+        joins_locked_at: format === 'nba_dfs'
+          ? getDfsStartDate()
+          : visibility === 'open' && joinsLockedAt ? joinsLockedAt : undefined,
       })
       toast('League created!', 'success')
       navigate(`/leagues/${league.id}?invite=1`)
@@ -318,7 +335,7 @@ export default function CreateLeaguePage() {
           </p>
         </div>
 
-        {visibility === 'open' && (
+        {visibility === 'open' && format !== 'nba_dfs' && (
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">
               Open Until <span className="text-text-muted font-normal">(optional)</span>
@@ -700,6 +717,41 @@ export default function CreateLeaguePage() {
                 </div>
               </div>
             )}
+            <div>
+              <label className="text-xs text-text-muted block mb-1">League Starts</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'today', label: 'Today' },
+                  { value: 'tomorrow', label: 'Tomorrow' },
+                  { value: 'custom', label: 'Select Date' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setDfsStartOption(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      dfsStartOption === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {dfsStartOption === 'custom' && (
+                <input
+                  type="date"
+                  value={dfsStartCustom}
+                  onChange={(e) => setDfsStartCustom(e.target.value)}
+                  min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                  className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                />
+              )}
+              <p className="text-xs text-text-muted mt-1.5">
+                {visibility === 'open'
+                  ? 'League is open until the first game on this date. Rosters lock at first tip-off each day.'
+                  : 'Members cannot join after this date. Rosters lock at first tip-off each day.'}
+              </p>
+            </div>
             <div>
               <label className="text-xs text-text-muted block mb-1">Max Members</label>
               <input
