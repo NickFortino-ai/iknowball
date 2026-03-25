@@ -6,7 +6,7 @@ import { getBracketStandings } from '../services/bracketService.js'
 import { createNotification } from '../services/notificationService.js'
 import { connectAutoConnectMembers } from '../services/connectionService.js'
 
-const BRACKET_WINNER_BONUS = 10
+const CHAMPION_BONUS = 10
 
 async function getLeagueMemberCount(leagueId) {
   const { count, error } = await supabase
@@ -102,9 +102,9 @@ async function awardPickemWinner(league, winnerId) {
   logger.info({ winnerId, leagueId: league.id, bonus: memberCount }, 'Pickem league winner awarded')
 }
 
-// Bracket: every participant earns/loses points based on finishing position
-// Formula: N + 1 - 2 * rank (plus +10 bonus for 1st place)
-async function awardBracketStandings(league, standings) {
+// Position-based points: N + 1 - 2 * rank (plus +10 bonus for 1st place)
+// Used by bracket, fantasy football, and NBA DFS leagues
+async function awardPositionBasedPoints(league, standings, formatLabel) {
   const n = standings.length
   if (n === 0) return
 
@@ -112,31 +112,104 @@ async function awardBracketStandings(league, standings) {
     const rank = entry.rank
     const positionPoints = n + 1 - 2 * rank
     const isWinner = rank === 1
-    const totalPoints = isWinner ? positionPoints + BRACKET_WINNER_BONUS : positionPoints
+    const totalPoints = isWinner ? positionPoints + CHAMPION_BONUS : positionPoints
 
     let label
     if (isWinner) {
-      label = `Bracket 1st of ${n} (+${positionPoints} +${BRACKET_WINNER_BONUS} bonus = +${totalPoints})`
+      label = `${formatLabel} 1st of ${n} (+${positionPoints} +${CHAMPION_BONUS} bonus = +${totalPoints})`
     } else if (totalPoints >= 0) {
-      label = `Bracket ${rank}${ordinal(rank)} of ${n} +${totalPoints} pts`
+      label = `${formatLabel} ${rank}${ordinal(rank)} of ${n} +${totalPoints} pts`
     } else {
-      label = `Bracket ${rank}${ordinal(rank)} of ${n} ${totalPoints} pts`
+      label = `${formatLabel} ${rank}${ordinal(rank)} of ${n} ${totalPoints} pts`
     }
 
     await awardUserPoints(entry.user_id, league, totalPoints, label,
-      isWinner ? 'league_win' : 'bracket_finish')
+      isWinner ? 'league_win' : 'league_finish')
 
     if (isWinner) {
       await createNotification(entry.user_id, 'league_win',
-        `You won the ${league.name} bracket! +${totalPoints} pts`,
-        { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: 'bracket', isWinner: true })
+        `You won the ${league.name} ${formatLabel.toLowerCase()}! +${totalPoints} pts`,
+        { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: league.format, isWinner: true })
 
       const winnerName = entry.user?.display_name || entry.user?.username || 'Someone'
-      await notifyLeagueMembers(league, entry.user_id, winnerName, 'bracket')
+      await notifyLeagueMembers(league, entry.user_id, winnerName, formatLabel.toLowerCase())
     }
 
-    logger.info({ userId: entry.user_id, leagueId: league.id, rank, totalPoints }, 'Bracket standing awarded')
+    logger.info({ userId: entry.user_id, leagueId: league.id, rank, totalPoints }, `${formatLabel} standing awarded`)
   }
+}
+
+async function awardBracketStandings(league, standings) {
+  await awardPositionBasedPoints(league, standings, 'Bracket')
+}
+
+// Get fantasy league standings for completion (works for both traditional and salary cap)
+async function getFantasyLeagueStandings(league) {
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('format, champion_metric')
+    .eq('league_id', league.id)
+    .single()
+
+  if (settings?.format === 'salary_cap') {
+    // Check if NBA (nba_dfs_nightly_results) or NFL (dfs_weekly_results)
+    const isNBA = league.sport === 'basketball_nba'
+    const table = isNBA ? 'nba_dfs_nightly_results' : 'dfs_weekly_results'
+    const winnerField = isNBA ? 'is_night_winner' : 'is_week_winner'
+
+    const { data: results } = await supabase
+      .from(table)
+      .select('user_id, total_points, ' + winnerField)
+      .eq('league_id', league.id)
+
+    if (!results?.length) return []
+
+    const userMap = {}
+    for (const r of results) {
+      if (!userMap[r.user_id]) userMap[r.user_id] = { user_id: r.user_id, totalPoints: 0, wins: 0 }
+      userMap[r.user_id].totalPoints += Number(r.total_points)
+      if (r[winnerField]) userMap[r.user_id].wins++
+    }
+
+    const standings = Object.values(userMap)
+    if (settings.champion_metric === 'most_wins') {
+      standings.sort((a, b) => b.wins - a.wins || b.totalPoints - a.totalPoints)
+    } else {
+      standings.sort((a, b) => b.totalPoints - a.totalPoints)
+    }
+
+    return standings.map((s, i) => ({ user_id: s.user_id, rank: i + 1 }))
+  }
+
+  // Traditional fantasy — use matchup W-L records
+  const { data: matchups } = await supabase
+    .from('fantasy_matchups')
+    .select('home_user_id, away_user_id, home_points, away_points, status')
+    .eq('league_id', league.id)
+    .eq('status', 'completed')
+
+  if (!matchups?.length) return []
+
+  const userMap = {}
+  for (const m of matchups) {
+    if (!userMap[m.home_user_id]) userMap[m.home_user_id] = { user_id: m.home_user_id, wins: 0, losses: 0, pointsFor: 0 }
+    if (!userMap[m.away_user_id]) userMap[m.away_user_id] = { user_id: m.away_user_id, wins: 0, losses: 0, pointsFor: 0 }
+
+    userMap[m.home_user_id].pointsFor += Number(m.home_points)
+    userMap[m.away_user_id].pointsFor += Number(m.away_points)
+
+    if (m.home_points > m.away_points) {
+      userMap[m.home_user_id].wins++
+      userMap[m.away_user_id].losses++
+    } else if (m.away_points > m.home_points) {
+      userMap[m.away_user_id].wins++
+      userMap[m.home_user_id].losses++
+    }
+  }
+
+  const standings = Object.values(userMap)
+  standings.sort((a, b) => b.wins - a.wins || b.pointsFor - a.pointsFor)
+  return standings.map((s, i) => ({ user_id: s.user_id, rank: i + 1 }))
 }
 
 function ordinal(n) {
@@ -201,7 +274,7 @@ export async function completeLeagues() {
   const { data: leagues, error } = await supabase
     .from('leagues')
     .select('*')
-    .in('format', ['pickem', 'bracket'])
+    .in('format', ['pickem', 'bracket', 'fantasy'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
     .lte('ends_at', now)
@@ -252,6 +325,17 @@ export async function completeLeagues() {
         const standings = await getBracketStandings(league.id)
         if (standings?.length > 0) {
           await awardBracketStandings(league, standings)
+        }
+      } else if (league.format === 'fantasy') {
+        const standings = await getFantasyLeagueStandings(league)
+        if (standings?.length > 0) {
+          const { data: settings } = await supabase
+            .from('fantasy_settings')
+            .select('format')
+            .eq('league_id', league.id)
+            .single()
+          const label = settings?.format === 'salary_cap' ? 'Salary Cap' : 'Fantasy'
+          await awardPositionBasedPoints(league, standings, label)
         }
       }
 
