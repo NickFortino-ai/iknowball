@@ -295,12 +295,18 @@ async function fetchPlayerSeasonAvgs(espnId) {
 
 /**
  * Calculate salary from fantasy points per game average.
- * Uses a curve that maps ~35 fppg → ~$10,500, ~20 fppg → ~$7,000, ~8 fppg → ~$4,300
+ * Uses a curve: $3,500 base + $130/fppg, capped at $11,000.
+ * ~55 fppg (Jokic) → $10,650 → $10,700
+ * ~45 fppg (All-Star) → $9,350 → $9,400
+ * ~25 fppg (starter) → $6,750 → $6,800
+ * ~12 fppg (rotation) → $5,060 → $5,100
+ * ~5 fppg (bench) → $4,150 → $4,200
+ * 0 fppg → $3,500
  */
 function fantasyPointsToSalary(fppg) {
   if (!fppg || fppg <= 0) return 3500
-  const salary = Math.round((3500 + fppg * 200) / 100) * 100
-  return Math.max(3500, Math.min(12500, salary))
+  const salary = Math.round((3500 + fppg * 130) / 100) * 100
+  return Math.max(3500, Math.min(11000, salary))
 }
 
 /**
