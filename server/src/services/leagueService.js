@@ -318,6 +318,13 @@ export async function joinLeague(userId, inviteCode) {
       err.status = 400
       throw err
     }
+  } else if (league.format === 'nba_dfs') {
+    // NBA DFS uses joins_locked_at (first tip-off) instead of starts_at
+    if (league.joins_locked_at && new Date(league.joins_locked_at) <= new Date()) {
+      const err = new Error('This league is locked — games have started')
+      err.status = 400
+      throw err
+    }
   } else if (league.starts_at && new Date(league.starts_at) <= new Date()) {
     const err = new Error('This league has already started')
     err.status = 400
