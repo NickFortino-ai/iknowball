@@ -262,6 +262,50 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
 }
 
 /**
+ * Tighten joins_locked_at for NBA DFS leagues to the first tip-off of their start date.
+ * Runs after salaries are generated so we know game times.
+ */
+async function tightenJoinLocks() {
+  // Find NBA DFS leagues where joins_locked_at hasn't been tightened to a game time yet
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, starts_at, joins_locked_at')
+    .eq('format', 'nba_dfs')
+    .in('status', ['open', 'active'])
+
+  if (!leagues?.length) return
+
+  for (const league of leagues) {
+    if (!league.starts_at) continue
+    const startDate = new Date(league.starts_at).toISOString().split('T')[0]
+
+    // Get first game tip-off for that date
+    const { data: firstGame } = await supabase
+      .from('nba_dfs_salaries')
+      .select('game_starts_at')
+      .eq('game_date', startDate)
+      .not('game_starts_at', 'is', null)
+      .order('game_starts_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (!firstGame?.game_starts_at) continue
+
+    // Only tighten if current lock is after the first tip-off (or null)
+    const tipOff = new Date(firstGame.game_starts_at)
+    const currentLock = league.joins_locked_at ? new Date(league.joins_locked_at) : null
+    if (!currentLock || currentLock > tipOff) {
+      await supabase
+        .from('leagues')
+        .update({ joins_locked_at: tipOff.toISOString() })
+        .eq('id', league.id)
+
+      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Tightened joins_locked_at to first tip-off')
+    }
+  }
+}
+
+/**
  * Main job: generate salaries for today, score yesterday's (or today's finished) games.
  */
 export async function scoreNBADFS() {
@@ -282,6 +326,9 @@ export async function scoreNBADFS() {
       logger.error({ err }, 'Failed to generate NBA DFS salaries')
     }
   }
+
+  // Tighten join locks to first tip-off once salaries exist
+  await tightenJoinLocks()
 
   // Score today's completed games
   const { playerStats, allFinal, hasGames } = await fetchCompletedGameStats(today)
