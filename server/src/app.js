@@ -23,6 +23,7 @@ import recapsRouter from './routes/recaps.js'
 import recordsRouter from './routes/records.js'
 import hotTakesRouter from './routes/hotTakes.js'
 import dfsRouter from './routes/dfs.js'
+import nbaDfsRouter from './routes/nbaDfs.js'
 import reportsRouter from './routes/reports.js'
 import teamsRouter from './routes/teams.js'
 import injuriesRouter from './routes/injuries.js'
@@ -64,6 +65,7 @@ app.use('/api/injuries', injuriesRouter)
 app.use('/api/link-preview', linkPreviewRouter)
 app.use('/api/messages', messagesRouter)
 app.use('/api/dfs', dfsRouter)
+app.use('/api/nba-dfs', nbaDfsRouter)
 
 app.use(errorHandler)
 

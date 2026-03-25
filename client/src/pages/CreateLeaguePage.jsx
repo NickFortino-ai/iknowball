@@ -65,10 +65,10 @@ export default function CreateLeaguePage() {
   const [rowTeamName, setRowTeamName] = useState('')
   const [colTeamName, setColTeamName] = useState('')
 
-  // Auto-select NFL for fantasy format
+  // Auto-select sport for fantasy format
   useEffect(() => {
-    if (format === 'fantasy') setSport('americanfootball_nfl')
-  }, [format])
+    if (format === 'fantasy' && fantasyFormat === 'traditional') setSport('americanfootball_nfl')
+  }, [format, fantasyFormat])
 
   // Fantasy settings
   const [fantasyFormat, setFantasyFormat] = useState('traditional')
@@ -192,7 +192,8 @@ export default function CreateLeaguePage() {
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
-              const isFantasyLocked = format === 'fantasy' && opt.value !== 'americanfootball_nfl'
+              const fantasySports = fantasyFormat === 'salary_cap' ? ['americanfootball_nfl', 'basketball_nba'] : ['americanfootball_nfl']
+              const isFantasyLocked = format === 'fantasy' && !fantasySports.includes(opt.value)
               return (
               <button
                 key={opt.value}
@@ -401,7 +402,7 @@ export default function CreateLeaguePage() {
                   <div className="flex gap-2">
                     {[
                       { value: 'full_season', label: 'Full Season' },
-                      { value: 'single_week', label: 'Single Week' },
+                      { value: 'single_week', label: sport === 'basketball_nba' ? 'Single Night' : 'Single Week' },
                     ].map((opt) => (
                       <button
                         key={opt.value}
@@ -418,7 +419,7 @@ export default function CreateLeaguePage() {
                 </div>
                 {seasonType === 'single_week' && (
                   <div>
-                    <label className="text-xs text-text-muted block mb-1">NFL Week</label>
+                    <label className="text-xs text-text-muted block mb-1">{sport === 'basketball_nba' ? 'Game Date' : 'NFL Week'}</label>
                     <div className="flex gap-1 flex-wrap">
                       {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => (
                         <button
