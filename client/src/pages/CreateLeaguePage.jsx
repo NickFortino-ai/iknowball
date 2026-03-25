@@ -71,12 +71,17 @@ export default function CreateLeaguePage() {
   }, [format])
 
   // Fantasy settings
+  const [fantasyFormat, setFantasyFormat] = useState('traditional')
   const [scoringFormat, setScoringFormat] = useState('half_ppr')
   const [numTeams, setNumTeams] = useState(10)
   const [draftPickTimer, setDraftPickTimer] = useState(90)
   const [waiverType, setWaiverType] = useState('priority')
   const [tradeReview, setTradeReview] = useState('commissioner')
   const [playoffTeams, setPlayoffTeams] = useState(4)
+  const [salaryCap, setSalaryCap] = useState(60000)
+  const [seasonType, setSeasonType] = useState('full_season')
+  const [championMetric, setChampionMetric] = useState('total_points')
+  const [singleWeek, setSingleWeek] = useState(1)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -106,12 +111,17 @@ export default function CreateLeaguePage() {
 
     // Fantasy settings passed separately
     const fantasySettings = format === 'fantasy' ? {
-      scoring_format: scoringFormat,
+      format: fantasyFormat,
+      scoring_format: fantasyFormat === 'salary_cap' ? 'ppr' : scoringFormat,
       num_teams: numTeams,
-      draft_pick_timer: draftPickTimer,
-      waiver_type: waiverType,
-      trade_review: tradeReview,
-      playoff_teams: playoffTeams,
+      draft_pick_timer: fantasyFormat === 'traditional' ? draftPickTimer : undefined,
+      waiver_type: fantasyFormat === 'traditional' ? waiverType : undefined,
+      trade_review: fantasyFormat === 'traditional' ? tradeReview : undefined,
+      playoff_teams: fantasyFormat === 'traditional' ? playoffTeams : undefined,
+      salary_cap: fantasyFormat === 'salary_cap' ? salaryCap : undefined,
+      season_type: fantasyFormat === 'salary_cap' ? seasonType : undefined,
+      champion_metric: fantasyFormat === 'salary_cap' && seasonType === 'full_season' ? championMetric : undefined,
+      single_week: fantasyFormat === 'salary_cap' && seasonType === 'single_week' ? singleWeek : undefined,
     } : undefined
 
     try {
@@ -342,6 +352,115 @@ export default function CreateLeaguePage() {
         {format === 'fantasy' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">Fantasy Settings</h3>
+
+            {/* Format: Traditional vs Salary Cap */}
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Format</label>
+              <div className="space-y-2">
+                {[
+                  { value: 'traditional', label: 'Traditional', desc: 'Draft players and manage your roster all season. Make trades, work the waiver wire, and set your lineup each week.' },
+                  { value: 'salary_cap', label: 'Salary Cap', desc: 'Build a new roster every week under a salary budget. No draft, no trades. Fresh start every week.' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFantasyFormat(opt.value)}
+                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                      fantasyFormat === opt.value ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-text-primary/40'
+                    }`}
+                  >
+                    <div className="font-semibold text-sm text-text-primary">{opt.label}</div>
+                    <div className="text-xs text-text-secondary mt-0.5">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Salary Cap specific settings */}
+            {fantasyFormat === 'salary_cap' && (
+              <>
+                <div>
+                  <label className="text-xs text-text-muted block mb-1">Salary Cap</label>
+                  <div className="flex gap-2">
+                    {[50000, 60000, 75000].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setSalaryCap(n)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          salaryCap === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                        }`}
+                      >
+                        ${n.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-text-muted block mb-1">Season Type</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'full_season', label: 'Full Season' },
+                      { value: 'single_week', label: 'Single Week' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSeasonType(opt.value)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          seasonType === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {seasonType === 'single_week' && (
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1">NFL Week</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {Array.from({ length: 18 }, (_, i) => i + 1).map((w) => (
+                        <button
+                          key={w}
+                          type="button"
+                          onClick={() => setSingleWeek(w)}
+                          className={`w-9 h-9 rounded-lg text-xs font-semibold transition-colors ${
+                            singleWeek === w ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                          }`}
+                        >
+                          {w}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {seasonType === 'full_season' && (
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1">Champion Determined By</label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: 'total_points', label: 'Most Total Points' },
+                        { value: 'most_wins', label: 'Most Weekly Wins' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setChampionMetric(opt.value)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                            championMetric === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Scoring Format (shared) */}
             <div>
               <label className="text-xs text-text-muted block mb-1">Scoring Format</label>
               <div className="flex gap-2">
@@ -363,6 +482,8 @@ export default function CreateLeaguePage() {
                 ))}
               </div>
             </div>
+            {/* Traditional-only settings */}
+            {fantasyFormat === 'traditional' && <>
             <div>
               <label className="text-xs text-text-muted block mb-1">Number of Teams</label>
               <div className="flex gap-2">
@@ -459,6 +580,7 @@ export default function CreateLeaguePage() {
                 ))}
               </div>
             </div>
+            </>}
           </div>
         )}
 

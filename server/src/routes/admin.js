@@ -475,6 +475,7 @@ router.post('/users/:id/unmute', async (req, res) => {
 // ============================================
 
 import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, getNFLState } from '../services/sleeperService.js'
+import { generateSalaries, setSalaries } from '../services/dfsService.js'
 
 router.post('/fantasy/sync-players', async (req, res) => {
   const result = await syncPlayers()
@@ -502,6 +503,20 @@ router.post('/fantasy/sync-projections', async (req, res) => {
 router.get('/fantasy/nfl-state', async (req, res) => {
   const state = await getNFLState()
   res.json(state)
+})
+
+// DFS Salary Management
+router.post('/dfs/generate-salaries', async (req, res) => {
+  const { week = 1, season = 2026 } = req.body
+  const result = await generateSalaries(week, season)
+  res.json(result)
+})
+
+router.post('/dfs/salaries', async (req, res) => {
+  const { salaries } = req.body
+  if (!salaries?.length) return res.status(400).json({ error: 'salaries array required' })
+  const result = await setSalaries(salaries)
+  res.json(result)
 })
 
 export default router

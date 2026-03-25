@@ -110,11 +110,16 @@ const createLeagueSchema = z.object({
     locks_at: z.string().optional(),
   }).optional(),
   fantasy_settings: z.object({
+    format: z.enum(['traditional', 'salary_cap']).optional(),
     scoring_format: z.enum(['ppr', 'half_ppr', 'standard']).optional(),
     num_teams: z.number().int().min(2).max(20).optional(),
     draft_pick_timer: z.number().int().optional(),
     waiver_type: z.enum(['priority', 'rolling']).optional(),
     trade_review: z.enum(['commissioner', 'league_vote', 'none']).optional(),
+    salary_cap: z.number().int().min(10000).max(200000).optional(),
+    season_type: z.enum(['full_season', 'single_week']).optional(),
+    champion_metric: z.enum(['total_points', 'most_wins']).optional(),
+    single_week: z.number().int().min(1).max(18).optional(),
     playoff_teams: z.number().int().optional(),
   }).optional(),
 })
