@@ -286,7 +286,7 @@ export default function PicksPage() {
       ) : (
         <>
           {/* Day Navigation */}
-          <div className="flex items-center justify-between bg-bg-card rounded-xl border border-border px-4 py-3 mb-6">
+          <div className="flex items-center justify-between rounded-xl border border-text-primary/20 px-4 py-3 mb-6">
             <button
               onClick={() => { userChangedDay.current = true; setDayOffset((d) => Math.max(0, d - 1)) }}
               disabled={dayOffset === 0}
