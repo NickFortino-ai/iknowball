@@ -11,6 +11,7 @@ import BracketView from '../components/leagues/BracketView'
 import LeagueThread from '../components/leagues/LeagueThread'
 import FantasyDraftRoom from '../components/leagues/FantasyDraftRoom'
 import FantasyMyTeam from '../components/leagues/FantasyMyTeam'
+import FantasyPlayerBrowser from '../components/leagues/FantasyPlayerBrowser'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -27,7 +28,7 @@ function getLeagueTabs(league, isBracketLocked) {
     pickem: ['Standings', 'Members', 'Thread'],
     survivor: ['Board', 'Members', 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
-    fantasy: ['My Team', 'Matchups', 'Standings', 'Draft', 'Members', 'Thread'],
+    fantasy: ['My Team', 'Players', 'Matchups', 'Standings', 'Draft', 'Members', 'Thread'],
   }
   return TABS[league.format] || ['Members', 'Thread']
 }
@@ -862,6 +863,10 @@ export default function LeagueDetailPage() {
           threadUnread={threadUnread?.unread}
           onTabSelect={setActiveTab}
         />
+      )}
+
+      {tabs[activeTab] === 'Players' && league.format === 'fantasy' && (
+        <FantasyPlayerBrowser league={league} />
       )}
 
       {tabs[activeTab] === 'Draft' && league.format === 'fantasy' && (
