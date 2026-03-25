@@ -17,7 +17,7 @@ const SLOTS = [
   { key: 'C', label: 'C', positions: ['C', 'PF/C'] },
 ]
 
-const POSITION_FILTERS = ['All', 'PG', 'SG', 'SF', 'PF', 'C']
+const POSITION_FILTERS = ['All', 'PG', 'SG', 'SF', 'PF', 'C', 'OUT']
 
 // Check if a player position matches a filter
 // Handles compound positions like "PG/SG" matching both PG and SG filters
@@ -88,6 +88,9 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     if (!players) return []
     return players.filter((p) => {
       if (usedPlayerIds.has(p.espn_player_id)) return false
+      // "OUT" tab shows only out players; all other tabs hide them
+      if (posFilter === 'OUT') return p.injury_status === 'Out'
+      if (p.injury_status === 'Out') return false
       if (p.salary > remainingSalary) return false
       if (!matchesPositionFilter(p.position, posFilter)) return false
       if (search) {
@@ -275,10 +278,23 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                 key={pos}
                 onClick={() => setPosFilter(pos)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  posFilter === pos ? 'bg-accent text-white' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+                  pos === 'OUT'
+                    ? posFilter === pos
+                      ? 'bg-incorrect/20 text-incorrect border border-incorrect/40'
+                      : 'border border-incorrect/30 text-incorrect/70 hover:bg-incorrect/10'
+                    : posFilter === pos
+                      ? 'bg-accent text-white'
+                      : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
                 }`}
               >
-                {pos}
+                {pos === 'OUT' ? (
+                  <span className="flex items-center gap-1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+                    </svg>
+                    OUT
+                  </span>
+                ) : pos}
               </button>
             ))}
           </div>
