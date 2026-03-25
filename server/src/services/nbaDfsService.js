@@ -363,6 +363,9 @@ export async function generateNBASalaries(date, season = 2026) {
         const espnId = athlete.id
         const name = athlete.displayName || athlete.fullName
         const headshot = athlete.headshot?.href || null
+        const injury = athlete.injuries?.[0]
+        const injuryStatus = injury?.status || null // "Probable", "Questionable", "Out", "Day-To-Day"
+        const injuryDetail = injury?.shortComment || null
 
         // Fetch real season averages from ESPN
         const avgs = await fetchPlayerSeasonAvgs(espnId)
@@ -392,6 +395,8 @@ export async function generateNBASalaries(date, season = 2026) {
           opponent: `${isHome ? 'vs' : '@'} ${opponentAbbrev}`,
           game_starts_at: gameStartsAt,
           headshot_url: headshot,
+          injury_status: injuryStatus,
+          injury_detail: injuryDetail,
         })
       }
     }
