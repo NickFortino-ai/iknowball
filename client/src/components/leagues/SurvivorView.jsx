@@ -192,7 +192,7 @@ export default function SurvivorView({ league }) {
                                   ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
                                   : awayPicked
                                     ? 'bg-accent/20 text-accent ring-2 ring-accent'
-                                    : 'bg-black/40 text-text-primary hover:bg-accent/20 hover:text-accent'
+                                    : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
                               {game.away_team}
@@ -209,7 +209,7 @@ export default function SurvivorView({ league }) {
                                   ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
                                   : homePicked
                                     ? 'bg-accent/20 text-accent ring-2 ring-accent'
-                                    : 'bg-black/40 text-text-primary hover:bg-accent/20 hover:text-accent'
+                                    : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
                               {game.home_team}
