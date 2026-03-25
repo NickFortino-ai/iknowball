@@ -28,7 +28,7 @@ function getLeagueTabs(league, isBracketLocked) {
     pickem: ['Standings', 'Members', 'Thread'],
     survivor: ['Board', 'Members', 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
-    fantasy: ['My Team', 'Players', 'Matchups', 'Standings', 'Draft', 'Members', 'Thread'],
+    fantasy: ['My Team', 'Players', 'Matchups', 'Standings', 'Draft', 'Thread'],
   }
   return TABS[league.format] || ['Members', 'Thread']
 }
@@ -801,7 +801,7 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues unless on Thread tab — rendered inside BracketView hero) */}
       {(!(league.format === 'bracket' && isBracketLocked) || tabs[activeTab] === 'Thread') && (
-      <div className="flex justify-center gap-2 mb-6">
+      <div className="flex justify-center gap-2 mb-6 overflow-x-auto no-scrollbar">
         {tabs.map((tab, i) => (
           <button
             key={tab}
