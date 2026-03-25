@@ -151,7 +151,9 @@ export default function CreateLeaguePage() {
         format: format === 'nba_dfs' ? 'nba_dfs' : format,
         sport: format === 'nba_dfs' ? 'basketball_nba' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
         duration: isFantasyFormat ? 'full_season' : duration,
-        max_members: isFantasyFormat ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
+        max_members: format === 'nba_dfs'
+          ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
+          : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: format === 'nba_dfs' ? getDfsStartDate() : startsAt || undefined,
         ends_at: endsAt || undefined,
         settings,
