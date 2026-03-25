@@ -528,6 +528,7 @@ export default function LeagueDetailPage() {
   const [noteText, setNoteText] = useState('')
   const noteRef = useRef(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const updateLeague = useUpdateLeague()
   const deleteLeague = useDeleteLeague()
 
@@ -553,7 +554,19 @@ export default function LeagueDetailPage() {
           &larr; My Leagues
         </Link>
         <div className={league.format === 'bracket' ? 'text-center' : ''}>
-        <h1 className="font-display text-3xl mt-2">{league.name}</h1>
+        <div className="flex items-center gap-2 mt-2">
+          <h1 className="font-display text-3xl">{league.name}</h1>
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="text-text-muted hover:text-text-secondary transition-colors p-1"
+            title="League Settings"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        </div>
         <div className={`flex flex-wrap items-center gap-3 mt-2 ${league.format === 'bracket' ? 'justify-center' : ''}`}>
           <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
             {FORMAT_LABELS[league.format]}
@@ -709,7 +722,6 @@ export default function LeagueDetailPage() {
       ) : null}
 
       {/* League Conditions (hidden for bracket leagues) */}
-      {league.format !== 'bracket' && <LeagueConditions league={league} />}
 
       {selectedUserId && (
         <UserProfileModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
@@ -794,10 +806,6 @@ export default function LeagueDetailPage() {
         </div>
       ) : null}
 
-      {/* Settings (commissioner only) */}
-      {isCommissioner && league.settings_editable && (
-        <LeagueSettingsEditor league={league} updateLeague={updateLeague} hasLockedPicks={league.has_locked_picks} />
-      )}
 
       {/* Tabs (hidden for locked bracket leagues unless on Thread tab — rendered inside BracketView hero) */}
       {(!(league.format === 'bracket' && isBracketLocked) || tabs[activeTab] === 'Thread') && (
@@ -886,6 +894,35 @@ export default function LeagueDetailPage() {
       )}
 
       {/* Delete League */}
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={() => setShowSettingsModal(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-6 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl text-text-primary">League Settings</h2>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="text-text-muted hover:text-text-primary text-xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            <LeagueConditions league={league} />
+
+            {isCommissioner && league.settings_editable && (
+              <div className="mt-4">
+                <LeagueSettingsEditor league={league} updateLeague={updateLeague} hasLockedPicks={league.has_locked_picks} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {isCommissioner && (
         <div className="mt-12 pt-6 border-t border-border">
           <button
