@@ -3,7 +3,6 @@ import { useNbaDfsPlayers, useNbaDfsRoster, useSaveNbaDfsRoster, useNbaDfsStandi
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
-import TierBadge from '../ui/TierBadge'
 import Avatar from '../ui/Avatar'
 
 const SLOTS = [
@@ -19,6 +18,14 @@ const SLOTS = [
 ]
 
 const POSITION_FILTERS = ['All', 'PG', 'SG', 'SF', 'PF', 'C']
+
+// Check if a player position matches a filter
+// Handles compound positions like "PG/SG" matching both PG and SG filters
+function matchesPositionFilter(playerPos, filter) {
+  if (filter === 'All') return true
+  const parts = playerPos.split('/')
+  return parts.includes(filter)
+}
 
 function todayET() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
@@ -37,7 +44,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const saveRoster = useSaveNbaDfsRoster()
   const { data: standingsData } = useNbaDfsStandings(league.id)
 
-  const [roster, setRoster] = useState({}) // slot key -> player
+  const [roster, setRoster] = useState({})
   const [posFilter, setPosFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [initialized, setInitialized] = useState(false)
@@ -47,9 +54,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     const loaded = {}
     for (const slot of existingRoster.nba_dfs_roster_slots) {
       const player = players?.find((p) => p.espn_player_id === slot.espn_player_id)
-      if (player) {
-        loaded[slot.roster_slot] = player
-      }
+      if (player) loaded[slot.roster_slot] = player
     }
     if (Object.keys(loaded).length) {
       setRoster(loaded)
@@ -67,10 +72,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     return players.filter((p) => {
       if (usedPlayerIds.has(p.espn_player_id)) return false
       if (p.salary > remainingSalary) return false
-      if (posFilter !== 'All') {
-        const parts = p.position.split('/')
-        if (!parts.includes(posFilter)) return false
-      }
+      if (!matchesPositionFilter(p.position, posFilter)) return false
       if (search) {
         const q = search.toLowerCase()
         if (!p.player_name.toLowerCase().includes(q) && !p.team.toLowerCase().includes(q)) return false
@@ -80,7 +82,6 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   }, [players, posFilter, search, usedPlayerIds, remainingSalary])
 
   function addPlayer(player) {
-    // Find the first empty eligible slot
     for (const slot of SLOTS) {
       if (roster[slot.key]) continue
       const playerParts = player.position.split('/')
@@ -114,12 +115,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     }))
 
     try {
-      await saveRoster.mutateAsync({
-        league_id: league.id,
-        date,
-        season: 2026,
-        slots,
-      })
+      await saveRoster.mutateAsync({ league_id: league.id, date, season: 2026, slots })
       toast('Roster saved!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to save roster', 'error')
@@ -133,8 +129,8 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
-          <div className="bg-bg-card rounded-2xl border border-border overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_auto_auto] gap-2 px-4 py-3 border-b border-border text-xs text-text-muted uppercase tracking-wider">
+          <div className="rounded-2xl border border-text-primary/20 overflow-hidden">
+            <div className="grid grid-cols-[2.5rem_1fr_auto_auto] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
               <span className="text-right">Wins</span>
@@ -145,7 +141,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
               return (
                 <div
                   key={s.user?.id}
-                  className={`grid grid-cols-[2.5rem_1fr_auto_auto] gap-2 px-4 py-3 items-center border-b border-border last:border-b-0 ${isMe ? 'bg-accent/5' : ''}`}
+                  className={`grid grid-cols-[2.5rem_1fr_auto_auto] gap-2 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 ${isMe ? 'bg-accent/5' : ''}`}
                 >
                   <span className={`font-display text-lg ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
                   <div className="flex items-center gap-2 min-w-0">
@@ -171,18 +167,18 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   return (
     <div>
       {/* Salary Bar */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 mb-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-text-muted uppercase tracking-wider">Salary Cap</span>
-          <span className="text-xs text-text-muted">{filledSlots}/9 slots</span>
+          <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Salary Cap</span>
+          <span className="text-xs text-text-primary font-semibold">{filledSlots}/9 slots</span>
         </div>
         <div className="flex items-baseline justify-between">
           <span className={`font-display text-2xl ${remainingSalary < 0 ? 'text-incorrect' : 'text-correct'}`}>
             ${remainingSalary.toLocaleString()}
           </span>
-          <span className="text-xs text-text-muted">of ${salaryCap.toLocaleString()}</span>
+          <span className="text-xs text-text-primary">of ${salaryCap.toLocaleString()}</span>
         </div>
-        <div className="mt-2 h-1.5 bg-bg-secondary rounded-full overflow-hidden">
+        <div className="mt-2 h-1.5 bg-text-primary/10 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${remainingSalary < 0 ? 'bg-incorrect' : 'bg-accent'}`}
             style={{ width: `${Math.min((usedSalary / salaryCap) * 100, 100)}%` }}
@@ -191,8 +187,8 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
       </div>
 
       {/* My Roster */}
-      <div className="bg-bg-card rounded-xl border border-border overflow-hidden mb-4">
-        <div className="px-4 py-3 border-b border-border">
+      <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
+        <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
         </div>
         {SLOTS.map((slot) => {
@@ -200,16 +196,24 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
           return (
             <div
               key={slot.key}
-              className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0"
+              className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
             >
-              <span className="text-xs font-semibold text-text-muted w-7 shrink-0">{slot.label}</span>
+              <span className="text-xs font-bold text-accent w-7 shrink-0">{slot.label}</span>
               {player ? (
                 <>
+                  {player.headshot_url && (
+                    <img
+                      src={player.headshot_url}
+                      alt=""
+                      className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                      onError={(e) => { e.target.style.display = 'none' }}
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-text-primary truncate">{player.player_name}</div>
+                    <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
                     <div className="text-xs text-text-muted">{player.team} · {player.opponent}</div>
                   </div>
-                  <span className="text-xs font-semibold text-correct">${player.salary.toLocaleString()}</span>
+                  <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
                   <button
                     onClick={() => removeSlot(slot.key)}
                     className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
@@ -235,15 +239,15 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
       </button>
 
       {/* Player Pool */}
-      <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
+      <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+        <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search players..."
-            className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
+            className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
           />
           <div className="flex gap-1.5">
             {POSITION_FILTERS.map((pos) => (
@@ -251,7 +255,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                 key={pos}
                 onClick={() => setPosFilter(pos)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  posFilter === pos ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                  posFilter === pos ? 'bg-accent text-white' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
                 }`}
               >
                 {pos}
@@ -270,13 +274,25 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
               <button
                 key={player.espn_player_id}
                 onClick={() => addPlayer(player)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0 hover:bg-bg-card-hover transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 hover:bg-text-primary/5 transition-colors text-left bg-bg-primary"
               >
+                {player.headshot_url ? (
+                  <img
+                    src={player.headshot_url}
+                    alt=""
+                    className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                    onError={(e) => { e.target.src = ''; e.target.style.display = 'none' }}
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
+                    {player.position.split('/')[0]}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-text-primary truncate">{player.player_name}</div>
+                  <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
                   <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
                 </div>
-                <span className="text-xs font-semibold text-accent shrink-0">${player.salary.toLocaleString()}</span>
+                <span className="text-sm font-bold text-accent shrink-0">${player.salary.toLocaleString()}</span>
               </button>
             ))}
           </div>

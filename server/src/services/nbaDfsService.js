@@ -234,13 +234,43 @@ export async function setNBASalaries(salaries) {
   return { updated: salaries.length }
 }
 
+// Map ESPN generic positions to specific NBA positions
+function mapPosition(espnPos) {
+  const pos = (espnPos || '').toUpperCase()
+  const map = {
+    'PG': 'PG',
+    'SG': 'SG',
+    'SF': 'SF',
+    'PF': 'PF',
+    'C': 'C',
+    'G': 'PG/SG',
+    'F': 'SF/PF',
+    'G-F': 'SG/SF',
+    'F-G': 'SG/SF',
+    'F-C': 'PF/C',
+    'C-F': 'PF/C',
+  }
+  return map[pos] || pos || 'SF/PF'
+}
+
+/**
+ * Calculate salary from fantasy points per game average.
+ * Uses a curve that maps ~30 fppg → ~$10,000+, ~15 fppg → ~$6,000, ~5 fppg → ~$3,500
+ */
+function fantasyPointsToSalary(fppg) {
+  if (!fppg || fppg <= 0) return 3500
+  // Linear scale: $3,500 base + $230 per fppg, capped at $12,500
+  const salary = Math.round((3500 + fppg * 230) / 100) * 100
+  return Math.max(3500, Math.min(12500, salary))
+}
+
 /**
  * Generate NBA DFS salaries from ESPN rosters for tonight's games.
+ * Uses season stats for realistic pricing and includes headshots.
  */
 export async function generateNBASalaries(date, season = 2026) {
   logger.info({ date, season }, 'Generating NBA DFS salaries')
 
-  // Fetch today's scoreboard to see which teams are playing
   const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
   const dateStr = date.replace(/-/g, '')
 
@@ -270,15 +300,14 @@ export async function generateNBASalaries(date, season = 2026) {
 
     for (const competitor of competition.competitors || []) {
       const teamAbbrev = competitor.team?.abbreviation || ''
-      const teamName = competitor.team?.displayName || ''
       const isHome = competitor.homeAway === 'home'
       const opponent = competition.competitors?.find((c) => c.homeAway !== competitor.homeAway)
       const opponentAbbrev = opponent?.team?.abbreviation || ''
 
-      // Fetch roster for this team
       const teamId = competitor.team?.id
       if (!teamId) continue
 
+      // Fetch roster with season stats
       let roster
       try {
         const rosterRes = await fetch(`${ESPN_BASE}/basketball/nba/teams/${teamId}/roster`)
@@ -290,20 +319,37 @@ export async function generateNBASalaries(date, season = 2026) {
 
       const athletes = roster.athletes || []
       for (const athlete of athletes) {
-        const position = athlete.position?.abbreviation || ''
+        const rawPos = athlete.position?.abbreviation || ''
+        const position = mapPosition(rawPos)
         const espnId = athlete.id
         const name = athlete.displayName || athlete.fullName
+        const headshot = athlete.headshot?.href || null
 
-        // Generate salary based on a simple ranking heuristic
-        // In future, use season averages for better pricing
-        const rank = athletes.indexOf(athlete)
-        let salary
-        if (rank < 2) salary = Math.floor(10000 + Math.random() * 2500) // stars
-        else if (rank < 5) salary = Math.floor(7000 + Math.random() * 2500) // starters
-        else if (rank < 10) salary = Math.floor(4500 + Math.random() * 2500) // rotation
-        else salary = Math.floor(3500 + Math.random() * 1000) // bench
+        // Try to get season averages from the athlete's stats
+        // ESPN roster endpoint sometimes includes stats
+        let fppg = 0
+        const stats = athlete.statistics || athlete.stats || []
+        if (stats.length) {
+          // ESPN may provide stats differently, try to parse
+          const ppg = parseFloat(stats.find?.((s) => s.abbreviation === 'PTS')?.value) || 0
+          const rpg = parseFloat(stats.find?.((s) => s.abbreviation === 'REB')?.value) || 0
+          const apg = parseFloat(stats.find?.((s) => s.abbreviation === 'AST')?.value) || 0
+          const spg = parseFloat(stats.find?.((s) => s.abbreviation === 'STL')?.value) || 0
+          const bpg = parseFloat(stats.find?.((s) => s.abbreviation === 'BLK')?.value) || 0
+          const tpg = parseFloat(stats.find?.((s) => s.abbreviation === 'TO')?.value) || 0
+          fppg = ppg * 1 + rpg * 1.2 + apg * 1.5 + spg * 3 + bpg * 3 - tpg * 1
+        }
 
-        salary = Math.round(salary / 100) * 100
+        // If no stats, estimate by roster order
+        if (fppg <= 0) {
+          const rank = athletes.indexOf(athlete)
+          if (rank < 2) fppg = 35 + Math.random() * 10
+          else if (rank < 5) fppg = 20 + Math.random() * 10
+          else if (rank < 10) fppg = 10 + Math.random() * 8
+          else fppg = 3 + Math.random() * 5
+        }
+
+        const salary = fantasyPointsToSalary(fppg)
 
         salaries.push({
           player_name: name,
@@ -315,6 +361,7 @@ export async function generateNBASalaries(date, season = 2026) {
           salary,
           opponent: `${isHome ? 'vs' : '@'} ${opponentAbbrev}`,
           game_starts_at: gameStartsAt,
+          headshot_url: headshot,
         })
       }
     }
