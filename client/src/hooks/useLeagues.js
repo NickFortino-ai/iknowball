@@ -576,3 +576,41 @@ export function useRealtimeDraft(leagueId) {
     return () => { supabase.removeChannel(channel) }
   }, [leagueId, queryClient])
 }
+
+// ============================================
+// NBA DFS
+// ============================================
+
+export function useNbaDfsPlayers(date) {
+  return useQuery({
+    queryKey: ['nba-dfs', 'players', date],
+    queryFn: () => api.get(`/nba-dfs/players?date=${date}`),
+    enabled: !!date,
+  })
+}
+
+export function useNbaDfsRoster(leagueId, date, season = 2026) {
+  return useQuery({
+    queryKey: ['nba-dfs', leagueId, 'roster', date],
+    queryFn: () => api.get(`/nba-dfs/roster?league_id=${leagueId}&date=${date}&season=${season}`),
+    enabled: !!leagueId && !!date,
+  })
+}
+
+export function useSaveNbaDfsRoster() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/nba-dfs/roster', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['nba-dfs', variables.league_id, 'roster'] })
+    },
+  })
+}
+
+export function useNbaDfsStandings(leagueId) {
+  return useQuery({
+    queryKey: ['nba-dfs', leagueId, 'standings'],
+    queryFn: () => api.get(`/nba-dfs/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+  })
+}

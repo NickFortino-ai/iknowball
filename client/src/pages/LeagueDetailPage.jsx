@@ -14,6 +14,7 @@ import FantasyMyTeam from '../components/leagues/FantasyMyTeam'
 import FantasyPlayerBrowser from '../components/leagues/FantasyPlayerBrowser'
 import FantasyStandings from '../components/leagues/FantasyStandings'
 import FantasyMatchup from '../components/leagues/FantasyMatchup'
+import NbaDfsView from '../components/leagues/NbaDfsView'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -31,6 +32,7 @@ function getLeagueTabs(league, isBracketLocked) {
     survivor: ['Board', 'Members', 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
     fantasy: ['My Team', 'Players', 'Matchups', 'Standings', 'Draft', 'Thread'],
+    nba_dfs: ['Roster', 'Standings'],
   }
   return TABS[league.format] || ['Members', 'Thread']
 }
@@ -926,6 +928,10 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (
         <FantasyMatchup league={league} />
+      )}
+
+      {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Standings') && league.format === 'nba_dfs' && (
+        <NbaDfsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'roster'} />
       )}
 
       {tabs[activeTab] === 'Thread' && (
