@@ -43,7 +43,6 @@ function LeaguesScoringModal({ open, onClose }) {
 
 const tabs = [
   { label: 'Global', scope: 'global', sport: null },
-  { label: 'Leagues', scope: 'leagues', sport: null },
   { label: 'Props', scope: 'props', sport: null },
   { label: 'Parlays', scope: 'parlays', sport: null },
   { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
@@ -55,6 +54,7 @@ const tabs = [
   { label: 'NHL', scope: 'sport', sport: 'icehockey_nhl' },
   { label: 'MLS', scope: 'sport', sport: 'soccer_usa_mls' },
   { label: 'NCAAF', scope: 'sport', sport: 'americanfootball_ncaaf' },
+  { label: 'Leagues', scope: 'leagues', sport: null },
 ]
 
 export default function LeaderboardPage() {

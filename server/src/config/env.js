@@ -27,6 +27,7 @@ export const env = {
   ENABLE_WEEKLY_RECAP: process.env.ENABLE_WEEKLY_RECAP === 'true',
   ENABLE_RECORD_CALC: process.env.ENABLE_RECORD_CALC === 'true',
   ENABLE_INJURY_SYNC: process.env.ENABLE_INJURY_SYNC === 'true',
+  ENABLE_NBA_DFS: process.env.ENABLE_NBA_DFS === 'true',
   APPLE_BUNDLE_ID: process.env.APPLE_BUNDLE_ID || 'com.iknowball.app',
   APPLE_IAP_ENVIRONMENT: process.env.APPLE_IAP_ENVIRONMENT || 'Production',
 }

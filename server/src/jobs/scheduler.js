@@ -16,6 +16,7 @@ import { recalculateRecords } from './recalculateRecords.js'
 import { settleStuckParlays } from './settleStuckParlays.js'
 import { syncInjuries } from './syncInjuries.js'
 import { cleanupExpiredVideos } from './cleanupExpiredVideos.js'
+import { scoreNBADFS } from './scoreNBADFS.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -97,6 +98,19 @@ export function startScheduler() {
       try { await syncInjuries() } catch (err) { logger.error({ err }, 'Injury sync job failed') }
     })
     logger.info('Injury sync scheduled: every 30 minutes')
+  }
+
+  if (env.ENABLE_NBA_DFS) {
+    // Generate salaries daily at 10:00 AM ET (before lineups lock) and score games every 10 min
+    cron.schedule('0 10 * * *', async () => {
+      try { await scoreNBADFS() } catch (err) { logger.error({ err }, 'NBA DFS salary generation failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('NBA DFS salary generation scheduled: daily at 10:00 AM EST')
+
+    cron.schedule('*/10 * * * *', async () => {
+      try { await scoreNBADFS() } catch (err) { logger.error({ err }, 'NBA DFS scoring job failed') }
+    })
+    logger.info('NBA DFS scoring scheduled: every 10 minutes')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues
