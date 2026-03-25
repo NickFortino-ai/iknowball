@@ -65,13 +65,13 @@ export default function CreateLeaguePage() {
   const [rowTeamName, setRowTeamName] = useState('')
   const [colTeamName, setColTeamName] = useState('')
 
+  // Fantasy settings
+  const [fantasyFormat, setFantasyFormat] = useState('traditional')
+
   // Auto-select sport for fantasy format
   useEffect(() => {
     if (format === 'fantasy' && fantasyFormat === 'traditional') setSport('americanfootball_nfl')
   }, [format, fantasyFormat])
-
-  // Fantasy settings
-  const [fantasyFormat, setFantasyFormat] = useState('traditional')
   const [scoringFormat, setScoringFormat] = useState('half_ppr')
   const [numTeams, setNumTeams] = useState(10)
   const [draftPickTimer, setDraftPickTimer] = useState(90)
