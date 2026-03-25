@@ -810,46 +810,27 @@ export default function LeagueDetailPage() {
       ) : null}
 
 
-      {/* Tabs — with court background for locked bracket basketball leagues */}
-      {(() => {
-        const showCourtBg = league.format === 'bracket' && isBracketLocked &&
-          (league.sport === 'basketball_ncaab' || league.sport === 'basketball_wncaab')
-
-        return (
-          <div className={`relative rounded-xl mb-6 overflow-hidden ${showCourtBg ? 'py-3' : ''}`}>
-            {showCourtBg && (
-              <>
-                <img
-                  src="/bracket-bg.png"
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover object-bottom opacity-40 pointer-events-none"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/70 via-transparent to-bg-primary pointer-events-none" />
-              </>
+      {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
+      {!(league.format === 'bracket' && isBracketLocked) && (
+      <div className="flex justify-center gap-2 mb-6 overflow-x-auto no-scrollbar">
+        {tabs.map((tab, i) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(i)}
+            className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === i
+                ? 'bg-accent text-white'
+                : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+            }`}
+          >
+            {tab}
+            {tab === 'Thread' && threadUnread?.unread && activeTab !== i && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
             )}
-            <div className="relative z-10 flex justify-center gap-2 overflow-x-auto no-scrollbar">
-              {tabs.map((tab, i) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(i)}
-                  className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    activeTab === i
-                      ? 'bg-accent text-white'
-                      : showCourtBg
-                        ? 'bg-bg-card/60 backdrop-blur-sm text-text-secondary hover:bg-bg-card-hover/60'
-                        : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-                  }`}
-                >
-                  {tab}
-                  {tab === 'Thread' && threadUnread?.unread && activeTab !== i && (
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
+          </button>
+        ))}
+      </div>
+      )}
 
       {/* Tab content */}
       {tabs[activeTab] === 'Members' && (
@@ -880,7 +861,23 @@ export default function LeagueDetailPage() {
         <SquaresView league={league} isCommissioner={isCommissioner} />
       )}
 
-      {(tabs[activeTab] === 'Bracket' || tabs[activeTab] === 'Standings') && league.format === 'bracket' && (
+      {league.format === 'bracket' && (isBracketLocked ? (
+        /* When locked, always render BracketView so court bg + tabs persist across all tabs */
+        <>
+          <BracketView
+            league={league}
+            tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'Thread' ? null : 'bracket'}
+            onTabChange={(t) => {
+              const idx = tabs.indexOf(t === 'bracket' ? 'Bracket' : 'Standings')
+              if (idx !== -1) setActiveTab(idx)
+            }}
+            tabs={tabs}
+            activeTabIndex={activeTab}
+            threadUnread={threadUnread?.unread}
+            onTabSelect={setActiveTab}
+          />
+        </>
+      ) : (tabs[activeTab] === 'Bracket' || tabs[activeTab] === 'Standings') ? (
         <BracketView
           league={league}
           tab={tabs[activeTab] === 'Standings' ? 'standings' : 'bracket'}
@@ -893,7 +890,7 @@ export default function LeagueDetailPage() {
           threadUnread={threadUnread?.unread}
           onTabSelect={setActiveTab}
         />
-      )}
+      ) : null)}
 
       {tabs[activeTab] === 'Players' && league.format === 'fantasy' && (
         <FantasyPlayerBrowser league={league} />
