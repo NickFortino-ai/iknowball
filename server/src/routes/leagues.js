@@ -93,6 +93,8 @@ const createLeagueSchema = z.object({
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
   max_members: z.number().int().min(2).optional(),
+  visibility: z.enum(['open', 'closed']).optional(),
+  joins_locked_at: z.string().optional(),
   settings: z.object({
     games_per_week: z.number().int().min(1).optional(),
     lives: z.number().int().min(1).max(2).optional(),
@@ -172,6 +174,61 @@ router.get('/bracket-templates/active', requireAuth, async (req, res) => {
   res.json(templates)
 })
 
+// Open leagues the user can join
+router.get('/open', requireAuth, async (req, res) => {
+  const now = new Date().toISOString()
+
+  // Get leagues that are open visibility, not completed, and not past their join lock
+  const { data: leagues, error } = await supabase
+    .from('leagues')
+    .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
+    .eq('visibility', 'open')
+    .in('status', ['open', 'active'])
+    .or(`joins_locked_at.is.null,joins_locked_at.gt.${now}`)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) throw error
+
+  // Get member counts and check which ones the user is already in
+  const leagueIds = (leagues || []).map((l) => l.id)
+
+  const { data: members } = leagueIds.length
+    ? await supabase
+        .from('league_members')
+        .select('league_id, user_id')
+        .in('league_id', leagueIds)
+    : { data: [] }
+
+  const countMap = {}
+  const userLeagues = new Set()
+  for (const m of members || []) {
+    countMap[m.league_id] = (countMap[m.league_id] || 0) + 1
+    if (m.user_id === req.user.id) userLeagues.add(m.league_id)
+  }
+
+  const result = (leagues || [])
+    .filter((l) => !userLeagues.has(l.id)) // exclude leagues user already joined
+    .filter((l) => !l.max_members || (countMap[l.id] || 0) < l.max_members) // exclude full leagues
+    .map((l) => ({
+      id: l.id,
+      name: l.name,
+      format: l.format,
+      sport: l.sport,
+      status: l.status,
+      member_count: countMap[l.id] || 0,
+      max_members: l.max_members,
+      commissioner: l.users?.display_name || l.users?.username || 'Unknown',
+      starts_at: l.starts_at,
+      ends_at: l.ends_at,
+      duration: l.duration,
+      settings: l.settings || {},
+      joins_locked_at: l.joins_locked_at,
+    }))
+
+  res.json(result)
+})
+
 router.get('/:id', requireAuth, async (req, res) => {
   const league = await getLeagueDetails(req.params.id, req.user.id)
   res.json(league)
@@ -185,6 +242,8 @@ const updateLeagueSchema = z.object({
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
   commissioner_note: z.string().max(1000).nullable().optional(),
+  visibility: z.enum(['open', 'closed']).optional(),
+  joins_locked_at: z.string().nullable().optional(),
 })
 
 router.patch('/:id', requireAuth, validate(updateLeagueSchema), async (req, res) => {
@@ -252,6 +311,24 @@ const joinLeagueSchema = z.object({
 router.post('/:id/join', requireAuth, validate(joinLeagueSchema), async (req, res) => {
   const league = await joinLeague(req.user.id, req.validated.invite_code)
   res.json(league)
+})
+
+// Join an open league by ID (no invite code needed)
+router.post('/:id/join-open', requireAuth, async (req, res) => {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('invite_code, visibility, joins_locked_at, status')
+    .eq('id', req.params.id)
+    .single()
+
+  if (!league) return res.status(404).json({ error: 'League not found' })
+  if (league.visibility !== 'open') return res.status(403).json({ error: 'This league is not open for public joining' })
+  if (league.joins_locked_at && new Date(league.joins_locked_at) < new Date()) {
+    return res.status(400).json({ error: 'This league is no longer accepting new members' })
+  }
+
+  const result = await joinLeague(req.user.id, league.invite_code)
+  res.json(result)
 })
 
 router.get('/:id/members', requireAuth, async (req, res) => {

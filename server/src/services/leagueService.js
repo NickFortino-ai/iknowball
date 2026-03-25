@@ -90,6 +90,8 @@ export async function createLeague(userId, data) {
       commissioner_id: userId,
       settings: data.settings || {},
       use_league_picks: data.format === 'pickem',
+      visibility: data.visibility || 'closed',
+      joins_locked_at: data.joins_locked_at || null,
     })
     .select()
     .single()

@@ -1,7 +1,7 @@
 {
   "name": "I KNOW BALL",
   "short_name": "I KNOW BALL",
-  "description": "Pick winners. Earn points based on Vegas odds. Climb the ranks.",
+  "description": "Pick winners. Win leagues. Earn points based on real odds. Climb the ranks.",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#FF4D00",

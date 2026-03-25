@@ -72,6 +72,25 @@ export function useJoinLeague() {
   })
 }
 
+export function useOpenLeagues() {
+  return useQuery({
+    queryKey: ['leagues', 'open'],
+    queryFn: () => api.get('/leagues/open'),
+  })
+}
+
+export function useJoinOpenLeague() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/join-open`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', 'open'] })
+    },
+  })
+}
+
 export function useUpdateLeague() {
   const queryClient = useQueryClient()
 

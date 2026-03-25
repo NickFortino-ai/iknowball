@@ -83,6 +83,10 @@ export default function CreateLeaguePage() {
   const [championMetric, setChampionMetric] = useState('total_points')
   const [singleWeek, setSingleWeek] = useState(1)
 
+  // Visibility settings
+  const [visibility, setVisibility] = useState('closed')
+  const [joinsLockedAt, setJoinsLockedAt] = useState('')
+
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -135,6 +139,8 @@ export default function CreateLeaguePage() {
         ends_at: endsAt || undefined,
         settings,
         fantasy_settings: fantasySettings,
+        visibility,
+        joins_locked_at: visibility === 'open' && joinsLockedAt ? joinsLockedAt : undefined,
       })
       toast('League created!', 'success')
       navigate(`/leagues/${league.id}?invite=1`)
@@ -279,6 +285,51 @@ export default function CreateLeaguePage() {
             className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>}
+
+        {/* Visibility */}
+        <div>
+          <label className="block text-sm font-semibold text-text-secondary mb-2">League Visibility</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setVisibility('closed')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                visibility === 'closed' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+              }`}
+            >
+              Closed
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibility('open')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                visibility === 'open' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+              }`}
+            >
+              Open
+            </button>
+          </div>
+          <p className="text-xs text-text-muted mt-1.5">
+            {visibility === 'open'
+              ? 'Anyone can find and join this league.'
+              : 'Only people with the invite code can join.'}
+          </p>
+        </div>
+
+        {visibility === 'open' && (
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">
+              Open Until <span className="text-text-muted font-normal">(optional)</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={joinsLockedAt}
+              onChange={(e) => setJoinsLockedAt(e.target.value)}
+              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            />
+            <p className="text-xs text-text-muted mt-1.5">After this time, no new members can join.</p>
+          </div>
+        )}
 
         {/* Format-specific settings */}
         {format === 'pickem' && (

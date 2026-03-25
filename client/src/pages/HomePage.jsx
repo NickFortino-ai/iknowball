@@ -122,7 +122,7 @@ export default function HomePage() {
           <InfoTooltip text="I KNOW BALL is a sports prediction social app. Every game has real Vegas odds that determine how many points you win or lose. All your picks are tracked and scored automatically. You can see your global overall rank and your rank for each sport. Compete with friends in leagues, climb the status tiers, and prove you actually know ball." />
         </h1>
         <p className="text-text-secondary text-lg sm:text-xl max-w-lg mx-auto mb-8">
-          Pick winners. Earn points based on Vegas odds. Climb the ranks. Prove you know ball.
+          Pick winners. Win leagues. Earn points based on real odds. Climb the ranks. Prove you know ball.
         </p>
         {!isAuthenticated ? (
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

@@ -576,7 +576,7 @@ export default function LeagueDetailPage() {
           <span className="text-xs text-text-muted">{SPORT_LABELS[league.sport]}</span>
           <span className="text-xs text-text-muted">
             {league.members?.length || 0} member{league.members?.length !== 1 ? 's' : ''}
-            {league.pending_invitations?.length > 0 && (
+            {league.status === 'open' && league.pending_invitations?.length > 0 && (
               <span className="text-text-muted"> + {league.pending_invitations.length} pending</span>
             )}
           </span>
@@ -620,8 +620,8 @@ export default function LeagueDetailPage() {
         </div>
       )}
 
-      {/* Invite Actions */}
-      {league.status === 'completed' ? null : league.format === 'bracket' && !isBracketLocked ? (
+      {/* Invite Actions — only shown while league is still open for joining */}
+      {league.status !== 'open' ? null : league.format === 'bracket' && !isBracketLocked ? (
         <div className="flex items-center justify-center gap-3 mb-4">
           <button
             onClick={async () => {
