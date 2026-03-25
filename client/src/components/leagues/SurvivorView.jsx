@@ -158,7 +158,7 @@ export default function SurvivorView({ league }) {
         const dateKeys = Object.keys(grouped).sort()
 
         return (
-          <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+          <div className="rounded-xl border border-text-primary/20 p-4 mb-6">
             {poolExpanded && (
               <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3 text-center">
                 <div className="text-xs text-text-secondary font-semibold mb-0.5">Pool Expanded</div>
@@ -167,7 +167,7 @@ export default function SurvivorView({ league }) {
                 </div>
               </div>
             )}
-            <h3 className="font-display text-sm text-text-secondary mb-3">Pick a Team</h3>
+            <h3 className="font-display text-sm text-text-primary mb-3">Pick a Team</h3>
             <div className="space-y-3">
               {dateKeys.map((dateKey) => {
                 const d = new Date(dateKey + 'T12:00:00')
@@ -192,7 +192,7 @@ export default function SurvivorView({ league }) {
                                   ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
                                   : awayPicked
                                     ? 'bg-accent/20 text-accent ring-2 ring-accent'
-                                    : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
+                                    : 'bg-black/40 text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
                               {game.away_team}
@@ -209,7 +209,7 @@ export default function SurvivorView({ league }) {
                                   ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
                                   : homePicked
                                     ? 'bg-accent/20 text-accent ring-2 ring-accent'
-                                    : 'bg-bg-card-hover text-text-primary hover:bg-accent/20 hover:text-accent'
+                                    : 'bg-black/40 text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
                               {game.home_team}
