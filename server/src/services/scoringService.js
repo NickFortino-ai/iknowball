@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
 import { checkRecordAfterSettle } from './recordService.js'
 import { BASE_RISK_POINTS } from '../config/constants.js'
+import { americanToMultiplier } from '../utils/scoring.js'
 
 export async function scoreCompletedGame(gameId, winner, sportId) {
   // Get all locked picks for this game
@@ -181,7 +182,7 @@ export async function scoreParlayLegs(gameId, winner) {
 export async function trySettleParlay(parlayId) {
   const { data: parlay } = await supabase
     .from('parlays')
-    .select('id, user_id, risk_points, status')
+    .select('id, user_id, risk_points, reward_points, status')
     .eq('id', parlayId)
     .single()
 
@@ -189,7 +190,7 @@ export async function trySettleParlay(parlayId) {
 
   const { data: legs } = await supabase
     .from('parlay_legs')
-    .select('status, multiplier_at_lock')
+    .select('status, multiplier_at_lock, odds_at_submission')
     .eq('parlay_id', parlayId)
 
   if (!legs?.length) return
@@ -267,10 +268,11 @@ export async function trySettleParlay(parlayId) {
     return
   }
 
-  // At least one won — recalculate multiplier from won legs only
+  // Use submission-time odds so the user gets what they saw when they submitted
   let combinedMultiplier = 1
   for (const leg of wonLegs) {
-    combinedMultiplier *= (leg.multiplier_at_lock || 2)
+    const submissionMultiplier = leg.odds_at_submission ? 1 + americanToMultiplier(leg.odds_at_submission) : (leg.multiplier_at_lock || 2)
+    combinedMultiplier *= submissionMultiplier
   }
 
   const rewardPoints = Math.max(1, Math.round(BASE_RISK_POINTS * (combinedMultiplier - 1)))
