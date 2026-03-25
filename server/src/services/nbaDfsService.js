@@ -254,13 +254,52 @@ function mapPosition(espnPos) {
 }
 
 /**
+ * Fetch season averages for an ESPN player.
+ * Returns { ppg, rpg, apg, spg, bpg, tpg, threes } or null.
+ */
+async function fetchPlayerSeasonAvgs(espnId) {
+  try {
+    const res = await fetch(`https://site.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${espnId}/stats`)
+    if (!res.ok) return null
+    const data = await res.json()
+    const avgs = data.categories?.find((c) => c.name === 'averages')
+    if (!avgs?.labels || !avgs?.statistics?.length) return null
+
+    const labels = avgs.labels
+    const latest = avgs.statistics[avgs.statistics.length - 1]
+    const vals = latest.stats || []
+
+    const get = (label) => {
+      const idx = labels.indexOf(label)
+      return idx >= 0 ? parseFloat(vals[idx]) || 0 : 0
+    }
+
+    // 3PT is formatted as "made-attempted", extract made
+    const threeStr = String(vals[labels.indexOf('3PT')] || '0')
+    const threes = parseFloat(threeStr.split('-')[0]) || 0
+
+    return {
+      ppg: get('PTS'),
+      rpg: get('REB'),
+      apg: get('AST'),
+      spg: get('STL'),
+      bpg: get('BLK'),
+      tpg: get('TO'),
+      threes,
+      gp: get('GP'),
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
  * Calculate salary from fantasy points per game average.
- * Uses a curve that maps ~30 fppg → ~$10,000+, ~15 fppg → ~$6,000, ~5 fppg → ~$3,500
+ * Uses a curve that maps ~35 fppg → ~$10,500, ~20 fppg → ~$7,000, ~8 fppg → ~$4,300
  */
 function fantasyPointsToSalary(fppg) {
   if (!fppg || fppg <= 0) return 3500
-  // Linear scale: $3,500 base + $230 per fppg, capped at $12,500
-  const salary = Math.round((3500 + fppg * 230) / 100) * 100
+  const salary = Math.round((3500 + fppg * 200) / 100) * 100
   return Math.max(3500, Math.min(12500, salary))
 }
 
@@ -325,28 +364,19 @@ export async function generateNBASalaries(date, season = 2026) {
         const name = athlete.displayName || athlete.fullName
         const headshot = athlete.headshot?.href || null
 
-        // Try to get season averages from the athlete's stats
-        // ESPN roster endpoint sometimes includes stats
+        // Fetch real season averages from ESPN
+        const avgs = await fetchPlayerSeasonAvgs(espnId)
         let fppg = 0
-        const stats = athlete.statistics || athlete.stats || []
-        if (stats.length) {
-          // ESPN may provide stats differently, try to parse
-          const ppg = parseFloat(stats.find?.((s) => s.abbreviation === 'PTS')?.value) || 0
-          const rpg = parseFloat(stats.find?.((s) => s.abbreviation === 'REB')?.value) || 0
-          const apg = parseFloat(stats.find?.((s) => s.abbreviation === 'AST')?.value) || 0
-          const spg = parseFloat(stats.find?.((s) => s.abbreviation === 'STL')?.value) || 0
-          const bpg = parseFloat(stats.find?.((s) => s.abbreviation === 'BLK')?.value) || 0
-          const tpg = parseFloat(stats.find?.((s) => s.abbreviation === 'TO')?.value) || 0
-          fppg = ppg * 1 + rpg * 1.2 + apg * 1.5 + spg * 3 + bpg * 3 - tpg * 1
+        if (avgs && avgs.gp >= 5) {
+          fppg = avgs.ppg * 1 + avgs.rpg * 1.2 + avgs.apg * 1.5
+            + avgs.spg * 3 + avgs.bpg * 3 - avgs.tpg * 1
+            + avgs.threes * 0.5
         }
 
-        // If no stats, estimate by roster order
-        if (fppg <= 0) {
-          const rank = athletes.indexOf(athlete)
-          if (rank < 2) fppg = 35 + Math.random() * 10
-          else if (rank < 5) fppg = 20 + Math.random() * 10
-          else if (rank < 10) fppg = 10 + Math.random() * 8
-          else fppg = 3 + Math.random() * 5
+        // Skip players with no meaningful stats (injured all season, two-way, etc.)
+        if (fppg <= 0 && (!avgs || avgs.gp < 5)) {
+          // Still include but at minimum salary
+          fppg = 0
         }
 
         const salary = fantasyPointsToSalary(fppg)
