@@ -13,6 +13,7 @@ import FantasyDraftRoom from '../components/leagues/FantasyDraftRoom'
 import FantasyMyTeam from '../components/leagues/FantasyMyTeam'
 import FantasyPlayerBrowser from '../components/leagues/FantasyPlayerBrowser'
 import FantasyStandings from '../components/leagues/FantasyStandings'
+import FantasyMatchup from '../components/leagues/FantasyMatchup'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -891,7 +892,7 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (
-        <div className="text-center py-8 text-text-muted text-sm">Weekly matchups coming soon</div>
+        <FantasyMatchup league={league} />
       )}
 
       {tabs[activeTab] === 'Thread' && (
