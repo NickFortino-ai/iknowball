@@ -528,6 +528,7 @@ export default function LeagueDetailPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
   const [editingNote, setEditingNote] = useState(false)
+  const [noteExpanded, setNoteExpanded] = useState(false)
   const [noteText, setNoteText] = useState('')
   const noteRef = useRef(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
@@ -784,19 +785,34 @@ export default function LeagueDetailPage() {
           </div>
         </div>
       ) : league.commissioner_note ? (
-        <div className="rounded-xl border border-text-primary/20 p-4 mb-6">
-          <div className="flex items-center justify-between mb-2">
+        <div className="rounded-xl border border-text-primary/20 mb-6">
+          <button
+            onClick={() => setNoteExpanded((v) => !v)}
+            className="w-full flex items-center justify-between p-4"
+          >
             <span className="text-xs font-semibold text-text-secondary">Commissioner's Note</span>
-            {isCommissioner && (
-              <button
-                onClick={() => { setNoteText(league.commissioner_note); setEditingNote(true) }}
-                className="text-xs text-accent hover:text-accent-hover transition-colors"
+            <div className="flex items-center gap-2">
+              {isCommissioner && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); setNoteText(league.commissioner_note); setEditingNote(true) }}
+                  className="text-xs text-accent hover:text-accent-hover transition-colors"
+                >
+                  Edit
+                </span>
+              )}
+              <svg
+                className={`w-4 h-4 text-text-muted transition-transform ${noteExpanded ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
               >
-                Edit
-              </button>
-            )}
-          </div>
-          <p className="text-sm text-text-primary whitespace-pre-wrap">{league.commissioner_note}</p>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </button>
+          {noteExpanded && (
+            <div className="px-4 pb-4">
+              <p className="text-sm text-text-primary whitespace-pre-wrap">{league.commissioner_note}</p>
+            </div>
+          )}
         </div>
       ) : isCommissioner ? (
         <div className="mb-6">
