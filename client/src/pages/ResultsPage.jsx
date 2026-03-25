@@ -167,7 +167,7 @@ export default function ResultsPage() {
       {weeklyStats && (
         <div className="rounded-2xl border border-text-primary/20 p-4 mb-6">
           <h2 className="font-display text-sm text-text-primary uppercase tracking-wider mb-3">Summary</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 text-center">
+          <div className="grid grid-cols-4 gap-2 text-center">
             <div className="bg-black/40 rounded-xl py-3">
               <div className="font-display text-2xl text-correct">{weeklyStats.wins}</div>
               <div className="text-xs text-text-muted">Wins</div>
