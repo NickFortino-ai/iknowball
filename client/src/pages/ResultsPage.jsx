@@ -168,21 +168,21 @@ export default function ResultsPage() {
         <div className="rounded-2xl border border-text-primary/20 p-4 mb-6">
           <h2 className="font-display text-sm text-text-primary uppercase tracking-wider mb-3">Summary</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 text-center">
-            <div className="bg-bg-primary rounded-xl py-3">
+            <div className="bg-black/40 rounded-xl py-3">
               <div className="font-display text-2xl text-correct">{weeklyStats.wins}</div>
               <div className="text-xs text-text-muted">Wins</div>
             </div>
-            <div className="bg-bg-primary rounded-xl py-3">
+            <div className="bg-black/40 rounded-xl py-3">
               <div className="font-display text-2xl text-incorrect">{weeklyStats.losses}</div>
               <div className="text-xs text-text-muted">Losses</div>
             </div>
-            <div className="bg-bg-primary rounded-xl py-3">
+            <div className="bg-black/40 rounded-xl py-3">
               <div className={`font-display text-2xl ${weeklyStats.leaguePoints > 0 ? 'text-correct' : weeklyStats.leaguePoints < 0 ? 'text-incorrect' : 'text-text-secondary'}`}>
                 {weeklyStats.leaguePoints > 0 ? '+' : ''}{weeklyStats.leaguePoints}
               </div>
               <div className="text-xs text-text-muted">Leagues</div>
             </div>
-            <div className="bg-bg-primary rounded-xl py-3">
+            <div className="bg-black/40 rounded-xl py-3">
               <div className={`font-display text-2xl ${weeklyStats.netPoints >= 0 ? 'text-correct' : 'text-incorrect'}`}>
                 {weeklyStats.netPoints > 0 ? '+' : ''}{weeklyStats.netPoints}
               </div>
