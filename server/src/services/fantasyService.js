@@ -16,6 +16,11 @@ export async function createFantasySettings(leagueId, settings = {}) {
     playoff_teams = 4,
     playoff_start_week = 15,
     season = 2026,
+    format: dfsFormat,
+    salary_cap,
+    season_type,
+    champion_metric,
+    single_week,
   } = settings
 
   const { data, error } = await supabase
@@ -32,6 +37,11 @@ export async function createFantasySettings(leagueId, settings = {}) {
       playoff_teams,
       playoff_start_week,
       season,
+      ...(dfsFormat && { format: dfsFormat }),
+      ...(salary_cap && { salary_cap }),
+      ...(season_type && { season_type }),
+      ...(champion_metric && { champion_metric }),
+      ...(single_week && { single_week }),
     })
     .select()
     .single()

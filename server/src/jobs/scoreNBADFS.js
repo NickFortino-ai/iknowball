@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createNotification } from '../services/notificationService.js'
 import { calculateNBAFantasyPoints, generateNBASalaries } from '../services/nbaDfsService.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
@@ -201,6 +202,66 @@ async function scoreRosters(date, season) {
 }
 
 /**
+ * For single-night NBA DFS leagues whose start date matches the given date:
+ * remove members who didn't submit a roster and notify them.
+ * Only runs once all games for that date are final.
+ */
+async function cleanupSingleNightNoRosters(date, season, allFinal) {
+  if (!allFinal) return
+
+  // Find single-night NBA DFS leagues starting on this date
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, name, starts_at, fantasy_settings(season_type)')
+    .eq('format', 'nba_dfs')
+    .in('status', ['open', 'active'])
+
+  if (!leagues?.length) return
+
+  for (const league of leagues) {
+    const seasonType = league.fantasy_settings?.[0]?.season_type || league.fantasy_settings?.season_type
+    if (seasonType !== 'single_week') continue
+
+    const leagueStart = league.starts_at ? new Date(league.starts_at).toISOString().split('T')[0] : null
+    if (leagueStart !== date) continue
+
+    // Get all members
+    const { data: members } = await supabase
+      .from('league_members')
+      .select('user_id')
+      .eq('league_id', league.id)
+
+    if (!members?.length) continue
+
+    // Get users who submitted rosters
+    const { data: rosters } = await supabase
+      .from('nba_dfs_rosters')
+      .select('user_id')
+      .eq('league_id', league.id)
+      .eq('game_date', date)
+      .eq('season', season)
+
+    const rosterUserIds = new Set((rosters || []).map((r) => r.user_id))
+    const noRosterMembers = members.filter((m) => !rosterUserIds.has(m.user_id))
+
+    for (const member of noRosterMembers) {
+      // Remove from league
+      await supabase
+        .from('league_members')
+        .delete()
+        .eq('league_id', league.id)
+        .eq('user_id', member.user_id)
+
+      await createNotification(member.user_id, 'league_update',
+        `You didn't submit a roster in time for ${league.name}. Catch the next one!`,
+        { leagueId: league.id })
+
+      logger.info({ userId: member.user_id, leagueId: league.id, date }, 'Removed member from single-night DFS league (no roster)')
+    }
+  }
+}
+
+/**
  * Main job: generate salaries for today, score yesterday's (or today's finished) games.
  */
 export async function scoreNBADFS() {
@@ -236,6 +297,10 @@ export async function scoreNBADFS() {
     logger.info({ date: today, players: playerStats.length, allFinal }, 'NBA DFS scoring pass complete')
   }
 
+  if (allFinal) {
+    await cleanupSingleNightNoRosters(today, season, true)
+  }
+
   // Also check yesterday in case late games weren't scored
   const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
   yesterday.setDate(yesterday.getDate() - 1)
@@ -254,6 +319,9 @@ export async function scoreNBADFS() {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
       await scoreRosters(yesterdayStr, season)
       logger.info({ date: yesterdayStr, players: yester.playerStats.length }, 'Scored yesterday NBA DFS games')
+    }
+    if (yester.allFinal) {
+      await cleanupSingleNightNoRosters(yesterdayStr, season, true)
     }
   }
 }
