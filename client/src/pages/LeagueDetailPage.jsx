@@ -624,8 +624,9 @@ export default function LeagueDetailPage() {
         </div>
       )}
 
-      {/* Invite Actions — only shown while league is still open for joining */}
-      {league.status !== 'open' ? null : league.format === 'bracket' && !isBracketLocked ? (
+      {/* Invite Actions — shown while league is still accepting members */}
+      {(league.status === 'open' || (league.status === 'active' && league.joins_locked_at && new Date(league.joins_locked_at) > new Date()))
+      ? league.format === 'bracket' && !isBracketLocked ? (
         <div className="flex items-center justify-center gap-3 mb-4">
           <button
             onClick={async () => {
@@ -725,7 +726,8 @@ export default function LeagueDetailPage() {
             </button>
           )}
         </div>
-      ) : null}
+      ) : null
+      : null}
 
       {/* League Conditions (hidden for bracket leagues) */}
 
