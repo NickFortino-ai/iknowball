@@ -234,8 +234,8 @@ export default function SurvivorView({ league }) {
         {board.members?.map((m) => (
           <div
             key={m.id}
-            className={`bg-bg-card rounded-xl border px-4 py-3 ${
-              m.is_alive ? 'border-border' : 'border-incorrect/30 opacity-60'
+            className={`rounded-xl border px-4 py-3 ${
+              m.is_alive ? 'border-text-primary/20' : 'border-incorrect/30 opacity-60'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
