@@ -884,7 +884,18 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
-      <div className="flex justify-center gap-2 mb-6 overflow-x-auto no-scrollbar">
+      <div className={`relative rounded-xl mb-6 overflow-hidden ${league.format === 'fantasy' ? 'py-3' : ''}`}>
+        {league.format === 'fantasy' && (
+          <>
+            <img
+              src="/fantasy-football-bg.png"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover object-center opacity-30 pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/60 via-transparent to-bg-primary pointer-events-none" />
+          </>
+        )}
+      <div className="relative z-10 flex justify-center gap-2 overflow-x-auto no-scrollbar">
         {tabs.map((tab, i) => {
           // Disable Live tab for NBA DFS until league start date
           const isLiveDisabled = tab === 'Live' && league.format === 'nba_dfs' && league.starts_at &&
@@ -909,6 +920,7 @@ export default function LeagueDetailPage() {
             </button>
           )
         })}
+      </div>
       </div>
       )}
 
