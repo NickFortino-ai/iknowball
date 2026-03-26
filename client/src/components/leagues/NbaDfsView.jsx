@@ -220,6 +220,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const [initialized, setInitialized] = useState(false)
   const [initDate, setInitDate] = useState(null)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
+  const [editing, setEditing] = useState(false)
 
   // Reset roster state when date changes
   if (initDate !== date) {
@@ -245,6 +246,10 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const remainingSalary = salaryCap - usedSalary
   const filledSlots = Object.keys(roster).length
   const usedPlayerIds = new Set(Object.values(roster).map((p) => p?.espn_player_id).filter(Boolean))
+  const hasSavedRoster = !!existingRoster?.nba_dfs_roster_slots?.length
+  const allLocked = hasSavedRoster && Object.values(roster).length > 0 &&
+    Object.values(roster).every((p) => p && getPlayerGameState(p) !== 'upcoming')
+  const isViewMode = hasSavedRoster && !editing
 
   const filteredPlayers = useMemo(() => {
     if (!players) return []
@@ -310,6 +315,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     try {
       await saveRoster.mutateAsync({ league_id: league.id, date, season: 2026, slots })
       toast('Roster saved!', 'success')
+      setEditing(false)
     } catch (err) {
       toast(err.message || 'Failed to save roster', 'error')
     }
@@ -448,7 +454,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                     <div className="text-xs text-text-muted">{player.team} · {player.opponent}</div>
                   </div>
                   <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
-                  {!isLocked && (
+                  {!isLocked && !isViewMode && (
                     <button
                       onClick={() => removeSlot(slot.key)}
                       className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
@@ -465,17 +471,27 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
         })}
       </div>
 
-      {/* Submit Button */}
-      <button
-        onClick={handleSubmit}
-        disabled={filledSlots < 9 || remainingSalary < 0 || saveRoster.isPending}
-        className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
-      >
-        {saveRoster.isPending ? 'Saving...' : existingRoster ? 'Update Roster' : 'Submit Roster'}
-      </button>
+      {/* Action Button */}
+      {isViewMode ? (
+        <button
+          onClick={() => setEditing(true)}
+          disabled={allLocked}
+          className="w-full py-3 rounded-xl font-display bg-bg-card text-text-primary border border-text-primary/20 hover:bg-text-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-6"
+        >
+          {allLocked ? 'Roster Locked' : 'Edit Roster'}
+        </button>
+      ) : (
+        <button
+          onClick={handleSubmit}
+          disabled={filledSlots < 9 || remainingSalary < 0 || saveRoster.isPending}
+          className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+        >
+          {saveRoster.isPending ? 'Saving...' : hasSavedRoster ? 'Save Roster' : 'Submit Roster'}
+        </button>
+      )}
 
       {/* Player Pool */}
-      <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+      {!isViewMode && <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
           <input
@@ -559,7 +575,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
       {selectedPlayer && (
         <PlayerDetailModal
