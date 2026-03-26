@@ -605,9 +605,21 @@ export default function LeagueDetailPage() {
   const isCommissioner = league.commissioner_id === profile?.id
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-2xl mx-auto px-4 py-6 relative">
+      {/* NBA DFS full hero backdrop */}
+      {league.format === 'nba_dfs' && (
+        <div className="absolute inset-x-0 top-0 h-[420px] md:h-[380px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+          <img
+            src="/nba-dfs-bg.png"
+            alt=""
+            className="w-full h-full object-cover object-center opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/20 via-bg-primary/40 to-bg-primary" />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 relative z-10">
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
@@ -886,23 +898,13 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
-      <div className={`relative rounded-xl mb-6 overflow-hidden ${league.format === 'fantasy' || league.format === 'nba_dfs' ? 'min-h-[140px] md:min-h-[180px]' : ''}`}>
+      <div className={`relative rounded-xl mb-6 overflow-hidden ${league.format === 'fantasy' ? 'min-h-[140px] md:min-h-[180px]' : ''}`}>
         {league.format === 'fantasy' && (
           <>
             <img
               src="/fantasy-football-bg.png"
               alt=""
               className="absolute inset-0 w-full h-full object-cover object-center opacity-45 pointer-events-none"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/40 via-transparent to-bg-primary/60 pointer-events-none" />
-          </>
-        )}
-        {league.format === 'nba_dfs' && (
-          <>
-            <img
-              src="/nba-dfs-bg.png"
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover object-center opacity-40 pointer-events-none"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/40 via-transparent to-bg-primary/60 pointer-events-none" />
           </>
