@@ -1013,7 +1013,7 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Thread' && (
-        <LeagueThread league={league} />
+        <div className="relative z-10"><LeagueThread league={league} /></div>
       )}
 
       {/* Delete League */}
