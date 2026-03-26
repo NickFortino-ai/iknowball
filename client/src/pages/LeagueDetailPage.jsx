@@ -624,7 +624,7 @@ export default function LeagueDetailPage() {
           &larr; My Leagues
         </Link>
         <div className={['bracket', 'fantasy', 'nba_dfs'].includes(league.format) ? 'text-center' : ''}>
-        <div className="flex items-center gap-2 mt-2">
+        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs'].includes(league.format) ? 'justify-center' : ''}`}>
           <h1 className="font-display text-3xl">{league.name}</h1>
           <button
             onClick={() => setShowSettingsModal(true)}
@@ -1019,7 +1019,9 @@ export default function LeagueDetailPage() {
       )}
 
       {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Live' || tabs[activeTab] === 'Standings') && league.format === 'nba_dfs' && (
-        <NbaDfsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'Live' ? 'live' : 'roster'} />
+        <div className="relative z-10">
+          <NbaDfsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'Live' ? 'live' : 'roster'} />
+        </div>
       )}
 
       {tabs[activeTab] === 'Thread' && (
