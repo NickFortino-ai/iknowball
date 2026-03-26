@@ -1,0 +1,1 @@
+ALTER TABLE nfl_players ADD COLUMN IF NOT EXISTS bye_week INTEGER;
