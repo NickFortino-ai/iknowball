@@ -351,21 +351,19 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   return (
     <div>
       {/* Date sub-tabs */}
-      {availableDates.length > 1 && (
-        <div className="flex gap-2 mb-4">
-          {availableDates.map((d) => (
-            <button
-              key={d}
-              onClick={() => setSelectedDate(d)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                d === date ? 'bg-accent text-white' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
-              }`}
-            >
-              {formatDateLabel(d)}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex gap-2 mb-4">
+        {availableDates.map((d) => (
+          <button
+            key={d}
+            onClick={() => setSelectedDate(d)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              d === date ? 'bg-accent text-white' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+            }`}
+          >
+            {formatDateLabel(d)}
+          </button>
+        ))}
+      </div>
       {/* Salary Bar */}
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 mb-4">
         <div className="flex items-center justify-between mb-2">
