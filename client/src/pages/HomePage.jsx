@@ -134,9 +134,14 @@ export default function HomePage() {
             </Link>
           </div>
         ) : (
-          <Link to="/picks" className="bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors inline-block">
-            Make Your Picks
-          </Link>
+          <div className="flex flex-col items-center gap-3">
+            <Link to="/picks" className="bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors inline-block">
+              Make Your Picks
+            </Link>
+            <Link to="/leagues" className="bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors inline-block">
+              Go to Leagues
+            </Link>
+          </div>
         )}
       </div>
 
