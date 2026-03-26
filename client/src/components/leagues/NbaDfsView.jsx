@@ -632,7 +632,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                     </div>
                     <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
                   </div>
-                  <span className="text-sm font-semibold text-accent tabular-nums shrink-0">${player.salary.toLocaleString()}</span>
+                  <span className="text-base font-semibold text-accent tabular-nums shrink-0">${player.salary.toLocaleString()}</span>
                 </button>
                 <button
                   onClick={() => addPlayer(player)}
