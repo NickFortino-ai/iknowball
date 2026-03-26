@@ -652,15 +652,17 @@ export default function LeagueDetailPage() {
           <div className="relative">
             <div className="flex items-center justify-center gap-4 mb-2">
               <div className="text-4xl">{'\uD83C\uDFC6'}</div>
-              {league.champion.user.avatar_url ? (
-                <img
-                  src={league.champion.user.avatar_url}
-                  alt={league.champion.user.display_name}
-                  className="w-20 h-20 rounded-full object-cover ring-2 ring-yellow-500"
-                />
-              ) : (
-                <Avatar user={league.champion.user} size="2xl" />
-              )}
+              <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer">
+                {league.champion.user.avatar_url ? (
+                  <img
+                    src={league.champion.user.avatar_url}
+                    alt={league.champion.user.display_name}
+                    className="w-20 h-20 rounded-full object-cover ring-2 ring-yellow-500"
+                  />
+                ) : (
+                  <Avatar user={league.champion.user} size="2xl" />
+                )}
+              </button>
             </div>
             <div className="font-display text-xl text-yellow-400">
               {league.champion.user.display_name || league.champion.user.username}
