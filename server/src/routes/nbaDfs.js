@@ -283,6 +283,23 @@ router.get('/live', async (req, res) => {
   })
 })
 
+// Look up ESPN player ID by name (for connecting props to game logs)
+router.get('/player/lookup', async (req, res) => {
+  const { name } = req.query
+  if (!name) return res.status(400).json({ error: 'name required' })
+
+  const { data } = await supabase
+    .from('nba_dfs_salaries')
+    .select('espn_player_id, player_name, headshot_url, team, position')
+    .ilike('player_name', `%${name}%`)
+    .order('game_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!data) return res.status(404).json({ error: 'Player not found' })
+  res.json(data)
+})
+
 // Player game log — last 10 games
 router.get('/player/:espnId/gamelog', async (req, res) => {
   const { espnId } = req.params

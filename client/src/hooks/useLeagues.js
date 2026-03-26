@@ -616,6 +616,15 @@ export function useNbaDfsLive(leagueId, date, season = 2026) {
   })
 }
 
+export function useNbaDfsPlayerLookup(name) {
+  return useQuery({
+    queryKey: ['nba-dfs', 'player-lookup', name],
+    queryFn: () => api.get(`/nba-dfs/player/lookup?name=${encodeURIComponent(name)}`),
+    enabled: !!name,
+    staleTime: 10 * 60 * 1000,
+  })
+}
+
 export function useNbaDfsPlayerGamelog(espnId) {
   return useQuery({
     queryKey: ['nba-dfs', 'gamelog', espnId],
