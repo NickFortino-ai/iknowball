@@ -155,11 +155,37 @@ function LiveView({ league, date }) {
 // Main Component
 // ============================================
 
+function tomorrowET() {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+}
+
+function formatDateLabel(dateStr) {
+  const today = todayET()
+  const tomorrow = tomorrowET()
+  if (dateStr === today) return 'Today'
+  if (dateStr === tomorrow) return 'Tomorrow'
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 export default function NbaDfsView({ league, tab = 'roster' }) {
   const { profile } = useAuth()
-  const date = league.starts_at
+
+  const leagueStart = league.starts_at
     ? new Date(league.starts_at).toISOString().split('T')[0]
     : todayET()
+  const today = todayET()
+  const tomorrow = tomorrowET()
+
+  // Determine available dates: today and/or tomorrow, but not before league start
+  const availableDates = []
+  if (today >= leagueStart) availableDates.push(today)
+  if (tomorrow >= leagueStart) availableDates.push(tomorrow)
+  if (!availableDates.length) availableDates.push(leagueStart)
+
+  const [selectedDate, setSelectedDate] = useState(availableDates[0])
+  const date = selectedDate
 
   const { data: fantasySettings } = useFantasySettings(league.id)
   const salaryCap = fantasySettings?.salary_cap || 60000
@@ -172,6 +198,14 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const [posFilter, setPosFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [initialized, setInitialized] = useState(false)
+  const [initDate, setInitDate] = useState(null)
+
+  // Reset roster state when date changes
+  if (initDate !== date) {
+    setInitDate(date)
+    setRoster({})
+    setInitialized(false)
+  }
 
   // Initialize roster from existing data
   if (!initialized && existingRoster?.nba_dfs_roster_slots?.length && !Object.keys(roster).length) {
@@ -316,6 +350,22 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
 
   return (
     <div>
+      {/* Date sub-tabs */}
+      {availableDates.length > 1 && (
+        <div className="flex gap-2 mb-4">
+          {availableDates.map((d) => (
+            <button
+              key={d}
+              onClick={() => setSelectedDate(d)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                d === date ? 'bg-accent text-white' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+              }`}
+            >
+              {formatDateLabel(d)}
+            </button>
+          ))}
+        </div>
+      )}
       {/* Salary Bar */}
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 mb-4">
         <div className="flex items-center justify-between mb-2">

@@ -327,6 +327,25 @@ export async function scoreNBADFS() {
     }
   }
 
+  // Also generate tomorrow's salaries so users can build rosters a day early
+  const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrow = tomorrowDate.toISOString().split('T')[0]
+
+  const { count: tomorrowSalaries } = await supabase
+    .from('nba_dfs_salaries')
+    .select('id', { count: 'exact', head: true })
+    .eq('game_date', tomorrow)
+    .eq('season', season)
+
+  if (!tomorrowSalaries || tomorrowSalaries === 0) {
+    try {
+      await generateNBASalaries(tomorrow, season)
+    } catch (err) {
+      logger.error({ err }, 'Failed to generate tomorrow NBA DFS salaries')
+    }
+  }
+
   // Tighten join locks to first tip-off once salaries exist
   await tightenJoinLocks()
 
