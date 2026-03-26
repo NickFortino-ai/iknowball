@@ -300,11 +300,48 @@ router.get('/player/lookup', async (req, res) => {
   res.json(data)
 })
 
-// Player game log — last 10 games
+// ESPN sport paths for game logs
+const ESPN_SPORT_PATHS = {
+  basketball_nba: 'basketball/nba',
+  baseball_mlb: 'baseball/mlb',
+  americanfootball_nfl: 'football/nfl',
+  icehockey_nhl: 'hockey/nhl',
+}
+
+// NBA stat columns for game log
+const NBA_GAME_COLS = (statMap) => ({
+  pts: parseInt(statMap.PTS) || 0,
+  reb: parseInt(statMap.REB) || 0,
+  ast: parseInt(statMap.AST) || 0,
+  stl: parseInt(statMap.STL) || 0,
+  blk: parseInt(statMap.BLK) || 0,
+  to: parseInt(statMap.TO) || 0,
+  min: parseInt(statMap.MIN) || 0,
+  threes: statMap['3PT'] || '0',
+  fg: statMap.FG || '0',
+})
+
+// MLB stat columns for game log
+const MLB_GAME_COLS = (statMap) => ({
+  ab: parseInt(statMap.AB) || 0,
+  h: parseInt(statMap.H) || 0,
+  r: parseInt(statMap.R) || 0,
+  hr: parseInt(statMap.HR) || 0,
+  rbi: parseInt(statMap.RBI) || 0,
+  bb: parseInt(statMap.BB) || 0,
+  so: parseInt(statMap.SO) || 0,
+  sb: parseInt(statMap.SB) || 0,
+  avg: statMap.AVG || '.000',
+})
+
+// Player game log — last 10 games (supports NBA and MLB)
 router.get('/player/:espnId/gamelog', async (req, res) => {
   const { espnId } = req.params
+  const sport = req.query.sport || 'basketball_nba'
+  const espnPath = ESPN_SPORT_PATHS[sport] || 'basketball/nba'
+
   try {
-    const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${espnId}/gamelog`)
+    const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog`)
     if (!response.ok) return res.status(404).json({ error: 'Player not found' })
     const data = await response.json()
 
@@ -316,7 +353,9 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       for (const ev of cat.events || []) allGames.push(ev)
     }
 
-    // Last 10 games
+    const isMLB = sport === 'baseball_mlb'
+    const colParser = isMLB ? MLB_GAME_COLS : NBA_GAME_COLS
+
     const games = allGames.slice(0, 10).map((ev) => {
       const detail = eventsMap[ev.eventId] || {}
       const statMap = {}
@@ -326,20 +365,12 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
         date: detail.gameDate || null,
         opponent: detail.opponent?.displayName || detail.opponent?.abbreviation || '?',
         result: detail.gameResult || null,
-        pts: parseInt(statMap.PTS) || 0,
-        reb: parseInt(statMap.REB) || 0,
-        ast: parseInt(statMap.AST) || 0,
-        stl: parseInt(statMap.STL) || 0,
-        blk: parseInt(statMap.BLK) || 0,
-        to: parseInt(statMap.TO) || 0,
-        min: parseInt(statMap.MIN) || 0,
-        threes: statMap['3PT'] || '0',
-        fg: statMap.FG || '0',
+        ...colParser(statMap),
       }
     })
 
     // Season averages
-    const statsRes = await fetch(`https://site.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${espnId}/stats`)
+    const statsRes = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/stats`)
     let averages = null
     if (statsRes.ok) {
       const statsData = await statsRes.json()
@@ -349,20 +380,24 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
         const latest = avgs.statistics[avgs.statistics.length - 1]
         const vals = latest.stats || []
         const get = (label) => { const idx = sLabels.indexOf(label); return idx >= 0 ? vals[idx] : '0' }
-        averages = {
-          ppg: get('PTS'),
-          rpg: get('REB'),
-          apg: get('AST'),
-          spg: get('STL'),
-          bpg: get('BLK'),
-          tpg: get('TO'),
-          mpg: get('MIN'),
-          gp: get('GP'),
+
+        if (isMLB) {
+          averages = {
+            avg: get('AVG'), hr: get('HR'), rbi: get('RBI'),
+            r: get('R'), sb: get('SB'), obp: get('OBP'),
+            ops: get('OPS'), gp: get('GP'),
+          }
+        } else {
+          averages = {
+            ppg: get('PTS'), rpg: get('REB'), apg: get('AST'),
+            spg: get('STL'), bpg: get('BLK'), tpg: get('TO'),
+            mpg: get('MIN'), gp: get('GP'),
+          }
         }
       }
     }
 
-    res.json({ games, averages })
+    res.json({ games, averages, sport })
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch game log' })
   }

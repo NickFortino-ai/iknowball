@@ -17,10 +17,111 @@ function InjuryBadge({ status }) {
   )
 }
 
-export default function PlayerDetailModal({ player, onClose, onAdd }) {
-  const { data, isLoading } = useNbaDfsPlayerGamelog(player?.espn_player_id)
+function NBAaverages({ averages }) {
+  return (
+    <>
+      <div className="grid grid-cols-4 gap-3 text-center">
+        {[
+          { label: 'PTS', value: averages.ppg },
+          { label: 'REB', value: averages.rpg },
+          { label: 'AST', value: averages.apg },
+          { label: 'GP', value: averages.gp },
+        ].map((s) => (
+          <div key={s.label}>
+            <div className="text-lg font-display text-text-primary">{s.value}</div>
+            <div className="text-[10px] text-text-muted uppercase">{s.label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-3 text-center mt-2">
+        {[
+          { label: 'STL', value: averages.spg },
+          { label: 'BLK', value: averages.bpg },
+          { label: 'TO', value: averages.tpg },
+          { label: 'MIN', value: averages.mpg },
+        ].map((s) => (
+          <div key={s.label}>
+            <div className="text-lg font-display text-text-primary">{s.value}</div>
+            <div className="text-[10px] text-text-muted uppercase">{s.label}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function MLBaverages({ averages }) {
+  return (
+    <div className="grid grid-cols-4 gap-3 text-center">
+      {[
+        { label: 'AVG', value: averages.avg },
+        { label: 'HR', value: averages.hr },
+        { label: 'RBI', value: averages.rbi },
+        { label: 'R', value: averages.r },
+        { label: 'SB', value: averages.sb },
+        { label: 'OBP', value: averages.obp },
+        { label: 'OPS', value: averages.ops },
+        { label: 'GP', value: averages.gp },
+      ].map((s) => (
+        <div key={s.label}>
+          <div className="text-lg font-display text-text-primary">{s.value}</div>
+          <div className="text-[10px] text-text-muted uppercase">{s.label}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function NBAGameLog({ games }) {
+  return (
+    <div className="space-y-0">
+      <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+        <span></span><span>OPP</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
+      </div>
+      {games.map((g, i) => (
+        <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+          <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
+          <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-primary text-right font-semibold">{g.pts}</span>
+          <span className="text-xs text-text-secondary text-right">{g.reb}</span>
+          <span className="text-xs text-text-secondary text-right">{g.ast}</span>
+          <span className="text-xs text-text-secondary text-right">{g.stl}</span>
+          <span className="text-xs text-text-secondary text-right">{g.blk}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function MLBGameLog({ games }) {
+  return (
+    <div className="space-y-0">
+      <div className="grid grid-cols-[1.5rem_1fr_2rem_2rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+        <span></span><span>OPP</span><span className="text-right">AB</span><span className="text-right">H</span><span className="text-right">R</span><span className="text-right">HR</span><span className="text-right">RBI</span><span className="text-right">BB</span><span className="text-right">SO</span>
+      </div>
+      {games.map((g, i) => (
+        <div key={i} className="grid grid-cols-[1.5rem_1fr_2rem_2rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+          <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
+          <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-primary text-right font-semibold">{g.ab}</span>
+          <span className="text-xs text-text-secondary text-right">{g.h}</span>
+          <span className="text-xs text-text-secondary text-right">{g.r}</span>
+          <span className="text-xs text-text-secondary text-right">{g.hr}</span>
+          <span className="text-xs text-text-secondary text-right">{g.rbi}</span>
+          <span className="text-xs text-text-secondary text-right">{g.bb}</span>
+          <span className="text-xs text-text-secondary text-right">{g.so}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'basketball_nba' }) {
+  const { data, isLoading } = useNbaDfsPlayerGamelog(player?.espn_player_id, sport)
 
   if (!player) return null
+
+  const isMLB = (data?.sport || sport) === 'baseball_mlb'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
@@ -69,32 +170,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd }) {
         {data?.averages && (
           <div className="px-5 py-4 border-b border-text-primary/10">
             <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3 font-semibold">Season Averages</h3>
-            <div className="grid grid-cols-4 gap-3 text-center">
-              {[
-                { label: 'PTS', value: data.averages.ppg },
-                { label: 'REB', value: data.averages.rpg },
-                { label: 'AST', value: data.averages.apg },
-                { label: 'GP', value: data.averages.gp },
-              ].map((s) => (
-                <div key={s.label}>
-                  <div className="text-lg font-display text-text-primary">{s.value}</div>
-                  <div className="text-[10px] text-text-muted uppercase">{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-4 gap-3 text-center mt-2">
-              {[
-                { label: 'STL', value: data.averages.spg },
-                { label: 'BLK', value: data.averages.bpg },
-                { label: 'TO', value: data.averages.tpg },
-                { label: 'MIN', value: data.averages.mpg },
-              ].map((s) => (
-                <div key={s.label}>
-                  <div className="text-lg font-display text-text-primary">{s.value}</div>
-                  <div className="text-[10px] text-text-muted uppercase">{s.label}</div>
-                </div>
-              ))}
-            </div>
+            {isMLB ? <MLBaverages averages={data.averages} /> : <NBAaverages averages={data.averages} />}
           </div>
         )}
 
@@ -105,23 +181,10 @@ export default function PlayerDetailModal({ player, onClose, onAdd }) {
             <LoadingSpinner />
           ) : !data?.games?.length ? (
             <p className="text-sm text-text-muted text-center py-4">No recent games found.</p>
+          ) : isMLB ? (
+            <MLBGameLog games={data.games} />
           ) : (
-            <div className="space-y-0">
-              <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
-                <span></span><span>OPP</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
-              </div>
-              {data.games.map((g, i) => (
-                <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
-                  <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
-                  <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
-                  <span className="text-xs text-text-primary text-right font-semibold">{g.pts}</span>
-                  <span className="text-xs text-text-secondary text-right">{g.reb}</span>
-                  <span className="text-xs text-text-secondary text-right">{g.ast}</span>
-                  <span className="text-xs text-text-secondary text-right">{g.stl}</span>
-                  <span className="text-xs text-text-secondary text-right">{g.blk}</span>
-                </div>
-              ))}
-            </div>
+            <NBAGameLog games={data.games} />
           )}
         </div>
       </div>

@@ -625,10 +625,10 @@ export function useNbaDfsPlayerLookup(name) {
   })
 }
 
-export function useNbaDfsPlayerGamelog(espnId) {
+export function useNbaDfsPlayerGamelog(espnId, sport = 'basketball_nba') {
   return useQuery({
-    queryKey: ['nba-dfs', 'gamelog', espnId],
-    queryFn: () => api.get(`/nba-dfs/player/${espnId}/gamelog`),
+    queryKey: ['nba-dfs', 'gamelog', espnId, sport],
+    queryFn: () => api.get(`/nba-dfs/player/${espnId}/gamelog?sport=${sport}`),
     enabled: !!espnId,
     staleTime: 5 * 60 * 1000, // cache for 5 min
   })

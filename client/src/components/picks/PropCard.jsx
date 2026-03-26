@@ -163,6 +163,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
         <PlayerDetailModal
           player={playerLookup}
           onClose={() => setShowPlayerModal(false)}
+          sport={prop.games?.sports?.key || 'basketball_nba'}
         />
       )}
     </div>
