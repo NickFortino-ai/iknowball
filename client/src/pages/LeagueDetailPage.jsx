@@ -195,10 +195,10 @@ function LeagueConditions({ league }) {
       const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
       const isSingleNight = fantasySettings?.season_type === 'single_week'
       if (isSingleNight) {
-        return `Build a 9-player NBA lineup under a ${cap} salary cap. Your roster locks at tip-off of the first game. The player with the most fantasy points at the end of the night wins.`
+        return `Build a 9-player NBA lineup under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. The player with the most fantasy points at the end of the night wins.`
       }
       const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
-      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Rosters lock at tip-off of the first game each day. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. The champion is determined by ${metric} over the season.`
+      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. The champion is determined by ${metric} over the season.`
     }
 
     return null
