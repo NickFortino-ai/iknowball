@@ -77,7 +77,7 @@ function formatDateRange(startsAt, endsAt) {
   const start = startsAt ? new Date(startsAt).toLocaleDateString('en-US', opts) : null
   const end = endsAt ? new Date(endsAt).toLocaleDateString('en-US', opts) : null
   if (start && end) return `${start} – ${end}`
-  if (start) return `Starting ${start}`
+  if (start) return `Starts ${start}`
   return null
 }
 

@@ -292,18 +292,22 @@ export async function joinLeague(userId, inviteCode) {
     throw err
   }
 
-  // For survivor/pickem, allow joining as long as any period still has time left
+  // For survivor/pickem, allow joining if league hasn't started yet or any period still has time left
   if (['survivor', 'pickem'].includes(league.format)) {
-    const { count } = await supabase
-      .from('league_weeks')
-      .select('id', { count: 'exact', head: true })
-      .eq('league_id', league.id)
-      .gt('ends_at', new Date().toISOString())
+    // If league starts in the future, always allow joining
+    const startsInFuture = league.starts_at && new Date(league.starts_at) > new Date()
+    if (!startsInFuture) {
+      const { count } = await supabase
+        .from('league_weeks')
+        .select('id', { count: 'exact', head: true })
+        .eq('league_id', league.id)
+        .gt('ends_at', new Date().toISOString())
 
-    if (!count) {
-      const err = new Error('This league is no longer accepting new members')
-      err.status = 400
-      throw err
+      if (!count) {
+        const err = new Error('This league is no longer accepting new members')
+        err.status = 400
+        throw err
+      }
     }
   } else if (league.format === 'bracket') {
     // Bracket leagues allow joining until the bracket locks
