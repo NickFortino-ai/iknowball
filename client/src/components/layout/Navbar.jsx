@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { Share } from '@capacitor/share'
@@ -120,8 +121,12 @@ export default function Navbar() {
   const desktopMenuRef = useRef(null)
   const wasOpenRef = useRef(false)
 
-  // Mark notifications as read when dropdown closes (not when it opens)
+  // Refetch notifications when dropdown opens, mark read when it closes
+  const queryClient = useQueryClient()
   useEffect(() => {
+    if (showInvites) {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    }
     if (wasOpenRef.current && !showInvites) {
       markAllRead.mutate()
     }
