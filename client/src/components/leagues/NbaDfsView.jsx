@@ -61,8 +61,8 @@ function slotBorderClass(gameState) {
   return 'border-l-2 border-l-text-primary/30'
 }
 
-function todayET() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+function todayLocal() {
+  return new Date().toLocaleDateString('en-CA')
 }
 
 // ============================================
@@ -155,15 +155,15 @@ function LiveView({ league, date }) {
 // Main Component
 // ============================================
 
-function tomorrowET() {
+function tomorrowLocal() {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  return d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  return d.toLocaleDateString('en-CA')
 }
 
 function formatDateLabel(dateStr) {
-  const today = todayET()
-  const tomorrow = tomorrowET()
+  const today = todayLocal()
+  const tomorrow = tomorrowLocal()
   if (dateStr === today) return 'Today'
   if (dateStr === tomorrow) return 'Tomorrow'
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -174,9 +174,9 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
 
   const leagueStart = league.starts_at
     ? new Date(league.starts_at).toISOString().split('T')[0]
-    : todayET()
-  const today = todayET()
-  const tomorrow = tomorrowET()
+    : todayLocal()
+  const today = todayLocal()
+  const tomorrow = tomorrowLocal()
 
   // Determine available dates: today and/or tomorrow, but not before league start
   const availableDates = []
