@@ -78,16 +78,31 @@ function LiveView({ league, date }) {
   if (isLoading) return <LoadingSpinner />
   if (!liveData?.members?.length) return <div className="text-center py-8 text-sm text-text-secondary">No rosters submitted yet.</div>
 
-  const { members, all_final } = liveData
+  const { members, all_final, any_live, first_tipoff } = liveData
   const winner = all_final ? members[0] : null
 
+  function formatTipoff(isoStr) {
+    if (!isoStr) return null
+    return new Date(isoStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  }
+
+
   return (
-    <div className="space-y-3">
+    <div>
+      {/* Pre-game note */}
+      {!any_live && !all_final && first_tipoff && (
+        <div className="rounded-xl border border-text-primary/10 bg-bg-primary p-4 mb-4 text-center">
+          <div className="text-sm text-text-secondary">First games tip off at <span className="text-text-primary font-semibold">{formatTipoff(first_tipoff)}</span></div>
+        </div>
+      )}
+
+      <div className="space-y-3">
       {members.map((m, idx) => {
         const isMe = m.user_id === profile?.id
         const isWinner = all_final && idx === 0
         const isExpanded = expandedUserId === m.user_id
         const borderColor = m.status === 'final' ? 'border-correct/50' : m.status === 'live' ? 'border-accent/50' : 'border-text-primary/20'
+        const playersLeft = m.slots?.filter((s) => s.game_status !== 'final').length || 0
 
         return (
           <div key={m.user_id} className={isWinner ? 'mb-4' : ''}>
@@ -107,6 +122,9 @@ function LiveView({ league, date }) {
                     {isWinner && <span className="text-lg">{'\uD83C\uDFC6'}</span>}
                   </div>
                   {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
+                  {m.has_roster && playersLeft > 0 && !all_final && (
+                    <div className="text-[10px] text-text-muted">{playersLeft} player{playersLeft !== 1 ? 's' : ''} left</div>
+                  )}
                 </div>
                 <span className={`font-display ${isWinner ? 'text-2xl' : 'text-lg'} ${m.status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
                   {Math.round(m.total_points * 10) / 10}
@@ -148,6 +166,7 @@ function LiveView({ league, date }) {
           </div>
         )
       })}
+      </div>
     </div>
   )
 }

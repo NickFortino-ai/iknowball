@@ -241,13 +241,38 @@ router.get('/live', async (req, res) => {
   const anyLive = allTeamStates.some((s) => s === 'in')
   const allFinal = allTeamStates.length > 0 && allTeamStates.every((s) => s === 'post')
 
+  // Get first tip-off time today
+  const { data: firstTipoff } = await supabase
+    .from('nba_dfs_salaries')
+    .select('game_starts_at')
+    .eq('game_date', date)
+    .not('game_starts_at', 'is', null)
+    .order('game_starts_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  // NBA game duration ~150 minutes
+  const GAME_DURATION_MIN = 150
+
   // Build response
   const result = members.map((m) => {
     const roster = rosterMap[m.user_id]
     const isMe = m.user_id === req.user.id
+    let minutesRemaining = 0
+
     const slots = (roster?.nba_dfs_roster_slots || []).map((slot) => {
       const gs = gameStateMap[slot.espn_player_id] || { status: 'upcoming' }
       const visible = isMe || allFinal || gs.status === 'live' || gs.status === 'final'
+
+      // Estimate minutes remaining for this player
+      if (gs.status === 'upcoming') {
+        minutesRemaining += GAME_DURATION_MIN
+      } else if (gs.status === 'live' && gs.gameStartsAt) {
+        const elapsed = (now - new Date(gs.gameStartsAt)) / 60000
+        minutesRemaining += Math.max(0, GAME_DURATION_MIN - elapsed)
+      }
+      // final = 0 remaining
+
       return {
         roster_slot: slot.roster_slot,
         player_name: visible ? slot.player_name : '????',
@@ -269,6 +294,7 @@ router.get('/live', async (req, res) => {
       total_points: totalPoints,
       status: userStatus,
       has_roster: !!roster,
+      minutes_remaining: Math.round(minutesRemaining),
       slots,
     }
   })
@@ -280,6 +306,7 @@ router.get('/live', async (req, res) => {
     members: result,
     any_live: anyLive,
     all_final: allFinal,
+    first_tipoff: firstTipoff?.game_starts_at || null,
   })
 })
 
