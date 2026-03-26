@@ -606,11 +606,11 @@ export default function LeagueDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 relative">
-      {/* NBA DFS full hero backdrop */}
-      {league.format === 'nba_dfs' && (
+      {/* Full hero backdrop for NBA DFS and Fantasy Football */}
+      {(league.format === 'nba_dfs' || league.format === 'fantasy') && (
         <div className="absolute inset-x-0 top-0 h-[420px] md:h-[380px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
           <img
-            src="/nba-dfs-bg.png"
+            src={league.format === 'nba_dfs' ? '/nba-dfs-bg.png' : '/fantasy-football-bg.png'}
             alt=""
             className="w-full h-full object-cover object-center opacity-30"
           />
@@ -898,18 +898,7 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
-      <div className={`relative rounded-xl mb-6 overflow-hidden ${league.format === 'fantasy' ? 'min-h-[140px] md:min-h-[180px]' : ''}`}>
-        {league.format === 'fantasy' && (
-          <>
-            <img
-              src="/fantasy-football-bg.png"
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover object-center opacity-45 pointer-events-none"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/40 via-transparent to-bg-primary/60 pointer-events-none" />
-          </>
-        )}
-      <div className="relative z-10 flex justify-center items-end gap-2 overflow-x-auto no-scrollbar h-full min-h-[inherit] pb-4 pt-4">
+      <div className="relative z-10 mb-6 flex justify-center gap-2 overflow-x-auto no-scrollbar">
         {tabs.map((tab, i) => {
           // Disable Live tab for NBA DFS until league start date
           const isLiveDisabled = tab === 'Live' && league.format === 'nba_dfs' && league.starts_at &&
@@ -934,7 +923,6 @@ export default function LeagueDetailPage() {
             </button>
           )
         })}
-      </div>
       </div>
       )}
 
