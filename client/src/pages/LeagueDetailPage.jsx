@@ -611,7 +611,7 @@ export default function LeagueDetailPage() {
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
-        <div className={league.format === 'bracket' ? 'text-center' : ''}>
+        <div className={['bracket', 'fantasy', 'nba_dfs'].includes(league.format) ? 'text-center' : ''}>
         <div className="flex items-center gap-2 mt-2">
           <h1 className="font-display text-3xl">{league.name}</h1>
           <button
