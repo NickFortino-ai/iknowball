@@ -591,9 +591,10 @@ export async function updateLeague(leagueId, userId, data) {
     throw err
   }
 
-  // commissioner_note can always be updated
-  const noteOnly = Object.keys(data).every((k) => k === 'commissioner_note')
-  const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at', 'duration', 'name', 'max_members'].includes(k))
+  // commissioner_note and visibility can always be updated
+  const alwaysAllowed = ['commissioner_note', 'visibility', 'joins_locked_at']
+  const noteOnly = Object.keys(data).every((k) => alwaysAllowed.includes(k))
+  const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at', 'duration', 'name', 'max_members', 'visibility', 'joins_locked_at'].includes(k))
 
   if (!noteOnly && league.status !== 'open') {
     if (settingsOnly && (league.format === 'pickem' || league.format === 'survivor')) {
@@ -642,6 +643,8 @@ export async function updateLeague(leagueId, userId, data) {
     }
   }
   if (data.commissioner_note !== undefined) updates.commissioner_note = data.commissioner_note
+  if (data.visibility !== undefined) updates.visibility = data.visibility
+  if (data.joins_locked_at !== undefined) updates.joins_locked_at = data.joins_locked_at
 
   // Handle duration change — recalculate date range
   // When picks are locked, preserve existing starts_at (only extend ends_at)

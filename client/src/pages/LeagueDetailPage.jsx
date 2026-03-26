@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -85,6 +85,7 @@ function LeagueConditions({ league }) {
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
+  const { data: fantasySettings } = useFantasySettings(league.format === 'nba_dfs' || league.format === 'fantasy' ? league.id : null)
   const items = []
 
   // Date range / duration
@@ -92,12 +93,29 @@ function LeagueConditions({ league }) {
     full_season: 'Full Season',
     playoffs_only: 'Playoffs Only',
   }
-  const durationLabel = DURATION_LABELS[league.duration]
-  if (durationLabel) {
-    items.push({ label: 'Duration', value: durationLabel })
+
+  if (league.format === 'nba_dfs') {
+    // NBA DFS specific items
+    if (fantasySettings?.salary_cap) {
+      items.push({ label: 'Salary Cap', value: `$${fantasySettings.salary_cap.toLocaleString()}` })
+    }
+    const seasonType = fantasySettings?.season_type
+    items.push({ label: 'Type', value: seasonType === 'single_week' ? 'Single Night' : 'Full Season' })
+    if (fantasySettings?.champion_metric && seasonType !== 'single_week') {
+      items.push({ label: 'Champion', value: fantasySettings.champion_metric === 'most_wins' ? 'Most Nightly Wins' : 'Most Total Points' })
+    }
+    if (league.starts_at) {
+      items.push({ label: 'Starts', value: new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }) })
+    }
+    items.push({ label: 'Visibility', value: league.visibility === 'open' ? 'Open' : 'Invite Only' })
   } else {
-    const dateRange = formatDateRange(league.starts_at, league.ends_at)
-    if (dateRange) items.push({ label: 'Dates', value: dateRange })
+    const durationLabel = DURATION_LABELS[league.duration]
+    if (durationLabel) {
+      items.push({ label: 'Duration', value: durationLabel })
+    } else {
+      const dateRange = formatDateRange(league.starts_at, league.ends_at)
+      if (dateRange) items.push({ label: 'Dates', value: dateRange })
+    }
   }
 
   // Pick frequency
@@ -171,6 +189,16 @@ function LeagueConditions({ league }) {
     if (league.format === 'squares') {
       const duration = durationSentence(null)
       return `Select your squares on the board. Payouts are awarded at the end of each quarter based on the last digit of each team's score. ${duration}`
+    }
+
+    if (league.format === 'nba_dfs') {
+      const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
+      const isSingleNight = fantasySettings?.season_type === 'single_week'
+      if (isSingleNight) {
+        return `Build a 9-player NBA lineup under a ${cap} salary cap. Your roster locks at tip-off of the first game. The player with the most fantasy points at the end of the night wins.`
+      }
+      const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
+      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Rosters lock at tip-off of the first game each day. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. The champion is determined by ${metric} over the season.`
     }
 
     return null
@@ -511,6 +539,30 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
             <div className="text-[10px] text-text-muted mt-1">Users must submit brackets before this time</div>
           </div>
         </>
+      )}
+      {/* Visibility toggle — all formats */}
+      {expanded && (
+        <div className="mt-4">
+          <label className="block text-xs text-text-muted mb-1">League Visibility</label>
+          <div className="flex gap-2">
+            {['closed', 'open'].map((v) => (
+              <button
+                key={v}
+                onClick={async () => {
+                  try {
+                    await updateLeague.mutateAsync({ leagueId: league.id, visibility: v })
+                    toast('Visibility updated', 'success')
+                  } catch (err) { toast(err.message || 'Failed to update', 'error') }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  league.visibility === v ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                }`}
+              >
+                {v === 'closed' ? 'Invite Only' : 'Open'}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
       </div>}
     </div>
