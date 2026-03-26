@@ -884,15 +884,15 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
-      <div className={`relative rounded-xl mb-6 overflow-hidden ${league.format === 'fantasy' ? 'py-8' : ''}`}>
+      <div className={`relative rounded-xl mb-6 overflow-hidden ${league.format === 'fantasy' ? 'py-16' : ''}`}>
         {league.format === 'fantasy' && (
           <>
             <img
               src="/fantasy-football-bg.png"
               alt=""
-              className="absolute inset-0 w-full h-full object-cover object-bottom opacity-40 pointer-events-none"
+              className="absolute inset-0 w-full h-full object-cover object-center opacity-45 pointer-events-none"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/50 via-transparent to-bg-primary/70 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/40 via-transparent to-bg-primary/60 pointer-events-none" />
           </>
         )}
       <div className="relative z-10 flex justify-center gap-2 overflow-x-auto no-scrollbar">
