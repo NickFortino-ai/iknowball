@@ -987,23 +987,23 @@ export default function LeagueDetailPage() {
       ) : null)}
 
       {tabs[activeTab] === 'Players' && league.format === 'fantasy' && (
-        <FantasyPlayerBrowser league={league} />
+        <div className="relative z-10"><FantasyPlayerBrowser league={league} /></div>
       )}
 
       {tabs[activeTab] === 'Draft' && league.format === 'fantasy' && (
-        <FantasyDraftRoom league={league} />
+        <div className="relative z-10"><FantasyDraftRoom league={league} /></div>
       )}
 
       {tabs[activeTab] === 'My Team' && league.format === 'fantasy' && (
-        <FantasyMyTeam league={league} />
+        <div className="relative z-10"><FantasyMyTeam league={league} /></div>
       )}
 
       {tabs[activeTab] === 'Standings' && league.format === 'fantasy' && (
-        <FantasyStandings league={league} />
+        <div className="relative z-10"><FantasyStandings league={league} /></div>
       )}
 
       {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (
-        <FantasyMatchup league={league} />
+        <div className="relative z-10"><FantasyMatchup league={league} /></div>
       )}
 
       {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Live' || tabs[activeTab] === 'Standings') && league.format === 'nba_dfs' && (
