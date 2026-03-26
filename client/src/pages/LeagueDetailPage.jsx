@@ -899,14 +899,20 @@ export default function LeagueDetailPage() {
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
       <div className="relative z-10 mb-6 flex justify-center gap-2 overflow-x-auto no-scrollbar">
-        {tabs.map((tab, i) => (
+        {tabs.map((tab, i) => {
+          const isLiveDisabled = tab === 'Live' && league.format === 'nba_dfs' && league.starts_at &&
+            new Date(league.starts_at).toISOString().split('T')[0] > new Date().toLocaleDateString('en-CA')
+
+          return (
           <button
             key={tab}
-            onClick={() => setActiveTab(i)}
+            onClick={() => !isLiveDisabled && setActiveTab(i)}
             className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              activeTab === i
-                ? 'bg-accent text-white'
-                : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              isLiveDisabled
+                ? 'bg-bg-card text-text-muted/40 cursor-not-allowed'
+                : activeTab === i
+                  ? 'bg-accent text-white'
+                  : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
             }`}
           >
             {tab}
@@ -914,7 +920,8 @@ export default function LeagueDetailPage() {
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
             )}
           </button>
-        ))}
+          )
+        })}
       </div>
       )}
 
