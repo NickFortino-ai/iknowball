@@ -403,6 +403,11 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
             style={{ width: `${Math.min((usedSalary / salaryCap) * 100, 100)}%` }}
           />
         </div>
+        {(9 - filledSlots) > 0 && (
+          <div className="mt-2 text-xs text-text-muted text-right">
+            ${Math.round(remainingSalary / (9 - filledSlots)).toLocaleString()} avg per player
+          </div>
+        )}
       </div>
 
       {/* My Roster */}
