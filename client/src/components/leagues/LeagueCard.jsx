@@ -4,6 +4,9 @@ const FORMAT_LABELS = {
   pickem: "Pick'em",
   survivor: 'Survivor',
   squares: 'Squares',
+  bracket: 'Bracket',
+  fantasy: 'Fantasy Football',
+  nba_dfs: 'NBA Daily Fantasy',
 }
 
 const SPORT_LABELS = {
@@ -28,10 +31,10 @@ export default function LeagueCard({ league }) {
   return (
     <Link
       to={`/leagues/${league.id}`}
-      className="block bg-bg-card rounded-xl border border-border p-4 hover:bg-bg-card-hover transition-colors"
+      className="block bg-bg-primary rounded-xl border border-text-primary/20 p-4 hover:bg-text-primary/5 transition-colors"
     >
       <div className="flex items-center justify-between mb-2">
-        <h3 className="font-display text-lg truncate">{league.name}</h3>
+        <h3 className="font-display text-lg truncate text-white">{league.name}</h3>
         <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
           {league.status}
         </span>
