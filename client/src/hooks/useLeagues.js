@@ -607,6 +607,15 @@ export function useSaveNbaDfsRoster() {
   })
 }
 
+export function useNbaDfsLive(leagueId, date, season = 2026) {
+  return useQuery({
+    queryKey: ['nba-dfs', leagueId, 'live', date],
+    queryFn: () => api.get(`/nba-dfs/live?league_id=${leagueId}&date=${date}&season=${season}`),
+    enabled: !!leagueId && !!date,
+    refetchInterval: 30000, // 30 seconds
+  })
+}
+
 export function useNbaDfsStandings(leagueId) {
   return useQuery({
     queryKey: ['nba-dfs', leagueId, 'standings'],

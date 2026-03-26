@@ -32,7 +32,7 @@ function getLeagueTabs(league, isBracketLocked) {
     survivor: ['Board', 'Members', 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
     fantasy: ['My Team', 'Players', 'Matchups', 'Standings', 'Draft', 'Thread'],
-    nba_dfs: ['Roster', 'Standings'],
+    nba_dfs: ['Roster', 'Live', 'Standings'],
   }
   return TABS[league.format] || ['Members', 'Thread']
 }
@@ -932,8 +932,8 @@ export default function LeagueDetailPage() {
         <FantasyMatchup league={league} />
       )}
 
-      {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Standings') && league.format === 'nba_dfs' && (
-        <NbaDfsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'roster'} />
+      {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Live' || tabs[activeTab] === 'Standings') && league.format === 'nba_dfs' && (
+        <NbaDfsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'Live' ? 'live' : 'roster'} />
       )}
 
       {tabs[activeTab] === 'Thread' && (

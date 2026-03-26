@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNbaDfsPlayers, useNbaDfsRoster, useSaveNbaDfsRoster, useNbaDfsStandings, useFantasySettings } from '../../hooks/useLeagues'
+import { useNbaDfsPlayers, useNbaDfsRoster, useSaveNbaDfsRoster, useNbaDfsStandings, useNbaDfsLive, useFantasySettings } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -19,8 +19,6 @@ const SLOTS = [
 
 const POSITION_FILTERS = ['All', 'PG', 'SG', 'SF', 'PF', 'C', 'OUT']
 
-// Check if a player position matches a filter
-// Handles compound positions like "PG/SG" matching both PG and SG filters
 function matchesPositionFilter(playerPos, filter) {
   if (filter === 'All') return true
   const parts = playerPos.split('/')
@@ -44,9 +42,118 @@ function InjuryBadge({ status }) {
   )
 }
 
+// Get game state for a player: 'upcoming', 'live', or 'final'
+function getPlayerGameState(player) {
+  if (!player?.game_starts_at) return 'upcoming'
+  const now = new Date()
+  const start = new Date(player.game_starts_at)
+  if (start > now) return 'upcoming'
+  // Approximate: NBA games last ~2.5 hours
+  const approxEnd = new Date(start.getTime() + 3 * 60 * 60 * 1000)
+  if (now < approxEnd) return 'live'
+  return 'final'
+}
+
+// Border class for roster slot based on game state
+function slotBorderClass(gameState) {
+  if (gameState === 'live') return 'border-l-2 border-l-accent'
+  if (gameState === 'final') return 'border-l-2 border-l-correct'
+  return 'border-l-2 border-l-text-primary/30'
+}
+
 function todayET() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 }
+
+// ============================================
+// Live Tab
+// ============================================
+
+function LiveView({ league, date }) {
+  const { profile } = useAuth()
+  const { data: liveData, isLoading } = useNbaDfsLive(league.id, date)
+  const [expandedUserId, setExpandedUserId] = useState(null)
+
+  if (isLoading) return <LoadingSpinner />
+  if (!liveData?.members?.length) return <div className="text-center py-8 text-sm text-text-secondary">No rosters submitted yet.</div>
+
+  const { members, all_final } = liveData
+  const winner = all_final ? members[0] : null
+
+  return (
+    <div className="space-y-3">
+      {members.map((m, idx) => {
+        const isMe = m.user_id === profile?.id
+        const isWinner = all_final && idx === 0
+        const isExpanded = expandedUserId === m.user_id
+        const borderColor = m.status === 'final' ? 'border-correct/50' : m.status === 'live' ? 'border-accent/50' : 'border-text-primary/20'
+
+        return (
+          <div key={m.user_id} className={isWinner ? 'mb-4' : ''}>
+            <button
+              onClick={() => setExpandedUserId(isExpanded ? null : m.user_id)}
+              className={`w-full rounded-xl border ${borderColor} bg-bg-primary transition-all text-left ${
+                isWinner ? 'p-5 scale-[1.02]' : 'p-4'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Avatar user={m.user} size={isWinner ? 'lg' : 'md'} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold truncate ${isWinner ? 'text-lg text-accent' : isMe ? 'text-accent text-sm' : 'text-text-primary text-sm'}`}>
+                      {m.user?.display_name || m.user?.username}
+                    </span>
+                    {isWinner && <span className="text-lg">{'\uD83C\uDFC6'}</span>}
+                  </div>
+                  {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
+                </div>
+                <span className={`font-display ${isWinner ? 'text-2xl' : 'text-lg'} ${m.status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                  {Math.round(m.total_points * 10) / 10}
+                </span>
+                <svg
+                  className={`w-4 h-4 text-text-muted transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+
+            {isExpanded && m.slots?.length > 0 && (
+              <div className="mt-1 rounded-xl border border-text-primary/10 overflow-hidden">
+                {m.slots.map((slot) => {
+                  const hidden = slot.player_name === '????'
+                  const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
+                  return (
+                    <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-2 border-b border-text-primary/10 last:border-b-0 border-l-2 ${slotBorder} bg-bg-primary`}>
+                      <span className="text-xs font-bold text-text-muted w-7 shrink-0">{slot.roster_slot.replace(/[12]$/, '')}</span>
+                      {hidden ? (
+                        <span className="flex-1 text-sm text-text-muted font-mono">????</span>
+                      ) : (
+                        <>
+                          <span className="flex-1 text-sm font-semibold text-text-primary truncate">{slot.player_name}</span>
+                          {(slot.game_status === 'live' || slot.game_status === 'final') && (
+                            <span className={`text-sm font-display ${slot.game_status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                              {Math.round((slot.points_earned || 0) * 10) / 10}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ============================================
+// Main Component
+// ============================================
 
 export default function NbaDfsView({ league, tab = 'roster' }) {
   const { profile } = useAuth()
@@ -86,11 +193,14 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
 
   const filteredPlayers = useMemo(() => {
     if (!players) return []
+    const now = new Date()
     return players.filter((p) => {
       if (usedPlayerIds.has(p.espn_player_id)) return false
-      // "OUT" tab shows only out players; all other tabs hide them
       if (posFilter === 'OUT') return p.injury_status === 'Out'
       if (p.injury_status === 'Out') return false
+      // Hide players whose games have started
+      const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
+      if (gameStarted && posFilter !== 'OUT') return false
       if (p.salary > remainingSalary) return false
       if (!matchesPositionFilter(p.position, posFilter)) return false
       if (search) {
@@ -118,6 +228,14 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   }
 
   function removeSlot(slotKey) {
+    const player = roster[slotKey]
+    if (player) {
+      const gs = getPlayerGameState(player)
+      if (gs !== 'upcoming') {
+        toast(`${player.player_name}'s game has started — locked`, 'error')
+        return
+      }
+    }
     setRoster((prev) => {
       const next = { ...prev }
       delete next[slotKey]
@@ -142,6 +260,16 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     }
   }
 
+  // ============================================
+  // Live Tab
+  // ============================================
+  if (tab === 'live') {
+    return <LiveView league={league} date={date} />
+  }
+
+  // ============================================
+  // Standings Tab
+  // ============================================
   if (tab === 'standings') {
     const standings = standingsData?.standings || []
     return (
@@ -181,7 +309,9 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     )
   }
 
-  // Roster tab
+  // ============================================
+  // Roster Tab
+  // ============================================
   if (playersLoading || rosterLoading) return <LoadingSpinner />
 
   return (
@@ -213,10 +343,12 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
         </div>
         {SLOTS.map((slot) => {
           const player = roster[slot.key]
+          const gameState = player ? getPlayerGameState(player) : null
+          const isLocked = gameState === 'live' || gameState === 'final'
           return (
             <div
               key={slot.key}
-              className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
+              className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary ${player ? slotBorderClass(gameState) : ''}`}
             >
               <span className="text-xs font-bold text-accent w-7 shrink-0">{slot.label}</span>
               {player ? (
@@ -233,16 +365,23 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
                       <InjuryBadge status={player.injury_status} />
+                      {isLocked && (
+                        <svg className="w-3 h-3 text-text-muted shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
                     </div>
                     <div className="text-xs text-text-muted">{player.team} · {player.opponent}</div>
                   </div>
                   <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
-                  <button
-                    onClick={() => removeSlot(slot.key)}
-                    className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
-                  >
-                    &times;
-                  </button>
+                  {!isLocked && (
+                    <button
+                      onClick={() => removeSlot(slot.key)}
+                      className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
+                    >
+                      &times;
+                    </button>
+                  )}
                 </>
               ) : (
                 <div className="flex-1 text-xs text-text-muted italic">Empty</div>
@@ -272,7 +411,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
             placeholder="Search players..."
             className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
           />
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 flex-wrap">
             {POSITION_FILTERS.map((pos) => (
               <button
                 key={pos}

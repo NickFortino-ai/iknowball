@@ -48,18 +48,59 @@ router.post('/roster', async (req, res) => {
     }
   }
 
-  // Check if first game of the day has started — rosters lock at first tip-off
-  const { data: firstGame } = await supabase
-    .from('nba_dfs_salaries')
-    .select('game_starts_at')
-    .eq('game_date', date)
-    .not('game_starts_at', 'is', null)
-    .order('game_starts_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  // Per-player locking: only allow changes to slots where the player's game hasn't started
+  // Get game start times for all players being submitted
+  const now = new Date()
+  const espnIds = (slots || []).map((s) => s.espn_player_id).filter(Boolean)
 
-  if (firstGame?.game_starts_at && new Date(firstGame.game_starts_at) <= new Date()) {
-    return res.status(400).json({ error: 'Rosters are locked — the first game has already started' })
+  // Check existing roster for locked players that can't be removed
+  const existingRoster = await getNBADFSRoster(league_id, req.user.id, date, parseInt(season || '2026'))
+  if (existingRoster?.nba_dfs_roster_slots?.length) {
+    // Get game times for existing rostered players
+    const existingIds = existingRoster.nba_dfs_roster_slots.map((s) => s.espn_player_id).filter(Boolean)
+    const { data: existingSalaries } = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id, game_starts_at')
+      .eq('game_date', date)
+      .in('espn_player_id', existingIds)
+
+    const gameTimeMap = {}
+    for (const s of existingSalaries || []) {
+      gameTimeMap[s.espn_player_id] = s.game_starts_at
+    }
+
+    // Verify locked players aren't being removed
+    for (const existingSlot of existingRoster.nba_dfs_roster_slots) {
+      const gameTime = gameTimeMap[existingSlot.espn_player_id]
+      if (gameTime && new Date(gameTime) <= now) {
+        // This player is locked — must still be in the new roster at the same slot
+        const matchingNew = (slots || []).find((s) => s.roster_slot === existingSlot.roster_slot)
+        if (!matchingNew || matchingNew.espn_player_id !== existingSlot.espn_player_id) {
+          return res.status(400).json({ error: `${existingSlot.player_name}'s game has started — cannot swap` })
+        }
+      }
+    }
+  }
+
+  // Verify new players being added don't have games already started
+  if (espnIds.length) {
+    const { data: newSalaries } = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id, player_name, game_starts_at')
+      .eq('game_date', date)
+      .in('espn_player_id', espnIds)
+
+    for (const sal of newSalaries || []) {
+      if (sal.game_starts_at && new Date(sal.game_starts_at) <= now) {
+        // Only block if this player wasn't already on the roster at this slot
+        const wasExisting = existingRoster?.nba_dfs_roster_slots?.some(
+          (s) => s.espn_player_id === sal.espn_player_id
+        )
+        if (!wasExisting) {
+          return res.status(400).json({ error: `${sal.player_name}'s game has already started` })
+        }
+      }
+    }
   }
 
   const settings = await getFantasySettings(league_id)
@@ -83,6 +124,163 @@ router.get('/nightly-results', async (req, res) => {
   if (!league_id || !date) return res.status(400).json({ error: 'league_id and date required' })
   const data = await getNBANightlyResults(league_id, date)
   res.json(data)
+})
+
+// Live scoring — all members' rosters with game states, points, and visibility masking
+router.get('/live', async (req, res) => {
+  const { league_id, date, season } = req.query
+  if (!league_id || !date) return res.status(400).json({ error: 'league_id and date required' })
+  const s = parseInt(season || '2026')
+  const now = new Date()
+
+  // Get all members
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', league_id)
+
+  if (!members?.length) return res.json([])
+
+  // Get all rosters for this date
+  const { data: rosters } = await supabase
+    .from('nba_dfs_rosters')
+    .select('id, user_id, total_points, nba_dfs_roster_slots(roster_slot, player_name, espn_player_id, salary, points_earned)')
+    .eq('league_id', league_id)
+    .eq('game_date', date)
+    .eq('season', s)
+
+  const rosterMap = {}
+  for (const r of rosters || []) {
+    rosterMap[r.user_id] = r
+  }
+
+  // Get game times and statuses for all rostered players
+  const allEspnIds = []
+  for (const r of rosters || []) {
+    for (const slot of r.nba_dfs_roster_slots || []) {
+      if (slot.espn_player_id) allEspnIds.push(slot.espn_player_id)
+    }
+  }
+
+  const gameStateMap = {} // espn_player_id -> { gameStartsAt, status }
+  if (allEspnIds.length) {
+    const { data: salaries } = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id, game_starts_at')
+      .eq('game_date', date)
+      .in('espn_player_id', [...new Set(allEspnIds)])
+
+    for (const sal of salaries || []) {
+      const startTime = sal.game_starts_at ? new Date(sal.game_starts_at) : null
+      let status = 'upcoming'
+      if (startTime && startTime <= now) status = 'live' // simplified — will refine with actual game status
+      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status }
+    }
+  }
+
+  // Check actual game statuses from nba_dfs_player_stats (if stats exist, game is at least in progress)
+  if (allEspnIds.length) {
+    const { data: stats } = await supabase
+      .from('nba_dfs_player_stats')
+      .select('espn_player_id, fantasy_points, minutes_played')
+      .eq('game_date', date)
+      .eq('season', s)
+      .in('espn_player_id', [...new Set(allEspnIds)])
+
+    for (const stat of stats || []) {
+      if (gameStateMap[stat.espn_player_id]) {
+        // If we have stats, the game is at minimum in progress
+        // If minutes > 0 and points recorded, mark as final (simplified)
+        gameStateMap[stat.espn_player_id].hasStats = true
+      }
+    }
+  }
+
+  // Fetch scoreboard to get actual live/final status
+  const dateStr = date.replace(/-/g, '')
+  let gameStatuses = {} // team abbreviation -> 'pre' | 'in' | 'post'
+  try {
+    const espnRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${dateStr}`)
+    if (espnRes.ok) {
+      const espnData = await espnRes.json()
+      for (const event of espnData.events || []) {
+        const comp = event.competitions?.[0]
+        if (!comp) continue
+        const statusType = comp.status?.type?.name || event.status?.type?.name
+        let state = 'pre'
+        if (['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME', 'STATUS_OVERTIME'].includes(statusType)) state = 'in'
+        else if (['STATUS_FINAL', 'STATUS_FULL_TIME'].includes(statusType)) state = 'post'
+
+        for (const c of comp.competitors || []) {
+          const abbrev = c.team?.abbreviation
+          if (abbrev) gameStatuses[abbrev] = state
+        }
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Map team abbreviations to player game states
+  // Get player teams from salaries
+  if (allEspnIds.length) {
+    const { data: playerTeams } = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id, team')
+      .eq('game_date', date)
+      .in('espn_player_id', [...new Set(allEspnIds)])
+
+    for (const pt of playerTeams || []) {
+      const teamState = gameStatuses[pt.team]
+      if (teamState && gameStateMap[pt.espn_player_id]) {
+        gameStateMap[pt.espn_player_id].status = teamState === 'in' ? 'live' : teamState === 'post' ? 'final' : 'upcoming'
+      }
+    }
+  }
+
+  // Check if all games today are final
+  const allTeamStates = Object.values(gameStatuses)
+  const anyLive = allTeamStates.some((s) => s === 'in')
+  const allFinal = allTeamStates.length > 0 && allTeamStates.every((s) => s === 'post')
+
+  // Build response
+  const result = members.map((m) => {
+    const roster = rosterMap[m.user_id]
+    const isMe = m.user_id === req.user.id
+    const slots = (roster?.nba_dfs_roster_slots || []).map((slot) => {
+      const gs = gameStateMap[slot.espn_player_id] || { status: 'upcoming' }
+      const visible = isMe || allFinal || gs.status === 'live' || gs.status === 'final'
+      return {
+        roster_slot: slot.roster_slot,
+        player_name: visible ? slot.player_name : '????',
+        espn_player_id: visible ? slot.espn_player_id : null,
+        salary: visible ? slot.salary : null,
+        points_earned: gs.status === 'live' || gs.status === 'final' ? Number(slot.points_earned) || 0 : 0,
+        game_status: gs.status,
+      }
+    })
+
+    const totalPoints = slots.reduce((sum, s) => sum + (s.points_earned || 0), 0)
+    const hasLive = slots.some((s) => s.game_status === 'live')
+    const allDone = slots.length > 0 && slots.every((s) => s.game_status === 'final')
+    const userStatus = allDone ? 'final' : hasLive ? 'live' : 'upcoming'
+
+    return {
+      user: m.users,
+      user_id: m.user_id,
+      total_points: totalPoints,
+      status: userStatus,
+      has_roster: !!roster,
+      slots,
+    }
+  })
+
+  // Sort by total points descending
+  result.sort((a, b) => b.total_points - a.total_points)
+
+  res.json({
+    members: result,
+    any_live: anyLive,
+    all_final: allFinal,
+  })
 })
 
 export default router
