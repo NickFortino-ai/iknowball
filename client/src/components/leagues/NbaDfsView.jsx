@@ -153,11 +153,11 @@ function PlayerModal({ player, onClose, onAdd }) {
             <p className="text-sm text-text-muted text-center py-4">No recent games found.</p>
           ) : (
             <div className="space-y-0">
-              <div className="grid grid-cols-[auto_1fr_repeat(5,_auto)] gap-x-3 gap-y-0 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+              <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
                 <span></span><span>OPP</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
               </div>
               {data.games.map((g, i) => (
-                <div key={i} className="grid grid-cols-[auto_1fr_repeat(5,_auto)] gap-x-3 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+                <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
                   <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
                   <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
                   <span className="text-xs text-text-primary text-right font-semibold">{g.pts}</span>
