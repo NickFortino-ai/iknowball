@@ -813,7 +813,7 @@ export default function LeagueDetailPage() {
 
       {/* Commissioner's Note */}
       {editingNote ? (
-        <div className="rounded-xl border border-text-primary/20 p-4 mb-6">
+        <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10">
           <div className="text-xs font-semibold text-text-secondary mb-2">Commissioner's Note</div>
           <textarea
             ref={noteRef}
@@ -821,7 +821,7 @@ export default function LeagueDetailPage() {
             onChange={(e) => setNoteText(e.target.value)}
             maxLength={1000}
             rows={4}
-            className="w-full bg-bg-surface border border-border rounded-lg p-3 text-sm text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-full bg-bg-primary border border-border rounded-lg p-3 text-sm text-white placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
             placeholder="Write a note for your league members..."
           />
           <div className="flex items-center justify-between mt-2">
@@ -855,7 +855,7 @@ export default function LeagueDetailPage() {
           </div>
         </div>
       ) : league.commissioner_note ? (
-        <div className="rounded-xl border border-text-primary/20 mb-6">
+        <div className="rounded-xl border border-text-primary/20 mb-6 relative z-10">
           <button
             onClick={() => setNoteExpanded((v) => !v)}
             className="w-full flex items-center justify-between p-4"
@@ -885,7 +885,7 @@ export default function LeagueDetailPage() {
           )}
         </div>
       ) : isCommissioner ? (
-        <div className="mb-6">
+        <div className="mb-6 relative z-10">
           <button
             onClick={() => { setNoteText(''); setEditingNote(true) }}
             className="text-xs text-accent hover:text-accent-hover transition-colors"
