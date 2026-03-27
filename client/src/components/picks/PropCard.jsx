@@ -90,7 +90,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
 
       <div className="flex items-center gap-3">
         {prop.player_headshot_url && (
-          <button onClick={() => setShowPlayerModal(true)} className="shrink-0">
+          <button onClick={() => setShowPlayerModal(true)} className="shrink-0 cursor-pointer">
             <img
               src={prop.player_headshot_url}
               alt={prop.player_name}
