@@ -12,7 +12,7 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
   return (
     <FeedCardWrapper
       item={item}
-      borderColor={isHit ? 'gold' : undefined}
+      borderColor={isHit ? 'gold' : 'silver'}
       targetType="futures_pick"
       targetId={futures.id}
       reactions={reactions}

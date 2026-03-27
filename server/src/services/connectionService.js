@@ -1649,7 +1649,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   })
 
   const page = feed.slice(0, PAGE_SIZE)
-  const hasPagination = !isAll && !isHotTakes && !isUserHotTakes
+  const hasPagination = !isHotTakes && !isUserHotTakes
   const nextCursor = hasPagination && page.length === PAGE_SIZE && feed.length > PAGE_SIZE
     ? page[page.length - 1].timestamp
     : null

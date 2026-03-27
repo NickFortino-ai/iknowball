@@ -12,6 +12,7 @@ const BORDER_COLORS = {
   accent: 'border-l-accent',
   gold: 'border-l-yellow-500',
   purple: 'border-l-purple-500',
+  silver: 'border-l-gray-400',
 }
 
 export default function FeedCardWrapper({
