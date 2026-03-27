@@ -487,12 +487,13 @@ export async function autoEliminateMissedPicks() {
     const isDaily = league.settings?.pick_frequency === 'daily'
     const periodLabel = isDaily ? 'Day' : 'Week'
 
-    // Get weeks that have ended and haven't been processed yet
+    // Get weeks that have started and haven't been processed yet
+    // (includes in-progress weeks so we can settle as soon as all games are final)
     const { data: weeks } = await supabase
       .from('league_weeks')
       .select('*')
       .eq('league_id', league.id)
-      .lte('ends_at', now)
+      .lte('starts_at', now)
       .eq('missed_picks_processed', false)
       .order('week_number', { ascending: true })
 
