@@ -879,5 +879,79 @@ async function checkSurvivorWinner(leagueId) {
         .update({ status: 'completed', updated_at: new Date().toISOString() })
         .eq('id', leagueId)
     }
+  } else if (aliveMembers.length > 1 && !bonusExists) {
+    // Multiple survivors — check if league has ended (no more future weeks)
+    const { count: futureWeeks } = await supabase
+      .from('league_weeks')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', leagueId)
+      .gt('ends_at', new Date().toISOString())
+
+    if (futureWeeks === 0) {
+      // League has ended with multiple survivors — split the bonus
+      const { count: memberCount } = await supabase
+        .from('league_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('league_id', leagueId)
+
+      let totalBonus
+      if (memberCount >= 41) totalBonus = 100
+      else if (memberCount >= 31) totalBonus = 75
+      else if (memberCount >= 16) totalBonus = 50
+      else if (memberCount >= 11) totalBonus = 30
+      else if (memberCount >= 6) totalBonus = 20
+      else totalBonus = 10
+
+      const splitBonus = Math.round(totalBonus / aliveMembers.length)
+      const outlasted = (memberCount || 1) - aliveMembers.length
+      const leagueName = league?.name || 'Survivor'
+
+      for (const member of aliveMembers) {
+        // Award split bonus to global points
+        await supabase.rpc('increment_user_points', {
+          user_row_id: member.user_id,
+          points_delta: splitBonus,
+        })
+
+        // Record bonus_points entry
+        await supabase.from('bonus_points').insert({
+          user_id: member.user_id,
+          league_id: leagueId,
+          type: 'survivor_win',
+          label: `Survivor Pool co-winner (${aliveMembers.length}-way split) +${splitBonus}`,
+          points: splitBonus,
+        })
+
+        // Award to sport stats
+        if (league?.sport && league.sport !== 'all') {
+          const { data: sport } = await supabase
+            .from('sports')
+            .select('id')
+            .eq('key', league.sport)
+            .single()
+
+          if (sport) {
+            await supabase.rpc('update_sport_stats', {
+              p_user_id: member.user_id,
+              p_sport_id: sport.id,
+              p_is_correct: true,
+              p_points: splitBonus,
+            })
+          }
+        }
+
+        await createNotification(member.user_id, 'survivor_win',
+          `You co-won the ${leagueName} survivor pool! (${aliveMembers.length}-way split) +${splitBonus} pts`,
+          { leagueId, points: splitBonus, outlasted, leagueName })
+      }
+
+      // Mark league as completed
+      await supabase
+        .from('leagues')
+        .update({ status: 'completed', updated_at: new Date().toISOString() })
+        .eq('id', leagueId)
+
+      logger.info({ leagueId, survivors: aliveMembers.length, splitBonus, totalBonus }, 'Survivor pool ended with split bonus')
+    }
   }
 }

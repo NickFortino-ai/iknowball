@@ -150,12 +150,12 @@ export default function CreateLeaguePage() {
         name,
         format: format === 'nba_dfs' ? 'nba_dfs' : format,
         sport: format === 'nba_dfs' ? 'basketball_nba' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
-        duration: isFantasyFormat ? 'full_season' : duration,
+        duration: endsAt === 'end_of_season' ? 'full_season' : (isFantasyFormat ? 'full_season' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: format === 'nba_dfs' ? getDfsStartDate() : startsAt || undefined,
-        ends_at: endsAt || undefined,
+        ends_at: endsAt === 'end_of_season' ? undefined : endsAt || undefined,
         settings,
         fantasy_settings: fantasySettings,
         visibility,
@@ -281,12 +281,34 @@ export default function CreateLeaguePage() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-text-secondary mb-2">End Date</label>
-              <input
-                type="date"
-                value={endsAt}
-                onChange={(e) => setEndsAt(e.target.value)}
-                className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
-              />
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setEndsAt('end_of_season')}
+                  className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
+                    endsAt === 'end_of_season' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+                  }`}
+                >
+                  End of Season
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEndsAt('')}
+                  className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
+                    endsAt !== 'end_of_season' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+                  }`}
+                >
+                  Custom Date
+                </button>
+              </div>
+              {endsAt !== 'end_of_season' && (
+                <input
+                  type="date"
+                  value={endsAt}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                />
+              )}
             </div>
           </div>
         )}
