@@ -40,7 +40,7 @@ export default function PollDisplay({ hotTakeId }) {
             onClick={() => handleVote(opt.id)}
             disabled={hasVoted || voteMutation.isPending}
             className={`w-full text-left relative rounded-lg overflow-hidden border transition-colors ${
-              isSelected ? 'border-orange-500' : hasVoted ? 'border-border' : 'border-border hover:border-orange-500/50'
+              isSelected ? 'border-orange-500' : hasVoted ? 'border-text-primary/20' : 'border-text-primary/20 hover:border-orange-500/50'
             }`}
           >
             {/* Background fill bar */}

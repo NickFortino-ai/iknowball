@@ -34,7 +34,7 @@ export default function FeedCardWrapper({
 
   return (
     <div
-      className={`bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 ${borderClass} ${cardClassName} ${onCardTap ? 'cursor-pointer' : ''}`}
+      className={`bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden border-l-4 ${borderClass} ${cardClassName} ${onCardTap ? 'cursor-pointer' : ''}`}
       onClick={onCardTap}
     >
       {/* Header: avatar + name + timestamp */}
