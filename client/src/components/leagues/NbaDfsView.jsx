@@ -462,7 +462,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
           const isLocked = gameState === 'live' || gameState === 'final'
           const savedSlot = existingRoster?.nba_dfs_roster_slots?.find((s) => s.roster_slot === slot.key)
           const pointsEarned = savedSlot ? Number(savedSlot.points_earned) || 0 : 0
-          const showPoints = isLocked && pointsEarned > 0
+          const showPoints = isLocked
           return (
             <div
               key={slot.key}
