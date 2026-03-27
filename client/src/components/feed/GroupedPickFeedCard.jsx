@@ -65,7 +65,7 @@ export default function GroupedPickFeedCard({ item, reactions, onUserTap }) {
   const extraCount = users.length - 3
 
   return (
-    <div className={`bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 ${borderClass} ${cardClassName}`}>
+    <div className={`bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden border-l-4 ${borderClass} ${cardClassName}`}>
       {/* Header: avatar stack + descriptive text + timestamp */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-3">
         {/* Avatar stack */}

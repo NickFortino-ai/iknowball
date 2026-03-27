@@ -34,10 +34,10 @@ export default function TeamAutocomplete({ teams, onSelect, inputValue, onInputC
         }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        className="w-full bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary placeholder-text-muted outline-none focus:border-accent/40"
+        className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-2 py-1 text-xs text-text-primary placeholder-text-muted outline-none focus:border-accent/40"
       />
       {open && filtered.length > 0 && (
-        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-primary border border-text-primary/20 rounded-lg shadow-lg max-h-40 overflow-y-auto">
           {filtered.map((t) => (
             <button
               key={t}
@@ -48,7 +48,7 @@ export default function TeamAutocomplete({ teams, onSelect, inputValue, onInputC
                 onInputChange('')
                 setOpen(false)
               }}
-              className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-bg-card-hover truncate"
+              className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-text-primary/5 truncate"
             >
               {t}
             </button>

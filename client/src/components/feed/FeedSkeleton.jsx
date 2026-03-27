@@ -1,6 +1,6 @@
 function SkeletonCard() {
   return (
-    <div className="bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 border-l-transparent animate-pulse">
+    <div className="bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden border-l-4 border-l-transparent animate-pulse">
       {/* Header */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-bg-secondary" />

@@ -314,14 +314,14 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
             {/* Inline team autocomplete dropdown */}
             {inlineDropdownPos?.show && inlineMatches.length > 0 && (
-              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-primary border border-text-primary/20 rounded-lg shadow-lg max-h-40 overflow-y-auto">
                 {inlineMatches.map((t) => (
                   <button
                     key={t}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleInlineSelect(t)}
-                    className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-bg-card-hover truncate"
+                    className="w-full text-left px-3 py-1.5 text-xs text-text-primary hover:bg-text-primary/5 truncate"
                   >
                     {t}
                   </button>
@@ -331,7 +331,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
             {/* @mention autocomplete dropdown */}
             {mentionQuery.length >= 2 && mentionResults?.length > 0 && (
-              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-primary border border-text-primary/20 rounded-lg shadow-lg max-h-40 overflow-y-auto">
                 {mentionResults
                   .filter((u) => !userTags.some((t) => t.id === u.id))
                   .slice(0, 5)
@@ -341,7 +341,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleMentionSelect(u)}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-bg-card-hover transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-text-primary/5 transition-colors"
                     >
                       <Avatar user={u} size="xs" />
                       <div className="min-w-0">
@@ -414,7 +414,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                     }}
                     placeholder={`Option ${i + 1}`}
                     maxLength={100}
-                    className="flex-1 bg-bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    className="flex-1 bg-bg-surface border border-text-primary/20 rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-orange-500"
                   />
                   {pollOptions.length > 2 && (
                     <button

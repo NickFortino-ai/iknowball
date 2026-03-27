@@ -162,7 +162,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
         <FeedSkeleton />
       ) : !activity?.length ? (
         /* Empty state */
-        <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
+        <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-10 text-center">
           <div className="text-2xl mb-2">
             {scope === 'user_hot_takes' ? '\uD83D\uDD25' : scope === 'user_highlights' ? '\u2B50' : scope === 'highlights' ? '\u2B50' : scope === 'hot_takes' ? '\uD83D\uDD25' : scope === 'all' ? '\uD83C\uDFC0' : '\uD83D\uDC4B'}
           </div>
@@ -252,7 +252,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
               <button
                 onClick={() => fetchNextPage()}
                 disabled={isFetchingNextPage}
-                className="text-sm text-accent hover:text-accent-hover font-medium px-4 py-2 rounded-lg bg-bg-card border border-border hover:border-accent/30 transition-colors disabled:opacity-50"
+                className="text-sm text-accent hover:text-accent-hover font-medium px-4 py-2 rounded-lg bg-bg-primary border border-text-primary/20 hover:border-accent/30 transition-colors disabled:opacity-50"
               >
                 {isFetchingNextPage ? 'Loading...' : 'Load more'}
               </button>

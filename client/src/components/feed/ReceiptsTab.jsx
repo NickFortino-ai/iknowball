@@ -33,7 +33,7 @@ export default function ReceiptsTab({ onUserTap }) {
 
   if (!items.length) {
     return (
-      <div className="bg-bg-card border border-border rounded-xl px-5 py-10 text-center">
+      <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-5 py-10 text-center">
         <div className="text-2xl mb-2">{'\uD83E\uDDFE'}</div>
         <div className="text-sm text-text-primary font-medium mb-2">No receipts yet</div>
         <div className="text-xs text-text-muted leading-relaxed max-w-xs mx-auto">
@@ -61,7 +61,7 @@ export default function ReceiptsTab({ onUserTap }) {
           <button
             onClick={() => fetchNextPage()}
             disabled={isFetchingNextPage}
-            className="text-sm text-accent hover:text-accent-hover font-medium px-4 py-2 rounded-lg bg-bg-card border border-border hover:border-accent/30 transition-colors disabled:opacity-50"
+            className="text-sm text-accent hover:text-accent-hover font-medium px-4 py-2 rounded-lg bg-bg-primary border border-text-primary/20 hover:border-accent/30 transition-colors disabled:opacity-50"
           >
             {isFetchingNextPage ? 'Loading...' : 'Load more'}
           </button>

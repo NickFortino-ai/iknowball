@@ -382,13 +382,13 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               onChange={handleEditContentChange}
               maxLength={MAX_CHARS}
               rows={3}
-              className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted resize-none outline-none focus:border-accent/40"
+              className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted resize-none outline-none focus:border-accent/40"
               autoFocus
             />
 
             {/* @mention autocomplete dropdown */}
             {editMentionQuery.length >= 2 && editMentionResults?.length > 0 && (
-              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+              <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-bg-primary border border-text-primary/20 rounded-lg shadow-lg max-h-40 overflow-y-auto">
                 {editMentionResults
                   .filter((u) => !editUserTags.some((t) => t.id === u.id))
                   .slice(0, 5)
@@ -398,7 +398,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleEditMentionSelect(u)}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-bg-card-hover transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-text-primary/5 transition-colors"
                     >
                       <Avatar user={u} size="xs" />
                       <div className="min-w-0">
@@ -704,7 +704,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                 onChange={(e) => setRemindComment(e.target.value)}
                 placeholder="Add a comment (optional)"
                 maxLength={280}
-                className="flex-1 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted outline-none focus:border-accent/40"
+                className="flex-1 bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted outline-none focus:border-accent/40"
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleRemindSubmit() }}
               />

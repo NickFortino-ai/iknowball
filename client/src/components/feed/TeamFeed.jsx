@@ -194,7 +194,7 @@ export default function TeamFeed({ onUserTap, initialTeam = null, initialSport =
             className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
               selectedSport === sport.key
                 ? 'bg-accent text-white'
-                : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                : 'bg-bg-primary text-text-secondary hover:bg-text-primary/5'
             }`}
           >
             {sport.label}
@@ -206,7 +206,7 @@ export default function TeamFeed({ onUserTap, initialTeam = null, initialSport =
       {selectedSport && (
         <div className="mb-3">
           {selectedTeam ? (
-            <div className="flex items-center justify-between bg-bg-card border border-border rounded-xl px-4 py-2.5">
+            <div className="flex items-center justify-between bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-2.5">
               <span className="text-sm font-semibold text-text-primary">{selectedTeam}</span>
               <button
                 onClick={handleClearTeam}
@@ -236,7 +236,7 @@ export default function TeamFeed({ onUserTap, initialTeam = null, initialSport =
               <button
                 key={team}
                 onClick={() => handleSelectTeam(team)}
-                className="px-2.5 py-1 rounded-full text-xs font-medium bg-bg-card border border-border text-text-secondary hover:bg-bg-card-hover transition-colors"
+                className="px-2.5 py-1 rounded-full text-xs font-medium bg-bg-primary border border-text-primary/20 text-text-secondary hover:bg-text-primary/5 transition-colors"
               >
                 {team}
               </button>
@@ -247,7 +247,7 @@ export default function TeamFeed({ onUserTap, initialTeam = null, initialSport =
 
       {/* No sport selected */}
       {!selectedSport && !selectedTeam && (
-        <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
+        <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-10 text-center">
           <div className="text-2xl mb-2">{'\uD83C\uDFC8'}</div>
           <div className="text-sm text-text-primary font-medium mb-1">Select a sport</div>
           <div className="text-xs text-text-muted">Pick a sport above to browse posts</div>
@@ -262,7 +262,7 @@ export default function TeamFeed({ onUserTap, initialTeam = null, initialSport =
           {isLoading ? (
             <FeedSkeleton />
           ) : !items.length ? (
-            <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
+            <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-10 text-center">
               <div className="text-2xl mb-2">{'\uD83D\uDCAC'}</div>
               <div className="text-sm text-text-primary font-medium mb-2">
                 {selectedTeam
@@ -291,7 +291,7 @@ export default function TeamFeed({ onUserTap, initialTeam = null, initialSport =
                   <button
                     onClick={() => fetchNextPage()}
                     disabled={isFetchingNextPage}
-                    className="text-sm text-accent hover:text-accent-hover font-medium px-4 py-2 rounded-lg bg-bg-card border border-border hover:border-accent/30 transition-colors disabled:opacity-50"
+                    className="text-sm text-accent hover:text-accent-hover font-medium px-4 py-2 rounded-lg bg-bg-primary border border-text-primary/20 hover:border-accent/30 transition-colors disabled:opacity-50"
                   >
                     {isFetchingNextPage ? 'Loading...' : 'Load more'}
                   </button>

@@ -57,7 +57,7 @@ export default function HeadToHeadFeedCard({ item, reactions, onUserTap, onH2HTa
   }
 
   return (
-    <div className="bg-bg-card border border-border rounded-xl overflow-hidden border-l-4 border-l-accent cursor-pointer" onClick={() => onH2HTap?.(item)}>
+    <div className="bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden border-l-4 border-l-accent cursor-pointer" onClick={() => onH2HTap?.(item)}>
       {/* Header */}
       <div className="px-4 pt-3 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">

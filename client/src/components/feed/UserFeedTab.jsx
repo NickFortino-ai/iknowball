@@ -38,7 +38,7 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
     return (
       <div>
         {/* Header bar */}
-        <div className="bg-bg-card border border-border rounded-xl px-4 py-3 mb-3 flex items-center gap-3">
+        <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-3 mb-3 flex items-center gap-3">
           <button onClick={() => onUserTap?.(selectedUser.user_id || selectedUser.id)}>
             <Avatar user={selectedUser} size="lg" />
           </button>
@@ -64,7 +64,7 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
               key={f.key}
               onClick={() => setSubFilter(f.key)}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                subFilter === f.key ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                subFilter === f.key ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary hover:bg-text-primary/5'
               }`}
             >
               {f.label}
@@ -92,15 +92,15 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search by username..."
-          className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+          className="w-full bg-bg-input border border-text-primary/20 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
         />
         {searchQuery.length >= 2 && searchResults?.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-bg-primary border border-text-primary/20 rounded-xl shadow-lg z-10 overflow-hidden">
             {searchResults.map((user) => (
               <button
                 key={user.id}
                 onClick={() => selectUser(user)}
-                className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors"
+                className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-text-primary/5 transition-colors"
               >
                 <Avatar user={user} size="lg" />
                 <div className="min-w-0 flex-1">
@@ -112,7 +112,7 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
           </div>
         )}
         {searchQuery.length >= 2 && searchResults?.length === 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-border rounded-xl shadow-lg z-10 px-4 py-3 text-sm text-text-muted">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-bg-primary border border-text-primary/20 rounded-xl shadow-lg z-10 px-4 py-3 text-sm text-text-muted">
             No users found
           </div>
         )}
@@ -141,12 +141,12 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
             </svg>
           </button>
           {squadExpanded && (
-            <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
+            <div className="bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden">
               {[...connections].sort((a, b) => (b.total_points || 0) - (a.total_points || 0)).map((conn) => (
                 <button
                   key={conn.connection_id}
                   onClick={() => selectUser(conn)}
-                  className="w-full text-left px-4 py-3 flex items-center gap-3 border-b border-border last:border-b-0 hover:bg-bg-card-hover transition-colors"
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 border-b border-text-primary/10 last:border-b-0 hover:bg-text-primary/5 transition-colors"
                 >
                   <Avatar user={conn} size="xl" />
                   <div className="min-w-0 flex-1">
@@ -162,7 +162,7 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
       )}
 
       {/* Empty state */}
-      <div className="bg-bg-card border border-border rounded-xl px-4 py-10 text-center">
+      <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-10 text-center">
         <div className="text-2xl mb-2">{'\uD83D\uDD0D'}</div>
         <div className="text-sm text-text-primary font-medium mb-1">Browse user feeds</div>
         <div className="text-xs text-text-muted">

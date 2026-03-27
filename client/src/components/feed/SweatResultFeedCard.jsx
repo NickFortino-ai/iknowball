@@ -15,7 +15,7 @@ export default function SweatResultFeedCard({ item, onUserTap }) {
     : 'Tough break'
 
   return (
-    <div className="bg-bg-card border border-correct/30 rounded-xl overflow-hidden border-l-4 border-l-correct feed-victory-entrance">
+    <div className="bg-bg-primary border border-correct/30 rounded-xl overflow-hidden border-l-4 border-l-correct feed-victory-entrance">
       {/* Header: avatar stack + text */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-3">
         <div className="flex items-center flex-shrink-0">

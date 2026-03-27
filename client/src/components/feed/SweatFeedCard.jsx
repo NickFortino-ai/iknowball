@@ -8,7 +8,7 @@ export default function SweatFeedCard({ item, onUserTap }) {
   const extraCount = sweaters.length - 3
 
   return (
-    <div className="bg-bg-card border border-orange-500/30 rounded-xl overflow-hidden border-l-4 border-l-orange-400 shimmer">
+    <div className="bg-bg-primary border border-orange-500/30 rounded-xl overflow-hidden border-l-4 border-l-orange-400 shimmer">
       {/* Header: avatar stack + text */}
       <div className="px-4 pt-3 pb-2 flex items-center gap-3">
         <div className="flex items-center flex-shrink-0">

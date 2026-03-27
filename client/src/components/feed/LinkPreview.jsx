@@ -65,7 +65,7 @@ function TweetEmbed({ tweetId, url }) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="block border border-border rounded-lg px-3 py-2.5 bg-bg-card hover:bg-bg-card-hover transition-colors"
+          className="block border border-text-primary/20 rounded-lg px-3 py-2.5 bg-bg-primary hover:bg-text-primary/5 transition-colors"
         >
           <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-0.5">X (Twitter)</div>
           <div className="text-sm text-accent">View post &rarr;</div>
@@ -130,7 +130,7 @@ export default function LinkPreview({ url }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-2 block border border-border rounded-lg overflow-hidden bg-bg-card hover:bg-bg-card-hover transition-colors"
+      className="mt-2 block border border-text-primary/20 rounded-lg overflow-hidden bg-bg-primary hover:bg-text-primary/5 transition-colors"
       onClick={(e) => e.stopPropagation()}
     >
       {data.image && !imgError && (
