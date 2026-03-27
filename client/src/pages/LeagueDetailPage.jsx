@@ -582,7 +582,26 @@ export default function LeagueDetailPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
   const [editingNote, setEditingNote] = useState(false)
-  const [noteExpanded, setNoteExpanded] = useState(false)
+  const [noteExpanded, setNoteExpanded] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`note-collapsed-${id}`)
+      return stored !== '1' // default expanded unless user explicitly collapsed
+    } catch { return true }
+  })
+  const [noteSeenAt, setNoteSeenAt] = useState(() => {
+    try { return localStorage.getItem(`note-seen-${id}`) || null } catch { return null }
+  })
+
+  // Mark note as seen when rendered expanded
+  useEffect(() => {
+    if (noteExpanded && league?.commissioner_note && league?.updated_at) {
+      const now = new Date().toISOString()
+      try {
+        localStorage.setItem(`note-seen-${id}`, now)
+        setNoteSeenAt(now)
+      } catch {}
+    }
+  }, [noteExpanded, league?.commissioner_note, league?.updated_at, id])
   const [noteText, setNoteText] = useState('')
   const noteRef = useRef(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
@@ -857,10 +876,29 @@ export default function LeagueDetailPage() {
       ) : league.commissioner_note ? (
         <div className="rounded-xl border border-text-primary/20 mb-6 relative z-10">
           <button
-            onClick={() => setNoteExpanded((v) => !v)}
+            onClick={() => {
+              setNoteExpanded((v) => {
+                const next = !v
+                try {
+                  localStorage.setItem(`note-collapsed-${league.id}`, next ? '0' : '1')
+                  if (next) {
+                    // Mark as seen when expanding
+                    const now = new Date().toISOString()
+                    localStorage.setItem(`note-seen-${league.id}`, now)
+                    setNoteSeenAt(now)
+                  }
+                } catch {}
+                return next
+              })
+            }}
             className="w-full flex items-center justify-between p-4"
           >
-            <span className="text-xs font-semibold text-text-secondary">Commissioner's Note</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-text-secondary">Commissioner's Note</span>
+              {league.updated_at && (!noteSeenAt || new Date(league.updated_at) > new Date(noteSeenAt)) && !noteExpanded && (
+                <span className="w-2 h-2 rounded-full bg-accent" />
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {isCommissioner && (
                 <span
