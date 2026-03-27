@@ -141,7 +141,10 @@ function LiveView({ league, date }) {
 
             {isExpanded && m.slots?.length > 0 && (
               <div className="mt-1 rounded-xl border border-text-primary/10 overflow-hidden">
-                {m.slots.map((slot) => {
+                {[...m.slots].sort((a, b) => {
+                  const order = ['PG1','PG2','SG1','SG2','SF1','SF2','PF1','PF2','C']
+                  return order.indexOf(a.roster_slot) - order.indexOf(b.roster_slot)
+                }).map((slot) => {
                   const hidden = slot.player_name === '????'
                   const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
                   const slotKey = `${m.user_id}-${slot.roster_slot}`
