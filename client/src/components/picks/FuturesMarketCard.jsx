@@ -18,7 +18,7 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
   }
 
   return (
-    <div className="bg-bg-card rounded-2xl border border-border p-4">
+    <div className="bg-bg-primary rounded-2xl border border-text-primary/20 p-4">
       <h3 className="font-display text-base mb-1">{market.title}</h3>
       <p className="text-xs text-text-muted mb-3">
         {outcomes.length} outcomes
@@ -48,8 +48,8 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
                       : 'bg-incorrect/10 border-incorrect'
                     : 'bg-accent/15 border-accent'
                   : hasPick
-                    ? 'border-border opacity-40'
-                    : 'border-border hover:bg-bg-card-hover'
+                    ? 'border-text-primary/10 opacity-40'
+                    : 'border-text-primary/20 hover:bg-text-primary/5'
               } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span className={`font-semibold text-sm ${isPicked ? 'text-accent' : 'text-text-primary'}`}>
@@ -78,7 +78,7 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
       )}
 
       {userPick?.status === 'locked' && (
-        <div className="mt-3 pt-3 border-t border-border text-center text-sm text-text-muted">
+        <div className="mt-3 pt-3 border-t border-text-primary/10 text-center text-sm text-text-muted">
           Locked: {userPick.picked_outcome} at {formatOdds(userPick.odds_at_submission)}
           {' '}
           <span className="text-incorrect">-{userPick.risk_at_submission}</span>
@@ -88,7 +88,7 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
       )}
 
       {userPick?.status === 'settled' && userPick.points_earned != null && (
-        <div className={`mt-3 pt-3 border-t border-border text-center text-sm font-semibold ${
+        <div className={`mt-3 pt-3 border-t border-text-primary/10 text-center text-sm font-semibold ${
           userPick.points_earned > 0 ? 'text-correct' : userPick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
         }`}>
           {userPick.points_earned > 0 ? '+' : ''}{userPick.points_earned} pts

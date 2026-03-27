@@ -80,7 +80,7 @@ export default function FuturesSection() {
         const isOpen = !!expanded[sportKey]
         const hasPick = sportMarkets.some((m) => picksMap[m.id])
         return (
-          <div key={sportKey} className="bg-bg-card border border-border rounded-xl overflow-hidden">
+          <div key={sportKey} className="bg-bg-primary border border-text-primary/20 rounded-xl overflow-hidden">
             <button
               onClick={() => toggle(sportKey)}
               className="w-full flex items-center justify-between px-4 py-3 text-left"
