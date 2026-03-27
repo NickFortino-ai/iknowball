@@ -178,19 +178,29 @@ router.get('/live', async (req, res) => {
     }
   }
 
-  // Check actual game statuses from nba_dfs_player_stats (if stats exist, game is at least in progress)
+  // Fetch player stats for today (used for game status detection + stat breakdowns)
+  const playerStatsMap = {}
   if (allEspnIds.length) {
     const { data: stats } = await supabase
       .from('nba_dfs_player_stats')
-      .select('espn_player_id, fantasy_points, minutes_played')
+      .select('espn_player_id, fantasy_points, minutes_played, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made')
       .eq('game_date', date)
       .eq('season', s)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
     for (const stat of stats || []) {
+      playerStatsMap[stat.espn_player_id] = {
+        pts: stat.points || 0,
+        reb: stat.rebounds || 0,
+        ast: stat.assists || 0,
+        stl: stat.steals || 0,
+        blk: stat.blocks || 0,
+        to: stat.turnovers || 0,
+        threes: stat.three_pointers_made || 0,
+        min: stat.minutes_played || 0,
+        fpts: Number(stat.fantasy_points) || 0,
+      }
       if (gameStateMap[stat.espn_player_id]) {
-        // If we have stats, the game is at minimum in progress
-        // If minutes > 0 and points recorded, mark as final (simplified)
         gameStateMap[stat.espn_player_id].hasStats = true
       }
     }
@@ -273,6 +283,7 @@ router.get('/live', async (req, res) => {
       }
       // final = 0 remaining
 
+      const hasGameStats = (gs.status === 'live' || gs.status === 'final') && visible
       return {
         roster_slot: slot.roster_slot,
         player_name: visible ? slot.player_name : '????',
@@ -280,6 +291,7 @@ router.get('/live', async (req, res) => {
         salary: visible ? slot.salary : null,
         points_earned: gs.status === 'live' || gs.status === 'final' ? Number(slot.points_earned) || 0 : 0,
         game_status: gs.status,
+        stats: hasGameStats ? (playerStatsMap[slot.espn_player_id] || null) : null,
       }
     })
 
