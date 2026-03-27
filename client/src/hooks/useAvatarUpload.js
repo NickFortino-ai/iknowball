@@ -13,14 +13,14 @@ function cropAndResize(file) {
       const sx = (img.width - size) / 2
       const sy = (img.height - size) / 2
       const canvas = document.createElement('canvas')
-      canvas.width = 400
-      canvas.height = 400
+      canvas.width = 800
+      canvas.height = 800
       const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, sx, sy, size, size, 0, 0, 400, 400)
+      ctx.drawImage(img, sx, sy, size, size, 0, 0, 800, 800)
       canvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error('Failed to compress image'))),
         'image/webp',
-        0.85
+        0.9
       )
     }
     img.onerror = () => reject(new Error('Failed to load image'))
