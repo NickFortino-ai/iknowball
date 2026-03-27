@@ -33,6 +33,31 @@ const DURATION_OPTIONS = [
   { value: 'playoffs_only', label: 'Playoffs Only' },
 ]
 
+// Sport-specific season end dates (approximate, updated yearly)
+function getSeasonEndDate(sportKey) {
+  const year = new Date().getFullYear()
+  const dates = {
+    basketball_nba: `${year}-06-20`,       // NBA Finals ~mid June
+    americanfootball_nfl: `${year + 1}-02-10`, // Super Bowl ~early Feb next year
+    baseball_mlb: `${year}-10-31`,          // World Series ~late October
+    basketball_ncaab: `${year}-04-10`,      // Final Four ~early April
+    basketball_wncaab: `${year}-04-10`,
+    americanfootball_ncaaf: `${year + 1}-01-15`, // CFP Championship ~mid Jan
+    basketball_wnba: `${year}-10-20`,       // WNBA Finals ~mid October
+    icehockey_nhl: `${year}-06-25`,         // Stanley Cup ~late June
+    soccer_usa_mls: `${year}-12-15`,        // MLS Cup ~mid December
+  }
+  // If we're past the end date for this sport, push to next year
+  const endDate = dates[sportKey] || `${year}-12-31`
+  if (new Date(endDate) < new Date()) {
+    // Next season — add a year to the month-day
+    const d = new Date(endDate)
+    d.setFullYear(d.getFullYear() + 1)
+    return d.toISOString().split('T')[0]
+  }
+  return endDate
+}
+
 export default function CreateLeaguePage() {
   const navigate = useNavigate()
   const createLeague = useCreateLeague()
@@ -150,12 +175,12 @@ export default function CreateLeaguePage() {
         name,
         format: format === 'nba_dfs' ? 'nba_dfs' : format,
         sport: format === 'nba_dfs' ? 'basketball_nba' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
-        duration: endsAt === 'end_of_season' ? 'full_season' : (isFantasyFormat ? 'full_season' : duration),
+        duration: isFantasyFormat ? 'full_season' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: format === 'nba_dfs' ? getDfsStartDate() : startsAt || undefined,
-        ends_at: endsAt === 'end_of_season' ? undefined : endsAt || undefined,
+        ends_at: endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : sport) : endsAt || undefined,
         settings,
         fantasy_settings: fantasySettings,
         visibility,
