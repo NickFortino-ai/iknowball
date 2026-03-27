@@ -11,9 +11,9 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
 
   return (
     <div>
-      <div className="bg-bg-card rounded-xl border border-border overflow-hidden text-sm">
+      <div className="bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden text-sm">
         {/* Header */}
-        <div className="flex items-center border-b border-border text-text-muted text-xs">
+        <div className="flex items-center border-b border-text-primary/10 text-text-muted text-xs">
           <span className="px-4 py-3 font-medium w-10">#</span>
           <span className="px-4 py-3 font-medium flex-1">Player</span>
           <span className="px-4 py-3 font-medium text-right">Points</span>
@@ -32,7 +32,7 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
             <Row
               key={e.user_id}
               {...(onViewBracket ? { onClick: () => onViewBracket(e.user_id) } : {})}
-              className={`w-full text-left flex items-center ${i < entries.length - 1 ? 'border-b border-border' : ''} ${onViewBracket ? 'hover:bg-bg-card-hover cursor-pointer' : ''} transition-colors`}
+              className={`w-full text-left flex items-center ${i < entries.length - 1 ? 'border-b border-text-primary/10' : ''} ${onViewBracket ? 'hover:bg-text-primary/5 cursor-pointer' : ''} transition-colors`}
             >
               <span className="px-4 py-3 text-text-primary font-semibold w-10">{i + 1}</span>
               <div className="px-4 py-3 flex-1 min-w-0 flex items-center gap-2">
