@@ -114,8 +114,8 @@ export default function LeaderboardPage() {
         ) : !leagueLeaders?.length ? (
           <EmptyState title="No league rankings yet" message="Join a league and start competing!" />
         ) : (
-          <div className="bg-bg-card rounded-2xl border border-border overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_auto_auto] md:grid-cols-[2.5rem_1fr_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-3 border-b border-border text-xs text-text-muted uppercase tracking-wider">
+          <div className="bg-bg-primary rounded-2xl border border-text-primary/20 overflow-hidden">
+            <div className="grid grid-cols-[2.5rem_1fr_auto_auto] md:grid-cols-[2.5rem_1fr_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
               <span className="hidden md:inline">Leagues</span>
@@ -130,7 +130,7 @@ export default function LeaderboardPage() {
                 <div
                   key={user.id}
                   onClick={() => setSelectedUserId(user.id)}
-                  className={`grid grid-cols-[2.5rem_1fr_auto_auto] md:grid-cols-[2.5rem_1fr_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center border-b border-border last:border-b-0 cursor-pointer hover:bg-bg-card-hover transition-colors ${
+                  className={`grid grid-cols-[2.5rem_1fr_auto_auto] md:grid-cols-[2.5rem_1fr_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 cursor-pointer hover:bg-text-primary/5 transition-colors ${
                     isMe ? 'bg-accent/5' : ''
                   }`}
                 >
@@ -162,8 +162,8 @@ export default function LeaderboardPage() {
       ) : !leaders?.length ? (
         <EmptyState title="No rankings yet" message="Be the first to make picks!" />
       ) : (
-        <div data-onboarding="leaderboard" className="bg-bg-card rounded-2xl border border-border overflow-hidden">
-          <div className="grid grid-cols-[3rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 border-b border-border text-xs text-text-muted uppercase tracking-wider">
+        <div data-onboarding="leaderboard" className="bg-bg-primary rounded-2xl border border-text-primary/20 overflow-hidden">
+          <div className="grid grid-cols-[3rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
             <span>#</span>
             <span>Player</span>
             <span>Tier</span>
@@ -176,7 +176,7 @@ export default function LeaderboardPage() {
               <div
                 key={user.id}
                 onClick={() => setSelectedUserId(user.id)}
-                className={`grid grid-cols-[3rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center border-b border-border last:border-b-0 cursor-pointer hover:bg-bg-card-hover transition-colors ${
+                className={`grid grid-cols-[3rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 cursor-pointer hover:bg-text-primary/5 transition-colors ${
                   isMe ? 'bg-accent/5' : ''
                 }`}
               >
