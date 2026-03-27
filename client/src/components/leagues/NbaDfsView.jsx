@@ -374,7 +374,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
           <div className="rounded-2xl border border-text-primary/20 overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_auto_auto] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+            <div className="grid grid-cols-[2.5rem_1fr_3rem_4rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
               <span className="text-right">Wins</span>
@@ -385,7 +385,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
               return (
                 <div
                   key={s.user?.id}
-                  className={`grid grid-cols-[2.5rem_1fr_auto_auto] gap-2 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 ${isMe ? 'bg-accent/5' : ''}`}
+                  className={`grid grid-cols-[2.5rem_1fr_3rem_4rem] gap-2 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 ${isMe ? 'bg-accent/5' : ''}`}
                 >
                   <span className={`font-display text-lg ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
                   <div className="flex items-center gap-2 min-w-0">
