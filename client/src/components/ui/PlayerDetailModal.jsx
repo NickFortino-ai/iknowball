@@ -75,13 +75,14 @@ function MLBaverages({ averages }) {
 function NBAGameLog({ games }) {
   return (
     <div className="space-y-0">
-      <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
-        <span></span><span>OPP</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
+      <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+        <span></span><span>OPP</span><span className="text-right">MIN</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
       </div>
       {games.map((g, i) => (
-        <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+        <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
           <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-secondary text-right">{g.min}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.pts}</span>
           <span className="text-xs text-text-secondary text-right">{g.reb}</span>
           <span className="text-xs text-text-secondary text-right">{g.ast}</span>
