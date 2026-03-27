@@ -71,31 +71,21 @@ export async function fetchPlayerProps(sportKey, eventId, markets) {
 export const FUTURES_SPORT_KEYS = {
   basketball_nba: [
     'basketball_nba_championship_winner',
-    'basketball_nba_conference_winner',
-    'basketball_nba_division_winner',
-    'basketball_nba_mvp',
   ],
   americanfootball_nfl: [
     'americanfootball_nfl_super_bowl_winner',
-    'americanfootball_nfl_conference_winner',
-    'americanfootball_nfl_division_winner',
-    'americanfootball_nfl_mvp',
   ],
   baseball_mlb: [
     'baseball_mlb_world_series_winner',
-    'baseball_mlb_al_pennant',
-    'baseball_mlb_nl_pennant',
-    'baseball_mlb_division_winner',
-    'baseball_mlb_mvp_al',
-    'baseball_mlb_mvp_nl',
   ],
   basketball_ncaab: [
     'basketball_ncaab_championship_winner',
   ],
+  americanfootball_ncaaf: [
+    'americanfootball_ncaaf_championship_winner',
+  ],
   icehockey_nhl: [
     'icehockey_nhl_championship_winner',
-    'icehockey_nhl_conference_winner',
-    'icehockey_nhl_division_winner',
   ],
   golf: [
     'golf_masters_tournament_winner',
