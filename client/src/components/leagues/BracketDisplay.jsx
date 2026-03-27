@@ -49,8 +49,10 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
           <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{matchup.seed_top}</span>
         )}
         <span className="truncate flex-1">{matchup.team_top || 'TBD'}</span>
-        {matchup.status === 'completed' && matchup.winner === 'top' && (
-          <span className="text-correct shrink-0">W</span>
+        {showPick ? (
+          topCorrect && !eliminated && <span className="text-correct shrink-0">W</span>
+        ) : (
+          matchup.status === 'completed' && matchup.winner === 'top' && <span className="text-correct shrink-0">W</span>
         )}
       </div>
       <div className={`flex items-center gap-1 ${size === 'xl' ? 'px-3 py-3' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'} ${teamClass(matchup.team_bottom, false)}`}>
@@ -58,8 +60,10 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
           <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{matchup.seed_bottom}</span>
         )}
         <span className="truncate flex-1">{matchup.team_bottom || 'TBD'}</span>
-        {matchup.status === 'completed' && matchup.winner === 'bottom' && (
-          <span className="text-correct shrink-0">W</span>
+        {showPick ? (
+          bottomCorrect && !eliminated && <span className="text-correct shrink-0">W</span>
+        ) : (
+          matchup.status === 'completed' && matchup.winner === 'bottom' && <span className="text-correct shrink-0">W</span>
         )}
       </div>
       {showScore && (
