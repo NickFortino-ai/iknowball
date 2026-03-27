@@ -594,6 +594,7 @@ export function useNbaDfsRoster(leagueId, date, season = 2026) {
     queryKey: ['nba-dfs', leagueId, 'roster', date],
     queryFn: () => api.get(`/nba-dfs/roster?league_id=${leagueId}&date=${date}&season=${season}`),
     enabled: !!leagueId && !!date,
+    refetchInterval: 60000, // refresh every 60s for live point updates
   })
 }
 

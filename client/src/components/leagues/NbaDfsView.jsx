@@ -460,6 +460,9 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
           const player = roster[slot.key]
           const gameState = player ? getPlayerGameState(player) : null
           const isLocked = gameState === 'live' || gameState === 'final'
+          const savedSlot = existingRoster?.nba_dfs_roster_slots?.find((s) => s.roster_slot === slot.key)
+          const pointsEarned = savedSlot ? Number(savedSlot.points_earned) || 0 : 0
+          const showPoints = isLocked && pointsEarned > 0
           return (
             <div
               key={slot.key}
@@ -488,7 +491,13 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                     </div>
                     <div className="text-xs text-text-muted">{player.team} · {player.opponent}</div>
                   </div>
-                  <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
+                  {showPoints ? (
+                    <span className={`text-sm font-display ${gameState === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                      {Math.round(pointsEarned * 10) / 10}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
+                  )}
                   {!isLocked && !isViewMode && (
                     <button
                       onClick={() => removeSlot(slot.key)}
