@@ -28,26 +28,40 @@ const STATUS_STYLES = {
 }
 
 export default function LeagueCard({ league }) {
+  const hasBackdrop = !!league.backdrop_image
+
   return (
     <Link
       to={`/leagues/${league.id}`}
-      className="block bg-bg-primary rounded-xl border border-text-primary/20 p-4 hover:bg-text-primary/5 transition-colors"
+      className="block relative bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden hover:bg-text-primary/5 transition-colors"
     >
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-display text-lg truncate text-white">{league.name}</h3>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
-          {league.status}
-        </span>
-      </div>
-      <div className="flex items-center gap-3 text-xs text-text-muted">
-        <span className="font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
-          {FORMAT_LABELS[league.format]}
-        </span>
-        <span>{SPORT_LABELS[league.sport]}</span>
-        <span>{league.member_count} {league.member_count === 1 ? 'member' : 'members'}</span>
-        {league.my_role === 'commissioner' && (
-          <span className="font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">Commish</span>
-        )}
+      {hasBackdrop && (
+        <>
+          <img
+            src={`/backdrops/${league.backdrop_image}`}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/80 via-bg-primary/60 to-bg-primary/80 pointer-events-none" />
+        </>
+      )}
+      <div className="relative z-10 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-display text-lg truncate text-white">{league.name}</h3>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
+            {league.status}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-text-muted">
+          <span className="font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
+            {FORMAT_LABELS[league.format]}
+          </span>
+          <span>{SPORT_LABELS[league.sport]}</span>
+          <span>{league.member_count} {league.member_count === 1 ? 'member' : 'members'}</span>
+          {league.my_role === 'commissioner' && (
+            <span className="font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">Commish</span>
+          )}
+        </div>
       </div>
     </Link>
   )
