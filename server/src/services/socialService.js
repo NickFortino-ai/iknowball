@@ -313,7 +313,8 @@ export async function toggleFeedReaction(userId, targetType, targetId, reactionT
         .eq('id', userId)
         .single()
       const username = actor?.username || 'Someone'
-      await createNotification(ownerId, 'reaction', `${username} reacted ${reactionType} to your ${targetType.replace('_', ' ')}`, {
+      const label = targetType === 'hot_take' ? 'post' : targetType.replace('_', ' ')
+      await createNotification(ownerId, 'reaction', `${username} reacted ${reactionType} to your ${label}`, {
         actorId: userId,
         targetType,
         targetId,

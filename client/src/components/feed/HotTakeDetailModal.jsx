@@ -8,6 +8,7 @@ import Avatar from '../ui/Avatar'
 import RichContent from './RichContent'
 import LinkPreview from './LinkPreview'
 import FeedReactions from './FeedReactions'
+import { useFeedReactionsBatch } from '../../hooks/useSocial'
 import PickComments from '../social/PickComments'
 import { timeAgo } from '../../lib/time'
 import { extractFirstUrl } from '../../lib/urlUtils'
@@ -110,6 +111,9 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
   const isOwn = ownerId && ownerId === session?.user?.id
   const { data: connData } = useConnectionStatus(!isOwn ? ownerId : null)
   const canComment = isOwn || connData?.status === 'connected'
+  const reactionTargets = item?.hot_take?.id ? [{ type: 'hot_take', id: item.hot_take.id }] : []
+  const { data: reactionsBatch } = useFeedReactionsBatch(reactionTargets)
+  const reactions = reactionsBatch?.[`hot_take:${item?.hot_take?.id}`] || []
 
   useEffect(() => {
     if (!hotTakeId) return
@@ -138,7 +142,7 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
         {isLoading ? (
           <LoadingSpinner />
         ) : !item ? (
-          <p className="text-text-muted text-center">Hot take not found</p>
+          <p className="text-text-muted text-center">Post not found</p>
         ) : (
           <div className="space-y-4">
             {/* Author header */}
@@ -182,7 +186,7 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
             </div>
 
             {/* Reactions */}
-            <FeedReactions targetType="hot_take" targetId={hotTake.id} />
+            <FeedReactions targetType="hot_take" targetId={hotTake.id} reactions={reactions} />
 
             {/* Comments (pre-expanded) */}
             <PickComments targetType="hot_take" targetId={hotTake.id} initialExpanded hideForm={!canComment} />
