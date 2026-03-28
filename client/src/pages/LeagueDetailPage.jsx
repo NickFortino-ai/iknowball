@@ -625,8 +625,8 @@ export default function LeagueDetailPage() {
 
   return (
     <div className={`mx-auto px-4 py-6 relative ${league.format === 'nba_dfs' ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'}`}>
-      {/* Full hero backdrop for NBA DFS and Fantasy Football */}
-      {(league.format === 'nba_dfs' || league.format === 'fantasy') && (
+      {/* Full hero backdrop — shows for leagues with a backdrop_image or fantasy/DFS formats */}
+      {(league.backdrop_image || league.format === 'nba_dfs' || league.format === 'fantasy') && (
         <div className="absolute inset-x-0 top-0 h-[420px] md:h-[380px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
           <img
             src={league.backdrop_image

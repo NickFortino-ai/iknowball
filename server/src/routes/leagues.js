@@ -233,9 +233,7 @@ router.get('/open', requireAuth, async (req, res) => {
 
 // Available backdrop images for league creation
 router.get('/backdrops', requireAuth, async (req, res) => {
-  const { format } = req.query
-  // Read from a static config — images live in client/public/backdrops/
-  // Each entry: { filename, label, formats[] }
+  const { sport } = req.query
   const { data: backdrops } = await supabase
     .from('league_backdrops')
     .select('filename, label, formats')
@@ -243,8 +241,9 @@ router.get('/backdrops', requireAuth, async (req, res) => {
 
   if (!backdrops?.length) return res.json([])
 
-  const filtered = format
-    ? backdrops.filter((b) => !b.formats?.length || b.formats.includes(format))
+  // formats column now stores sport keys (e.g. basketball_nba)
+  const filtered = sport
+    ? backdrops.filter((b) => !b.formats?.length || b.formats.includes(sport))
     : backdrops
 
   res.json(filtered)

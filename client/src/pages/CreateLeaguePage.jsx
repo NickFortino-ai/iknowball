@@ -112,7 +112,8 @@ export default function CreateLeaguePage() {
   // Visibility settings
   const [visibility, setVisibility] = useState('closed')
   const [backdropImage, setBackdropImage] = useState('')
-  const { data: availableBackdrops } = useLeagueBackdrops(format || undefined)
+  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : sport || undefined
+  const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [joinsLockedAt, setJoinsLockedAt] = useState('')
 
   // NBA DFS start date

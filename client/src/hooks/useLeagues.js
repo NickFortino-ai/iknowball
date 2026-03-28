@@ -72,10 +72,10 @@ export function useJoinLeague() {
   })
 }
 
-export function useLeagueBackdrops(format) {
+export function useLeagueBackdrops(sport) {
   return useQuery({
-    queryKey: ['league-backdrops', format],
-    queryFn: () => api.get(`/leagues/backdrops${format ? `?format=${format}` : ''}`),
+    queryKey: ['league-backdrops', sport],
+    queryFn: () => api.get(`/leagues/backdrops${sport ? `?sport=${sport}` : ''}`),
   })
 }
 
