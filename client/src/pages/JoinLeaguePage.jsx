@@ -48,9 +48,6 @@ function LeagueSettingsPreview({ league }) {
   const s = league.settings || {}
   const items = []
 
-  if (league.starts_at) {
-    items.push(['Starts', formatStartDate(league.starts_at)])
-  }
   if ((league.format === 'survivor' || league.format === 'pickem') && s.pick_frequency) {
     items.push(['Picks', s.pick_frequency === 'daily' ? 'Daily' : 'Weekly'])
   }
