@@ -365,7 +365,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
       // Hide players whose games have started
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
       if (gameStarted && posFilter !== 'OUT') return false
-      if (p.salary > remainingSalary) return false
+      if (!isViewMode && p.salary > remainingSalary) return false
       if (!matchesPositionFilter(p.position, posFilter)) return false
       if (search) {
         const q = search.toLowerCase()
@@ -373,7 +373,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
       }
       return true
     })
-  }, [players, posFilter, search, usedPlayerIds, remainingSalary])
+  }, [players, posFilter, search, usedPlayerIds, remainingSalary, isViewMode])
 
   function addPlayer(player) {
     for (const slot of SLOTS) {
