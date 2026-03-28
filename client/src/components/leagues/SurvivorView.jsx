@@ -175,7 +175,7 @@ export default function SurvivorView({ league }) {
                 return (
                   <div key={dateKey}>
                     <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">{label}</div>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                       {grouped[dateKey].map((game) => {
                         const homeUsed = !poolExpanded && usedTeamSet.has(game.home_team)
                         const awayUsed = !poolExpanded && usedTeamSet.has(game.away_team)

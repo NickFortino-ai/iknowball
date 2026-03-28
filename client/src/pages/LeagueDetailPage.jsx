@@ -625,7 +625,7 @@ export default function LeagueDetailPage() {
   const isCommissioner = league.commissioner_id === profile?.id
 
   return (
-    <div className={`mx-auto px-4 py-6 relative ${league.format === 'nba_dfs' ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'}`}>
+    <div className={`mx-auto px-4 py-6 relative ${['nba_dfs', 'survivor', 'pickem'].includes(league.format) ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'}`}>
       {/* Full hero backdrop — shows for leagues with a backdrop_image or fantasy/DFS formats */}
       {(league.backdrop_image || league.format === 'nba_dfs' || league.format === 'fantasy') && (
         <div className="absolute inset-x-0 top-0 h-[420px] md:h-[380px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
@@ -646,8 +646,8 @@ export default function LeagueDetailPage() {
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
-        <div className={['bracket', 'fantasy', 'nba_dfs'].includes(league.format) ? 'text-center' : ''}>
-        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs'].includes(league.format) ? 'justify-center' : ''}`}>
+        <div className={['bracket', 'fantasy', 'nba_dfs', 'survivor', 'pickem'].includes(league.format) ? 'text-center' : ''}>
+        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'survivor', 'pickem'].includes(league.format) ? 'justify-center' : ''}`}>
           <h1 className="font-display text-3xl">{league.name}</h1>
           <button
             onClick={() => setShowSettingsModal(true)}
