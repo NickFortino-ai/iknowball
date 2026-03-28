@@ -967,7 +967,11 @@ export default function LeagueDetailPage() {
       {tabs[activeTab] === 'Members' && (
         <MembersList
           members={league.members}
-          pendingInvitations={league.pending_invitations}
+          pendingInvitations={
+            league.status === 'open' || (league.status === 'active' && league.joins_locked_at && new Date(league.joins_locked_at) > new Date())
+              ? league.pending_invitations
+              : []
+          }
           commissionerId={league.commissioner_id}
           leagueId={league.id}
           isCommissioner={isCommissioner}
