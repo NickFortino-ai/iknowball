@@ -392,6 +392,49 @@ router.post('/bracket-templates/:id/championship-score', async (req, res) => {
 // Futures
 // ============================================
 
+// Create a custom futures market (conference, division, MVP, etc.)
+router.post('/futures/create', async (req, res) => {
+  const { sport_key, title, outcomes } = req.body
+  if (!sport_key || !title || !outcomes?.length) {
+    return res.status(400).json({ error: 'sport_key, title, and outcomes array required' })
+  }
+
+  const { data, error } = await supabase
+    .from('futures_markets')
+    .insert({
+      sport_key,
+      futures_sport_key: `custom_${sport_key}`,
+      external_event_id: `custom_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      title,
+      outcomes,
+      status: 'active',
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(201).json(data)
+})
+
+// Update outcomes/odds on an existing futures market
+router.patch('/futures/markets/:marketId', async (req, res) => {
+  const { title, outcomes } = req.body
+  const updates = { updated_at: new Date().toISOString() }
+  if (title) updates.title = title
+  if (outcomes) updates.outcomes = outcomes
+
+  const { data, error } = await supabase
+    .from('futures_markets')
+    .update(updates)
+    .eq('id', req.params.marketId)
+    .select()
+    .single()
+
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
 router.post('/futures/sync', async (req, res) => {
   const { sportKey } = req.body
   if (!sportKey) {

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket } from '../../hooks/useAdmin'
+import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
@@ -11,17 +11,43 @@ const sportTabs = [
   { label: 'MLB', key: 'baseball_mlb' },
   { label: 'NCAAB', key: 'basketball_ncaab' },
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
+  { label: 'NHL', key: 'icehockey_nhl' },
 ]
 
 export default function FuturesAdminPanel() {
   const [sportFilter, setSportFilter] = useState('')
   const [settlingId, setSettlingId] = useState(null)
   const [winnerInput, setWinnerInput] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+  const [newSport, setNewSport] = useState('basketball_nba')
+  const [newTitle, setNewTitle] = useState('')
+  const [newOutcomes, setNewOutcomes] = useState([{ name: '', odds: '' }])
 
   const { data: markets, isLoading } = useAdminFuturesMarkets(sportFilter || undefined)
   const syncFutures = useSyncFutures()
   const closeMarket = useCloseFuturesMarket()
   const settleMarket = useSettleFuturesMarket()
+  const createMarket = useCreateFuturesMarket()
+
+  async function handleCreate() {
+    const outcomes = newOutcomes.filter((o) => o.name.trim()).map((o) => ({
+      name: o.name.trim(),
+      odds: parseInt(o.odds) || 100,
+    }))
+    if (!newTitle.trim() || outcomes.length < 2) {
+      toast('Need a title and at least 2 outcomes', 'error')
+      return
+    }
+    try {
+      await createMarket.mutateAsync({ sport_key: newSport, title: newTitle.trim(), outcomes })
+      toast('Custom market created!', 'success')
+      setShowCreate(false)
+      setNewTitle('')
+      setNewOutcomes([{ name: '', odds: '' }])
+    } catch (err) {
+      toast(err.message || 'Failed to create market', 'error')
+    }
+  }
 
   const grouped = useMemo(() => {
     if (!markets) return { active: [], closed: [], settled: [] }
@@ -77,7 +103,85 @@ export default function FuturesAdminPanel() {
         >
           {syncFutures.isPending ? 'Syncing...' : 'Sync All Futures'}
         </button>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="bg-correct hover:bg-correct/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+        >
+          {showCreate ? 'Cancel' : '+ Custom Market'}
+        </button>
       </div>
+
+      {showCreate && (
+        <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-4 mb-4 space-y-3">
+          <h3 className="font-display text-sm">Create Custom Futures Market</h3>
+          <div className="flex gap-2">
+            <select
+              value={newSport}
+              onChange={(e) => setNewSport(e.target.value)}
+              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+            >
+              {sportTabs.filter((t) => t.key).map((t) => (
+                <option key={t.key} value={t.key}>{t.label}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="e.g. NBA Eastern Conference Winner"
+              className="flex-1 bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-text-muted">Outcomes (name + American odds)</label>
+            {newOutcomes.map((o, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  type="text"
+                  value={o.name}
+                  onChange={(e) => {
+                    const updated = [...newOutcomes]
+                    updated[i].name = e.target.value
+                    setNewOutcomes(updated)
+                  }}
+                  placeholder="e.g. Boston Celtics"
+                  className="flex-1 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+                />
+                <input
+                  type="number"
+                  value={o.odds}
+                  onChange={(e) => {
+                    const updated = [...newOutcomes]
+                    updated[i].odds = e.target.value
+                    setNewOutcomes(updated)
+                  }}
+                  placeholder="+150"
+                  className="w-24 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+                />
+                {newOutcomes.length > 1 && (
+                  <button
+                    onClick={() => setNewOutcomes(newOutcomes.filter((_, j) => j !== i))}
+                    className="text-text-muted hover:text-incorrect text-lg"
+                  >&times;</button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => setNewOutcomes([...newOutcomes, { name: '', odds: '' }])}
+              className="text-xs text-accent hover:text-accent-hover"
+            >
+              + Add outcome
+            </button>
+          </div>
+          <button
+            onClick={handleCreate}
+            disabled={createMarket.isPending}
+            className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+          >
+            {createMarket.isPending ? 'Creating...' : 'Create Market'}
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-4">
         {sportTabs.map((tab) => (
