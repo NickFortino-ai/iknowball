@@ -93,19 +93,19 @@ export default function SurvivorView({ league }) {
     <div>
       {/* Status summary */}
       <div className="flex gap-4 mb-4">
-        <div className="bg-bg-card rounded-xl border border-border p-3 flex-1 text-center">
+        <div className="bg-bg-primary/90 backdrop-blur rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
           <div className="font-display text-2xl text-correct">
             {board.members?.filter((m) => m.is_alive).length || 0}
           </div>
           <div className="text-xs text-text-muted">Alive</div>
         </div>
-        <div className="bg-bg-card rounded-xl border border-border p-3 flex-1 text-center">
+        <div className="bg-bg-primary/90 backdrop-blur rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
           <div className="font-display text-2xl text-incorrect">
             {board.members?.filter((m) => !m.is_alive).length || 0}
           </div>
           <div className="text-xs text-text-muted">Eliminated</div>
         </div>
-        <div className="bg-bg-card rounded-xl border border-border p-3 flex-1 text-center">
+        <div className="bg-bg-primary/90 backdrop-blur rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
           <div className="font-display text-2xl text-text-primary">
             {board.display_period_number || currentWeek?.week_number || '—'}
           </div>
