@@ -406,7 +406,7 @@ export default function CreateLeaguePage() {
         {availableBackdrops?.length > 0 && (
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">League Backdrop</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2 max-h-[320px] overflow-y-auto scrollbar-hide rounded-lg">
               {availableBackdrops.map((b) => (
                 <button
                   key={b.filename}

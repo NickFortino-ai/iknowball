@@ -480,7 +480,9 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   if (playersLoading || rosterLoading) return <LoadingSpinner />
 
   return (
-    <div>
+    <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+      {/* Left column: roster */}
+      <div>
       {/* Date sub-tabs */}
       <div className="flex gap-2 mb-4">
         {availableDates.map((d) => (
@@ -604,7 +606,10 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
       )}
 
       {/* Player Pool */}
-      {!isViewMode && <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+      </div>
+
+      {/* Right column: player pool */}
+      {!isViewMode && <div className="rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
           <input
