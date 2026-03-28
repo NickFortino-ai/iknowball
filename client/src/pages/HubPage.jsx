@@ -31,7 +31,7 @@ function MyProfileBanner({ profile, onTap }) {
   return (
     <div
       onClick={onTap}
-      className="bg-bg-card border border-border rounded-2xl p-5 mb-6 cursor-pointer hover:bg-bg-card-hover transition-colors"
+      className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5 mb-6 cursor-pointer hover:bg-white/10 transition-colors"
     >
       <div className="flex items-center gap-4">
         <Avatar user={profile} size="2xl" className="bg-accent/15 border border-accent/25" />
@@ -300,7 +300,7 @@ export default function HubPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by username..."
-            className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            className="w-full bg-white/5 backdrop-blur border border-white/10 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
 
           {searchQuery.length >= 2 && searchResults?.length > 0 && (
