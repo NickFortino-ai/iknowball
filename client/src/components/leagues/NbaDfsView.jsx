@@ -609,7 +609,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
       </div>
 
       {/* Right column: player pool */}
-      {!isViewMode && <div className="rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      <div className={`rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4 ${isViewMode ? 'hidden lg:block' : ''}`}>
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
           <input
@@ -683,17 +683,19 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                   </div>
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${player.salary.toLocaleString()}</span>
                 </button>
-                <button
-                  onClick={() => addPlayer(player)}
-                  className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
-                >
-                  +
-                </button>
+                {!isViewMode && (
+                  <button
+                    onClick={() => addPlayer(player)}
+                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
+                  >
+                    +
+                  </button>
+                )}
               </div>
             ))}
           </div>
         )}
-      </div>}
+      </div>
 
       {selectedPlayer && (
         <PlayerDetailModal

@@ -676,6 +676,11 @@ export default function LeagueDetailPage() {
             </span>
           )}
         </div>
+        {league.status === 'open' && league.starts_at && (
+          <div className="mt-2 text-sm text-yellow-500 font-semibold">
+            Starts {new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}
+          </div>
+        )}
         </div>
       </div>
 
