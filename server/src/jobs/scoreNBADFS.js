@@ -36,10 +36,14 @@ async function fetchCompletedGameStats(date) {
     if (!competition) continue
 
     const statusType = competition.status?.type?.name || event.status?.type?.name
-    if (statusType !== 'STATUS_FINAL') {
+    const isFinal = statusType === 'STATUS_FINAL'
+    const isLive = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME', 'STATUS_OVERTIME'].includes(statusType)
+
+    if (!isFinal && !isLive) {
       allFinal = false
       continue
     }
+    if (!isFinal) allFinal = false
 
     // Fetch box score for this game
     const gameId = event.id
