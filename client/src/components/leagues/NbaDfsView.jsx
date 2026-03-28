@@ -70,28 +70,92 @@ function todayLocal() {
 // Live Tab
 // ============================================
 
-function LiveView({ league, date }) {
+function shiftDate(dateStr, days) {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toLocaleDateString('en-CA')
+}
+
+function formatDateNav(dateStr) {
+  const today = new Date().toLocaleDateString('en-CA')
+  const yesterday = shiftDate(today, -1)
+  if (dateStr === today) return 'Today'
+  if (dateStr === yesterday) return 'Yesterday'
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function LiveView({ league, date: leagueDate }) {
   const { profile } = useAuth()
-  const { data: liveData, isLoading } = useNbaDfsLive(league.id, date)
+  const [viewDate, setViewDate] = useState(leagueDate)
+  const { data: liveData, isLoading } = useNbaDfsLive(league.id, viewDate)
   const [expandedUserId, setExpandedUserId] = useState(null)
-  const [expandedSlot, setExpandedSlot] = useState(null) // "userId-slotKey"
+  const [expandedSlot, setExpandedSlot] = useState(null)
+
+  const today = new Date().toLocaleDateString('en-CA')
+  const leagueStart = league.starts_at
+    ? new Date(league.starts_at).toISOString().split('T')[0]
+    : today
+  const canGoBack = viewDate > leagueStart
+  const canGoForward = viewDate < today
+
+  function goBack() {
+    if (canGoBack) {
+      setViewDate(shiftDate(viewDate, -1))
+      setExpandedUserId(null)
+      setExpandedSlot(null)
+    }
+  }
+
+  function goForward() {
+    if (canGoForward) {
+      setViewDate(shiftDate(viewDate, 1))
+      setExpandedUserId(null)
+      setExpandedSlot(null)
+    }
+  }
 
   if (isLoading) return <LoadingSpinner />
-  if (!liveData?.members?.length) return <div className="text-center py-8 text-sm text-text-secondary">No rosters submitted yet.</div>
 
-  const { members, all_final, any_live, first_tipoff } = liveData
-  const winner = all_final ? members[0] : null
+  const { members, all_final, any_live, first_tipoff } = liveData || {}
+  const winner = all_final ? members?.[0] : null
 
   function formatTipoff(isoStr) {
     if (!isoStr) return null
     return new Date(isoStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   }
 
-
   return (
     <div>
+      {/* Date navigation */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={goBack}
+          disabled={!canGoBack}
+          className="p-2 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span className="text-sm font-semibold text-text-primary">{formatDateNav(viewDate)}</span>
+        <button
+          onClick={goForward}
+          disabled={!canGoForward}
+          className="p-2 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {!members?.length ? (
+        <div className="text-center py-8 text-sm text-text-secondary">No rosters for this date.</div>
+      ) : (
+      <>
+
       {/* Pre-game note */}
-      {!any_live && !all_final && first_tipoff && (
+      {!any_live && !all_final && first_tipoff && viewDate === today && (
         <div className="rounded-xl border border-text-primary/10 bg-bg-primary p-4 mb-4 text-center">
           <div className="text-sm text-text-secondary">First games tip off at <span className="text-text-primary font-semibold">{formatTipoff(first_tipoff)}</span></div>
         </div>
@@ -205,6 +269,8 @@ function LiveView({ league, date }) {
         )
       })}
       </div>
+      </>
+      )}
     </div>
   )
 }
