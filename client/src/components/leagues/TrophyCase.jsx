@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useMyLeagueWins } from '../../hooks/useLeagues'
 
 function getTrophyTier(memberCount) {
@@ -264,6 +265,25 @@ function TrophyForTier({ tier, className }) {
   }
 }
 
+function EmptyShelf() {
+  return (
+    <div className="border border-text-primary/10 rounded-xl p-6 text-center">
+      {/* Shelf lines */}
+      <div className="space-y-6 mb-6">
+        <div className="h-px bg-text-primary/10" />
+        <div className="h-px bg-text-primary/10" />
+        <div className="h-px bg-text-primary/10" />
+      </div>
+      <p className="text-sm text-text-muted">
+        <Link to="/leagues/create" className="text-accent hover:text-accent-hover transition-colors font-semibold">Create</Link>
+        {' '}or{' '}
+        <Link to="/leagues/join" className="text-accent hover:text-accent-hover transition-colors font-semibold">join</Link>
+        {' '}a league and earn trophies!
+      </p>
+    </div>
+  )
+}
+
 export default function TrophyCase() {
   const { data: wins } = useMyLeagueWins()
 
@@ -272,37 +292,32 @@ export default function TrophyCase() {
     return [...wins].sort((a, b) => b.member_count - a.member_count)
   }, [wins])
 
-  const [expanded, setExpanded] = useState(true)
-
-  if (!sorted.length) return null
-
   return (
-    <div className="mt-6 mb-6">
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-center gap-2 mb-4">
-        <h2 className="font-display text-xl">Trophy Case</h2>
-        <svg className={`w-4 h-4 text-text-muted transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {expanded && <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-        {sorted.map((win) => {
-          const tier = getTrophyTier(win.member_count)
-          return (
-            <div
-              key={win.id}
-              className="flex flex-col items-center text-center"
-            >
-              <TrophyForTier tier={tier} className="w-16 h-20" />
-              <p className="text-sm font-semibold mt-2 text-text-primary leading-tight">
-                {win.league_name}
-              </p>
-              <p className="text-xs text-text-muted mt-0.5">
-                Outlasted {win.member_count - 1} player{win.member_count - 1 !== 1 ? 's' : ''}
-              </p>
-            </div>
-          )
-        })}
-      </div>}
+    <div>
+      <h2 className="font-display text-xl text-center mb-4">Trophy Case</h2>
+      {!sorted.length ? (
+        <EmptyShelf />
+      ) : (
+        <div className="grid grid-cols-2 gap-6">
+          {sorted.map((win) => {
+            const tier = getTrophyTier(win.member_count)
+            return (
+              <div
+                key={win.id}
+                className="flex flex-col items-center text-center"
+              >
+                <TrophyForTier tier={tier} className="w-16 h-20" />
+                <p className="text-sm font-semibold mt-2 text-text-primary leading-tight">
+                  {win.league_name}
+                </p>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Outlasted {win.member_count - 1} player{win.member_count - 1 !== 1 ? 's' : ''}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
