@@ -72,6 +72,13 @@ export function useJoinLeague() {
   })
 }
 
+export function useLeagueBackdrops(format) {
+  return useQuery({
+    queryKey: ['league-backdrops', format],
+    queryFn: () => api.get(`/leagues/backdrops${format ? `?format=${format}` : ''}`),
+  })
+}
+
 export function useOpenLeagues() {
   return useQuery({
     queryKey: ['leagues', 'open'],

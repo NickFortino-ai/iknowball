@@ -97,6 +97,7 @@ export async function createLeague(userId, data) {
           ? (() => { const d = new Date(data.joins_locked_at + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); d.setUTCHours(10, 0, 0, 0); return d.toISOString() })()
           : data.joins_locked_at)
         : null,
+      backdrop_image: data.backdrop_image || null,
     })
     .select()
     .single()
@@ -596,7 +597,7 @@ export async function updateLeague(leagueId, userId, data) {
   }
 
   // commissioner_note and visibility can always be updated
-  const alwaysAllowed = ['commissioner_note', 'visibility', 'joins_locked_at']
+  const alwaysAllowed = ['commissioner_note', 'visibility', 'joins_locked_at', 'backdrop_image']
   const noteOnly = Object.keys(data).every((k) => alwaysAllowed.includes(k))
   const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at', 'duration', 'name', 'max_members', 'visibility', 'joins_locked_at'].includes(k))
 
@@ -649,6 +650,7 @@ export async function updateLeague(leagueId, userId, data) {
   if (data.commissioner_note !== undefined) updates.commissioner_note = data.commissioner_note
   if (data.visibility !== undefined) updates.visibility = data.visibility
   if (data.joins_locked_at !== undefined) updates.joins_locked_at = data.joins_locked_at
+  if (data.backdrop_image !== undefined) updates.backdrop_image = data.backdrop_image
 
   // Handle duration change — recalculate date range
   // When picks are locked, preserve existing starts_at (only extend ends_at)

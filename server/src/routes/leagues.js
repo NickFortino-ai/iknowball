@@ -95,6 +95,7 @@ const createLeagueSchema = z.object({
   max_members: z.number().int().min(2).optional(),
   visibility: z.enum(['open', 'closed']).optional(),
   joins_locked_at: z.string().optional(),
+  backdrop_image: z.string().optional(),
   settings: z.object({
     games_per_week: z.number().int().min(1).optional(),
     lives: z.number().int().min(1).max(2).optional(),
@@ -229,6 +230,25 @@ router.get('/open', requireAuth, async (req, res) => {
   res.json(result)
 })
 
+// Available backdrop images for league creation
+router.get('/backdrops', requireAuth, async (req, res) => {
+  const { format } = req.query
+  // Read from a static config — images live in client/public/backdrops/
+  // Each entry: { filename, label, formats[] }
+  const { data: backdrops } = await supabase
+    .from('league_backdrops')
+    .select('filename, label, formats')
+    .order('label')
+
+  if (!backdrops?.length) return res.json([])
+
+  const filtered = format
+    ? backdrops.filter((b) => !b.formats?.length || b.formats.includes(format))
+    : backdrops
+
+  res.json(filtered)
+})
+
 router.get('/:id', requireAuth, async (req, res) => {
   const league = await getLeagueDetails(req.params.id, req.user.id)
   res.json(league)
@@ -244,6 +264,7 @@ const updateLeagueSchema = z.object({
   commissioner_note: z.string().max(1000).nullable().optional(),
   visibility: z.enum(['open', 'closed']).optional(),
   joins_locked_at: z.string().nullable().optional(),
+  backdrop_image: z.string().nullable().optional(),
 })
 
 router.patch('/:id', requireAuth, validate(updateLeagueSchema), async (req, res) => {

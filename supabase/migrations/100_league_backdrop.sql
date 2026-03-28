@@ -1,0 +1,1 @@
+ALTER TABLE leagues ADD COLUMN IF NOT EXISTS backdrop_image TEXT;

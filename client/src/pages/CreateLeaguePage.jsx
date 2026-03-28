@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCreateLeague, useBracketTemplatesActive } from '../hooks/useLeagues'
+import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops } from '../hooks/useLeagues'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 
@@ -111,6 +111,8 @@ export default function CreateLeaguePage() {
 
   // Visibility settings
   const [visibility, setVisibility] = useState('closed')
+  const [backdropImage, setBackdropImage] = useState('')
+  const { data: availableBackdrops } = useLeagueBackdrops(format || undefined)
   const [joinsLockedAt, setJoinsLockedAt] = useState('')
 
   // NBA DFS start date
@@ -187,6 +189,7 @@ export default function CreateLeaguePage() {
         joins_locked_at: format === 'nba_dfs'
           ? getDfsStartDate()
           : visibility === 'open' && joinsLockedAt ? joinsLockedAt : undefined,
+        backdrop_image: backdropImage || undefined,
       })
       toast('League created!', 'success')
       navigate(`/leagues/${league.id}?invite=1`)
@@ -396,6 +399,42 @@ export default function CreateLeaguePage() {
               className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
             />
             <p className="text-xs text-text-muted mt-1.5">After this time, no new members can join.</p>
+          </div>
+        )}
+
+        {/* Backdrop picker */}
+        {availableBackdrops?.length > 0 && (
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">League Backdrop</label>
+            <div className="grid grid-cols-3 gap-2">
+              {availableBackdrops.map((b) => (
+                <button
+                  key={b.filename}
+                  type="button"
+                  onClick={() => setBackdropImage(backdropImage === b.filename ? '' : b.filename)}
+                  className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-[16/9] ${
+                    backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
+                  }`}
+                >
+                  <img
+                    src={`/backdrops/${b.filename}`}
+                    alt={b.label}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                    <span className="text-[10px] text-white font-medium">{b.label}</span>
+                  </div>
+                  {backdropImage === b.filename && (
+                    <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-text-muted mt-1.5">Optional. Sets the backdrop image on your league page.</p>
           </div>
         )}
 

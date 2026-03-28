@@ -629,7 +629,10 @@ export default function LeagueDetailPage() {
       {(league.format === 'nba_dfs' || league.format === 'fantasy') && (
         <div className="absolute inset-x-0 top-0 h-[420px] md:h-[380px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
           <img
-            src={league.format === 'nba_dfs' ? '/nba-dfs-bg.png' : '/fantasy-football-bg.png'}
+            src={league.backdrop_image
+              ? `/backdrops/${league.backdrop_image}`
+              : league.format === 'nba_dfs' ? '/nba-dfs-bg.png' : '/fantasy-football-bg.png'
+            }
             alt=""
             className="w-full h-full object-cover object-center opacity-30"
           />
