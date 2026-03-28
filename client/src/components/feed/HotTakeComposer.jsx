@@ -152,7 +152,8 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
   const charCount = content.length
   const pollValid = postType !== 'poll' || pollOptions.filter((o) => o.trim()).length >= 2
-  const canPost = charCount > 0 && charCount <= MAX_CHARS && !createHotTake.isPending && !uploading && !videoUploading && pollValid
+  const hasContent = charCount > 0 || hasImage || hasVideo
+  const canPost = hasContent && charCount <= MAX_CHARS && !createHotTake.isPending && !uploading && !videoUploading && pollValid
 
   async function handlePost() {
     if (!canPost) return
@@ -557,7 +558,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   >
                     Cancel
                   </button>
-                  {content.trim() && (
+                  {hasContent && (
                     <button
                       onClick={handlePost}
                       disabled={!canPost}
