@@ -40,7 +40,7 @@ export default function LeagueCard({ league }) {
           <img
             src={`/backdrops/${league.backdrop_image}`}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none"
+            className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/80 via-bg-primary/60 to-bg-primary/80 pointer-events-none" />
         </>

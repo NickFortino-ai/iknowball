@@ -160,7 +160,7 @@ export default function JoinLeaguePage() {
                       <img
                         src={`/backdrops/${league.backdrop_image}`}
                         alt=""
-                        className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none"
+                        className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/80 via-bg-primary/60 to-bg-primary/80 pointer-events-none" />
                     </>
@@ -183,7 +183,9 @@ export default function JoinLeaguePage() {
                           <span className="text-xs">by {league.commissioner}</span>
                           {league.starts_at && (
                             <span className="text-sm text-yellow-500 font-semibold">
-                              Starts {formatStartDate(league.starts_at)}
+                              {formatStartDate(league.starts_at)} – {league.duration === 'full_season' || league.duration === 'playoffs_only'
+                                ? (league.duration === 'full_season' ? 'End of season' : 'End of playoffs')
+                                : league.ends_at ? formatStartDate(league.ends_at) : 'TBD'}
                             </span>
                           )}
                         </div>
