@@ -150,7 +150,6 @@ export default function JoinLeaguePage() {
         ) : (
           <div className="space-y-4">
             {openLeagues.map((league) => {
-              const lockLabel = formatLockDate(league.joins_locked_at)
               const hasBackdrop = !!league.backdrop_image
 
               return (
@@ -183,9 +182,13 @@ export default function JoinLeaguePage() {
                             {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
-                          <span>by {league.commissioner}</span>
-                          {lockLabel && <span className="text-yellow-500 font-medium">{lockLabel}</span>}
+                        <div className="flex items-center gap-3 mt-1.5 text-text-muted">
+                          <span className="text-xs">by {league.commissioner}</span>
+                          {league.starts_at && (
+                            <span className="text-sm text-yellow-500 font-semibold">
+                              Starts {formatStartDate(league.starts_at)}
+                            </span>
+                          )}
                         </div>
                         <LeagueSettingsPreview league={league} />
                       </div>
