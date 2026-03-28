@@ -606,6 +606,7 @@ export default function LeagueDetailPage() {
   const noteRef = useRef(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showMembersModal, setShowMembersModal] = useState(false)
   const updateLeague = useUpdateLeague()
   const deleteLeague = useDeleteLeague()
 
@@ -665,12 +666,15 @@ export default function LeagueDetailPage() {
               {FORMAT_LABELS[league.format]}
             </span>
             <span className="text-xs text-text-muted">{SPORT_LABELS[league.sport]}</span>
-            <span className="text-xs text-text-muted">
+            <button
+              onClick={() => setShowMembersModal(true)}
+              className="text-xs text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+            >
               {league.members?.length || 0} member{league.members?.length !== 1 ? 's' : ''}
               {league.status === 'open' && league.pending_invitations?.length > 0 && (
                 <span className="text-text-muted"> + {league.pending_invitations.length} pending</span>
               )}
-            </span>
+            </button>
             {isCommissioner && (
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">
                 Commissioner
@@ -825,6 +829,40 @@ export default function LeagueDetailPage() {
 
       {selectedUserId && (
         <UserProfileModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
+      )}
+
+      {showMembersModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowMembersModal(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative bg-bg-card rounded-2xl border border-text-primary/20 w-full max-w-sm max-h-[70vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-text-primary/10 sticky top-0 bg-bg-card z-10">
+              <h3 className="text-sm font-semibold text-text-primary">Members ({league.members?.length || 0})</h3>
+              <button onClick={() => setShowMembersModal(false)} className="text-text-muted hover:text-text-secondary text-lg leading-none">&times;</button>
+            </div>
+            <div>
+              {league.members?.map((m) => (
+                <button
+                  key={m.user_id}
+                  onClick={() => { setSelectedUserId(m.user_id); setShowMembersModal(false) }}
+                  className="w-full flex items-center gap-3 px-4 py-3 border-b border-text-primary/10 last:border-b-0 hover:bg-text-primary/5 transition-colors text-left"
+                >
+                  <Avatar user={m.users} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-semibold text-text-primary truncate block">
+                      {m.users?.display_name || m.users?.username}
+                    </span>
+                    {m.role === 'commissioner' && (
+                      <span className="text-[10px] text-tier-hof font-semibold">Commissioner</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {showInviteModal && (
