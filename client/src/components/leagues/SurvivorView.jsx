@@ -175,8 +175,8 @@ export default function SurvivorView({ league }) {
                 return (
                   <div key={dateKey}>
                     <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">{label}</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {grouped[dateKey].map((game) => {
+                    {(() => {
+                      const gameRows = grouped[dateKey].map((game) => {
                         const homeUsed = !poolExpanded && usedTeamSet.has(game.home_team)
                         const awayUsed = !poolExpanded && usedTeamSet.has(game.away_team)
                         const awayPicked = currentPickTeam === game.away_team
@@ -219,8 +219,29 @@ export default function SurvivorView({ league }) {
                             </button>
                           </div>
                         )
-                      })}
-                    </div>
+                      })
+
+                      const mid = Math.ceil(gameRows.length / 2)
+                      const left = gameRows.slice(0, mid)
+                      const right = gameRows.slice(mid)
+
+                      return (
+                        <>
+                          {/* Single column on mobile */}
+                          <div className="space-y-2 lg:hidden">{gameRows}</div>
+                          {/* Two columns with divider on desktop */}
+                          <div className="hidden lg:flex gap-0">
+                            <div className="flex-1 space-y-2">{left}</div>
+                            {right.length > 0 && (
+                              <>
+                                <div className="w-px bg-white/20 mx-4" />
+                                <div className="flex-1 space-y-2">{right}</div>
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
                 )
               })}
