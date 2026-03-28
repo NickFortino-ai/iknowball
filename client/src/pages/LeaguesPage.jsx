@@ -3,14 +3,12 @@ import { Link } from 'react-router-dom'
 import { useMyLeagues } from '../hooks/useLeagues'
 import LeagueCard from '../components/leagues/LeagueCard'
 import TrophyCase from '../components/leagues/TrophyCase'
-import JoinLeagueModal from '../components/leagues/JoinLeagueModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 
 export default function LeaguesPage() {
   const { data: leagues, isLoading, isError, refetch } = useMyLeagues()
-  const [showJoinModal, setShowJoinModal] = useState(false)
   const [showCompleted, setShowCompleted] = useState(false)
 
   const { active, completed } = useMemo(() => {
@@ -27,12 +25,12 @@ export default function LeaguesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="font-display text-3xl">My Leagues</h1>
         <div data-onboarding="leagues-actions" className="flex flex-col sm:flex-row gap-2">
-          <button
-            onClick={() => setShowJoinModal(true)}
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors border border-border"
+          <Link
+            to="/leagues/join"
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-bg-primary text-text-secondary hover:bg-text-primary/5 transition-colors border border-text-primary/20 text-center"
           >
             Join League
-          </button>
+          </Link>
           <Link
             to="/leagues/create"
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors text-center"
@@ -94,7 +92,6 @@ export default function LeaguesPage() {
         </>
       )}
 
-      {showJoinModal && <JoinLeagueModal onClose={() => setShowJoinModal(false)} />}
     </div>
   )
 }

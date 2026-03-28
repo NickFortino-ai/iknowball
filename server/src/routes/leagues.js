@@ -182,7 +182,7 @@ router.get('/open', requireAuth, async (req, res) => {
   // Get leagues that are open visibility, not completed, and not past their join lock
   const { data: leagues, error } = await supabase
     .from('leagues')
-    .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
+    .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, backdrop_image, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
     .eq('visibility', 'open')
     .in('status', ['open', 'active'])
     .or(`joins_locked_at.is.null,joins_locked_at.gt.${now}`)
@@ -225,6 +225,7 @@ router.get('/open', requireAuth, async (req, res) => {
       duration: l.duration,
       settings: l.settings || {},
       joins_locked_at: l.joins_locked_at,
+      backdrop_image: l.backdrop_image,
     }))
 
   res.json(result)

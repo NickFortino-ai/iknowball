@@ -17,6 +17,7 @@ import HubPage from './pages/HubPage'
 import SettingsPage from './pages/SettingsPage'
 import LeaguesPage from './pages/LeaguesPage'
 import CreateLeaguePage from './pages/CreateLeaguePage'
+import JoinLeaguePage from './pages/JoinLeaguePage'
 import LeagueDetailPage from './pages/LeagueDetailPage'
 import AdminPage from './pages/AdminPage'
 import PaymentPage from './pages/PaymentPage'
@@ -74,6 +75,7 @@ function AppRoutes() {
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/leagues" element={<ProtectedRoute><LeaguesPage /></ProtectedRoute>} />
         <Route path="/leagues/create" element={<ProtectedRoute><CreateLeaguePage /></ProtectedRoute>} />
+        <Route path="/leagues/join" element={<ProtectedRoute><JoinLeaguePage /></ProtectedRoute>} />
         <Route path="/leagues/:id" element={<ProtectedRoute><LeagueDetailPage /></ProtectedRoute>} />
         <Route path="/hall-of-fame" element={<ProtectedRoute><HallOfFamePage /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
