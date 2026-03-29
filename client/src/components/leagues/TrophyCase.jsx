@@ -92,7 +92,7 @@ function TrophyItem({ win }) {
 
 export default function TrophyCase() {
   const { data: wins } = useMyLeagueWins()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
 
   const sorted = useMemo(() => {
     if (!wins?.length) return []
