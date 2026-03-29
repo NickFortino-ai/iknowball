@@ -393,3 +393,27 @@ export function useGenerateRecap() {
     },
   })
 }
+
+// Player Position Overrides
+export function usePlayerPositionOverrides() {
+  return useQuery({
+    queryKey: ['admin', 'position-overrides'],
+    queryFn: () => api.get('/admin/player-position-overrides'),
+  })
+}
+
+export function useCreatePositionOverride() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/admin/player-position-overrides', data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'position-overrides'] }),
+  })
+}
+
+export function useDeletePositionOverride() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.delete(`/admin/player-position-overrides/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'position-overrides'] }),
+  })
+}

@@ -8,6 +8,7 @@ import BracketTemplateManager from '../components/admin/BracketTemplateManager'
 import FuturesAdminPanel from '../components/admin/FuturesAdminPanel'
 import ReportsPanel from '../components/admin/ReportsPanel'
 import ModerationPanel from '../components/admin/ModerationPanel'
+import PlayerPositionPanel from '../components/admin/PlayerPositionPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import Avatar from '../components/ui/Avatar'
@@ -265,6 +266,16 @@ export default function AdminPage() {
         >
           Moderation
         </button>
+        <button
+          onClick={() => setAdminSection('positions')}
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            adminSection === 'positions'
+              ? 'bg-accent text-white'
+              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Positions
+        </button>
       </div>
 
       {adminSection === 'email' && (<>
@@ -480,6 +491,8 @@ export default function AdminPage() {
       {adminSection === 'reports' && <ReportsPanel />}
 
       {adminSection === 'moderation' && <ModerationPanel />}
+
+      {adminSection === 'positions' && <PlayerPositionPanel />}
 
       {adminSection === 'props' && <>
       {/* Featured Schedule — 7-day overview */}

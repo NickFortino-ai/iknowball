@@ -49,7 +49,23 @@ export async function getNBAPlayerPool(date) {
     .order('salary', { ascending: false })
 
   if (error) throw error
-  return data || []
+  if (!data?.length) return []
+
+  // Apply position overrides
+  const { data: overrides } = await supabase
+    .from('player_position_overrides')
+    .select('player_name, position')
+
+  if (overrides?.length) {
+    const overrideMap = {}
+    for (const o of overrides) overrideMap[o.player_name.toLowerCase()] = o.position
+    for (const player of data) {
+      const override = overrideMap[player.player_name.toLowerCase()]
+      if (override) player.position = override
+    }
+  }
+
+  return data
 }
 
 /**

@@ -516,6 +516,42 @@ router.post('/users/:id/unmute', async (req, res) => {
 })
 
 // ============================================
+// Player Position Overrides
+// ============================================
+
+router.get('/player-position-overrides', async (req, res) => {
+  const { data, error } = await supabase
+    .from('player_position_overrides')
+    .select('*')
+    .order('player_name')
+  if (error) throw error
+  res.json(data || [])
+})
+
+router.post('/player-position-overrides', async (req, res) => {
+  const { player_name, position, sport_key } = req.body
+  if (!player_name?.trim() || !position?.trim()) {
+    return res.status(400).json({ error: 'player_name and position are required' })
+  }
+  const { data, error } = await supabase
+    .from('player_position_overrides')
+    .upsert({ player_name: player_name.trim(), position: position.trim(), sport_key: sport_key || 'basketball_nba' }, { onConflict: 'player_name,sport_key' })
+    .select()
+    .single()
+  if (error) throw error
+  res.status(201).json(data)
+})
+
+router.delete('/player-position-overrides/:id', async (req, res) => {
+  const { error } = await supabase
+    .from('player_position_overrides')
+    .delete()
+    .eq('id', req.params.id)
+  if (error) throw error
+  res.status(204).end()
+})
+
+// ============================================
 // Fantasy Football - Sleeper Sync
 // ============================================
 
