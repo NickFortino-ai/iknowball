@@ -860,6 +860,97 @@ export default function CreateLeaguePage() {
           </div>
         )}
 
+        {(format === 'mlb_dfs' || format === 'hr_derby') && (
+          <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-primary mb-1">
+              {format === 'mlb_dfs' ? 'MLB Daily Fantasy Settings' : 'Home Run Derby Settings'}
+            </h3>
+            {format === 'mlb_dfs' && (
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Salary Cap</label>
+                <div className="flex gap-2">
+                  {[40000, 50000, 60000].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setSalaryCap(n)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        salaryCap === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                      }`}
+                    >
+                      ${n.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="text-xs text-text-muted block mb-1">League Starts</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'today', label: 'Today' },
+                  { value: 'tomorrow', label: 'Tomorrow' },
+                  { value: 'custom', label: 'Select Date' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setDfsStartOption(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      dfsStartOption === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {dfsStartOption === 'custom' && (
+                <input
+                  type="date"
+                  value={dfsStartCustom}
+                  onChange={(e) => setDfsStartCustom(e.target.value)}
+                  min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                  className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                />
+              )}
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Season Type</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'full_season', label: 'Full Season' },
+                  { value: 'single_week', label: 'Single Night' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSeasonType(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      seasonType === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-text-muted mt-1.5">
+                {seasonType === 'full_season' ? 'Runs through end of MLB regular season.' : 'One night only — highest score wins.'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Max Members</label>
+              <input
+                type="number"
+                value={maxMembers}
+                onChange={(e) => setMaxMembers(e.target.value)}
+                placeholder="No limit"
+                min={2}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+        )}
+
         {format === 'survivor' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">Survivor Settings</h3>
