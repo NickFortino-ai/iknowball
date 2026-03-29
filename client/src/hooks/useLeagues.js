@@ -650,3 +650,39 @@ export function useNbaDfsStandings(leagueId) {
     enabled: !!leagueId,
   })
 }
+
+// MLB DFS hooks
+export function useMlbDfsPlayers(date) {
+  return useQuery({
+    queryKey: ['mlb-dfs', 'players', date],
+    queryFn: () => api.get(`/mlb-dfs/players?date=${date}`),
+    enabled: !!date,
+  })
+}
+
+export function useMlbDfsRoster(leagueId, date, season = 2026) {
+  return useQuery({
+    queryKey: ['mlb-dfs', leagueId, 'roster', date],
+    queryFn: () => api.get(`/mlb-dfs/roster?league_id=${leagueId}&date=${date}&season=${season}`),
+    enabled: !!leagueId && !!date,
+    refetchInterval: 60000,
+  })
+}
+
+export function useSaveMlbDfsRoster() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/mlb-dfs/roster', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['mlb-dfs', variables.league_id, 'roster'] })
+    },
+  })
+}
+
+export function useMlbDfsStandings(leagueId) {
+  return useQuery({
+    queryKey: ['mlb-dfs', leagueId, 'standings'],
+    queryFn: () => api.get(`/mlb-dfs/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+  })
+}

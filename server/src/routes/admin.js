@@ -578,6 +578,7 @@ router.delete('/player-position-overrides/:id', async (req, res) => {
 import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, getNFLState } from '../services/sleeperService.js'
 import { generateSalaries, setSalaries } from '../services/dfsService.js'
 import { generateNBASalaries, setNBASalaries } from '../services/nbaDfsService.js'
+import { generateMLBSalaries } from '../services/mlbDfsService.js'
 
 router.post('/fantasy/sync-players', async (req, res) => {
   const result = await syncPlayers()
@@ -633,6 +634,14 @@ router.post('/nba-dfs/salaries', async (req, res) => {
   const { salaries } = req.body
   if (!salaries?.length) return res.status(400).json({ error: 'salaries array required' })
   const result = await setNBASalaries(salaries)
+  res.json(result)
+})
+
+// MLB DFS salary generation
+router.post('/mlb-dfs/generate-salaries', async (req, res) => {
+  const { date, season } = req.body
+  if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
+  const result = await generateMLBSalaries(date, season || 2026)
   res.json(result)
 })
 
