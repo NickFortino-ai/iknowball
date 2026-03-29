@@ -95,7 +95,7 @@ export default function LeaguesPage() {
         </div>
 
         {/* Right: Trophy case (desktop sidebar) */}
-        <div className="lg:w-80 lg:flex-shrink-0 mt-6 lg:mt-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:scrollbar-hide">
+        <div className="lg:w-80 lg:flex-shrink-0 mt-6 lg:mt-0 lg:sticky lg:top-4">
           <TrophyCase />
         </div>
       </div>
