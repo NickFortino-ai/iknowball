@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMyLeagueWins } from '../../hooks/useLeagues'
 
@@ -65,8 +65,34 @@ function EmptyShelf() {
   )
 }
 
+function TrophyItem({ win }) {
+  const src = getTrophyImage(win)
+  const sizeClass = getTrophySizeClass(win.member_count)
+  return (
+    <Link
+      to={`/leagues/${win.league_id}`}
+      className="flex flex-col items-center text-center hover:opacity-80 transition-opacity cursor-pointer flex-shrink-0"
+    >
+      <div className="h-40 flex items-end justify-center">
+        <img
+          src={src}
+          alt="Trophy"
+          className={`${sizeClass} object-contain`}
+        />
+      </div>
+      <p className="text-sm font-semibold mt-2 text-text-primary leading-tight">
+        {win.league_name}
+      </p>
+      <p className="text-xs text-text-muted mt-0.5">
+        Outlasted {win.member_count - 1} player{win.member_count - 1 !== 1 ? 's' : ''}
+      </p>
+    </Link>
+  )
+}
+
 export default function TrophyCase() {
   const { data: wins } = useMyLeagueWins()
+  const [expanded, setExpanded] = useState(false)
 
   const sorted = useMemo(() => {
     if (!wins?.length) return []
@@ -75,37 +101,44 @@ export default function TrophyCase() {
 
   return (
     <div>
-      <h2 className="font-display text-xl text-center mb-4">Trophy Case</h2>
+      {/* Mobile: collapsible header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-center gap-2 mb-4 lg:pointer-events-none"
+      >
+        <h2 className="font-display text-xl">Trophy Case</h2>
+        <svg
+          className={`w-4 h-4 text-text-muted transition-transform lg:hidden ${expanded ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
       {!sorted.length ? (
-        <EmptyShelf />
-      ) : (
-        <div className="grid grid-cols-2 gap-6">
-          {sorted.map((win) => {
-            const src = getTrophyImage(win)
-            const sizeClass = getTrophySizeClass(win.member_count)
-            return (
-              <Link
-                to={`/leagues/${win.league_id}`}
-                key={win.id}
-                className="flex flex-col items-center text-center hover:opacity-80 transition-opacity cursor-pointer"
-              >
-                <div className="h-40 flex items-end justify-center">
-                  <img
-                    src={src}
-                    alt="Trophy"
-                    className={`${sizeClass} object-contain`}
-                  />
-                </div>
-                <p className="text-sm font-semibold mt-2 text-text-primary leading-tight">
-                  {win.league_name}
-                </p>
-                <p className="text-xs text-text-muted mt-0.5">
-                  Outlasted {win.member_count - 1} player{win.member_count - 1 !== 1 ? 's' : ''}
-                </p>
-              </Link>
-            )
-          })}
+        <div className={`${expanded ? '' : 'hidden'} lg:block`}>
+          <EmptyShelf />
         </div>
+      ) : (
+        <>
+          {/* Mobile: horizontal scroll */}
+          <div className={`${expanded ? '' : 'hidden'} lg:hidden overflow-x-auto scrollbar-hide pb-2`}>
+            <div className="flex gap-6 px-1" style={{ minWidth: 'max-content' }}>
+              {sorted.map((win) => (
+                <div key={win.id} className="w-36">
+                  <TrophyItem win={win} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Desktop: 2-column grid */}
+          <div className="hidden lg:grid grid-cols-2 gap-6">
+            {sorted.map((win) => (
+              <TrophyItem key={win.id} win={win} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
