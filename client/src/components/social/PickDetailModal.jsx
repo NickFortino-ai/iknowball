@@ -42,7 +42,7 @@ export default function PickDetailModal({ pickId, onClose }) {
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 max-h-[95vh] md:max-h-[85vh] overflow-y-auto"
+        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 max-h-[95vh] md:max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -66,7 +66,7 @@ export default function PickDetailModal({ pickId, onClose }) {
             )}
 
             {/* Game summary */}
-            <div className="bg-bg-primary rounded-xl p-4">
+            <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4">
               <div className="text-sm font-semibold mb-1">
                 {game?.away_team} @ {game?.home_team}
               </div>
@@ -93,10 +93,14 @@ export default function PickDetailModal({ pickId, onClose }) {
             </div>
 
             {/* Reactions */}
-            <PickReactions pickId={pickId} />
+            <div className="rounded-xl border border-text-primary/20 p-4">
+              <PickReactions pickId={pickId} />
+            </div>
 
             {/* Comments (pre-expanded) */}
-            <PickComments pickId={pickId} initialExpanded hideForm={!canComment} />
+            <div className="rounded-xl border border-text-primary/20 p-4">
+              <PickComments pickId={pickId} initialExpanded hideForm={!canComment} />
+            </div>
           </div>
         )}
       </div>
