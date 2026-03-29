@@ -25,6 +25,7 @@ import hotTakesRouter from './routes/hotTakes.js'
 import dfsRouter from './routes/dfs.js'
 import nbaDfsRouter from './routes/nbaDfs.js'
 import mlbDfsRouter from './routes/mlbDfs.js'
+import hrDerbyRouter from './routes/hrDerby.js'
 import reportsRouter from './routes/reports.js'
 import teamsRouter from './routes/teams.js'
 import injuriesRouter from './routes/injuries.js'
@@ -68,6 +69,7 @@ app.use('/api/messages', messagesRouter)
 app.use('/api/dfs', dfsRouter)
 app.use('/api/nba-dfs', nbaDfsRouter)
 app.use('/api/mlb-dfs', mlbDfsRouter)
+app.use('/api/hr-derby', hrDerbyRouter)
 
 app.use(errorHandler)
 

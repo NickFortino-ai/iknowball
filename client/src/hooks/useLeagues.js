@@ -695,3 +695,46 @@ export function useMlbDfsStandings(leagueId) {
     enabled: !!leagueId,
   })
 }
+
+// HR Derby hooks
+export function useHrDerbyPlayers(date) {
+  return useQuery({
+    queryKey: ['hr-derby', 'players', date],
+    queryFn: () => api.get(`/hr-derby/players?date=${date}`),
+    enabled: !!date,
+  })
+}
+
+export function useHrDerbyPicks(leagueId, date) {
+  return useQuery({
+    queryKey: ['hr-derby', leagueId, 'picks', date],
+    queryFn: () => api.get(`/hr-derby/picks?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+  })
+}
+
+export function useHrDerbyUsed(leagueId, date) {
+  return useQuery({
+    queryKey: ['hr-derby', leagueId, 'used', date],
+    queryFn: () => api.get(`/hr-derby/used?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+  })
+}
+
+export function useSubmitHrDerbyPicks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/hr-derby/picks', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['hr-derby', variables.league_id] })
+    },
+  })
+}
+
+export function useHrDerbyStandings(leagueId) {
+  return useQuery({
+    queryKey: ['hr-derby', leagueId, 'standings'],
+    queryFn: () => api.get(`/hr-derby/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+  })
+}

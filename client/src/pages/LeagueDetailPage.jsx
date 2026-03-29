@@ -16,6 +16,7 @@ import FantasyStandings from '../components/leagues/FantasyStandings'
 import FantasyMatchup from '../components/leagues/FantasyMatchup'
 import NbaDfsView from '../components/leagues/NbaDfsView'
 import MlbDfsView from '../components/leagues/MlbDfsView'
+import HrDerbyView from '../components/leagues/HrDerbyView'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -1100,6 +1101,12 @@ export default function LeagueDetailPage() {
       {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Live' || tabs[activeTab] === 'Standings') && league.format === 'mlb_dfs' && (
         <div className="relative z-10">
           <MlbDfsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'Live' ? 'live' : 'roster'} />
+        </div>
+      )}
+
+      {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'hr_derby' && (
+        <div className="relative z-10">
+          <HrDerbyView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
         </div>
       )}
 
