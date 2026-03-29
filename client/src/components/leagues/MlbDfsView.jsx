@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useMlbDfsPlayers, useMlbDfsRoster, useSaveMlbDfsRoster, useMlbDfsStandings, useFantasySettings } from '../../hooks/useLeagues'
+import { useMlbDfsPlayers, useMlbDfsRoster, useSaveMlbDfsRoster, useMlbDfsStandings, useMlbDfsLive, useFantasySettings } from '../../hooks/useLeagues'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
@@ -74,6 +74,112 @@ function formatDateLabel(dateStr) {
   if (dateStr === today) return 'Today'
   if (dateStr === tomorrow) return 'Tomorrow'
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function MlbLiveView({ league, date: leagueDate }) {
+  const { profile } = useAuth()
+  const [viewDate, setViewDate] = useState(leagueDate)
+  const { data: liveData, isLoading } = useMlbDfsLive(league.id, viewDate)
+  const [expandedUserId, setExpandedUserId] = useState(null)
+
+  const today = todayLocal()
+  const leagueStart = league.starts_at ? new Date(league.starts_at).toISOString().split('T')[0] : today
+  const canGoBack = viewDate > leagueStart
+  const canGoForward = viewDate < today
+
+  function shiftDate(d, days) {
+    const dt = new Date(d + 'T12:00:00')
+    dt.setDate(dt.getDate() + days)
+    return dt.toLocaleDateString('en-CA')
+  }
+
+  if (isLoading) return <LoadingSpinner />
+
+  const { members, all_final, any_live, first_tipoff } = liveData || {}
+
+  return (
+    <div>
+      {/* Date navigation */}
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={() => { if (canGoBack) setViewDate(shiftDate(viewDate, -1)) }} disabled={!canGoBack}
+          className="p-2 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-20">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <span className="text-sm font-semibold text-text-primary">{formatDateLabel(viewDate)}</span>
+        <button onClick={() => { if (canGoForward) setViewDate(shiftDate(viewDate, 1)) }} disabled={!canGoForward}
+          className="p-2 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-20">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+
+      {!members?.length ? (
+        <div className="text-center py-8 text-sm text-text-secondary">No rosters for this date.</div>
+      ) : (
+        <div className="space-y-3">
+          {members.map((m, idx) => {
+            const isMe = m.user_id === profile?.id
+            const isWinner = all_final && idx === 0
+            const isExpanded = expandedUserId === m.user_id
+            const borderColor = m.status === 'final' ? 'border-correct/50' : m.status === 'live' ? 'border-accent/50' : 'border-text-primary/20'
+
+            return (
+              <div key={m.user_id}>
+                <button
+                  onClick={() => setExpandedUserId(isExpanded ? null : m.user_id)}
+                  className={`w-full rounded-xl border ${borderColor} bg-bg-primary transition-all text-left p-4`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar user={m.user} size="md" />
+                    <div className="flex-1 min-w-0">
+                      <span className={`font-bold truncate text-sm ${isWinner ? 'text-accent' : isMe ? 'text-accent' : 'text-text-primary'}`}>
+                        {m.user?.display_name || m.user?.username}
+                      </span>
+                      {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
+                    </div>
+                    <span className={`font-display text-lg ${m.status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                      {Math.round(m.total_points * 10) / 10}
+                    </span>
+                    <svg className={`w-4 h-4 text-text-muted transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+
+                {isExpanded && m.slots?.length > 0 && (
+                  <div className="mt-1 rounded-xl border border-text-primary/10 overflow-hidden">
+                    {m.slots.map((slot) => {
+                      const hidden = slot.player_name === '????'
+                      const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
+                      const hasStats = slot.stats && (slot.game_status === 'live' || slot.game_status === 'final')
+
+                      return (
+                        <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-2 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
+                          <span className="text-xs font-bold text-text-muted w-7 shrink-0">{slot.roster_slot.replace(/[123]$/, '')}</span>
+                          {hidden ? (
+                            <span className="flex-1 text-sm text-text-muted font-mono">????</span>
+                          ) : (
+                            <>
+                              <span className="flex-1 text-sm font-semibold text-text-primary truncate">{slot.player_name}</span>
+                              {(slot.game_status === 'live' || slot.game_status === 'final') && (
+                                <span className={`text-sm font-display ${slot.game_status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                                  {Math.round((slot.points_earned || 0) * 10) / 10}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function MlbDfsView({ league, tab = 'roster' }) {
@@ -196,6 +302,11 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
     } catch (err) {
       toast(err.message || 'Failed to save roster', 'error')
     }
+  }
+
+  // Live Tab
+  if (tab === 'live') {
+    return <MlbLiveView league={league} date={date} />
   }
 
   // Standings Tab

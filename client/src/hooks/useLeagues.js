@@ -679,6 +679,15 @@ export function useSaveMlbDfsRoster() {
   })
 }
 
+export function useMlbDfsLive(leagueId, date) {
+  return useQuery({
+    queryKey: ['mlb-dfs', leagueId, 'live', date],
+    queryFn: () => api.get(`/mlb-dfs/live?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+    refetchInterval: 30000,
+  })
+}
+
 export function useMlbDfsStandings(leagueId) {
   return useQuery({
     queryKey: ['mlb-dfs', leagueId, 'standings'],

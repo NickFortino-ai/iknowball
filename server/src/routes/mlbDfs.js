@@ -93,4 +93,126 @@ router.get('/standings', async (req, res) => {
   res.json({ standings })
 })
 
+// Live scoring view
+router.get('/live', async (req, res) => {
+  const { league_id, date, season } = req.query
+  if (!league_id || !date) return res.status(400).json({ error: 'league_id and date required' })
+  const s = parseInt(season || '2026')
+  const now = new Date()
+
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', league_id)
+
+  if (!members?.length) return res.json({ members: [] })
+
+  const { data: rosters } = await supabase
+    .from('mlb_dfs_rosters')
+    .select('id, user_id, total_points, mlb_dfs_roster_slots(roster_slot, player_name, espn_player_id, salary, points_earned)')
+    .eq('league_id', league_id)
+    .eq('game_date', date)
+    .eq('season', s)
+
+  const rosterMap = {}
+  for (const r of rosters || []) rosterMap[r.user_id] = r
+
+  // Get game times
+  const allEspnIds = []
+  for (const r of rosters || []) {
+    for (const slot of r.mlb_dfs_roster_slots || []) {
+      if (slot.espn_player_id) allEspnIds.push(slot.espn_player_id)
+    }
+  }
+
+  const gameStateMap = {}
+  if (allEspnIds.length) {
+    const { data: salaries } = await supabase
+      .from('mlb_dfs_salaries')
+      .select('espn_player_id, game_starts_at')
+      .eq('game_date', date)
+      .in('espn_player_id', [...new Set(allEspnIds)])
+
+    for (const sal of salaries || []) {
+      const startTime = sal.game_starts_at ? new Date(sal.game_starts_at) : null
+      let status = 'upcoming'
+      if (startTime && startTime <= now) {
+        const approxEnd = new Date(startTime.getTime() + 4 * 60 * 60 * 1000)
+        status = now < approxEnd ? 'live' : 'final'
+      }
+      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status }
+    }
+  }
+
+  // Player stats
+  const playerStatsMap = {}
+  if (allEspnIds.length) {
+    const { data: stats } = await supabase
+      .from('mlb_dfs_player_stats')
+      .select('espn_player_id, fantasy_points, hits, at_bats, runs, home_runs, rbis, stolen_bases, walks, strikeouts')
+      .eq('game_date', date)
+      .eq('season', s)
+      .in('espn_player_id', [...new Set(allEspnIds)])
+
+    for (const stat of stats || []) {
+      playerStatsMap[stat.espn_player_id] = {
+        h: stat.hits || 0, ab: stat.at_bats || 0, r: stat.runs || 0,
+        hr: stat.home_runs || 0, rbi: stat.rbis || 0, sb: stat.stolen_bases || 0,
+        bb: stat.walks || 0, k: stat.strikeouts || 0,
+      }
+    }
+  }
+
+  // First game tip-off
+  let firstTipoff = null
+  for (const gs of Object.values(gameStateMap)) {
+    if (gs.gameStartsAt && (!firstTipoff || gs.gameStartsAt < firstTipoff)) {
+      firstTipoff = gs.gameStartsAt
+    }
+  }
+
+  const anyLive = Object.values(gameStateMap).some((g) => g.status === 'live')
+  const allFinal = Object.values(gameStateMap).length > 0 && Object.values(gameStateMap).every((g) => g.status === 'final')
+
+  const result = members.map((m) => {
+    const roster = rosterMap[m.user_id]
+    const hasRoster = !!roster
+    let totalPoints = 0
+    let memberStatus = 'upcoming'
+
+    const slots = (roster?.mlb_dfs_roster_slots || []).map((slot) => {
+      const gs = gameStateMap[slot.espn_player_id] || {}
+      const pts = Number(slot.points_earned) || 0
+      totalPoints += pts
+
+      const isOtherUser = m.user_id !== req.user.id
+      const gameNotStarted = gs.status === 'upcoming'
+      const hidden = isOtherUser && gameNotStarted
+
+      if (gs.status === 'live') memberStatus = 'live'
+      if (gs.status === 'final' && memberStatus !== 'live') memberStatus = 'final'
+
+      return {
+        roster_slot: slot.roster_slot,
+        player_name: hidden ? '????' : slot.player_name,
+        espn_player_id: hidden ? null : slot.espn_player_id,
+        points_earned: pts,
+        game_status: gs.status || 'upcoming',
+        stats: playerStatsMap[slot.espn_player_id] || null,
+      }
+    })
+
+    return {
+      user_id: m.user_id,
+      user: m.users,
+      has_roster: hasRoster,
+      total_points: totalPoints,
+      status: memberStatus,
+      slots,
+    }
+  }).sort((a, b) => b.total_points - a.total_points)
+
+  res.json({ members: result, all_final: allFinal, any_live: anyLive, first_tipoff: firstTipoff })
+})
+
 export default router

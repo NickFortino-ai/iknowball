@@ -17,6 +17,7 @@ import { settleStuckParlays } from './settleStuckParlays.js'
 import { syncInjuries } from './syncInjuries.js'
 import { cleanupExpiredVideos } from './cleanupExpiredVideos.js'
 import { scoreNBADFS } from './scoreNBADFS.js'
+import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
 
 export function startScheduler() {
@@ -112,6 +113,17 @@ export function startScheduler() {
       try { await scoreNBADFS() } catch (err) { logger.error({ err }, 'NBA DFS scoring job failed') }
     })
     logger.info('NBA DFS scoring scheduled: every 1 minute')
+
+    // MLB DFS salary generation — daily at 10:00 AM EST
+    cron.schedule('0 10 * * *', async () => {
+      try { await scoreMLBDFS() } catch (err) { logger.error({ err }, 'MLB DFS salary generation failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('MLB DFS salary generation scheduled: daily at 10:00 AM EST')
+
+    cron.schedule('*/2 * * * *', async () => {
+      try { await scoreMLBDFS() } catch (err) { logger.error({ err }, 'MLB DFS scoring job failed') }
+    })
+    logger.info('MLB DFS scoring scheduled: every 2 minutes')
 
     // NBA prop auto-settlement suspended — settling manually via admin
     // cron.schedule('*/2 * * * *', async () => {
