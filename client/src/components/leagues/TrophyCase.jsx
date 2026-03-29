@@ -83,7 +83,7 @@ function TrophyItem({ win }) {
       <p className="text-sm font-semibold mt-2 text-text-primary leading-tight">
         {win.league_name}
       </p>
-      <p className="text-xs text-text-muted mt-0.5">
+      <p className="text-xs text-text-muted mt-0.5 mb-1">
         Outlasted {win.member_count - 1} player{win.member_count - 1 !== 1 ? 's' : ''}
       </p>
     </Link>
@@ -133,7 +133,7 @@ export default function TrophyCase() {
           </div>
 
           {/* Desktop: 2-column grid, independently scrollable */}
-          <div className="hidden lg:grid grid-cols-2 gap-x-6 gap-y-2 max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain scrollbar-hide">
+          <div className="hidden lg:grid grid-cols-2 gap-x-4 gap-y-0 max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain scrollbar-hide">
             {sorted.map((win) => (
               <TrophyItem key={win.id} win={win} />
             ))}
