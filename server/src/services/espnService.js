@@ -93,32 +93,45 @@ export function matchESPNToGame(espnEvent, game) {
   )
 }
 
-// NBA team abbreviations for ESPN roster API
-const NBA_TEAMS = [
-  'atl', 'bos', 'bkn', 'cha', 'chi', 'cle', 'dal', 'den', 'det', 'gs',
-  'hou', 'ind', 'lac', 'lal', 'mem', 'mia', 'mil', 'min', 'no', 'ny',
-  'okc', 'orl', 'phi', 'phx', 'por', 'sac', 'sa', 'tor', 'uta', 'wsh',
-]
+// Team abbreviations for ESPN roster API
+const SPORT_TEAMS = {
+  'basketball/nba': [
+    'atl', 'bos', 'bkn', 'cha', 'chi', 'cle', 'dal', 'den', 'det', 'gs',
+    'hou', 'ind', 'lac', 'lal', 'mem', 'mia', 'mil', 'min', 'no', 'ny',
+    'okc', 'orl', 'phi', 'phx', 'por', 'sac', 'sa', 'tor', 'uta', 'wsh',
+  ],
+  'baseball/mlb': [
+    'ari', 'atl', 'bal', 'bos', 'chc', 'chw', 'cin', 'cle', 'col', 'det',
+    'hou', 'kc', 'laa', 'lad', 'mia', 'mil', 'min', 'nym', 'nyy', 'oak',
+    'phi', 'pit', 'sd', 'sf', 'sea', 'stl', 'tb', 'tex', 'tor', 'wsh',
+  ],
+}
 
-// In-memory cache of player name → headshot URL (refreshed on demand)
-let playerHeadshotCache = {}
-let cacheLastRefreshed = 0
+// In-memory cache of player name → headshot URL, keyed by sport
+const playerHeadshotCaches = {}
+const cacheLastRefreshedTimes = {}
 
 function normalizePlayerName(name) {
   return name.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim()
 }
 
-export async function refreshPlayerHeadshotCache() {
+export async function refreshPlayerHeadshotCache(sportPath = 'basketball/nba') {
   const now = Date.now()
+  const lastRefreshed = cacheLastRefreshedTimes[sportPath] || 0
+  const existingCache = playerHeadshotCaches[sportPath] || {}
+
   // Only refresh every 24 hours
-  if (now - cacheLastRefreshed < 24 * 60 * 60 * 1000 && Object.keys(playerHeadshotCache).length > 0) {
-    return playerHeadshotCache
+  if (now - lastRefreshed < 24 * 60 * 60 * 1000 && Object.keys(existingCache).length > 0) {
+    return existingCache
   }
 
+  const teams = SPORT_TEAMS[sportPath]
+  if (!teams) return existingCache
+
   const cache = {}
-  for (const team of NBA_TEAMS) {
+  for (const team of teams) {
     try {
-      const url = `${ESPN_BASE}/basketball/nba/teams/${team}/roster`
+      const url = `${ESPN_BASE}/${sportPath}/teams/${team}/roster`
       const res = await fetch(url)
       if (!res.ok) continue
       const data = await res.json()
@@ -129,17 +142,17 @@ export async function refreshPlayerHeadshotCache() {
         }
       }
     } catch (err) {
-      logger.warn({ team, err: err.message }, 'Failed to fetch ESPN roster for headshots')
+      logger.warn({ sport: sportPath, team, err: err.message }, 'Failed to fetch ESPN roster for headshots')
     }
   }
 
-  playerHeadshotCache = cache
-  cacheLastRefreshed = now
-  logger.info({ players: Object.keys(cache).length }, 'Refreshed NBA player headshot cache')
+  playerHeadshotCaches[sportPath] = cache
+  cacheLastRefreshedTimes[sportPath] = now
+  logger.info({ sport: sportPath, players: Object.keys(cache).length }, 'Refreshed player headshot cache')
   return cache
 }
 
-export function getPlayerHeadshotUrl(playerName) {
+export function getPlayerHeadshotUrl(playerName, sportPath = 'basketball/nba') {
   const normalized = normalizePlayerName(playerName)
-  return playerHeadshotCache[normalized] || null
+  return playerHeadshotCaches[sportPath]?.[normalized] || null
 }

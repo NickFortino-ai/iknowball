@@ -53,8 +53,9 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
   const isLocked = prop.status !== 'published'
   const isSettled = prop.status === 'settled'
   const [showPlayerModal, setShowPlayerModal] = useState(false)
-  const isNba = prop.games?.sports?.key?.includes('basketball_nba') || prop.sport_key?.includes('basketball_nba')
-  const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null)
+  const sportKey = prop.games?.sports?.key || prop.sport_key || 'basketball_nba'
+  const isNba = sportKey.includes('basketball_nba')
+  const { data: playerLookup } = useNbaDfsPlayerLookup(showPlayerModal ? prop.player_name : null, sportKey)
 
   function handleClick(side) {
     if (isLocked || isSubmitting) return

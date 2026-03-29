@@ -624,10 +624,11 @@ export function useNbaDfsLive(leagueId, date, season = 2026) {
   })
 }
 
-export function useNbaDfsPlayerLookup(name) {
+export function useNbaDfsPlayerLookup(name, sport) {
+  const sportParam = sport ? `&sport=${encodeURIComponent(sport)}` : ''
   return useQuery({
-    queryKey: ['nba-dfs', 'player-lookup', name],
-    queryFn: () => api.get(`/nba-dfs/player/lookup?name=${encodeURIComponent(name)}`),
+    queryKey: ['nba-dfs', 'player-lookup', name, sport],
+    queryFn: () => api.get(`/nba-dfs/player/lookup?name=${encodeURIComponent(name)}${sportParam}`),
     enabled: !!name,
     staleTime: 10 * 60 * 1000,
   })

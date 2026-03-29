@@ -324,9 +324,10 @@ router.get('/live', async (req, res) => {
 
 // Look up ESPN player ID by name (for connecting props to game logs)
 router.get('/player/lookup', async (req, res) => {
-  const { name } = req.query
+  const { name, sport } = req.query
   if (!name) return res.status(400).json({ error: 'name required' })
 
+  // Try DFS salaries table first (NBA)
   const { data } = await supabase
     .from('nba_dfs_salaries')
     .select('espn_player_id, player_name, headshot_url, team, position')
@@ -335,8 +336,19 @@ router.get('/player/lookup', async (req, res) => {
     .limit(1)
     .maybeSingle()
 
-  if (!data) return res.status(404).json({ error: 'Player not found' })
-  res.json(data)
+  if (data) return res.json(data)
+
+  // Fallback: look up headshot from ESPN cache for other sports
+  const sportPath = ESPN_SPORT_PATHS[sport] || 'basketball/nba'
+  const { refreshPlayerHeadshotCache, getPlayerHeadshotUrl } = await import('../services/espnService.js')
+  await refreshPlayerHeadshotCache(sportPath)
+  const headshot = getPlayerHeadshotUrl(name, sportPath)
+
+  if (headshot) {
+    return res.json({ player_name: name, headshot_url: headshot, team: null, position: null, espn_player_id: null })
+  }
+
+  return res.status(404).json({ error: 'Player not found' })
 })
 
 // ESPN sport paths for game logs

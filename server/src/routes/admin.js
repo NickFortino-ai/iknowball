@@ -230,14 +230,16 @@ router.post('/props/feature', async (req, res) => {
   // Look up player headshot from ESPN
   const { data: prop } = await supabase
     .from('player_props')
-    .select('player_name')
+    .select('player_name, games!inner(sports!inner(key))')
     .eq('id', propId)
     .single()
 
   let headshot = null
   if (prop?.player_name) {
-    await refreshPlayerHeadshotCache()
-    headshot = getPlayerHeadshotUrl(prop.player_name)
+    const sportKey = prop.games?.sports?.key || 'basketball_nba'
+    const sportPath = sportKey === 'baseball_mlb' ? 'baseball/mlb' : 'basketball/nba'
+    await refreshPlayerHeadshotCache(sportPath)
+    headshot = getPlayerHeadshotUrl(prop.player_name, sportPath)
   }
 
   const result = await featureProp(propId, featuredDate, headshot)
