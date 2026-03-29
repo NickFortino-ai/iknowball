@@ -25,3 +25,12 @@ export function useGames(sport, status, days = 3) {
   })
   return query
 }
+
+export function useGameIntel(gameId) {
+  return useQuery({
+    queryKey: ['games', 'intel', gameId],
+    queryFn: () => api.get(`/games/${gameId}/intel`),
+    enabled: !!gameId,
+    staleTime: 5 * 60 * 1000,
+  })
+}

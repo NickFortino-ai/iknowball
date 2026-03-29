@@ -12,6 +12,7 @@ import ParlayCard from '../components/picks/ParlayCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import FuturesSection from '../components/picks/FuturesSection'
 import InjuryReportModal from '../components/picks/InjuryReportModal'
+import GameDetailModal from '../components/picks/GameDetailModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import { toast } from '../components/ui/Toast'
@@ -97,6 +98,7 @@ export default function PicksPage() {
   const profile = useAuthStore((s) => s.profile)
   const [sharedPickIds, setSharedPickIds] = useState(new Set())
   const [injuryGameId, setInjuryGameId] = useState(null)
+  const [detailGameId, setDetailGameId] = useState(null)
 
   const { data: pendingPropPicks } = useMyPropPicks('pending')
   const { data: activeParlays } = useMyParlays('pending')
@@ -350,6 +352,7 @@ export default function PicksPage() {
                   onParlayToggle={handleParlayToggle}
                   hasInjuryData={INTEL_SPORTS.has(sportKey)}
                   onInjuryClick={() => setInjuryGameId(game.id)}
+                  onCardClick={() => setDetailGameId(game.id)}
                 />
               ))}
             </div>
@@ -360,6 +363,7 @@ export default function PicksPage() {
       )}
 
       <InjuryReportModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
+      <GameDetailModal gameId={detailGameId} onClose={() => setDetailGameId(null)} />
     </div>
   )
 }
