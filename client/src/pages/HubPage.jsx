@@ -234,7 +234,7 @@ export default function HubPage() {
 
   if (profileLoading || connectionsLoading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-6">
         <h1 className="font-display text-3xl mb-6">Hub</h1>
         <LoadingSpinner />
       </div>
@@ -242,7 +242,7 @@ export default function HubPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 pt-6 pb-32">
+    <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
       <h1 className="font-display text-3xl mb-6">Hub</h1>
 
       {/* My Profile */}
