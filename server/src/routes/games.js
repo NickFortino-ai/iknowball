@@ -123,26 +123,24 @@ router.get('/:id/intel', requireAuth, async (req, res) => {
     const homeLast10 = home.records?.find((r) => r.name === 'Last Ten Games' || r.name === 'last10')?.summary || null
     const awayLast10 = away.records?.find((r) => r.name === 'Last Ten Games' || r.name === 'last10')?.summary || null
 
-    // Probable pitchers (MLB)
+    // Probable pitchers (MLB) — from competitor.probables
     let homePitcher = null
     let awayPitcher = null
     if (sportKey === 'baseball_mlb') {
-      for (const status of (comp.status?.featuredAthletes || [])) {
-        if (!status.athlete) continue
-        const pitcher = {
-          name: status.athlete.displayName,
-          headshot: status.athlete.headshot?.href || null,
-          stats: status.athlete.statistics?.map((s) => `${s.abbreviation}: ${s.displayValue}`)?.join(', ') || null,
-        }
-        if (status.homeAway === 'home') homePitcher = pitcher
-        else if (status.homeAway === 'away') awayPitcher = pitcher
-      }
-      // Also check probables from competition notes or odds
-      if (!homePitcher || !awayPitcher) {
-        for (const broadcast of (comp.broadcasts || [])) {
-          // Some ESPN responses put pitchers in headlines
+      const extractPitcher = (competitor) => {
+        const prob = competitor.probables?.find((p) => p.abbreviation === 'SP')
+        if (!prob?.athlete) return null
+        return {
+          name: prob.athlete.displayName,
+          headshot: prob.athlete.headshot || null,
+          record: prob.record || null,
+          stats: prob.statistics?.length
+            ? prob.statistics.map((s) => `${s.abbreviation}: ${s.displayValue}`).join(', ')
+            : null,
         }
       }
+      homePitcher = extractPitcher(home)
+      awayPitcher = extractPitcher(away)
     }
 
     res.json({
