@@ -84,9 +84,10 @@ export default function TrophyCase() {
             const src = getTrophyImage(win)
             const sizeClass = getTrophySizeClass(win.member_count)
             return (
-              <div
+              <Link
+                to={`/leagues/${win.league_id}`}
                 key={win.id}
-                className="flex flex-col items-center text-center"
+                className="flex flex-col items-center text-center hover:opacity-80 transition-opacity cursor-pointer"
               >
                 <img
                   src={src}
@@ -99,7 +100,7 @@ export default function TrophyCase() {
                 <p className="text-xs text-text-muted mt-0.5">
                   Outlasted {win.member_count - 1} player{win.member_count - 1 !== 1 ? 's' : ''}
                 </p>
-              </div>
+              </Link>
             )
           })}
         </div>
