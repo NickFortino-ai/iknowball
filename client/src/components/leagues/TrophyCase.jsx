@@ -89,11 +89,13 @@ export default function TrophyCase() {
                 key={win.id}
                 className="flex flex-col items-center text-center hover:opacity-80 transition-opacity cursor-pointer"
               >
-                <img
-                  src={src}
-                  alt="Trophy"
-                  className={`${sizeClass} object-contain`}
-                />
+                <div className="h-40 flex items-end justify-center">
+                  <img
+                    src={src}
+                    alt="Trophy"
+                    className={`${sizeClass} object-contain`}
+                  />
+                </div>
                 <p className="text-sm font-semibold mt-2 text-text-primary leading-tight">
                   {win.league_name}
                 </p>
