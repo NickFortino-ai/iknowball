@@ -391,7 +391,7 @@ function LeagueWinFeedCard({ item, onUserTap }) {
   const formatLabel = league_win.format === 'bracket' ? 'bracket' : league_win.format === 'survivor' ? 'survivor pool' : 'league'
 
   return (
-    <FeedCardWrapper item={item} onUserTap={onUserTap}>
+    <FeedCardWrapper item={item} onUserTap={onUserTap} borderColor="gold">
       <div className="text-center space-y-2 py-2">
         <div className="text-3xl">{'\uD83C\uDFC6'}</div>
         <div className="text-sm font-semibold text-correct">
