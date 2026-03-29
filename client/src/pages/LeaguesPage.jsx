@@ -40,64 +40,58 @@ export default function LeaguesPage() {
         </div>
       </div>
 
-      <div className="lg:flex lg:gap-8">
-        {/* Left: League list */}
-        <div className="flex-1 min-w-0">
-          {isLoading ? (
-            <LoadingSpinner />
-          ) : isError ? (
-            <ErrorState title="Failed to load leagues" message="Check your connection and try again." onRetry={refetch} />
-          ) : !leagues?.length ? (
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : isError ? (
+        <ErrorState title="Failed to load leagues" message="Check your connection and try again." onRetry={refetch} />
+      ) : !leagues?.length ? (
+        <EmptyState
+          title="No leagues yet"
+          message="Create a league or join one with an invite code"
+        />
+      ) : (
+        <>
+          {active.length > 0 ? (
+            <div className="space-y-3">
+              {active.map((league) => (
+                <LeagueCard key={league.id} league={league} />
+              ))}
+            </div>
+          ) : (
             <EmptyState
-              title="No leagues yet"
+              title="No active leagues"
               message="Create a league or join one with an invite code"
             />
-          ) : (
-            <>
-              {active.length > 0 ? (
+          )}
+
+          {completed.length > 0 && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="flex items-center gap-2 text-sm text-text-muted hover:text-text-secondary transition-colors mb-3"
+              >
+                <svg
+                  className={`w-4 h-4 transition-transform ${showCompleted ? 'rotate-90' : ''}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                Completed Leagues ({completed.length})
+              </button>
+              {showCompleted && (
                 <div className="space-y-3">
-                  {active.map((league) => (
+                  {completed.map((league) => (
                     <LeagueCard key={league.id} league={league} />
                   ))}
                 </div>
-              ) : (
-                <EmptyState
-                  title="No active leagues"
-                  message="Create a league or join one with an invite code"
-                />
               )}
-
-              {completed.length > 0 && (
-                <div className="mt-6">
-                  <button
-                    onClick={() => setShowCompleted(!showCompleted)}
-                    className="flex items-center gap-2 text-sm text-text-muted hover:text-text-secondary transition-colors mb-3"
-                  >
-                    <svg
-                      className={`w-4 h-4 transition-transform ${showCompleted ? 'rotate-90' : ''}`}
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                    Completed Leagues ({completed.length})
-                  </button>
-                  {showCompleted && (
-                    <div className="space-y-3">
-                      {completed.map((league) => (
-                        <LeagueCard key={league.id} league={league} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
+            </div>
           )}
-        </div>
+        </>
+      )}
 
-        {/* Right: Trophy case (desktop sidebar) */}
-        <div className="lg:w-80 lg:flex-shrink-0 mt-6 lg:mt-0 lg:sticky lg:top-4">
-          <TrophyCase />
-        </div>
+      <div className="mt-6">
+        <TrophyCase />
       </div>
 
     </div>

@@ -132,8 +132,8 @@ export default function TrophyCase() {
             </div>
           </div>
 
-          {/* Desktop: 2-column grid, independently scrollable */}
-          <div className="hidden lg:grid grid-cols-2 gap-x-4 gap-y-0 max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain scrollbar-hide">
+          {/* Desktop: responsive grid */}
+          <div className="hidden lg:grid grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-0">
             {sorted.map((win) => (
               <TrophyItem key={win.id} win={win} />
             ))}
