@@ -28,22 +28,22 @@ function getTrophyImage(win) {
   }
 
   if (member_count >= 9) {
-    return `/trophies/medium-${pickVariant(id, 4)}.webp`
+    return `/trophies/medium-${pickVariant(id, 3)}.webp`
   }
 
   if (member_count >= 5) {
-    return `/trophies/small-${pickVariant(id, 4)}.webp`
+    return `/trophies/small-${pickVariant(id, 3)}.webp`
   }
 
   // 4 or fewer
-  return `/trophies/medal-${pickVariant(id, 4)}.webp`
+  return `/trophies/medal-${pickVariant(id, 3)}.webp`
 }
 
 function getTrophySizeClass(memberCount) {
-  if (memberCount >= 14) return 'w-28 h-36'
-  if (memberCount >= 9) return 'w-24 h-28'
-  if (memberCount >= 5) return 'w-20 h-24'
-  return 'w-20 h-20'
+  if (memberCount >= 14) return 'w-32 h-40'
+  if (memberCount >= 9) return 'w-28 h-32'
+  if (memberCount >= 5) return 'w-24 h-28'
+  return 'w-16 h-16'
 }
 
 function EmptyShelf() {
