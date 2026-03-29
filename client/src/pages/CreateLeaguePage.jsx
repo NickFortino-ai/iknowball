@@ -7,6 +7,8 @@ import { toast } from '../components/ui/Toast'
 const FORMAT_OPTIONS = [
   { value: 'fantasy', label: 'Fantasy Football', description: 'Draft players, set lineups, and compete head-to-head each week' },
   { value: 'nba_dfs', label: 'NBA Daily Fantasy', description: 'Build a nightly NBA lineup under a salary cap and compete for the highest score' },
+  { value: 'mlb_dfs', label: 'MLB Daily Fantasy', description: 'Build a daily MLB lineup under a salary cap — scored on hits, HRs, RBIs, runs, and more' },
+  { value: 'hr_derby', label: 'Home Run Derby', description: 'Pick 3 hitters per day — score points for every HR they hit, with distance as tiebreaker' },
   { value: 'pickem', label: "Pick'em", description: 'Pick winners against the spread with odds-based scoring' },
   { value: 'survivor', label: 'Survivor', description: 'Pick one team per week — lose and you are eliminated' },
   { value: 'bracket', label: 'Bracket', description: 'Fill out a tournament bracket with escalating points per round' },
@@ -94,9 +96,10 @@ export default function CreateLeaguePage() {
   // Fantasy settings
   const [fantasyFormat, setFantasyFormat] = useState('traditional')
 
-  // Auto-select sport for fantasy format
+  // Auto-select sport for specific formats
   useEffect(() => {
     if (format === 'fantasy' && fantasyFormat === 'traditional') setSport('americanfootball_nfl')
+    if (format === 'mlb_dfs' || format === 'hr_derby') setSport('baseball_mlb')
   }, [format, fantasyFormat])
   const [scoringFormat, setScoringFormat] = useState('half_ppr')
   const [numTeams, setNumTeams] = useState(10)
@@ -112,7 +115,7 @@ export default function CreateLeaguePage() {
   // Visibility settings
   const [visibility, setVisibility] = useState('closed')
   const [backdropImage, setBackdropImage] = useState('')
-  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : sport || undefined
+  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport || undefined
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [joinsLockedAt, setJoinsLockedAt] = useState('')
 
@@ -158,10 +161,10 @@ export default function CreateLeaguePage() {
     }
 
     // Fantasy settings passed separately
-    const isFantasyFormat = format === 'fantasy' || format === 'nba_dfs'
+    const isFantasyFormat = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format)
     const fantasySettings = isFantasyFormat ? {
-      format: format === 'nba_dfs' ? 'salary_cap' : fantasyFormat,
-      scoring_format: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? 'ppr' : scoringFormat,
+      format: (format === 'nba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : fantasyFormat,
+      scoring_format: (format === 'nba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? 'ppr' : scoringFormat,
       num_teams: numTeams,
       draft_pick_timer: format === 'fantasy' && fantasyFormat === 'traditional' ? draftPickTimer : undefined,
       waiver_type: format === 'fantasy' && fantasyFormat === 'traditional' ? waiverType : undefined,
@@ -176,18 +179,18 @@ export default function CreateLeaguePage() {
     try {
       const league = await createLeague.mutateAsync({
         name,
-        format: format === 'nba_dfs' ? 'nba_dfs' : format,
-        sport: format === 'nba_dfs' ? 'basketball_nba' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
+        format,
+        sport: format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
         duration: isFantasyFormat ? 'full_season' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
-        starts_at: format === 'nba_dfs' ? getDfsStartDate() : startsAt || undefined,
-        ends_at: endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : sport) : endsAt || undefined,
+        starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format) ? getDfsStartDate() : startsAt || undefined,
+        ends_at: endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport) : endsAt || undefined,
         settings,
         fantasy_settings: fantasySettings,
         visibility,
-        joins_locked_at: format === 'nba_dfs'
+        joins_locked_at: ['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format)
           ? getDfsStartDate()
           : visibility === 'open' && joinsLockedAt ? joinsLockedAt : undefined,
         backdrop_image: backdropImage || undefined,
@@ -199,7 +202,9 @@ export default function CreateLeaguePage() {
     }
   }
 
-  const canSubmit = name && format && (sport || format === 'nba_dfs') && (format === 'fantasy' || format === 'nba_dfs' || duration)
+  const autoSportFormats = ['nba_dfs', 'mlb_dfs', 'hr_derby']
+  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby']
+  const canSubmit = name && format && (sport || autoSportFormats.includes(format)) && (noDurationFormats.includes(format) || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
 
@@ -243,8 +248,8 @@ export default function CreateLeaguePage() {
           </div>
         </div>
 
-        {/* Sport (hidden for NBA DFS — always NBA) */}
-        {format !== 'nba_dfs' && <div>
+        {/* Sport (hidden for format-locked sports) */}
+        {!['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
@@ -274,8 +279,8 @@ export default function CreateLeaguePage() {
           </div>
         </div>}
 
-        {/* Duration (not for fantasy/nba_dfs — always full season) */}
-        {format !== 'fantasy' && format !== 'nba_dfs' && <>
+        {/* Duration (not for fantasy/DFS formats — always full season) */}
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format) && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">

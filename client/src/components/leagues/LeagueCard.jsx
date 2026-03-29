@@ -7,6 +7,8 @@ const FORMAT_LABELS = {
   bracket: 'Bracket',
   fantasy: 'Fantasy Football',
   nba_dfs: 'NBA Daily Fantasy',
+  mlb_dfs: 'MLB Daily Fantasy',
+  hr_derby: 'Home Run Derby',
 }
 
 const SPORT_LABELS = {
