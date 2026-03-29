@@ -542,6 +542,26 @@ router.post('/player-position-overrides', async (req, res) => {
   res.status(201).json(data)
 })
 
+router.get('/player-search', async (req, res) => {
+  const { q } = req.query
+  if (!q || q.length < 2) return res.json([])
+
+  // Search DFS salaries for recent players
+  const { data } = await supabase
+    .from('nba_dfs_salaries')
+    .select('player_name, position, team')
+    .ilike('player_name', `%${q}%`)
+    .order('game_date', { ascending: false })
+    .limit(50)
+
+  // Deduplicate by player name, keep most recent
+  const seen = new Map()
+  for (const p of data || []) {
+    if (!seen.has(p.player_name)) seen.set(p.player_name, p)
+  }
+  res.json([...seen.values()].slice(0, 10))
+})
+
 router.delete('/player-position-overrides/:id', async (req, res) => {
   const { error } = await supabase
     .from('player_position_overrides')

@@ -394,6 +394,16 @@ export function useGenerateRecap() {
   })
 }
 
+// Player Search (for position overrides)
+export function useAdminPlayerSearch(query) {
+  return useQuery({
+    queryKey: ['admin', 'player-search', query],
+    queryFn: () => api.get(`/admin/player-search?q=${encodeURIComponent(query)}`),
+    enabled: !!query && query.length >= 2,
+    staleTime: 30_000,
+  })
+}
+
 // Player Position Overrides
 export function usePlayerPositionOverrides() {
   return useQuery({
