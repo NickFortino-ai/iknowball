@@ -48,13 +48,13 @@ const tabs = [
   { label: 'WNCAAB', scope: 'sport', sport: 'basketball_wncaab' },
   { label: 'MLB', scope: 'sport', sport: 'baseball_mlb' },
   { label: 'NHL', scope: 'sport', sport: 'icehockey_nhl' },
+  { label: 'MLS', scope: 'sport', sport: 'soccer_usa_mls' },
   { label: 'Props', scope: 'props', sport: null },
   { label: 'Parlays', scope: 'parlays', sport: null },
   { label: 'Leagues', scope: 'leagues', sport: null },
   { label: 'NFL', scope: 'sport', sport: 'americanfootball_nfl' },
   { label: 'NCAAF', scope: 'sport', sport: 'americanfootball_ncaaf' },
   { label: 'WNBA', scope: 'sport', sport: 'basketball_wnba' },
-  { label: 'MLS', scope: 'sport', sport: 'soccer_usa_mls' },
 ]
 
 export default function LeaderboardPage() {
