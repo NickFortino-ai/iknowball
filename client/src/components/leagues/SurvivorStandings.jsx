@@ -4,6 +4,26 @@ import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
+const FOOTBALL_SPORTS = ['americanfootball_nfl', 'americanfootball_ncaaf']
+const BASEBALL_SPORTS = ['baseball_mlb']
+
+function pickVariant(id, count) {
+  let hash = 0
+  for (let i = 0; i < (id || '').length; i++) hash = ((hash << 5) - hash) + id.charCodeAt(i)
+  return (Math.abs(hash) % count) + 1
+}
+
+function getTrophyImage(memberCount, sport, leagueId) {
+  if (memberCount >= 14) {
+    if (FOOTBALL_SPORTS.includes(sport)) return '/trophies/large-football.webp'
+    if (BASEBALL_SPORTS.includes(sport)) return '/trophies/large-baseball.webp'
+    return '/trophies/large-basketball.webp'
+  }
+  if (memberCount >= 9) return `/trophies/medium-${pickVariant(leagueId, 3)}.webp`
+  if (memberCount >= 5) return `/trophies/small-${pickVariant(leagueId, 3)}.webp`
+  return `/trophies/medal-${pickVariant(leagueId, 3)}.webp`
+}
+
 const PICK_STYLES = {
   survived: 'bg-correct/20 text-correct border border-correct/30',
   eliminated: 'bg-incorrect/20 text-incorrect border border-incorrect/30',
@@ -97,17 +117,13 @@ export default function SurvivorStandings({ league, onUserTap }) {
     const isWinner = variant === 'winner'
     const scaleClass = (isAlive || isWinner) ? getAliveScale() : ''
 
-    const borderClass = isWinner
-      ? 'border-2 border-accent'
-      : isAlive
-        ? 'border border-correct/50'
-        : 'border border-incorrect/40'
+    const borderClass = isWinner || isAlive
+      ? 'border border-correct/50'
+      : 'border border-incorrect/40'
 
-    const bgClass = isWinner
-      ? 'bg-accent/10 backdrop-blur-sm'
-      : isAlive
-        ? 'bg-correct/5 backdrop-blur-sm'
-        : 'bg-incorrect/5 backdrop-blur-sm'
+    const bgClass = isWinner || isAlive
+      ? 'bg-correct/5 backdrop-blur-sm'
+      : 'bg-incorrect/5 backdrop-blur-sm'
 
     const rowSize = isAlive || isWinner ? 'px-4 py-4' : 'px-4 py-3'
     const avatarSize = isAlive || isWinner ? 'lg' : 'md'
@@ -133,11 +149,9 @@ export default function SurvivorStandings({ league, onUserTap }) {
             </div>
           </div>
           <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-            isWinner
-              ? 'bg-accent/20 text-accent'
-              : isAlive
-                ? 'bg-correct/20 text-correct'
-                : 'bg-incorrect/20 text-incorrect'
+            isWinner || isAlive
+              ? 'bg-correct/20 text-correct'
+              : 'bg-incorrect/20 text-incorrect'
           }`}>
             {isWinner ? 'Champion' : isAlive ? 'Alive' : `Out ${periodLabel} ${member.eliminated_week}`}
           </span>
@@ -151,11 +165,26 @@ export default function SurvivorStandings({ league, onUserTap }) {
     <div>
       {/* Champion card */}
       {winner && league.status === 'completed' && (
-        <div className="mb-4 rounded-xl border-2 border-accent bg-accent/10 backdrop-blur-sm p-5 text-center">
-          <div className="text-3xl mb-1">{'\uD83D\uDC51'}</div>
-          <div className="font-display text-xl text-accent">Last One Standing</div>
-          <div className="text-sm text-text-secondary mt-1">
-            {winner.users?.display_name || winner.users?.username} outlasted {board.survivor_winner?.outlasted || 0} competitor{(board.survivor_winner?.outlasted || 0) !== 1 ? 's' : ''}
+        <div className="mb-4 rounded-xl border border-correct/50 bg-correct/5 backdrop-blur-sm p-5">
+          <div className="flex items-center gap-4">
+            <img
+              src={getTrophyImage(league.members?.length || 0, league.sport, league.id)}
+              alt="Trophy"
+              className="w-16 h-20 object-contain shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Avatar user={winner.users} size="md" />
+                <div>
+                  <div className="font-display text-base text-text-primary">{winner.users?.display_name || winner.users?.username}</div>
+                  <div className="text-xs text-text-secondary">won this league!</div>
+                </div>
+              </div>
+              <div className="text-sm font-bold text-correct mt-1">+{board.survivor_winner?.points || 0} pts earned</div>
+              <div className="text-xs text-text-muted mt-0.5">
+                Outlasted {board.survivor_winner?.outlasted || 0} competitor{(board.survivor_winner?.outlasted || 0) !== 1 ? 's' : ''}
+              </div>
+            </div>
           </div>
         </div>
       )}
