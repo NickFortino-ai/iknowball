@@ -89,23 +89,23 @@ The multiplier is only available on straight picks in the global competition. It
         q: 'What are leagues?',
         a: `Leagues let you compete with friends, coworkers, or anyone else. A league commissioner creates the league, sets the rules, and invites members. League formats include:
 
-\u2022 Pick\u2019em: Pick games within the league each day or week. Your picks are scored using the same odds-based system as regular picks but tracked on a separate standings board.
-\u2022 Survivor: Pick one team to win each period. If your team loses, you lose a life. Use all your lives and you\u2019re eliminated. You can only pick each team once. Last one standing wins.
-\u2022 Brackets: Tournament-style bracket competitions where you fill out a bracket and earn points for each correct pick. Finishing position determines your global score impact.
-\u2022 Squares: Classic grid game for a specific matchup. Random numbers assigned, winners based on score at the end of each quarter.
-\u2022 Fantasy Football: Traditional draft-based fantasy football with head-to-head matchups, waivers, and trades.
-\u2022 NBA Daily Fantasy: Build a nightly NBA lineup under a salary cap (9 positions) and compete for the highest score.
-\u2022 MLB Daily Fantasy: Build a daily MLB lineup under a salary cap (C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) scored on hits, HRs, RBIs, runs, stolen bases, and more.
-\u2022 Home Run Derby: Pick 3 hitters per day who you think will hit a home run. Each player can only be used once per week. Total home runs determine standings with HR distance as tiebreaker.`,
+\u2022 <strong class="text-white">Pick\u2019em:</strong> Pick games within the league each day or week. Your picks are scored using the same odds-based system as regular picks but tracked on a separate standings board.
+\u2022 <strong class="text-white">Survivor:</strong> Pick one team to win each period. If your team loses, you lose a life. Use all your lives and you\u2019re eliminated. You can only pick each team once. Last one standing wins.
+\u2022 <strong class="text-white">Brackets:</strong> Tournament-style bracket competitions where you fill out a bracket and earn points for each correct pick. Finishing position determines your global score impact.
+\u2022 <strong class="text-white">Squares:</strong> Classic grid game for a specific matchup. Random numbers assigned, winners based on score at the end of each quarter.
+\u2022 <strong class="text-white">Fantasy Football:</strong> Traditional draft-based fantasy football with head-to-head matchups, waivers, and trades.
+\u2022 <strong class="text-white">NBA Daily Fantasy:</strong> Build a nightly NBA lineup under a salary cap (9 positions) and compete for the highest score.
+\u2022 <strong class="text-white">MLB Daily Fantasy:</strong> Build a daily MLB lineup under a salary cap (C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) scored on hits, HRs, RBIs, runs, stolen bases, and more.
+\u2022 <strong class="text-white">Home Run Derby:</strong> Pick 3 hitters per day who you think will hit a home run. Each player can only be used once per week. Total home runs determine standings with HR distance as tiebreaker.`,
       },
       {
         q: 'How do leagues affect my global score?',
         a: `It depends on the format:
 
-\u2022 Pick\u2019em: Your league pick points are added to your global score when the league ends, plus the winner earns a bonus equal to the number of members.
-\u2022 Survivor: Winners earn bonus points scaled by league size (10 pts for small leagues up to 100 pts for 41+ member leagues).
-\u2022 Bracket, Fantasy, NBA DFS, MLB DFS, HR Derby: All use position-based scoring when the league ends. Top half earns positive points, bottom half loses points. Formula: N+1\u22122\u00d7rank, plus a +10 champion bonus for 1st place. Ties split the points for the positions they span.
-\u2022 Squares: Does not affect global score.`,
+\u2022 <strong class="text-white">Pick\u2019em:</strong> Your league pick points are added to your global score when the league ends, plus the winner earns a bonus equal to the number of members.
+\u2022 <strong class="text-white">Survivor:</strong> Winners earn bonus points scaled by league size (10 pts for small leagues up to 100 pts for 41+ member leagues).
+\u2022 <strong class="text-white">Bracket, Fantasy, NBA DFS, MLB DFS, HR Derby:</strong> All use position-based scoring when the league ends. Top half earns positive points, bottom half loses points. Formula: N+1\u22122\u00d7rank, plus a +10 champion bonus for 1st place. Ties split the points for the positions they span.
+\u2022 <strong class="text-white">Squares:</strong> Does not affect global score.`,
       },
       {
         q: 'How do I invite friends to a league?',
