@@ -42,7 +42,7 @@ function MyProfileBanner({ profile, onTap }) {
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <TierBadge tier={tier.name} size="md" />
-          <span className="text-accent font-semibold text-sm">{profile.total_points} pts</span>
+          <span className="text-white font-display text-lg">{profile.total_points} pts</span>
         </div>
       </div>
     </div>
