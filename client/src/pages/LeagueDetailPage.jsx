@@ -198,8 +198,12 @@ function LeagueConditions({ league }) {
     }
 
     if (league.format === 'squares') {
-      const duration = durationSentence(null)
-      return `Select your squares on the board. Payouts are awarded at the end of each quarter based on the last digit of each team's score. ${duration}`
+      const ppq = settings.points_per_quarter || [10, 10, 10, 10]
+      const totalPts = ppq.reduce((s, q) => s + (q || 0), 0)
+      const gameDate = league.starts_at
+        ? new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' })
+        : null
+      return `Claim squares on the 10x10 grid. Once all 100 are claimed, digits (0–9) are randomly assigned to each row and column. At the end of each quarter, the square where the last digits of each team's score intersect wins that quarter's payout (${ppq.map((p, i) => `Q${i + 1}: ${p}`).join(', ')} — ${totalPts} pts total).${gameDate ? ` Game day: ${gameDate}.` : ''}`
     }
 
     if (league.format === 'nba_dfs') {
