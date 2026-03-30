@@ -760,38 +760,51 @@ export default function LeagueDetailPage() {
         </div>
       </div>
 
-      {/* Champion Card (not for survivor — handled by SurvivorStandings) */}
-      {league.champion && league.format !== 'survivor' && (
-        <div className="mb-6 rounded-xl border-2 border-yellow-500 p-5 text-center relative overflow-hidden">
+      {/* Champion Card */}
+      {league.champion && (() => {
+        const mc = league.members?.length || 0
+        const sport = league.sport
+        const lid = league.id
+        const trophySrc = mc >= 14
+          ? (['americanfootball_nfl', 'americanfootball_ncaaf'].includes(sport) ? '/trophies/large-football.webp' : ['baseball_mlb'].includes(sport) ? '/trophies/large-baseball.webp' : '/trophies/large-basketball.webp')
+          : mc >= 9 ? `/trophies/medium-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
+          : mc >= 5 ? `/trophies/small-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
+          : `/trophies/medal-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
+        const outlasted = mc > 1 ? mc - 1 : 0
+        return (
+        <div className="mb-6 rounded-xl border-2 border-yellow-500 p-5 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
-          <div className="relative">
-            <div className="flex items-center justify-center gap-4 mb-2">
-              <div className="text-4xl">{'\uD83C\uDFC6'}</div>
-              <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer">
-                {league.champion.user.avatar_url ? (
-                  <img
-                    src={league.champion.user.avatar_url}
-                    alt={league.champion.user.display_name}
-                    className="w-20 h-20 rounded-full object-cover ring-2 ring-yellow-500"
-                  />
-                ) : (
-                  <Avatar user={league.champion.user} size="2xl" />
-                )}
-              </button>
+          <div className="relative flex items-center gap-5">
+            <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0" />
+            <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer shrink-0">
+              {league.champion.user.avatar_url ? (
+                <img
+                  src={league.champion.user.avatar_url}
+                  alt={league.champion.user.display_name}
+                  className="w-16 h-16 rounded-full object-cover ring-2 ring-yellow-500"
+                />
+              ) : (
+                <Avatar user={league.champion.user} size="2xl" />
+              )}
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="font-display text-xl text-white">
+                {league.champion.user.display_name || league.champion.user.username}
+              </div>
+              <div className="text-sm text-text-secondary">won this league!</div>
+              <div className="text-sm text-yellow-400 font-semibold mt-1">
+                +{league.champion.points} pts earned
+              </div>
+              {outlasted > 0 && (
+                <div className="text-sm text-text-muted mt-0.5">
+                  Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
+                </div>
+              )}
             </div>
-            <div className="font-display text-xl text-yellow-400">
-              {league.champion.user.display_name || league.champion.user.username}
-            </div>
-            <div className="text-sm text-text-secondary">won this league!</div>
-            <div className="text-sm text-yellow-400 font-semibold mt-2">
-              +{league.champion.points} pts earned
-            </div>
-            {league.champion.label && (
-              <div className="text-xs text-text-muted mt-1">{league.champion.label}</div>
-            )}
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Bracket invite actions — centered below header */}
       {(league.status === 'open' || (league.status === 'active' && league.joins_locked_at && new Date(league.joins_locked_at) > new Date()))

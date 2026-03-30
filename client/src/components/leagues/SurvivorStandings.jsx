@@ -163,36 +163,6 @@ export default function SurvivorStandings({ league, onUserTap }) {
 
   return (
     <div>
-      {/* Champion card */}
-      {winner && league.status === 'completed' && (
-        <div className="mb-4 rounded-xl border-2 border-correct/60 bg-correct/5 backdrop-blur-sm p-6">
-          <div className="flex items-center gap-5">
-            <img
-              src={getTrophyImage(league.members?.length || 0, league.sport, league.id)}
-              alt="Trophy"
-              className="w-20 h-24 object-contain shrink-0"
-            />
-            {winner.users?.avatar_url ? (
-              <img
-                src={winner.users.avatar_url}
-                alt=""
-                className="w-16 h-16 rounded-full object-cover ring-2 ring-correct shrink-0"
-              />
-            ) : (
-              <Avatar user={winner.users} size="2xl" className="ring-2 ring-correct shrink-0" />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="font-display text-xl text-white">{winner.users?.display_name || winner.users?.username}</div>
-              <div className="text-sm text-text-secondary">won this league!</div>
-              <div className="text-base font-bold text-correct mt-1">+{board.survivor_winner?.points || 0} pts earned</div>
-              <div className="text-sm text-text-muted mt-0.5">
-                Outlasted {board.survivor_winner?.outlasted || 0} competitor{(board.survivor_winner?.outlasted || 0) !== 1 ? 's' : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Alive tier */}
       <div className="space-y-2">
         {alive.map((m) => (
