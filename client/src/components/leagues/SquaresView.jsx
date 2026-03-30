@@ -126,150 +126,27 @@ export default function SquaresView({ league, isCommissioner }) {
         </div>
       )}
 
-      {/* Commissioner controls */}
+      {/* Commissioner actions — compact inline, only shows relevant action */}
       {isCommissioner && (
-        <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 space-y-3">
-          <h3 className="font-display text-sm text-text-secondary">Commissioner Controls</h3>
-
-          {/* Editable team names (before digits locked) */}
-          {!board.digits_locked && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-text-muted mb-1">Row Team</label>
-                {editRowName !== null ? (
-                  <div className="flex gap-1">
-                    <input
-                      type="text"
-                      value={editRowName}
-                      onChange={(e) => setEditRowName(e.target.value)}
-                      maxLength={50}
-                      className="flex-1 bg-bg-input border border-border rounded-lg px-2 py-1.5 text-xs text-text-primary"
-                    />
-                    <button
-                      onClick={() => handleSaveTeamName('row_team_name', editRowName)}
-                      disabled={updateSettings.isPending}
-                      className="px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-accent text-white"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setEditRowName(null)}
-                      className="px-2 py-1.5 rounded-lg text-[10px] text-text-muted"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setEditRowName(rowTeamName)}
-                    className="text-xs text-accent hover:underline"
-                  >
-                    {rowTeamName}
-                  </button>
-                )}
-              </div>
-              <div>
-                <label className="block text-[10px] text-text-muted mb-1">Column Team</label>
-                {editColName !== null ? (
-                  <div className="flex gap-1">
-                    <input
-                      type="text"
-                      value={editColName}
-                      onChange={(e) => setEditColName(e.target.value)}
-                      maxLength={50}
-                      className="flex-1 bg-bg-input border border-border rounded-lg px-2 py-1.5 text-xs text-text-primary"
-                    />
-                    <button
-                      onClick={() => handleSaveTeamName('col_team_name', editColName)}
-                      disabled={updateSettings.isPending}
-                      className="px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-accent text-white"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setEditColName(null)}
-                      className="px-2 py-1.5 rounded-lg text-[10px] text-text-muted"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setEditColName(colTeamName)}
-                    className="text-xs text-accent hover:underline"
-                  >
-                    {colTeamName}
-                  </button>
-                )}
-              </div>
-            </div>
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+          {!isSelfSelect && totalClaimed === 0 && (
+            <button
+              onClick={handleRandomAssign}
+              disabled={randomAssign.isPending}
+              className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
+            >
+              Random Assign
+            </button>
           )}
-
-          <div className="flex gap-2">
-            {!isSelfSelect && totalClaimed === 0 && (
-              <button
-                onClick={handleRandomAssign}
-                disabled={randomAssign.isPending}
-                className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
-              >
-                Random Assign
-              </button>
-            )}
-            {!board.digits_locked && totalClaimed > 0 && (
-              <button
-                onClick={handleLockDigits}
-                disabled={lockDigitsM.isPending}
-                className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
-              >
-                Lock Digits
-              </button>
-            )}
-          </div>
-          {board.digits_locked && (
-            <form onSubmit={handleScoreQuarter} className="flex items-end gap-2">
-              <div>
-                <label className="block text-[10px] text-text-muted mb-1">Quarter</label>
-                <select
-                  value={scoreForm.quarter}
-                  onChange={(e) => setScoreForm({ ...scoreForm, quarter: parseInt(e.target.value, 10) })}
-                  className="bg-bg-input border border-border rounded-lg px-2 py-2 text-xs text-text-primary"
-                >
-                  {[1, 2, 3, 4].map((q) => (
-                    <option key={q} value={q}>Q{q}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] text-text-muted mb-1">{rowTeamName}</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={scoreForm.awayScore}
-                  onChange={(e) => setScoreForm({ ...scoreForm, awayScore: e.target.value })}
-                  className="w-16 bg-bg-input border border-border rounded-lg px-2 py-2 text-xs text-text-primary text-center"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-text-muted mb-1">{colTeamName}</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={scoreForm.homeScore}
-                  onChange={(e) => setScoreForm({ ...scoreForm, homeScore: e.target.value })}
-                  className="w-16 bg-bg-input border border-border rounded-lg px-2 py-2 text-xs text-text-primary text-center"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={scoreQuarterM.isPending || !scoreForm.awayScore || !scoreForm.homeScore}
-                className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
-              >
-                Score
-              </button>
-            </form>
+          {!board.digits_locked && totalClaimed > 0 && (
+            <button
+              onClick={handleLockDigits}
+              disabled={lockDigitsM.isPending}
+              className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
+            >
+              Lock Digits
+            </button>
           )}
-
-          {/* Mark as complete */}
           {quarters.every((q) => q.awayScore !== null) && league.status !== 'completed' && (
             <button
               onClick={async () => {
@@ -281,52 +158,11 @@ export default function SquaresView({ league, isCommissioner }) {
                 }
               }}
               disabled={completeLeague.isPending}
-              className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-correct/10 text-correct hover:bg-correct/20 disabled:opacity-50 transition-colors"
+              className="px-3 py-2 rounded-lg text-xs font-semibold bg-correct/10 text-correct hover:bg-correct/20 disabled:opacity-50 transition-colors"
             >
               Mark as Complete
             </button>
           )}
-
-          {/* Delete contest */}
-          <div className="pt-2 border-t border-text-primary/10 mt-1">
-            {!confirmDelete ? (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="text-[11px] text-text-muted hover:text-incorrect transition-colors"
-              >
-                Contest did not run
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-[11px] text-incorrect">
-                  This will permanently delete this contest and all its data.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={async () => {
-                      try {
-                        await deleteLeague.mutateAsync(league.id)
-                        toast('Contest deleted', 'success')
-                        navigate('/leagues')
-                      } catch (err) {
-                        toast(err.message || 'Failed to delete contest', 'error')
-                      }
-                    }}
-                    disabled={deleteLeague.isPending}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-incorrect/10 text-incorrect hover:bg-incorrect/20 disabled:opacity-50"
-                  >
-                    Delete Contest
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(false)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] text-text-muted hover:text-text-secondary"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       )}
 
@@ -391,25 +227,36 @@ export default function SquaresView({ league, isCommissioner }) {
       {/* Grid */}
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">
-          <table className="border-collapse">
-            {/* Column headers (home team digits) */}
-            <thead>
-              <tr>
-                <th className="w-8 h-8" />
-                {Array.from({ length: 10 }, (_, i) => (
-                  <th key={i} className="w-10 h-8 text-center text-xs font-semibold text-accent">
-                    {board.digits_locked ? board.col_digits[i] : '?'}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {grid.map((row, r) => (
-                <tr key={r}>
-                  {/* Row header (away team digit) */}
-                  <td className="w-8 h-10 text-center text-xs font-semibold text-accent">
-                    {board.digits_locked ? board.row_digits[r] : '?'}
-                  </td>
+          {/* Column team name above grid */}
+          <div className="text-center pl-12 mb-1">
+            <span className="text-xs font-bold text-accent tracking-wider uppercase">{colTeamName.split(' ').pop()}</span>
+          </div>
+          <div className="flex">
+            {/* Row team name beside grid (vertical) */}
+            <div className="flex items-center justify-center w-6 shrink-0">
+              <span className="text-xs font-bold text-accent tracking-wider uppercase whitespace-nowrap" style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}>
+                {rowTeamName.split(' ').pop()}
+              </span>
+            </div>
+            <table className="border-collapse">
+              {/* Column headers (home team digits) */}
+              <thead>
+                <tr>
+                  <th className="w-8 h-8" />
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <th key={i} className="w-10 h-8 text-center text-xs font-semibold text-accent">
+                      {board.digits_locked ? board.col_digits[i] : '?'}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {grid.map((row, r) => (
+                  <tr key={r}>
+                    {/* Row header (away team digit) */}
+                    <td className="w-8 h-10 text-center text-xs font-semibold text-accent">
+                      {board.digits_locked ? board.row_digits[r] : '?'}
+                    </td>
                   {row.map((cell, c) => {
                     const isMe = cell?.user_id === profile?.id
                     const isWinning = quarters.some(
@@ -446,12 +293,8 @@ export default function SquaresView({ league, isCommissioner }) {
                   })}
                 </tr>
               ))}
-            </tbody>
-          </table>
-          {/* Axis labels */}
-          <div className="flex justify-between text-[10px] text-text-muted mt-2 px-8">
-            <span>Rows: {rowTeamName}</span>
-            <span>Columns: {colTeamName}</span>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -460,7 +303,7 @@ export default function SquaresView({ league, isCommissioner }) {
       {totalClaimed > 0 && (
         <div className="mt-6">
           <h3 className="font-display text-sm text-text-secondary mb-3">Squares Owned</h3>
-          <div className="bg-bg-card rounded-xl border border-border overflow-hidden">
+          <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 overflow-hidden">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border text-text-muted">
