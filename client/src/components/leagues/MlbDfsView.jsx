@@ -136,7 +136,7 @@ function MlbLiveView({ league, date: leagueDate }) {
                       </span>
                       {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
                     </div>
-                    <span className={`font-display text-lg ${m.status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                    <span className={`font-display ${all_final && idx === 0 ? 'text-2xl' : 'text-xl'} text-white`}>
                       {Math.round(m.total_points * 10) / 10}
                     </span>
                     <svg className={`w-4 h-4 text-text-muted transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
@@ -152,17 +152,38 @@ function MlbLiveView({ league, date: leagueDate }) {
                       const hidden = slot.player_name === '????'
                       const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
                       const hasStats = slot.stats && (slot.game_status === 'live' || slot.game_status === 'final')
+                      const statLine = hasStats && slot.stats ? [
+                        { label: 'H', value: slot.stats.h },
+                        { label: 'R', value: slot.stats.r },
+                        { label: 'HR', value: slot.stats.hr },
+                        { label: 'RBI', value: slot.stats.rbi },
+                        { label: 'SB', value: slot.stats.sb },
+                        { label: 'BB', value: slot.stats.bb },
+                        { label: 'K', value: slot.stats.k },
+                      ].filter((s) => s.value > 0).map((s) => `${s.value} ${s.label}`).join(' \u00b7 ') : null
 
                       return (
-                        <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-2 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
-                          <span className="text-xs font-bold text-text-muted w-7 shrink-0">{slot.roster_slot.replace(/[123]$/, '')}</span>
+                        <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-3.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
+                          <span className="text-sm font-bold text-text-muted w-8 shrink-0">{slot.roster_slot.replace(/[123]$/, '')}</span>
                           {hidden ? (
-                            <span className="flex-1 text-sm text-text-muted font-mono">????</span>
+                            <span className="flex-1 text-base text-text-muted font-mono">????</span>
                           ) : (
                             <>
-                              <span className="flex-1 text-sm font-semibold text-text-primary truncate">{slot.player_name}</span>
+                              {slot.headshot_url && (
+                                <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0"
+                                  onError={(e) => { e.target.style.display = 'none' }} />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
+                                {statLine && (
+                                  <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
+                                )}
+                                {statLine && (
+                                  <span className="text-xs text-text-muted hidden lg:inline">{statLine}</span>
+                                )}
+                              </div>
                               {(slot.game_status === 'live' || slot.game_status === 'final') && (
-                                <span className={`text-sm font-display ${slot.game_status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                                <span className="text-base font-display shrink-0 text-white">
                                   {Math.round((slot.points_earned || 0) * 10) / 10}
                                 </span>
                               )}

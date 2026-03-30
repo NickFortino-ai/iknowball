@@ -129,7 +129,7 @@ router.get('/live', async (req, res) => {
   if (allEspnIds.length) {
     const { data: salaries } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id, game_starts_at')
+      .select('espn_player_id, game_starts_at, headshot_url')
       .eq('game_date', date)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
@@ -140,7 +140,7 @@ router.get('/live', async (req, res) => {
         const approxEnd = new Date(startTime.getTime() + 4 * 60 * 60 * 1000)
         status = now < approxEnd ? 'live' : 'final'
       }
-      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status }
+      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url }
     }
   }
 
@@ -196,6 +196,7 @@ router.get('/live', async (req, res) => {
         roster_slot: slot.roster_slot,
         player_name: hidden ? '????' : slot.player_name,
         espn_player_id: hidden ? null : slot.espn_player_id,
+        headshot_url: hidden ? null : (gs.headshot_url || null),
         points_earned: pts,
         game_status: gs.status || 'upcoming',
         stats: playerStatsMap[slot.espn_player_id] || null,
