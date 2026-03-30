@@ -75,7 +75,7 @@ export default function CreateLeaguePage() {
   // Squares game picker
   const [gameId, setGameId] = useState('')
   const squaresSport = format === 'squares' && sport && sport !== 'all' ? sport : undefined
-  const { data: squaresGames } = useGames(squaresSport, 'upcoming', 7)
+  const { data: squaresGames } = useGames(squaresSport, 'upcoming', 14)
 
   // Bracket settings
   const [templateId, setTemplateId] = useState('')
@@ -181,17 +181,22 @@ export default function CreateLeaguePage() {
         name,
         format,
         sport: format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
-        duration: isFantasyFormat ? 'full_season' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
+        duration: isFantasyFormat ? 'full_season' : format === 'squares' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
-        starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format) ? getDfsStartDate() : startsAt || undefined,
-        ends_at: endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport) : endsAt || undefined,
+        starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format) ? getDfsStartDate()
+          : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
+          : startsAt || undefined,
+        ends_at: format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
+          : endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport)
+          : endsAt || undefined,
         settings,
         fantasy_settings: fantasySettings,
         visibility,
         joins_locked_at: ['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format)
           ? getDfsStartDate()
+          : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : visibility === 'open' && joinsLockedAt ? joinsLockedAt : undefined,
         backdrop_image: backdropImage || undefined,
       })
@@ -203,7 +208,7 @@ export default function CreateLeaguePage() {
   }
 
   const autoSportFormats = ['nba_dfs', 'mlb_dfs', 'hr_derby']
-  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby']
+  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares']
   const canSubmit = name && format && (sport || autoSportFormats.includes(format)) && (noDurationFormats.includes(format) || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
@@ -280,7 +285,7 @@ export default function CreateLeaguePage() {
         </div>}
 
         {/* Duration (not for fantasy/DFS formats — always full season) */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format) && <>
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares'].includes(format) && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
