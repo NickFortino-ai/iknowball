@@ -636,9 +636,20 @@ export default function LeagueDetailPage() {
     }
   }, [editingNote])
 
-  // Default to Live tab when any player's game has started
+  // Default tab selection
   useEffect(() => {
     if (!league || tabInitialized) return
+
+    // Completed survivor → default to Standings
+    if (league.format === 'survivor' && league.status === 'completed') {
+      const tabs = getLeagueTabs(league, false)
+      const standingsIdx = tabs.indexOf('Standings')
+      if (standingsIdx >= 0) setActiveTab(standingsIdx)
+      setTabInitialized(true)
+      return
+    }
+
+    // DFS → default to Live tab when games have started
     const liveData = league.format === 'nba_dfs' ? nbaLiveData : league.format === 'mlb_dfs' ? mlbLiveData : null
     if (!liveData && isDfsFormat) return // still loading
 
