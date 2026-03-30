@@ -711,7 +711,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                         </svg>
                       )}
                     </div>
-                    <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
+                    <div className="text-xs text-text-muted">{player.position} · {player.team} {player.opponent}</div>
                   </div>
                   {showPoints ? (
                     <span className={`text-sm font-display ${gameState === 'live' ? 'text-accent' : 'text-text-primary'}`}>
@@ -830,7 +830,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                       <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
                       <InjuryBadge status={player.injury_status} />
                     </div>
-                    <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
+                    <div className="text-xs text-text-muted">{player.position} · {player.team} {player.opponent}</div>
                   </div>
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${player.salary.toLocaleString()}</span>
                 </button>
