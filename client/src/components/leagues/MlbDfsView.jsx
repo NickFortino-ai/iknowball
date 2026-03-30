@@ -353,7 +353,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   if (playersLoading || rosterLoading) return <LoadingSpinner />
 
   return (
-    <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+    <div className="lg:grid lg:grid-cols-2 lg:gap-6 pb-24 lg:pb-0">
       {/* Left column: roster */}
       <div>
         {/* Date sub-tabs */}
@@ -437,7 +437,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                     {!isLocked && !isViewMode && (
                       <button
                         onClick={() => removeSlot(slot.key)}
-                        className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
+                        className="p-2 text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
                       >
                         &times;
                       </button>

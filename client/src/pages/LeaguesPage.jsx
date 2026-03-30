@@ -21,7 +21,7 @@ export default function LeaguesPage() {
   }, [leagues])
 
   return (
-    <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-6">
+    <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-6 pb-32">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="font-display text-3xl">My Leagues</h1>
         <div data-onboarding="leagues-actions" className="flex flex-col sm:flex-row gap-2">
