@@ -371,19 +371,27 @@ export async function scoreNBADFS() {
     await cleanupSingleNightNoRosters(today, season, true)
   }
 
-  // Also check yesterday in case late games weren't scored
+  // Also check yesterday in case late games weren't scored or weren't finalized
   const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
   yesterday.setDate(yesterday.getDate() - 1)
   const yesterdayStr = yesterday.toISOString().split('T')[0]
 
+  // Check if yesterday has unfinalized results (no winner set yet) or no results at all
   const { count: yesterdayResults } = await supabase
     .from('nba_dfs_nightly_results')
     .select('id', { count: 'exact', head: true })
     .eq('game_date', yesterdayStr)
     .eq('season', season)
 
-  // Re-score yesterday if we have no results yet (late games may have finished overnight)
-  if (!yesterdayResults || yesterdayResults === 0) {
+  const { count: yesterdayWinners } = await supabase
+    .from('nba_dfs_nightly_results')
+    .select('id', { count: 'exact', head: true })
+    .eq('game_date', yesterdayStr)
+    .eq('season', season)
+    .eq('is_night_winner', true)
+
+  // Re-score yesterday if no results OR results exist but no winner was set (allFinal was false)
+  if (!yesterdayResults || yesterdayResults === 0 || !yesterdayWinners) {
     const yester = await fetchCompletedGameStats(yesterdayStr)
     if (yester.playerStats.length > 0) {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
@@ -392,6 +400,38 @@ export async function scoreNBADFS() {
     }
     if (yester.allFinal) {
       await cleanupSingleNightNoRosters(yesterdayStr, season, true)
+    }
+  }
+
+  // Check for any older unfinalized dates (rosters exist but no winner set)
+  const { data: unfinalizedDates } = await supabase
+    .from('nba_dfs_rosters')
+    .select('game_date')
+    .eq('season', season)
+    .lt('game_date', yesterdayStr)
+
+  if (unfinalizedDates?.length) {
+    const uniqueDates = [...new Set(unfinalizedDates.map((r) => r.game_date))]
+    for (const d of uniqueDates) {
+      // Check if this date already has a winner
+      const { count: winnerCount } = await supabase
+        .from('nba_dfs_nightly_results')
+        .select('id', { count: 'exact', head: true })
+        .eq('game_date', d)
+        .eq('season', season)
+        .eq('is_night_winner', true)
+
+      if (winnerCount) continue // Already finalized
+
+      const older = await fetchCompletedGameStats(d)
+      if (older.playerStats.length > 0) {
+        await upsertPlayerStats(older.playerStats, d, season)
+        await scoreRosters(d, season, older.allFinal)
+        logger.info({ date: d, players: older.playerStats.length, allFinal: older.allFinal }, 'Scored older unfinalized NBA DFS games')
+      }
+      if (older.allFinal) {
+        await cleanupSingleNightNoRosters(d, season, true)
+      }
     }
   }
 }

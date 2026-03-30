@@ -648,6 +648,7 @@ export function useNbaDfsStandings(leagueId) {
     queryKey: ['nba-dfs', leagueId, 'standings'],
     queryFn: () => api.get(`/nba-dfs/standings?league_id=${leagueId}`),
     enabled: !!leagueId,
+    refetchInterval: 60000,
   })
 }
 
@@ -693,6 +694,7 @@ export function useMlbDfsStandings(leagueId) {
     queryKey: ['mlb-dfs', leagueId, 'standings'],
     queryFn: () => api.get(`/mlb-dfs/standings?league_id=${leagueId}`),
     enabled: !!leagueId,
+    refetchInterval: 60000,
   })
 }
 
