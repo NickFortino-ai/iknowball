@@ -16,7 +16,7 @@ import {
 } from '../../hooks/useLeagues'
 import { useMyPicks } from '../../hooks/usePicks'
 
-const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl'])
+const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl', 'icehockey_nhl'])
 
 function SettledPicksList({ leagueId, userId }) {
   const { data: picks, isLoading } = useUserLeaguePicks(leagueId, userId)

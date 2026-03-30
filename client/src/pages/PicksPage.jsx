@@ -32,7 +32,8 @@ const sportTabs = [
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
 
-const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl'])
+const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl', 'icehockey_nhl'])
+const GAME_INTEL_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'americanfootball_nfl', 'americanfootball_ncaaf', 'baseball_mlb', 'icehockey_nhl', 'soccer_usa_mls'])
 
 function getDateOffset(offset) {
   const d = new Date()
@@ -352,7 +353,7 @@ export default function PicksPage() {
                   onParlayToggle={handleParlayToggle}
                   hasInjuryData={INTEL_SPORTS.has(sportKey)}
                   onInjuryClick={() => setInjuryGameId(game.id)}
-                  onCardClick={() => setDetailGameId(game.id)}
+                  onCardClick={GAME_INTEL_SPORTS.has(sportKey) ? () => setDetailGameId(game.id) : undefined}
                 />
               ))}
             </div>
