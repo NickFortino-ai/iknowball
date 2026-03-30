@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useNbaDfsLive, useMlbDfsLive } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -587,6 +587,10 @@ export default function LeagueDetailPage() {
   const { data: threadUnread } = useThreadUnread(id)
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
+  const todayDate = new Date().toLocaleDateString('en-CA')
+  const isDfsFormat = ['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(league?.format)
+  const { data: nbaLiveData } = useNbaDfsLive(league?.format === 'nba_dfs' ? id : null, todayDate)
+  const { data: mlbLiveData } = useMlbDfsLive(league?.format === 'mlb_dfs' ? id : null, todayDate)
   const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
   const [editingNote, setEditingNote] = useState(false)
   const [noteExpanded, setNoteExpanded] = useState(() => {
@@ -623,19 +627,22 @@ export default function LeagueDetailPage() {
     }
   }, [editingNote])
 
-  // Default to Live tab for fantasy/DFS formats during game hours
+  // Default to Live tab when any player's game has started
   useEffect(() => {
     if (!league || tabInitialized) return
-    if (['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format)) {
+    const liveData = league.format === 'nba_dfs' ? nbaLiveData : league.format === 'mlb_dfs' ? mlbLiveData : null
+    if (!liveData && isDfsFormat) return // still loading
+
+    const hasLiveGames = liveData?.any_live || liveData?.all_final ||
+      (liveData?.first_tipoff && new Date(liveData.first_tipoff) <= new Date())
+
+    if (hasLiveGames) {
       const tabs = getLeagueTabs(league, false)
       const liveIdx = tabs.indexOf('Live')
-      if (liveIdx >= 0) {
-        const hour = new Date().getHours()
-        if (hour >= 12) setActiveTab(liveIdx)
-      }
+      if (liveIdx >= 0) setActiveTab(liveIdx)
     }
     setTabInitialized(true)
-  }, [league, tabInitialized])
+  }, [league, tabInitialized, nbaLiveData, mlbLiveData, isDfsFormat])
 
   if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
   if (!league) return null
