@@ -11,7 +11,7 @@ import { FALLBACK_TEAMS } from './teams.js'
 const router = Router()
 
 const hotTakeSchema = z.object({
-  content: z.string().min(1).max(280),
+  content: z.string().max(280).optional().default(''),
   team_tags: z.array(z.string().max(50)).max(5).optional(),
   sport_key: z.string().max(50).optional(),
   image_url: z.string().url().optional(),
@@ -20,6 +20,8 @@ const hotTakeSchema = z.object({
   user_tags: z.array(z.string().uuid()).max(3).optional(),
   post_type: z.enum(['post', 'prediction', 'poll']).optional(),
   poll_options: z.array(z.string().min(1).max(100)).min(2).max(6).optional(),
+}).refine((data) => data.content || data.image_url || data.image_urls?.length || data.video_url, {
+  message: 'Post must have text, an image, or a video',
 })
 
 router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {
