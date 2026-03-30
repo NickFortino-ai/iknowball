@@ -88,7 +88,10 @@ export async function claimSquare(leagueId, userId, rowPos, colPos) {
     throw error
   }
 
-  return data
+  // Auto-lock digits when all 100 squares are claimed
+  const locked = await autoLockIfFull(board.id, leagueId)
+
+  return { ...data, digits_just_locked: locked }
 }
 
 export async function randomAssignSquares(leagueId, userId) {
@@ -159,7 +162,57 @@ export async function randomAssignSquares(leagueId, userId) {
     throw error
   }
 
+  // Auto-lock digits since all 100 squares are now assigned
+  await autoLockIfFull(board.id, leagueId)
+
   return claims.length
+}
+
+async function autoLockIfFull(boardId, leagueId) {
+  const { count } = await supabase
+    .from('squares_claims')
+    .select('id', { count: 'exact', head: true })
+    .eq('board_id', boardId)
+
+  if (count < 100) return false
+
+  // Check not already locked
+  const { data: board } = await supabase
+    .from('squares_boards')
+    .select('digits_locked')
+    .eq('id', boardId)
+    .single()
+
+  if (board?.digits_locked) return false
+
+  const shuffle = (arr) => {
+    const a = [...arr]
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[a[i], a[j]] = [a[j], a[i]]
+    }
+    return a
+  }
+
+  const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  const { error } = await supabase
+    .from('squares_boards')
+    .update({
+      row_digits: shuffle(digits),
+      col_digits: shuffle(digits),
+      digits_locked: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', boardId)
+    .eq('digits_locked', false)
+
+  if (error) {
+    logger.error({ error, boardId }, 'Failed to auto-lock digits')
+    return false
+  }
+
+  logger.info({ boardId, leagueId }, 'Auto-locked digits — all 100 squares claimed')
+  return true
 }
 
 export async function lockDigits(leagueId, userId) {
