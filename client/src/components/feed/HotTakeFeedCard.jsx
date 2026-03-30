@@ -4,7 +4,7 @@ import FeedCardWrapper from './FeedCardWrapper'
 import ImageLightbox from './ImageLightbox'
 import TeamAutocomplete from './TeamAutocomplete'
 import Avatar from '../ui/Avatar'
-import { useUpdateHotTake, useHotTakeImageUpload, useHotTakeVideoUpload, useTeamsForSport, useToggleBookmark, useRemindHotTake } from '../../hooks/useHotTakes'
+import { useUpdateHotTake, useDeleteHotTake, useHotTakeImageUpload, useHotTakeVideoUpload, useTeamsForSport, useToggleBookmark, useRemindHotTake } from '../../hooks/useHotTakes'
 import { useSearchUsers } from '../../hooks/useInvitations'
 import { useActiveSports } from '../../hooks/useGames'
 import { useAuth } from '../../hooks/useAuth'
@@ -195,6 +195,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   const [existingImageUrl, setExistingImageUrl] = useState(null)
   const [existingVideoUrl, setExistingVideoUrl] = useState(null)
   const updateHotTake = useUpdateHotTake()
+  const deleteHotTake = useDeleteHotTake()
   const { uploading, previewUrl, selectImage, removeImage, uploadImage, hasImage } = useHotTakeImageUpload()
   const { uploading: videoUploading, previewUrl: videoPreviewUrl, selectVideo, removeVideo, uploadVideo, hasVideo } = useHotTakeVideoUpload()
   const fileInputRef = useRef(null)
@@ -554,6 +555,21 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (!window.confirm('Delete this post? This cannot be undone.')) return
+                  try {
+                    await deleteHotTake.mutateAsync(hot_take.id)
+                    toast('Post deleted', 'info')
+                  } catch (err) {
+                    toast(err.message || 'Failed to delete', 'error')
+                  }
+                }}
+                disabled={deleteHotTake.isPending}
+                className="text-xs text-incorrect hover:text-incorrect/80 transition-colors disabled:opacity-50"
+              >
+                Delete
+              </button>
               <button
                 onClick={cancelEditing}
                 className="text-xs text-text-muted hover:text-text-secondary transition-colors"
