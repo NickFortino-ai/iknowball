@@ -70,6 +70,17 @@ function LeagueSettingsPreview({ league }) {
   )
 }
 
+function formatRunsUntil(league) {
+  if (league.format === 'survivor') return 'Last one standing'
+  if (league.format === 'squares') return 'End of game'
+  if (league.duration === 'full_season') return 'End of season'
+  if (league.duration === 'playoffs_only') return 'End of playoffs'
+  if (league.ends_at) {
+    return formatStartDate(league.ends_at)
+  }
+  return null
+}
+
 export default function JoinLeaguePage() {
   const [code, setCode] = useState('')
   const joinLeague = useJoinLeague()
@@ -102,7 +113,7 @@ export default function JoinLeaguePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 pt-6 pb-32">
+    <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
       <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
         &larr; My Leagues
       </Link>
@@ -170,8 +181,10 @@ export default function JoinLeaguePage() {
 
                   <div className="relative z-10 p-5">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <h3 className="font-display text-xl text-white truncate">{league.name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-display text-xl text-white truncate">{league.name}</h3>
+                        </div>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
                             {FORMAT_LABELS[league.format] || league.format}
@@ -185,22 +198,22 @@ export default function JoinLeaguePage() {
                           <span className="text-xs">by {league.commissioner}</span>
                           {league.starts_at && (
                             <span className="text-sm text-yellow-500 font-semibold">
-                              {formatStartDate(league.starts_at)} – {league.duration === 'full_season' || league.duration === 'playoffs_only'
-                                ? (league.duration === 'full_season' ? 'End of season' : 'End of playoffs')
-                                : league.ends_at ? formatStartDate(league.ends_at) : 'TBD'}
+                              {formatStartDate(league.starts_at)} – {formatRunsUntil(league) || 'TBD'}
                             </span>
                           )}
                         </div>
                         <LeagueSettingsPreview league={league} />
                       </div>
 
-                      <button
-                        onClick={() => handleJoinOpen(league.id)}
-                        disabled={joiningId === league.id}
-                        className="flex-shrink-0 px-6 py-2.5 rounded-xl font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer"
-                      >
-                        {joiningId === league.id ? '...' : 'Join'}
-                      </button>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleJoinOpen(league.id)}
+                          disabled={joiningId === league.id}
+                          className="px-6 py-2.5 rounded-xl font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                          {joiningId === league.id ? '...' : 'Join'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

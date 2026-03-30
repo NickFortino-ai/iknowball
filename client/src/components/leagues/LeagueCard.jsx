@@ -22,6 +22,17 @@ const SPORT_LABELS = {
   all: 'All Sports',
 }
 
+function formatRunsUntil(league) {
+  if (league.format === 'survivor') return 'Last one standing'
+  if (league.format === 'squares') return 'End of game'
+  if (league.duration === 'full_season') return 'End of season'
+  if (league.duration === 'playoffs_only') return 'End of playoffs'
+  if (league.ends_at) {
+    return new Date(league.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
+  }
+  return null
+}
+
 const STATUS_STYLES = {
   open: 'bg-correct/20 text-correct',
   active: 'bg-accent/20 text-accent',
@@ -47,7 +58,7 @@ export default function LeagueCard({ league }) {
           <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/80 via-bg-primary/60 to-bg-primary/80 pointer-events-none" />
         </>
       )}
-      <div className="relative z-10 p-4">
+      <div className="relative z-10 p-5">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-display text-lg truncate text-white">{league.name}</h3>
           <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
@@ -64,6 +75,11 @@ export default function LeagueCard({ league }) {
             <span className="font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">Commish</span>
           )}
         </div>
+        {formatRunsUntil(league) && (
+          <div className="text-xs text-text-muted mt-1.5">
+            Runs until <span className="text-text-secondary font-medium">{formatRunsUntil(league)}</span>
+          </div>
+        )}
       </div>
     </Link>
   )
