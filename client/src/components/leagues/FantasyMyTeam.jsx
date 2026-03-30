@@ -1,6 +1,23 @@
 import { useFantasyRoster } from '../../hooks/useLeagues'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
+const INJURY_COLORS = {
+  Out: 'bg-incorrect/20 text-incorrect',
+  Questionable: 'bg-yellow-500/20 text-yellow-500',
+  Probable: 'bg-correct/20 text-correct',
+  'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
+}
+
+function InjuryBadge({ status }) {
+  if (!status) return null
+  const label = status === 'Day-To-Day' ? 'DTD' : status.charAt(0)
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'}`} title={status}>
+      {label}
+    </span>
+  )
+}
+
 export default function FantasyMyTeam({ league }) {
   const { data: roster, isLoading } = useFantasyRoster(league.id)
 
@@ -33,7 +50,10 @@ export default function FantasyMyTeam({ league }) {
             />
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-text-primary truncate">{r.nfl_players?.full_name}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-semibold text-text-primary truncate">{r.nfl_players?.full_name}</span>
+              <InjuryBadge status={r.nfl_players?.injury_status} />
+            </div>
             <div className="text-xs text-text-muted">{r.nfl_players?.position} · {r.nfl_players?.team || 'FA'}</div>
           </div>
           <span className="text-xs text-text-muted uppercase">{r.slot}</span>

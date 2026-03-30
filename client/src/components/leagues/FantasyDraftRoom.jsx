@@ -7,6 +7,23 @@ import { toast } from '../ui/Toast'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 
+const INJURY_COLORS = {
+  Out: 'bg-incorrect/20 text-incorrect',
+  Questionable: 'bg-yellow-500/20 text-yellow-500',
+  Probable: 'bg-correct/20 text-correct',
+  'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
+}
+
+function InjuryBadge({ status }) {
+  if (!status) return null
+  const label = status === 'Day-To-Day' ? 'DTD' : status.charAt(0)
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'}`} title={status}>
+      {label}
+    </span>
+  )
+}
+
 export default function FantasyDraftRoom({ league }) {
   const { profile } = useAuth()
   const { data: draftData, isLoading } = useDraftBoard(league.id)
@@ -223,7 +240,10 @@ export default function FantasyDraftRoom({ league }) {
                   onError={(e) => { e.target.style.display = 'none' }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-text-primary truncate">{player.full_name}</span>
+                    <InjuryBadge status={player.injury_status} />
+                  </div>
                   <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
                 </div>
                 <div className="text-xs text-text-muted shrink-0">

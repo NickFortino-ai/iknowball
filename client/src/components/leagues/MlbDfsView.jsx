@@ -429,7 +429,9 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
             <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
           </div>
           {SLOTS.map((slot) => {
-            const player = roster[slot.key]
+            const rosterPlayer = roster[slot.key]
+            // Refresh injury status from latest players data
+            const player = rosterPlayer ? (players?.find((p) => p.espn_player_id === rosterPlayer.espn_player_id) || rosterPlayer) : null
             const gameState = player ? getPlayerGameState(player) : null
             const isLocked = gameState === 'live' || gameState === 'final'
             return (
