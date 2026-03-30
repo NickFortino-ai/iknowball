@@ -711,7 +711,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                         </svg>
                       )}
                     </div>
-                    <div className="text-xs text-text-muted">{player.team} · {player.opponent}</div>
+                    <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
                   </div>
                   {showPoints ? (
                     <span className={`text-sm font-display ${gameState === 'live' ? 'text-accent' : 'text-text-primary'}`}>
