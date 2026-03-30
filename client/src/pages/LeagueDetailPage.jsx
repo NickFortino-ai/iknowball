@@ -1008,12 +1008,12 @@ export default function LeagueDetailPage() {
           <button
             key={tab}
             onClick={() => !isLiveDisabled && setActiveTab(i)}
-            className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors backdrop-blur-sm ${
               isLiveDisabled
-                ? 'bg-bg-card text-text-muted/40 cursor-not-allowed'
+                ? 'bg-bg-primary/40 text-text-muted/40 cursor-not-allowed border border-text-primary/10'
                 : activeTab === i
                   ? 'bg-accent text-white'
-                  : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                  : 'bg-bg-primary/50 text-text-secondary hover:bg-bg-primary/70 border border-text-primary/20'
             }`}
           >
             {tab}
