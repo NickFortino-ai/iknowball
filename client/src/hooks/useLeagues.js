@@ -22,6 +22,7 @@ export function useLeague(id) {
     queryKey: ['leagues', id],
     queryFn: () => api.get(`/leagues/${id}`),
     enabled: !!id,
+    refetchInterval: 60000,
   })
 }
 
@@ -518,6 +519,7 @@ export function useFantasyRoster(leagueId) {
     queryKey: ['leagues', leagueId, 'fantasy', 'roster'],
     queryFn: () => api.get(`/leagues/${leagueId}/fantasy/roster`),
     enabled: !!leagueId,
+    refetchInterval: 60000,
   })
 }
 
@@ -530,6 +532,7 @@ export function useAvailablePlayers(leagueId, query, position) {
     queryFn: () => api.get(`/leagues/${leagueId}/fantasy/players?${params}`),
     enabled: !!leagueId,
     staleTime: 10_000,
+    refetchInterval: 120000,
   })
 }
 
