@@ -230,7 +230,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                 {rowTeamName.split(' ').pop()}
               </span>
             </div>
-            <table className="border-collapse">
+            <table className="border-collapse table-fixed">
               {/* Column headers (home team digits) */}
               <thead>
                 <tr>
@@ -266,7 +266,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                           if (cell && onUserTap) onUserTap(cell.user_id)
                           else if (!cell && isSelfSelect && !board.digits_locked) handleClaim(r, c)
                         }}
-                        className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] border border-border transition-colors ${
+                        className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] p-0 overflow-hidden border border-border transition-colors ${
                           isWinning
                             ? 'bg-accent/30'
                             : cell
@@ -280,7 +280,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                       >
                         <div className="w-full h-full flex items-center justify-center">
                           {cell ? (
-                            <Avatar user={cell.users} size="sm" className="lg:w-10 lg:h-10" />
+                            <Avatar user={cell.users} size="xs" className="lg:!w-9 lg:!h-9 lg:!text-sm" />
                           ) : null}
                         </div>
                       </td>
