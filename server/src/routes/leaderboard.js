@@ -28,26 +28,38 @@ router.get('/royalty', requireAuth, async (req, res, next) => {
 
 // Leagues leaderboard — aggregate league finish points
 router.get('/leagues', requireAuth, async (req, res) => {
-  const { data, error } = await supabase
-    .from('bonus_points')
-    .select('user_id, league_id, points, type, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
-    .in('type', ['league_win', 'bracket_finish', 'league_finish', 'survivor_win', 'league_pickem_earned'])
+  // Fetch bonus points and actual league membership in parallel
+  const [bonusRes, memberRes] = await Promise.all([
+    supabase
+      .from('bonus_points')
+      .select('user_id, league_id, points, type, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
+      .in('type', ['league_win', 'bracket_finish', 'league_finish', 'survivor_win', 'league_pickem_earned']),
+    supabase
+      .from('league_members')
+      .select('user_id, league_id, leagues!inner(status)')
+      .eq('leagues.status', 'completed'),
+  ])
 
-  if (error) throw error
+  if (bonusRes.error) throw bonusRes.error
+  if (memberRes.error) throw memberRes.error
+
+  // Build map of completed leagues per user from league_members
+  const completedLeaguesMap = {}
+  for (const m of (memberRes.data || [])) {
+    if (!completedLeaguesMap[m.user_id]) completedLeaguesMap[m.user_id] = new Set()
+    completedLeaguesMap[m.user_id].add(m.league_id)
+  }
 
   const userMap = {}
-  for (const b of (data || [])) {
+  for (const b of (bonusRes.data || [])) {
     if (!userMap[b.user_id]) {
-      userMap[b.user_id] = { user: b.users, leaguePoints: 0, wins: 0, leagueIds: new Set(), leagueResults: {} }
+      userMap[b.user_id] = { user: b.users, leaguePoints: 0, wins: 0, leagueResults: {} }
     }
     userMap[b.user_id].leaguePoints += b.points
     if (b.type === 'league_win' || b.type === 'survivor_win') userMap[b.user_id].wins++
 
-    // Track unique leagues and best result per league (for top-half calc)
+    // Track best result per league for top-half calc
     if (b.league_id) {
-      userMap[b.user_id].leagueIds.add(b.league_id)
-      // Store the finish type per league — league_win/survivor_win count as top half
-      // league_finish with positive points = top half
       const existing = userMap[b.user_id].leagueResults[b.league_id]
       if (!existing || b.type === 'league_win' || b.type === 'survivor_win') {
         userMap[b.user_id].leagueResults[b.league_id] = { points: b.points, type: b.type }
@@ -55,14 +67,15 @@ router.get('/leagues', requireAuth, async (req, res) => {
     }
   }
 
-  // Calculate leagues played and top-half percentage from unique leagues
+  // Calculate leagues played from league_members (not bonus_points) and top-half percentage
   for (const u of Object.values(userMap)) {
-    u.leaguesPlayed = u.leagueIds.size
+    const completedLeagues = completedLeaguesMap[u.user.id]
+    u.leaguesPlayed = completedLeagues ? completedLeagues.size : 0
     const results = Object.values(u.leagueResults)
     const topHalf = results.filter((r) =>
       r.type === 'league_win' || r.type === 'survivor_win' || r.points > 0
     ).length
-    u.topHalfPct = results.length > 0 ? Math.round((topHalf / results.length) * 100) : 0
+    u.topHalfPct = u.leaguesPlayed > 0 ? Math.round((topHalf / u.leaguesPlayed) * 100) : 0
   }
 
   const leaderboard = Object.values(userMap)
