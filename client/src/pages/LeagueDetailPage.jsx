@@ -760,8 +760,8 @@ export default function LeagueDetailPage() {
         </div>
       </div>
 
-      {/* Champion Card */}
-      {league.champion && (
+      {/* Champion Card (not for survivor — handled by SurvivorStandings) */}
+      {league.champion && league.format !== 'survivor' && (
         <div className="mb-6 rounded-xl border-2 border-yellow-500 p-5 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
           <div className="relative">
