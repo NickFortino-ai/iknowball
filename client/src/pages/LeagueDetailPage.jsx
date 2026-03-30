@@ -772,7 +772,7 @@ export default function LeagueDetailPage() {
           : `/trophies/medal-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
         const outlasted = mc > 1 ? mc - 1 : 0
         return (
-        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-8 px-6 relative overflow-hidden">
+        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-10 px-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
           <div className="relative flex items-center justify-center gap-4">
             <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0" />
@@ -781,10 +781,10 @@ export default function LeagueDetailPage() {
                 <img
                   src={league.champion.user.avatar_url}
                   alt={league.champion.user.display_name}
-                  className="w-20 h-20 rounded-full object-cover ring-2 ring-yellow-500"
+                  className="w-28 h-28 rounded-full object-cover ring-3 ring-yellow-500"
                 />
               ) : (
-                <Avatar user={league.champion.user} size="2xl" className="!w-20 !h-20 !text-3xl" />
+                <Avatar user={league.champion.user} size="2xl" className="!w-28 !h-28 !text-4xl" />
               )}
             </button>
             <div className="min-w-0">
