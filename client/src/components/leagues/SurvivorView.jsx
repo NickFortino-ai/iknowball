@@ -32,7 +32,15 @@ export default function SurvivorView({ league }) {
   // Use pick_week from board (advances past locked picks) with fallback to current_week
   const pickWeek = board?.pick_week || currentWeek
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
-  const currentPickTeam = localPickTeam || board?.current_pick?.team_name
+
+  // Find current pick: prefer board.current_pick, fall back to user's latest pending pick from member data
+  const fallbackPickTeam = useMemo(() => {
+    if (board?.current_pick?.team_name) return null
+    const myEntry = board?.members?.find((m) => m.users?.id === currentUserId)
+    const pendingPick = myEntry?.picks?.find((p) => p.status === 'pending')
+    return pendingPick?.team_name || null
+  }, [board, currentUserId])
+  const currentPickTeam = localPickTeam || board?.current_pick?.team_name || fallbackPickTeam
 
   // Winner detection
   const isWinner = board?.survivor_winner?.user_id === currentUserId
