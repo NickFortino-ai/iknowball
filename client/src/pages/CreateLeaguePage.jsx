@@ -1121,6 +1121,15 @@ export default function CreateLeaguePage() {
                   </div>
                 ))}
               </div>
+              {(() => {
+                const total = pointsPerQuarter.reduce((sum, q) => sum + (q || 0), 0)
+                if (!total) return null
+                return (
+                  <div className="mt-2 text-xs text-text-muted text-center">
+                    Total: <span className="text-text-primary font-semibold">{total} pts</span> across 4 quarters · <span className="text-accent font-semibold">{(total / 100).toFixed(total % 100 === 0 ? 0 : 1)} pts</span> per square
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )}
