@@ -223,7 +223,7 @@ function LiveView({ league, date: leagueDate }) {
                     { label: 'BLK', value: slot.stats.blk },
                     { label: 'TO', value: slot.stats.to },
                     { label: '3PM', value: slot.stats.threes },
-                  ].filter((s) => s.value > 0).map((s) => `${s.value} ${s.label}`).join(' | ') : null
+                  ].filter((s) => s.value > 0).map((s) => `${s.value} ${s.label}`).join(' \u00b7 ') : null
 
                   return (
                     <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-3.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
