@@ -895,7 +895,7 @@ export default function LeagueDetailPage() {
 
       {/* Commissioner's Note */}
       {editingNote ? (
-        <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10">
+        <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm">
           <div className="text-xs font-semibold text-text-secondary mb-2">Commissioner's Note</div>
           <textarea
             ref={noteRef}
@@ -937,7 +937,7 @@ export default function LeagueDetailPage() {
           </div>
         </div>
       ) : league.commissioner_note ? (
-        <div className="rounded-xl border border-text-primary/20 mb-6 relative z-10">
+        <div className="rounded-xl border border-text-primary/20 mb-6 relative z-10 bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm">
           <button
             onClick={() => {
               setNoteExpanded((v) => {
