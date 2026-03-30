@@ -219,13 +219,13 @@ export default function SquaresView({ league, isCommissioner }) {
       <div className="overflow-x-auto flex justify-center">
         <div className="inline-block">
           {/* Column team name above grid */}
-          <div className="text-center pl-10 lg:pl-14 mb-2">
-            <span className="text-xs lg:text-sm font-bold text-accent tracking-wider uppercase">{colTeamName.split(' ').pop()}</span>
+          <div className="text-center pl-10 lg:pl-16 mb-2 lg:mb-3">
+            <span className="text-sm lg:text-2xl font-display text-white tracking-wider uppercase">{colTeamName.split(' ').pop()}</span>
           </div>
           <div className="flex">
             {/* Row team name beside grid (vertical) */}
-            <div className="flex items-center justify-center w-6 lg:w-8 shrink-0">
-              <span className="text-xs lg:text-sm font-bold text-accent tracking-wider uppercase whitespace-nowrap" style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}>
+            <div className="flex items-center justify-center w-8 lg:w-12 shrink-0">
+              <span className="text-sm lg:text-2xl font-display text-white tracking-wider uppercase whitespace-nowrap" style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}>
                 {rowTeamName.split(' ').pop()}
               </span>
             </div>
@@ -233,9 +233,9 @@ export default function SquaresView({ league, isCommissioner }) {
               {/* Column headers (home team digits) */}
               <thead>
                 <tr>
-                  <th className="w-8 h-8 lg:w-14 lg:h-12" />
+                  <th className="w-8 h-8 lg:w-[4.5rem] lg:h-12" />
                   {Array.from({ length: 10 }, (_, i) => (
-                    <th key={i} className="w-10 h-8 lg:w-14 lg:h-12 text-center text-xs lg:text-sm font-semibold text-accent">
+                    <th key={i} className="w-10 h-8 lg:w-[4.5rem] lg:h-12 text-center text-xs lg:text-base font-semibold text-accent">
                       {board.digits_locked ? board.col_digits[i] : '?'}
                     </th>
                   ))}
@@ -245,7 +245,7 @@ export default function SquaresView({ league, isCommissioner }) {
                 {grid.map((row, r) => (
                   <tr key={r}>
                     {/* Row header (away team digit) */}
-                    <td className="w-8 h-10 lg:w-14 lg:h-14 text-center text-xs lg:text-sm font-semibold text-accent">
+                    <td className="w-8 h-10 lg:w-[4.5rem] lg:h-[4.5rem] text-center text-xs lg:text-base font-semibold text-accent">
                       {board.digits_locked ? board.row_digits[r] : '?'}
                     </td>
                   {row.map((cell, c) => {
@@ -264,7 +264,7 @@ export default function SquaresView({ league, isCommissioner }) {
                         onClick={() => {
                           if (!cell && isSelfSelect && !board.digits_locked) handleClaim(r, c)
                         }}
-                        className={`w-10 h-10 lg:w-14 lg:h-14 text-center border border-border text-[9px] lg:text-xs font-semibold transition-colors ${
+                        className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] text-center border border-border text-[9px] lg:text-sm font-semibold transition-colors ${
                           isWinning
                             ? 'bg-accent/30 text-accent'
                             : cell
