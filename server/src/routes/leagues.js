@@ -38,6 +38,7 @@ import {
 import {
   getBoard,
   claimSquare,
+  unclaimSquare,
   randomAssignSquares,
   lockDigits,
   scoreQuarter,
@@ -566,6 +567,11 @@ const claimSquareSchema = z.object({
 router.post('/:id/squares/claim', requireAuth, validate(claimSquareSchema), async (req, res) => {
   const claim = await claimSquare(req.params.id, req.user.id, req.validated.row_pos, req.validated.col_pos)
   res.status(201).json(claim)
+})
+
+router.post('/:id/squares/unclaim', requireAuth, validate(claimSquareSchema), async (req, res) => {
+  const result = await unclaimSquare(req.params.id, req.user.id, req.validated.row_pos, req.validated.col_pos)
+  res.json(result)
 })
 
 router.post('/:id/squares/random-assign', requireAuth, async (req, res) => {

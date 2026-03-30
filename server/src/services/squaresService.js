@@ -94,6 +94,58 @@ export async function claimSquare(leagueId, userId, rowPos, colPos) {
   return { ...data, digits_just_locked: locked }
 }
 
+export async function unclaimSquare(leagueId, userId, rowPos, colPos) {
+  const { data: board } = await supabase
+    .from('squares_boards')
+    .select('id, digits_locked')
+    .eq('league_id', leagueId)
+    .single()
+
+  if (!board) {
+    const err = new Error('Squares board not found')
+    err.status = 404
+    throw err
+  }
+
+  if (board.digits_locked) {
+    const err = new Error('Cannot remove squares after digits are locked')
+    err.status = 400
+    throw err
+  }
+
+  const { data: claim } = await supabase
+    .from('squares_claims')
+    .select('id, user_id')
+    .eq('board_id', board.id)
+    .eq('row_pos', rowPos)
+    .eq('col_pos', colPos)
+    .single()
+
+  if (!claim) {
+    const err = new Error('No claim found at this position')
+    err.status = 404
+    throw err
+  }
+
+  if (claim.user_id !== userId) {
+    const err = new Error('You can only remove your own squares')
+    err.status = 403
+    throw err
+  }
+
+  const { error } = await supabase
+    .from('squares_claims')
+    .delete()
+    .eq('id', claim.id)
+
+  if (error) {
+    logger.error({ error }, 'Failed to unclaim square')
+    throw error
+  }
+
+  return { removed: true }
+}
+
 export async function randomAssignSquares(leagueId, userId) {
   const { data: league } = await supabase
     .from('leagues')

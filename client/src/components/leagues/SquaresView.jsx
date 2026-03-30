@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   useSquaresBoard,
   useClaimSquare,
+  useUnclaimSquare,
   useRandomAssignSquares,
   useLockDigits,
   useScoreQuarter,
@@ -20,6 +21,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
   const { data: board, isLoading } = useSquaresBoard(league.id)
   const { profile } = useAuth()
   const claimSquare = useClaimSquare()
+  const unclaimSquare = useUnclaimSquare()
   const randomAssign = useRandomAssignSquares()
   const lockDigitsM = useLockDigits()
   const scoreQuarterM = useScoreQuarter()
@@ -54,6 +56,15 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
       toast('Square claimed!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to claim square', 'error')
+    }
+  }
+
+  async function handleUnclaim(row, col) {
+    try {
+      await unclaimSquare.mutateAsync({ leagueId: league.id, rowPos: row, colPos: col })
+      toast('Square removed', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to remove square', 'error')
     }
   }
 
@@ -263,7 +274,8 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                       <td
                         key={c}
                         onClick={() => {
-                          if (cell && onUserTap) onUserTap(cell.user_id)
+                          if (cell && isMe && !board.digits_locked) handleUnclaim(r, c)
+                          else if (cell && onUserTap) onUserTap(cell.user_id)
                           else if (!cell && isSelfSelect && !board.digits_locked) handleClaim(r, c)
                         }}
                         className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] p-0 overflow-hidden border border-border transition-colors ${

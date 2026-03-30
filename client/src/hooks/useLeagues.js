@@ -312,6 +312,18 @@ export function useClaimSquare() {
   })
 }
 
+export function useUnclaimSquare() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ leagueId, rowPos, colPos }) =>
+      api.post(`/leagues/${leagueId}/squares/unclaim`, { row_pos: rowPos, col_pos: colPos }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'squares'] })
+    },
+  })
+}
+
 export function useRandomAssignSquares() {
   const queryClient = useQueryClient()
 
