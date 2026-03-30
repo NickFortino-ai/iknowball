@@ -23,22 +23,26 @@ import Avatar from '../components/ui/Avatar'
 import { toast } from '../components/ui/Toast'
 
 function getLeagueTabs(league, isBracketLocked) {
+  const isOpen = league.status === 'open'
+  const memberOrStandings = isOpen ? 'Members' : 'Standings'
+
   if (league.format === 'pickem' && league.use_league_picks) {
-    return ['Picks', 'Standings', 'Members', 'Thread']
+    return ['Picks', memberOrStandings, 'Thread']
   }
   if (league.format === 'bracket') {
-    return isBracketLocked ? ['Bracket', 'Standings', 'Thread'] : ['Bracket', 'Standings', 'Members', 'Thread']
+    return isBracketLocked ? ['Bracket', 'Standings', 'Thread'] : ['Bracket', memberOrStandings, 'Thread']
   }
+
   const TABS = {
-    pickem: ['Standings', 'Members', 'Thread'],
-    survivor: ['Picks', 'Members', 'Thread'],
-    squares: ['Board', 'Members', 'Thread'],
-    fantasy: ['My Team', 'Players', 'Matchups', 'Standings', 'Draft', 'Thread'],
-    nba_dfs: ['Roster', 'Live', 'Standings'],
-    mlb_dfs: ['Roster', 'Live', 'Standings'],
-    hr_derby: ['Picks', 'Standings', 'Thread'],
+    pickem: [memberOrStandings, 'Thread'],
+    survivor: ['Picks', memberOrStandings, 'Thread'],
+    squares: ['Board', memberOrStandings, 'Thread'],
+    fantasy: ['My Team', 'Players', 'Matchups', memberOrStandings, 'Draft', 'Thread'],
+    nba_dfs: ['Roster', 'Live', memberOrStandings],
+    mlb_dfs: ['Roster', 'Live', memberOrStandings],
+    hr_derby: ['Picks', memberOrStandings, 'Thread'],
   }
-  return TABS[league.format] || ['Members', 'Thread']
+  return TABS[league.format] || [memberOrStandings, 'Thread']
 }
 
 const FORMAT_LABELS = {
@@ -689,15 +693,6 @@ export default function LeagueDetailPage() {
           </button>
         </div>
         <div className="flex items-center justify-center gap-5 mt-2">
-          <button
-            onClick={() => setShowMembersModal(true)}
-            className="text-xs text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
-          >
-            {league.members?.length || 0} member{league.members?.length !== 1 ? 's' : ''}
-            {league.status === 'open' && league.pending_invitations?.length > 0 && (
-              <span className="text-text-muted"> + {league.pending_invitations.length} pending</span>
-            )}
-          </button>
           {isCommissioner && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">
               Commissioner
@@ -1053,6 +1048,17 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Standings' && league.format === 'pickem' && (
         <div className="relative z-10"><PickemView league={league} standings={standings} mode="standings" /></div>
+      )}
+
+      {tabs[activeTab] === 'Standings' && (league.format === 'survivor' || league.format === 'squares') && (
+        <div className="relative z-10"><MembersList
+          members={league.members}
+          pendingInvitations={[]}
+          commissionerId={league.commissioner_id}
+          leagueId={league.id}
+          isCommissioner={isCommissioner}
+          onUserTap={setSelectedUserId}
+        /></div>
       )}
 
       {tabs[activeTab] === 'Picks' && league.format === 'survivor' && (
