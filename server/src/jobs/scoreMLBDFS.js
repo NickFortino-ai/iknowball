@@ -149,7 +149,7 @@ async function upsertPlayerStats(playerStats, date, season) {
 /**
  * Score all MLB DFS rosters for the given date.
  */
-async function scoreRosters(date, season) {
+async function scoreRosters(date, season, allFinal = false) {
   const { data: stats } = await supabase
     .from('mlb_dfs_player_stats')
     .select('espn_player_id, fantasy_points')
@@ -206,7 +206,7 @@ async function scoreRosters(date, season) {
       season,
       total_points: e.totalPoints,
       night_rank: i + 1,
-      is_night_winner: i === 0 && entries.length > 1,
+      is_night_winner: allFinal && i === 0 && entries.length > 1,
     }))
 
     const { error } = await supabase
@@ -270,7 +270,7 @@ export async function scoreMLBDFS() {
 
   if (playerStats.length > 0) {
     await upsertPlayerStats(playerStats, today, season)
-    await scoreRosters(today, season)
+    await scoreRosters(today, season, allFinal)
     logger.info({ date: today, players: playerStats.length, allFinal }, 'MLB DFS scoring pass complete')
   }
 
@@ -289,8 +289,8 @@ export async function scoreMLBDFS() {
     const yester = await fetchCompletedGameStats(yesterdayStr)
     if (yester.playerStats.length > 0) {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
-      await scoreRosters(yesterdayStr, season)
-      logger.info({ date: yesterdayStr, players: yester.playerStats.length }, 'Scored yesterday MLB DFS games')
+      await scoreRosters(yesterdayStr, season, yester.allFinal)
+      logger.info({ date: yesterdayStr, players: yester.playerStats.length, allFinal: yester.allFinal }, 'Scored yesterday MLB DFS games')
     }
   }
 }

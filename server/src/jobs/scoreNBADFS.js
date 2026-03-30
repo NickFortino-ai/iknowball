@@ -131,7 +131,7 @@ async function upsertPlayerStats(playerStats, date, season) {
  * Score all rosters for the given date: update each slot's points_earned,
  * then aggregate to roster total_points and nightly_results.
  */
-async function scoreRosters(date, season) {
+async function scoreRosters(date, season, allFinal = false) {
   // Get all fantasy points for this date
   const { data: stats } = await supabase
     .from('nba_dfs_player_stats')
@@ -192,7 +192,7 @@ async function scoreRosters(date, season) {
       season,
       total_points: e.totalPoints,
       night_rank: i + 1,
-      is_night_winner: i === 0 && entries.length > 1,
+      is_night_winner: allFinal && i === 0 && entries.length > 1,
     }))
 
     const { error } = await supabase
@@ -202,7 +202,7 @@ async function scoreRosters(date, season) {
     if (error) logger.error({ error, leagueId, date }, 'Failed to upsert NBA DFS nightly results')
   }
 
-  logger.info({ rosters: rosters.length, date }, 'Scored NBA DFS rosters')
+  logger.info({ rosters: rosters.length, date, allFinal }, 'Scored NBA DFS rosters')
 }
 
 /**
@@ -363,7 +363,7 @@ export async function scoreNBADFS() {
 
   if (playerStats.length > 0) {
     await upsertPlayerStats(playerStats, today, season)
-    await scoreRosters(today, season)
+    await scoreRosters(today, season, allFinal)
     logger.info({ date: today, players: playerStats.length, allFinal }, 'NBA DFS scoring pass complete')
   }
 
@@ -387,8 +387,8 @@ export async function scoreNBADFS() {
     const yester = await fetchCompletedGameStats(yesterdayStr)
     if (yester.playerStats.length > 0) {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
-      await scoreRosters(yesterdayStr, season)
-      logger.info({ date: yesterdayStr, players: yester.playerStats.length }, 'Scored yesterday NBA DFS games')
+      await scoreRosters(yesterdayStr, season, yester.allFinal)
+      logger.info({ date: yesterdayStr, players: yester.playerStats.length, allFinal: yester.allFinal }, 'Scored yesterday NBA DFS games')
     }
     if (yester.allFinal) {
       await cleanupSingleNightNoRosters(yesterdayStr, season, true)
