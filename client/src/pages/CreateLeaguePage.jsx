@@ -74,8 +74,16 @@ export default function CreateLeaguePage() {
 
   // Squares game picker
   const [gameId, setGameId] = useState('')
+  const [squaresDate, setSquaresDate] = useState('')
   const squaresSport = format === 'squares' && sport && sport !== 'all' ? sport : undefined
-  const { data: squaresGames } = useGames(squaresSport, 'upcoming', 14)
+  const { data: allSquaresGames } = useGames(squaresSport, 'upcoming', 90)
+  const squaresGames = squaresDate
+    ? (allSquaresGames || []).filter((g) => {
+        const d = new Date(g.starts_at)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        return key === squaresDate
+      })
+    : []
 
   // Bracket settings
   const [templateId, setTemplateId] = useState('')
@@ -1024,10 +1032,19 @@ export default function CreateLeaguePage() {
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">Squares Settings</h3>
             <div>
-              <label className="block text-xs text-text-muted mb-2">Game</label>
+              <label className="block text-xs text-text-muted mb-2">Game Date</label>
               {sport === 'all' ? (
                 <div className="text-xs text-text-muted">Select a specific sport above to pick a game.</div>
-              ) : squaresGames?.length > 0 ? (
+              ) : (
+                <>
+                  <input
+                    type="date"
+                    value={squaresDate}
+                    onChange={(e) => { setSquaresDate(e.target.value); setGameId('') }}
+                    min={new Date().toLocaleDateString('en-CA')}
+                    className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent mb-3"
+                  />
+                  {squaresDate && squaresGames.length > 0 ? (
                 <div className="max-h-60 overflow-y-auto space-y-1">
                   {squaresGames.map((g) => (
                     <button
@@ -1046,15 +1063,15 @@ export default function CreateLeaguePage() {
                     >
                       <div className="font-semibold text-sm">{g.away_team} @ {g.home_team}</div>
                       <div className="text-xs text-text-muted mt-0.5">
-                        {new Date(g.starts_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                        {' '}
                         {new Date(g.starts_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                       </div>
                     </button>
                   ))}
                 </div>
-              ) : (
-                <div className="text-xs text-text-muted">No upcoming games found for this sport.</div>
+              ) : squaresDate ? (
+                <div className="text-xs text-text-muted">No games found on this date for the selected sport.</div>
+              ) : null}
+                </>
               )}
             </div>
             <div>
