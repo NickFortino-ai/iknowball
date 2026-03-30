@@ -808,6 +808,19 @@ async function checkSurvivorWinner(leagueId) {
       .update({ status: 'completed', updated_at: new Date().toISOString() })
       .eq('id', leagueId)
 
+    // Clean up any pending advance picks (league is over, these would never be scored)
+    const { error: cleanupErr } = await supabase
+      .from('survivor_picks')
+      .delete()
+      .eq('league_id', leagueId)
+      .eq('status', 'pending')
+
+    if (cleanupErr) {
+      logger.error({ cleanupErr, leagueId }, 'Failed to clean up pending survivor picks')
+    } else {
+      logger.info({ leagueId }, 'Cleaned up pending advance picks after survivor completion')
+    }
+
     // Check survivor streak record
     try {
       await checkRecordAfterSettle(winnerId, 'survivor', {})
