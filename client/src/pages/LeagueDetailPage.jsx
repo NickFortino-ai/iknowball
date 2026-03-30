@@ -772,9 +772,9 @@ export default function LeagueDetailPage() {
           : `/trophies/medal-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
         const outlasted = mc > 1 ? mc - 1 : 0
         return (
-        <div className="mb-6 rounded-xl border-2 border-yellow-500 p-5 relative overflow-hidden">
+        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-8 px-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
-          <div className="relative flex items-center gap-5">
+          <div className="relative flex items-center justify-center gap-5">
             <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0" />
             <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer shrink-0">
               {league.champion.user.avatar_url ? (
