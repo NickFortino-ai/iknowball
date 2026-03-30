@@ -1032,7 +1032,7 @@ export default function LeagueDetailPage() {
 
       {/* Tab content */}
       {tabs[activeTab] === 'Members' && (
-        <MembersList
+        <div className="relative z-10"><MembersList
           members={league.members}
           pendingInvitations={
             league.status === 'open' || (league.status === 'active' && league.joins_locked_at && new Date(league.joins_locked_at) > new Date())
@@ -1044,23 +1044,23 @@ export default function LeagueDetailPage() {
           isCommissioner={isCommissioner}
           onUserTap={setSelectedUserId}
           bracketSubmittedIds={!isBracketLocked && league.format === 'bracket' ? new Set((bracketEntries || []).map(e => e.user_id)) : null}
-        />
+        /></div>
       )}
 
       {tabs[activeTab] === 'Picks' && league.format === 'pickem' && league.use_league_picks && (
-        <PickemView league={league} standings={standings} mode="picks" />
+        <div className="relative z-10"><PickemView league={league} standings={standings} mode="picks" /></div>
       )}
 
       {tabs[activeTab] === 'Standings' && league.format === 'pickem' && (
-        <PickemView league={league} standings={standings} mode="standings" />
+        <div className="relative z-10"><PickemView league={league} standings={standings} mode="standings" /></div>
       )}
 
       {tabs[activeTab] === 'Board' && league.format === 'survivor' && (
-        <SurvivorView league={league} />
+        <div className="relative z-10"><SurvivorView league={league} /></div>
       )}
 
       {tabs[activeTab] === 'Board' && league.format === 'squares' && (
-        <SquaresView league={league} isCommissioner={isCommissioner} />
+        <div className="relative z-10"><SquaresView league={league} isCommissioner={isCommissioner} /></div>
       )}
 
       {league.format === 'bracket' && (isBracketLocked ? (
