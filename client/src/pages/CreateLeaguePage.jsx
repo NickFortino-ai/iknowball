@@ -1058,7 +1058,7 @@ export default function CreateLeaguePage() {
               )}
             </div>
             <div>
-              <label className="block text-xs text-text-muted mb-2">Assignment Method</label>
+              <label className="block text-xs text-text-muted mb-2">How do you want users to claim squares?</label>
               <div className="flex gap-2">
                 {[
                   { value: 'self_select', label: 'Self-Select' },
