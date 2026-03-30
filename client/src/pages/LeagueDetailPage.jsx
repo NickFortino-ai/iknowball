@@ -774,20 +774,20 @@ export default function LeagueDetailPage() {
         return (
         <div className="mb-6 rounded-xl border-2 border-yellow-500 py-8 px-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
-          <div className="relative flex items-center justify-center gap-5">
+          <div className="relative flex items-center justify-center gap-4">
             <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0" />
             <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer shrink-0">
               {league.champion.user.avatar_url ? (
                 <img
                   src={league.champion.user.avatar_url}
                   alt={league.champion.user.display_name}
-                  className="w-16 h-16 rounded-full object-cover ring-2 ring-yellow-500"
+                  className="w-20 h-20 rounded-full object-cover ring-2 ring-yellow-500"
                 />
               ) : (
-                <Avatar user={league.champion.user} size="2xl" />
+                <Avatar user={league.champion.user} size="2xl" className="!w-20 !h-20 !text-3xl" />
               )}
             </button>
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0">
               <div className="font-display text-xl text-white">
                 {league.champion.user.display_name || league.champion.user.username}
               </div>
