@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
+import UserProfileModal from '../profile/UserProfileModal'
 
 const SLOTS = [
   { key: 'PG1', label: 'PG', positions: ['PG', 'PG/SG'] },
@@ -429,13 +430,14 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   // ============================================
   if (tab === 'standings') {
     const standings = standingsData?.standings || []
+    const [standingsUserId, setStandingsUserId] = useState(null)
     return (
       <div>
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
           <div className="rounded-2xl border border-text-primary/20 overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_3rem_4rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+            <div className="grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
               <span className="text-right">Wins</span>
@@ -444,23 +446,27 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
             {standings.map((s) => {
               const isMe = s.user?.id === profile?.id
               return (
-                <div
+                <button
                   key={s.user?.id}
-                  className={`grid grid-cols-[2.5rem_1fr_3rem_4rem] gap-2 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 ${isMe ? 'bg-accent/5' : ''}`}
+                  onClick={() => setStandingsUserId(s.user?.id)}
+                  className={`w-full grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
                 >
-                  <span className={`font-display text-lg ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Avatar user={s.user} size="md" />
-                    <span className={`font-semibold truncate text-sm ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+                  <span className={`font-display text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar user={s.user} size="lg" />
+                    <span className={`font-bold truncate text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
                       {s.user?.display_name || s.user?.username}
                     </span>
                   </div>
                   <span className="text-sm text-text-secondary text-right">{s.nightlyWins}</span>
-                  <span className="font-display text-lg text-right">{Math.round(s.totalPoints * 10) / 10}</span>
-                </div>
+                  <span className="font-display text-xl text-white text-right">{Math.round(s.totalPoints * 10) / 10}</span>
+                </button>
               )
             })}
           </div>
+        )}
+        {standingsUserId && (
+          <UserProfileModal userId={standingsUserId} onClose={() => setStandingsUserId(null)} />
         )}
       </div>
     )
