@@ -6,6 +6,7 @@ import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
 import PickemView from '../components/leagues/PickemView'
 import SurvivorView from '../components/leagues/SurvivorView'
+import SurvivorStandings from '../components/leagues/SurvivorStandings'
 import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
 import LeagueThread from '../components/leagues/LeagueThread'
@@ -1050,7 +1051,11 @@ export default function LeagueDetailPage() {
         <div className="relative z-10"><PickemView league={league} standings={standings} mode="standings" /></div>
       )}
 
-      {tabs[activeTab] === 'Standings' && (league.format === 'survivor' || league.format === 'squares') && (
+      {tabs[activeTab] === 'Standings' && league.format === 'survivor' && (
+        <div className="relative z-10"><SurvivorStandings league={league} onUserTap={setSelectedUserId} /></div>
+      )}
+
+      {tabs[activeTab] === 'Standings' && league.format === 'squares' && (
         <div className="relative z-10"><MembersList
           members={league.members}
           pendingInvitations={[]}

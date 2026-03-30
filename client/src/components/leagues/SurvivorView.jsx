@@ -258,66 +258,64 @@ export default function SurvivorView({ league }) {
         )
       })()}
 
-      {/* Member board */}
-      <div className="space-y-2">
-        {board.members?.map((m) => (
-          <div
-            key={m.id}
-            className={`rounded-xl border px-4 py-3 backdrop-blur-sm ${
-              m.is_alive ? 'bg-bg-card/50 md:bg-bg-card/30 border-text-primary/20' : 'bg-bg-card/50 md:bg-bg-card/30 border-incorrect/30 opacity-60'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Avatar user={m.users} size="md" />
-                <span className="font-semibold text-sm truncate">
-                  {m.users?.display_name || m.users?.username}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {m.lives_remaining > 0 && m.is_alive && (
-                  <span className="text-xs text-text-muted">
-                    {m.lives_remaining} {m.lives_remaining === 1 ? 'life' : 'lives'}
+      {/* Current user's pick row */}
+      {(() => {
+        const me = board.members?.find((m) => m.user_id === currentUserId)
+        if (!me) return null
+        const myPicks = (me.picks || []).filter((p) => {
+          if (!me.is_alive && me.eliminated_week != null && p.league_weeks?.week_number > me.eliminated_week) return false
+          return true
+        })
+        return (
+          <div className={`rounded-xl px-5 py-4 backdrop-blur-sm ${
+            me.is_alive ? 'border border-correct/50 bg-correct/5' : 'border border-incorrect/40 bg-incorrect/5'
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar user={me.users} size="lg" />
+                <div className="min-w-0">
+                  <span className="text-base font-bold text-text-primary truncate block">
+                    {me.users?.display_name || me.users?.username}
                   </span>
-                )}
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                  m.is_alive ? 'bg-correct/20 text-correct' : 'bg-incorrect/20 text-incorrect'
-                }`}>
-                  {m.is_alive ? 'Alive' : `Out ${isDaily ? 'Day' : 'Wk'} ${m.eliminated_week}`}
-                </span>
+                  {me.is_alive && me.lives_remaining > 0 && (
+                    <span className="text-xs text-text-muted">
+                      {me.lives_remaining} {me.lives_remaining === 1 ? 'life' : 'lives'}
+                    </span>
+                  )}
+                </div>
               </div>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                me.is_alive ? 'bg-correct/20 text-correct' : 'bg-incorrect/20 text-incorrect'
+              }`}>
+                {me.is_alive ? 'Alive' : `Out ${isDaily ? 'Day' : 'Wk'} ${me.eliminated_week}`}
+              </span>
             </div>
-            {/* Pick history */}
-            {m.picks?.length > 0 && (
-              <div className="flex gap-1 overflow-x-auto scrollbar-hide" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
-                {m.picks.map((p) => {
+            {myPicks.length > 0 && (
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
+                {myPicks.map((p) => {
                   const isLocked = p.team_name === 'Locked'
-                  const isPostElimination = !m.is_alive && m.eliminated_week != null && p.league_weeks?.week_number > m.eliminated_week
                   const chipStyle = isLocked
-                    ? 'bg-white/5 text-text-muted italic'
-                    : isPostElimination
-                      ? 'bg-white/5 text-text-muted opacity-50'
-                      : STATUS_STYLES[p.status] || 'bg-bg-primary text-text-muted'
-                  const tooltip = isLocked
-                    ? `${periodLabel} ${p.league_weeks?.week_number}: Hidden`
-                    : isPostElimination
-                      ? `${periodLabel} ${p.league_weeks?.week_number}: ${p.team_name} (after elimination)`
-                      : `${periodLabel} ${p.league_weeks?.week_number}: ${p.team_name}`
+                    ? 'bg-white/5 text-text-muted italic border border-white/10'
+                    : p.status === 'survived'
+                      ? 'bg-correct/20 text-correct border border-correct/30'
+                      : p.status === 'eliminated'
+                        ? 'bg-incorrect/20 text-incorrect border border-incorrect/30'
+                        : 'bg-white/10 text-text-primary border border-white/20'
                   return (
                     <span
                       key={p.id}
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${chipStyle}`}
-                      title={tooltip}
+                      className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${chipStyle}`}
+                      title={`${periodLabel} ${p.league_weeks?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`}
                     >
-                      {isLocked ? '???' : p.team_name?.split(' ').pop()}
+                      {isLocked ? '???' : p.team_name?.split(' ').pop() || 'No pick'}
                     </span>
                   )
                 })}
               </div>
             )}
           </div>
-        ))}
-      </div>
+        )
+      })()}
     </div>
   )
 }
