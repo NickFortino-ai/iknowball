@@ -297,6 +297,12 @@ export function useSquaresBoard(leagueId) {
     queryKey: ['leagues', leagueId, 'squares', 'board'],
     queryFn: () => api.get(`/leagues/${leagueId}/squares/board`),
     enabled: !!leagueId,
+    refetchInterval: (query) => {
+      const board = query.state.data
+      if (!board) return 5000
+      if (!board.digits_locked) return 2000
+      return 30000
+    },
   })
 }
 
