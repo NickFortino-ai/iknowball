@@ -101,19 +101,19 @@ export default function SurvivorView({ league }) {
     <div>
       {/* Status summary */}
       <div className="flex gap-4 mb-4">
-        <div className="bg-bg-primary/40 backdrop-blur rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
           <div className="font-display text-2xl text-correct">
             {board.members?.filter((m) => m.is_alive).length || 0}
           </div>
           <div className="text-xs text-text-muted">Alive</div>
         </div>
-        <div className="bg-bg-primary/40 backdrop-blur rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
           <div className="font-display text-2xl text-incorrect">
             {board.members?.filter((m) => !m.is_alive).length || 0}
           </div>
           <div className="text-xs text-text-muted">Eliminated</div>
         </div>
-        <div className="bg-bg-primary/40 backdrop-blur rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
           <div className="font-display text-2xl text-text-primary">
             {board.display_period_number || currentWeek?.week_number || '—'}
           </div>
@@ -124,7 +124,7 @@ export default function SurvivorView({ league }) {
 
       {/* No active period */}
       {!pickWeek && (
-        <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-4 text-center relative z-10">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center relative z-10">
           <p className="text-sm text-text-primary">No active {periodLabel.toLowerCase()} right now.</p>
           <p className="text-xs text-text-secondary mt-1">Picks will be available when the next {periodLabel.toLowerCase()} begins.</p>
         </div>
@@ -150,7 +150,7 @@ export default function SurvivorView({ league }) {
 
       {/* Pick form */}
       {showPickForm && !leagueCompleted && pickWeekGames.length === 0 && (
-        <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10">
           <p className="text-sm text-text-primary text-center">No upcoming games available right now. Check back closer to game time.</p>
         </div>
       )}
@@ -166,7 +166,7 @@ export default function SurvivorView({ league }) {
         const dateKeys = Object.keys(grouped).sort()
 
         return (
-          <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-primary">
+          <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm">
             {poolExpanded && (
               <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3 text-center">
                 <div className="text-xs text-text-secondary font-semibold mb-0.5">Pool Expanded</div>
@@ -263,8 +263,8 @@ export default function SurvivorView({ league }) {
         {board.members?.map((m) => (
           <div
             key={m.id}
-            className={`rounded-xl border px-4 py-3 ${
-              m.is_alive ? 'border-text-primary/20' : 'border-incorrect/30 opacity-60'
+            className={`rounded-xl border px-4 py-3 backdrop-blur-sm ${
+              m.is_alive ? 'bg-bg-card/50 md:bg-bg-card/30 border-text-primary/20' : 'bg-bg-card/50 md:bg-bg-card/30 border-incorrect/30 opacity-60'
             }`}
           >
             <div className="flex items-center justify-between mb-2">

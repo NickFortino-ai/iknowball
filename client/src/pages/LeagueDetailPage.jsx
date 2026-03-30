@@ -31,7 +31,7 @@ function getLeagueTabs(league, isBracketLocked) {
   }
   const TABS = {
     pickem: ['Standings', 'Members', 'Thread'],
-    survivor: ['Board', 'Members', 'Thread'],
+    survivor: ['Picks', 'Members', 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
     fantasy: ['My Team', 'Players', 'Matchups', 'Standings', 'Draft', 'Thread'],
     nba_dfs: ['Roster', 'Live', 'Standings'],
@@ -1055,7 +1055,7 @@ export default function LeagueDetailPage() {
         <div className="relative z-10"><PickemView league={league} standings={standings} mode="standings" /></div>
       )}
 
-      {tabs[activeTab] === 'Board' && league.format === 'survivor' && (
+      {tabs[activeTab] === 'Picks' && league.format === 'survivor' && (
         <div className="relative z-10"><SurvivorView league={league} /></div>
       )}
 
