@@ -1046,9 +1046,9 @@ export default function CreateLeaguePage() {
                     >
                       <div className="font-semibold text-sm">{g.away_team} @ {g.home_team}</div>
                       <div className="text-xs text-text-muted mt-0.5">
-                        {new Date(g.commence_time).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                        {new Date(g.starts_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                         {' '}
-                        {new Date(g.commence_time).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                        {new Date(g.starts_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                       </div>
                     </button>
                   ))}
