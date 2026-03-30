@@ -191,7 +191,7 @@ function LiveView({ league, date: leagueDate }) {
                     <div className="text-[10px] text-text-muted">{playersLeft} player{playersLeft !== 1 ? 's' : ''} left</div>
                   )}
                 </div>
-                <span className={`font-display ${isWinner ? 'text-2xl' : 'text-lg'} ${m.status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                <span className={`font-display ${isWinner ? 'text-2xl' : 'text-xl'} text-white`}>
                   {Math.round(m.total_points * 10) / 10}
                 </span>
                 <svg
@@ -246,7 +246,7 @@ function LiveView({ league, date: leagueDate }) {
                             )}
                           </div>
                           {(slot.game_status === 'live' || slot.game_status === 'final') && (
-                            <span className={`text-base font-display shrink-0 ${slot.game_status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                            <span className="text-base font-display shrink-0 text-white">
                               {Math.round((slot.points_earned || 0) * 10) / 10}
                             </span>
                           )}
