@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import Avatar from '../ui/Avatar'
+import UserProfileModal from '../profile/UserProfileModal'
 
 export default function FantasyStandings({ league }) {
   const members = league.members || []
+  const [selectedUserId, setSelectedUserId] = useState(null)
 
   // TODO: Once matchups are played, compute W-L-T, PF, PA, streak, waiver, moves from API
   // For now, show members with placeholder stats
@@ -21,50 +24,57 @@ export default function FantasyStandings({ league }) {
     }))
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm min-w-[600px]">
-        <thead>
-          <tr className="border-b border-border text-text-muted text-xs">
-            <th className="py-3 px-2 text-center font-semibold w-12">Rank</th>
-            <th className="py-3 px-2 text-left font-semibold">Team</th>
-            <th className="py-3 px-2 text-center font-semibold">W-L-T</th>
-            <th className="py-3 px-2 text-center font-semibold">PF</th>
-            <th className="py-3 px-2 text-center font-semibold">PA</th>
-            <th className="py-3 px-2 text-center font-semibold">Streak</th>
-            <th className="py-3 px-2 text-center font-semibold">Waiver</th>
-            <th className="py-3 px-2 text-center font-semibold">Moves</th>
-          </tr>
-        </thead>
-        <tbody>
-          {standings.map((s) => (
-            <tr key={s.userId} className="border-b border-border last:border-0 hover:bg-bg-card-hover/30 transition-colors">
-              <td className="py-3 px-2 text-center text-text-primary font-semibold">{s.rank}</td>
-              <td className="py-3 px-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Avatar user={s.user} size="sm" />
-                  <span className="font-semibold text-text-primary truncate">
-                    {s.user?.display_name || s.user?.username}
-                  </span>
-                </div>
-              </td>
-              <td className="py-3 px-2 text-center text-text-primary">
-                {s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}-${s.ties}` : '--'}
-              </td>
-              <td className="py-3 px-2 text-center text-text-primary">
-                {s.pointsFor > 0 ? s.pointsFor.toFixed(2) : '--'}
-              </td>
-              <td className="py-3 px-2 text-center text-text-primary">
-                {s.pointsAgainst > 0 ? s.pointsAgainst.toFixed(2) : '--'}
-              </td>
-              <td className="py-3 px-2 text-center text-text-primary">{s.streak}</td>
-              <td className="py-3 px-2 text-center text-text-muted">{s.waiver}</td>
-              <td className="py-3 px-2 text-center text-text-muted">{s.moves}</td>
+    <div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
+          <thead>
+            <tr className="border-b border-text-primary/10 text-text-muted text-xs">
+              <th className="py-3 px-2 text-center font-semibold w-12">Rank</th>
+              <th className="py-3 px-2 text-left font-semibold">Team</th>
+              <th className="py-3 px-2 text-center font-semibold">W-L-T</th>
+              <th className="py-3 px-2 text-center font-semibold">PF</th>
+              <th className="py-3 px-2 text-center font-semibold">PA</th>
+              <th className="py-3 px-2 text-center font-semibold">Streak</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {standings.length === 0 && (
-        <div className="text-center py-8 text-text-muted text-sm">No members yet</div>
+          </thead>
+          <tbody>
+            {standings.map((s) => (
+              <tr
+                key={s.userId}
+                onClick={() => setSelectedUserId(s.userId)}
+                className="border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer"
+              >
+                <td className="py-3.5 px-2 text-center">
+                  <span className={`font-display text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
+                </td>
+                <td className="py-3.5 px-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar user={s.user} size="lg" />
+                    <span className="font-bold text-base text-text-primary truncate">
+                      {s.user?.display_name || s.user?.username}
+                    </span>
+                  </div>
+                </td>
+                <td className="py-3.5 px-2 text-center text-text-primary text-base">
+                  {s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}-${s.ties}` : '--'}
+                </td>
+                <td className="py-3.5 px-2 text-center text-white font-display text-base">
+                  {s.pointsFor > 0 ? s.pointsFor.toFixed(1) : '--'}
+                </td>
+                <td className="py-3.5 px-2 text-center text-text-primary text-base">
+                  {s.pointsAgainst > 0 ? s.pointsAgainst.toFixed(1) : '--'}
+                </td>
+                <td className="py-3.5 px-2 text-center text-text-muted">{s.streak}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {standings.length === 0 && (
+          <div className="text-center py-8 text-text-muted text-sm">No members yet</div>
+        )}
+      </div>
+      {selectedUserId && (
+        <UserProfileModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
       )}
     </div>
   )
