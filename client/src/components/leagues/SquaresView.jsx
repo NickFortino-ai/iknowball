@@ -297,15 +297,15 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
       {/* Squares owned per user */}
       {totalClaimed > 0 && (
         <div className="mt-6">
-          <h3 className="font-display text-sm text-text-secondary mb-3">Squares Owned</h3>
+          <h3 className="font-display text-base text-text-primary mb-3">Squares Owned</h3>
           <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 overflow-hidden">
-            <table className="w-full text-xs">
+            <table className="w-full">
               <thead>
-                <tr className="border-b border-border text-text-muted">
-                  <th className="text-left py-2 px-3 font-semibold">Player</th>
-                  <th className="text-center py-2 px-1 font-semibold">Squares</th>
-                  <th className="text-right py-2 px-1 font-semibold">Cost</th>
-                  <th className="text-right py-2 px-3 font-semibold">Won</th>
+                <tr className="border-b border-text-primary/10 text-text-muted text-sm">
+                  <th className="text-left py-3 px-4 font-semibold">Player</th>
+                  <th className="text-center py-3 px-2 font-semibold">Squares</th>
+                  <th className="text-right py-3 px-2 font-semibold">Cost</th>
+                  <th className="text-right py-3 px-4 font-semibold">Won</th>
                 </tr>
               </thead>
               <tbody>
@@ -336,16 +336,18 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                     .map((s) => {
                       const won = winMap[s.user?.id] || 0
                       return (
-                        <tr key={s.user?.id} className="border-b border-border last:border-0">
-                          <td className="py-2 px-3 font-semibold">
-                            {s.user?.avatar_emoji && <span className="mr-1">{s.user.avatar_emoji}</span>}
-                            {s.user?.display_name || s.user?.username || 'Unknown'}
+                        <tr key={s.user?.id} className="border-b border-text-primary/10 last:border-0">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar user={s.user} size="md" />
+                              <span className="text-sm font-bold text-white">{s.user?.display_name || s.user?.username || 'Unknown'}</span>
+                            </div>
                           </td>
-                          <td className="text-center py-2 px-1 text-text-muted">{s.squares}</td>
-                          <td className="text-right py-2 px-1 text-text-muted">
+                          <td className="text-center py-3 px-2 text-sm font-semibold text-white">{s.squares}</td>
+                          <td className="text-right py-3 px-2 text-sm text-text-secondary">
                             {costPerSquare % 1 === 0 ? s.squares * costPerSquare : (s.squares * costPerSquare).toFixed(1)} pts
                           </td>
-                          <td className={`text-right py-2 px-3 font-semibold ${won > 0 ? 'text-correct' : 'text-text-muted'}`}>
+                          <td className={`text-right py-3 px-4 text-sm font-bold ${won > 0 ? 'text-correct' : 'text-text-muted'}`}>
                             {won > 0 ? `+${won}` : '—'}
                           </td>
                         </tr>
