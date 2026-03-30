@@ -317,6 +317,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const [initialized, setInitialized] = useState(false)
   const [initDate, setInitDate] = useState(null)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
+  const [standingsUserId, setStandingsUserId] = useState(null)
   const [editing, setEditing] = useState(false)
 
   // Reset roster state when date changes
@@ -430,7 +431,6 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   // ============================================
   if (tab === 'standings') {
     const standings = standingsData?.standings || []
-    const [standingsUserId, setStandingsUserId] = useState(null)
     return (
       <div>
         {!standings.length ? (

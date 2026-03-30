@@ -49,6 +49,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
 
   const [selected, setSelected] = useState([])
   const [search, setSearch] = useState('')
+  const [standingsUserId, setStandingsUserId] = useState(null)
   const [initialized, setInitialized] = useState(false)
   const [initDate, setInitDate] = useState(null)
 
@@ -127,7 +128,6 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
   // Standings Tab
   if (tab === 'standings') {
     const standings = standingsData?.standings || []
-    const [standingsUserId, setStandingsUserId] = useState(null)
     return (
       <div>
         {!standings.length ? (
