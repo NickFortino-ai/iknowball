@@ -178,17 +178,17 @@ function LiveView({ league, date: leagueDate }) {
               }`}
             >
               <div className="flex items-center gap-3">
-                <Avatar user={m.user} size={isWinner ? 'lg' : 'md'} />
+                <Avatar user={m.user} size={isWinner ? 'xl' : 'lg'} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`font-bold truncate ${isWinner ? 'text-lg text-accent' : isMe ? 'text-accent text-sm' : 'text-text-primary text-sm'}`}>
+                    <span className={`font-bold truncate ${isWinner ? 'text-lg text-accent' : isMe ? 'text-accent text-base' : 'text-text-primary text-base'}`}>
                       {m.user?.display_name || m.user?.username}
                     </span>
                     {isWinner && <span className="text-lg">{'\uD83C\uDFC6'}</span>}
                   </div>
                   {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
                   {m.has_roster && playersLeft > 0 && !all_final && (
-                    <div className="text-[10px] text-text-muted">{playersLeft} player{playersLeft !== 1 ? 's' : ''} left</div>
+                    <div className="text-xs text-text-muted">{playersLeft} player{playersLeft !== 1 ? 's' : ''} left</div>
                   )}
                 </div>
                 <span className={`font-display ${isWinner ? 'text-2xl' : 'text-xl'} text-white`}>

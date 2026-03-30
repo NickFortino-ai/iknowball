@@ -126,12 +126,12 @@ function MlbLiveView({ league, date: leagueDate }) {
               <div key={m.user_id}>
                 <button
                   onClick={() => setExpandedUserId(isExpanded ? null : m.user_id)}
-                  className={`w-full rounded-xl border ${borderColor} bg-bg-primary transition-all text-left p-4`}
+                  className={`w-full rounded-xl border ${borderColor} bg-bg-primary transition-all text-left ${isWinner ? 'p-5' : 'p-4'}`}
                 >
                   <div className="flex items-center gap-3">
-                    <Avatar user={m.user} size="md" />
+                    <Avatar user={m.user} size={isWinner ? 'xl' : 'lg'} />
                     <div className="flex-1 min-w-0">
-                      <span className={`font-bold truncate text-sm ${isWinner ? 'text-accent' : isMe ? 'text-accent' : 'text-text-primary'}`}>
+                      <span className={`font-bold truncate ${isWinner ? 'text-lg text-accent' : isMe ? 'text-accent text-base' : 'text-text-primary text-base'}`}>
                         {m.user?.display_name || m.user?.username}
                       </span>
                       {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
