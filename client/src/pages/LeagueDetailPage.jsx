@@ -1069,7 +1069,7 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Board' && league.format === 'squares' && (
-        <div className="relative z-10"><SquaresView league={league} isCommissioner={isCommissioner} /></div>
+        <div className="relative z-10"><SquaresView league={league} isCommissioner={isCommissioner} onUserTap={setSelectedUserId} /></div>
       )}
 
       {league.format === 'bracket' && (isBracketLocked ? (

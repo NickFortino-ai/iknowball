@@ -14,8 +14,9 @@ import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
+import Avatar from '../ui/Avatar'
 
-export default function SquaresView({ league, isCommissioner }) {
+export default function SquaresView({ league, isCommissioner, onUserTap }) {
   const { data: board, isLoading } = useSquaresBoard(league.id)
   const { profile } = useAuth()
   const claimSquare = useClaimSquare()
@@ -262,23 +263,26 @@ export default function SquaresView({ league, isCommissioner }) {
                       <td
                         key={c}
                         onClick={() => {
-                          if (!cell && isSelfSelect && !board.digits_locked) handleClaim(r, c)
+                          if (cell && onUserTap) onUserTap(cell.user_id)
+                          else if (!cell && isSelfSelect && !board.digits_locked) handleClaim(r, c)
                         }}
-                        className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] text-center border border-border text-[9px] lg:text-sm font-semibold transition-colors ${
+                        className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] border border-border transition-colors ${
                           isWinning
-                            ? 'bg-accent/30 text-accent'
+                            ? 'bg-accent/30'
                             : cell
                               ? isMe
-                                ? 'bg-accent/10 text-accent'
-                                : 'bg-bg-card text-text-secondary'
+                                ? 'bg-accent/10'
+                                : 'bg-bg-card'
                               : isSelfSelect && !board.digits_locked
-                                ? 'bg-bg-primary hover:bg-bg-card-hover cursor-pointer text-text-muted'
-                                : 'bg-bg-primary text-text-muted'
-                        }`}
+                                ? 'bg-bg-primary hover:bg-bg-card-hover cursor-pointer'
+                                : 'bg-bg-primary'
+                        } ${cell ? 'cursor-pointer' : ''}`}
                       >
-                        {cell
-                          ? cell.users?.avatar_emoji || cell.users?.username?.slice(0, 3) || '?'
-                          : ''}
+                        <div className="w-full h-full flex items-center justify-center">
+                          {cell ? (
+                            <Avatar user={cell.users} size="sm" className="lg:w-10 lg:h-10" />
+                          ) : null}
+                        </div>
                       </td>
                     )
                   })}
