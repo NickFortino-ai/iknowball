@@ -138,15 +138,6 @@ export default function SquaresView({ league, isCommissioner }) {
               Random Assign
             </button>
           )}
-          {!board.digits_locked && totalClaimed > 0 && (
-            <button
-              onClick={handleLockDigits}
-              disabled={lockDigitsM.isPending}
-              className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
-            >
-              Lock Digits
-            </button>
-          )}
           {quarters.every((q) => q.awayScore !== null) && league.status !== 'completed' && (
             <button
               onClick={async () => {
@@ -209,18 +200,18 @@ export default function SquaresView({ league, isCommissioner }) {
           </p>
         </div>
       )}
-      {!board.digits_locked && totalClaimed > 0 && !isCommissioner && (
+      {!board.digits_locked && totalClaimed > 0 && (
         <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
           <p className="text-sm text-text-secondary">
             {isSelfSelect
-              ? 'Tap an empty square to claim more, or wait for the commissioner to lock digits.'
-              : 'Waiting for the commissioner to lock digits and start the game.'}
+              ? 'Tap an empty square to claim more. Digits lock automatically before game time.'
+              : 'Digits will lock automatically before game time.'}
           </p>
         </div>
       )}
       {board.digits_locked && !quarters.some((q) => q.awayScore !== null) && (
         <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
-          <p className="text-sm text-text-secondary">Digits are locked! Watch the game — results will be scored by quarter.</p>
+          <p className="text-sm text-text-secondary">Digits are locked! Results will be scored automatically.</p>
         </div>
       )}
 

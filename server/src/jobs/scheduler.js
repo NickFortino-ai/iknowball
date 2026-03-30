@@ -19,6 +19,7 @@ import { cleanupExpiredVideos } from './cleanupExpiredVideos.js'
 import { scoreNBADFS } from './scoreNBADFS.js'
 import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
+import { scoreSquares } from './scoreSquares.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -148,5 +149,10 @@ export function startScheduler() {
       try { await settleStuckParlays() } catch (err) { logger.error({ err }, 'Stuck parlay cleanup job failed') }
     })
     logger.info('Stuck parlay cleanup scheduled: every 30 minutes')
+
+    cron.schedule('*/2 * * * *', async () => {
+      try { await scoreSquares() } catch (err) { logger.error({ err }, 'Squares auto-score job failed') }
+    })
+    logger.info('Squares auto-lock/score scheduled: every 2 minutes')
   }
 }
