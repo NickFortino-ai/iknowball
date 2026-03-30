@@ -310,15 +310,16 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
               </thead>
               <tbody>
                 {(() => {
-                  const COST_PER_SQUARE = 10
-                  const totalPot = totalClaimed * COST_PER_SQUARE
-                  const perQuarter = totalPot / 4
+                  const pointsPerQuarter = league.settings?.points_per_quarter || [10, 10, 10, 10]
+                  const totalPot = pointsPerQuarter.reduce((sum, q) => sum + (q || 0), 0)
+                  const costPerSquare = totalPot / 100
 
-                  // Count quarter wins per user
+                  // Sum quarter winnings per user
                   const winMap = {}
-                  for (const q of quarters) {
+                  for (let i = 0; i < quarters.length; i++) {
+                    const q = quarters[i]
                     if (q.winnerId) {
-                      winMap[q.winnerId] = (winMap[q.winnerId] || 0) + 1
+                      winMap[q.winnerId] = (winMap[q.winnerId] || 0) + (pointsPerQuarter[i] || 0)
                     }
                   }
 
@@ -333,8 +334,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                   return Object.values(userMap)
                     .sort((a, b) => b.squares - a.squares)
                     .map((s) => {
-                      const qWins = winMap[s.user?.id] || 0
-                      const won = Math.round(qWins * perQuarter)
+                      const won = winMap[s.user?.id] || 0
                       return (
                         <tr key={s.user?.id} className="border-b border-border last:border-0">
                           <td className="py-2 px-3 font-semibold">
@@ -343,7 +343,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                           </td>
                           <td className="text-center py-2 px-1 text-text-muted">{s.squares}</td>
                           <td className="text-right py-2 px-1 text-text-muted">
-                            {s.squares * COST_PER_SQUARE} pts
+                            {costPerSquare % 1 === 0 ? s.squares * costPerSquare : (s.squares * costPerSquare).toFixed(1)} pts
                           </td>
                           <td className={`text-right py-2 px-3 font-semibold ${won > 0 ? 'text-correct' : 'text-text-muted'}`}>
                             {won > 0 ? `+${won}` : '—'}
