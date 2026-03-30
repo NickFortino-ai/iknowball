@@ -679,8 +679,8 @@ export default function LeagueDetailPage() {
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
-        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem'].includes(league.format) ? 'text-center' : ''}>
-        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem'].includes(league.format) ? 'justify-center' : ''}`}>
+        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'squares'].includes(league.format) ? 'text-center' : ''}>
+        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'squares'].includes(league.format) ? 'justify-center' : ''}`}>
           <h1 className="font-display text-3xl">{league.name}</h1>
           <button
             onClick={() => setShowSettingsModal(true)}
