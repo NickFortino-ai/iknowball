@@ -112,7 +112,7 @@ export default function SquaresView({ league, isCommissioner }) {
     <div>
       {/* Game info */}
       {board.games && (
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
+        <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
           <div className="font-display text-lg">
             {board.games.away_team} @ {board.games.home_team}
           </div>
@@ -128,7 +128,7 @@ export default function SquaresView({ league, isCommissioner }) {
 
       {/* Commissioner controls */}
       {isCommissioner && (
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 space-y-3">
+        <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 space-y-3">
           <h3 className="font-display text-sm text-text-secondary">Commissioner Controls</h3>
 
           {/* Editable team names (before digits locked) */}
@@ -334,7 +334,7 @@ export default function SquaresView({ league, isCommissioner }) {
       {quarters.some((q) => q.awayScore !== null) && (
         <div className="grid grid-cols-4 gap-2 mb-4">
           {quarters.map((q) => (
-            <div key={q.quarter} className={`bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border p-3 text-center ${
+            <div key={q.quarter} className={`bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border p-3 text-center ${
               q.winnerId ? 'border-accent' : 'border-text-primary/20'
             }`}>
               <div className="text-xs text-text-muted mb-1">Q{q.quarter}</div>
@@ -363,7 +363,7 @@ export default function SquaresView({ league, isCommissioner }) {
 
       {/* Guidance banners */}
       {!board.digits_locked && totalClaimed === 0 && (
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
+        <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
           <p className="text-sm text-text-secondary">
             {isSelfSelect
               ? 'Tap an empty square on the grid below to claim it.'
@@ -374,7 +374,7 @@ export default function SquaresView({ league, isCommissioner }) {
         </div>
       )}
       {!board.digits_locked && totalClaimed > 0 && !isCommissioner && (
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
+        <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
           <p className="text-sm text-text-secondary">
             {isSelfSelect
               ? 'Tap an empty square to claim more, or wait for the commissioner to lock digits.'
@@ -383,7 +383,7 @@ export default function SquaresView({ league, isCommissioner }) {
         </div>
       )}
       {board.digits_locked && !quarters.some((q) => q.awayScore !== null) && (
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
+        <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
           <p className="text-sm text-text-secondary">Digits are locked! Watch the game — results will be scored by quarter.</p>
         </div>
       )}
