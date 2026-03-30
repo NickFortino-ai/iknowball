@@ -2,6 +2,18 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 
+const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
+const ESPN_PATHS = {
+  basketball_nba: 'basketball/nba',
+  basketball_ncaab: 'basketball/mens-college-basketball',
+  basketball_wnba: 'basketball/wnba',
+  americanfootball_nfl: 'football/nfl',
+  americanfootball_ncaaf: 'football/college-football',
+  baseball_mlb: 'baseball/mlb',
+  icehockey_nhl: 'hockey/nhl',
+  soccer_usa_mls: 'soccer/usa.1',
+}
+
 function shuffle(arr) {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
@@ -52,12 +64,13 @@ async function autoLockDigits() {
 }
 
 /**
- * Auto-score quarters for squares boards from live/final game data.
+ * Auto-score quarters for squares boards from ESPN live/final game data.
+ * Fetches the ESPN summary endpoint to get per-quarter linescores.
  */
 async function autoScoreQuarters() {
   const { data: boards } = await supabase
     .from('squares_boards')
-    .select('id, league_id, row_digits, col_digits, digits_locked, q1_away_score, q2_away_score, q3_away_score, q4_away_score, game_id, games!inner(status, home_team, away_team, external_id), leagues!inner(status, settings)')
+    .select('id, league_id, row_digits, col_digits, digits_locked, q1_away_score, q2_away_score, q3_away_score, q4_away_score, game_id, games!inner(status, home_team, away_team, external_id, sports(key)), leagues!inner(status, settings)')
     .eq('digits_locked', true)
     .in('games.status', ['live', 'final'])
     .neq('leagues.status', 'completed')
@@ -68,35 +81,69 @@ async function autoScoreQuarters() {
     const game = board.games
     if (!game?.external_id) continue
 
-    // Fetch live scores from ESPN or our games table
-    const { data: gameData } = await supabase
-      .from('games')
-      .select('home_score, away_score, status, live_home_score, live_away_score')
-      .eq('id', board.game_id)
-      .single()
+    const sportKey = game.sports?.key
+    const espnPath = ESPN_PATHS[sportKey]
+    if (!espnPath) continue
 
-    if (!gameData) continue
+    // Fetch ESPN summary for quarter linescores
+    let homeLinescores, awayLinescores, isFinal
+    try {
+      const res = await fetch(`${ESPN_BASE}/${espnPath}/summary?event=${game.external_id}`)
+      if (!res.ok) continue
+      const summary = await res.json()
 
-    const homeScore = gameData.live_home_score ?? gameData.home_score
-    const awayScore = gameData.live_away_score ?? gameData.away_score
-    if (homeScore == null || awayScore == null) continue
+      const comp = summary.header?.competitions?.[0]
+      if (!comp) continue
 
-    // For now, we can only reliably score the final result
-    // Quarter-by-quarter scoring requires ESPN box score data
-    // Score Q4 (final) when game is final and not yet scored
-    if (gameData.status === 'final' && board.q4_away_score == null) {
-      await scoreQuarterForBoard(board, 4, awayScore, homeScore)
-      logger.info({ boardId: board.id, leagueId: board.league_id, score: `${awayScore}-${homeScore}` }, 'Auto-scored squares final')
+      const homeComp = comp.competitors?.find((c) => c.homeAway === 'home')
+      const awayComp = comp.competitors?.find((c) => c.homeAway === 'away')
+      if (!homeComp || !awayComp) continue
 
-      // Auto-complete the league
-      const { error: completeErr } = await supabase
-        .from('leagues')
-        .update({ status: 'completed', updated_at: new Date().toISOString() })
-        .eq('id', board.league_id)
-        .eq('status', 'active')
+      homeLinescores = homeComp.linescores || []
+      awayLinescores = awayComp.linescores || []
+      isFinal = comp.status?.type?.name === 'STATUS_FINAL'
+    } catch (err) {
+      logger.warn({ err: err.message, boardId: board.id }, 'Failed to fetch ESPN summary for squares')
+      continue
+    }
 
-      if (!completeErr) {
-        logger.info({ leagueId: board.league_id }, 'Auto-completed squares league')
+    // Score each completed quarter that hasn't been scored yet
+    const boardQuarters = [board.q1_away_score, board.q2_away_score, board.q3_away_score, board.q4_away_score]
+
+    for (let q = 0; q < 4; q++) {
+      if (boardQuarters[q] != null) continue // already scored
+      if (!homeLinescores[q] || !awayLinescores[q]) break // quarter not played yet
+
+      // Cumulative scores through this quarter
+      let homeCum = 0, awayCum = 0
+      for (let i = 0; i <= q; i++) {
+        homeCum += parseInt(homeLinescores[i]?.value ?? homeLinescores[i]?.displayValue ?? '0', 10)
+        awayCum += parseInt(awayLinescores[i]?.value ?? awayLinescores[i]?.displayValue ?? '0', 10)
+      }
+
+      await scoreQuarterForBoard(board, q + 1, awayCum, homeCum)
+      logger.info({ boardId: board.id, quarter: q + 1, score: `${awayCum}-${homeCum}` }, 'Auto-scored squares quarter')
+    }
+
+    // Auto-complete when game is final and all quarters scored
+    if (isFinal && board.q4_away_score == null && homeLinescores.length >= 4) {
+      // Q4 was just scored above, check the updated board
+      const { data: updated } = await supabase
+        .from('squares_boards')
+        .select('q1_away_score, q2_away_score, q3_away_score, q4_away_score')
+        .eq('id', board.id)
+        .single()
+
+      if (updated && [updated.q1_away_score, updated.q2_away_score, updated.q3_away_score, updated.q4_away_score].every((s) => s != null)) {
+        const { error: completeErr } = await supabase
+          .from('leagues')
+          .update({ status: 'completed', updated_at: new Date().toISOString() })
+          .eq('id', board.league_id)
+          .eq('status', 'active')
+
+        if (!completeErr) {
+          logger.info({ leagueId: board.league_id }, 'Auto-completed squares league')
+        }
       }
     }
   }
