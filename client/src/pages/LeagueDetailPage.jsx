@@ -586,6 +586,7 @@ export default function LeagueDetailPage() {
   const { data: bracketEntries } = useBracketEntries(league?.format === 'bracket' ? id : null)
   const { data: threadUnread } = useThreadUnread(id)
   const [activeTab, setActiveTab] = useState(0)
+  const [tabInitialized, setTabInitialized] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
   const [editingNote, setEditingNote] = useState(false)
   const [noteExpanded, setNoteExpanded] = useState(() => {
@@ -621,6 +622,20 @@ export default function LeagueDetailPage() {
       noteRef.current.focus()
     }
   }, [editingNote])
+
+  // Default to Live tab for fantasy/DFS formats during game hours
+  useEffect(() => {
+    if (!league || tabInitialized) return
+    if (['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format)) {
+      const tabs = getLeagueTabs(league, false)
+      const liveIdx = tabs.indexOf('Live')
+      if (liveIdx >= 0) {
+        const hour = new Date().getHours()
+        if (hour >= 12) setActiveTab(liveIdx)
+      }
+    }
+    setTabInitialized(true)
+  }, [league, tabInitialized])
 
   if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
   if (!league) return null
