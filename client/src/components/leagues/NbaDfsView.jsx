@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNbaDfsPlayers, useNbaDfsRoster, useSaveNbaDfsRoster, useNbaDfsStandings, useNbaDfsLive, useFantasySettings } from '../../hooks/useLeagues'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import { useAuth } from '../../hooks/useAuth'
@@ -18,6 +18,14 @@ const SLOTS = [
   { key: 'PF2', label: 'PF', positions: ['PF', 'SF/PF', 'PF/C'] },
   { key: 'C', label: 'C', positions: ['C', 'PF/C'] },
 ]
+
+function isPlayerEligibleForSlot(player, slot) {
+  const playerParts = player.position.split('/')
+  return slot.positions.some((sp) => {
+    if (sp.includes('/')) return sp === player.position
+    return playerParts.includes(sp)
+  })
+}
 
 const POSITION_FILTERS = ['All', 'PG', 'SG', 'SF', 'PF', 'C', 'OUT']
 
@@ -320,6 +328,133 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const [standingsUserId, setStandingsUserId] = useState(null)
   const [editing, setEditing] = useState(false)
 
+  // Drag-reorder state
+  const [dragSource, setDragSource] = useState(null)
+  const [hoverSlot, setHoverSlot] = useState(null)
+  const slotRefs = useRef({})
+  const longPressTimer = useRef(null)
+  const dragStartY = useRef(0)
+  const dragCurrentY = useRef(0)
+  const dragEl = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(longPressTimer.current)
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+    }
+  }, [])
+
+  // Drag-reorder handlers — defined as refs to avoid stale closure issues
+  const dragSourceRef = useRef(null)
+  const hoverSlotRef = useRef(null)
+
+  function handleDragStart(slotKey, e) {
+    const player = roster[slotKey]
+    if (!player) return
+    const gs = getPlayerGameState(player)
+    if (gs === 'live' || gs === 'final') return
+
+    const startY = e.clientY
+    const startX = e.clientX
+    dragStartY.current = startY
+
+    longPressTimer.current = setTimeout(() => {
+      setDragSource(slotKey)
+      dragSourceRef.current = slotKey
+      dragEl.current = slotRefs.current[slotKey]
+      document.body.style.overflow = 'hidden'
+      document.body.style.touchAction = 'none'
+      if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId)
+    }, 300)
+
+    const cancelOnScroll = (moveE) => {
+      const dx = Math.abs(moveE.clientX - startX)
+      const dy = Math.abs(moveE.clientY - startY)
+      if (dx > 8 || dy > 8) {
+        clearTimeout(longPressTimer.current)
+        document.removeEventListener('pointermove', cancelOnScroll)
+      }
+    }
+    document.addEventListener('pointermove', cancelOnScroll, { passive: true })
+    const cleanup = () => {
+      document.removeEventListener('pointermove', cancelOnScroll)
+      document.removeEventListener('pointerup', cleanup)
+    }
+    document.addEventListener('pointerup', cleanup, { once: true })
+  }
+
+  function handleDragMove(e) {
+    if (!dragSourceRef.current) return
+    e.preventDefault()
+
+    const el = dragEl.current
+    if (el) {
+      const offset = e.clientY - dragStartY.current
+      el.style.transform = `translateY(${offset}px) scale(1.03)`
+      el.style.zIndex = '50'
+      el.style.position = 'relative'
+    }
+
+    // Find slot under pointer
+    if (el) el.style.pointerEvents = 'none'
+    const target = document.elementFromPoint(e.clientX, e.clientY)
+    if (el) el.style.pointerEvents = ''
+    const slotEl = target?.closest?.('[data-slot-key]')
+    const newHover = slotEl?.dataset?.slotKey || null
+    hoverSlotRef.current = newHover
+    setHoverSlot(newHover)
+  }
+
+  function handleDragEnd() {
+    clearTimeout(longPressTimer.current)
+    document.body.style.overflow = ''
+    document.body.style.touchAction = ''
+
+    if (dragEl.current) {
+      dragEl.current.style.transform = ''
+      dragEl.current.style.zIndex = ''
+      dragEl.current.style.position = ''
+    }
+
+    const src = dragSourceRef.current
+    const tgt = hoverSlotRef.current
+
+    if (src && tgt && tgt !== src) {
+      const sourceSlotDef = SLOTS.find((s) => s.key === src)
+      const targetSlotDef = SLOTS.find((s) => s.key === tgt)
+      const draggedPlayer = roster[src]
+      const targetPlayer = roster[tgt]
+
+      if (draggedPlayer && targetSlotDef && isPlayerEligibleForSlot(draggedPlayer, targetSlotDef)) {
+        if (!targetPlayer) {
+          setRoster((prev) => {
+            const next = { ...prev }
+            next[tgt] = draggedPlayer
+            delete next[src]
+            return next
+          })
+        } else if (
+          sourceSlotDef &&
+          isPlayerEligibleForSlot(targetPlayer, sourceSlotDef) &&
+          getPlayerGameState(targetPlayer) === 'upcoming'
+        ) {
+          setRoster((prev) => ({
+            ...prev,
+            [src]: targetPlayer,
+            [tgt]: draggedPlayer,
+          }))
+        }
+      }
+    }
+
+    dragSourceRef.current = null
+    hoverSlotRef.current = null
+    setDragSource(null)
+    setHoverSlot(null)
+    dragEl.current = null
+  }
+
   // Reset roster state when date changes
   if (initDate !== date) {
     setInitDate(date)
@@ -372,12 +507,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   function addPlayer(player) {
     for (const slot of SLOTS) {
       if (roster[slot.key]) continue
-      const playerParts = player.position.split('/')
-      const eligible = slot.positions.some((sp) => {
-        if (sp.includes('/')) return sp === player.position
-        return playerParts.includes(sp)
-      })
-      if (eligible) {
+      if (isPlayerEligibleForSlot(player, slot)) {
         setRoster((prev) => ({ ...prev, [slot.key]: player }))
         return
       }
@@ -534,10 +664,31 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
           const savedSlot = existingRoster?.nba_dfs_roster_slots?.find((s) => s.roster_slot === slot.key)
           const pointsEarned = savedSlot ? Number(savedSlot.points_earned) || 0 : 0
           const showPoints = isLocked
+
+          // Drag visual feedback
+          const isDragSource = dragSource === slot.key
+          const isHoverTarget = hoverSlot === slot.key && dragSource && hoverSlot !== dragSource
+          const draggedPlayer = dragSource ? roster[dragSource] : null
+          const isEligibleTarget = isHoverTarget && draggedPlayer && isPlayerEligibleForSlot(draggedPlayer, slot)
+          const canSwap = isEligibleTarget && (!player || (isPlayerEligibleForSlot(player, SLOTS.find((s) => s.key === dragSource)) && getPlayerGameState(player) === 'upcoming'))
+
+          let dragClasses = ''
+          if (isDragSource) dragClasses = ' shadow-lg shadow-accent/30 ring-2 ring-accent/50'
+          else if (isHoverTarget && canSwap) dragClasses = ' ring-2 ring-accent/60 bg-accent/10'
+          else if (isHoverTarget && !canSwap) dragClasses = ' ring-2 ring-incorrect/40 bg-incorrect/5'
+          else if (dragSource && !isDragSource) dragClasses = ' opacity-50'
+
           return (
             <div
               key={slot.key}
-              className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary ${player ? slotBorderClass(gameState) : ''}`}
+              ref={(el) => { slotRefs.current[slot.key] = el }}
+              data-slot-key={slot.key}
+              onPointerDown={!isViewMode && player && !isLocked ? (e) => handleDragStart(slot.key, e) : undefined}
+              onPointerMove={handleDragMove}
+              onPointerUp={handleDragEnd}
+              onPointerCancel={handleDragEnd}
+              className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary transition-all duration-150 select-none ${player ? slotBorderClass(gameState) : ''}${dragClasses}`}
+              style={{ touchAction: dragSource ? 'none' : undefined }}
             >
               <span className="text-xs font-bold text-accent w-7 shrink-0">{slot.label}</span>
               {player ? (
@@ -569,9 +720,9 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                   ) : (
                     <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
                   )}
-                  {!isLocked && !isViewMode && (
+                  {!isLocked && !isViewMode && !dragSource && (
                     <button
-                      onClick={() => removeSlot(slot.key)}
+                      onClick={(e) => { e.stopPropagation(); removeSlot(slot.key) }}
                       className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
                     >
                       &times;
