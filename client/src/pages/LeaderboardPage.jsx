@@ -115,10 +115,10 @@ export default function LeaderboardPage() {
           <EmptyState title="No league rankings yet" message="Join a league and start competing!" />
         ) : (
           <div className="bg-bg-primary rounded-2xl border border-text-primary/20 overflow-hidden">
-            <div className="grid grid-cols-[2rem_1fr_auto_auto] md:grid-cols-[2rem_1fr_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+            <div className="grid grid-cols-[2.5rem_1fr_3rem_4rem] md:grid-cols-[2.5rem_1fr_3.5rem_4rem_3rem_5rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
-              <span className="hidden md:inline">Leagues</span>
+              <span className="hidden md:inline text-right">Leagues</span>
               <span className="hidden md:inline text-right">Top Half</span>
               <span className="text-right">Wins</span>
               <span className="text-right">Points</span>
@@ -127,20 +127,20 @@ export default function LeaderboardPage() {
             {leagueLeaders.map((user) => {
               const isMe = user.id === profile?.id
               return (
-                <div
+                <button
                   key={user.id}
                   onClick={() => setSelectedUserId(user.id)}
-                  className={`grid grid-cols-[2rem_1fr_auto_auto] md:grid-cols-[2rem_1fr_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center border-b border-text-primary/10 last:border-b-0 cursor-pointer hover:bg-text-primary/5 transition-colors ${
+                  className={`w-full grid grid-cols-[2.5rem_1fr_3rem_4rem] md:grid-cols-[2.5rem_1fr_3.5rem_4rem_3rem_5rem] gap-2 px-4 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 cursor-pointer hover:bg-text-primary/5 transition-colors text-left ${
                     isMe ? 'bg-accent/5' : ''
                   }`}
                 >
-                  <span className={`font-display text-lg ${user.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>
+                  <span className={`font-display text-xl ${user.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>
                     {user.rank}
                   </span>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Avatar user={user} size="md" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar user={user} size="lg" />
                     <div className="min-w-0">
-                      <div className={`font-semibold truncate ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+                      <div className={`font-bold text-base truncate ${isMe ? 'text-accent' : 'text-text-primary'}`}>
                         {user.display_name || user.username}
                       </div>
                       <div className="text-xs text-text-muted">@{user.username}</div>
@@ -149,8 +149,8 @@ export default function LeaderboardPage() {
                   <span className="hidden md:inline text-sm text-text-secondary text-right">{user.leagues_played}</span>
                   <span className="hidden md:inline text-sm text-text-secondary text-right">{user.top_half_pct}%</span>
                   <span className="text-sm text-text-secondary text-right">{user.wins}</span>
-                  <span className="font-display text-lg text-right">{user.league_points}</span>
-                </div>
+                  <span className="font-display text-xl text-white text-right">{user.league_points}</span>
+                </button>
               )
             })}
           </div>

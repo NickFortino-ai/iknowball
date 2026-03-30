@@ -30,7 +30,7 @@ router.get('/royalty', requireAuth, async (req, res, next) => {
 router.get('/leagues', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('bonus_points')
-    .select('user_id, points, type, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
+    .select('user_id, league_id, points, type, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
     .in('type', ['league_win', 'bracket_finish', 'league_finish', 'survivor_win', 'league_pickem_earned'])
 
   if (error) throw error
@@ -38,23 +38,31 @@ router.get('/leagues', requireAuth, async (req, res) => {
   const userMap = {}
   for (const b of (data || [])) {
     if (!userMap[b.user_id]) {
-      userMap[b.user_id] = { user: b.users, leaguePoints: 0, leaguesPlayed: 0, wins: 0, topHalf: 0, entries: [] }
+      userMap[b.user_id] = { user: b.users, leaguePoints: 0, wins: 0, leagueIds: new Set(), leagueResults: {} }
     }
     userMap[b.user_id].leaguePoints += b.points
-    userMap[b.user_id].entries.push(b)
     if (b.type === 'league_win' || b.type === 'survivor_win') userMap[b.user_id].wins++
+
+    // Track unique leagues and best result per league (for top-half calc)
+    if (b.league_id) {
+      userMap[b.user_id].leagueIds.add(b.league_id)
+      // Store the finish type per league — league_win/survivor_win count as top half
+      // league_finish with positive points = top half
+      const existing = userMap[b.user_id].leagueResults[b.league_id]
+      if (!existing || b.type === 'league_win' || b.type === 'survivor_win') {
+        userMap[b.user_id].leagueResults[b.league_id] = { points: b.points, type: b.type }
+      }
+    }
   }
 
-  // Count unique leagues per user and top-half finishes
+  // Calculate leagues played and top-half percentage from unique leagues
   for (const u of Object.values(userMap)) {
-    const leagueIds = new Set()
-    for (const e of u.entries) {
-      // Each bonus_points entry has a league_id implicitly from the type
-      leagueIds.add(e.id) // Approximate — each entry is one league interaction
-    }
-    u.leaguesPlayed = Math.max(u.wins, Math.ceil(u.entries.length / 2)) // Approximate
-    u.topHalf = u.entries.filter((e) => e.points > 0).length
-    u.topHalfPct = u.entries.length > 0 ? Math.round((u.topHalf / u.entries.length) * 100) : 0
+    u.leaguesPlayed = u.leagueIds.size
+    const results = Object.values(u.leagueResults)
+    const topHalf = results.filter((r) =>
+      r.type === 'league_win' || r.type === 'survivor_win' || r.points > 0
+    ).length
+    u.topHalfPct = results.length > 0 ? Math.round((topHalf / results.length) * 100) : 0
   }
 
   const leaderboard = Object.values(userMap)
