@@ -100,11 +100,11 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
           const streak = updatedStats?.current_streak || 0
 
           if (streak >= 3) {
-            await supabase.from('streak_events').insert({
+            const { data: streakEvent } = await supabase.from('streak_events').insert({
               user_id: pick.user_id,
               sport_id: sportId,
               streak_length: streak,
-            })
+            }).select('id').single()
 
             // Notify on milestone streaks (5, 10, 15...)
             if (streak % 5 === 0) {
@@ -112,7 +112,7 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
                 pick.user_id,
                 'streak_milestone',
                 `You're on a ${streak}-game win streak!`,
-                { streak, sportId }
+                { streak, sportId, streakId: streakEvent?.id }
               )
             }
           }

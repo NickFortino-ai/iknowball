@@ -16,6 +16,7 @@ import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
 import LeagueWinModal from '../leagues/LeagueWinModal'
 import HotTakeDetailModal from '../feed/HotTakeDetailModal'
+import StreakDetailModal from '../feed/StreakDetailModal'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 import { timeAgo } from '../../lib/time'
@@ -69,8 +70,9 @@ function getNotificationRoute(notification) {
   switch (type) {
     case 'parlay_result':
     case 'futures_result':
-    case 'streak_milestone':
       return '/results'
+    case 'streak_milestone':
+      return null // handled by modal
     case 'connection_request':
     case 'hot_take_reminder':
     case 'hot_take_ask':
@@ -115,6 +117,7 @@ export default function Navbar() {
   const [selectedPropPickId, setSelectedPropPickId] = useState(null)
   const [leagueWinData, setLeagueWinData] = useState(null)
   const [selectedHotTakeId, setSelectedHotTakeId] = useState(null)
+  const [selectedStreakId, setSelectedStreakId] = useState(null)
   const dropdownRef = useRef(null)
   const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
@@ -389,7 +392,8 @@ export default function Navbar() {
                           const isLeagueWin = n.type === 'league_win'
                           const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
                           const hotTakeId = n.metadata?.hotTakeId || (n.metadata?.targetType === 'hot_take' ? n.metadata.targetId : null)
-                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || route
+                          const isStreakMilestone = n.type === 'streak_milestone' && n.metadata?.streakId
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || isStreakMilestone || route
                           return (
                             <div
                               key={n.id}
@@ -398,6 +402,7 @@ export default function Navbar() {
                                 if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                                 else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                                 else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
+                                else if (isStreakMilestone) { setSelectedStreakId(n.metadata.streakId); setShowInvites(false) }
                                 else if (hotTakeId) { setSelectedHotTakeId(hotTakeId); setShowInvites(false) }
                                 else if (isSurvivorWin) {
                                   if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
@@ -967,6 +972,7 @@ export default function Navbar() {
     <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
     <LeagueWinModal data={leagueWinData} onClose={() => setLeagueWinData(null)} />
     <HotTakeDetailModal hotTakeId={selectedHotTakeId} onClose={() => setSelectedHotTakeId(null)} />
+    <StreakDetailModal streakId={selectedStreakId} onClose={() => setSelectedStreakId(null)} />
     </>
   )
 }
