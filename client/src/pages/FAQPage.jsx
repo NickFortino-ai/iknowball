@@ -6,7 +6,14 @@ const sections = [
     faqs: [
       {
         q: 'What is I KNOW BALL?',
-        a: 'I KNOW BALL is a socially engaging sports prediction platform where you pick winners of real games using live Vegas odds, earn or lose points based on your accuracy, and climb from Rookie to GOAT status. Every pick you make is permanently tracked \u2014 no hiding from bad takes, no rewriting history.',
+        a: `I KNOW BALL is the all-in-one sports platform for people who live and breathe sports. Pick winners using live Vegas odds, run fantasy leagues with the best visuals in the game, and prove you actually know ball.
+
+\u2022 <strong class="text-white">Picks:</strong> Make daily picks on real games across NFL, NBA, MLB, NHL, and more. Every pick is scored using live odds and permanently tracked \u2014 no hiding from bad takes.
+\u2022 <strong class="text-white">Fantasy Leagues:</strong> Full-featured fantasy football, NBA Daily Fantasy, MLB Daily Fantasy, Home Run Derby, Survivor pools, Brackets, Pick\u2019em, and Squares. Create a league in seconds, invite your squad, and compete with stadium backdrops and real trophies.
+\u2022 <strong class="text-white">Social:</strong> Post takes, react to your friends\u2019 picks, comment, and watch the feed light up. Your connections see everything \u2014 the wins, the losses, and the streaks.
+\u2022 <strong class="text-white">Global Leaderboard:</strong> Climb from Rookie to GOAT. Your score reflects everything \u2014 picks, props, parlays, futures, and league finishes. Filter by sport to see who really knows ball.
+
+Built for the fan who\u2019s tired of clunky fantasy apps and wants something that actually looks and feels like a modern sports experience.`,
       },
       {
         q: 'Is this gambling?',
