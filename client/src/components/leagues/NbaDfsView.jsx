@@ -215,50 +215,42 @@ function LiveView({ league, date: leagueDate }) {
                   const isSlotExpanded = expandedSlot === slotKey
                   const hasStats = slot.stats && (slot.game_status === 'live' || slot.game_status === 'final')
 
+                  const statLine = hasStats && slot.stats ? [
+                    { label: 'PTS', value: slot.stats.pts },
+                    { label: 'REB', value: slot.stats.reb },
+                    { label: 'AST', value: slot.stats.ast },
+                    { label: 'STL', value: slot.stats.stl },
+                    { label: 'BLK', value: slot.stats.blk },
+                    { label: 'TO', value: slot.stats.to },
+                    { label: '3PM', value: slot.stats.threes },
+                  ].filter((s) => s.value > 0).map((s) => `${s.value} ${s.label}`).join(' | ') : null
+
                   return (
-                    <div key={slot.roster_slot}>
-                      <button
-                        onClick={() => hasStats && setExpandedSlot(isSlotExpanded ? null : slotKey)}
-                        className={`w-full flex items-center gap-3 px-4 py-2 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary text-left ${hasStats ? 'cursor-pointer' : ''}`}
-                      >
-                        <span className="text-xs font-bold text-text-muted w-7 shrink-0">{slot.roster_slot.replace(/[12]$/, '')}</span>
-                        {hidden ? (
-                          <span className="flex-1 text-sm text-text-muted font-mono">????</span>
-                        ) : (
-                          <>
-                            <span className="flex-1 text-sm font-semibold text-text-primary truncate">{slot.player_name}</span>
-                            {(slot.game_status === 'live' || slot.game_status === 'final') && (
-                              <span className={`text-sm font-display ${slot.game_status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
-                                {Math.round((slot.points_earned || 0) * 10) / 10}
-                              </span>
+                    <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
+                      <span className="text-xs font-bold text-text-muted w-7 shrink-0">{slot.roster_slot.replace(/[12]$/, '')}</span>
+                      {hidden ? (
+                        <span className="flex-1 text-sm text-text-muted font-mono">????</span>
+                      ) : (
+                        <>
+                          {slot.headshot_url && (
+                            <img src={slot.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                              onError={(e) => { e.target.style.display = 'none' }} />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-bold text-text-primary truncate block">{slot.player_name}</span>
+                            {statLine && (
+                              <span className="text-[10px] text-text-muted block lg:hidden">{statLine}</span>
                             )}
-                            {hasStats && (
-                              <svg className={`w-3 h-3 text-text-muted transition-transform shrink-0 ${isSlotExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                              </svg>
+                            {statLine && (
+                              <span className="text-[10px] text-text-muted hidden lg:inline">{statLine}</span>
                             )}
-                          </>
-                        )}
-                      </button>
-                      {isSlotExpanded && slot.stats && (
-                        <div className="px-4 py-2 bg-bg-primary/50 border-b border-text-primary/10 border-l-2 border-l-text-primary/10">
-                          <div className="grid grid-cols-7 gap-1 text-center">
-                            {[
-                              { label: 'PTS', value: slot.stats.pts },
-                              { label: 'REB', value: slot.stats.reb },
-                              { label: 'AST', value: slot.stats.ast },
-                              { label: 'STL', value: slot.stats.stl },
-                              { label: 'BLK', value: slot.stats.blk },
-                              { label: 'TO', value: slot.stats.to },
-                              { label: '3PM', value: slot.stats.threes },
-                            ].map((s) => (
-                              <div key={s.label}>
-                                <div className="text-xs font-semibold text-text-primary">{s.value}</div>
-                                <div className="text-[9px] text-text-muted uppercase">{s.label}</div>
-                              </div>
-                            ))}
                           </div>
-                        </div>
+                          {(slot.game_status === 'live' || slot.game_status === 'final') && (
+                            <span className={`text-sm font-display shrink-0 ${slot.game_status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                              {Math.round((slot.points_earned || 0) * 10) / 10}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   )

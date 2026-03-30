@@ -166,7 +166,7 @@ router.get('/live', async (req, res) => {
   if (allEspnIds.length) {
     const { data: salaries } = await supabase
       .from('nba_dfs_salaries')
-      .select('espn_player_id, game_starts_at')
+      .select('espn_player_id, game_starts_at, headshot_url')
       .eq('game_date', date)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
@@ -174,7 +174,7 @@ router.get('/live', async (req, res) => {
       const startTime = sal.game_starts_at ? new Date(sal.game_starts_at) : null
       let status = 'upcoming'
       if (startTime && startTime <= now) status = 'live' // simplified — will refine with actual game status
-      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status }
+      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url }
     }
   }
 
@@ -288,6 +288,7 @@ router.get('/live', async (req, res) => {
         roster_slot: slot.roster_slot,
         player_name: visible ? slot.player_name : '????',
         espn_player_id: visible ? slot.espn_player_id : null,
+        headshot_url: visible ? (gs.headshot_url || null) : null,
         salary: visible ? slot.salary : null,
         points_earned: gs.status === 'live' || gs.status === 'final' ? Number(slot.points_earned) || 0 : 0,
         game_status: gs.status,
