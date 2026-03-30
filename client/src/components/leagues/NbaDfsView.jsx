@@ -226,27 +226,27 @@ function LiveView({ league, date: leagueDate }) {
                   ].filter((s) => s.value > 0).map((s) => `${s.value} ${s.label}`).join(' | ') : null
 
                   return (
-                    <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
-                      <span className="text-xs font-bold text-text-muted w-7 shrink-0">{slot.roster_slot.replace(/[12]$/, '')}</span>
+                    <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-3.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
+                      <span className="text-sm font-bold text-text-muted w-8 shrink-0">{slot.roster_slot.replace(/[12]$/, '')}</span>
                       {hidden ? (
-                        <span className="flex-1 text-sm text-text-muted font-mono">????</span>
+                        <span className="flex-1 text-base text-text-muted font-mono">????</span>
                       ) : (
                         <>
                           {slot.headshot_url && (
-                            <img src={slot.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                            <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0"
                               onError={(e) => { e.target.style.display = 'none' }} />
                           )}
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm font-bold text-text-primary truncate block">{slot.player_name}</span>
+                            <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
                             {statLine && (
-                              <span className="text-[10px] text-text-muted block lg:hidden">{statLine}</span>
+                              <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
                             )}
                             {statLine && (
-                              <span className="text-[10px] text-text-muted hidden lg:inline">{statLine}</span>
+                              <span className="text-xs text-text-muted hidden lg:inline">{statLine}</span>
                             )}
                           </div>
                           {(slot.game_status === 'live' || slot.game_status === 'final') && (
-                            <span className={`text-sm font-display shrink-0 ${slot.game_status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                            <span className={`text-base font-display shrink-0 ${slot.game_status === 'live' ? 'text-accent' : 'text-text-primary'}`}>
                               {Math.round((slot.points_earned || 0) * 10) / 10}
                             </span>
                           )}
