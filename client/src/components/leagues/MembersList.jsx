@@ -21,7 +21,7 @@ export default function MembersList({ members, pendingInvitations, commissionerI
         return (
           <div
             key={m.id}
-            className={`bg-bg-card/50 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-3 flex items-center justify-between${onUserTap ? ' cursor-pointer hover:bg-bg-card/70 transition-colors' : ''}`}
+            className={`bg-bg-card/35 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-3 flex items-center justify-between${onUserTap ? ' cursor-pointer hover:bg-bg-card/55 transition-colors' : ''}`}
             onClick={() => onUserTap?.(m.user_id)}
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -65,7 +65,7 @@ export default function MembersList({ members, pendingInvitations, commissionerI
             return (
               <div
                 key={inv.id}
-                className="bg-bg-card/50 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-3 flex items-center justify-between opacity-60"
+                className="bg-bg-card/35 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-3 flex items-center justify-between opacity-60"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar user={user} size="xl" />
