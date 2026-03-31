@@ -72,7 +72,7 @@ export default function FeaturedPropSection({ date, sportKey, fallback = false, 
     <div data-onboarding="featured-prop" className="mb-6">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center justify-between w-full bg-bg-card rounded-xl border border-border px-4 py-3"
+        className="flex items-center justify-between w-full bg-bg-primary/30 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-3"
       >
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
