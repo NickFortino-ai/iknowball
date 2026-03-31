@@ -452,10 +452,7 @@ export default function CreateLeaguePage() {
                 }`}
               >
                 {customBackdropPreview ? (
-                  <>
-                    <img src={customBackdropPreview} alt="Custom" className="absolute inset-0 w-full h-full object-cover opacity-60" />
-                    <div className="relative z-10 text-[10px] font-semibold text-accent">Custom</div>
-                  </>
+                  <img src={customBackdropPreview} alt="Custom" className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
                   <>
                     <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
