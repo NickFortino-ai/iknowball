@@ -57,8 +57,12 @@ export async function fetchScores(sportKey = 'americanfootball_nfl') {
   })
 }
 
+const DEFAULT_MARKETS = {
+  baseball_mlb: 'player_strikeouts,player_hits,player_home_runs,player_total_bases',
+}
+
 export async function fetchPlayerProps(sportKey, eventId, markets) {
-  const marketKeys = markets?.length ? markets.join(',') : 'player_points'
+  const marketKeys = markets?.length ? markets.join(',') : (DEFAULT_MARKETS[sportKey] || 'player_points')
   return fetchFromOddsApi(`/sports/${sportKey}/events/${eventId}/odds`, {
     regions: 'us',
     markets: marketKeys,

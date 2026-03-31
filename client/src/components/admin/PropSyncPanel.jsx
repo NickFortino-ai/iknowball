@@ -32,6 +32,12 @@ const MARKET_OPTIONS = {
     { key: 'player_hits', label: 'Hits' },
     { key: 'player_total_bases', label: 'Total Bases' },
     { key: 'player_home_runs', label: 'Home Runs' },
+    { key: 'player_rbis', label: 'RBIs' },
+    { key: 'player_runs', label: 'Runs' },
+    { key: 'player_stolen_bases', label: 'Stolen Bases' },
+    { key: 'player_walks', label: 'Walks' },
+    { key: 'player_hits_runs_rbis', label: 'Hits + Runs + RBIs' },
+    { key: 'pitcher_outs', label: 'Pitcher Outs' },
   ],
 }
 
