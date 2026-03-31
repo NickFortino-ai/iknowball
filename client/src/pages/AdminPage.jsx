@@ -342,16 +342,14 @@ export default function AdminPage() {
                     {targetUsers.map((user) => (
                       <span
                         key={user.id}
-                        className="inline-flex items-center gap-1 bg-accent/15 text-accent text-xs font-medium pl-1.5 pr-1 py-0.5 rounded-full"
+                        className="inline-flex items-center gap-1.5 bg-bg-primary/30 backdrop-blur-sm border border-text-primary/15 text-text-primary text-xs font-medium pl-1 pr-2 py-1 rounded-full"
                       >
-                        <span className="w-4 h-4 rounded-full bg-bg-primary flex items-center justify-center text-[10px] shrink-0">
-                          {user.avatar_emoji || user.username[0].toUpperCase()}
-                        </span>
+                        <Avatar user={user} size="xs" />
                         {user.display_name || user.username}
                         <button
                           type="button"
                           onClick={() => setTargetUsers((prev) => prev.filter((u) => u.id !== user.id))}
-                          className="ml-0.5 hover:text-white transition-colors leading-none text-sm"
+                          className="ml-0.5 text-text-muted hover:text-white transition-colors leading-none text-sm"
                         >
                           &times;
                         </button>
