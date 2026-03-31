@@ -22,6 +22,7 @@ import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
 import { toast } from '../components/ui/Toast'
+import { getBackdropUrl } from '../lib/backdropUrl'
 
 function getLeagueTabs(league, isBracketLocked) {
   const isOpen = league.status === 'open'
@@ -679,7 +680,7 @@ export default function LeagueDetailPage() {
         <div className="absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
           <img
             src={league.backdrop_image
-              ? `/backdrops/${league.backdrop_image}`
+              ? getBackdropUrl(league.backdrop_image)
               : league.format === 'nba_dfs' ? '/nba-dfs-bg.png' : '/fantasy-football-bg.png'
             }
             alt=""

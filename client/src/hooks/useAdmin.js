@@ -427,3 +427,27 @@ export function useDeletePositionOverride() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'position-overrides'] }),
   })
 }
+
+// Backdrop submissions
+export function useBackdropSubmissions() {
+  return useQuery({
+    queryKey: ['admin', 'backdrop-submissions'],
+    queryFn: () => api.get('/admin/backdrop-submissions'),
+  })
+}
+
+export function useApproveBackdrop() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.post(`/admin/backdrop-submissions/${id}/approve`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'backdrop-submissions'] }),
+  })
+}
+
+export function useRejectBackdrop() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }) => api.post(`/admin/backdrop-submissions/${id}/reject`, { reason }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'backdrop-submissions'] }),
+  })
+}

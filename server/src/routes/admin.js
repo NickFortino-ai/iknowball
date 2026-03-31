@@ -645,4 +645,24 @@ router.post('/mlb-dfs/generate-salaries', async (req, res) => {
   res.json(result)
 })
 
+// Backdrop submissions
+import { getPendingSubmissions, approveSubmission, rejectSubmission } from '../services/backdropSubmissionService.js'
+
+router.get('/backdrop-submissions', async (req, res) => {
+  const data = await getPendingSubmissions()
+  res.json(data)
+})
+
+router.post('/backdrop-submissions/:id/approve', async (req, res) => {
+  const result = await approveSubmission(req.params.id, req.user.id)
+  res.json(result)
+})
+
+router.post('/backdrop-submissions/:id/reject', async (req, res) => {
+  const { reason } = req.body
+  if (!reason) return res.status(400).json({ error: 'Rejection reason is required' })
+  await rejectSubmission(req.params.id, req.user.id, reason)
+  res.json({ success: true })
+})
+
 export default router

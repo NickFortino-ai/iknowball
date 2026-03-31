@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops } from '../hooks/useLeagues'
+import { api } from '../lib/api'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 
@@ -123,6 +124,9 @@ export default function CreateLeaguePage() {
   // Visibility settings
   const [visibility, setVisibility] = useState('closed')
   const [backdropImage, setBackdropImage] = useState('')
+  const [customBackdropFile, setCustomBackdropFile] = useState(null)
+  const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
+  const fileInputRef = useRef(null)
   const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport || undefined
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [joinsLockedAt, setJoinsLockedAt] = useState('')
@@ -208,7 +212,20 @@ export default function CreateLeaguePage() {
           : visibility === 'open' && joinsLockedAt ? joinsLockedAt : undefined,
         backdrop_image: backdropImage || undefined,
       })
-      toast('League created!', 'success')
+      // Upload custom backdrop if selected
+      if (customBackdropFile) {
+        try {
+          const formData = new FormData()
+          formData.append('image', customBackdropFile)
+          formData.append('league_id', league.id)
+          await api.postForm('/backdrops/submit', formData)
+          toast('League created! Backdrop submitted for review.', 'success')
+        } catch {
+          toast('League created! Backdrop upload failed — you can try again later.', 'success')
+        }
+      } else {
+        toast('League created!', 'success')
+      }
       navigate(`/leagues/${league.id}?invite=1`)
     } catch (err) {
       toast(err.message || 'Failed to create league', 'error')
@@ -422,15 +439,51 @@ export default function CreateLeaguePage() {
         )}
 
         {/* Backdrop picker */}
-        {availableBackdrops?.length > 0 && (
+        {format && (
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">League Backdrop</label>
             <div className="grid grid-cols-3 gap-2 max-h-[320px] overflow-y-auto scrollbar-hide rounded-lg">
-              {availableBackdrops.map((b) => (
+              {/* Submit your own */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`relative rounded-lg overflow-hidden border-2 border-dashed transition-all aspect-[16/9] flex flex-col items-center justify-center gap-1 ${
+                  customBackdropFile ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-accent/50 bg-bg-primary'
+                }`}
+              >
+                {customBackdropPreview ? (
+                  <>
+                    <img src={customBackdropPreview} alt="Custom" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                    <div className="relative z-10 text-[10px] font-semibold text-accent">Custom</div>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-[9px] text-text-muted font-semibold leading-tight text-center px-1">Submit your own</span>
+                  </>
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'error'); return }
+                  setCustomBackdropFile(file)
+                  setCustomBackdropPreview(URL.createObjectURL(file))
+                  setBackdropImage('')
+                }}
+              />
+              {(availableBackdrops || []).map((b) => (
                 <button
                   key={b.filename}
                   type="button"
-                  onClick={() => setBackdropImage(backdropImage === b.filename ? '' : b.filename)}
+                  onClick={() => { setBackdropImage(backdropImage === b.filename ? '' : b.filename); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
                   className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-[16/9] ${
                     backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
                   }`}
@@ -453,7 +506,7 @@ export default function CreateLeaguePage() {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-text-muted mt-1.5">Optional. Sets the backdrop image on your league page.</p>
+            <p className="text-xs text-text-muted mt-1.5">Optional. Custom images are submitted for admin review.</p>
           </div>
         )}
 

@@ -9,6 +9,7 @@ import FuturesAdminPanel from '../components/admin/FuturesAdminPanel'
 import ReportsPanel from '../components/admin/ReportsPanel'
 import ModerationPanel from '../components/admin/ModerationPanel'
 import PlayerPositionPanel from '../components/admin/PlayerPositionPanel'
+import BackdropSubmissionsPanel from '../components/admin/BackdropSubmissionsPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import Avatar from '../components/ui/Avatar'
@@ -267,6 +268,16 @@ export default function AdminPage() {
           Moderation
         </button>
         <button
+          onClick={() => setAdminSection('backdrops')}
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            adminSection === 'backdrops'
+              ? 'bg-accent text-white'
+              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+          }`}
+        >
+          Backdrops
+        </button>
+        <button
           onClick={() => setAdminSection('positions')}
           className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             adminSection === 'positions'
@@ -491,6 +502,8 @@ export default function AdminPage() {
       {adminSection === 'reports' && <ReportsPanel />}
 
       {adminSection === 'moderation' && <ModerationPanel />}
+
+      {adminSection === 'backdrops' && <BackdropSubmissionsPanel />}
 
       {adminSection === 'positions' && <PlayerPositionPanel />}
 

@@ -31,6 +31,7 @@ import teamsRouter from './routes/teams.js'
 import injuriesRouter from './routes/injuries.js'
 import linkPreviewRouter from './routes/linkPreview.js'
 import messagesRouter from './routes/messages.js'
+import backdropSubmissionsRouter from './routes/backdropSubmissions.js'
 
 const app = express()
 
@@ -66,6 +67,7 @@ app.use('/api/teams', teamsRouter)
 app.use('/api/injuries', injuriesRouter)
 app.use('/api/link-preview', linkPreviewRouter)
 app.use('/api/messages', messagesRouter)
+app.use('/api/backdrops', backdropSubmissionsRouter)
 app.use('/api/dfs', dfsRouter)
 app.use('/api/nba-dfs', nbaDfsRouter)
 app.use('/api/mlb-dfs', mlbDfsRouter)
