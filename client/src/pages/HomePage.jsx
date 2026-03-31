@@ -155,7 +155,7 @@ export default function HomePage() {
       {isAuthenticated && (
         <>
           <OpenLeaguesSection />
-          <div className="mb-8">
+          <div className="mb-8 lg:max-w-3xl lg:mx-auto">
             <FeaturedPropSection date={new Date()} fallback defaultExpanded />
           </div>
           <div ref={headlinesRef}>
