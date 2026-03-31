@@ -328,7 +328,7 @@ router.get('/player/lookup', async (req, res) => {
   const { name, sport } = req.query
   if (!name) return res.status(400).json({ error: 'name required' })
 
-  // Try DFS salaries table first (NBA)
+  // Try DFS salaries table (NBA first, then MLB)
   const { data } = await supabase
     .from('nba_dfs_salaries')
     .select('espn_player_id, player_name, headshot_url, team, position')
@@ -338,6 +338,16 @@ router.get('/player/lookup', async (req, res) => {
     .maybeSingle()
 
   if (data) return res.json(data)
+
+  const { data: mlbData } = await supabase
+    .from('mlb_dfs_salaries')
+    .select('espn_player_id, player_name, headshot_url, team, position')
+    .ilike('player_name', `%${name}%`)
+    .order('game_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (mlbData) return res.json(mlbData)
 
   // Fallback: look up headshot from ESPN cache for other sports
   const sportPath = ESPN_SPORT_PATHS[sport] || 'basketball/nba'
