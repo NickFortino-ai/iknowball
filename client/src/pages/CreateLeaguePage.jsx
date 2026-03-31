@@ -361,8 +361,8 @@ export default function CreateLeaguePage() {
         )}
         </>}
 
-        {/* Max Members (not for fantasy — team count is in settings) */}
-        {format !== 'fantasy' && format !== 'nba_dfs' && <div>
+        {/* Max Members — only standalone for formats without their own settings section */}
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'pickem', 'survivor', 'squares'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">
             Max Members <span className="text-text-muted font-normal">(optional)</span>
           </label>
@@ -406,7 +406,7 @@ export default function CreateLeaguePage() {
           </p>
         </div>
 
-        {visibility === 'open' && format !== 'nba_dfs' && (
+        {visibility === 'open' && (
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">
               Open Until <span className="text-text-muted font-normal">(optional)</span>
@@ -523,6 +523,17 @@ export default function CreateLeaguePage() {
                   ? 'Standings use odds from when each pick was submitted'
                   : 'Standings use odds from when the game starts (default)'}
               </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Max Members <span className="text-text-muted">(optional)</span></label>
+              <input
+                type="number"
+                value={maxMembers}
+                onChange={(e) => setMaxMembers(e.target.value)}
+                placeholder="No limit"
+                min={2}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
             </div>
           </div>
         )}
@@ -1024,6 +1035,17 @@ export default function CreateLeaguePage() {
                   allEliminatedSurvive ? 'translate-x-4' : ''
                 }`} />
               </button>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Max Members <span className="text-text-muted">(optional)</span></label>
+              <input
+                type="number"
+                value={maxMembers}
+                onChange={(e) => setMaxMembers(e.target.value)}
+                placeholder="No limit"
+                min={2}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
             </div>
           </div>
         )}
