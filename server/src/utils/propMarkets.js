@@ -24,17 +24,14 @@ export const PROP_MARKETS = {
   player_receptions: { label: 'Receptions', sports: ['americanfootball_nfl', 'americanfootball_ncaaf'] },
   player_anytime_td: { label: 'Anytime TD', sports: ['americanfootball_nfl', 'americanfootball_ncaaf'] },
 
-  // MLB
-  player_strikeouts: { label: 'Strikeouts', sports: ['baseball_mlb'] },
-  player_hits: { label: 'Hits', sports: ['baseball_mlb'] },
-  player_total_bases: { label: 'Total Bases', sports: ['baseball_mlb'] },
-  player_home_runs: { label: 'Home Runs', sports: ['baseball_mlb'] },
-  player_rbis: { label: 'RBIs', sports: ['baseball_mlb'] },
-  player_runs: { label: 'Runs', sports: ['baseball_mlb'] },
-  player_stolen_bases: { label: 'Stolen Bases', sports: ['baseball_mlb'] },
-  player_walks: { label: 'Walks', sports: ['baseball_mlb'] },
-  player_hits_runs_rbis: { label: 'Hits + Runs + RBIs', sports: ['baseball_mlb'] },
-  pitcher_outs: { label: 'Pitcher Outs', sports: ['baseball_mlb'] },
+  // MLB (Odds API uses batter_* and pitcher_* prefixes)
+  pitcher_strikeouts: { label: 'Strikeouts', sports: ['baseball_mlb'] },
+  batter_hits: { label: 'Hits', sports: ['baseball_mlb'] },
+  batter_total_bases: { label: 'Total Bases', sports: ['baseball_mlb'] },
+  batter_home_runs: { label: 'Home Runs', sports: ['baseball_mlb'] },
+  batter_rbis: { label: 'RBIs', sports: ['baseball_mlb'] },
+  batter_stolen_bases: { label: 'Stolen Bases', sports: ['baseball_mlb'] },
+  batter_walks: { label: 'Walks', sports: ['baseball_mlb'] },
 }
 
 export function getMarketLabel(marketKey) {

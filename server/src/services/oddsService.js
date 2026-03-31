@@ -58,7 +58,7 @@ export async function fetchScores(sportKey = 'americanfootball_nfl') {
 }
 
 const DEFAULT_MARKETS = {
-  baseball_mlb: 'player_strikeouts,player_hits,player_home_runs,player_total_bases',
+  baseball_mlb: 'pitcher_strikeouts,batter_hits,batter_total_bases,batter_home_runs',
 }
 
 export async function fetchPlayerProps(sportKey, eventId, markets) {

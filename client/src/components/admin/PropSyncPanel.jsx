@@ -28,16 +28,13 @@ const MARKET_OPTIONS = {
   americanfootball_nfl: NFL_MARKETS,
   americanfootball_ncaaf: NFL_MARKETS,
   baseball_mlb: [
-    { key: 'player_strikeouts', label: 'Strikeouts' },
-    { key: 'player_hits', label: 'Hits' },
-    { key: 'player_total_bases', label: 'Total Bases' },
-    { key: 'player_home_runs', label: 'Home Runs' },
-    { key: 'player_rbis', label: 'RBIs' },
-    { key: 'player_runs', label: 'Runs' },
-    { key: 'player_stolen_bases', label: 'Stolen Bases' },
-    { key: 'player_walks', label: 'Walks' },
-    { key: 'player_hits_runs_rbis', label: 'Hits + Runs + RBIs' },
-    { key: 'pitcher_outs', label: 'Pitcher Outs' },
+    { key: 'pitcher_strikeouts', label: 'Strikeouts (Pitcher)' },
+    { key: 'batter_hits', label: 'Hits' },
+    { key: 'batter_total_bases', label: 'Total Bases' },
+    { key: 'batter_home_runs', label: 'Home Runs' },
+    { key: 'batter_rbis', label: 'RBIs' },
+    { key: 'batter_stolen_bases', label: 'Stolen Bases' },
+    { key: 'batter_walks', label: 'Walks' },
   ],
 }
 
