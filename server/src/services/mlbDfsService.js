@@ -161,8 +161,9 @@ export async function generateMLBSalaries(date, season = 2026) {
         continue
       }
 
-      const athletes = roster.athletes || []
-      for (const athlete of athletes) {
+      const positionGroups = roster.athletes || []
+      for (const group of positionGroups) {
+        for (const athlete of group.items || []) {
         const rawPos = athlete.position?.abbreviation || ''
         const position = mapPosition(rawPos)
 
@@ -194,6 +195,7 @@ export async function generateMLBSalaries(date, season = 2026) {
           injury_status: injuryStatus,
           is_pitcher: false,
         })
+        }
       }
     }
   }
