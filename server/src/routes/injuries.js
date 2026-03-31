@@ -109,8 +109,10 @@ router.get('/:game_id', requireAuth, async (req, res) => {
     try {
       const { data: gameRow } = await supabase.from('games').select('starts_at').eq('id', game_id).single()
       if (gameRow?.starts_at) {
+        // Use ET date to avoid UTC date shift for evening games
         const d = new Date(gameRow.starts_at)
-        const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+        const etDate = new Date(d.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+        const dateStr = `${etDate.getFullYear()}${String(etDate.getMonth() + 1).padStart(2, '0')}${String(etDate.getDate()).padStart(2, '0')}`
         const espnRes = await fetch(`${ESPN_BASE}/${espnPath}/scoreboard?dates=${dateStr}`)
         if (espnRes.ok) {
           const espnData = await espnRes.json()

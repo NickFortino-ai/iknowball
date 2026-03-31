@@ -82,9 +82,10 @@ router.get('/:id/intel', requireAuth, async (req, res) => {
   if (!espnPath) return res.json({ game })
 
   try {
-    // Fetch scoreboard for the game's date to find the matching ESPN event
+    // Fetch scoreboard for the game's date (use ET to avoid UTC date shift)
     const gameDate = new Date(game.starts_at)
-    const dateStr = `${gameDate.getFullYear()}${String(gameDate.getMonth() + 1).padStart(2, '0')}${String(gameDate.getDate()).padStart(2, '0')}`
+    const etDate = new Date(gameDate.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+    const dateStr = `${etDate.getFullYear()}${String(etDate.getMonth() + 1).padStart(2, '0')}${String(etDate.getDate()).padStart(2, '0')}`
     const url = `${ESPN_BASE}/${espnPath}/scoreboard?dates=${dateStr}`
     const espnRes = await fetch(url)
     if (!espnRes.ok) return res.json({ game })
