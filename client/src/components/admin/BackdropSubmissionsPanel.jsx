@@ -24,7 +24,7 @@ export default function BackdropSubmissionsPanel() {
             <img
               src={sub.preview_url}
               alt="Submission"
-              className="w-full h-48 object-cover"
+              className="w-full max-h-64 object-contain bg-black/30"
             />
           )}
           <div className="p-4 space-y-3">
