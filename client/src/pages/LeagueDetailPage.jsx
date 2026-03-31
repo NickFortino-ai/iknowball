@@ -1036,10 +1036,10 @@ export default function LeagueDetailPage() {
             onClick={() => !isLiveDisabled && setActiveTab(i)}
             className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors backdrop-blur-sm ${
               isLiveDisabled
-                ? 'bg-bg-primary/40 text-text-muted/40 cursor-not-allowed border border-text-primary/10'
+                ? 'bg-bg-primary/20 text-text-muted/40 cursor-not-allowed border border-text-primary/10'
                 : activeTab === i
                   ? 'bg-accent text-white'
-                  : 'bg-bg-primary/50 text-text-secondary hover:bg-bg-primary/70 border border-text-primary/20'
+                  : 'bg-bg-primary/30 text-text-primary hover:bg-bg-primary/50 border border-text-primary/15'
             }`}
           >
             {tab}
