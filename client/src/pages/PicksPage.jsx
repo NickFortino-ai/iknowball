@@ -33,7 +33,7 @@ const sportTabs = [
 ]
 
 const INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl', 'icehockey_nhl'])
-const GAME_INTEL_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wnba', 'americanfootball_nfl', 'americanfootball_ncaaf', 'baseball_mlb', 'icehockey_nhl', 'soccer_usa_mls'])
+const GAME_INTEL_SPORTS = new Set(['basketball_nba', 'basketball_wnba', 'americanfootball_nfl', 'baseball_mlb', 'icehockey_nhl'])
 
 function getDateOffset(offset) {
   const d = new Date()
