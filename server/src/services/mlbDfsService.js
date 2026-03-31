@@ -171,6 +171,7 @@ export async function generateMLBSalaries(date, season = 2026) {
 
         const espnId = athlete.id
         const name = athlete.displayName || athlete.fullName
+        if (!name) continue
         const headshot = athlete.headshot?.href || null
         const injury = athlete.injuries?.[0]
         const injuryStatus = injury?.status || null
