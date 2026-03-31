@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import HeadlinesCard from '../components/home/HeadlinesCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
+import OpenLeaguesSection from '../components/home/OpenLeaguesSection'
 import TierUsersModal from '../components/home/TierUsersModal'
 
 const tiers = [
@@ -150,9 +151,10 @@ export default function HomePage() {
         <WelcomeCard userId={session?.user?.id} />
       )}
 
-      {/* Logged-in: Power Rankings + Featured Prop */}
+      {/* Logged-in: Open Leagues + Featured Prop + Headlines */}
       {isAuthenticated && (
         <>
+          <OpenLeaguesSection />
           <div className="mb-8">
             <FeaturedPropSection date={new Date()} fallback defaultExpanded />
           </div>
