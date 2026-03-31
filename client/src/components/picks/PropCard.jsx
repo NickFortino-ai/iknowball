@@ -122,15 +122,15 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
             )}
           </button>
 
-          <button
-            onClick={() => handleClick('under')}
-            disabled={isLocked || isSubmitting || underState === 'locked' || underState === 'correct' || underState === 'incorrect'}
-            className={`flex-1 p-2.5 rounded-xl border transition-all ${sideStyles[underState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <div className={`font-semibold text-xs mb-0.5 ${underState === 'correct' ? 'text-correct' : underState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
-              Under
-            </div>
-            {prop.under_odds && (
+          {prop.under_odds && (
+            <button
+              onClick={() => handleClick('under')}
+              disabled={isLocked || isSubmitting || underState === 'locked' || underState === 'correct' || underState === 'incorrect'}
+              className={`flex-1 p-2.5 rounded-xl border transition-all ${sideStyles[underState]} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className={`font-semibold text-xs mb-0.5 ${underState === 'correct' ? 'text-correct' : underState === 'incorrect' ? 'text-incorrect' : 'text-text-primary'}`}>
+                Under
+              </div>
               <div className="text-center">
                 <div className={`font-semibold text-xs ${underState === 'selected' ? 'text-white' : ''}`}>
                   <span className="text-incorrect">-{calculateRiskPoints(prop.under_odds)}</span>
@@ -141,8 +141,8 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
                   {formatOdds(prop.under_odds)}
                 </div>
               </div>
-            )}
-          </button>
+            </button>
+          )}
         </div>
       </div>
 
