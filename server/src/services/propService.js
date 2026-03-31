@@ -435,7 +435,7 @@ export async function getPropPickById(propPickId) {
 export async function getUserPropPicks(userId, status) {
   let query = supabase
     .from('prop_picks')
-    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, sports(key, name)))')
+    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, period, clock, sports(key, name)))')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
@@ -445,6 +445,69 @@ export async function getUserPropPicks(userId, status) {
 
   const { data, error } = await query
   if (error) throw error
+
+  // Enrich locked picks with live stats
+  const lockedPicks = (data || []).filter((p) => p.status === 'locked' && p.player_props?.games?.status === 'live')
+  if (lockedPicks.length > 0) {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const playerNames = [...new Set(lockedPicks.map((p) => p.player_props.player_name))]
+
+    // Look up ESPN IDs from DFS salaries
+    const { data: nbaPlayers } = await supabase
+      .from('nba_dfs_salaries')
+      .select('player_name, espn_player_id')
+      .in('player_name', playerNames)
+      .eq('game_date', today)
+
+    const { data: mlbPlayers } = await supabase
+      .from('mlb_dfs_salaries')
+      .select('player_name, espn_player_id')
+      .in('player_name', playerNames)
+      .eq('game_date', today)
+
+    const idMap = {}
+    for (const p of [...(nbaPlayers || []), ...(mlbPlayers || [])]) {
+      idMap[p.player_name] = p.espn_player_id
+    }
+
+    const espnIds = Object.values(idMap).filter(Boolean)
+    if (espnIds.length > 0) {
+      const { data: liveStats } = await supabase
+        .from('nba_dfs_player_stats')
+        .select('espn_player_id, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made')
+        .in('espn_player_id', espnIds)
+        .eq('game_date', today)
+
+      const statsMap = {}
+      for (const s of (liveStats || [])) {
+        statsMap[s.espn_player_id] = s
+      }
+
+      // Attach live stats to each locked pick
+      for (const pick of lockedPicks) {
+        const espnId = idMap[pick.player_props.player_name]
+        if (espnId && statsMap[espnId]) {
+          const stats = statsMap[espnId]
+          const marketKey = pick.player_props.market_key
+          // Map market key to the relevant stat
+          const STAT_MAP = {
+            player_points: stats.points,
+            player_rebounds: stats.rebounds,
+            player_assists: stats.assists,
+            player_steals: stats.steals,
+            player_blocks: stats.blocks,
+            player_threes: stats.three_pointers_made,
+            player_points_rebounds_assists: (stats.points || 0) + (stats.rebounds || 0) + (stats.assists || 0),
+            player_points_rebounds: (stats.points || 0) + (stats.rebounds || 0),
+            player_points_assists: (stats.points || 0) + (stats.assists || 0),
+            player_rebounds_assists: (stats.rebounds || 0) + (stats.assists || 0),
+          }
+          pick.live_stat = STAT_MAP[marketKey] ?? null
+        }
+      }
+    }
+  }
+
   return data || []
 }
 
@@ -541,11 +604,70 @@ export async function voidProp(propId) {
 export async function getUserPropPickHistory(userId) {
   const { data, error } = await supabase
     .from('prop_picks')
-    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, sports(key, name)))')
+    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, period, clock, sports(key, name)))')
     .eq('user_id', userId)
     .in('status', ['locked', 'settled'])
     .order('updated_at', { ascending: false })
 
   if (error) throw error
+
+  // Enrich locked picks with live stats (same logic as getUserPropPicks)
+  const lockedPicks = (data || []).filter((p) => p.status === 'locked' && p.player_props?.games?.status === 'live')
+  if (lockedPicks.length > 0) {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const playerNames = [...new Set(lockedPicks.map((p) => p.player_props.player_name))]
+
+    const { data: nbaPlayers } = await supabase
+      .from('nba_dfs_salaries')
+      .select('player_name, espn_player_id')
+      .in('player_name', playerNames)
+      .eq('game_date', today)
+
+    const { data: mlbPlayers } = await supabase
+      .from('mlb_dfs_salaries')
+      .select('player_name, espn_player_id')
+      .in('player_name', playerNames)
+      .eq('game_date', today)
+
+    const idMap = {}
+    for (const p of [...(nbaPlayers || []), ...(mlbPlayers || [])]) {
+      idMap[p.player_name] = p.espn_player_id
+    }
+
+    const espnIds = Object.values(idMap).filter(Boolean)
+    if (espnIds.length > 0) {
+      const { data: liveStats } = await supabase
+        .from('nba_dfs_player_stats')
+        .select('espn_player_id, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made')
+        .in('espn_player_id', espnIds)
+        .eq('game_date', today)
+
+      const statsMap = {}
+      for (const s of (liveStats || [])) {
+        statsMap[s.espn_player_id] = s
+      }
+
+      const STAT_MAP_FN = (stats, marketKey) => ({
+        player_points: stats.points,
+        player_rebounds: stats.rebounds,
+        player_assists: stats.assists,
+        player_steals: stats.steals,
+        player_blocks: stats.blocks,
+        player_threes: stats.three_pointers_made,
+        player_points_rebounds_assists: (stats.points || 0) + (stats.rebounds || 0) + (stats.assists || 0),
+        player_points_rebounds: (stats.points || 0) + (stats.rebounds || 0),
+        player_points_assists: (stats.points || 0) + (stats.assists || 0),
+        player_rebounds_assists: (stats.rebounds || 0) + (stats.assists || 0),
+      })[marketKey] ?? null
+
+      for (const pick of lockedPicks) {
+        const espnId = idMap[pick.player_props.player_name]
+        if (espnId && statsMap[espnId]) {
+          pick.live_stat = STAT_MAP_FN(statsMap[espnId], pick.player_props.market_key)
+        }
+      }
+    }
+  }
+
   return data || []
 }

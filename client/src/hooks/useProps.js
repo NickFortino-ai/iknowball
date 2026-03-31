@@ -30,6 +30,10 @@ export function usePropPickHistory() {
   return useQuery({
     queryKey: ['propPicks', 'history'],
     queryFn: () => api.get('/props/picks/me/history'),
+    refetchInterval: (query) => {
+      const hasLive = query.state.data?.some((p) => p.status === 'locked' && p.player_props?.games?.status === 'live')
+      return hasLive ? 30000 : undefined
+    },
   })
 }
 
