@@ -76,11 +76,15 @@ export default function LeagueCard({ league }) {
             <span className="font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">Commish</span>
           )}
         </div>
-        {formatRunsUntil(league) && (
+        {league.status === 'open' && league.starts_at ? (
+          <div className="text-xs text-text-muted mt-1.5">
+            Starts <span className="text-yellow-500 font-semibold">{new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}</span>
+          </div>
+        ) : formatRunsUntil(league) ? (
           <div className="text-xs text-text-muted mt-1.5">
             Runs until <span className="text-text-secondary font-medium">{formatRunsUntil(league)}</span>
           </div>
-        )}
+        ) : null}
       </div>
     </Link>
   )
