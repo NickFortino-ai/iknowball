@@ -405,7 +405,9 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
   const espnPath = ESPN_SPORT_PATHS[sport] || 'basketball/nba'
 
   try {
-    const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog`)
+    const seasonYear = new Date().getFullYear()
+    const seasonParam = sport !== 'basketball_nba' ? `?season=${seasonYear}` : ''
+    const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog${seasonParam}`)
     if (!response.ok) return res.status(404).json({ error: 'Player not found' })
     const data = await response.json()
 
@@ -437,7 +439,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     })
 
     // Season averages
-    const statsRes = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/stats`)
+    const statsRes = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/stats${seasonParam}`)
     let averages = null
     if (statsRes.ok) {
       const statsData = await statsRes.json()
