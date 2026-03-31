@@ -135,10 +135,14 @@ export async function refreshPlayerHeadshotCache(sportPath = 'basketball/nba') {
       const res = await fetch(url)
       if (!res.ok) continue
       const data = await res.json()
-      for (const athlete of (data.athletes || [])) {
-        const name = athlete.displayName || athlete.fullName
-        if (name && athlete.headshot?.href) {
-          cache[normalizePlayerName(name)] = athlete.headshot.href
+      for (const entry of (data.athletes || [])) {
+        // ESPN returns flat athletes for NBA, nested position groups for MLB
+        const athletes = entry.items ? entry.items : [entry]
+        for (const athlete of athletes) {
+          const name = athlete.displayName || athlete.fullName
+          if (name && athlete.headshot?.href) {
+            cache[normalizePlayerName(name)] = athlete.headshot.href
+          }
         }
       }
     } catch (err) {
