@@ -55,6 +55,9 @@ function getNotificationRoute(notification) {
     if (metadata?.pickId || metadata?.parlayId || metadata?.propPickId) return null
     if (metadata?.hotTakeId || (metadata?.targetType === 'hot_take' && metadata?.targetId)) return null
 
+    // League-linked notifications (e.g. backdrop approved)
+    if (metadata?.leagueId && !metadata?.targetType) return `/leagues/${metadata.leagueId}`
+
     // Deep-link with targetType + targetId (non-hot-take types)
     if (metadata?.targetType && metadata?.targetId) {
       return `/hub?tab=highlights&scrollTo=${metadata.targetType}-${metadata.targetId}`
