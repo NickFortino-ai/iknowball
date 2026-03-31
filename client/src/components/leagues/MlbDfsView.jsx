@@ -444,7 +444,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                   <>
                     <button
                       onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player) }}
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
                     >
                       {player.headshot_url && (
                         <img
