@@ -59,11 +59,14 @@ export async function submitBackdrop(userId, leagueId, fileBuffer, originalFilen
 export async function getPendingSubmissions() {
   const { data, error } = await supabase
     .from('backdrop_submissions')
-    .select('*, users(id, username, display_name), leagues(id, name)')
+    .select('*, users!backdrop_submissions_user_id_fkey(id, username, display_name), leagues(id, name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  if (error) throw error
+  if (error) {
+    logger.error({ error }, 'Failed to fetch pending backdrop submissions')
+    throw error
+  }
 
   // Generate signed URLs for preview
   const withUrls = await Promise.all((data || []).map(async (sub) => {
