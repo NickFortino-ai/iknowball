@@ -154,9 +154,14 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
 
       {pick?.status === 'locked' && pick.odds_at_pick != null && (
         <div className="mt-3 text-center text-sm text-text-muted">
-          <span className="text-incorrect">-{calculateRiskPoints(pick.odds_at_pick)}</span>
+          <span className="text-incorrect">-{pick.risk_at_submission || calculateRiskPoints(pick.odds_at_pick)}</span>
           {' / '}
-          <span className="text-correct">+{calculateRewardPoints(pick.odds_at_pick)}</span>
+          <span className="text-correct">+{pick.reward_at_submission || calculateRewardPoints(pick.odds_at_pick)}</span>
+          {pick.multiplier > 1 && (
+            <span className="ml-1.5 text-[10px] font-bold bg-accent/20 text-accent px-1.5 py-0.5 rounded">
+              {pick.multiplier}x
+            </span>
+          )}
         </div>
       )}
 
