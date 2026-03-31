@@ -320,6 +320,43 @@ export default function ResultsPage() {
               </>
             )
           })()}
+
+          {/* Leagues */}
+          {(() => {
+            const isCollapsed = collapsed.leagues !== undefined ? collapsed.leagues : hasTodayAction
+            return (
+              <>
+                <button onClick={() => toggleSection('leagues', hasTodayAction)} className="flex items-center justify-between w-full mb-3">
+                  <h2 className="font-display text-lg text-text-secondary">Leagues</h2>
+                  <svg className={`w-5 h-5 text-text-muted transition-transform ${isCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {!isCollapsed && (
+                  bonuses?.length > 0 ? (
+                    <div className="space-y-2 mb-6">
+                      {bonuses.map((bonus) => (
+                        <div key={bonus.id} className="bg-bg-card rounded-xl border border-border px-4 py-3 flex items-center justify-between">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-text-primary truncate">{bonus.label || bonus.type}</div>
+                            <div className="text-xs text-text-muted">{new Date(bonus.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                          </div>
+                          <span className={`font-display text-base ${bonus.points > 0 ? 'text-correct' : bonus.points < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+                            {bonus.points > 0 ? '+' : ''}{bonus.points}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 mb-6">
+                      <p className="text-sm text-text-muted mb-2">No league points yet</p>
+                      <a href="/leagues/join" className="text-sm text-accent hover:text-accent-hover font-semibold transition-colors">
+                        Earn points in leagues
+                      </a>
+                    </div>
+                  )
+                )}
+              </>
+            )
+          })()}
         </>
       )}
       <GamePicksModal game={selectedGame} userPick={selectedPick} onClose={() => { setSelectedGame(null); setSelectedPick(null) }} />
