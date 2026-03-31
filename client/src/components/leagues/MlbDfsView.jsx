@@ -442,26 +442,31 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                 <span className="text-xs font-bold text-accent w-7 shrink-0">{slot.label}</span>
                 {player ? (
                   <>
-                    {player.headshot_url && (
-                      <img
-                        src={player.headshot_url}
-                        alt=""
-                        className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                        onError={(e) => { e.target.style.display = 'none' }}
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
-                        <InjuryBadge status={player.injury_status} />
-                        {isLocked && (
-                          <svg className="w-3 h-3 text-text-muted shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player) }}
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    >
+                      {player.headshot_url && (
+                        <img
+                          src={player.headshot_url}
+                          alt=""
+                          className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                          onError={(e) => { e.target.style.display = 'none' }}
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                          <InjuryBadge status={player.injury_status} />
+                          {isLocked && (
+                            <svg className="w-3 h-3 text-text-muted shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="text-xs text-text-muted">{player.position} · {player.team} {player.opponent}</div>
                       </div>
-                      <div className="text-xs text-text-muted">{player.position} · {player.team} {player.opponent}</div>
-                    </div>
+                    </button>
                     <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
                     {!isLocked && !isViewMode && (
                       <button
