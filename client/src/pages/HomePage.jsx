@@ -115,7 +115,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+    <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-8 sm:py-12">
       {/* Hero */}
       <div className="text-center mb-16">
         <h1 className="font-display text-5xl sm:text-7xl text-accent mb-4 tracking-tight">
