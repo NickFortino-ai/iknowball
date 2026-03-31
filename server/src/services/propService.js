@@ -32,6 +32,7 @@ export async function syncPropsForGame(gameId, markets) {
   }
 
   if (!apiData?.bookmakers?.length) {
+    logger.info({ sportKey, eventId, hasData: !!apiData, keys: apiData ? Object.keys(apiData) : [] }, 'No bookmakers in props response')
     return { synced: 0 }
   }
 
