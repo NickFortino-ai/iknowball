@@ -65,6 +65,32 @@ export async function getNBAPlayerPool(date) {
     }
   }
 
+  // Attach live game period/clock from games table
+  const { data: sportRow } = await supabase.from('sports').select('id').eq('key', 'basketball_nba').single()
+  if (sportRow) {
+    const { data: liveGames } = await supabase
+      .from('games')
+      .select('starts_at, period, clock, status, home_team, away_team')
+      .eq('sport_id', sportRow.id)
+      .in('status', ['live', 'final'])
+
+    if (liveGames?.length) {
+      const gameMap = {}
+      for (const g of liveGames) {
+        gameMap[g.home_team] = g
+        gameMap[g.away_team] = g
+      }
+      for (const player of data) {
+        const game = gameMap[player.team]
+        if (game) {
+          player.game_period = game.period
+          player.game_clock = game.clock
+          player.game_status = game.status
+        }
+      }
+    }
+  }
+
   return data
 }
 

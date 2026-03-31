@@ -715,7 +715,15 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                           </svg>
                         )}
                       </div>
-                      <div className="text-xs text-text-muted">{player.position} · {player.team} {player.opponent}</div>
+                      <div className="text-xs text-text-muted">
+                        {player.position} · {player.team} {player.opponent}
+                        {player.game_status === 'live' && player.game_period && (
+                          <span className="text-accent ml-1.5">Q{player.game_period} {player.game_clock}</span>
+                        )}
+                        {player.game_status === 'final' && (
+                          <span className="text-correct ml-1.5">Final</span>
+                        )}
+                      </div>
                     </div>
                   </button>
                   {showPoints ? (
