@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useJoinLeague, useOpenLeagues, useJoinOpenLeague } from '../hooks/useLeagues'
 import { toast } from '../components/ui/Toast'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import { getBackdropUrl } from '../lib/backdropUrl'
 
 const FORMAT_LABELS = {
   pickem: "Pick'em",
@@ -172,7 +173,7 @@ export default function JoinLeaguePage() {
                   {hasBackdrop && (
                     <>
                       <img
-                        src={`/backdrops/${league.backdrop_image}`}
+                        src={getBackdropUrl(league.backdrop_image)}
                         alt=""
                         className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
                       />

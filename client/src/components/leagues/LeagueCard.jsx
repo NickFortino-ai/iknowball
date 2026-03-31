@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { getBackdropUrl } from '../../lib/backdropUrl'
 
 const FORMAT_LABELS = {
   pickem: "Pick'em",
@@ -51,7 +52,7 @@ export default function LeagueCard({ league }) {
       {hasBackdrop && (
         <>
           <img
-            src={`/backdrops/${league.backdrop_image}`}
+            src={getBackdropUrl(league.backdrop_image)}
             alt=""
             className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
           />
