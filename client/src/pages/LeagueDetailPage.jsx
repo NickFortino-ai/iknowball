@@ -28,7 +28,7 @@ function getLeagueTabs(league, isBracketLocked) {
   const isOpen = league.status === 'open'
   const memberOrStandings = isOpen ? 'Members' : 'Standings'
 
-  if (league.format === 'pickem' && league.use_league_picks) {
+  if (league.format === 'pickem') {
     return ['Picks', memberOrStandings, 'Thread']
   }
   if (league.format === 'bracket') {
@@ -36,7 +36,6 @@ function getLeagueTabs(league, isBracketLocked) {
   }
 
   const TABS = {
-    pickem: [memberOrStandings, 'Thread'],
     survivor: ['Picks', memberOrStandings, 'Thread'],
     squares: ['Board', memberOrStandings, 'Thread'],
     fantasy: ['My Team', 'Players', 'Matchups', memberOrStandings, 'Draft', 'Thread'],
@@ -1070,7 +1069,7 @@ export default function LeagueDetailPage() {
         /></div>
       )}
 
-      {tabs[activeTab] === 'Picks' && league.format === 'pickem' && league.use_league_picks && (
+      {tabs[activeTab] === 'Picks' && league.format === 'pickem' && (
         <div className="relative z-10"><PickemView league={league} standings={standings} mode="picks" /></div>
       )}
 

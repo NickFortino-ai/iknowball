@@ -17,10 +17,10 @@ export async function submitLeaguePick(leagueId, userId, weekId, gameId, pickedT
     throw err
   }
 
-  // Verify league is pick'em with use_league_picks
+  // Verify league is pick'em
   const { data: league } = await supabase
     .from('leagues')
-    .select('id, format, use_league_picks, sport, settings')
+    .select('id, format, sport, settings')
     .eq('id', leagueId)
     .single()
 
@@ -30,7 +30,7 @@ export async function submitLeaguePick(leagueId, userId, weekId, gameId, pickedT
     throw err
   }
 
-  if (league.format !== 'pickem' || !league.use_league_picks) {
+  if (league.format !== 'pickem') {
     const err = new Error('This league does not support league picks')
     err.status = 400
     throw err

@@ -566,7 +566,7 @@ async function checkLeagueHasLockedPicks(leagueId, league) {
       .in('status', ['locked', 'survived', 'eliminated'])
     return count > 0
   }
-  if (league.format === 'pickem' && league.use_league_picks) {
+  if (league.format === 'pickem') {
     const { count } = await supabase
       .from('league_picks')
       .select('id', { count: 'exact', head: true })
@@ -580,7 +580,7 @@ async function checkLeagueHasLockedPicks(leagueId, league) {
 export async function updateLeague(leagueId, userId, data) {
   const { data: league } = await supabase
     .from('leagues')
-    .select('commissioner_id, status, format, use_league_picks, settings, starts_at')
+    .select('commissioner_id, status, format, settings, starts_at')
     .eq('id', leagueId)
     .single()
 
@@ -1049,15 +1049,12 @@ export async function getLeagueStandings(leagueId, userId) {
 
   const { data: league } = await supabase
     .from('leagues')
-    .select('format, use_league_picks')
+    .select('format')
     .eq('id', leagueId)
     .single()
 
   if (league.format === 'pickem') {
-    if (league.use_league_picks) {
-      return getLeaguePickStandings(leagueId)
-    }
-    return getPickemStandings(leagueId)
+    return getLeaguePickStandings(leagueId)
   }
 
   if (league.format === 'bracket') {

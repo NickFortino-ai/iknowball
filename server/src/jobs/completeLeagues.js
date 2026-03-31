@@ -1,6 +1,5 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
-import { getPickemStandings } from '../services/leagueService.js'
 import { getLeaguePickStandings } from '../services/leaguePickService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 import { createNotification } from '../services/notificationService.js'
@@ -84,22 +83,6 @@ async function notifyLeagueMembers(league, winnerId, winnerName, format) {
       `${winnerName} won the ${league.name} ${formatLabel}!`,
       { leagueId: league.id, leagueName: league.name, format, isWinner: false })
   }
-}
-
-async function awardPickemWinner(league, winnerId) {
-  const memberCount = await getLeagueMemberCount(league.id)
-
-  await awardUserPoints(winnerId, league, memberCount,
-    `Won ${memberCount}-person league +${memberCount} pts`, 'league_win')
-
-  await createNotification(winnerId, 'league_win',
-    `You won the ${league.name} league! +${memberCount} pts`,
-    { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem', isWinner: true })
-
-  const winnerName = await getUsername(winnerId)
-  await notifyLeagueMembers(league, winnerId, winnerName, 'pickem')
-
-  logger.info({ winnerId, leagueId: league.id, bonus: memberCount }, 'Pickem league winner awarded')
 }
 
 // Position-based points: N + 1 - 2 * rank (plus +10 bonus for 1st place)
@@ -448,14 +431,7 @@ export async function completeLeagues() {
       }
 
       if (league.format === 'pickem') {
-        if (league.use_league_picks) {
-          await awardLeaguePickPoints(league)
-        } else {
-          const standings = await getPickemStandings(league.id)
-          if (standings?.length > 0) {
-            await awardPickemWinner(league, standings[0].user_id)
-          }
-        }
+        await awardLeaguePickPoints(league)
       } else if (league.format === 'bracket') {
         const standings = await getBracketStandings(league.id)
         if (standings?.length > 0) {

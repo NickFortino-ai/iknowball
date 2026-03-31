@@ -306,13 +306,12 @@ function LeaguePicksView({ league, standings }) {
 }
 
 export default function PickemView({ league, standings, mode }) {
-  // New league picks mode
-  if (league.use_league_picks && mode === 'picks') {
+  if (mode === 'picks') {
     return <LeaguePicksView league={league} standings={standings} />
   }
 
-  // Standings mode (both legacy and new)
-  if (mode === 'standings' || !league.use_league_picks) {
+  // Standings mode
+  if (mode === 'standings') {
     const gamesPerWeek = league.settings?.games_per_week
     const useSubmissionOdds = league.settings?.lock_odds_at === 'submission'
 
@@ -333,13 +332,6 @@ export default function PickemView({ league, standings, mode }) {
           </div>
         )}
 
-        {!league.use_league_picks && (
-          <div className="bg-bg-card rounded-xl border border-border p-3 mb-4 text-center text-xs text-text-muted">
-            Your regular picks on the{' '}
-            <Link to="/picks" className="text-accent hover:underline">Picks page</Link>
-            {' '}automatically count in this league
-          </div>
-        )}
 
         <StandingsTable standings={standings} leagueId={league.id} />
       </div>
