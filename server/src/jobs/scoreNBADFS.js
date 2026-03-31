@@ -192,7 +192,7 @@ async function scoreRosters(date, season, allFinal = false) {
       season,
       total_points: e.totalPoints,
       night_rank: i + 1,
-      is_night_winner: allFinal && i === 0 && entries.length > 1,
+      is_night_winner: allFinal && i === 0,
     }))
 
     const { error } = await supabase
