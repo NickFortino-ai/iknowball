@@ -10,7 +10,7 @@ const FORMAT_OPTIONS = [
   { value: 'nba_dfs', label: 'NBA Daily Fantasy', description: 'Build a nightly NBA lineup under a salary cap and compete for the highest score' },
   { value: 'mlb_dfs', label: 'MLB Daily Fantasy', description: 'Build a daily MLB lineup under a salary cap — scored on hits, HRs, RBIs, runs, and more' },
   { value: 'hr_derby', label: 'Home Run Derby', description: 'Pick 3 hitters per day — score points for every HR they hit, with distance as tiebreaker' },
-  { value: 'pickem', label: "Pick'em", description: 'Pick winners against the spread with odds-based scoring' },
+  { value: 'pickem', label: "Pick'em", description: 'Pick game winners with odds-based scoring — your points reflect the real odds' },
   { value: 'survivor', label: 'Survivor', description: 'Pick one team per week — lose and you are eliminated' },
   { value: 'bracket', label: 'Bracket', description: 'Fill out a tournament bracket with escalating points per round' },
   { value: 'squares', label: 'Squares', description: '10x10 grid tied to a single game with quarter-by-quarter scoring' },
