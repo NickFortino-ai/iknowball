@@ -614,7 +614,10 @@ export function useNbaDfsPlayers(date) {
     queryKey: ['nba-dfs', 'players', date],
     queryFn: () => api.get(`/nba-dfs/players?date=${date}`),
     enabled: !!date,
-    refetchInterval: 120000,
+    refetchInterval: (query) => {
+      const hasLive = query.state.data?.some((p) => p.game_status === 'live')
+      return hasLive ? 25000 : 120000
+    },
   })
 }
 
@@ -680,7 +683,10 @@ export function useMlbDfsPlayers(date) {
     queryKey: ['mlb-dfs', 'players', date],
     queryFn: () => api.get(`/mlb-dfs/players?date=${date}`),
     enabled: !!date,
-    refetchInterval: 120000,
+    refetchInterval: (query) => {
+      const hasLive = query.state.data?.some((p) => p.game_status === 'live')
+      return hasLive ? 25000 : 120000
+    },
   })
 }
 
