@@ -167,13 +167,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
 
       {pick?.status === 'locked' && pick.live_stat != null && prop.games?.status === 'live' && (
         <div className="mt-2 text-center">
-          <span className={`font-display text-lg ${
-            pick.picked_side === 'over'
-              ? pick.live_stat > prop.line ? 'text-correct' : pick.live_stat === prop.line ? 'text-text-primary' : 'text-incorrect'
-              : pick.live_stat < prop.line ? 'text-correct' : pick.live_stat === prop.line ? 'text-text-primary' : 'text-incorrect'
-          }`}>
-            {pick.live_stat}
-          </span>
+          <span className="font-display text-lg text-text-primary">{pick.live_stat}</span>
           <span className="text-xs text-text-muted ml-1.5">{prop.market_label}</span>
           {prop.games?.period && (
             <span className="text-xs text-text-muted ml-2">Q{prop.games.period} {prop.games.clock}</span>
