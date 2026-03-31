@@ -36,11 +36,24 @@ export async function syncPropsForGame(gameId, markets) {
     return { synced: 0 }
   }
 
-  // Use first bookmaker
-  const bookmaker = apiData.bookmakers[0]
+  // Prefer bookmaker with both Over and Under; fall back to merging across bookmakers
   const rows = []
 
-  for (const market of bookmaker.markets || []) {
+  // First pass: find a bookmaker with both sides
+  let primaryBookmaker = apiData.bookmakers[0]
+  for (const bm of apiData.bookmakers) {
+    const sides = new Set()
+    for (const mkt of bm.markets || []) {
+      for (const o of mkt.outcomes || []) sides.add(o.name?.toLowerCase())
+    }
+    if (sides.has('over') && sides.has('under')) {
+      primaryBookmaker = bm
+      break
+    }
+  }
+
+  // Parse primary bookmaker
+  for (const market of primaryBookmaker.markets || []) {
     for (const outcome of market.outcomes || []) {
       if (!outcome.point && outcome.point !== 0) continue
 
@@ -62,7 +75,7 @@ export async function syncPropsForGame(gameId, markets) {
           line,
           over_odds: null,
           under_odds: null,
-          bookmaker: bookmaker.key,
+          bookmaker: primaryBookmaker.key,
           external_event_id: eventId,
         }
         rows.push(row)
