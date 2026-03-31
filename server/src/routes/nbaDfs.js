@@ -386,7 +386,19 @@ const MLB_GAME_COLS = (statMap) => ({
   avg: statMap.AVG || '.000',
 })
 
-// Player game log — last 10 games (supports NBA and MLB)
+// NFL stat columns for game log
+const NFL_GAME_COLS = (statMap) => ({
+  pass_yds: parseInt(statMap['PYDS'] || statMap['Pass YDS']) || 0,
+  pass_td: parseInt(statMap['PTD'] || statMap['Pass TD']) || 0,
+  int: parseInt(statMap['INT']) || 0,
+  rush_yds: parseInt(statMap['RYDS'] || statMap['Rush YDS']) || 0,
+  rush_td: parseInt(statMap['RTD'] || statMap['Rush TD']) || 0,
+  rec: parseInt(statMap['REC']) || 0,
+  rec_yds: parseInt(statMap['RECYDS'] || statMap['Rec YDS']) || 0,
+  rec_td: parseInt(statMap['RECTD'] || statMap['Rec TD']) || 0,
+})
+
+// Player game log — last 10 games (supports NBA, MLB, and NFL)
 router.get('/player/:espnId/gamelog', async (req, res) => {
   const { espnId } = req.params
   const sport = req.query.sport || 'basketball_nba'
@@ -399,14 +411,17 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
 
     const labels = data.labels || []
     const eventsMap = data.events || {}
+    // Prefer regular season, fall back to any season type with games
     const regSeason = data.seasonTypes?.find((s) => s.displayName?.includes('Regular'))
+    const anySeason = regSeason || data.seasonTypes?.[0]
     const allGames = []
-    for (const cat of regSeason?.categories || []) {
+    for (const cat of anySeason?.categories || []) {
       for (const ev of cat.events || []) allGames.push(ev)
     }
 
     const isMLB = sport === 'baseball_mlb'
-    const colParser = isMLB ? MLB_GAME_COLS : NBA_GAME_COLS
+    const isNFL = sport === 'americanfootball_nfl'
+    const colParser = isMLB ? MLB_GAME_COLS : isNFL ? NFL_GAME_COLS : NBA_GAME_COLS
 
     const games = allGames.slice(0, 10).map((ev) => {
       const detail = eventsMap[ev.eventId] || {}
@@ -438,6 +453,13 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
             avg: get('AVG'), hr: get('HR'), rbi: get('RBI'),
             r: get('R'), sb: get('SB'), obp: get('OBP'),
             ops: get('OPS'), gp: get('GP'),
+          }
+        } else if (isNFL) {
+          averages = {
+            pass_yds: get('PYDS'), pass_td: get('PTD'), int: get('INT'),
+            rush_yds: get('RYDS'), rush_td: get('RTD'),
+            rec: get('REC'), rec_yds: get('RECYDS'), rec_td: get('RECTD'),
+            gp: get('GP'),
           }
         } else {
           averages = {

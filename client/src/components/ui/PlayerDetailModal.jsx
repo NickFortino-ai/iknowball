@@ -117,12 +117,59 @@ function MLBGameLog({ games }) {
   )
 }
 
+function NFLaverages({ averages }) {
+  return (
+    <div className="grid grid-cols-3 gap-3 text-center">
+      {[
+        { label: 'Pass YDS', value: averages.pass_yds },
+        { label: 'Pass TD', value: averages.pass_td },
+        { label: 'INT', value: averages.int },
+        { label: 'Rush YDS', value: averages.rush_yds },
+        { label: 'Rush TD', value: averages.rush_td },
+        { label: 'REC', value: averages.rec },
+        { label: 'Rec YDS', value: averages.rec_yds },
+        { label: 'Rec TD', value: averages.rec_td },
+        { label: 'GP', value: averages.gp },
+      ].filter((s) => s.value && s.value !== '0' && s.value !== 0).map((s) => (
+        <div key={s.label}>
+          <div className="text-lg font-display text-text-primary">{s.value}</div>
+          <div className="text-[10px] text-text-muted uppercase">{s.label}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function NFLGameLog({ games }) {
+  return (
+    <div className="space-y-0">
+      <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2.5rem_2rem_2rem_2.5rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+        <span></span><span>OPP</span><span className="text-right">PaYD</span><span className="text-right">PTD</span><span className="text-right">RuYD</span><span className="text-right">RTD</span><span className="text-right">REC</span><span className="text-right">ReYD</span>
+      </div>
+      {games.map((g, i) => (
+        <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2.5rem_2rem_2rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+          <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
+          <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-primary text-right font-semibold">{g.pass_yds || 0}</span>
+          <span className="text-xs text-text-secondary text-right">{g.pass_td || 0}</span>
+          <span className="text-xs text-text-secondary text-right">{g.rush_yds || 0}</span>
+          <span className="text-xs text-text-secondary text-right">{g.rush_td || 0}</span>
+          <span className="text-xs text-text-secondary text-right">{g.rec || 0}</span>
+          <span className="text-xs text-text-secondary text-right">{g.rec_yds || 0}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'basketball_nba' }) {
   const { data, isLoading } = useNbaDfsPlayerGamelog(player?.espn_player_id, sport)
 
   if (!player) return null
 
-  const isMLB = (data?.sport || sport) === 'baseball_mlb'
+  const detectedSport = data?.sport || sport
+  const isMLB = detectedSport === 'baseball_mlb'
+  const isNFL = detectedSport === 'americanfootball_nfl'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
@@ -171,7 +218,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
         {data?.averages && (
           <div className="px-5 py-4 border-b border-text-primary/10">
             <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3 font-semibold">Season Averages</h3>
-            {isMLB ? <MLBaverages averages={data.averages} /> : <NBAaverages averages={data.averages} />}
+            {isMLB ? <MLBaverages averages={data.averages} /> : isNFL ? <NFLaverages averages={data.averages} /> : <NBAaverages averages={data.averages} />}
           </div>
         )}
 
@@ -184,6 +231,8 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
             <p className="text-sm text-text-muted text-center py-4">No recent games found.</p>
           ) : isMLB ? (
             <MLBGameLog games={data.games} />
+          ) : isNFL ? (
+            <NFLGameLog games={data.games} />
           ) : (
             <NBAGameLog games={data.games} />
           )}
