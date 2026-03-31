@@ -114,7 +114,7 @@ const createLeagueSchema = z.object({
     locks_at: z.string().optional(),
   }).optional(),
   fantasy_settings: z.object({
-    format: z.enum(['traditional', 'salary_cap']).optional(),
+    format: z.enum(['traditional', 'salary_cap', 'hr_derby']).optional(),
     scoring_format: z.enum(['ppr', 'half_ppr', 'standard']).optional(),
     num_teams: z.number().int().min(2).max(20).optional(),
     draft_pick_timer: z.number().int().optional(),
