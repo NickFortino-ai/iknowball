@@ -117,22 +117,64 @@ function MLBGameLog({ games }) {
   )
 }
 
-function NFLaverages({ averages }) {
+function getNFLPositionGroup(position) {
+  if (!position) return 'skill'
+  const pos = position.toUpperCase()
+  if (pos === 'QB') return 'qb'
+  if (pos === 'RB' || pos === 'FB') return 'rb'
+  if (pos === 'WR' || pos === 'TE') return 'rec'
+  if (pos === 'K') return 'k'
+  if (pos === 'DEF') return 'def'
+  return 'skill'
+}
+
+const NFL_AVG_STATS = {
+  qb: [
+    { label: 'Pass YDS', key: 'pass_yds' },
+    { label: 'Pass TD', key: 'pass_td' },
+    { label: 'INT', key: 'int' },
+    { label: 'Rush YDS', key: 'rush_yds' },
+    { label: 'Rush TD', key: 'rush_td' },
+    { label: 'GP', key: 'gp' },
+  ],
+  rb: [
+    { label: 'Rush YDS', key: 'rush_yds' },
+    { label: 'Rush TD', key: 'rush_td' },
+    { label: 'REC', key: 'rec' },
+    { label: 'Rec YDS', key: 'rec_yds' },
+    { label: 'Rec TD', key: 'rec_td' },
+    { label: 'GP', key: 'gp' },
+  ],
+  rec: [
+    { label: 'REC', key: 'rec' },
+    { label: 'Rec YDS', key: 'rec_yds' },
+    { label: 'Rec TD', key: 'rec_td' },
+    { label: 'Rush YDS', key: 'rush_yds' },
+    { label: 'GP', key: 'gp' },
+  ],
+  skill: [
+    { label: 'Rush YDS', key: 'rush_yds' },
+    { label: 'Rec YDS', key: 'rec_yds' },
+    { label: 'TD', key: 'rush_td' },
+    { label: 'GP', key: 'gp' },
+  ],
+}
+
+const NFL_LOG_COLS = {
+  qb: { cols: 'grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2.5rem]', headers: ['PaYD', 'TD', 'INT', 'RuYD'], fields: ['pass_yds', 'pass_td', 'int', 'rush_yds'] },
+  rb: { cols: 'grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2.5rem]', headers: ['RuYD', 'RTD', 'REC', 'ReYD'], fields: ['rush_yds', 'rush_td', 'rec', 'rec_yds'] },
+  rec: { cols: 'grid-cols-[1.5rem_1fr_2rem_2.5rem_2rem_2.5rem]', headers: ['REC', 'ReYD', 'RTD', 'RuYD'], fields: ['rec', 'rec_yds', 'rec_td', 'rush_yds'] },
+  skill: { cols: 'grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2rem_2rem]', headers: ['RuYD', 'ReYD', 'REC', 'TD'], fields: ['rush_yds', 'rec_yds', 'rec', 'rush_td'] },
+}
+
+function NFLaverages({ averages, position }) {
+  const group = getNFLPositionGroup(position)
+  const stats = NFL_AVG_STATS[group] || NFL_AVG_STATS.skill
   return (
     <div className="grid grid-cols-3 gap-3 text-center">
-      {[
-        { label: 'Pass YDS', value: averages.pass_yds },
-        { label: 'Pass TD', value: averages.pass_td },
-        { label: 'INT', value: averages.int },
-        { label: 'Rush YDS', value: averages.rush_yds },
-        { label: 'Rush TD', value: averages.rush_td },
-        { label: 'REC', value: averages.rec },
-        { label: 'Rec YDS', value: averages.rec_yds },
-        { label: 'Rec TD', value: averages.rec_td },
-        { label: 'GP', value: averages.gp },
-      ].filter((s) => s.value && s.value !== '0' && s.value !== 0).map((s) => (
+      {stats.map((s) => (
         <div key={s.label}>
-          <div className="text-lg font-display text-text-primary">{s.value}</div>
+          <div className="text-lg font-display text-text-primary">{averages[s.key] || 0}</div>
           <div className="text-[10px] text-text-muted uppercase">{s.label}</div>
         </div>
       ))}
@@ -140,22 +182,22 @@ function NFLaverages({ averages }) {
   )
 }
 
-function NFLGameLog({ games }) {
+function NFLGameLog({ games, position }) {
+  const group = getNFLPositionGroup(position)
+  const config = NFL_LOG_COLS[group] || NFL_LOG_COLS.skill
   return (
     <div className="space-y-0">
-      <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2.5rem_2rem_2rem_2.5rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
-        <span></span><span>OPP</span><span className="text-right">PaYD</span><span className="text-right">PTD</span><span className="text-right">RuYD</span><span className="text-right">RTD</span><span className="text-right">REC</span><span className="text-right">ReYD</span>
+      <div className={`grid ${config.cols} gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10`}>
+        <span></span><span>OPP</span>
+        {config.headers.map((h) => <span key={h} className="text-right">{h}</span>)}
       </div>
       {games.map((g, i) => (
-        <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2.5rem_2rem_2rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+        <div key={i} className={`grid ${config.cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
           <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
-          <span className="text-xs text-text-primary text-right font-semibold">{g.pass_yds || 0}</span>
-          <span className="text-xs text-text-secondary text-right">{g.pass_td || 0}</span>
-          <span className="text-xs text-text-secondary text-right">{g.rush_yds || 0}</span>
-          <span className="text-xs text-text-secondary text-right">{g.rush_td || 0}</span>
-          <span className="text-xs text-text-secondary text-right">{g.rec || 0}</span>
-          <span className="text-xs text-text-secondary text-right">{g.rec_yds || 0}</span>
+          {config.fields.map((f, j) => (
+            <span key={f} className={`text-xs text-right ${j === 0 ? 'text-text-primary font-semibold' : 'text-text-secondary'}`}>{g[f] || 0}</span>
+          ))}
         </div>
       ))}
     </div>
@@ -218,7 +260,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
         {data?.averages && (
           <div className="px-5 py-4 border-b border-text-primary/10">
             <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3 font-semibold">Season Averages</h3>
-            {isMLB ? <MLBaverages averages={data.averages} /> : isNFL ? <NFLaverages averages={data.averages} /> : <NBAaverages averages={data.averages} />}
+            {isMLB ? <MLBaverages averages={data.averages} /> : isNFL ? <NFLaverages averages={data.averages} position={player.position} /> : <NBAaverages averages={data.averages} />}
           </div>
         )}
 
@@ -232,7 +274,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
           ) : isMLB ? (
             <MLBGameLog games={data.games} />
           ) : isNFL ? (
-            <NFLGameLog games={data.games} />
+            <NFLGameLog games={data.games} position={player.position} />
           ) : (
             <NBAGameLog games={data.games} />
           )}
