@@ -40,8 +40,8 @@ function getLeagueTabs(league, isBracketLocked) {
     survivor: ['Picks', memberOrStandings, 'Thread'],
     squares: ['Board', memberOrStandings, 'Thread'],
     fantasy: ['My Team', 'Players', 'Matchups', memberOrStandings, 'Draft', 'Thread'],
-    nba_dfs: ['Roster', 'Live', memberOrStandings],
-    mlb_dfs: ['Roster', 'Live', memberOrStandings],
+    nba_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
+    mlb_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
     hr_derby: ['Picks', memberOrStandings, 'Thread'],
   }
   return TABS[league.format] || [memberOrStandings, 'Thread']
