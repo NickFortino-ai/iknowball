@@ -1039,7 +1039,7 @@ export default function LeagueDetailPage() {
               isLiveDisabled
                 ? 'bg-bg-primary/20 text-text-muted/40 cursor-not-allowed border border-text-primary/10'
                 : activeTab === i
-                  ? 'bg-accent text-white'
+                  ? 'bg-bg-primary/30 text-accent border-2 border-accent'
                   : 'bg-bg-primary/30 text-text-primary hover:bg-bg-primary/50 border border-text-primary/15'
             }`}
           >
