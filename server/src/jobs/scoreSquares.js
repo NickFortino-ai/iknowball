@@ -59,36 +59,84 @@ async function autoLockDigits() {
       logger.error({ error, boardId: board.id }, 'Failed to auto-lock squares digits')
     } else {
       logger.info({ boardId: board.id, leagueId: board.league_id }, 'Auto-locked squares digits')
+
+      // Activate the league if still open
+      await supabase
+        .from('leagues')
+        .update({ status: 'active', updated_at: now.toISOString() })
+        .eq('id', board.league_id)
+        .eq('status', 'open')
     }
   }
 }
 
 /**
+ * Match a game to an ESPN event by team names on the scoreboard.
+ */
+function matchTeam(a, b) {
+  const normalize = (name) => name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim()
+  const an = normalize(a), bn = normalize(b)
+  if (an === bn || an.includes(bn) || bn.includes(an)) return true
+  const al = an.split(/\s+/).pop(), bl = bn.split(/\s+/).pop()
+  return al.length > 2 && al === bl
+}
+
+/**
  * Auto-score quarters for squares boards from ESPN live/final game data.
- * Fetches the ESPN summary endpoint to get per-quarter linescores.
+ * Finds the ESPN event by matching teams on the scoreboard, then fetches
+ * the summary endpoint for per-quarter linescores.
  */
 async function autoScoreQuarters() {
+  // Get all locked boards that aren't fully scored yet
   const { data: boards } = await supabase
     .from('squares_boards')
-    .select('id, league_id, row_digits, col_digits, digits_locked, q1_away_score, q2_away_score, q3_away_score, q4_away_score, game_id, games!inner(status, home_team, away_team, external_id, sports(key)), leagues!inner(status, settings)')
+    .select('id, league_id, row_digits, col_digits, digits_locked, q1_away_score, q2_away_score, q3_away_score, q4_away_score, game_id, games(status, home_team, away_team, starts_at, sports(key)), leagues(status, settings)')
     .eq('digits_locked', true)
-    .in('games.status', ['live', 'final'])
-    .neq('leagues.status', 'completed')
+    .is('q4_away_score', null) // not yet fully scored
 
-  if (!boards?.length) return
+  if (!boards?.length) {
+    logger.debug('No squares boards to score')
+    return
+  }
+
+  logger.info({ count: boards.length }, 'Found squares boards to score')
 
   for (const board of boards) {
+    if (board.leagues?.status === 'completed') continue
+
     const game = board.games
-    if (!game?.external_id) continue
+    if (!game) { logger.warn({ boardId: board.id }, 'Squares board has no game data'); continue }
 
     const sportKey = game.sports?.key
     const espnPath = ESPN_PATHS[sportKey]
-    if (!espnPath) continue
+    if (!espnPath) { logger.warn({ boardId: board.id, sportKey }, 'No ESPN path for sport'); continue }
 
-    // Fetch ESPN summary for quarter linescores
+    // Find ESPN event ID by matching teams on the scoreboard
+    let espnEventId = null
     let homeLinescores, awayLinescores, isFinal
     try {
-      const res = await fetch(`${ESPN_BASE}/${espnPath}/summary?event=${game.external_id}`)
+      const gameDate = new Date(game.starts_at)
+      const dateStr = `${gameDate.getFullYear()}${String(gameDate.getMonth() + 1).padStart(2, '0')}${String(gameDate.getDate()).padStart(2, '0')}`
+      const sbRes = await fetch(`${ESPN_BASE}/${espnPath}/scoreboard?dates=${dateStr}`)
+      if (!sbRes.ok) continue
+      const sbData = await sbRes.json()
+
+      const espnEvent = (sbData.events || []).find((ev) => {
+        const comp = ev.competitions?.[0]
+        if (!comp) return false
+        const home = comp.competitors?.find((c) => c.homeAway === 'home')
+        const away = comp.competitors?.find((c) => c.homeAway === 'away')
+        return home && away && matchTeam(home.team?.displayName || '', game.home_team) && matchTeam(away.team?.displayName || '', game.away_team)
+      })
+
+      if (!espnEvent) {
+        logger.debug({ boardId: board.id, home: game.home_team, away: game.away_team }, 'No ESPN event match for squares game')
+        continue
+      }
+      espnEventId = espnEvent.id
+
+      // Fetch summary for linescores
+      const res = await fetch(`${ESPN_BASE}/${espnPath}/summary?event=${espnEventId}`)
       if (!res.ok) continue
       const summary = await res.json()
 
@@ -103,7 +151,7 @@ async function autoScoreQuarters() {
       awayLinescores = awayComp.linescores || []
       isFinal = comp.status?.type?.name === 'STATUS_FINAL'
     } catch (err) {
-      logger.warn({ err: err.message, boardId: board.id }, 'Failed to fetch ESPN summary for squares')
+      logger.warn({ err: err.message, boardId: board.id }, 'Failed to fetch ESPN data for squares')
       continue
     }
 
