@@ -362,7 +362,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                       {s.user?.display_name || s.user?.username}
                     </span>
                   </div>
-                  <span className="text-sm text-text-secondary text-right">{s.nightlyWins}</span>
+                  <span className="font-display text-lg text-text-primary text-right">{s.nightlyWins}</span>
                   <span className="font-display text-xl text-white text-right">{Math.round(s.totalPoints * 10) / 10}</span>
                 </button>
               )
