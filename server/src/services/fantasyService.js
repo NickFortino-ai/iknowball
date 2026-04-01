@@ -58,7 +58,7 @@ export async function getFantasySettings(leagueId) {
     .from('fantasy_settings')
     .select('*')
     .eq('league_id', leagueId)
-    .single()
+    .maybeSingle()
 
   if (error) throw error
   return data
