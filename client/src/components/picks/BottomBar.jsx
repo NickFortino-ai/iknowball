@@ -188,75 +188,76 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
             })
 
             return (
-              <div
-                key={gameId}
-                className="flex items-center gap-3 py-1.5 cursor-pointer active:bg-white/5 rounded-lg -mx-1 px-1"
-                onClick={() => setTappedGameId(tappedGameId === gameId ? null : gameId)}
-              >
-                {/* Team matchup */}
-                <div className="flex-1 min-w-0 text-sm truncate">
-                  <span className={pick.picked_team === 'away' ? 'text-accent font-semibold' : 'text-text-primary'}>
-                    {teamName(game.away_team)}
-                  </span>
-                  <span className="text-text-muted"> vs </span>
-                  <span className={pick.picked_team === 'home' ? 'text-accent font-semibold' : 'text-text-primary'}>
-                    {teamName(game.home_team)}
-                  </span>
-                </div>
-
-                {/* Multiplier squares */}
-                {multiplyOn && canMultiply && (
-                  <div className="flex gap-1.5 flex-shrink-0">
-                    {[2, 3, 4].map((m) => {
-                      if (!affordableMultipliers.includes(m) && mult !== m) return null
-                      const isActive = mult === m
-                      return (
-                        <button
-                          key={m}
-                          onClick={() => onUpdateMultiplier(gameId, isActive ? 1 : m)}
-                          className={`w-8 h-8 rounded text-xs font-bold border transition-colors ${
-                            isActive
-                              ? 'bg-accent border-accent text-white'
-                              : 'border-border text-text-secondary hover:border-accent hover:text-accent'
-                          }`}
-                        >
-                          {m}x
-                        </button>
-                      )
-                    })}
+              <div key={gameId}>
+                <div
+                  className="flex items-center gap-3 py-1.5 cursor-pointer active:bg-white/5 rounded-lg -mx-1 px-1"
+                  onClick={() => setTappedGameId(tappedGameId === gameId ? null : gameId)}
+                >
+                  {/* Team matchup */}
+                  <div className="flex-1 min-w-0 text-sm truncate">
+                    <span className={pick.picked_team === 'away' ? 'text-accent font-semibold' : 'text-text-primary'}>
+                      {teamName(game.away_team)}
+                    </span>
+                    <span className="text-text-muted"> vs </span>
+                    <span className={pick.picked_team === 'home' ? 'text-accent font-semibold' : 'text-text-primary'}>
+                      {teamName(game.home_team)}
+                    </span>
                   </div>
-                )}
 
-                {/* Risk → Reward */}
-                <div className="flex items-center gap-2 text-sm flex-shrink-0">
-                  <span className="text-incorrect">{baseRisk * mult}</span>
-                  <span className="text-text-muted">&rarr;</span>
-                  <span className="text-correct">{baseReward * mult}</span>
-                </div>
-              </div>
-              {tappedGameId === gameId && (
-                <div className="bg-bg-card/80 rounded-lg px-3 py-2 mb-1 border border-text-primary/10">
-                  {game.status === 'live' ? (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-text-primary font-semibold">
-                        {teamName(game.away_team)} {game.live_away_score ?? game.away_score ?? 0} @ {teamName(game.home_team)} {game.live_home_score ?? game.home_score ?? 0}
-                      </span>
-                      {game.period && <span className="text-accent font-semibold">Q{game.period} {game.clock}</span>}
-                    </div>
-                  ) : game.status === 'final' ? (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-text-primary font-semibold">
-                        {teamName(game.away_team)} {game.away_score ?? 0} @ {teamName(game.home_team)} {game.home_score ?? 0}
-                      </span>
-                      <span className="text-text-muted font-semibold">Final</span>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-text-muted text-center">
-                      {new Date(game.starts_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  {/* Multiplier squares */}
+                  {multiplyOn && canMultiply && (
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      {[2, 3, 4].map((m) => {
+                        if (!affordableMultipliers.includes(m) && mult !== m) return null
+                        const isActive = mult === m
+                        return (
+                          <button
+                            key={m}
+                            onClick={(e) => { e.stopPropagation(); onUpdateMultiplier(gameId, isActive ? 1 : m) }}
+                            className={`w-8 h-8 rounded text-xs font-bold border transition-colors ${
+                              isActive
+                                ? 'bg-accent border-accent text-white'
+                                : 'border-border text-text-secondary hover:border-accent hover:text-accent'
+                            }`}
+                          >
+                            {m}x
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
+
+                  {/* Risk → Reward */}
+                  <div className="flex items-center gap-2 text-sm flex-shrink-0">
+                    <span className="text-incorrect">{baseRisk * mult}</span>
+                    <span className="text-text-muted">&rarr;</span>
+                    <span className="text-correct">{baseReward * mult}</span>
+                  </div>
                 </div>
-              )}
+                {tappedGameId === gameId && (
+                  <div className="bg-bg-card/80 rounded-lg px-3 py-2 mb-1 border border-text-primary/10">
+                    {game.status === 'live' ? (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-text-primary font-semibold">
+                          {teamName(game.away_team)} {game.live_away_score ?? game.away_score ?? 0} @ {teamName(game.home_team)} {game.live_home_score ?? game.home_score ?? 0}
+                        </span>
+                        {game.period && <span className="text-accent font-semibold">Q{game.period} {game.clock}</span>}
+                      </div>
+                    ) : game.status === 'final' ? (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-text-primary font-semibold">
+                          {teamName(game.away_team)} {game.away_score ?? 0} @ {teamName(game.home_team)} {game.home_score ?? 0}
+                        </span>
+                        <span className="text-text-muted font-semibold">Final</span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-text-muted text-center">
+                        {new Date(game.starts_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )
           })}
 
