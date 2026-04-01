@@ -178,36 +178,32 @@ router.get('/live', async (req, res) => {
     }
   }
 
-  // Fetch live game period/clock from games table
+  // Fetch live game period/clock by matching game_starts_at
   const { data: sportRow } = await supabase.from('sports').select('id').eq('key', 'basketball_nba').single()
-  const liveGameMap = {}
   if (sportRow) {
     const { data: liveGames } = await supabase
       .from('games')
-      .select('home_team, away_team, period, clock, status')
+      .select('starts_at, period, clock, status')
       .eq('sport_id', sportRow.id)
       .in('status', ['live', 'final'])
 
-    for (const g of (liveGames || [])) {
-      liveGameMap[g.home_team] = g
-      liveGameMap[g.away_team] = g
-    }
-  }
+    if (liveGames?.length) {
+      // Map game start time → period/clock
+      const gameByStart = {}
+      for (const g of liveGames) {
+        gameByStart[g.starts_at] = g
+      }
 
-  // Attach game status from games table to gameStateMap
-  if (allEspnIds.length) {
-    const { data: salaryTeams } = await supabase
-      .from('nba_dfs_salaries')
-      .select('espn_player_id, team')
-      .eq('game_date', date)
-      .in('espn_player_id', [...new Set(allEspnIds)])
-
-    for (const st of (salaryTeams || [])) {
-      const game = liveGameMap[st.team]
-      if (game && gameStateMap[st.espn_player_id]) {
-        gameStateMap[st.espn_player_id].status = game.status
-        gameStateMap[st.espn_player_id].period = game.period
-        gameStateMap[st.espn_player_id].clock = game.clock
+      // Match each player's game_starts_at to a live game
+      for (const [espnId, gs] of Object.entries(gameStateMap)) {
+        if (gs.gameStartsAt) {
+          const match = gameByStart[gs.gameStartsAt]
+          if (match) {
+            gs.status = match.status
+            gs.period = match.period
+            gs.clock = match.clock
+          }
+        }
       }
     }
   }
