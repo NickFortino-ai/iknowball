@@ -270,6 +270,46 @@ async function scoreRosters(date, season, allFinal = false) {
 }
 
 /**
+ * Tighten joins_locked_at for MLB DFS leagues to the first pitch of their start date.
+ */
+async function tightenMLBJoinLocks() {
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, starts_at, joins_locked_at')
+    .eq('format', 'mlb_dfs')
+    .in('status', ['open', 'active'])
+
+  if (!leagues?.length) return
+
+  for (const league of leagues) {
+    if (!league.starts_at) continue
+    const startDate = new Date(league.starts_at).toISOString().split('T')[0]
+
+    const { data: firstGame } = await supabase
+      .from('mlb_dfs_salaries')
+      .select('game_starts_at')
+      .eq('game_date', startDate)
+      .not('game_starts_at', 'is', null)
+      .order('game_starts_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (!firstGame?.game_starts_at) continue
+
+    const firstPitch = new Date(firstGame.game_starts_at)
+    const currentLock = league.joins_locked_at ? new Date(league.joins_locked_at) : null
+    if (!currentLock || currentLock > firstPitch) {
+      await supabase
+        .from('leagues')
+        .update({ joins_locked_at: firstPitch.toISOString() })
+        .eq('id', league.id)
+
+      logger.info({ leagueId: league.id, firstPitch: firstPitch.toISOString() }, 'Tightened MLB DFS joins_locked_at to first pitch')
+    }
+  }
+}
+
+/**
  * Main job: generate MLB salaries for today/tomorrow, score games.
  */
 export async function scoreMLBDFS() {
@@ -309,6 +349,9 @@ export async function scoreMLBDFS() {
       logger.error({ err }, 'Failed to generate tomorrow MLB DFS salaries')
     }
   }
+
+  // Tighten join locks to first pitch once salaries exist
+  await tightenMLBJoinLocks()
 
   // Score today's games
   const { playerStats, allFinal, hasGames } = await fetchCompletedGameStats(today)

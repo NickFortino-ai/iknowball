@@ -92,8 +92,8 @@ export async function createLeague(userId, data) {
       use_league_picks: data.format === 'pickem',
       visibility: data.visibility || 'closed',
       joins_locked_at: data.joins_locked_at
-        ? (data.format === 'nba_dfs' && data.joins_locked_at.length === 10
-          // For NBA DFS, date-only string → end of sports day (next day 10 AM UTC / 6 AM ET)
+        ? (['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(data.format) && data.joins_locked_at.length === 10
+          // For DFS formats, date-only string → end of sports day (next day 10 AM UTC / 6 AM ET)
           ? (() => { const d = new Date(data.joins_locked_at + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); d.setUTCHours(10, 0, 0, 0); return d.toISOString() })()
           : data.joins_locked_at)
         : null,
