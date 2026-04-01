@@ -114,7 +114,7 @@ export default function ParlayCard({ parlay, onDelete }) {
   const badgeLabel = isWon ? 'Won' : isLost ? 'Lost' : isPending ? 'Pending' : isLocked ? 'Locked' : 'Push'
 
   return (
-    <div className={`bg-bg-card rounded-2xl border ${borderColor} overflow-hidden`}>
+    <div className={`bg-bg-primary rounded-2xl border ${borderColor === 'border-border' ? 'border-text-primary/20' : borderColor} overflow-hidden`}>
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full p-4 flex items-center justify-between text-left"
