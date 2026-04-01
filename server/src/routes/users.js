@@ -34,6 +34,7 @@ const updateSchema = z.object({
   snapchat_handle: z.string().max(30).nullable().optional(),
   youtube_handle: z.string().max(50).nullable().optional(),
   venmo_handle: z.string().max(30).nullable().optional(),
+  threads_handle: z.string().max(30).nullable().optional(),
   has_seen_onboarding: z.boolean().optional(),
   timezone: z.string().max(50).optional(),
 })
@@ -102,7 +103,7 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, title_preference, x_handle, instagram_handle, tiktok_handle, snapchat_handle, youtube_handle, venmo_handle, created_at')
+    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, title_preference, x_handle, instagram_handle, tiktok_handle, snapchat_handle, youtube_handle, venmo_handle, threads_handle, created_at')
     .eq('id', id)
     .single()
 
