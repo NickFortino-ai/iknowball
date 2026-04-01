@@ -7,6 +7,7 @@ import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
 import Avatar from '../ui/Avatar'
+import TouchdownPicker from './TouchdownPicker'
 
 const STATUS_STYLES = {
   survived: 'bg-correct/20 text-correct',
@@ -16,6 +17,7 @@ const STATUS_STYLES = {
 }
 
 export default function SurvivorView({ league }) {
+  const isTouchdown = league.settings?.survivor_mode === 'touchdown'
   const isDaily = league.settings?.pick_frequency === 'daily'
   const periodLabel = isDaily ? 'Day' : 'Week'
   const { data: board, isLoading } = useSurvivorBoard(league.id)
@@ -148,13 +150,25 @@ export default function SurvivorView({ league }) {
         </button>
       )}
 
-      {/* Pick form */}
-      {showPickForm && !leagueCompleted && pickWeekGames.length === 0 && (
+      {/* Touchdown pick form */}
+      {showPickForm && !leagueCompleted && isTouchdown && pickWeek && (
+        <TouchdownPicker
+          league={league}
+          pickWeek={pickWeek}
+          onPick={(playerName) => {
+            setLocalPickTeam(playerName)
+            setShowPickForm(false)
+          }}
+        />
+      )}
+
+      {/* Standard team pick form */}
+      {showPickForm && !leagueCompleted && !isTouchdown && pickWeekGames.length === 0 && (
         <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10">
           <p className="text-sm text-text-primary text-center">No upcoming games available right now. Check back closer to game time.</p>
         </div>
       )}
-      {showPickForm && !leagueCompleted && pickWeekGames.length > 0 && (() => {
+      {showPickForm && !leagueCompleted && !isTouchdown && pickWeekGames.length > 0 && (() => {
         // Group games by date
         const grouped = pickWeekGames.reduce((acc, game) => {
           const d = new Date(game.starts_at)
