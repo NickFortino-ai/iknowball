@@ -72,6 +72,22 @@ export async function claimSquare(leagueId, userId, rowPos, colPos) {
     throw err
   }
 
+  // Enforce max squares per user limit
+  const maxPerUser = settings.max_squares_per_user
+  if (maxPerUser) {
+    const { count } = await supabase
+      .from('squares_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('board_id', board.id)
+      .eq('user_id', userId)
+
+    if (count >= maxPerUser) {
+      const err = new Error(`You can only claim ${maxPerUser} square${maxPerUser === 1 ? '' : 's'} in this league`)
+      err.status = 400
+      throw err
+    }
+  }
+
   const { data, error } = await supabase
     .from('squares_claims')
     .insert({

@@ -100,6 +100,7 @@ export default function CreateLeaguePage() {
   const [survivorMode, setSurvivorMode] = useState('standard')
   const [assignmentMethod, setAssignmentMethod] = useState('self_select')
   const [pointsPerQuarter, setPointsPerQuarter] = useState([25, 25, 25, 50])
+  const [maxSquaresPerUser, setMaxSquaresPerUser] = useState('')
   const [rowTeamName, setRowTeamName] = useState('')
   const [colTeamName, setColTeamName] = useState('')
 
@@ -166,6 +167,7 @@ export default function CreateLeaguePage() {
       settings.game_id = gameId
       settings.assignment_method = assignmentMethod
       settings.points_per_quarter = pointsPerQuarter
+      if (maxSquaresPerUser) settings.max_squares_per_user = parseInt(maxSquaresPerUser, 10)
       if (rowTeamName) settings.row_team_name = rowTeamName
       if (colTeamName) settings.col_team_name = colTeamName
     }
@@ -1248,6 +1250,19 @@ export default function CreateLeaguePage() {
                   </div>
                 )
               })()}
+            </div>
+            <div>
+              <label className="block text-xs text-text-muted mb-1">Max Squares per User</label>
+              <input
+                type="number"
+                value={maxSquaresPerUser}
+                onChange={(e) => setMaxSquaresPerUser(e.target.value)}
+                min={1}
+                max={100}
+                placeholder="No limit"
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+              <p className="text-[10px] text-text-muted mt-1">Leave blank for unlimited</p>
             </div>
           </div>
         )}
