@@ -63,7 +63,7 @@ export async function createLeague(userId, data) {
 
   if (data.duration === 'this_week') {
     const bounds = getWeekBounds(new Date())
-    startsAt = bounds.start
+    // starts_at stays as now (not Monday), so league stays open for invites
     endsAt = bounds.end
   } else if (data.duration === 'full_season') {
     endsAt = new Date(startsAt)
@@ -323,8 +323,8 @@ export async function joinLeague(userId, inviteCode) {
       err.status = 400
       throw err
     }
-  } else if (league.format === 'nba_dfs') {
-    // NBA DFS uses joins_locked_at (first tip-off) instead of starts_at
+  } else if (['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(league.format)) {
+    // DFS formats use joins_locked_at (first tip-off) instead of starts_at
     if (league.joins_locked_at && new Date(league.joins_locked_at) <= new Date()) {
       const err = new Error('This league is locked — games have started')
       err.status = 400
