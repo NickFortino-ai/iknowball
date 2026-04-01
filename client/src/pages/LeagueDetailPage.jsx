@@ -217,6 +217,20 @@ function LeagueConditions({ league }) {
       return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. The champion is determined by ${metric} over the season.`
     }
 
+    if (league.format === 'mlb_dfs') {
+      const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
+      const isSingleNight = fantasySettings?.season_type === 'single_week'
+      if (isSingleNight) {
+        return `Build a 10-player MLB lineup (1 SP, C, 1B, 2B, SS, 3B, 3 OF, UTIL) under a ${cap} salary cap. Each player locks when their game starts. The player with the most fantasy points at the end of the night wins.`
+      }
+      const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
+      return `Build a new 10-player MLB lineup each day — 1 starting pitcher plus 9 position players — under a ${cap} salary cap. Players lock when their game starts. Batters earn points from hits, home runs, RBIs, runs, stolen bases, and walks. Pitchers earn points from innings pitched, strikeouts, wins, and saves. The champion is determined by ${metric} over the season.`
+    }
+
+    if (league.format === 'hr_derby') {
+      return `Pick MLB players you think will hit home runs each day. The more homers your picks hit, the more points you earn. Track your picks against the rest of the league and climb the standings.`
+    }
+
     return null
   }
 
