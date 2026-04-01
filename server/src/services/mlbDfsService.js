@@ -24,8 +24,8 @@ async function fetchPlayerSeasonAvgs(espnId) {
     if (!res.ok) return null
     const data = await res.json()
 
-    // Look for batting stats
-    const batting = data.categories?.find((c) => c.name === 'batting')
+    // Look for batting stats (ESPN uses 'batting' or 'career-batting')
+    const batting = data.categories?.find((c) => c.name === 'batting' || c.name === 'career-batting')
     if (batting?.labels?.length && batting?.statistics?.length) {
       const labels = batting.labels
       const latest = batting.statistics[batting.statistics.length - 1]
@@ -42,8 +42,8 @@ async function fetchPlayerSeasonAvgs(espnId) {
       }
     }
 
-    // Look for pitching stats
-    const pitching = data.categories?.find((c) => c.name === 'pitching')
+    // Look for pitching stats (ESPN uses 'pitching' or 'career-pitching')
+    const pitching = data.categories?.find((c) => c.name === 'pitching' || c.name === 'career-pitching')
     if (pitching?.labels?.length && pitching?.statistics?.length) {
       const labels = pitching.labels
       const latest = pitching.statistics[pitching.statistics.length - 1]
@@ -72,7 +72,7 @@ async function fetchPlayerSeasonAvgs(espnId) {
  * Per-game average used for salary calc.
  */
 function calcMLBBatterFppg(avgs) {
-  if (!avgs || avgs.gp < 5) return 0
+  if (!avgs || avgs.gp < 1) return 0
   const gp = avgs.gp
   const singles = Math.max(0, avgs.h - avgs.hr) // simplified
   return (singles * 3 + avgs.hr * 10 + avgs.rbi * 2 + avgs.r * 2 + avgs.sb * 5 + avgs.bb * 2) / gp
@@ -84,7 +84,7 @@ function calcMLBBatterFppg(avgs) {
  * Per-start average used for salary calc.
  */
 function calcMLBPitcherFppg(avgs) {
-  if (!avgs || avgs.gp < 3) return 0
+  if (!avgs || avgs.gp < 1) return 0
   const gp = avgs.gs || avgs.gp
   if (gp <= 0) return 0
   const ipPerGame = avgs.ip / gp
