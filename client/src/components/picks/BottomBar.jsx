@@ -16,7 +16,12 @@ function teamName(fullName) {
   return parts[parts.length - 1]
 }
 
-export default function BottomBar({ picks, games, propPicks, profile, onUpdateMultiplier }) {
+function formatGameTime(startsAt) {
+  const d = new Date(startsAt)
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+export default function BottomBar({ picks, games, propPicks, profile, onUpdateMultiplier, onPickTap }) {
   const [expanded, setExpanded] = useState(false)
   const [multiplyOn, setMultiplyOn] = useState(false)
 
@@ -186,17 +191,36 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
               return (extraCost - currentExtra) <= remainingBudget
             })
 
+            const isLive = game.status === 'live'
+            const isFinal = game.status === 'final'
+            const hasScore = isLive || isFinal
+
             return (
-              <div key={gameId} className="flex items-center gap-3 py-1.5">
-                {/* Team matchup */}
-                <div className="flex-1 min-w-0 text-sm truncate">
-                  <span className={pick.picked_team === 'away' ? 'text-accent font-semibold' : 'text-text-primary'}>
-                    {teamName(game.away_team)}
-                  </span>
-                  <span className="text-text-muted"> vs </span>
-                  <span className={pick.picked_team === 'home' ? 'text-accent font-semibold' : 'text-text-primary'}>
-                    {teamName(game.home_team)}
-                  </span>
+              <div
+                key={gameId}
+                className={`flex items-center gap-3 py-1.5${onPickTap ? ' cursor-pointer active:bg-white/5 rounded-lg -mx-1 px-1' : ''}`}
+                onClick={() => onPickTap?.(gameId)}
+              >
+                {/* Team matchup + game info */}
+                <div className="flex-1 min-w-0 text-sm">
+                  <div className="truncate">
+                    <span className={pick.picked_team === 'away' ? 'text-accent font-semibold' : 'text-text-primary'}>
+                      {teamName(game.away_team)}
+                    </span>
+                    <span className="text-text-muted"> vs </span>
+                    <span className={pick.picked_team === 'home' ? 'text-accent font-semibold' : 'text-text-primary'}>
+                      {teamName(game.home_team)}
+                    </span>
+                  </div>
+                  {hasScore ? (
+                    <div className="text-[10px] text-text-muted">
+                      {game.live_away_score ?? game.away_score ?? 0} - {game.live_home_score ?? game.home_score ?? 0}
+                      {isLive && game.period && <span className="ml-1 text-accent">Q{game.period} {game.clock}</span>}
+                      {isFinal && <span className="ml-1">Final</span>}
+                    </div>
+                  ) : game.starts_at && (
+                    <div className="text-[10px] text-text-muted">{formatGameTime(game.starts_at)}</div>
+                  )}
                 </div>
 
                 {/* Multiplier squares */}

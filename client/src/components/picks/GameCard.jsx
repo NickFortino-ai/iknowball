@@ -77,6 +77,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
 
   return (
     <div
+      id={`game-${game.id}`}
       {...(isFirstCard ? { 'data-onboarding': 'game-card' } : {})}
       onClick={hasInjuryData ? () => onInjuryClick?.() : onCardClick ? () => onCardClick() : undefined}
       className={`bg-bg-card rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4 overflow-hidden${hasInjuryData || onCardClick ? ' cursor-pointer' : ''}`}
