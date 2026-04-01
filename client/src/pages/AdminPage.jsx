@@ -524,7 +524,7 @@ export default function AdminPage() {
                   ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
                   : prop.player_name
                 return (
-                <div key={prop.id} className="flex items-center gap-2 mt-1 first:mt-0 ml-20 sm:ml-20">
+                <div key={prop.id} className="flex items-center gap-2 py-2 first:pt-0 ml-20 sm:ml-20 border-t border-white/10 first:border-t-0">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
                       {shortName} — {prop.market_label} ({prop.line})
@@ -604,7 +604,7 @@ export default function AdminPage() {
                     ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
                     : prop.player_name
                   return (
-                    <div key={prop.id} className="flex items-center gap-2 mt-1 first:mt-0 ml-20 sm:ml-20">
+                    <div key={prop.id} className="flex items-center gap-2 py-2 first:pt-0 ml-20 sm:ml-20 border-t border-white/10 first:border-t-0">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">
                           {shortName} — {prop.market_label} ({prop.line})
