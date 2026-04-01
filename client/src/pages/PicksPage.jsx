@@ -359,10 +359,7 @@ export default function PicksPage() {
             </div>
           )}
 
-          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={allGames} propPicks={pendingPropPicks} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} onPickTap={(gameId) => {
-            const el = document.getElementById(`game-${gameId}`)
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }} />}
+          {parlayMode ? <ParlaySlip /> : <BottomBar picks={pendingPicksMap} games={allGames} propPicks={pendingPropPicks} profile={profile} onUpdateMultiplier={handleUpdateMultiplier} />}
         </>
       )}
 
