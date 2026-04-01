@@ -786,7 +786,7 @@ export default function LeagueDetailPage() {
         <div className="mb-6 rounded-xl border-2 border-yellow-500 py-10 px-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
           <div className="relative flex items-center justify-center gap-4">
-            <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0" />
+            <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0 animate-trophy-float drop-shadow-[0_0_12px_rgba(234,179,8,0.3)]" />
             <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer shrink-0">
               {league.champion.user.avatar_url ? (
                 <img

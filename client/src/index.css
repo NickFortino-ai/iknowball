@@ -94,6 +94,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
+@keyframes trophy-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+.animate-trophy-float {
+  animation: trophy-float 3s ease-in-out infinite;
+}
+
 @keyframes feed-card-victory {
   from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
