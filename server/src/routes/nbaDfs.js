@@ -188,14 +188,20 @@ router.get('/live', async (req, res) => {
       .in('status', ['live', 'final'])
 
     if (liveGames?.length) {
-      // Match by team abbreviation in game's full team names
+      const NBA_ABBREV_TO_TEAM = {
+        ATL: 'Hawks', BOS: 'Celtics', BKN: 'Nets', CHA: 'Hornets', CHI: 'Bulls',
+        CLE: 'Cavaliers', DAL: 'Mavericks', DEN: 'Nuggets', DET: 'Pistons', GS: 'Warriors',
+        GSW: 'Warriors', HOU: 'Rockets', IND: 'Pacers', LAC: 'Clippers', LAL: 'Lakers',
+        MEM: 'Grizzlies', MIA: 'Heat', MIL: 'Bucks', MIN: 'Timberwolves', NO: 'Pelicans',
+        NOP: 'Pelicans', NY: 'Knicks', NYK: 'Knicks', OKC: 'Thunder', ORL: 'Magic',
+        PHI: '76ers', PHX: 'Suns', POR: 'Trail Blazers', SAC: 'Kings', SA: 'Spurs',
+        SAS: 'Spurs', TOR: 'Raptors', UTA: 'Jazz', WAS: 'Wizards',
+      }
       for (const [espnId, gs] of Object.entries(gameStateMap)) {
         if (gs.team) {
-          const abbr = gs.team.toUpperCase()
-          const match = liveGames.find((g) =>
-            g.home_team.toUpperCase().includes(abbr) || g.away_team.toUpperCase().includes(abbr) ||
-            g.home_team.split(' ').pop().toUpperCase().startsWith(abbr.slice(0, 3)) ||
-            g.away_team.split(' ').pop().toUpperCase().startsWith(abbr.slice(0, 3))
+          const teamName = NBA_ABBREV_TO_TEAM[gs.team.toUpperCase()]
+          const match = teamName && liveGames.find((g) =>
+            g.home_team.includes(teamName) || g.away_team.includes(teamName)
           )
           if (match) {
             gs.status = match.status
