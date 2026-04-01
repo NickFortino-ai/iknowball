@@ -447,7 +447,7 @@ export async function getUserPropPicks(userId, status) {
   if (error) throw error
 
   // Enrich locked picks with live stats
-  const lockedPicks = (data || []).filter((p) => p.status === 'locked' && p.player_props?.games?.status === 'live')
+  const lockedPicks = (data || []).filter((p) => p.status === 'locked' && (p.player_props?.games?.status === 'live' || p.player_props?.games?.status === 'final'))
   if (lockedPicks.length > 0) {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
     const playerNames = [...new Set(lockedPicks.map((p) => p.player_props.player_name))]
@@ -612,7 +612,7 @@ export async function getUserPropPickHistory(userId) {
   if (error) throw error
 
   // Enrich locked picks with live stats (same logic as getUserPropPicks)
-  const lockedPicks = (data || []).filter((p) => p.status === 'locked' && p.player_props?.games?.status === 'live')
+  const lockedPicks = (data || []).filter((p) => p.status === 'locked' && (p.player_props?.games?.status === 'live' || p.player_props?.games?.status === 'final'))
   if (lockedPicks.length > 0) {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
     const playerNames = [...new Set(lockedPicks.map((p) => p.player_props.player_name))]
