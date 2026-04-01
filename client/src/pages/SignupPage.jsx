@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import PasswordInput from '../components/ui/PasswordInput'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -74,13 +75,10 @@ export default function SignupPage() {
           </div>
           <div>
             <label className="block text-sm text-text-secondary mb-1">Password</label>
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
-              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
               placeholder="••••••••"
             />
           </div>
