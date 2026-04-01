@@ -8,6 +8,7 @@ import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
 
 const SLOTS = [
+  { key: 'SP', label: 'SP', positions: ['SP'] },
   { key: 'C', label: 'C', positions: ['C'] },
   { key: '1B', label: '1B', positions: ['1B'] },
   { key: '2B', label: '2B', positions: ['2B'] },
@@ -19,7 +20,7 @@ const SLOTS = [
   { key: 'UTIL', label: 'UTIL', positions: ['C', '1B', '2B', 'SS', '3B', 'OF', 'UTIL'] },
 ]
 
-const POSITION_FILTERS = ['All', 'C', '1B', '2B', 'SS', '3B', 'OF']
+const POSITION_FILTERS = ['All', 'SP', 'C', '1B', '2B', 'SS', '3B', 'OF']
 
 function matchesPositionFilter(playerPos, filter) {
   if (filter === 'All') return true

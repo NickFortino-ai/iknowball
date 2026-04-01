@@ -9,12 +9,11 @@ function todayET() {
 }
 
 /**
- * MLB DFS fantasy points formula:
+ * MLB DFS fantasy points formula (batters):
  * Single: 3, Double: 5, Triple: 8, HR: 10
- * RBI: 2, Run: 2, Walk: 2, SB: 5
- * Strikeout (batter): -0.5
+ * RBI: 2, Run: 2, Walk: 2, SB: 5, Strikeout: -0.5
  */
-function calculateMLBFantasyPoints(stats) {
+function calculateMLBBatterPoints(stats) {
   const singles = Math.max(0, (stats.hits || 0) - (stats.doubles || 0) - (stats.triples || 0) - (stats.home_runs || 0))
   return singles * 3
     + (stats.doubles || 0) * 5
@@ -25,6 +24,25 @@ function calculateMLBFantasyPoints(stats) {
     + (stats.walks || 0) * 2
     + (stats.stolen_bases || 0) * 5
     - (stats.strikeouts || 0) * 0.5
+}
+
+/**
+ * MLB DFS fantasy points formula (pitchers):
+ * IP: 3 per inning, K: 2, W: 5, SV: 5, ER: -2, BB: -0.5, H: -0.5
+ */
+function calculateMLBPitcherPoints(stats) {
+  return (stats.innings_pitched || 0) * 3
+    + (stats.strikeouts || 0) * 2
+    + (stats.wins || 0) * 5
+    + (stats.saves || 0) * 5
+    - (stats.earned_runs || 0) * 2
+    - (stats.walks || 0) * 0.5
+    - (stats.hits_allowed || 0) * 0.5
+}
+
+function calculateMLBFantasyPoints(stats) {
+  if (stats.is_pitcher) return calculateMLBPitcherPoints(stats)
+  return calculateMLBBatterPoints(stats)
 }
 
 /**
@@ -73,42 +91,74 @@ async function fetchCompletedGameStats(date) {
       continue
     }
 
-    // Extract batting stats from box score
+    // Extract batting + pitching stats from box score
     for (const team of boxScore.boxscore?.players || []) {
       for (const statGroup of team.statistics || []) {
-        // Only process batting stats
-        if (statGroup.name !== 'batting') continue
-
         const headers = statGroup.labels || []
-        for (const athlete of statGroup.athletes || []) {
-          const espnId = athlete.athlete?.id
-          const name = athlete.athlete?.displayName
-          if (!espnId || !name) continue
 
-          const rawStats = athlete.stats || []
-          const statMap = {}
-          headers.forEach((h, i) => { statMap[h] = rawStats[i] })
+        if (statGroup.name === 'batting') {
+          for (const athlete of statGroup.athletes || []) {
+            const espnId = athlete.athlete?.id
+            const name = athlete.athlete?.displayName
+            if (!espnId || !name) continue
 
-          const ab = parseInt(statMap['AB']) || 0
-          if (ab === 0 && !statMap['AB']) continue // Skip if no at-bats data
+            const rawStats = athlete.stats || []
+            const statMap = {}
+            headers.forEach((h, i) => { statMap[h] = rawStats[i] })
 
-          playerStats.push({
-            espnPlayerId: espnId,
-            playerName: name,
-            stats: {
-              at_bats: ab,
-              hits: parseInt(statMap['H']) || 0,
-              runs: parseInt(statMap['R']) || 0,
-              home_runs: parseInt(statMap['HR']) || 0,
-              rbis: parseInt(statMap['RBI']) || 0,
-              stolen_bases: parseInt(statMap['SB']) || 0,
-              walks: parseInt(statMap['BB']) || 0,
-              strikeouts: parseInt(statMap['K'] || statMap['SO']) || 0,
-              doubles: parseInt(statMap['2B']) || 0,
-              triples: parseInt(statMap['3B']) || 0,
-              total_bases: parseInt(statMap['TB']) || 0,
-            },
-          })
+            const ab = parseInt(statMap['AB']) || 0
+            if (ab === 0 && !statMap['AB']) continue
+
+            playerStats.push({
+              espnPlayerId: espnId,
+              playerName: name,
+              stats: {
+                at_bats: ab,
+                hits: parseInt(statMap['H']) || 0,
+                runs: parseInt(statMap['R']) || 0,
+                home_runs: parseInt(statMap['HR']) || 0,
+                rbis: parseInt(statMap['RBI']) || 0,
+                stolen_bases: parseInt(statMap['SB']) || 0,
+                walks: parseInt(statMap['BB']) || 0,
+                strikeouts: parseInt(statMap['K'] || statMap['SO']) || 0,
+                doubles: parseInt(statMap['2B']) || 0,
+                triples: parseInt(statMap['3B']) || 0,
+                total_bases: parseInt(statMap['TB']) || 0,
+                is_pitcher: false,
+              },
+            })
+          }
+        }
+
+        if (statGroup.name === 'pitching') {
+          for (const athlete of statGroup.athletes || []) {
+            const espnId = athlete.athlete?.id
+            const name = athlete.athlete?.displayName
+            if (!espnId || !name) continue
+
+            const rawStats = athlete.stats || []
+            const statMap = {}
+            headers.forEach((h, i) => { statMap[h] = rawStats[i] })
+
+            const ip = parseFloat(statMap['IP']) || 0
+            if (ip === 0) continue
+
+            playerStats.push({
+              espnPlayerId: espnId,
+              playerName: name,
+              stats: {
+                innings_pitched: ip,
+                hits_allowed: parseInt(statMap['H']) || 0,
+                earned_runs: parseInt(statMap['ER']) || 0,
+                walks: parseInt(statMap['BB']) || 0,
+                strikeouts: parseInt(statMap['K'] || statMap['SO']) || 0,
+                wins: parseInt(statMap['W']) || 0,
+                losses: parseInt(statMap['L']) || 0,
+                saves: parseInt(statMap['SV']) || 0,
+                is_pitcher: true,
+              },
+            })
+          }
         }
       }
     }

@@ -19,64 +19,102 @@ function mapPosition(pos) {
  */
 async function fetchPlayerSeasonAvgs(espnId) {
   try {
-    const res = await fetch(`${ESPN_BASE}/baseball/mlb/athletes/${espnId}/stats`)
+    const res = await fetch(`https://site.api.espn.com/apis/common/v3/sports/baseball/mlb/athletes/${espnId}/stats`)
     if (!res.ok) return null
     const data = await res.json()
 
     // Look for batting stats
     const batting = data.categories?.find((c) => c.name === 'batting')
-    if (!batting?.labels || !batting?.statistics?.length) return null
-
-    const labels = batting.labels
-    const latest = batting.statistics[batting.statistics.length - 1]
-    const vals = latest.stats || []
-
-    const get = (label) => {
-      const idx = labels.indexOf(label)
-      return idx >= 0 ? parseFloat(vals[idx]) || 0 : 0
+    if (batting?.labels?.length && batting?.statistics?.length) {
+      const labels = batting.labels
+      const latest = batting.statistics[batting.statistics.length - 1]
+      const vals = latest.stats || []
+      const get = (label) => {
+        const idx = labels.indexOf(label)
+        return idx >= 0 ? parseFloat(vals[idx]) || 0 : 0
+      }
+      return {
+        type: 'batting',
+        gp: get('GP'), ab: get('AB'), avg: get('AVG'), hr: get('HR'),
+        rbi: get('RBI'), r: get('R'), sb: get('SB'), h: get('H'),
+        bb: get('BB'), obp: get('OBP'), slg: get('SLG'), ops: get('OPS'),
+      }
     }
 
-    return {
-      gp: get('GP'),
-      ab: get('AB'),
-      avg: get('AVG'),
-      hr: get('HR'),
-      rbi: get('RBI'),
-      r: get('R'),
-      sb: get('SB'),
-      h: get('H'),
-      bb: get('BB'),
-      obp: get('OBP'),
-      slg: get('SLG'),
-      ops: get('OPS'),
+    // Look for pitching stats
+    const pitching = data.categories?.find((c) => c.name === 'pitching')
+    if (pitching?.labels?.length && pitching?.statistics?.length) {
+      const labels = pitching.labels
+      const latest = pitching.statistics[pitching.statistics.length - 1]
+      const vals = latest.stats || []
+      const get = (label) => {
+        const idx = labels.indexOf(label)
+        return idx >= 0 ? parseFloat(vals[idx]) || 0 : 0
+      }
+      return {
+        type: 'pitching',
+        gp: get('GP'), gs: get('GS'), w: get('W'), l: get('L'),
+        era: get('ERA'), ip: get('IP'), k: get('K'), bb: get('BB'),
+        sv: get('SV'), whip: get('WHIP'), h: get('H'), er: get('ER'),
+      }
     }
+
+    return null
   } catch {
     return null
   }
 }
 
 /**
- * MLB DFS fantasy points formula:
+ * MLB DFS fantasy points formula (batters):
  * Hit: 3, Double: 5, Triple: 8, HR: 10, RBI: 2, Run: 2, SB: 5, Walk: 2
  * Per-game average used for salary calc.
  */
-function calcMLBFppg(avgs) {
+function calcMLBBatterFppg(avgs) {
   if (!avgs || avgs.gp < 5) return 0
   const gp = avgs.gp
-  // Estimate doubles/triples from hits and HRs (rough)
   const singles = Math.max(0, avgs.h - avgs.hr) // simplified
-  const fpp = (singles * 3 + avgs.hr * 10 + avgs.rbi * 2 + avgs.r * 2 + avgs.sb * 5 + avgs.bb * 2) / gp
-  return fpp
+  return (singles * 3 + avgs.hr * 10 + avgs.rbi * 2 + avgs.r * 2 + avgs.sb * 5 + avgs.bb * 2) / gp
 }
 
 /**
- * Calculate salary from MLB fantasy points per game.
+ * MLB DFS fantasy points formula (pitchers):
+ * IP: 3 per inning, K: 2, W: 5, SV: 5, ER: -2, BB: -0.5, H: -0.5
+ * Per-start average used for salary calc.
+ */
+function calcMLBPitcherFppg(avgs) {
+  if (!avgs || avgs.gp < 3) return 0
+  const gp = avgs.gs || avgs.gp
+  if (gp <= 0) return 0
+  const ipPerGame = avgs.ip / gp
+  const kPerGame = avgs.k / gp
+  const wPerGame = avgs.w / gp
+  const svPerGame = avgs.sv / gp
+  const erPerGame = avgs.er / gp
+  const bbPerGame = avgs.bb / gp
+  const hPerGame = avgs.h / gp
+  return ipPerGame * 3 + kPerGame * 2 + wPerGame * 5 + svPerGame * 5
+    - erPerGame * 2 - bbPerGame * 0.5 - hPerGame * 0.5
+}
+
+/**
+ * Calculate salary from MLB fantasy points per game (batters).
  * $3,000 base + $500/fppg, capped at $10,000.
  */
 function mlbFppgToSalary(fppg) {
   if (!fppg || fppg <= 0) return 3000
   const salary = Math.round((3000 + fppg * 500) / 100) * 100
   return Math.max(3000, Math.min(10000, salary))
+}
+
+/**
+ * Calculate salary from MLB pitcher FPPG.
+ * $4,000 base + $300/fppg, capped at $12,000.
+ */
+function mlbPitcherFppgToSalary(fppg) {
+  if (!fppg || fppg <= 0) return 4000
+  const salary = Math.round((4000 + fppg * 300) / 100) * 100
+  return Math.max(4000, Math.min(12000, salary))
 }
 
 /**
@@ -166,9 +204,7 @@ export async function generateMLBSalaries(date, season = 2026) {
         for (const athlete of group.items || []) {
         const rawPos = athlete.position?.abbreviation || ''
         const position = mapPosition(rawPos)
-
-        // Skip pitchers for DFS hitter pool (SP/RP)
-        if (position === 'SP' || position === 'RP') continue
+        const isPitcher = position === 'SP' || position === 'RP'
 
         const espnId = athlete.id
         const name = athlete.displayName || athlete.fullName
@@ -178,13 +214,19 @@ export async function generateMLBSalaries(date, season = 2026) {
         const injuryStatus = injury?.status || null
 
         const avgs = await fetchPlayerSeasonAvgs(espnId)
-        const fppg = calcMLBFppg(avgs)
-        const salary = mlbFppgToSalary(fppg)
+        let fppg, salary
+        if (isPitcher) {
+          fppg = avgs?.type === 'pitching' ? calcMLBPitcherFppg(avgs) : 0
+          salary = mlbPitcherFppgToSalary(fppg)
+        } else {
+          fppg = avgs?.type === 'batting' ? calcMLBBatterFppg(avgs) : 0
+          salary = mlbFppgToSalary(fppg)
+        }
 
         salaries.push({
           player_name: name,
           team: teamAbbrev,
-          position,
+          position: isPitcher ? 'SP' : position,
           espn_player_id: espnId,
           game_date: date,
           season,
@@ -193,7 +235,7 @@ export async function generateMLBSalaries(date, season = 2026) {
           game_starts_at: gameStartsAt,
           headshot_url: headshot,
           injury_status: injuryStatus,
-          is_pitcher: false,
+          is_pitcher: isPitcher,
         })
         }
       }
