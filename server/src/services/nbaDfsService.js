@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
 
 const NBA_SLOTS = ['PG1', 'PG2', 'SG1', 'SG2', 'SF1', 'SF2', 'PF1', 'PF2', 'C']
 
@@ -336,14 +337,25 @@ async function fetchPlayerSeasonAvgs(espnId) {
 }
 
 /**
+ * Calculate NBA fantasy points from a single game stat map (from ESPN gamelog).
+ */
+function nbaGameFpts(statMap) {
+  const pts = parseFloat(statMap['PTS']) || 0
+  const reb = parseFloat(statMap['REB']) || 0
+  const ast = parseFloat(statMap['AST']) || 0
+  const stl = parseFloat(statMap['STL']) || 0
+  const blk = parseFloat(statMap['BLK']) || 0
+  const to = parseFloat(statMap['TO']) || 0
+  const threeStr = String(statMap['3PT'] || '0')
+  const threes = parseFloat(threeStr.split('-')[0]) || 0
+  const min = parseInt(statMap['MIN']) || 0
+  if (min === 0) return null // DNP
+  return pts * 1 + reb * 1.2 + ast * 1.5 + stl * 3 + blk * 3 - to * 1 + threes * 0.5
+}
+
+/**
  * Calculate salary from fantasy points per game average.
- * Uses a curve: $3,500 base + $130/fppg, capped at $11,000.
- * ~55 fppg (Jokic) → $10,650 → $10,700
- * ~45 fppg (All-Star) → $9,350 → $9,400
- * ~25 fppg (starter) → $6,750 → $6,800
- * ~12 fppg (rotation) → $5,060 → $5,100
- * ~5 fppg (bench) → $4,150 → $4,200
- * 0 fppg → $3,500
+ * $3,500 base + $130/fppg, capped at $11,000.
  */
 function fantasyPointsToSalary(fppg) {
   if (!fppg || fppg <= 0) return 3500
@@ -376,6 +388,9 @@ export async function generateNBASalaries(date, season = 2026) {
     logger.info({ date }, 'No NBA games tonight')
     return { generated: 0 }
   }
+
+  // Fetch defensive rankings (cached 6h)
+  const defRankings = await fetchDefensiveRankings('basketball/nba')
 
   const salaries = []
 
@@ -412,25 +427,23 @@ export async function generateNBASalaries(date, season = 2026) {
         const name = athlete.displayName || athlete.fullName
         const headshot = athlete.headshot?.href || null
         const injury = athlete.injuries?.[0]
-        const injuryStatus = injury?.status || null // "Probable", "Questionable", "Out", "Day-To-Day"
+        const injuryStatus = injury?.status || null
         const injuryDetail = injury?.shortComment || null
 
-        // Fetch real season averages from ESPN
+        // Fetch season averages + game log for weighted FPPG
         const avgs = await fetchPlayerSeasonAvgs(espnId)
-        let fppg = 0
+        let seasonFppg = 0
         if (avgs && avgs.gp >= 5) {
-          fppg = avgs.ppg * 1 + avgs.rpg * 1.2 + avgs.apg * 1.5
+          seasonFppg = avgs.ppg * 1 + avgs.rpg * 1.2 + avgs.apg * 1.5
             + avgs.spg * 3 + avgs.bpg * 3 - avgs.tpg * 1
             + avgs.threes * 0.5
         }
 
-        // Skip players with no meaningful stats (injured all season, two-way, etc.)
-        if (fppg <= 0 && (!avgs || avgs.gp < 5)) {
-          // Still include but at minimum salary
-          fppg = 0
-        }
+        const gameLog = await fetchGameLog(espnId, 'basketball/nba', season)
+        const fppg = calcWeightedFppg(nbaGameFpts, gameLog, seasonFppg, { recentN: 10, midN: 20 })
 
-        const salary = fantasyPointsToSalary(fppg)
+        let salary = fantasyPointsToSalary(fppg)
+        salary = applyDefensiveAdjustment(salary, opponentAbbrev, defRankings, 30)
 
         salaries.push({
           player_name: name,

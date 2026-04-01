@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -98,6 +99,37 @@ function calcMLBPitcherFppg(avgs) {
 }
 
 /**
+ * Calculate MLB batter fantasy points from a single game stat map (ESPN gamelog).
+ */
+function mlbBatterGameFpts(statMap) {
+  const ab = parseInt(statMap['AB']) || 0
+  if (ab === 0 && !statMap['AB']) return null // DNP
+  const h = parseInt(statMap['H']) || 0
+  const hr = parseInt(statMap['HR']) || 0
+  const rbi = parseInt(statMap['RBI']) || 0
+  const r = parseInt(statMap['R']) || 0
+  const sb = parseInt(statMap['SB']) || 0
+  const bb = parseInt(statMap['BB']) || 0
+  const singles = Math.max(0, h - hr) // simplified
+  return singles * 3 + hr * 10 + rbi * 2 + r * 2 + sb * 5 + bb * 2
+}
+
+/**
+ * Calculate MLB pitcher fantasy points from a single game stat map (ESPN gamelog).
+ */
+function mlbPitcherGameFpts(statMap) {
+  const ip = parseFloat(statMap['IP']) || 0
+  if (ip === 0) return null
+  const k = parseInt(statMap['K'] || statMap['SO']) || 0
+  const w = parseInt(statMap['W']) || 0
+  const sv = parseInt(statMap['SV']) || 0
+  const er = parseInt(statMap['ER']) || 0
+  const bb = parseInt(statMap['BB']) || 0
+  const h = parseInt(statMap['H']) || 0
+  return ip * 3 + k * 2 + w * 5 + sv * 5 - er * 2 - bb * 0.5 - h * 0.5
+}
+
+/**
  * Calculate salary from MLB fantasy points per game (batters).
  * $3,000 base + $500/fppg, capped at $10,000.
  */
@@ -172,6 +204,9 @@ export async function generateMLBSalaries(date, season = 2026) {
     return { generated: 0 }
   }
 
+  // Fetch defensive rankings (cached 6h)
+  const defRankings = await fetchDefensiveRankings('baseball/mlb')
+
   const salaries = []
 
   for (const event of events) {
@@ -214,14 +249,19 @@ export async function generateMLBSalaries(date, season = 2026) {
         const injuryStatus = injury?.status || null
 
         const avgs = await fetchPlayerSeasonAvgs(espnId)
-        let fppg, salary
+        let seasonFppg
         if (isPitcher) {
-          fppg = avgs?.type === 'pitching' ? calcMLBPitcherFppg(avgs) : 0
-          salary = mlbPitcherFppgToSalary(fppg)
+          seasonFppg = avgs?.type === 'pitching' ? calcMLBPitcherFppg(avgs) : 0
         } else {
-          fppg = avgs?.type === 'batting' ? calcMLBBatterFppg(avgs) : 0
-          salary = mlbFppgToSalary(fppg)
+          seasonFppg = avgs?.type === 'batting' ? calcMLBBatterFppg(avgs) : 0
         }
+
+        const gameLog = await fetchGameLog(espnId, 'baseball/mlb', season)
+        const gameFptsFn = isPitcher ? mlbPitcherGameFpts : mlbBatterGameFpts
+        const fppg = calcWeightedFppg(gameFptsFn, gameLog, seasonFppg, { recentN: 10, midN: 20 })
+
+        let salary = isPitcher ? mlbPitcherFppgToSalary(fppg) : mlbFppgToSalary(fppg)
+        salary = applyDefensiveAdjustment(salary, opponentAbbrev, defRankings, 30)
 
         salaries.push({
           player_name: name,

@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { calculateFantasyPoints } from './sleeperService.js'
+import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
 
 const DFS_SLOTS = ['QB', 'RB1', 'RB2', 'WR1', 'WR2', 'WR3', 'TE', 'FLEX', 'DEF']
 const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
@@ -216,12 +217,45 @@ export async function getWeeklyResults(leagueId, week) {
 /**
  * Auto-generate salaries from player projections/rankings.
  */
+/**
+ * Calculate NFL fantasy points from a single game stat map (ESPN gamelog).
+ * Half-PPR scoring.
+ */
+function nflGameFpts(statMap) {
+  // NFL gamelog labels vary by position — handle common ones
+  const passYds = parseFloat(statMap['YDS'] || statMap['PYDS'] || 0)
+  const passTD = parseFloat(statMap['TD'] || statMap['PTD'] || 0)
+  const int = parseFloat(statMap['INT'] || 0)
+  const rushYds = parseFloat(statMap['RYDS'] || 0)
+  const rushTD = parseFloat(statMap['RTD'] || 0)
+  const rec = parseFloat(statMap['REC'] || 0)
+  const recYds = parseFloat(statMap['RECYDS'] || 0)
+  const recTD = parseFloat(statMap['RECTD'] || 0)
+  const fumLost = parseFloat(statMap['FUML'] || 0)
+
+  // Basic half-PPR
+  return passYds * 0.04 + passTD * 4 - int * 2
+    + rushYds * 0.1 + rushTD * 6
+    + rec * 0.5 + recYds * 0.1 + recTD * 6
+    - fumLost * 2
+}
+
+/**
+ * NFL salary from FPPG.
+ * $4,500 base + $400/fppg, capped at $10,000.
+ */
+function nflFppgToSalary(fppg) {
+  if (!fppg || fppg <= 0) return 4500
+  const salary = Math.round((4500 + fppg * 400) / 100) * 100
+  return Math.max(4500, Math.min(10000, salary))
+}
+
 export async function generateSalaries(week, season) {
   logger.info({ week, season }, 'Generating DFS salaries')
 
   const { data: players, error } = await supabase
     .from('nfl_players')
-    .select('id, position, search_rank, projected_pts_half_ppr')
+    .select('id, position, search_rank, projected_pts_half_ppr, espn_id, team')
     .eq('status', 'Active')
     .not('team', 'is', null)
     .in('position', ['QB', 'RB', 'WR', 'TE', 'DEF'])
@@ -229,33 +263,73 @@ export async function generateSalaries(week, season) {
 
   if (error) throw error
 
+  // Fetch defensive rankings (cached 6h)
+  const defRankings = await fetchDefensiveRankings('football/nfl')
+
+  // TODO: We'd need to know each player's opponent this week for defensive adjustment.
+  // For now, fetch NFL schedule for this week to build team→opponent map.
+  let teamOpponentMap = {}
+  try {
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2&dates=${season}`)
+    if (res.ok) {
+      const data = await res.json()
+      for (const event of data.events || []) {
+        const comp = event.competitions?.[0]
+        if (!comp) continue
+        const teams = comp.competitors || []
+        if (teams.length === 2) {
+          const t0 = teams[0].team?.abbreviation
+          const t1 = teams[1].team?.abbreviation
+          if (t0 && t1) {
+            teamOpponentMap[t0] = t1
+            teamOpponentMap[t1] = t0
+          }
+        }
+      }
+    }
+  } catch { /* ignore */ }
+
   const salaries = []
-  const positionCounts = {}
 
   for (const player of (players || [])) {
     const pos = player.position
-    positionCounts[pos] = (positionCounts[pos] || 0) + 1
-    const rank = positionCounts[pos]
-
     let salary
-    if (pos === 'DEF') {
-      // DEF: $2,500 - $5,000
-      salary = Math.max(2500, Math.min(5000, 5000 - (rank - 1) * 75))
-    } else {
-      // Players: $4,500 - $10,000
-      salary = Math.max(4500, Math.min(10000, 10000 - (rank - 1) * 100))
-    }
 
-    // Round to nearest 100
-    salary = Math.round(salary / 100) * 100
+    if (pos === 'DEF') {
+      // DEF: rank-based, no game log
+      const posCount = salaries.filter((s) => s._pos === 'DEF').length + 1
+      salary = Math.max(2500, Math.min(5000, 5000 - (posCount - 1) * 75))
+      salary = Math.round(salary / 100) * 100
+    } else if (player.espn_id) {
+      // Use weighted FPPG from game log
+      const gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season)
+      const seasonFppg = player.projected_pts_half_ppr || 0
+      const fppg = calcWeightedFppg(nflGameFpts, gameLog, seasonFppg, { recentN: 4, midN: 8 })
+      salary = nflFppgToSalary(fppg)
+
+      // Apply defensive adjustment
+      const opponent = teamOpponentMap[player.team]
+      if (opponent) {
+        salary = applyDefensiveAdjustment(salary, opponent, defRankings, 32)
+      }
+    } else {
+      // No ESPN ID — fall back to rank-based
+      const posCount = salaries.filter((s) => s._pos === pos).length + 1
+      salary = Math.max(4500, Math.min(10000, 10000 - (posCount - 1) * 100))
+      salary = Math.round(salary / 100) * 100
+    }
 
     salaries.push({
       player_id: player.id,
       nfl_week: week,
       season,
       salary,
+      _pos: pos, // temp field for counting, not stored
     })
   }
+
+  // Remove temp field before upsert
+  for (const s of salaries) delete s._pos
 
   // Batch upsert
   const CHUNK = 500
