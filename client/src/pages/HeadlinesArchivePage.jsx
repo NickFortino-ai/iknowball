@@ -142,7 +142,7 @@ export function HeadlinesArchiveContent() {
           <div key={month.key}>
             <button
               onClick={() => toggle(month.key)}
-              className="w-full bg-bg-card rounded-xl border border-border px-4 py-3 flex items-center justify-between text-left"
+              className="w-full bg-bg-primary rounded-xl border border-text-primary/20 px-4 py-3 flex items-center justify-between text-left"
             >
               <div className="flex items-center gap-2">
                 <span className={`text-xs text-text-muted transition-transform ${open ? 'rotate-90' : ''}`}>
@@ -163,7 +163,7 @@ export function HeadlinesArchiveContent() {
                   const { rankings, awards, records } = parseRecapContent(recap.recap_content)
 
                   return (
-                    <div key={recap.id} className="bg-bg-card rounded-2xl border border-border p-6">
+                    <div key={recap.id} className="bg-bg-primary rounded-2xl border border-text-primary/20 p-6">
                       <div className="flex items-center gap-3 mb-6">
                         <h2 className="font-display text-lg">
                           WEEKLY HEADLINES — {dateRange}

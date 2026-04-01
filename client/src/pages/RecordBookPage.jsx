@@ -133,7 +133,7 @@ function RecordCard({ record, onUserTap }) {
   }
 
   return (
-    <div id={`record-${record.record_key}`} className="bg-bg-card border border-border rounded-2xl overflow-hidden">
+    <div id={`record-${record.record_key}`} className="bg-bg-primary border border-text-primary/20 rounded-2xl overflow-hidden">
       <div
         className={`p-4 ${hasSubs || isTappable ? 'cursor-pointer' : ''}`}
         onClick={handleCardClick}
