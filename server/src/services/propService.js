@@ -432,6 +432,126 @@ export async function getPropPickById(propPickId) {
   return data
 }
 
+function mapNbaStatToMarket(stats, marketKey) {
+  const STAT_MAP = {
+    player_points: stats.points,
+    player_rebounds: stats.rebounds,
+    player_assists: stats.assists,
+    player_steals: stats.steals,
+    player_blocks: stats.blocks,
+    player_threes: stats.three_pointers_made,
+    player_points_rebounds_assists: (stats.points || 0) + (stats.rebounds || 0) + (stats.assists || 0),
+    player_points_rebounds: (stats.points || 0) + (stats.rebounds || 0),
+    player_points_assists: (stats.points || 0) + (stats.assists || 0),
+    player_rebounds_assists: (stats.rebounds || 0) + (stats.assists || 0),
+  }
+  return STAT_MAP[marketKey] ?? null
+}
+
+function mapMlbStatToMarket(stats, marketKey) {
+  const STAT_MAP = {
+    batter_hits: stats.hits,
+    batter_total_bases: stats.total_bases,
+    batter_home_runs: stats.home_runs,
+    batter_rbis: stats.rbis,
+    batter_stolen_bases: stats.stolen_bases,
+    batter_walks: stats.walks,
+    pitcher_strikeouts: stats.strikeouts,
+  }
+  return STAT_MAP[marketKey] ?? null
+}
+
+async function enrichLockedPicksWithLiveStats(lockedPicks) {
+  if (!lockedPicks.length) return
+
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const playerNames = [...new Set(lockedPicks.map((p) => p.player_props?.player_name).filter(Boolean))]
+
+    if (!playerNames.length) {
+      logger.warn({ pickCount: lockedPicks.length }, 'Live stat enrichment: no player names on locked picks')
+      return
+    }
+
+    logger.info({ playerNames, today, pickCount: lockedPicks.length }, 'Live stat enrichment starting')
+
+    // Look up ESPN IDs from DFS salaries (both NBA and MLB)
+    const [salaryRes1, salaryRes2] = await Promise.all([
+      supabase.from('nba_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).eq('game_date', today),
+      supabase.from('mlb_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).eq('game_date', today),
+    ])
+
+    const nbaPlayers = salaryRes1.data || []
+    const mlbPlayers = salaryRes2.data || []
+
+    if (salaryRes1.error) logger.error({ error: salaryRes1.error }, 'NBA salary lookup failed')
+    if (salaryRes2.error) logger.error({ error: salaryRes2.error }, 'MLB salary lookup failed')
+
+    const idMap = {}
+    for (const p of [...nbaPlayers, ...mlbPlayers]) {
+      idMap[p.player_name] = p.espn_player_id
+    }
+
+    const espnIds = Object.values(idMap).filter(Boolean)
+
+    logger.info({ salaryMatches: Object.keys(idMap).length, espnIds: espnIds.length, nbaPlayers: nbaPlayers.length, mlbPlayers: mlbPlayers.length }, 'Live stat enrichment: salary lookup done')
+
+    // Fetch stats from both tables (by ESPN ID if available, and by name as fallback)
+    const queries = await Promise.all([
+      espnIds.length
+        ? supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('espn_player_id', espnIds).eq('game_date', today)
+        : { data: [], error: null },
+      espnIds.length
+        ? supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').in('espn_player_id', espnIds).eq('game_date', today)
+        : { data: [], error: null },
+      supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('player_name', playerNames).eq('game_date', today),
+      supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').in('player_name', playerNames).eq('game_date', today),
+    ])
+
+    const nbaStats = queries[0].data || []
+    const mlbStats = queries[1].data || []
+    const nbaStatsByName = queries[2].data || []
+    const mlbStatsByName = queries[3].data || []
+
+    for (const q of queries) {
+      if (q.error) logger.error({ error: q.error }, 'Stats query failed in enrichment')
+    }
+
+    logger.info({ nbaById: nbaStats.length, mlbById: mlbStats.length, nbaByName: nbaStatsByName.length, mlbByName: mlbStatsByName.length }, 'Live stat enrichment: stats lookup done')
+
+    // Build lookup maps
+    const nbaById = {}
+    const nbaByName = {}
+    for (const s of nbaStats) nbaById[s.espn_player_id] = s
+    for (const s of nbaStatsByName) nbaByName[s.player_name] = s
+
+    const mlbById = {}
+    const mlbByName = {}
+    for (const s of mlbStats) mlbById[s.espn_player_id] = s
+    for (const s of mlbStatsByName) mlbByName[s.player_name] = s
+
+    // Attach live stats to each locked pick
+    for (const pick of lockedPicks) {
+      const playerName = pick.player_props?.player_name
+      const espnId = idMap[playerName]
+      const marketKey = pick.player_props?.market_key
+
+      const nba = (espnId && nbaById[espnId]) || nbaByName[playerName]
+      const mlb = (espnId && mlbById[espnId]) || mlbByName[playerName]
+
+      if (nba) {
+        pick.live_stat = mapNbaStatToMarket(nba, marketKey)
+      } else if (mlb) {
+        pick.live_stat = mapMlbStatToMarket(mlb, marketKey)
+      } else {
+        logger.warn({ playerName, espnId, marketKey, today }, 'Live stat enrichment: no stats found for player')
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, 'Live stat enrichment failed entirely')
+  }
+}
+
 export async function getUserPropPicks(userId, status) {
   let query = supabase
     .from('prop_picks')
@@ -446,67 +566,9 @@ export async function getUserPropPicks(userId, status) {
   const { data, error } = await query
   if (error) throw error
 
-  // Enrich locked picks with live stats
-  const lockedPicks = (data || []).filter((p) => p.status === 'locked' && (p.player_props?.games?.status === 'live' || p.player_props?.games?.status === 'final'))
-  if (lockedPicks.length > 0) {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    const playerNames = [...new Set(lockedPicks.map((p) => p.player_props.player_name))]
-
-    // Look up ESPN IDs from DFS salaries
-    const { data: nbaPlayers } = await supabase
-      .from('nba_dfs_salaries')
-      .select('player_name, espn_player_id')
-      .in('player_name', playerNames)
-      .eq('game_date', today)
-
-    const { data: mlbPlayers } = await supabase
-      .from('mlb_dfs_salaries')
-      .select('player_name, espn_player_id')
-      .in('player_name', playerNames)
-      .eq('game_date', today)
-
-    const idMap = {}
-    for (const p of [...(nbaPlayers || []), ...(mlbPlayers || [])]) {
-      idMap[p.player_name] = p.espn_player_id
-    }
-
-    const espnIds = Object.values(idMap).filter(Boolean)
-    if (espnIds.length > 0) {
-      const { data: liveStats } = await supabase
-        .from('nba_dfs_player_stats')
-        .select('espn_player_id, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made')
-        .in('espn_player_id', espnIds)
-        .eq('game_date', today)
-
-      const statsMap = {}
-      for (const s of (liveStats || [])) {
-        statsMap[s.espn_player_id] = s
-      }
-
-      // Attach live stats to each locked pick
-      for (const pick of lockedPicks) {
-        const espnId = idMap[pick.player_props.player_name]
-        if (espnId && statsMap[espnId]) {
-          const stats = statsMap[espnId]
-          const marketKey = pick.player_props.market_key
-          // Map market key to the relevant stat
-          const STAT_MAP = {
-            player_points: stats.points,
-            player_rebounds: stats.rebounds,
-            player_assists: stats.assists,
-            player_steals: stats.steals,
-            player_blocks: stats.blocks,
-            player_threes: stats.three_pointers_made,
-            player_points_rebounds_assists: (stats.points || 0) + (stats.rebounds || 0) + (stats.assists || 0),
-            player_points_rebounds: (stats.points || 0) + (stats.rebounds || 0),
-            player_points_assists: (stats.points || 0) + (stats.assists || 0),
-            player_rebounds_assists: (stats.rebounds || 0) + (stats.assists || 0),
-          }
-          pick.live_stat = STAT_MAP[marketKey] ?? null
-        }
-      }
-    }
-  }
+  // Enrich all locked picks with live stats (no game status gate — if stats exist, show them)
+  const lockedPicks = (data || []).filter((p) => p.status === 'locked')
+  await enrichLockedPicksWithLiveStats(lockedPicks)
 
   return data || []
 }
@@ -611,63 +673,9 @@ export async function getUserPropPickHistory(userId) {
 
   if (error) throw error
 
-  // Enrich locked picks with live stats (same logic as getUserPropPicks)
-  const lockedPicks = (data || []).filter((p) => p.status === 'locked' && (p.player_props?.games?.status === 'live' || p.player_props?.games?.status === 'final'))
-  if (lockedPicks.length > 0) {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    const playerNames = [...new Set(lockedPicks.map((p) => p.player_props.player_name))]
-
-    const { data: nbaPlayers } = await supabase
-      .from('nba_dfs_salaries')
-      .select('player_name, espn_player_id')
-      .in('player_name', playerNames)
-      .eq('game_date', today)
-
-    const { data: mlbPlayers } = await supabase
-      .from('mlb_dfs_salaries')
-      .select('player_name, espn_player_id')
-      .in('player_name', playerNames)
-      .eq('game_date', today)
-
-    const idMap = {}
-    for (const p of [...(nbaPlayers || []), ...(mlbPlayers || [])]) {
-      idMap[p.player_name] = p.espn_player_id
-    }
-
-    const espnIds = Object.values(idMap).filter(Boolean)
-    if (espnIds.length > 0) {
-      const { data: liveStats } = await supabase
-        .from('nba_dfs_player_stats')
-        .select('espn_player_id, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made')
-        .in('espn_player_id', espnIds)
-        .eq('game_date', today)
-
-      const statsMap = {}
-      for (const s of (liveStats || [])) {
-        statsMap[s.espn_player_id] = s
-      }
-
-      const STAT_MAP_FN = (stats, marketKey) => ({
-        player_points: stats.points,
-        player_rebounds: stats.rebounds,
-        player_assists: stats.assists,
-        player_steals: stats.steals,
-        player_blocks: stats.blocks,
-        player_threes: stats.three_pointers_made,
-        player_points_rebounds_assists: (stats.points || 0) + (stats.rebounds || 0) + (stats.assists || 0),
-        player_points_rebounds: (stats.points || 0) + (stats.rebounds || 0),
-        player_points_assists: (stats.points || 0) + (stats.assists || 0),
-        player_rebounds_assists: (stats.rebounds || 0) + (stats.assists || 0),
-      })[marketKey] ?? null
-
-      for (const pick of lockedPicks) {
-        const espnId = idMap[pick.player_props.player_name]
-        if (espnId && statsMap[espnId]) {
-          pick.live_stat = STAT_MAP_FN(statsMap[espnId], pick.player_props.market_key)
-        }
-      }
-    }
-  }
+  // Enrich all locked picks with live stats
+  const lockedPicks = (data || []).filter((p) => p.status === 'locked')
+  await enrichLockedPicksWithLiveStats(lockedPicks)
 
   return data || []
 }

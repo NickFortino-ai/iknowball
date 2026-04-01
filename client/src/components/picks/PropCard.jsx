@@ -83,9 +83,21 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
           )}
         </div>
         {prop.games && (
-          <span className="text-xs text-text-muted whitespace-nowrap ml-2">
-            {abbreviateTeam(prop.games.away_team)} @ {abbreviateTeam(prop.games.home_team)}
-          </span>
+          <div className="text-right whitespace-nowrap ml-2">
+            <div className="text-xs text-text-muted">
+              {abbreviateTeam(prop.games.away_team)} @ {abbreviateTeam(prop.games.home_team)}
+            </div>
+            {prop.games.status === 'live' && prop.games.period && (
+              <div className="text-[10px] text-accent">
+                Q{prop.games.period} {prop.games.clock}
+              </div>
+            )}
+            {prop.games.status === 'final' && (
+              <div className="text-[10px] text-text-muted font-semibold">
+                Final
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -165,13 +177,10 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
         </div>
       )}
 
-      {pick?.status === 'locked' && pick.live_stat != null && prop.games?.status === 'live' && (
+      {pick?.live_stat != null && (pick?.status === 'locked' || pick?.status === 'settled') && (
         <div className="mt-2 text-center">
           <span className="font-display text-lg text-text-primary">{pick.live_stat}</span>
           <span className="text-xs text-text-muted ml-1.5">{prop.market_label}</span>
-          {prop.games?.period && (
-            <span className="text-xs text-text-muted ml-2">Q{prop.games.period} {prop.games.clock}</span>
-          )}
         </div>
       )}
 

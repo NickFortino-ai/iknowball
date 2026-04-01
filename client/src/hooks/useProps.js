@@ -23,6 +23,10 @@ export function useMyPropPicks(status) {
   return useQuery({
     queryKey: ['propPicks', 'me', status],
     queryFn: () => api.get(`/props/picks/me${params}`),
+    refetchInterval: (query) => {
+      const hasLive = query.state.data?.some((p) => p.status === 'locked' && p.player_props?.games?.status === 'live')
+      return hasLive ? 30000 : undefined
+    },
   })
 }
 
