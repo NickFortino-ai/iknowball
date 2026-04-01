@@ -248,10 +248,26 @@ function LiveView({ league, date: leagueDate }) {
                           <div className="flex-1 min-w-0">
                             <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
                             {statLine && (
-                              <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
+                              <span className="text-xs text-text-muted block lg:hidden">
+                                {statLine}
+                                {slot.game_status === 'live' && slot.game_period && (
+                                  <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
+                                )}
+                                {slot.game_status === 'final' && (
+                                  <span className="text-text-primary ml-1.5">Final</span>
+                                )}
+                              </span>
                             )}
                             {statLine && (
-                              <span className="text-xs text-text-muted hidden lg:inline">{statLine}</span>
+                              <span className="text-xs text-text-muted hidden lg:inline">
+                                {statLine}
+                                {slot.game_status === 'live' && slot.game_period && (
+                                  <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
+                                )}
+                                {slot.game_status === 'final' && (
+                                  <span className="text-text-primary ml-1.5">Final</span>
+                                )}
+                              </span>
                             )}
                           </div>
                           {(slot.game_status === 'live' || slot.game_status === 'final') && (

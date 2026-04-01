@@ -178,6 +178,40 @@ router.get('/live', async (req, res) => {
     }
   }
 
+  // Fetch live game period/clock from games table
+  const { data: sportRow } = await supabase.from('sports').select('id').eq('key', 'basketball_nba').single()
+  const liveGameMap = {}
+  if (sportRow) {
+    const { data: liveGames } = await supabase
+      .from('games')
+      .select('home_team, away_team, period, clock, status')
+      .eq('sport_id', sportRow.id)
+      .in('status', ['live', 'final'])
+
+    for (const g of (liveGames || [])) {
+      liveGameMap[g.home_team] = g
+      liveGameMap[g.away_team] = g
+    }
+  }
+
+  // Attach game status from games table to gameStateMap
+  if (allEspnIds.length) {
+    const { data: salaryTeams } = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id, team')
+      .eq('game_date', date)
+      .in('espn_player_id', [...new Set(allEspnIds)])
+
+    for (const st of (salaryTeams || [])) {
+      const game = liveGameMap[st.team]
+      if (game && gameStateMap[st.espn_player_id]) {
+        gameStateMap[st.espn_player_id].status = game.status
+        gameStateMap[st.espn_player_id].period = game.period
+        gameStateMap[st.espn_player_id].clock = game.clock
+      }
+    }
+  }
+
   // Fetch player stats for today (used for game status detection + stat breakdowns)
   const playerStatsMap = {}
   if (allEspnIds.length) {
@@ -292,6 +326,8 @@ router.get('/live', async (req, res) => {
         salary: visible ? slot.salary : null,
         points_earned: gs.status === 'live' || gs.status === 'final' ? Number(slot.points_earned) || 0 : 0,
         game_status: gs.status,
+        game_period: gs.period || null,
+        game_clock: gs.clock || null,
         stats: hasGameStats ? (playerStatsMap[slot.espn_player_id] || null) : null,
       }
     })
