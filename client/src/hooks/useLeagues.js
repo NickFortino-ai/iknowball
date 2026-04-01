@@ -26,6 +26,16 @@ export function useLeague(id) {
   })
 }
 
+export function useLeagueReport(leagueId) {
+  return useQuery({
+    queryKey: ['league-report', leagueId],
+    queryFn: () => api.get(`/leagues/${leagueId}/report`),
+    enabled: !!leagueId,
+    staleTime: Infinity,
+    retry: false,
+  })
+}
+
 export function useLeagueMembers(id) {
   return useQuery({
     queryKey: ['leagues', id, 'members'],

@@ -860,4 +860,17 @@ router.post('/:id/fantasy/matchups/generate', requireAuth, async (req, res) => {
   res.json(result)
 })
 
+// League Activity Report
+router.get('/:id/report', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('dfs_league_reports')
+    .select('report_data, generated_at')
+    .eq('league_id', req.params.id)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return res.status(404).json({ error: 'No report available for this league' })
+  res.json({ report: data.report_data, generated_at: data.generated_at })
+})
+
 export default router

@@ -4,6 +4,7 @@ import { getLeaguePickStandings } from '../services/leaguePickService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 import { createNotification } from '../services/notificationService.js'
 import { connectAutoConnectMembers } from '../services/connectionService.js'
+import { generateLeagueReport } from '../services/leagueReportService.js'
 
 const CHAMPION_BONUS = 10
 
@@ -472,6 +473,27 @@ export async function completeLeagues() {
         await connectAutoConnectMembers(league.id)
       } catch (err) {
         logger.error({ err, leagueId: league.id }, 'Failed to auto-connect league members on completion')
+      }
+
+      // Generate DFS league activity report
+      if (['nba_dfs', 'mlb_dfs'].includes(league.format)) {
+        try {
+          const report = await generateLeagueReport(league)
+          if (report) {
+            const { data: reportMembers } = await supabase
+              .from('league_members')
+              .select('user_id')
+              .eq('league_id', league.id)
+            for (const m of reportMembers || []) {
+              await createNotification(m.user_id, 'league_report',
+                `Your season report for ${league.name} is ready!`,
+                { leagueId: league.id })
+            }
+            logger.info({ leagueId: league.id }, 'League activity report generated')
+          }
+        } catch (err) {
+          logger.error({ err, leagueId: league.id }, 'Failed to generate league report')
+        }
       }
 
       logger.info({ leagueId: league.id, format: league.format }, 'League completed')
