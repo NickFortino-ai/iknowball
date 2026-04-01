@@ -248,8 +248,11 @@ function LiveView({ league, date: leagueDate }) {
                           <div className="flex-1 min-w-0">
                             <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
                             {statLine && (
-                              <span className="text-xs text-text-muted block lg:hidden">
-                                {statLine}
+                              <span className="text-xs text-text-muted block">{statLine}</span>
+                            )}
+                            {(slot.game_status === 'live' || slot.game_status === 'final') && slot.away_team && (
+                              <span className="text-[11px] text-text-muted block mt-0.5">
+                                {slot.away_team?.split(' ').pop()} {slot.away_score ?? ''} @ {slot.home_team?.split(' ').pop()} {slot.home_score ?? ''}
                                 {slot.game_status === 'live' && slot.game_period && (
                                   <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
                                 )}
@@ -258,9 +261,9 @@ function LiveView({ league, date: leagueDate }) {
                                 )}
                               </span>
                             )}
-                            {statLine && (
-                              <span className="text-xs text-text-muted hidden lg:inline">
-                                {statLine}
+                            {(slot.game_status === 'live' || slot.game_status === 'final') && !slot.away_team && (
+                              <span className="text-[11px] text-text-muted block mt-0.5">
+                                {slot.team} {slot.opponent}
                                 {slot.game_status === 'live' && slot.game_period && (
                                   <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
                                 )}

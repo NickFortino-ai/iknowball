@@ -166,15 +166,15 @@ router.get('/live', async (req, res) => {
   if (allEspnIds.length) {
     const { data: salaries } = await supabase
       .from('nba_dfs_salaries')
-      .select('espn_player_id, game_starts_at, headshot_url')
+      .select('espn_player_id, game_starts_at, headshot_url, team, opponent')
       .eq('game_date', date)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
     for (const sal of salaries || []) {
       const startTime = sal.game_starts_at ? new Date(sal.game_starts_at) : null
       let status = 'upcoming'
-      if (startTime && startTime <= now) status = 'live' // simplified — will refine with actual game status
-      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url }
+      if (startTime && startTime <= now) status = 'live'
+      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url, team: sal.team, opponent: sal.opponent }
     }
   }
 
@@ -183,18 +183,16 @@ router.get('/live', async (req, res) => {
   if (sportRow) {
     const { data: liveGames } = await supabase
       .from('games')
-      .select('starts_at, period, clock, status')
+      .select('starts_at, period, clock, status, home_team, away_team, live_home_score, live_away_score, home_score, away_score')
       .eq('sport_id', sportRow.id)
       .in('status', ['live', 'final'])
 
     if (liveGames?.length) {
-      // Map game start time → period/clock
       const gameByStart = {}
       for (const g of liveGames) {
         gameByStart[g.starts_at] = g
       }
 
-      // Match each player's game_starts_at to a live game
       for (const [espnId, gs] of Object.entries(gameStateMap)) {
         if (gs.gameStartsAt) {
           const match = gameByStart[gs.gameStartsAt]
@@ -202,6 +200,10 @@ router.get('/live', async (req, res) => {
             gs.status = match.status
             gs.period = match.period
             gs.clock = match.clock
+            gs.homeTeam = match.home_team
+            gs.awayTeam = match.away_team
+            gs.homeScore = match.live_home_score ?? match.home_score ?? 0
+            gs.awayScore = match.live_away_score ?? match.away_score ?? 0
           }
         }
       }
@@ -324,6 +326,12 @@ router.get('/live', async (req, res) => {
         game_status: gs.status,
         game_period: gs.period || null,
         game_clock: gs.clock || null,
+        team: visible ? (gs.team || null) : null,
+        opponent: visible ? (gs.opponent || null) : null,
+        home_team: gs.homeTeam || null,
+        away_team: gs.awayTeam || null,
+        home_score: gs.homeScore ?? null,
+        away_score: gs.awayScore ?? null,
         stats: hasGameStats ? (playerStatsMap[slot.espn_player_id] || null) : null,
       }
     })
