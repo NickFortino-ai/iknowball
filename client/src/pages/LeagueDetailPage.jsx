@@ -93,7 +93,9 @@ function formatDateRange(startsAt, endsAt) {
   return null
 }
 
-function LeagueConditions({ league }) {
+function LeagueConditions({ league, isCommissioner, updateLeague }) {
+  const [editingNarrative, setEditingNarrative] = useState(false)
+  const [narrativeText, setNarrativeText] = useState('')
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
@@ -234,7 +236,8 @@ function LeagueConditions({ league }) {
     return null
   }
 
-  const narrative = buildNarrative()
+  const autoNarrative = buildNarrative()
+  const narrative = league.settings?.custom_narrative || autoNarrative
 
   if (!narrative && items.length === 0) return null
 
@@ -269,8 +272,64 @@ function LeagueConditions({ league }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          {!collapsed && narrative && (
-            <p className="text-sm text-text-primary leading-relaxed mt-3">{narrative}</p>
+          {!collapsed && narrative && !editingNarrative && (
+            <div className="mt-3 flex items-start gap-2">
+              <p className="text-sm text-text-primary leading-relaxed flex-1">{narrative}</p>
+              {isCommissioner && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setNarrativeText(narrative); setEditingNarrative(true) }}
+                  className="shrink-0 text-text-muted hover:text-accent transition-colors mt-0.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+          {!collapsed && editingNarrative && (
+            <div className="mt-3 space-y-2">
+              <textarea
+                value={narrativeText}
+                onChange={(e) => setNarrativeText(e.target.value)}
+                rows={4}
+                className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent resize-none"
+              />
+              <div className="flex gap-2 justify-end">
+                {league.settings?.custom_narrative && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await updateLeague.mutateAsync({ leagueId: league.id, settings: { ...league.settings, custom_narrative: null } })
+                        setEditingNarrative(false)
+                        toast('Reset to default', 'success')
+                      } catch (err) { toast(err.message || 'Failed', 'error') }
+                    }}
+                    className="text-xs text-text-muted hover:text-text-secondary"
+                  >
+                    Reset to Default
+                  </button>
+                )}
+                <button
+                  onClick={() => setEditingNarrative(false)}
+                  className="text-xs text-text-muted hover:text-text-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await updateLeague.mutateAsync({ leagueId: league.id, settings: { ...league.settings, custom_narrative: narrativeText.trim() || null } })
+                      setEditingNarrative(false)
+                      toast('Description updated', 'success')
+                    } catch (err) { toast(err.message || 'Failed', 'error') }
+                  }}
+                  className="text-xs font-semibold text-accent"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -1309,7 +1368,7 @@ export default function LeagueDetailPage() {
               </button>
             </div>
 
-            <LeagueConditions league={league} />
+            <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} />
 
             {isCommissioner && league.settings_editable && (
               <div className="mt-4">
