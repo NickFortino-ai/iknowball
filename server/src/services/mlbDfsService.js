@@ -309,7 +309,7 @@ export async function saveMLBDFSRoster(leagueId, userId, date, season, slots) {
   const totalSalary = slots.reduce((sum, s) => sum + (s.salary || 0), 0)
 
   // Upsert roster
-  const { data: roster, error: rosterErr } = await supabase
+  const { data: rosterRows, error: rosterErr } = await supabase
     .from('mlb_dfs_rosters')
     .upsert({
       league_id: leagueId,
@@ -320,9 +320,10 @@ export async function saveMLBDFSRoster(leagueId, userId, date, season, slots) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'league_id,user_id,game_date,season' })
     .select()
-    .single()
 
   if (rosterErr) throw rosterErr
+  const roster = rosterRows?.[0]
+  if (!roster) throw new Error('Failed to create roster')
 
   // Delete old slots and insert new
   await supabase.from('mlb_dfs_roster_slots').delete().eq('roster_id', roster.id)
