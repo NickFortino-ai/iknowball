@@ -97,6 +97,7 @@ export default function CreateLeaguePage() {
   const [lives, setLives] = useState(1)
   const [pickFrequency, setPickFrequency] = useState('weekly')
   const [allEliminatedSurvive, setAllEliminatedSurvive] = useState(true)
+  const [survivorMode, setSurvivorMode] = useState('standard')
   const [assignmentMethod, setAssignmentMethod] = useState('self_select')
   const [pointsPerQuarter, setPointsPerQuarter] = useState([25, 25, 25, 50])
   const [rowTeamName, setRowTeamName] = useState('')
@@ -159,6 +160,7 @@ export default function CreateLeaguePage() {
       settings.lives = lives
       settings.pick_frequency = pickFrequency
       settings.all_eliminated_survive = allEliminatedSurvive
+      if (survivorMode === 'touchdown') settings.survivor_mode = 'touchdown'
     }
     if (format === 'squares') {
       settings.game_id = gameId
@@ -1028,6 +1030,33 @@ export default function CreateLeaguePage() {
         {format === 'survivor' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">Survivor Settings</h3>
+            {sport === 'americanfootball_nfl' && (
+              <div>
+                <label className="block text-xs text-text-muted mb-2">Mode</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'standard', label: 'Standard', desc: 'Pick a team to win' },
+                    { value: 'touchdown', label: 'Touchdown', desc: 'Pick a player to score a TD' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setSurvivorMode(opt.value)}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        survivorMode === opt.value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-text-muted mt-1">
+                  {survivorMode === 'touchdown'
+                    ? 'Pick one NFL player per week to score a rushing, receiving, or return TD. Can\'t reuse players.'
+                    : 'Pick one team per week to win. If they lose, you lose a life.'}
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-xs text-text-muted mb-2">Lives</label>
               <div className="flex gap-2">

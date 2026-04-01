@@ -24,6 +24,7 @@ import {
 import { sendLeagueInviteEmail } from '../services/emailService.js'
 import {
   submitSurvivorPick,
+  submitTouchdownPick,
   deleteSurvivorPick,
   getSurvivorBoard,
   getUsedTeams,
@@ -533,6 +534,63 @@ router.post('/:id/survivor/picks', requireAuth, validate(survivorPickSchema), as
 router.delete('/:id/survivor/picks/:weekId', requireAuth, async (req, res) => {
   await deleteSurvivorPick(req.params.id, req.user.id, req.params.weekId)
   res.status(204).end()
+})
+
+// Touchdown survivor — pick a player
+const touchdownPickSchema = z.object({
+  week_id: z.string().uuid(),
+  player_id: z.string(),
+})
+
+router.post('/:id/survivor/touchdown-pick', requireAuth, validate(touchdownPickSchema), async (req, res) => {
+  const pick = await submitTouchdownPick(
+    req.params.id,
+    req.user.id,
+    req.validated.week_id,
+    req.validated.player_id
+  )
+  res.status(201).json(pick)
+})
+
+// Touchdown survivor — get available NFL players
+router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
+  const { position, q } = req.query
+
+  let query = supabase
+    .from('nfl_players')
+    .select('id, full_name, position, team, headshot_url, injury_status, search_rank')
+    .eq('status', 'Active')
+    .not('team', 'is', null)
+    .in('position', ['RB', 'WR', 'TE', 'QB'])
+    .order('search_rank', { ascending: true })
+    .limit(100)
+
+  if (position && position !== 'All') {
+    query = query.eq('position', position)
+  }
+  if (q) {
+    query = query.ilike('full_name', `%${q}%`)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+
+  // Get used player IDs for this user in this league
+  const { data: usedPicks } = await supabase
+    .from('survivor_picks')
+    .select('player_id')
+    .eq('league_id', req.params.id)
+    .eq('user_id', req.user.id)
+    .in('status', ['locked', 'survived', 'eliminated'])
+
+  const usedIds = new Set((usedPicks || []).map((p) => p.player_id).filter(Boolean))
+
+  const players = (data || []).map((p) => ({
+    ...p,
+    used: usedIds.has(p.id),
+  }))
+
+  res.json(players)
 })
 
 router.get('/:id/survivor/board', requireAuth, async (req, res) => {

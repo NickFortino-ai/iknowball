@@ -153,6 +153,125 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
   return data
 }
 
+/**
+ * Submit a touchdown survivor pick — pick a player to score a non-passing TD.
+ */
+export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('status, settings')
+    .eq('id', leagueId)
+    .single()
+
+  if (league?.status === 'completed') {
+    const err = new Error('This league has been completed')
+    err.status = 400
+    throw err
+  }
+
+  // Look up the player
+  const { data: player } = await supabase
+    .from('nfl_players')
+    .select('id, full_name, team, position, headshot_url')
+    .eq('id', playerId)
+    .single()
+
+  if (!player) {
+    const err = new Error('Player not found')
+    err.status = 404
+    throw err
+  }
+
+  // Find the player's next game to determine the week and lock time
+  const now = new Date()
+  const { data: upcomingGames } = await supabase
+    .from('games')
+    .select('id, starts_at, home_team, away_team')
+    .eq('status', 'upcoming')
+    .gte('starts_at', now.toISOString())
+    .order('starts_at', { ascending: true })
+
+  // Match player's team to a game
+  const playerGame = (upcomingGames || []).find((g) =>
+    g.home_team?.includes(player.team) || g.away_team?.includes(player.team) ||
+    player.team === getTeamAbbrev(g.home_team) || player.team === getTeamAbbrev(g.away_team)
+  )
+
+  // Determine the league week
+  const { data: weeks } = await supabase
+    .from('league_weeks')
+    .select('id, starts_at, ends_at')
+    .eq('league_id', leagueId)
+    .order('week_number', { ascending: true })
+
+  let resolvedWeekId = weekId
+  if (playerGame && weeks?.length) {
+    const gameWeek = weeks.find((w) => playerGame.starts_at >= w.starts_at && playerGame.starts_at <= w.ends_at)
+    if (gameWeek) resolvedWeekId = gameWeek.id
+  }
+
+  // Check if player has been used before
+  const { data: usedPicks } = await supabase
+    .from('survivor_picks')
+    .select('player_id')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .in('status', ['locked', 'survived', 'eliminated'])
+
+  const usedPlayerIds = new Set((usedPicks || []).map((p) => p.player_id).filter(Boolean))
+  if (usedPlayerIds.has(playerId)) {
+    const err = new Error(`You have already used ${player.full_name} in this league`)
+    err.status = 400
+    throw err
+  }
+
+  const { data, error } = await supabase
+    .from('survivor_picks')
+    .upsert(
+      {
+        league_id: leagueId,
+        user_id: userId,
+        league_week_id: resolvedWeekId,
+        game_id: playerGame?.id || null,
+        picked_team: null,
+        team_name: player.full_name,
+        player_id: playerId,
+        player_name: player.full_name,
+        status: 'pending',
+        updated_at: now.toISOString(),
+      },
+      { onConflict: 'league_id,user_id,league_week_id' }
+    )
+    .select()
+    .single()
+
+  if (error) {
+    logger.error({ error }, 'Failed to submit touchdown survivor pick')
+    throw error
+  }
+
+  return data
+}
+
+function getTeamAbbrev(fullName) {
+  if (!fullName) return ''
+  // Common NFL team abbreviations from full names
+  const map = {
+    'Arizona Cardinals': 'ARI', 'Atlanta Falcons': 'ATL', 'Baltimore Ravens': 'BAL',
+    'Buffalo Bills': 'BUF', 'Carolina Panthers': 'CAR', 'Chicago Bears': 'CHI',
+    'Cincinnati Bengals': 'CIN', 'Cleveland Browns': 'CLE', 'Dallas Cowboys': 'DAL',
+    'Denver Broncos': 'DEN', 'Detroit Lions': 'DET', 'Green Bay Packers': 'GB',
+    'Houston Texans': 'HOU', 'Indianapolis Colts': 'IND', 'Jacksonville Jaguars': 'JAX',
+    'Kansas City Chiefs': 'KC', 'Las Vegas Raiders': 'LV', 'Los Angeles Chargers': 'LAC',
+    'Los Angeles Rams': 'LAR', 'Miami Dolphins': 'MIA', 'Minnesota Vikings': 'MIN',
+    'New England Patriots': 'NE', 'New Orleans Saints': 'NO', 'New York Giants': 'NYG',
+    'New York Jets': 'NYJ', 'Philadelphia Eagles': 'PHI', 'Pittsburgh Steelers': 'PIT',
+    'San Francisco 49ers': 'SF', 'Seattle Seahawks': 'SEA', 'Tampa Bay Buccaneers': 'TB',
+    'Tennessee Titans': 'TEN', 'Washington Commanders': 'WAS',
+  }
+  return map[fullName] || ''
+}
+
 export async function deleteSurvivorPick(leagueId, userId, weekId) {
   const { data: pick } = await supabase
     .from('survivor_picks')

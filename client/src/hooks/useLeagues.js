@@ -266,6 +266,28 @@ export function useSubmitSurvivorPick() {
   })
 }
 
+export function useSubmitTouchdownPick() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, weekId, playerId }) =>
+      api.post(`/leagues/${leagueId}/survivor/touchdown-pick`, { week_id: weekId, player_id: playerId }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', variables.leagueId, 'survivor'] })
+    },
+  })
+}
+
+export function useTouchdownPlayers(leagueId, position, query) {
+  const params = new URLSearchParams()
+  if (position && position !== 'All') params.set('position', position)
+  if (query) params.set('q', query)
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'survivor', 'touchdown-players', position, query],
+    queryFn: () => api.get(`/leagues/${leagueId}/survivor/touchdown-players?${params}`),
+    enabled: !!leagueId,
+  })
+}
+
 export function useSettleSurvivorLeague() {
   const queryClient = useQueryClient()
 
