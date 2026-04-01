@@ -181,11 +181,16 @@ router.get('/live', async (req, res) => {
   // Fetch live game period/clock by matching game_starts_at
   const { data: sportRow } = await supabase.from('sports').select('id').eq('key', 'basketball_nba').single()
   if (sportRow) {
+    // Only match games from today (±1 day buffer for late-night games)
+    const todayStart = new Date(date + 'T00:00:00-05:00')
+    const todayEnd = new Date(todayStart.getTime() + 36 * 60 * 60 * 1000)
     const { data: liveGames } = await supabase
       .from('games')
       .select('starts_at, period, clock, status, home_team, away_team, live_home_score, live_away_score, home_score, away_score')
       .eq('sport_id', sportRow.id)
       .in('status', ['live', 'final'])
+      .gte('starts_at', todayStart.toISOString())
+      .lte('starts_at', todayEnd.toISOString())
 
     if (liveGames?.length) {
       const NBA_ABBREV_TO_TEAM = {
