@@ -757,8 +757,8 @@ export default function AdminPage() {
             onClick={async () => {
               const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
               try {
-                const result = await syncNBASalaries.mutateAsync(today)
-                toast(`NBA salaries synced: ${result.upserted || 0} players`, 'success')
+                await syncNBASalaries.mutateAsync(today)
+                toast('NBA salary generation started — runs in background', 'success')
               } catch (err) { toast(err.message || 'Failed', 'error') }
             }}
             disabled={syncNBASalaries.isPending}
@@ -770,8 +770,8 @@ export default function AdminPage() {
             onClick={async () => {
               const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
               try {
-                const result = await syncMLBSalaries.mutateAsync(today)
-                toast(`MLB salaries synced: ${result.upserted || 0} players`, 'success')
+                await syncMLBSalaries.mutateAsync(today)
+                toast('MLB salary generation started — runs in background', 'success')
               } catch (err) { toast(err.message || 'Failed', 'error') }
             }}
             disabled={syncMLBSalaries.isPending}

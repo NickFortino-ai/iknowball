@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
+import { logger } from '../utils/logger.js'
 import { syncOdds } from '../jobs/syncOdds.js'
 import { syncInjuries } from '../jobs/syncInjuries.js'
 import { scoreGames } from '../jobs/scoreGames.js'
@@ -626,8 +627,9 @@ router.post('/dfs/salaries', async (req, res) => {
 router.post('/nba-dfs/generate-salaries', async (req, res) => {
   const { date, season = 2026 } = req.body
   if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
-  const result = await generateNBASalaries(date, season)
-  res.json(result)
+  // Run in background — too many ESPN API calls to complete in request timeout
+  res.json({ message: 'NBA salary generation started', date })
+  generateNBASalaries(date, season).catch((err) => logger.error({ err, date }, 'Background NBA salary generation failed'))
 })
 
 router.post('/nba-dfs/salaries', async (req, res) => {
@@ -641,8 +643,8 @@ router.post('/nba-dfs/salaries', async (req, res) => {
 router.post('/mlb-dfs/generate-salaries', async (req, res) => {
   const { date, season } = req.body
   if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
-  const result = await generateMLBSalaries(date, season || 2026)
-  res.json(result)
+  res.json({ message: 'MLB salary generation started', date })
+  generateMLBSalaries(date, season || 2026).catch((err) => logger.error({ err, date }, 'Background MLB salary generation failed'))
 })
 
 // Backdrop submissions
