@@ -466,6 +466,164 @@ export async function getUsedTeams(leagueId, userId) {
   return (data || []).map((p) => p.team_name)
 }
 
+/**
+ * Score touchdown survivor picks for a completed NFL game.
+ * Checks ESPN box score for non-passing TDs by each picked player.
+ */
+export async function scoreTouchdownSurvivorPicks(gameId) {
+  // Find locked touchdown survivor picks for this game
+  const { data: picks, error } = await supabase
+    .from('survivor_picks')
+    .select('*, leagues(name, settings), league_weeks(week_number)')
+    .eq('game_id', gameId)
+    .eq('status', 'locked')
+    .not('player_id', 'is', null)
+
+  if (error || !picks?.length) return
+
+  // Get the game's external_id for ESPN lookup
+  const { data: game } = await supabase
+    .from('games')
+    .select('external_id, sports(key)')
+    .eq('id', gameId)
+    .single()
+
+  if (!game?.external_id) return
+
+  // Fetch ESPN box score to find TD scorers
+  const espnPath = game.sports?.key === 'americanfootball_nfl' ? 'football/nfl' : null
+  if (!espnPath) return
+
+  // Fetch the ESPN scoreboard to find the event by team matching
+  const gameRow = await supabase.from('games').select('starts_at, home_team, away_team').eq('id', gameId).single()
+  const gd = gameRow.data
+  if (!gd) return
+
+  const etDate = new Date(new Date(gd.starts_at).toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const dateStr = `${etDate.getFullYear()}${String(etDate.getMonth() + 1).padStart(2, '0')}${String(etDate.getDate()).padStart(2, '0')}`
+
+  let tdPlayerIds = new Set()
+  try {
+    const sbRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${espnPath}/scoreboard?dates=${dateStr}`)
+    if (!sbRes.ok) return
+    const sbData = await sbRes.json()
+
+    // Find the matching event
+    const matchTeam = (a, b) => {
+      const an = a.toLowerCase(), bn = b.toLowerCase()
+      if (an.includes(bn) || bn.includes(an)) return true
+      return an.split(/\s+/).pop() === bn.split(/\s+/).pop()
+    }
+    const espnEvent = (sbData.events || []).find((ev) => {
+      const comp = ev.competitions?.[0]
+      if (!comp) return false
+      const h = comp.competitors?.find((c) => c.homeAway === 'home')
+      const a = comp.competitors?.find((c) => c.homeAway === 'away')
+      return h && a && matchTeam(h.team?.displayName || '', gd.home_team) && matchTeam(a.team?.displayName || '', gd.away_team)
+    })
+
+    if (!espnEvent) return
+
+    // Fetch the summary for scoring plays
+    const sumRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${espnPath}/summary?event=${espnEvent.id}`)
+    if (!sumRes.ok) return
+    const summary = await sumRes.json()
+
+    // Extract TD scorers from scoring plays
+    const scoringPlays = summary.scoringPlays || []
+    for (const play of scoringPlays) {
+      const text = (play.text || '').toLowerCase()
+      // Non-passing TDs: rush, reception, fumble recovery, kick/punt return
+      const isNonPassTD = text.includes('rush') || text.includes('reception') || text.includes('return') ||
+        text.includes('fumble') || text.includes('run ')
+      const isPassTD = text.includes('pass') && !text.includes('return')
+
+      if (isNonPassTD || !isPassTD) {
+        // The scorer is typically the first athlete mentioned
+        if (play.athleteId) tdPlayerIds.add(String(play.athleteId))
+        // Also check scoringAthletes array
+        for (const sa of play.scoringAthletes || []) {
+          if (sa.id) tdPlayerIds.add(String(sa.id))
+        }
+      }
+    }
+  } catch (err) {
+    logger.error({ err, gameId }, 'Failed to fetch TD scoring data from ESPN')
+    return
+  }
+
+  // Score each pick
+  for (const pick of picks) {
+    const { data: memberCheck } = await supabase
+      .from('league_members')
+      .select('is_alive')
+      .eq('league_id', pick.league_id)
+      .eq('user_id', pick.user_id)
+      .single()
+
+    if (memberCheck && !memberCheck.is_alive) continue
+
+    // Look up the player's ESPN ID from nfl_players
+    const { data: nflPlayer } = await supabase
+      .from('nfl_players')
+      .select('espn_id')
+      .eq('id', pick.player_id)
+      .single()
+
+    const espnId = nflPlayer?.espn_id
+    const survived = espnId ? tdPlayerIds.has(espnId) : false
+
+    const isDaily = pick.leagues?.settings?.pick_frequency === 'daily'
+    const periodLabel = isDaily ? 'Day' : 'Week'
+    const rawWeekNum = pick.league_weeks?.week_number || '?'
+    const periodNum = rawWeekNum !== '?' ? await getDisplayPeriodNumber(pick.league_id, rawWeekNum) : '?'
+    const leagueName = pick.leagues?.name || 'Touchdown Survivor'
+
+    await supabase
+      .from('survivor_picks')
+      .update({ status: survived ? 'survived' : 'eliminated', updated_at: new Date().toISOString() })
+      .eq('id', pick.id)
+
+    if (survived) {
+      await createNotification(pick.user_id, 'survivor_result',
+        `${pick.player_name} scored a TD! You survived ${periodLabel} ${periodNum} in ${leagueName}!`,
+        { leagueId: pick.league_id })
+    } else {
+      const { data: member } = await supabase
+        .from('league_members')
+        .select('lives_remaining')
+        .eq('league_id', pick.league_id)
+        .eq('user_id', pick.user_id)
+        .single()
+
+      const newLives = Math.max(0, (member?.lives_remaining || 1) - 1)
+      await supabase
+        .from('league_members')
+        .update({ lives_remaining: newLives, is_alive: newLives > 0, eliminated_week: newLives === 0 ? rawWeekNum : null, updated_at: new Date().toISOString() })
+        .eq('league_id', pick.league_id)
+        .eq('user_id', pick.user_id)
+
+      if (newLives > 0) {
+        await createNotification(pick.user_id, 'survivor_result',
+          `${pick.player_name} didn't score a TD in ${periodLabel} ${periodNum} of ${leagueName} (${newLives} lives remaining)`,
+          { leagueId: pick.league_id })
+      } else {
+        await createNotification(pick.user_id, 'survivor_result',
+          `${pick.player_name} didn't score a TD — you've been eliminated from ${leagueName}`,
+          { leagueId: pick.league_id, streakEnded: true })
+      }
+    }
+  }
+
+  // Check for winner
+  const leagueIds = [...new Set(picks.map((p) => p.league_id))]
+  for (const leagueId of leagueIds) {
+    await checkSurvivorWinner(leagueId)
+  }
+
+  logger.info({ gameId, picks: picks.length, tdPlayers: tdPlayerIds.size }, 'Touchdown survivor picks scored')
+}
+
 export async function scoreSurvivorPicks(gameId, winner) {
   // Find all locked survivor picks for this game
   const { data: picks, error } = await supabase
