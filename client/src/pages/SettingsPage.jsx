@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import { useProfile } from '../hooks/useProfile'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
+import { supabase } from '../lib/supabase'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import { usePushStatus, useSubscribePush, useUnsubscribePush } from '../hooks/usePushNotifications'
@@ -78,6 +79,82 @@ function BlockedUsersSection() {
             </button>
           </div>
         ))}
+      </div>
+    </Section>
+  )
+}
+
+function ChangePasswordSection() {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changing, setChanging] = useState(false)
+  const session = useAuthStore((s) => s.session)
+
+  async function handleChangePassword() {
+    if (!currentPassword) return toast('Enter your current password', 'error')
+    if (newPassword.length < 6) return toast('New password must be at least 6 characters', 'error')
+    if (newPassword !== confirmPassword) return toast('New passwords do not match', 'error')
+
+    setChanging(true)
+    try {
+      // Verify current password by re-authenticating
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: session?.user?.email,
+        password: currentPassword,
+      })
+      if (signInError) {
+        toast('Current password is incorrect', 'error')
+        setChanging(false)
+        return
+      }
+
+      // Update to new password
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+
+      toast('Password changed successfully!', 'success')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      toast(err.message || 'Failed to change password', 'error')
+    } finally {
+      setChanging(false)
+    }
+  }
+
+  return (
+    <Section label="Change Password" defaultOpen={false}>
+      <div className="space-y-3">
+        <input
+          type="password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          placeholder="Current password"
+          className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+        />
+        <input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder="New password"
+          className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+        />
+        <input
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Confirm new password"
+          className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+        />
+        <button
+          onClick={handleChangePassword}
+          disabled={changing}
+          className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-50 text-sm"
+        >
+          {changing ? 'Changing...' : 'Change Password'}
+        </button>
       </div>
     </Section>
   )
@@ -439,6 +516,9 @@ export default function SettingsPage() {
       >
         {saving ? 'Saving...' : 'Save Settings'}
       </button>
+
+      {/* Change Password */}
+      <ChangePasswordSection />
 
       {/* Delete Account */}
       <div className="mt-12 mb-4 text-center">
