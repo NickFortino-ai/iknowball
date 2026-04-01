@@ -188,14 +188,15 @@ router.get('/live', async (req, res) => {
       .in('status', ['live', 'final'])
 
     if (liveGames?.length) {
-      const gameByStart = {}
-      for (const g of liveGames) {
-        gameByStart[g.starts_at] = g
-      }
-
+      // Match by team abbreviation in game's full team names
       for (const [espnId, gs] of Object.entries(gameStateMap)) {
-        if (gs.gameStartsAt) {
-          const match = gameByStart[gs.gameStartsAt]
+        if (gs.team) {
+          const abbr = gs.team.toUpperCase()
+          const match = liveGames.find((g) =>
+            g.home_team.toUpperCase().includes(abbr) || g.away_team.toUpperCase().includes(abbr) ||
+            g.home_team.split(' ').pop().toUpperCase().startsWith(abbr.slice(0, 3)) ||
+            g.away_team.split(' ').pop().toUpperCase().startsWith(abbr.slice(0, 3))
+          )
           if (match) {
             gs.status = match.status
             gs.period = match.period
