@@ -107,6 +107,18 @@ export function useRecalculatePoints() {
   })
 }
 
+export function useSyncNBASalaries() {
+  return useMutation({
+    mutationFn: (date) => api.post('/admin/nba-dfs/generate-salaries', { date, season: 2026 }),
+  })
+}
+
+export function useSyncMLBSalaries() {
+  return useMutation({
+    mutationFn: (date) => api.post('/admin/mlb-dfs/generate-salaries', { date, season: 2026 }),
+  })
+}
+
 export function useRecalculateRecords() {
   const queryClient = useQueryClient()
   return useMutation({

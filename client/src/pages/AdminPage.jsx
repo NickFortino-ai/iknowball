@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNBASalaries, useSyncMLBSalaries, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -48,6 +48,8 @@ export default function AdminPage() {
   const scoreGames = useScoreGames()
   const recalculatePoints = useRecalculatePoints()
   const recalculateRecords = useRecalculateRecords()
+  const syncNBASalaries = useSyncNBASalaries()
+  const syncMLBSalaries = useSyncMLBSalaries()
   const sendEmailBlast = useSendEmailBlast()
   const sendTargetedEmail = useSendTargetedEmail()
   const sendTemplateBracketEmail = useSendTemplateBracketEmail()
@@ -750,6 +752,32 @@ export default function AdminPage() {
             className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {recalculateRecords.isPending ? 'Recalculating...' : 'Recalculate Records'}
+          </button>
+          <button
+            onClick={async () => {
+              const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+              try {
+                const result = await syncNBASalaries.mutateAsync(today)
+                toast(`NBA salaries synced: ${result.upserted || 0} players`, 'success')
+              } catch (err) { toast(err.message || 'Failed', 'error') }
+            }}
+            disabled={syncNBASalaries.isPending}
+            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {syncNBASalaries.isPending ? 'Syncing...' : 'Sync NBA Salaries'}
+          </button>
+          <button
+            onClick={async () => {
+              const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+              try {
+                const result = await syncMLBSalaries.mutateAsync(today)
+                toast(`MLB salaries synced: ${result.upserted || 0} players`, 'success')
+              } catch (err) { toast(err.message || 'Failed', 'error') }
+            }}
+            disabled={syncMLBSalaries.isPending}
+            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {syncMLBSalaries.isPending ? 'Syncing...' : 'Sync MLB Salaries'}
           </button>
         </div>
       </div>
