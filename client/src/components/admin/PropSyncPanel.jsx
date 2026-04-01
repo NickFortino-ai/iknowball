@@ -105,7 +105,7 @@ export default function PropSyncPanel({ game, sportKey }) {
   return (
     <div className="space-y-6">
       {/* Sync Controls */}
-      <div className="bg-bg-card rounded-xl border border-border p-4">
+      <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4">
         <h3 className="font-semibold text-sm mb-3">Sync Props from API</h3>
         <div className="flex flex-wrap gap-2 mb-3">
           {markets.map((m) => (
@@ -135,7 +135,7 @@ export default function PropSyncPanel({ game, sportKey }) {
 
       {/* Featured Props */}
       {featuredProps.length > 0 && (
-        <div className="bg-bg-card rounded-xl border border-border p-4">
+        <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4">
           <h3 className="font-semibold text-sm mb-3 text-correct">Featured ({featuredProps.length})</h3>
           <div className="space-y-2">
             {featuredProps.map((prop) => (
@@ -166,7 +166,7 @@ export default function PropSyncPanel({ game, sportKey }) {
 
       {/* Synced Props (ready to feature) */}
       {syncedProps.length > 0 && (
-        <div className="bg-bg-card rounded-xl border border-border p-4">
+        <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4">
           <h3 className="font-semibold text-sm mb-3">Synced ({syncedProps.length})</h3>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {syncedProps.map((prop) => (
@@ -207,7 +207,7 @@ export default function PropSyncPanel({ game, sportKey }) {
 
       {/* Locked Props */}
       {lockedProps.length > 0 && (
-        <div className="bg-bg-card rounded-xl border border-border p-4">
+        <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4">
           <h3 className="font-semibold text-sm mb-3 text-text-muted">Locked ({lockedProps.length})</h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {lockedProps.map((prop) => (

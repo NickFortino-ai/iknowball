@@ -507,7 +507,7 @@ export default function AdminPage() {
 
       {adminSection === 'props' && <>
       {/* Featured Schedule — 7-day overview */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+      <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6">
         <h2 className="font-semibold text-sm mb-3">Featured Schedule</h2>
         <div className="space-y-1">
           {scheduleDays.map(({ dateStr, label, props: dayProps }) => (
@@ -713,7 +713,7 @@ export default function AdminPage() {
       </div>
 
       {/* System Actions — manual overrides, rarely needed */}
-      <div className="bg-bg-card rounded-xl border border-border p-4 mt-8">
+      <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mt-8">
         <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Manual Overrides</h2>
         <div className="flex gap-3 overflow-x-auto scrollbar-hide">
           <button
@@ -772,7 +772,7 @@ function GameListItem({ game, isSelected, onClick }) {
       className={`w-full text-left p-3 rounded-xl border transition-colors ${
         isSelected
           ? 'bg-accent/10 border-accent'
-          : 'bg-bg-card border-border hover:bg-bg-card-hover'
+          : 'bg-bg-primary border-text-primary/20 hover:bg-bg-card-hover'
       }`}
     >
       <div className="text-sm font-medium truncate">
