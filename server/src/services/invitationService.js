@@ -199,6 +199,18 @@ export async function acceptInvitation(invitationId, userId) {
       err.status = 400
       throw err
     }
+  } else if (['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(invitation.leagues.format)) {
+    // DFS formats use joins_locked_at instead of starts_at
+    const { data: leagueFull } = await supabase
+      .from('leagues')
+      .select('joins_locked_at')
+      .eq('id', invitation.leagues.id)
+      .single()
+    if (leagueFull?.joins_locked_at && new Date(leagueFull.joins_locked_at) <= new Date()) {
+      const err = new Error('This league is locked — games have started')
+      err.status = 400
+      throw err
+    }
   } else if (invitation.leagues.starts_at && new Date(invitation.leagues.starts_at) <= new Date()) {
     const err = new Error('This league has already started')
     err.status = 400
