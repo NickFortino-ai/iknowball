@@ -204,7 +204,7 @@ export async function getLeagueGames(leagueId, weekId) {
   // Look up league sport + week date range
   const { data: league } = await supabase
     .from('leagues')
-    .select('sport')
+    .select('sport, starts_at')
     .eq('id', leagueId)
     .single()
 
@@ -227,10 +227,15 @@ export async function getLeagueGames(leagueId, weekId) {
     throw err
   }
 
+  // Don't show games before the league's start date
+  const rangeStart = league.starts_at && league.starts_at > week.starts_at
+    ? league.starts_at
+    : week.starts_at
+
   let query = supabase
     .from('games')
     .select('*, sports!inner(key, name)')
-    .gte('starts_at', week.starts_at)
+    .gte('starts_at', rangeStart)
     .lte('starts_at', week.ends_at)
     .order('starts_at', { ascending: true })
 
