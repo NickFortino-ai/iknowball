@@ -474,7 +474,7 @@ export default function AdminPage() {
                   ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
                   : prop.player_name
                 return (
-                <div key={prop.id} className="flex items-center gap-2 py-2 first:pt-0 ml-20 sm:ml-20 border-t border-white/10 first:border-t-0">
+                <div key={prop.id} className="flex items-center gap-2 py-2 first:pt-0 ml-0 sm:ml-20 border-t border-white/10 first:border-t-0">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
                       {shortName} — {prop.market_label} ({prop.line})
@@ -498,7 +498,8 @@ export default function AdminPage() {
                                 : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
                           }`}
                         >
-                          {outcome.charAt(0).toUpperCase() + outcome.slice(1)}
+                          <span className="hidden sm:inline">{outcome.charAt(0).toUpperCase() + outcome.slice(1)}</span>
+                          <span className="sm:hidden">{outcome[0].toUpperCase()}</span>
                         </button>
                       ))}
                     </div>
@@ -554,7 +555,7 @@ export default function AdminPage() {
                     ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
                     : prop.player_name
                   return (
-                    <div key={prop.id} className="flex items-center gap-2 py-2 first:pt-0 ml-20 sm:ml-20 border-t border-white/10 first:border-t-0">
+                    <div key={prop.id} className="flex items-center gap-2 py-2 first:pt-0 ml-0 sm:ml-20 border-t border-white/10 first:border-t-0">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">
                           {shortName} — {prop.market_label} ({prop.line})
@@ -578,7 +579,8 @@ export default function AdminPage() {
                                     : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
                               }`}
                             >
-                              {outcome.charAt(0).toUpperCase() + outcome.slice(1)}
+                              <span className="hidden sm:inline">{outcome.charAt(0).toUpperCase() + outcome.slice(1)}</span>
+                          <span className="sm:hidden">{outcome[0].toUpperCase()}</span>
                             </button>
                           ))}
                         </div>
