@@ -405,7 +405,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
               key={d}
               onClick={() => setSelectedDate(d)}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                d === date ? 'bg-accent text-white' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+                d === date ? 'border-2 border-accent text-accent bg-transparent' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
               }`}
             >
               {formatDateLabel(d)}
