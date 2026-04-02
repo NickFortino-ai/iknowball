@@ -440,6 +440,15 @@ export function useDeletePositionOverride() {
   })
 }
 
+// Admin pending counts (badge indicators)
+export function useAdminPendingCounts() {
+  return useQuery({
+    queryKey: ['admin', 'pending-counts'],
+    queryFn: () => api.get('/admin/pending-counts'),
+    refetchInterval: 60_000, // poll every minute
+  })
+}
+
 // Backdrop submissions
 export function useBackdropSubmissions() {
   return useQuery({

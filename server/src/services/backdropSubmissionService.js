@@ -13,8 +13,8 @@ const MAX_WIDTH = 1920
  * Process and upload a backdrop submission.
  */
 export async function submitBackdrop(userId, leagueId, fileBuffer, originalFilename, mimetype) {
-  // Resize and convert to webp
-  let processed = sharp(fileBuffer)
+  // Auto-rotate based on EXIF orientation, resize, convert to webp
+  let processed = sharp(fileBuffer).rotate() // .rotate() with no args applies EXIF orientation
   const metadata = await processed.metadata()
   if (metadata.width > MAX_WIDTH) {
     processed = processed.resize({ width: MAX_WIDTH })

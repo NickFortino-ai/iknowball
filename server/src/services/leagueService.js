@@ -497,11 +497,11 @@ export async function getLeagueDetails(leagueId, userId) {
     activeWeek = nextWeek
   }
 
-  // Commissioner of pick'em/survivor can always see settings editor
+  // Commissioner can always see settings editor (backdrop, narrative, etc.)
   // has_locked_picks tells the frontend which settings to disable
   let settingsEditable = false
   let hasLockedPicks = false
-  if (member.role === 'commissioner' && (league.format === 'pickem' || league.format === 'survivor')) {
+  if (member.role === 'commissioner') {
     settingsEditable = true
     if (league.status !== 'open') {
       hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)

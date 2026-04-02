@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNBASalaries, useSyncMLBSalaries, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNBASalaries, useSyncMLBSalaries, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -56,6 +56,7 @@ export default function AdminPage() {
   const { data: emailTemplates } = useBracketTemplates()
   const { data: templateUserCount } = useBracketTemplateUserCount(selectedTemplateId)
   const { data: emailLogs } = useEmailLogs()
+  const { data: pendingCounts } = useAdminPendingCounts()
 
   if (!profile?.is_admin) {
     return (
@@ -251,13 +252,18 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setAdminSection('reports')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors relative ${
             adminSection === 'reports'
               ? 'bg-accent text-white'
               : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
           }`}
         >
           Reports
+          {pendingCounts?.reports > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              {pendingCounts.reports}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setAdminSection('moderation')}
@@ -271,13 +277,18 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setAdminSection('backdrops')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors relative ${
             adminSection === 'backdrops'
               ? 'bg-accent text-white'
               : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
           }`}
         >
           Backdrops
+          {pendingCounts?.backdrops > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+              {pendingCounts.backdrops}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setAdminSection('positions')}

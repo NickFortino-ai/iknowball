@@ -1,4 +1,4 @@
 UPDATE records
-SET name = 'Sharpest Prop Picker',
+SET display_name = 'Sharpest Prop Picker',
     description = 'Best prop pick win percentage (min 20 picks)'
-WHERE key = 'highest_prop_pct';
+WHERE record_key = 'highest_prop_pct';

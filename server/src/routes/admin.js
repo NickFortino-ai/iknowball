@@ -667,4 +667,16 @@ router.post('/backdrop-submissions/:id/reject', async (req, res) => {
   res.json({ success: true })
 })
 
+// Pending counts for admin badge indicators
+router.get('/pending-counts', async (req, res) => {
+  const [reports, backdrops] = await Promise.all([
+    supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('backdrop_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+  ])
+  res.json({
+    reports: reports.count || 0,
+    backdrops: backdrops.count || 0,
+  })
+})
+
 export default router
