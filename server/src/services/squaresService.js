@@ -280,6 +280,20 @@ async function autoLockIfFull(boardId, leagueId) {
   }
 
   logger.info({ boardId, leagueId }, 'Auto-locked digits — all 100 squares claimed')
+
+  // Notify all league members
+  try {
+    const { data: league } = await supabase.from('leagues').select('name').eq('id', leagueId).single()
+    const { data: members } = await supabase.from('league_members').select('user_id').eq('league_id', leagueId)
+    for (const m of members || []) {
+      await createNotification(m.user_id, 'squares_quarter_win',
+        `The squares in ${league?.name || 'your league'} are set! See what numbers you got!`,
+        { leagueId })
+    }
+  } catch (err) {
+    logger.error({ err, leagueId }, 'Failed to notify members about digits lock')
+  }
+
   return true
 }
 
