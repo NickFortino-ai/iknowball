@@ -173,15 +173,37 @@ async function fetchCompletedGameStats(date) {
 async function upsertPlayerStats(playerStats, date, season) {
   if (!playerStats.length) return
 
-  const rows = playerStats.map((p) => ({
-    espn_player_id: p.espnPlayerId,
-    player_name: p.playerName,
-    game_date: date,
-    season,
-    ...p.stats,
-    fantasy_points: calculateMLBFantasyPoints(p.stats),
-    updated_at: new Date().toISOString(),
-  }))
+  const rows = playerStats.map((p) => {
+    const s = p.stats
+    return {
+      espn_player_id: p.espnPlayerId,
+      player_name: p.playerName,
+      game_date: date,
+      season,
+      is_pitcher: s.is_pitcher || false,
+      // Batting fields (0 for pitchers)
+      at_bats: s.at_bats || 0,
+      hits: s.hits || 0,
+      runs: s.runs || 0,
+      home_runs: s.home_runs || 0,
+      rbis: s.rbis || 0,
+      stolen_bases: s.stolen_bases || 0,
+      walks: s.walks || 0,
+      strikeouts: s.strikeouts || 0,
+      doubles: s.doubles || 0,
+      triples: s.triples || 0,
+      total_bases: s.total_bases || 0,
+      // Pitching fields (0 for batters)
+      innings_pitched: s.innings_pitched || 0,
+      hits_allowed: s.hits_allowed || 0,
+      earned_runs: s.earned_runs || 0,
+      wins: s.wins || 0,
+      losses: s.losses || 0,
+      saves: s.saves || 0,
+      fantasy_points: calculateMLBFantasyPoints(s),
+      updated_at: new Date().toISOString(),
+    }
+  })
 
   const CHUNK = 200
   for (let i = 0; i < rows.length; i += CHUNK) {
