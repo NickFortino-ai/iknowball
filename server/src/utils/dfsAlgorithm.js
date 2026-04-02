@@ -173,14 +173,10 @@ export function applyDefensiveAdjustment(salary, opponentAbbrev, defRankings, to
   const rank = defRankings.get(opponentAbbrev)
   if (!rank) return salary
 
-  if (rank <= 5) {
-    // Facing top 5 defense → lower salary
-    return Math.round(salary * 0.93 / 100) * 100
-  }
-  if (rank > totalTeams - 5) {
-    // Facing bottom 5 defense → higher salary
-    return Math.round(salary * 1.07 / 100) * 100
-  }
+  if (rank <= 5) return Math.round(salary * 0.90 / 100) * 100
+  if (rank <= 10) return Math.round(salary * 0.95 / 100) * 100
+  if (rank > totalTeams - 5) return Math.round(salary * 1.10 / 100) * 100
+  if (rank > totalTeams - 10) return Math.round(salary * 1.05 / 100) * 100
 
   return salary
 }

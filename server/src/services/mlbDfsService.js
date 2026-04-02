@@ -39,6 +39,7 @@ async function fetchPlayerSeasonAvgs(espnId) {
         gp: get('GP'), ab: get('AB'), avg: get('AVG'), hr: get('HR'),
         rbi: get('RBI'), r: get('R'), sb: get('SB'), h: get('H'),
         bb: get('BB'), obp: get('OBP'), slg: get('SLG'), ops: get('OPS'),
+        doubles: get('2B'), triples: get('3B'),
       }
     }
 
@@ -68,14 +69,16 @@ async function fetchPlayerSeasonAvgs(espnId) {
 
 /**
  * MLB DFS fantasy points formula (batters):
- * Hit: 3, Double: 5, Triple: 8, HR: 10, RBI: 2, Run: 2, SB: 5, Walk: 2
+ * Single: 3, Double: 5, Triple: 8, HR: 10, RBI: 2, Run: 2, SB: 5, Walk: 2
  * Per-game average used for salary calc.
  */
 function calcMLBBatterFppg(avgs) {
   if (!avgs || avgs.gp < 1) return 0
   const gp = avgs.gp
-  const singles = Math.max(0, avgs.h - avgs.hr) // simplified
-  return (singles * 3 + avgs.hr * 10 + avgs.rbi * 2 + avgs.r * 2 + avgs.sb * 5 + avgs.bb * 2) / gp
+  const doubles = avgs.doubles || 0
+  const triples = avgs.triples || 0
+  const singles = Math.max(0, avgs.h - doubles - triples - avgs.hr)
+  return (singles * 3 + doubles * 5 + triples * 8 + avgs.hr * 10 + avgs.rbi * 2 + avgs.r * 2 + avgs.sb * 5 + avgs.bb * 2) / gp
 }
 
 /**
@@ -105,13 +108,15 @@ function mlbBatterGameFpts(statMap) {
   const ab = parseInt(statMap['AB']) || 0
   if (ab === 0 && !statMap['AB']) return null // DNP
   const h = parseInt(statMap['H']) || 0
+  const doubles = parseInt(statMap['2B']) || 0
+  const triples = parseInt(statMap['3B']) || 0
   const hr = parseInt(statMap['HR']) || 0
   const rbi = parseInt(statMap['RBI']) || 0
   const r = parseInt(statMap['R']) || 0
   const sb = parseInt(statMap['SB']) || 0
   const bb = parseInt(statMap['BB']) || 0
-  const singles = Math.max(0, h - hr) // simplified
-  return singles * 3 + hr * 10 + rbi * 2 + r * 2 + sb * 5 + bb * 2
+  const singles = Math.max(0, h - doubles - triples - hr)
+  return singles * 3 + doubles * 5 + triples * 8 + hr * 10 + rbi * 2 + r * 2 + sb * 5 + bb * 2
 }
 
 /**
@@ -130,23 +135,41 @@ function mlbPitcherGameFpts(statMap) {
 }
 
 /**
- * Calculate salary from MLB fantasy points per game (batters).
- * $3,000 base + $500/fppg, capped at $10,000.
+ * Calculate salary from MLB batter FPPG.
+ * $3,000 base + $500/fppg, capped at $5,500.
+ * Targets: elite hitter ~$4,500-5,500, solid ~$3,500-4,500, value ~$3,000-3,500
  */
 function mlbFppgToSalary(fppg) {
   if (!fppg || fppg <= 0) return 3000
   const salary = Math.round((3000 + fppg * 500) / 100) * 100
-  return Math.max(3000, Math.min(10000, salary))
+  return Math.max(3000, Math.min(5500, salary))
 }
 
 /**
  * Calculate salary from MLB pitcher FPPG.
- * $4,000 base + $300/fppg, capped at $12,000.
+ * $6,000 base + $250/fppg, capped at $12,000.
+ * Targets: elite SP ~$11,000-12,000, solid SP ~$8,000-10,000
  */
 function mlbPitcherFppgToSalary(fppg) {
-  if (!fppg || fppg <= 0) return 4000
-  const salary = Math.round((4000 + fppg * 300) / 100) * 100
-  return Math.max(4000, Math.min(12000, salary))
+  if (!fppg || fppg <= 0) return 6000
+  const salary = Math.round((6000 + fppg * 250) / 100) * 100
+  return Math.max(6000, Math.min(12000, salary))
+}
+
+/**
+ * Position scarcity multipliers.
+ * C: scarce/low output, SS/2B: scarce, 1B/3B/OF: standard, SP: premium
+ */
+const POSITION_SCARCITY = {
+  C: 0.85,
+  SS: 0.90,
+  '2B': 0.90,
+  '1B': 1.00,
+  '3B': 1.00,
+  OF: 1.00,
+  UTIL: 1.00,
+  SP: 1.10,
+  RP: 1.00,
 }
 
 /**
@@ -260,13 +283,17 @@ export async function generateMLBSalaries(date, season = 2026) {
         const gameFptsFn = isPitcher ? mlbPitcherGameFpts : mlbBatterGameFpts
         const fppg = calcWeightedFppg(gameFptsFn, gameLog, seasonFppg, { recentN: 10, midN: 20 })
 
+        const displayPos = isPitcher ? 'SP' : position
         let salary = isPitcher ? mlbPitcherFppgToSalary(fppg) : mlbFppgToSalary(fppg)
         salary = applyDefensiveAdjustment(salary, opponentAbbrev, defRankings, 30)
+        // Apply position scarcity multiplier
+        const scarcity = POSITION_SCARCITY[displayPos] || 1.0
+        salary = Math.round(salary * scarcity / 100) * 100
 
         salaries.push({
           player_name: name,
           team: teamAbbrev,
-          position: isPitcher ? 'SP' : position,
+          position: displayPos,
           espn_player_id: espnId,
           game_date: date,
           season,
