@@ -216,8 +216,8 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
         <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
           <p className="text-sm text-text-secondary">
             {isSelfSelect
-              ? 'Tap an empty square to claim more. Digits lock automatically before game time.'
-              : 'Digits will lock automatically before game time.'}
+              ? 'Tap an empty square to claim yours. Digits are randomly generated once all 100 squares are claimed.'
+              : 'Digits are randomly generated once all 100 squares are claimed.'}
           </p>
         </div>
       )}
