@@ -923,7 +923,7 @@ export default function LeagueDetailPage() {
       )}
       {/* Backdrop adjust controls for commissioner */}
       {isCommissioner && hasBackdrop && league.backdrop_image && (
-        <div className="absolute top-2 right-4 z-20 flex gap-1.5">
+        <div className="absolute top-2 right-4 flex gap-1.5" style={{ zIndex: 60 }}>
           {adjustingBackdrop ? (
             <>
               <button
