@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function PasswordInput({ value, onChange, placeholder, className, required }) {
+export default function PasswordInput({ value, onChange, placeholder, className, required, autoComplete, name }) {
   const [visible, setVisible] = useState(false)
   return (
     <div className="relative">
@@ -10,6 +10,8 @@ export default function PasswordInput({ value, onChange, placeholder, className,
         onChange={onChange}
         placeholder={placeholder}
         required={required}
+        autoComplete={autoComplete || 'current-password'}
+        name={name || 'password'}
         className={className || 'w-full bg-bg-input border border-border rounded-lg px-4 py-3 pr-10 text-text-primary focus:outline-none focus:border-accent transition-colors'}
       />
       <button

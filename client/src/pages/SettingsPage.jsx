@@ -126,9 +126,9 @@ function ChangePasswordSection() {
   return (
     <Section label="Change Password" defaultOpen={false}>
       <div className="space-y-3">
-        <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Current password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
-        <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
-        <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
+        <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Current password" autoComplete="current-password" name="current-password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
+        <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password" autoComplete="new-password" name="new-password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
+        <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" autoComplete="new-password" name="confirm-password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
         <button
           onClick={handleChangePassword}
           disabled={changing}
