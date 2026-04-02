@@ -911,7 +911,7 @@ export default function LeagueDetailPage() {
         <div
           ref={backdropDragRef}
           className={`absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden ${adjustingBackdrop ? 'pointer-events-auto cursor-ns-resize' : 'pointer-events-none'}`}
-          style={{ zIndex: adjustingBackdrop ? 50 : 0 }}
+          style={{ zIndex: adjustingBackdrop ? 30 : 0 }}
           onMouseDown={adjustingBackdrop ? startBackdropDrag : undefined}
           onTouchStart={adjustingBackdrop ? startBackdropDrag : undefined}
         >
@@ -935,7 +935,7 @@ export default function LeagueDetailPage() {
       )}
       {/* Backdrop adjust controls for commissioner */}
       {isCommissioner && hasBackdrop && league.backdrop_image && (
-        <div className="absolute top-2 right-4 flex gap-1.5" style={{ zIndex: 60 }}>
+        <div className="absolute top-2 right-4 flex gap-1.5 z-40">
           {adjustingBackdrop ? (
             <>
               <button
