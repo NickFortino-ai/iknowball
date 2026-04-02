@@ -209,97 +209,34 @@ export default function AdminPage() {
       <h1 className="font-display text-3xl mb-4">Admin Panel</h1>
 
       {/* Top-level section tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide">
-        <button
-          onClick={() => setAdminSection('props')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            adminSection === 'props'
-              ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Props Manager
-        </button>
-        <button
-          onClick={() => setAdminSection('brackets')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            adminSection === 'brackets'
-              ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Brackets
-        </button>
-        <button
-          onClick={() => setAdminSection('futures')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            adminSection === 'futures'
-              ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Futures
-        </button>
-        <button
-          onClick={() => setAdminSection('email')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            adminSection === 'email'
-              ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Email Blast
-        </button>
-        <button
-          onClick={() => setAdminSection('reports')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors relative ${
-            adminSection === 'reports'
-              ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Reports
-          {pendingCounts?.reports > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-              {pendingCounts.reports}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setAdminSection('moderation')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            adminSection === 'moderation'
-              ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Moderation
-        </button>
-        <button
-          onClick={() => setAdminSection('backdrops')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors relative ${
-            adminSection === 'backdrops'
-              ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Backdrops
-          {pendingCounts?.backdrops > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-              {pendingCounts.backdrops}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setAdminSection('positions')}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            adminSection === 'positions'
-              ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-          }`}
-        >
-          Positions
-        </button>
+      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pt-2 -mt-2">
+        {[
+          { key: 'props', label: 'Props Manager' },
+          { key: 'brackets', label: 'Brackets' },
+          { key: 'futures', label: 'Futures' },
+          { key: 'email', label: 'Email Blast' },
+          { key: 'reports', label: 'Reports', badge: pendingCounts?.reports },
+          { key: 'moderation', label: 'Moderation' },
+          { key: 'backdrops', label: 'Backdrops', badge: pendingCounts?.backdrops },
+          { key: 'positions', label: 'Positions' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setAdminSection(tab.key)}
+            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors relative ${
+              adminSection === tab.key
+                ? 'bg-accent text-white'
+                : 'bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 text-text-primary hover:bg-bg-primary/70'
+            }`}
+          >
+            {tab.label}
+            {tab.badge > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                {tab.badge}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {adminSection === 'email' && (<>
