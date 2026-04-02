@@ -76,7 +76,7 @@ async function scoreSport(sportKey) {
       logger.info({ gameId: game.id, home: game.home_team, away: game.away_team }, 'Skipping 0-0 completed game (likely postponed)')
       await supabase
         .from('games')
-        .update({ status: 'postponed', updated_at: new Date().toISOString() })
+        .update({ status: 'upcoming', updated_at: new Date().toISOString() })
         .eq('id', game.id)
       continue
     }
