@@ -129,7 +129,7 @@ router.get('/live', async (req, res) => {
   if (allEspnIds.length) {
     const { data: salaries } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id, game_starts_at, headshot_url')
+      .select('espn_player_id, game_starts_at, headshot_url, team, opponent')
       .eq('game_date', date)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
@@ -140,9 +140,59 @@ router.get('/live', async (req, res) => {
         const approxEnd = new Date(startTime.getTime() + 4 * 60 * 60 * 1000)
         status = now < approxEnd ? 'live' : 'final'
       }
-      gameStateMap[sal.espn_player_id] = { gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url }
+      gameStateMap[sal.espn_player_id] = {
+        gameStartsAt: sal.game_starts_at, status, headshot_url: sal.headshot_url,
+        team: sal.team, opponent: sal.opponent,
+      }
     }
   }
+
+  // Fetch live MLB scores from ESPN for matchup info
+  try {
+    const dateStr = date.replace(/-/g, '')
+    const espnRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${dateStr}`)
+    if (espnRes.ok) {
+      const espnData = await espnRes.json()
+      // Build team abbreviation → game score map
+      const teamGameMap = {}
+      for (const event of espnData.events || []) {
+        const comp = event.competitions?.[0]
+        if (!comp) continue
+        const statusType = comp.status?.type?.name
+        let gameStatus = 'upcoming'
+        if (['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME'].includes(statusType)) gameStatus = 'live'
+        else if (['STATUS_FINAL', 'STATUS_FULL_TIME'].includes(statusType)) gameStatus = 'final'
+
+        const home = comp.competitors?.find((c) => c.homeAway === 'home')
+        const away = comp.competitors?.find((c) => c.homeAway === 'away')
+        const homeAbbrev = home?.team?.abbreviation
+        const awayAbbrev = away?.team?.abbreviation
+        const homeScore = parseInt(home?.score || '0', 10)
+        const awayScore = parseInt(away?.score || '0', 10)
+        const period = comp.status?.period || null
+        const inningHalf = comp.status?.type?.shortDetail || null
+
+        const gameData = { homeAbbrev, awayAbbrev, homeScore, awayScore, gameStatus, period, inningHalf }
+        if (homeAbbrev) teamGameMap[homeAbbrev] = gameData
+        if (awayAbbrev) teamGameMap[awayAbbrev] = gameData
+      }
+
+      // Match players to their games
+      for (const [espnId, gs] of Object.entries(gameStateMap)) {
+        if (gs.team) {
+          const game = teamGameMap[gs.team]
+          if (game) {
+            gs.status = game.gameStatus
+            gs.homeAbbrev = game.homeAbbrev
+            gs.awayAbbrev = game.awayAbbrev
+            gs.homeScore = game.homeScore
+            gs.awayScore = game.awayScore
+            gs.inning = game.inningHalf
+          }
+        }
+      }
+    }
+  } catch { /* ignore */ }
 
   // Player stats
   const playerStatsMap = {}
@@ -199,6 +249,11 @@ router.get('/live', async (req, res) => {
         headshot_url: hidden ? null : (gs.headshot_url || null),
         points_earned: pts,
         game_status: gs.status || 'upcoming',
+        home_team: gs.homeAbbrev || null,
+        away_team: gs.awayAbbrev || null,
+        home_score: gs.homeScore ?? null,
+        away_score: gs.awayScore ?? null,
+        inning: gs.inning || null,
         stats: playerStatsMap[slot.espn_player_id] || null,
       }
     })

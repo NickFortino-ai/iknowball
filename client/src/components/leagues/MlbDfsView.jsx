@@ -179,10 +179,18 @@ function MlbLiveView({ league, date: leagueDate }) {
                               <div className="flex-1 min-w-0">
                                 <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
                                 {statLine && (
-                                  <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
+                                  <span className="text-xs text-text-muted block">{statLine}</span>
                                 )}
-                                {statLine && (
-                                  <span className="text-xs text-text-muted hidden lg:inline">{statLine}</span>
+                                {(slot.game_status === 'live' || slot.game_status === 'final') && slot.away_team && (
+                                  <span className="text-[11px] text-text-muted block mt-0.5">
+                                    {slot.away_team} {slot.away_score ?? ''} @ {slot.home_team} {slot.home_score ?? ''}
+                                    {slot.game_status === 'live' && slot.inning && (
+                                      <span className="text-text-primary ml-1.5">{slot.inning}</span>
+                                    )}
+                                    {slot.game_status === 'final' && (
+                                      <span className="text-text-primary ml-1.5">Final</span>
+                                    )}
+                                  </span>
                                 )}
                               </div>
                               {(slot.game_status === 'live' || slot.game_status === 'final') && (

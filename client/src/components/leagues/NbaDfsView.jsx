@@ -259,7 +259,7 @@ function LiveView({ league, date: leagueDate }) {
                             )}
                             {(slot.game_status === 'live' || slot.game_status === 'final') && slot.away_team && (
                               <span className="text-[11px] text-text-muted block mt-0.5">
-                                {slot.away_team?.split(' ').pop()} {slot.away_score ?? ''} @ {slot.home_team?.split(' ').pop()} {slot.home_score ?? ''}
+                                {slot.away_team} {slot.away_score ?? ''} @ {slot.home_team} {slot.home_score ?? ''}
                                 {slot.game_status === 'live' && slot.game_period && (
                                   <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
                                 )}

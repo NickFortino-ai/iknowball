@@ -192,31 +192,47 @@ router.get('/live', async (req, res) => {
       .gte('starts_at', todayStart.toISOString())
       .lte('starts_at', todayEnd.toISOString())
 
-    if (liveGames?.length) {
-      const NBA_ABBREV_TO_TEAM = {
+    // Build abbreviation lookup from ESPN scoreboard for accurate matchups
+    const teamAbbrevsInGames = {} // full team name → abbreviation
+    const abbrevToGame = {} // team abbreviation → game data
+    for (const game of liveGames || []) {
+      // Extract abbreviations by matching against all known teams
+      for (const [abbrev, nickname] of Object.entries({
         ATL: 'Hawks', BOS: 'Celtics', BKN: 'Nets', CHA: 'Hornets', CHI: 'Bulls',
-        CLE: 'Cavaliers', DAL: 'Mavericks', DEN: 'Nuggets', DET: 'Pistons', GS: 'Warriors',
-        GSW: 'Warriors', HOU: 'Rockets', IND: 'Pacers', LAC: 'Clippers', LAL: 'Lakers',
-        MEM: 'Grizzlies', MIA: 'Heat', MIL: 'Bucks', MIN: 'Timberwolves', NO: 'Pelicans',
-        NOP: 'Pelicans', NY: 'Knicks', NYK: 'Knicks', OKC: 'Thunder', ORL: 'Magic',
-        PHI: '76ers', PHX: 'Suns', POR: 'Trail Blazers', SAC: 'Kings', SA: 'Spurs',
-        SAS: 'Spurs', TOR: 'Raptors', UTA: 'Jazz', WAS: 'Wizards',
+        CLE: 'Cavaliers', DAL: 'Mavericks', DEN: 'Nuggets', DET: 'Pistons', GSW: 'Warriors',
+        HOU: 'Rockets', IND: 'Pacers', LAC: 'Clippers', LAL: 'Lakers',
+        MEM: 'Grizzlies', MIA: 'Heat', MIL: 'Bucks', MIN: 'Timberwolves', NOP: 'Pelicans',
+        NYK: 'Knicks', OKC: 'Thunder', ORL: 'Magic', PHI: '76ers', PHX: 'Suns',
+        POR: 'Trail Blazers', SAC: 'Kings', SAS: 'Spurs', TOR: 'Raptors', UTA: 'Jazz', WAS: 'Wizards',
+      })) {
+        if (game.home_team?.includes(nickname)) {
+          abbrevToGame[abbrev] = { ...game, homeAbbrev: abbrev }
+        }
+        if (game.away_team?.includes(nickname)) {
+          abbrevToGame[abbrev] = { ...game, awayAbbrev: abbrev }
+        }
       }
-      for (const [espnId, gs] of Object.entries(gameStateMap)) {
-        if (gs.team) {
-          const teamName = NBA_ABBREV_TO_TEAM[gs.team.toUpperCase()]
-          const match = teamName && liveGames.find((g) =>
-            g.home_team.includes(teamName) || g.away_team.includes(teamName)
-          )
-          if (match) {
-            gs.status = match.status
-            gs.period = match.period
-            gs.clock = match.clock
-            gs.homeTeam = match.home_team
-            gs.awayTeam = match.away_team
-            gs.homeScore = match.live_home_score ?? match.home_score ?? 0
-            gs.awayScore = match.live_away_score ?? match.away_score ?? 0
-          }
+    }
+
+    // Also handle GS vs GSW, NO vs NOP, NY vs NYK, SA vs SAS
+    const ABBREV_ALIASES = { GS: 'GSW', NO: 'NOP', NY: 'NYK', SA: 'SAS' }
+
+    for (const [espnId, gs] of Object.entries(gameStateMap)) {
+      if (gs.team) {
+        const normalizedTeam = ABBREV_ALIASES[gs.team.toUpperCase()] || gs.team.toUpperCase()
+        const match = abbrevToGame[normalizedTeam]
+        if (match) {
+          gs.status = match.status
+          gs.period = match.period
+          gs.clock = match.clock
+          gs.homeScore = match.live_home_score ?? match.home_score ?? 0
+          gs.awayScore = match.live_away_score ?? match.away_score ?? 0
+          // Store abbreviations directly — parse from opponent field
+          const oppRaw = gs.opponent || ''
+          const isHome = oppRaw.startsWith('vs')
+          const oppAbbrev = oppRaw.replace(/^(vs|@)\s*/, '').trim()
+          gs.homeAbbrev = isHome ? normalizedTeam : oppAbbrev
+          gs.awayAbbrev = isHome ? oppAbbrev : normalizedTeam
         }
       }
     }
@@ -340,8 +356,8 @@ router.get('/live', async (req, res) => {
         game_clock: gs.clock || null,
         team: visible ? (gs.team || null) : null,
         opponent: visible ? (gs.opponent || null) : null,
-        home_team: gs.homeTeam || null,
-        away_team: gs.awayTeam || null,
+        home_team: gs.homeAbbrev || null,
+        away_team: gs.awayAbbrev || null,
         home_score: gs.homeScore ?? null,
         away_score: gs.awayScore ?? null,
         stats: hasGameStats ? (playerStatsMap[slot.espn_player_id] || null) : null,
