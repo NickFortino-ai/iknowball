@@ -103,24 +103,16 @@ export default function SurvivorView({ league }) {
     <div>
       {/* Status summary */}
       <div className="flex justify-center gap-2 md:gap-3 mb-4">
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 flex-1 md:flex-none px-3 md:px-5 py-2 text-center">
-          <div className="font-display text-xl md:text-2xl text-correct">
-            {board.members?.filter((m) => m.is_alive).length || 0}
+        {[
+          { value: board.members?.filter((m) => m.is_alive).length || 0, label: 'Alive', color: 'text-correct' },
+          { value: board.members?.filter((m) => !m.is_alive).length || 0, label: 'Eliminated', color: 'text-incorrect' },
+          { value: board.display_period_number || currentWeek?.week_number || '—', label: periodLabel, color: 'text-text-primary' },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 w-[5.5rem] md:w-24 py-2 text-center">
+            <div className={`font-display text-xl md:text-2xl ${stat.color}`}>{stat.value}</div>
+            <div className="text-[10px] text-text-muted">{stat.label}</div>
           </div>
-          <div className="text-[10px] text-text-muted">Alive</div>
-        </div>
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 flex-1 md:flex-none px-3 md:px-5 py-2 text-center">
-          <div className="font-display text-xl md:text-2xl text-incorrect">
-            {board.members?.filter((m) => !m.is_alive).length || 0}
-          </div>
-          <div className="text-[10px] text-text-muted">Eliminated</div>
-        </div>
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 flex-1 md:flex-none px-3 md:px-5 py-2 text-center">
-          <div className="font-display text-xl md:text-2xl text-text-primary">
-            {board.display_period_number || currentWeek?.week_number || '—'}
-          </div>
-          <div className="text-[10px] text-text-muted">{periodLabel}</div>
-        </div>
+        ))}
       </div>
 
 
