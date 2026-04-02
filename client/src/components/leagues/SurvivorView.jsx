@@ -102,24 +102,24 @@ export default function SurvivorView({ league }) {
   return (
     <div>
       {/* Status summary */}
-      <div className="flex gap-4 mb-4">
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
-          <div className="font-display text-2xl text-correct">
+      <div className="flex justify-center gap-2 mb-4">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-2 text-center">
+          <div className="font-display text-xl text-correct">
             {board.members?.filter((m) => m.is_alive).length || 0}
           </div>
-          <div className="text-xs text-text-muted">Alive</div>
+          <div className="text-[10px] text-text-muted">Alive</div>
         </div>
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
-          <div className="font-display text-2xl text-incorrect">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-2 text-center">
+          <div className="font-display text-xl text-incorrect">
             {board.members?.filter((m) => !m.is_alive).length || 0}
           </div>
-          <div className="text-xs text-text-muted">Eliminated</div>
+          <div className="text-[10px] text-text-muted">Eliminated</div>
         </div>
-        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 flex-1 text-center">
-          <div className="font-display text-2xl text-text-primary">
+        <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-2 text-center">
+          <div className="font-display text-xl text-text-primary">
             {board.display_period_number || currentWeek?.week_number || '—'}
           </div>
-          <div className="text-xs text-text-muted">{periodLabel}</div>
+          <div className="text-[10px] text-text-muted">{periodLabel}</div>
         </div>
       </div>
 
