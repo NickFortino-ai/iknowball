@@ -247,7 +247,7 @@ function LeaguePicksView({ league, standings }) {
   return (
     <div>
       {/* Period navigator */}
-      {weeks?.length > 0 && (
+      {weeks?.length > 1 && (
         <div className="mb-4 -mx-1 overflow-x-auto" ref={scrollRef}>
           <div className="flex gap-1.5 px-1 pb-1">
             {weeks.map((week) => (
