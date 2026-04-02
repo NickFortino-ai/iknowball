@@ -27,19 +27,6 @@ const ShareIcon = ({ className }) => (
   </svg>
 )
 
-const BouncingArrow = ({ direction }) => (
-  <div className={`fixed z-[60] ${
-    direction === 'down'
-      ? 'bottom-2 left-[52px]'   // iPhone: point to share button bottom-left of Safari toolbar
-      : 'top-2 right-[52px]'     // iPad: point to share button top-right of Safari toolbar
-  }`}>
-    <div className={`animate-bounce text-accent ${direction === 'up' ? 'rotate-180' : ''}`}>
-      <svg className="w-8 h-8 drop-shadow-[0_0_8px_rgba(255,77,0,0.5)]" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 16l-6-6h4V4h4v6h4l-6 6z" />
-      </svg>
-    </div>
-  </div>
-)
 
 export default function InstallPrompt() {
   const [visible, setVisible] = useState(false)
@@ -88,11 +75,6 @@ export default function InstallPrompt() {
 
   return (
     <>
-      {/* Bouncing arrow pointing to Safari share button */}
-      {ios && mounted && (
-        <BouncingArrow direction={ipad ? 'up' : 'down'} />
-      )}
-
       <div
         className={`fixed left-0 right-0 z-50 px-4 transition-transform duration-300 ease-out ${
           ipad
