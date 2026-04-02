@@ -597,7 +597,7 @@ export async function updateLeague(leagueId, userId, data) {
   }
 
   // commissioner_note and visibility can always be updated
-  const alwaysAllowed = ['commissioner_note', 'visibility', 'joins_locked_at', 'backdrop_image']
+  const alwaysAllowed = ['commissioner_note', 'visibility', 'joins_locked_at', 'backdrop_image', 'backdrop_y']
   const noteOnly = Object.keys(data).every((k) => alwaysAllowed.includes(k))
   const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at', 'duration', 'name', 'max_members', 'visibility', 'joins_locked_at'].includes(k))
 
@@ -651,6 +651,7 @@ export async function updateLeague(leagueId, userId, data) {
   if (data.visibility !== undefined) updates.visibility = data.visibility
   if (data.joins_locked_at !== undefined) updates.joins_locked_at = data.joins_locked_at
   if (data.backdrop_image !== undefined) updates.backdrop_image = data.backdrop_image
+  if (data.backdrop_y !== undefined) updates.backdrop_y = data.backdrop_y
 
   // Handle duration change — recalculate date range
   // When picks are locked, preserve existing starts_at (only extend ends_at)

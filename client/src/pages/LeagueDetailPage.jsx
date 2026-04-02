@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
@@ -848,20 +848,111 @@ export default function LeagueDetailPage() {
   const tabs = getLeagueTabs(league, isBracketLocked)
   const isCommissioner = league.commissioner_id === profile?.id
 
+  const [adjustingBackdrop, setAdjustingBackdrop] = useState(false)
+  const [backdropY, setBackdropY] = useState(league?.backdrop_y ?? 50)
+  const backdropDragRef = useRef(null)
+
+  // Sync local state when league data changes
+  useEffect(() => {
+    if (league?.backdrop_y != null) setBackdropY(league.backdrop_y)
+  }, [league?.backdrop_y])
+
+  const handleBackdropDrag = useCallback((e) => {
+    const ref = backdropDragRef.current
+    if (!ref) return
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    const rect = ref.getBoundingClientRect()
+    const pct = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
+    setBackdropY(pct)
+  }, [])
+
+  const stopBackdropDrag = useCallback(() => {
+    const onUp = () => {
+      document.removeEventListener('mousemove', handleBackdropDrag)
+      document.removeEventListener('mouseup', onUp)
+      document.removeEventListener('touchmove', handleBackdropDrag)
+      document.removeEventListener('touchend', onUp)
+    }
+    return onUp
+  }, [handleBackdropDrag])
+
+  const startBackdropDrag = useCallback((e) => {
+    e.preventDefault()
+    handleBackdropDrag(e)
+    const onUp = stopBackdropDrag()
+    document.addEventListener('mousemove', handleBackdropDrag)
+    document.addEventListener('mouseup', onUp)
+    document.addEventListener('touchmove', handleBackdropDrag, { passive: false })
+    document.addEventListener('touchend', onUp)
+  }, [handleBackdropDrag, stopBackdropDrag])
+
+  const saveBackdropY = useCallback(async () => {
+    try {
+      await updateLeague.mutateAsync({ leagueId: league.id, backdrop_y: Math.round(backdropY) })
+      setAdjustingBackdrop(false)
+      toast('Backdrop position saved', 'success')
+    } catch {
+      toast('Failed to save position', 'error')
+    }
+  }, [backdropY, league?.id, updateLeague])
+
+  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format)
+
   return (
     <div className={`mx-auto px-4 py-6 relative ${['nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'fantasy', 'squares'].includes(league.format) ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'}`}>
       {/* Full hero backdrop — shows for leagues with a backdrop_image or fantasy/DFS formats */}
-      {(league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format)) && (
-        <div className="absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+      {hasBackdrop && (
+        <div
+          ref={backdropDragRef}
+          className={`absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden ${adjustingBackdrop ? 'pointer-events-auto cursor-ns-resize' : 'pointer-events-none'}`}
+          style={{ zIndex: adjustingBackdrop ? 50 : 0 }}
+          onMouseDown={adjustingBackdrop ? startBackdropDrag : undefined}
+          onTouchStart={adjustingBackdrop ? startBackdropDrag : undefined}
+        >
           <img
             src={league.backdrop_image
               ? getBackdropUrl(league.backdrop_image)
               : league.format === 'nba_dfs' ? '/nba-dfs-bg.png' : '/fantasy-football-bg.png'
             }
             alt=""
-            className="w-full h-full object-cover object-center opacity-30"
+            className={`w-full h-full object-cover ${adjustingBackdrop ? 'opacity-60' : 'opacity-30'}`}
+            style={{ objectPosition: `center ${backdropY}%` }}
+            draggable={false}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/20 via-bg-primary/40 to-bg-primary" />
+          {adjustingBackdrop && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-white/70 text-sm font-medium bg-black/40 px-3 py-1.5 rounded-lg">Drag up or down to reposition</p>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Backdrop adjust controls for commissioner */}
+      {isCommissioner && hasBackdrop && league.backdrop_image && (
+        <div className="absolute top-2 right-4 z-20 flex gap-1.5">
+          {adjustingBackdrop ? (
+            <>
+              <button
+                onClick={saveBackdropY}
+                className="bg-accent/90 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => { setAdjustingBackdrop(false); setBackdropY(league.backdrop_y ?? 50) }}
+                className="bg-bg-primary/70 text-text-primary text-xs font-semibold px-2 py-1.5 rounded-lg hover:bg-bg-primary transition-colors"
+              >
+                &times;
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setAdjustingBackdrop(true)}
+              className="bg-bg-primary/70 backdrop-blur-sm text-text-muted text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-bg-primary/90 hover:text-text-primary transition-colors border border-text-primary/20"
+            >
+              Adjust
+            </button>
+          )}
         </div>
       )}
 

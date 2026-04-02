@@ -184,7 +184,7 @@ router.get('/open', requireAuth, async (req, res) => {
   // Get leagues that are open visibility, not completed, and not past their join lock
   const { data: leagues, error } = await supabase
     .from('leagues')
-    .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, backdrop_image, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
+    .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, backdrop_image, backdrop_y, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
     .eq('visibility', 'open')
     .in('status', ['open', 'active'])
     .or(`joins_locked_at.is.null,joins_locked_at.gt.${now}`)
@@ -228,6 +228,7 @@ router.get('/open', requireAuth, async (req, res) => {
       settings: l.settings || {},
       joins_locked_at: l.joins_locked_at,
       backdrop_image: l.backdrop_image,
+      backdrop_y: l.backdrop_y ?? 50,
     }))
 
   res.json(result)
@@ -267,6 +268,7 @@ const updateLeagueSchema = z.object({
   visibility: z.enum(['open', 'closed']).optional(),
   joins_locked_at: z.string().nullable().optional(),
   backdrop_image: z.string().nullable().optional(),
+  backdrop_y: z.number().min(0).max(100).nullable().optional(),
 })
 
 router.patch('/:id', requireAuth, validate(updateLeagueSchema), async (req, res) => {
