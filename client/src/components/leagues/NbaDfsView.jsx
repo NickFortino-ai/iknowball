@@ -225,7 +225,8 @@ function LiveView({ league, date: leagueDate }) {
                   const isSlotExpanded = expandedSlot === slotKey
                   const hasStats = slot.stats && (slot.game_status === 'live' || slot.game_status === 'final')
 
-                  const statLine = hasStats && slot.stats ? [
+                  const isDNP = slot.game_status === 'final' && (!slot.stats || slot.stats.min === 0)
+                  const statLine = slot.stats && !isDNP ? [
                     { label: 'PTS', value: slot.stats.pts },
                     { label: 'REB', value: slot.stats.reb },
                     { label: 'AST', value: slot.stats.ast },
@@ -247,7 +248,12 @@ function LiveView({ league, date: leagueDate }) {
                               onError={(e) => { e.target.style.display = 'none' }} />
                           )}
                           <div className="flex-1 min-w-0">
-                            <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
+                              {isDNP && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-incorrect/20 text-incorrect shrink-0">DNP</span>
+                              )}
+                            </div>
                             {statLine && (
                               <span className="text-xs text-text-muted block">{statLine}</span>
                             )}
@@ -275,8 +281,8 @@ function LiveView({ league, date: leagueDate }) {
                             )}
                           </div>
                           {(slot.game_status === 'live' || slot.game_status === 'final') && (
-                            <span className="text-base font-display shrink-0 text-white">
-                              {Math.round((slot.points_earned || 0) * 10) / 10}
+                            <span className={`text-base font-display shrink-0 ${isDNP ? 'text-incorrect/60' : 'text-white'}`}>
+                              {isDNP ? '0' : Math.round((slot.points_earned || 0) * 10) / 10}
                             </span>
                           )}
                         </>
