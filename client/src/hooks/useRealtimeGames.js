@@ -20,6 +20,8 @@ export function useRealtimeGames(isAuthenticated) {
             queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
             queryClient.invalidateQueries({ queryKey: ['picks'] })
             queryClient.invalidateQueries({ queryKey: ['parlays'] })
+            queryClient.invalidateQueries({ queryKey: ['propPicks'] })
+            queryClient.invalidateQueries({ queryKey: ['profile'] })
           }
         }
       )
