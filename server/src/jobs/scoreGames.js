@@ -71,6 +71,16 @@ async function scoreSport(sportKey) {
     const homePoints = parseInt(homeScore?.score || '0', 10)
     const awayPoints = parseInt(awayScore?.score || '0', 10)
 
+    // Skip 0-0 "completed" games — likely postponed/cancelled (especially MLB)
+    if (homePoints === 0 && awayPoints === 0) {
+      logger.info({ gameId: game.id, home: game.home_team, away: game.away_team }, 'Skipping 0-0 completed game (likely postponed)')
+      await supabase
+        .from('games')
+        .update({ status: 'postponed', updated_at: new Date().toISOString() })
+        .eq('id', game.id)
+      continue
+    }
+
     let winner = null
     if (homePoints > awayPoints) winner = 'home'
     else if (awayPoints > homePoints) winner = 'away'
