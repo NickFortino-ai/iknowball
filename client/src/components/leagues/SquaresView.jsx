@@ -124,11 +124,11 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
     <div>
       {/* Game info */}
       {board.games && (
-        <div className="bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center">
-          <div className="font-display text-lg">
+        <div className="mb-4 text-center">
+          <div className="font-display text-lg text-white">
             {board.games.away_team} @ {board.games.home_team}
           </div>
-          <div className="text-xs text-text-muted mt-1">
+          <div className="text-xs text-white/70 mt-1">
             {new Date(board.games.starts_at).toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
