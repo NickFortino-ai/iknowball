@@ -426,6 +426,17 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
 
       {!expanded ? null : <div className="space-y-4 mt-4">
 
+      {/* Squares: just show game date (read-only) */}
+      {league.format === 'squares' ? (
+        <div>
+          <label className="block text-xs text-text-muted mb-1">Game Date</label>
+          <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary">
+            {league.starts_at
+              ? new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+              : 'Not set'}
+          </div>
+        </div>
+      ) : (<>
       {/* Duration */}
       <div>
         <label className="block text-xs text-text-muted mb-2">Duration</label>
@@ -483,6 +494,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           </div>
         </div>
       )}
+      </>)}
 
       {league.format === 'pickem' && (
         <>
