@@ -133,6 +133,9 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
               weekday: 'long',
               month: 'long',
               day: 'numeric',
+            })} at {new Date(board.games.starts_at).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
             })}
           </div>
         </div>
