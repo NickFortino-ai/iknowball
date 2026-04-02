@@ -72,9 +72,9 @@ function StandingsTable({ standings, leagueId }) {
   }
 
   return (
-    <div className="bg-bg-card rounded-xl border border-border overflow-hidden text-sm">
+    <div className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 overflow-hidden text-sm">
       {/* Header */}
-      <div className="flex items-center border-b border-border text-text-muted text-xs">
+      <div className="flex items-center border-b border-text-primary/10 text-text-muted text-xs">
         <span className="px-4 py-3 font-medium w-10">#</span>
         <span className="px-4 py-3 font-medium flex-1">Player</span>
         <span className="px-4 py-3 font-medium text-right">Record</span>
@@ -82,7 +82,7 @@ function StandingsTable({ standings, leagueId }) {
       </div>
       {/* Rows */}
       {standings.map((s, i) => (
-        <div key={s.user_id} className={i < standings.length - 1 ? 'border-b border-border' : ''}>
+        <div key={s.user_id} className={i < standings.length - 1 ? 'border-b border-text-primary/10' : ''}>
           <button
             onClick={() => setExpandedUser(expandedUser === s.user_id ? null : s.user_id)}
             className="w-full text-left hover:bg-bg-card-hover cursor-pointer transition-colors"
@@ -353,9 +353,6 @@ function LeaguePicksView({ league, standings }) {
         </div>
       )}
 
-      {/* Mini leaderboard */}
-      <MiniLeaderboard standings={standings} leagueId={league.id} />
-
       <InjuryReportModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
     </div>
   )
@@ -374,7 +371,7 @@ export default function PickemView({ league, standings, mode }) {
     return (
       <div>
         {gamesPerWeek && (
-          <div className="bg-bg-card rounded-xl border border-border p-3 mb-4 text-center">
+          <div className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 mb-4 text-center">
             <span className="text-xs text-text-muted">Pick </span>
             <span className="text-sm font-semibold text-accent">{gamesPerWeek}</span>
             <span className="text-xs text-text-muted"> games per {league.settings?.pick_frequency === 'daily' ? 'day' : 'week'}</span>
@@ -382,7 +379,7 @@ export default function PickemView({ league, standings, mode }) {
         )}
 
         {useSubmissionOdds && (
-          <div className="bg-bg-card rounded-xl border border-border p-3 mb-4 text-center">
+          <div className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 mb-4 text-center">
             <span className="text-xs text-text-muted">Odds locked </span>
             <span className="text-sm font-semibold text-accent">at submission</span>
           </div>
