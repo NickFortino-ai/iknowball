@@ -840,16 +840,8 @@ export default function LeagueDetailPage() {
     setTabInitialized(true)
   }, [league, tabInitialized, nbaLiveData, mlbLiveData, isDfsFormat])
 
-  if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
-  if (!league) return null
-
-  const isBracketLocked = league.format === 'bracket' && bracketTournament &&
-    new Date(bracketTournament.locks_at) <= new Date()
-  const tabs = getLeagueTabs(league, isBracketLocked)
-  const isCommissioner = league.commissioner_id === profile?.id
-
   const [adjustingBackdrop, setAdjustingBackdrop] = useState(false)
-  const [backdropY, setBackdropY] = useState(league?.backdrop_y ?? 50)
+  const [backdropY, setBackdropY] = useState(50)
   const backdropDragRef = useRef(null)
 
   // Sync local state when league data changes
@@ -866,27 +858,31 @@ export default function LeagueDetailPage() {
     setBackdropY(pct)
   }, [])
 
-  const stopBackdropDrag = useCallback(() => {
+  if (isLoading) return <div className="max-w-2xl mx-auto px-4 py-6"><LoadingSpinner /></div>
+  if (!league) return null
+
+  const isBracketLocked = league.format === 'bracket' && bracketTournament &&
+    new Date(bracketTournament.locks_at) <= new Date()
+  const tabs = getLeagueTabs(league, isBracketLocked)
+  const isCommissioner = league.commissioner_id === profile?.id
+  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format)
+
+  function startBackdropDrag(e) {
+    e.preventDefault()
+    handleBackdropDrag(e)
     const onUp = () => {
       document.removeEventListener('mousemove', handleBackdropDrag)
       document.removeEventListener('mouseup', onUp)
       document.removeEventListener('touchmove', handleBackdropDrag)
       document.removeEventListener('touchend', onUp)
     }
-    return onUp
-  }, [handleBackdropDrag])
-
-  const startBackdropDrag = useCallback((e) => {
-    e.preventDefault()
-    handleBackdropDrag(e)
-    const onUp = stopBackdropDrag()
     document.addEventListener('mousemove', handleBackdropDrag)
     document.addEventListener('mouseup', onUp)
     document.addEventListener('touchmove', handleBackdropDrag, { passive: false })
     document.addEventListener('touchend', onUp)
-  }, [handleBackdropDrag, stopBackdropDrag])
+  }
 
-  const saveBackdropY = useCallback(async () => {
+  async function saveBackdropY() {
     try {
       await updateLeague.mutateAsync({ leagueId: league.id, backdrop_y: Math.round(backdropY) })
       setAdjustingBackdrop(false)
@@ -894,9 +890,7 @@ export default function LeagueDetailPage() {
     } catch {
       toast('Failed to save position', 'error')
     }
-  }, [backdropY, league?.id, updateLeague])
-
-  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format)
+  }
 
   return (
     <div className={`mx-auto px-4 py-6 relative ${['nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'fantasy', 'squares'].includes(league.format) ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'}`}>
