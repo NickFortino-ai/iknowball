@@ -95,9 +95,15 @@ export default function OnboardingTutorial() {
 
     const stepData = ONBOARDING_STEPS[step]
 
-    // Navigate if needed
-    if (stepData.page && location.pathname !== stepData.page) {
-      navigate(stepData.page)
+    // Navigate if needed (compare pathname only, ignore query params for matching)
+    if (stepData.page) {
+      const targetPath = stepData.page.split('?')[0] || '/'
+      if (location.pathname !== targetPath) {
+        navigate(stepData.page)
+      } else if (stepData.page.includes('?')) {
+        // Same path but need query params (e.g. /?headlines=1)
+        navigate(stepData.page, { replace: true })
+      }
     }
 
     // Fullscreen step — no target needed
