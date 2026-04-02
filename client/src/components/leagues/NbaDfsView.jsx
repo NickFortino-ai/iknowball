@@ -837,14 +837,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                       : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
                 }`}
               >
-                {pos === 'OUT' ? (
-                  <span className="flex items-center gap-1">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-                    </svg>
-                    OUT
-                  </span>
-                ) : pos}
+                {pos === 'OUT' ? 'O' : pos}
               </button>
             ))}
           </div>
