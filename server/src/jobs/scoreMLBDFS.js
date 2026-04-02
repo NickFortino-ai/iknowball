@@ -96,7 +96,10 @@ async function fetchCompletedGameStats(date) {
       for (const statGroup of team.statistics || []) {
         const headers = statGroup.labels || []
 
-        if (statGroup.name === 'batting') {
+        const isBattingGroup = statGroup.name === 'batting' || headers.includes('AB')
+        const isPitchingGroup = statGroup.name === 'pitching' || headers.includes('IP')
+
+        if (isBattingGroup) {
           for (const athlete of statGroup.athletes || []) {
             const espnId = athlete.athlete?.id
             const name = athlete.athlete?.displayName
@@ -130,7 +133,7 @@ async function fetchCompletedGameStats(date) {
           }
         }
 
-        if (statGroup.name === 'pitching') {
+        if (isPitchingGroup) {
           for (const athlete of statGroup.athletes || []) {
             const espnId = athlete.athlete?.id
             const name = athlete.athlete?.displayName
