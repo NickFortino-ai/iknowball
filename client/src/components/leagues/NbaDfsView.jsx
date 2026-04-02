@@ -247,18 +247,21 @@ function LiveView({ league, date: leagueDate }) {
                             <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0"
                               onError={(e) => { e.target.style.display = 'none' }} />
                           )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
+                            <div className="flex items-center gap-2 lg:w-44 lg:shrink-0">
                               <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
                               {isDNP && (
                                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-incorrect/20 text-incorrect shrink-0">DNP</span>
                               )}
                             </div>
                             {statLine && (
-                              <span className="text-xs text-text-muted block">{statLine}</span>
+                              <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
+                            )}
+                            {statLine && (
+                              <span className="text-sm text-text-secondary hidden lg:block lg:flex-1">{statLine}</span>
                             )}
                             {(slot.game_status === 'live' || slot.game_status === 'final') && slot.away_team && (
-                              <span className="text-[11px] text-text-muted block mt-0.5">
+                              <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-sm lg:w-52 lg:shrink-0 lg:text-right">
                                 {slot.away_team} {slot.away_score ?? ''} @ {slot.home_team} {slot.home_score ?? ''}
                                 {slot.game_status === 'live' && slot.game_period && (
                                   <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
@@ -269,7 +272,7 @@ function LiveView({ league, date: leagueDate }) {
                               </span>
                             )}
                             {(slot.game_status === 'live' || slot.game_status === 'final') && !slot.away_team && (
-                              <span className="text-[11px] text-text-muted block mt-0.5">
+                              <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-sm lg:w-52 lg:shrink-0 lg:text-right">
                                 {slot.team} {slot.opponent}
                                 {slot.game_status === 'live' && slot.game_period && (
                                   <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
@@ -281,7 +284,7 @@ function LiveView({ league, date: leagueDate }) {
                             )}
                           </div>
                           {(slot.game_status === 'live' || slot.game_status === 'final') && (
-                            <span className={`text-base font-display shrink-0 ${isDNP ? 'text-incorrect/60' : 'text-white'}`}>
+                            <span className={`text-base lg:text-lg font-display shrink-0 ${isDNP ? 'text-incorrect/60' : 'text-white'}`}>
                               {isDNP ? '0' : Math.round((slot.points_earned || 0) * 10) / 10}
                             </span>
                           )}
