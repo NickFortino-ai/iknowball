@@ -236,6 +236,38 @@ function LeaguePicksView({ league, standings }) {
     }
   }
 
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  // Group games by date
+  const gamesByDay = {}
+  for (const game of games || []) {
+    const d = new Date(game.starts_at)
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (!gamesByDay[dateKey]) gamesByDay[dateKey] = []
+    gamesByDay[dateKey].push(game)
+  }
+  const dayKeys = Object.keys(gamesByDay).sort()
+
+  // Auto-select today or first day with games
+  useEffect(() => {
+    if (!dayKeys.length) return
+    if (selectedDay && dayKeys.includes(selectedDay)) return
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    setSelectedDay(dayKeys.includes(todayKey) ? todayKey : dayKeys[0])
+  }, [dayKeys.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function formatDayLabel(dateKey) {
+    const [y, m, d] = dateKey.split('-').map(Number)
+    const date = new Date(y, m - 1, d)
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    if (date.toDateString() === today.toDateString()) return 'Today'
+    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow'
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
+
   function formatWeekLabel(week) {
     if (isDaily) {
       const d = new Date(week.starts_at)
@@ -244,9 +276,11 @@ function LeaguePicksView({ league, standings }) {
     return `Wk ${week.week_number}`
   }
 
+  const visibleGames = selectedDay ? (gamesByDay[selectedDay] || []) : (games || [])
+
   return (
     <div>
-      {/* Period navigator */}
+      {/* Week navigator (multi-week leagues) */}
       {weeks?.length > 1 && (
         <div className="mb-4 -mx-1 overflow-x-auto" ref={scrollRef}>
           <div className="flex gap-1.5 px-1 pb-1">
@@ -257,7 +291,7 @@ function LeaguePicksView({ league, standings }) {
                 className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   selectedWeekId === week.id
                     ? 'bg-accent text-white'
-                    : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                    : 'bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 text-text-primary hover:bg-bg-primary/70'
                 }`}
               >
                 {formatWeekLabel(week)}
@@ -267,9 +301,30 @@ function LeaguePicksView({ league, standings }) {
         </div>
       )}
 
+      {/* Day tabs */}
+      {dayKeys.length > 1 && (
+        <div className="mb-4 -mx-1 overflow-x-auto">
+          <div className="flex gap-1.5 px-1 pb-1">
+            {dayKeys.map((dk) => (
+              <button
+                key={dk}
+                onClick={() => setSelectedDay(dk)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  selectedDay === dk
+                    ? 'bg-accent text-white'
+                    : 'bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 text-text-primary hover:bg-bg-primary/70'
+                }`}
+              >
+                {formatDayLabel(dk)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Pick counter */}
       {gamesPerWeek && (
-        <div className="bg-bg-card rounded-xl border border-border p-3 mb-4 text-center">
+        <div className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 p-3 mb-4 text-center">
           <span className="text-sm font-semibold text-accent">{pickCount}</span>
           <span className="text-xs text-text-muted">/{gamesPerWeek} picks this {isDaily ? 'day' : 'week'}</span>
         </div>
@@ -278,11 +333,11 @@ function LeaguePicksView({ league, standings }) {
       {/* Games list */}
       {gamesLoading ? (
         <div className="text-center text-text-muted text-sm py-8">Loading games...</div>
-      ) : !games?.length ? (
-        <EmptyState title="No games" message={`No games scheduled for this ${isDaily ? 'day' : 'week'}`} />
+      ) : !visibleGames?.length ? (
+        <EmptyState title="No games" message={`No games scheduled for this ${isDaily ? 'day' : 'period'}`} />
       ) : (
         <div className="space-y-3">
-          {games.map((game) => (
+          {visibleGames.map((game) => (
             <GameCard
               key={game.id}
               game={game}
@@ -292,6 +347,7 @@ function LeaguePicksView({ league, standings }) {
               isSubmitting={submitPick.isPending || deletePick.isPending}
               hasInjuryData={INTEL_SPORTS.has(game.sports?.key)}
               onInjuryClick={() => setInjuryGameId(game.id)}
+              transparent
             />
           ))}
         </div>
