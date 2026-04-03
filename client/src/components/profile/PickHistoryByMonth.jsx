@@ -254,7 +254,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
             <div>
               <button
                 onClick={() => setExpanded((prev) => ({ ...prev, today: !(prev.today !== false) }))}
-                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+                className="w-full bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-lg px-4 py-3 flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
                   <span className={`text-xs text-accent transition-transform ${todayOpen ? 'rotate-90' : ''}`}>
@@ -304,7 +304,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
             <div key={month.key}>
               <button
                 onClick={() => toggle(month.key)}
-                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+                className="w-full bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-lg px-4 py-3 flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
                   <span className={`text-xs text-text-muted transition-transform ${open ? 'rotate-90' : ''}`}>
