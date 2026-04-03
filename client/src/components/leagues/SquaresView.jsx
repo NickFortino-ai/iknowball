@@ -282,7 +282,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                         }}
                         className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] p-0 overflow-hidden transition-colors ${
                           winCount > 0
-                            ? 'bg-accent/20'
+                            ? (cell ? (isMe ? 'bg-accent/10' : 'bg-bg-card') : 'bg-bg-primary')
                             : cell
                               ? isMe
                                 ? 'bg-accent/10'
