@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMyLeagues, useReorderLeagues } from '../hooks/useLeagues'
 import LeagueCard from '../components/leagues/LeagueCard'
 import TrophyCase from '../components/leagues/TrophyCase'
@@ -7,30 +7,26 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 
-function DragHandle() {
-  return (
-    <svg className="w-5 h-5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
-      <circle cx="7" cy="4" r="1.5" />
-      <circle cx="13" cy="4" r="1.5" />
-      <circle cx="7" cy="10" r="1.5" />
-      <circle cx="13" cy="10" r="1.5" />
-      <circle cx="7" cy="16" r="1.5" />
-      <circle cx="13" cy="16" r="1.5" />
-    </svg>
-  )
-}
+const LONG_PRESS_MS = 350
 
-function ReorderableLeagueList({ leagues, onSave, onCancel }) {
-  const [order, setOrder] = useState(leagues.map((l) => l.id))
-  const [dragIdx, setDragIdx] = useState(null)
+function DraggableLeagueList({ leagues }) {
+  const navigate = useNavigate()
+  const [order, setOrder] = useState(() => leagues.map((l) => l.id))
+  const [dragState, setDragState] = useState(null) // { idx, startY, currentY, cardRect }
   const itemRefs = useRef([])
-  const dragIdxRef = useRef(null)
-  const orderRef = useRef(order)
+  const longPressTimer = useRef(null)
+  const pointerStart = useRef(null)
   const reorder = useReorderLeagues()
+  const orderRef = useRef(order)
+  const dragStateRef = useRef(null)
 
-  // Keep refs in sync with state
   useEffect(() => { orderRef.current = order }, [order])
-  useEffect(() => { dragIdxRef.current = dragIdx }, [dragIdx])
+  useEffect(() => { dragStateRef.current = dragState }, [dragState])
+
+  // Reset order when leagues change (new league added, etc.)
+  useEffect(() => {
+    setOrder(leagues.map((l) => l.id))
+  }, [leagues.length])
 
   const leagueMap = useMemo(() => {
     const map = {}
@@ -38,101 +34,149 @@ function ReorderableLeagueList({ leagues, onSave, onCancel }) {
     return map
   }, [leagues])
 
-  const getIndexFromY = useCallback((clientY) => {
+  const getDropIndex = useCallback((clientY) => {
     for (let i = 0; i < itemRefs.current.length; i++) {
       const el = itemRefs.current[i]
       if (!el) continue
       const rect = el.getBoundingClientRect()
       if (clientY < rect.top + rect.height / 2) return i
     }
-    return itemRefs.current.length - 1
+    return Math.max(0, itemRefs.current.length - 1)
   }, [])
 
-  // Document-level pointer handlers for drag
   useEffect(() => {
     function onMove(e) {
-      if (dragIdxRef.current === null) return
-      e.preventDefault()
-      const newOver = getIndexFromY(e.clientY)
-      if (newOver !== dragIdxRef.current) {
-        setOrder((prev) => {
-          const next = [...prev]
-          const [item] = next.splice(dragIdxRef.current, 1)
-          next.splice(newOver, 0, item)
-          return next
-        })
-        setDragIdx(newOver)
+      const ds = dragStateRef.current
+      if (!ds) {
+        // Cancel long press if finger moves too much before activating
+        if (longPressTimer.current && pointerStart.current) {
+          const dx = Math.abs(e.clientX - pointerStart.current.x)
+          const dy = Math.abs(e.clientY - pointerStart.current.y)
+          if (dx > 8 || dy > 8) {
+            clearTimeout(longPressTimer.current)
+            longPressTimer.current = null
+          }
+        }
+        return
       }
+      e.preventDefault()
+
+      setDragState((prev) => prev ? { ...prev, currentY: e.clientY } : null)
+
+      const dropIdx = getDropIndex(e.clientY)
+      setOrder((prev) => {
+        const curIdx = dragStateRef.current?.idx
+        if (curIdx === null || curIdx === undefined || dropIdx === curIdx) return prev
+        const next = [...prev]
+        const [item] = next.splice(curIdx, 1)
+        next.splice(dropIdx, 0, item)
+        setDragState((ds) => ds ? { ...ds, idx: dropIdx } : null)
+        return next
+      })
     }
+
     function onUp() {
-      setDragIdx(null)
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current)
+        longPressTimer.current = null
+      }
+
+      const ds = dragStateRef.current
+      if (ds) {
+        // Save order
+        const currentOrder = orderRef.current
+        reorder.mutate(currentOrder)
+        setDragState(null)
+      }
+      pointerStart.current = null
     }
-    document.addEventListener('pointermove', onMove)
+
+    document.addEventListener('pointermove', onMove, { passive: false })
     document.addEventListener('pointerup', onUp)
+    document.addEventListener('pointercancel', onUp)
     return () => {
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onUp)
+      document.removeEventListener('pointercancel', onUp)
     }
-  }, [getIndexFromY])
+  }, [getDropIndex, reorder])
 
   function handlePointerDown(e, idx) {
-    e.preventDefault()
-    setDragIdx(idx)
+    pointerStart.current = { x: e.clientX, y: e.clientY, idx }
+    const el = itemRefs.current[idx]
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null
+      setDragState({
+        idx,
+        startY: pointerStart.current.y,
+        currentY: pointerStart.current.y,
+        cardRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+      })
+      if (navigator.vibrate) navigator.vibrate(30)
+    }, LONG_PRESS_MS)
   }
 
-  async function handleSave() {
-    try {
-      await reorder.mutateAsync(order)
-      onSave()
-    } catch {
-      // Mutation handles error
+  function handleClick(e, leagueId) {
+    // If we were dragging, prevent navigation
+    if (dragStateRef.current) {
+      e.preventDefault()
+      return
     }
+    // Normal click — navigate
+    navigate(`/leagues/${leagueId}`)
   }
+
+  const isDragging = dragState !== null
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-text-muted">Drag to reorder</span>
-        <div className="flex gap-2">
-          <button
-            onClick={onCancel}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-text-primary/20 text-text-secondary hover:bg-text-primary/10 transition-colors"
+    <div
+      className="space-y-3 relative"
+      style={{ touchAction: isDragging ? 'none' : 'auto' }}
+    >
+      {order.map((id, i) => {
+        const league = leagueMap[id]
+        if (!league) return null
+        const isBeingDragged = isDragging && dragState.idx === i
+
+        return (
+          <div
+            key={id}
+            ref={(el) => { itemRefs.current[i] = el }}
+            onPointerDown={(e) => handlePointerDown(e, i)}
+            onClick={(e) => handleClick(e, id)}
+            className={`cursor-pointer ${
+              isBeingDragged ? 'opacity-0' : ''
+            } ${isDragging && !isBeingDragged ? 'transition-all duration-200' : ''}`}
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={reorder.isPending}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+            <LeagueCard league={league} noLink />
+          </div>
+        )
+      })}
+
+      {/* Floating dragged card */}
+      {dragState && (() => {
+        const league = leagueMap[order[dragState.idx]]
+        if (!league) return null
+        const offsetY = dragState.currentY - dragState.startY
+        return (
+          <div
+            className="fixed z-[100] pointer-events-none"
+            style={{
+              top: dragState.cardRect.top + offsetY,
+              left: dragState.cardRect.left,
+              width: dragState.cardRect.width,
+              transition: 'box-shadow 0.2s',
+            }}
           >
-            {reorder.isPending ? 'Saving...' : 'Save Order'}
-          </button>
-        </div>
-      </div>
-      <div className="space-y-3 select-none">
-        {order.map((id, i) => {
-          const league = leagueMap[id]
-          if (!league) return null
-          const isDragging = dragIdx === i
-          return (
-            <div
-              key={id}
-              ref={(el) => { itemRefs.current[i] = el }}
-              className={`flex items-center gap-3 transition-all duration-150 ${isDragging ? 'opacity-60 scale-[1.02] z-50 relative' : ''}`}
-            >
-              <div
-                onPointerDown={(e) => handlePointerDown(e, i)}
-                className="shrink-0 p-2 cursor-grab active:cursor-grabbing touch-none"
-              >
-                <DragHandle />
-              </div>
-              <div className="flex-1 min-w-0 pointer-events-none">
-                <LeagueCard league={league} />
-              </div>
+            <div className="scale-[1.04] shadow-2xl shadow-black/40 rounded-xl ring-2 ring-accent/50">
+              <LeagueCard league={league} noLink />
             </div>
-          )
-        })}
-      </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -140,7 +184,6 @@ function ReorderableLeagueList({ leagues, onSave, onCancel }) {
 export default function LeaguesPage() {
   const { data: leagues, isLoading, isError, refetch } = useMyLeagues()
   const [showCompleted, setShowCompleted] = useState(false)
-  const [reordering, setReordering] = useState(false)
 
   const { active, completed } = useMemo(() => {
     if (!leagues) return { active: [], completed: [] }
@@ -156,14 +199,6 @@ export default function LeaguesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="font-display text-3xl">My Leagues</h1>
         <div data-onboarding="leagues-actions" className="flex flex-col sm:flex-row gap-2">
-          {!reordering && active.length > 1 && (
-            <button
-              onClick={() => setReordering(true)}
-              className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/5 backdrop-blur text-text-secondary hover:bg-white/10 transition-colors border border-text-primary/20 text-center"
-            >
-              Reorder
-            </button>
-          )}
           <Link
             to="/leagues/join"
             className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/5 backdrop-blur text-text-secondary hover:bg-white/10 transition-colors border border-accent text-center"
@@ -190,18 +225,8 @@ export default function LeaguesPage() {
         />
       ) : (
         <>
-          {reordering ? (
-            <ReorderableLeagueList
-              leagues={active}
-              onSave={() => setReordering(false)}
-              onCancel={() => setReordering(false)}
-            />
-          ) : active.length > 0 ? (
-            <div className="space-y-3">
-              {active.map((league) => (
-                <LeagueCard key={league.id} league={league} />
-              ))}
-            </div>
+          {active.length > 0 ? (
+            <DraggableLeagueList leagues={active} />
           ) : (
             <EmptyState
               title="No active leagues"
@@ -209,7 +234,7 @@ export default function LeaguesPage() {
             />
           )}
 
-          {completed.length > 0 && !reordering && (
+          {completed.length > 0 && (
             <div className="mt-6">
               <button
                 onClick={() => setShowCompleted(!showCompleted)}

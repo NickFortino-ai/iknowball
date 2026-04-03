@@ -41,12 +41,14 @@ const STATUS_STYLES = {
   archived: 'bg-text-muted/20 text-text-muted',
 }
 
-export default function LeagueCard({ league }) {
+export default function LeagueCard({ league, noLink }) {
   const hasBackdrop = !!league.backdrop_image
+  const Wrapper = noLink ? 'div' : Link
+  const wrapperProps = noLink ? {} : { to: `/leagues/${league.id}` }
 
   return (
-    <Link
-      to={`/leagues/${league.id}`}
+    <Wrapper
+      {...wrapperProps}
       className="block relative bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden hover:bg-text-primary/5 transition-colors"
     >
       {hasBackdrop && (
@@ -87,6 +89,6 @@ export default function LeagueCard({ league }) {
           </div>
         ) : null}
       </div>
-    </Link>
+    </Wrapper>
   )
 }
