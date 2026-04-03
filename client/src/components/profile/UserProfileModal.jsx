@@ -340,12 +340,12 @@ export default function UserProfileModal({ userId, onClose }) {
         >
           &times;
         </button>
-        <div className="overflow-y-auto px-6 pb-20 md:pb-6">
+        <div className={`overflow-y-auto px-6 pb-20 md:pb-6 ${!user?.backdrop_image && !isLoading ? 'pt-10' : ''}`}>
 
         {isLoading ? (
           <LoadingSpinner />
         ) : !user ? (
-          <p className="text-text-muted text-center">User not found</p>
+          <p className="text-text-muted text-center pt-10">User not found</p>
         ) : (
           <>
             {/* Header */}
