@@ -106,7 +106,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
             <div key={stat.id}>
               <button
                 onClick={() => toggle(key)}
-                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+                className="w-full bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-lg px-4 py-3 flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
                   <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
@@ -150,7 +150,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
             <div>
               <button
                 onClick={() => toggle('parlays')}
-                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+                className="w-full bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-lg px-4 py-3 flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
                   <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
@@ -192,7 +192,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
             <div>
               <button
                 onClick={() => toggle('props')}
-                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+                className="w-full bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-lg px-4 py-3 flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
                   <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
@@ -229,7 +229,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
             <div>
               <button
                 onClick={() => toggle('leagues')}
-                className="w-full bg-bg-primary rounded-lg px-4 py-3 flex items-center justify-between text-left"
+                className="w-full bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-lg px-4 py-3 flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
                   <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
@@ -330,7 +330,7 @@ export default function UserProfileModal({ userId, onClose }) {
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border w-full md:max-w-md rounded-t-2xl md:rounded-2xl max-h-[90vh] md:max-h-[85vh] flex flex-col"
+        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-t-2xl md:rounded-2xl max-h-[90vh] md:max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -478,7 +478,7 @@ export default function UserProfileModal({ userId, onClose }) {
             )}
 
             {/* Pick Record */}
-            <div className="bg-bg-primary rounded-xl p-4 mb-4">
+            <div className="bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl p-4 mb-4">
               <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3">Pick Record</h3>
               <div className="grid grid-cols-4 gap-3 text-center">
                 <div>
@@ -507,7 +507,7 @@ export default function UserProfileModal({ userId, onClose }) {
             {/* Head-to-Head */}
             {h2h && h2h.total > 0 && (
               <div
-                className="bg-bg-primary rounded-xl p-4 mb-4 cursor-pointer hover:bg-bg-secondary transition-colors"
+                className="bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl p-4 mb-4 cursor-pointer hover:bg-text-primary/5 transition-colors"
                 onClick={() => setShowH2HDetail(true)}
               >
                 <div className="flex items-center justify-between mb-3">
