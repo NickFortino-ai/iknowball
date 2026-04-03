@@ -334,7 +334,7 @@ export default function ResultsPage() {
                   bonuses?.length > 0 ? (
                     <div className="space-y-2 mb-6">
                       {bonuses.map((bonus) => (
-                        <div key={bonus.id} className="bg-bg-card rounded-xl border border-border px-4 py-3 flex items-center justify-between">
+                        <div key={bonus.id} className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-3 flex items-center justify-between">
                           <div className="min-w-0">
                             <div className="text-sm font-semibold text-text-primary truncate">{bonus.label || bonus.type}</div>
                             <div className="text-xs text-text-muted">{new Date(bonus.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>

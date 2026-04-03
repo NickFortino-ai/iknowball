@@ -80,7 +80,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
       id={`game-${game.id}`}
       {...(isFirstCard ? { 'data-onboarding': 'game-card' } : {})}
       onClick={hasInjuryData ? () => onInjuryClick?.() : onCardClick ? () => onCardClick() : undefined}
-      className={`${transparent ? 'bg-bg-primary/50 backdrop-blur-sm' : 'bg-bg-card'} rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : transparent ? 'border-text-primary/20' : 'border-border'} p-4 overflow-hidden${hasInjuryData || onCardClick ? ' cursor-pointer' : ''}`}
+      className={`bg-bg-primary/50 backdrop-blur-sm rounded-2xl border ${userPick?.status === 'locked' ? 'border-accent' : 'border-text-primary/20'} p-4 overflow-hidden${hasInjuryData || onCardClick ? ' cursor-pointer' : ''}`}
     >
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-text-muted uppercase tracking-wider">

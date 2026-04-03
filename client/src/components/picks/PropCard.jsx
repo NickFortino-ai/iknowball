@@ -70,7 +70,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
   const underState = getSideState(prop, pick, 'under')
 
   return (
-    <div className={`bg-bg-card rounded-2xl border ${pick?.status === 'locked' ? 'border-accent' : 'border-border'} p-4`}>
+    <div className={`bg-bg-primary/50 backdrop-blur-sm rounded-2xl border ${pick?.status === 'locked' ? 'border-accent' : 'border-text-primary/20'} p-4`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex-1 min-w-0">
           <span className="font-semibold text-sm text-text-primary">
