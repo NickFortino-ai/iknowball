@@ -61,12 +61,21 @@ router.get('/standings', async (req, res) => {
   const { league_id } = req.query
   if (!league_id) return res.status(400).json({ error: 'league_id required' })
 
+  // Get champion metric from settings
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('champion_metric')
+    .eq('league_id', league_id)
+    .maybeSingle()
+
+  const championMetric = settings?.champion_metric || 'total_points'
+
   const { data: results } = await supabase
     .from('mlb_dfs_nightly_results')
     .select('user_id, total_points, is_night_winner')
     .eq('league_id', league_id)
 
-  if (!results?.length) return res.json({ standings: [] })
+  if (!results?.length) return res.json({ standings: [], championMetric })
 
   // Aggregate
   const userMap = {}
@@ -87,10 +96,15 @@ router.get('/standings', async (req, res) => {
     user: users?.find((u) => u.id === uid) || { id: uid },
     ...userMap[uid],
   }))
-    .sort((a, b) => b.totalPoints - a.totalPoints)
-    .map((s, i) => ({ ...s, rank: i + 1 }))
 
-  res.json({ standings })
+  // Sort by champion metric
+  if (championMetric === 'most_wins') {
+    standings.sort((a, b) => b.nightlyWins - a.nightlyWins || b.totalPoints - a.totalPoints)
+  } else {
+    standings.sort((a, b) => b.totalPoints - a.totalPoints)
+  }
+
+  res.json({ standings: standings.map((s, i) => ({ ...s, rank: i + 1 })), championMetric })
 })
 
 // Live scoring view

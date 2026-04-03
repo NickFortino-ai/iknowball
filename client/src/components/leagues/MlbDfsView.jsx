@@ -379,6 +379,8 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   // Standings Tab
   if (tab === 'standings') {
     const standings = standingsData?.standings || []
+    const showWins = standingsData?.championMetric === 'most_wins'
+    const gridCols = showWins ? 'grid-cols-[2.5rem_1fr_3rem_5rem]' : 'grid-cols-[2.5rem_1fr_5rem]'
     return (
       <div>
         {league.status === 'completed' && (
@@ -397,10 +399,10 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
           <div className="rounded-2xl border border-text-primary/20 overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+            <div className={`grid ${gridCols} gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider`}>
               <span>#</span>
               <span>Player</span>
-              <span className="text-right">Wins</span>
+              {showWins && <span className="text-right">Wins</span>}
               <span className="text-right">Points</span>
             </div>
             {standings.map((s) => {
@@ -409,7 +411,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                 <button
                   key={s.user?.id}
                   onClick={() => setStandingsUserId(s.user?.id)}
-                  className={`w-full grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
+                  className={`w-full grid ${gridCols} gap-2 px-4 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
                 >
                   <span className={`font-display text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
                   <div className="flex items-center gap-3 min-w-0">
@@ -418,7 +420,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                       {s.user?.display_name || s.user?.username}
                     </span>
                   </div>
-                  <span className="font-display text-lg text-text-primary text-right">{s.nightlyWins}</span>
+                  {showWins && <span className="font-display text-lg text-text-primary text-right">{s.nightlyWins}</span>}
                   <span className="font-display text-xl text-white text-right">{Math.round(s.totalPoints * 10) / 10}</span>
                 </button>
               )

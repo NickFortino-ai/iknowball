@@ -225,7 +225,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague }) {
     }
 
     if (league.format === 'mlb_dfs') {
-      const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
+      const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$50,000'
       const isSingleNight = fantasySettings?.season_type === 'single_week'
       if (isSingleNight) {
         return `Build a 10-player MLB lineup (1 SP, C, 1B, 2B, SS, 3B, 3 OF, UTIL) under a ${cap} salary cap. Each player locks when their game starts. The player with the most fantasy points at the end of the night wins.`
