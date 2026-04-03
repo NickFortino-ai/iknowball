@@ -125,18 +125,24 @@ function ChangePasswordSection() {
 
   return (
     <Section label="Change Password" defaultOpen={false}>
-      <div className="space-y-3">
+      <form
+        onSubmit={(e) => { e.preventDefault(); handleChangePassword() }}
+        className="space-y-3"
+        autoComplete="on"
+      >
+        {/* Hidden username field helps iOS identify which account to autofill */}
+        <input type="hidden" name="username" autoComplete="username" value={session?.user?.email || ''} />
         <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Current password" autoComplete="current-password" name="current-password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
         <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password" autoComplete="new-password" name="new-password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
         <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" autoComplete="new-password" name="confirm-password" className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary focus:outline-none focus:border-accent" />
         <button
-          onClick={handleChangePassword}
+          type="submit"
           disabled={changing}
           className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-50 text-sm"
         >
           {changing ? 'Changing...' : 'Change Password'}
         </button>
-      </div>
+      </form>
     </Section>
   )
 }
