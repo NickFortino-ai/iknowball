@@ -195,13 +195,18 @@ function MlbLiveView({ league, date: leagueDate }) {
                                 <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
                                   onError={(e) => { e.target.style.display = 'none' }} />
                               )}
-                              <div className="flex-1 min-w-0">
-                                <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
+                              <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
+                                <div className="lg:w-44 lg:shrink-0">
+                                  <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
+                                </div>
                                 {statLine && (
-                                  <span className="text-xs text-text-muted block">{statLine}</span>
+                                  <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
+                                )}
+                                {statLine && (
+                                  <span className="text-sm text-text-secondary hidden lg:block lg:flex-1">{statLine}</span>
                                 )}
                                 {(slot.game_status === 'live' || slot.game_status === 'final') && slot.away_team && (
-                                  <span className="text-[11px] text-text-muted block mt-0.5">
+                                  <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-xs lg:w-44 lg:shrink-0 lg:text-right">
                                     {slot.away_team} {slot.away_score ?? ''} @ {slot.home_team} {slot.home_score ?? ''}
                                     {slot.game_status === 'live' && slot.inning && (
                                       <span className="text-text-primary ml-1.5">{slot.inning}</span>
@@ -213,7 +218,7 @@ function MlbLiveView({ league, date: leagueDate }) {
                                 )}
                               </div>
                               {(slot.game_status === 'live' || slot.game_status === 'final') && (
-                                <span className="text-base font-display shrink-0 text-white">
+                                <span className="text-base lg:text-lg font-display shrink-0 lg:ml-6 lg:w-12 lg:text-right text-white">
                                   {Math.round((slot.points_earned || 0) * 10) / 10}
                                 </span>
                               )}
