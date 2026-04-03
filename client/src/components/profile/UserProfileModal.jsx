@@ -21,6 +21,7 @@ import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
 import ReportModal from '../moderation/ReportModal'
 import { useBlockUser } from '../../hooks/useBlocked'
+import { getBackdropUrl } from '../../lib/backdropUrl'
 
 function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, onItemTap }) {
   const [expanded, setExpanded] = useState({})
@@ -363,8 +364,21 @@ export default function UserProfileModal({ userId, onClose }) {
               </div>
             )}
 
+            {/* User backdrop */}
+            {user.backdrop_image && (
+              <div className="relative -mx-6 -mt-0 mb-4 h-28 overflow-hidden rounded-t-xl">
+                <img
+                  src={getBackdropUrl(user.backdrop_image)}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: `center ${user.backdrop_y ?? 50}%` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent" />
+              </div>
+            )}
+
             {user.avatar_url ? (
-              <div className="flex flex-col items-center mb-4">
+              <div className={`flex flex-col items-center mb-4 ${user.backdrop_image ? '-mt-16 relative z-10' : ''}`}>
                 <img
                   src={user.avatar_url}
                   alt=""

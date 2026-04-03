@@ -37,6 +37,8 @@ const updateSchema = z.object({
   threads_handle: z.string().max(30).nullable().optional(),
   has_seen_onboarding: z.boolean().optional(),
   timezone: z.string().max(50).optional(),
+  backdrop_image: z.string().max(200).nullable().optional(),
+  backdrop_y: z.number().min(0).max(100).nullable().optional(),
 })
 
 // Resolve username to email for login (no auth required)

@@ -12,6 +12,8 @@ import { useAvatarUpload } from '../hooks/useAvatarUpload'
 import Avatar from '../components/ui/Avatar'
 import { useBlockedUsers, useUnblockUser } from '../hooks/useBlocked'
 import PasswordInput from '../components/ui/PasswordInput'
+import { useLeagueBackdrops } from '../hooks/useLeagues'
+import { getBackdropUrl } from '../lib/backdropUrl'
 
 const avatarEmojis = [
   '🏀', '🏈', '⚾', '🏆', '🔥', '🎯',
@@ -165,6 +167,12 @@ export default function SettingsPage() {
   const [youtubeHandle, setYoutubeHandle] = useState('')
   const [venmoHandle, setVenmoHandle] = useState('')
   const [threadsHandle, setThreadsHandle] = useState('')
+  const [backdropImage, setBackdropImage] = useState('')
+  const [customBackdropFile, setCustomBackdropFile] = useState(null)
+  const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
+  const [backdropSport, setBackdropSport] = useState(null)
+  const backdropFileRef = useRef(null)
+  const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -194,6 +202,7 @@ export default function SettingsPage() {
       setYoutubeHandle(profile.youtube_handle || '')
       setVenmoHandle(profile.venmo_handle || '')
       setThreadsHandle(profile.threads_handle || '')
+      setBackdropImage(profile.backdrop_image || '')
       if (profile.push_preferences) {
         setPushPrefs(profile.push_preferences)
       }
@@ -254,7 +263,20 @@ export default function SettingsPage() {
         youtube_handle: strip(youtubeHandle),
         venmo_handle: strip(venmoHandle),
         threads_handle: strip(threadsHandle),
+        backdrop_image: backdropImage || null,
       })
+      // Upload custom backdrop if selected
+      if (customBackdropFile) {
+        const formData = new FormData()
+        formData.append('image', customBackdropFile)
+        formData.append('type', 'user_backdrop')
+        try {
+          await api.postForm('/backdrops/submit', formData)
+          toast('Custom backdrop submitted for review', 'info')
+        } catch { /* best effort */ }
+        setCustomBackdropFile(null)
+        setCustomBackdropPreview(null)
+      }
       await refetch()
       await fetchProfile()
       const uid = useAuthStore.getState().session?.user?.id
@@ -355,6 +377,102 @@ export default function SettingsPage() {
             Selected: {avatarEmoji}
           </p>
         )}
+      </Section>
+
+      {/* Profile Backdrop */}
+      <Section label="Profile Backdrop" defaultOpen={false}>
+        <p className="text-xs text-text-muted mb-3">Shows on your profile card and profile modal.</p>
+        {/* Sport filter */}
+        <div className="flex gap-1.5 flex-wrap mb-3">
+          {[
+            { key: null, label: 'All' },
+            { key: 'basketball_nba', label: 'NBA' },
+            { key: 'americanfootball_nfl', label: 'NFL' },
+            { key: 'baseball_mlb', label: 'MLB' },
+          ].map((s) => (
+            <button
+              key={s.key || 'all'}
+              onClick={() => setBackdropSport(s.key)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                backdropSport === s.key ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary hover:bg-border'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-2 max-h-[320px] overflow-y-auto scrollbar-hide rounded-lg">
+          {/* Upload your own */}
+          <button
+            type="button"
+            onClick={() => backdropFileRef.current?.click()}
+            className={`relative rounded-lg overflow-hidden border-2 border-dashed transition-all aspect-[16/9] flex flex-col items-center justify-center gap-1 ${
+              customBackdropFile ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-accent/50 bg-bg-primary'
+            }`}
+          >
+            {customBackdropPreview ? (
+              <img src={customBackdropPreview} alt="Custom" className="absolute inset-0 w-full h-full object-cover" />
+            ) : (
+              <>
+                <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="text-[9px] text-text-muted font-semibold leading-tight text-center px-1">Upload your own</span>
+              </>
+            )}
+          </button>
+          <input
+            ref={backdropFileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'error'); return }
+              setCustomBackdropFile(file)
+              setCustomBackdropPreview(URL.createObjectURL(file))
+              setBackdropImage('')
+            }}
+          />
+          {/* Remove option */}
+          {(backdropImage || customBackdropFile) && (
+            <button
+              type="button"
+              onClick={() => { setBackdropImage(''); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
+              className="relative rounded-lg overflow-hidden border-2 border-dashed border-text-primary/20 hover:border-incorrect/50 transition-all aspect-[16/9] flex flex-col items-center justify-center gap-1 bg-bg-primary"
+            >
+              <svg className="w-5 h-5 text-incorrect" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span className="text-[9px] text-text-muted font-semibold">Remove</span>
+            </button>
+          )}
+          {/* Preset backdrops */}
+          {(availableBackdrops || []).map((b) => (
+            <button
+              key={b.filename}
+              type="button"
+              onClick={() => { setBackdropImage(backdropImage === b.filename ? '' : b.filename); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
+              className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-[16/9] ${
+                backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
+              }`}
+            >
+              <img src={`/backdrops/${b.filename}`} alt={b.label} className="w-full h-full object-cover" />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                <span className="text-[10px] text-white font-medium">{b.label}</span>
+              </div>
+              {backdropImage === b.filename && (
+                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-text-muted mt-1.5">Custom images are submitted for admin review.</p>
       </Section>
 
       {/* Title Preference */}
