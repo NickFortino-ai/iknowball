@@ -138,7 +138,7 @@ function DraggableLeagueList({ leagues }) {
   return (
     <div
       className="space-y-3 relative"
-      style={{ touchAction: isDragging ? 'none' : 'auto' }}
+      style={{ touchAction: isDragging ? 'none' : 'auto', userSelect: isDragging ? 'none' : 'auto', WebkitUserSelect: isDragging ? 'none' : 'auto' }}
     >
       {order.map((id, i) => {
         const league = leagueMap[id]
