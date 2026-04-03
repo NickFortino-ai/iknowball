@@ -113,7 +113,7 @@ async function autoScoreQuarters() {
 
     // Find ESPN event ID by matching teams on the scoreboard
     let espnEventId = null
-    let homeLinescores, awayLinescores, isFinal
+    let homeLinescores, awayLinescores, isFinal, currentPeriod = 0, isHalftime = false
     try {
       // Use ET date (ESPN uses US Eastern dates for their scoreboard)
       const dateStr = new Date(game.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }).replace(/-/g, '')
@@ -150,17 +150,21 @@ async function autoScoreQuarters() {
       homeLinescores = homeComp.linescores || []
       awayLinescores = awayComp.linescores || []
       isFinal = comp.status?.type?.name === 'STATUS_FINAL'
+      currentPeriod = comp.status?.period || 0
+      isHalftime = comp.status?.type?.name === 'STATUS_HALFTIME'
     } catch (err) {
       logger.warn({ err: err.message, boardId: board.id }, 'Failed to fetch ESPN data for squares')
       continue
     }
 
-    // Score each completed quarter that hasn't been scored yet
+    // Score each COMPLETED quarter that hasn't been scored yet
+    // A quarter is complete if: game is final, or current period > that quarter, or halftime (Q1+Q2 done)
     const boardQuarters = [board.q1_away_score, board.q2_away_score, board.q3_away_score, board.q4_away_score]
+    const completedQuarters = isFinal ? 4 : isHalftime ? 2 : Math.max(0, currentPeriod - 1)
 
-    for (let q = 0; q < 4; q++) {
+    for (let q = 0; q < completedQuarters; q++) {
       if (boardQuarters[q] != null) continue // already scored
-      if (!homeLinescores[q] || !awayLinescores[q]) break // quarter not played yet
+      if (!homeLinescores[q] || !awayLinescores[q]) break // no data yet
 
       // Cumulative scores through this quarter
       let homeCum = 0, awayCum = 0
