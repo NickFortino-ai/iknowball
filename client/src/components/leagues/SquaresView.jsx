@@ -176,7 +176,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
       {board.digits_locked && (
         <div className="grid grid-cols-4 gap-2 mb-4">
           {quarters.map((q) => (
-            <div key={q.quarter} className={`bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border px-2 py-3 text-center ${
+            <div key={q.quarter} className={`bg-bg-primary/30 md:bg-bg-primary/20 backdrop-blur-sm rounded-xl border px-2 py-3 text-center ${
               q.winnerId ? 'border-accent' : 'border-text-primary/20'
             }`}>
               <div className="text-xs text-text-muted mb-1">Q{q.quarter}</div>
