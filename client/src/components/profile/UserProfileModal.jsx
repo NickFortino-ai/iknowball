@@ -366,7 +366,7 @@ export default function UserProfileModal({ userId, onClose }) {
 
             {/* User backdrop */}
             {user.backdrop_image && (
-              <div className="relative -mx-6 -mt-0 mb-4 h-44 overflow-hidden rounded-t-xl">
+              <div className="relative -mx-6 -mt-4 mb-4 h-52 overflow-hidden">
                 <img
                   src={getBackdropUrl(user.backdrop_image)}
                   alt=""
