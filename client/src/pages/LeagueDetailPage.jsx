@@ -15,6 +15,7 @@ import FantasyMyTeam from '../components/leagues/FantasyMyTeam'
 import FantasyPlayerBrowser from '../components/leagues/FantasyPlayerBrowser'
 import FantasyStandings from '../components/leagues/FantasyStandings'
 import FantasyMatchup from '../components/leagues/FantasyMatchup'
+import FantasyLiveView from '../components/leagues/FantasyLiveView'
 import NbaDfsView from '../components/leagues/NbaDfsView'
 import MlbDfsView from '../components/leagues/MlbDfsView'
 import HrDerbyView from '../components/leagues/HrDerbyView'
@@ -39,7 +40,7 @@ function getLeagueTabs(league, isBracketLocked) {
   const TABS = {
     survivor: ['Picks', memberOrStandings, 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
-    fantasy: ['My Team', 'Players', 'Matchups', memberOrStandings, 'Draft', 'Thread'],
+    fantasy: ['My Team', 'Players', 'Live', 'Matchups', memberOrStandings, 'Draft', 'Thread'],
     nba_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
     mlb_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
     hr_derby: ['Picks', memberOrStandings, 'Thread'],
@@ -1422,6 +1423,10 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Standings' && league.format === 'fantasy' && (
         <div className="relative z-10"><FantasyStandings league={league} /></div>
+      )}
+
+      {tabs[activeTab] === 'Live' && league.format === 'fantasy' && (
+        <div className="relative z-10"><FantasyLiveView league={league} fantasySettings={fantasySettings} /></div>
       )}
 
       {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (

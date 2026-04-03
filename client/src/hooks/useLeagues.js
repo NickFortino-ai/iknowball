@@ -761,6 +761,24 @@ export function useMlbDfsLive(leagueId, date) {
   })
 }
 
+export function useNflDfsLive(leagueId, week, season) {
+  return useQuery({
+    queryKey: ['nfl-dfs', leagueId, 'live', week, season],
+    queryFn: () => api.get(`/dfs/live?league_id=${leagueId}&week=${week}&season=${season}`),
+    enabled: !!leagueId && !!week,
+    refetchInterval: 20000,
+  })
+}
+
+export function useFantasyMatchupLive(leagueId, week, season) {
+  return useQuery({
+    queryKey: ['fantasy', leagueId, 'matchup-live', week, season],
+    queryFn: () => api.get(`/dfs/matchup-live?league_id=${leagueId}&week=${week}&season=${season}`),
+    enabled: !!leagueId && !!week,
+    refetchInterval: 20000,
+  })
+}
+
 export function useMlbDfsStandings(leagueId) {
   return useQuery({
     queryKey: ['mlb-dfs', leagueId, 'standings'],
