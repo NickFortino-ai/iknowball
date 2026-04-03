@@ -97,13 +97,13 @@ export default function LinkPreview({ url }) {
     return (
       <div className="mt-2" onClick={(e) => e.stopPropagation()}>
         <div
-          className={`relative rounded-lg overflow-hidden ${isShort ? 'max-w-[280px]' : 'w-full'}`}
-          style={{ paddingBottom: isShort ? '177.78%' : '56.25%' }}
+          className={`relative rounded-lg overflow-hidden ${isShort ? 'max-w-[280px] mx-auto' : 'w-full'}`}
+          style={isShort ? { aspectRatio: '9/16' } : { paddingBottom: '56.25%' }}
         >
           <iframe
             src={`https://www.youtube.com/embed/${data.youtubeVideoId}?autoplay=1&mute=1`}
             title={data.title || 'YouTube video'}
-            className="absolute inset-0 w-full h-full"
+            className={isShort ? 'w-full h-full' : 'absolute inset-0 w-full h-full'}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             loading="lazy"
