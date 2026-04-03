@@ -162,7 +162,11 @@ function LeagueConditions({ league, isCommissioner, updateLeague }) {
   // Build narrative description
   function buildNarrative() {
     const lives = settings.lives || 1
-    const freq = isDaily ? 'day' : 'week'
+    // Use "day" for short leagues (≤7 days) even if pick_frequency is weekly
+    const leagueDays = league.starts_at && league.ends_at
+      ? Math.ceil((new Date(league.ends_at) - new Date(league.starts_at)) / (1000 * 60 * 60 * 24))
+      : null
+    const freq = isDaily || (leagueDays != null && leagueDays <= 7) ? 'day' : 'week'
     const dateRange = formatDateRange(league.starts_at, league.ends_at)
 
     function durationSentence(endCondition) {
