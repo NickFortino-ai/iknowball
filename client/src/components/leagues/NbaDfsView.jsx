@@ -244,7 +244,7 @@ function LiveView({ league, date: leagueDate }) {
                       ) : (
                         <>
                           {slot.headshot_url && (
-                            <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0"
+                            <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
                               onError={(e) => { e.target.style.display = 'none' }} />
                           )}
                           <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
