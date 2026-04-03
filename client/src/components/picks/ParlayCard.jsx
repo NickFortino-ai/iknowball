@@ -57,7 +57,7 @@ function LegModal({ game, onClose }) {
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-xl leading-none"
+          className="absolute top-2 right-2 text-text-muted hover:text-text-primary text-xl leading-none p-3"
         >
           &times;
         </button>
