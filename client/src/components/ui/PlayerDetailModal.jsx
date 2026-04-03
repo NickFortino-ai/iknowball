@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useNbaDfsPlayerGamelog } from '../../hooks/useLeagues'
 import LoadingSpinner from './LoadingSpinner'
 
@@ -213,7 +214,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
   const isMLB = detectedSport === 'baseball_mlb'
   const isNFL = detectedSport === 'americanfootball_nfl'
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
@@ -280,6 +281,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
