@@ -503,6 +503,13 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     const isNFL = sport === 'americanfootball_nfl'
     const colParser = isMLB ? MLB_GAME_COLS : isNFL ? NFL_GAME_COLS : NBA_GAME_COLS
 
+    // Sort by date descending so traded players show most recent games first
+    allGames.sort((a, b) => {
+      const dateA = eventsMap[a.eventId]?.gameDate || ''
+      const dateB = eventsMap[b.eventId]?.gameDate || ''
+      return dateB.localeCompare(dateA)
+    })
+
     const games = allGames.slice(0, 10).map((ev) => {
       const detail = eventsMap[ev.eventId] || {}
       const statMap = {}

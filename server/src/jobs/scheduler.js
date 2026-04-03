@@ -20,6 +20,7 @@ import { scoreNBADFS } from './scoreNBADFS.js'
 import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
 import { scoreSquares } from './scoreSquares.js'
+import { syncMLBLineups } from './syncMLBLineups.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -125,6 +126,12 @@ export function startScheduler() {
       try { await scoreMLBDFS() } catch (err) { logger.error({ err }, 'MLB DFS scoring job failed') }
     })
     logger.info('MLB DFS scoring scheduled: every 2 minutes')
+
+    // MLB lineup sync (probable pitchers + confirmed batting lineups)
+    cron.schedule('*/5 * * * *', async () => {
+      try { await syncMLBLineups() } catch (err) { logger.error({ err }, 'MLB lineup sync job failed') }
+    })
+    logger.info('MLB lineup sync scheduled: every 5 minutes')
 
     // NBA prop auto-settlement suspended — settling manually via admin
     // cron.schedule('*/2 * * * *', async () => {

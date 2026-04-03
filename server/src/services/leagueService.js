@@ -390,7 +390,7 @@ export async function joinLeague(userId, inviteCode) {
 export async function getMyLeagues(userId) {
   const { data: memberships, error } = await supabase
     .from('league_members')
-    .select('league_id, role')
+    .select('league_id, role, display_order')
     .eq('user_id', userId)
 
   if (error) throw error
@@ -418,15 +418,28 @@ export async function getMyLeagues(userId) {
   }
 
   const roleMap = {}
+  const orderMap = {}
   for (const m of memberships) {
     roleMap[m.league_id] = m.role
+    orderMap[m.league_id] = m.display_order
   }
 
-  return leagues.map((league) => ({
+  const result = leagues.map((league) => ({
     ...league,
     member_count: countMap[league.id] || 0,
     my_role: roleMap[league.id],
+    display_order: orderMap[league.id] ?? null,
   }))
+
+  // Sort by display_order (nulls last), then created_at desc
+  result.sort((a, b) => {
+    if (a.display_order != null && b.display_order != null) return a.display_order - b.display_order
+    if (a.display_order != null) return -1
+    if (b.display_order != null) return 1
+    return new Date(b.created_at) - new Date(a.created_at)
+  })
+
+  return result
 }
 
 export async function getLeagueDetails(leagueId, userId) {

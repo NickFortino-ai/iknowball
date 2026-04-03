@@ -10,6 +10,14 @@ export function useMyLeagues() {
   })
 }
 
+export function useReorderLeagues() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (order) => api.patch('/leagues/reorder', { order }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leagues'] }),
+  })
+}
+
 export function useMyLeagueWins() {
   return useQuery({
     queryKey: ['leagues', 'my-wins'],

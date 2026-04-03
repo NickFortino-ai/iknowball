@@ -45,6 +45,25 @@ function InjuryBadge({ status }) {
   )
 }
 
+function LineupBadge({ status }) {
+  if (!status) return null
+  if (status === 'confirmed') {
+    return (
+      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-correct/20 text-correct" title="Confirmed starter">
+        ✓
+      </span>
+    )
+  }
+  if (status === 'not_starting') {
+    return (
+      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-incorrect/20 text-incorrect" title="Not starting">
+        NS
+      </span>
+    )
+  }
+  return null
+}
+
 function getPlayerGameState(player) {
   if (!player?.game_starts_at) return 'upcoming'
   const now = new Date()
@@ -278,7 +297,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   const filteredPlayers = useMemo(() => {
     if (!players) return []
     const now = new Date()
-    return players.filter((p) => {
+    const filtered = players.filter((p) => {
       if (usedPlayerIds.has(p.espn_player_id)) return false
       if (p.injury_status === 'Out') return false
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
@@ -291,6 +310,15 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
       }
       return true
     })
+    // Sort: confirmed starters first, then unconfirmed, then not_starting (NS)
+    const statusOrder = { confirmed: 0, not_starting: 2 }
+    filtered.sort((a, b) => {
+      const aOrder = statusOrder[a.lineup_status] ?? 1
+      const bOrder = statusOrder[b.lineup_status] ?? 1
+      if (aOrder !== bOrder) return aOrder - bOrder
+      return b.salary - a.salary // within same status, sort by salary desc
+    })
+    return filtered
   }, [players, posFilter, search, usedPlayerIds, remainingSalary, isViewMode])
 
   function addPlayer(player) {
@@ -480,6 +508,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                          <LineupBadge status={player.lineup_status} />
                           <InjuryBadge status={player.injury_status} />
                           {isLocked && (
                             <svg className="w-3 h-3 text-text-muted shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -586,9 +615,13 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                      <LineupBadge status={player.lineup_status} />
                       <InjuryBadge status={player.injury_status} />
                     </div>
-                    <div className="text-xs text-text-muted">{player.position} · {player.team} {player.opponent}</div>
+                    <div className="text-xs text-text-muted">
+                      {player.position} · {player.team} {player.opponent}
+                      {player.lineup_status === 'confirmed' && player.batting_order ? ` · #${player.batting_order} in lineup` : ''}
+                    </div>
                   </div>
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${player.salary.toLocaleString()}</span>
                 </button>

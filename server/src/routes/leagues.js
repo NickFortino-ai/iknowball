@@ -139,6 +139,26 @@ router.get('/', requireAuth, async (req, res) => {
   res.json(leagues)
 })
 
+// Reorder leagues
+const reorderSchema = z.object({
+  order: z.array(z.string().uuid()),
+})
+
+router.patch('/reorder', requireAuth, validate(reorderSchema), async (req, res) => {
+  const { order } = req.validated
+  const userId = req.user.id
+
+  for (let i = 0; i < order.length; i++) {
+    await supabase
+      .from('league_members')
+      .update({ display_order: i })
+      .eq('league_id', order[i])
+      .eq('user_id', userId)
+  }
+
+  res.json({ ok: true })
+})
+
 // Trophy case: user's league wins
 router.get('/my-wins', requireAuth, async (req, res) => {
   const { data, error } = await supabase
