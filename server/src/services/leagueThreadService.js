@@ -95,14 +95,17 @@ export async function postThreadMessage(leagueId, userId, content, userTags = []
   // Check league not completed
   const { data: league } = await supabase
     .from('leagues')
-    .select('status, name')
+    .select('status, name, updated_at')
     .eq('id', leagueId)
     .single()
 
   if (league?.status === 'completed') {
-    const err = new Error('This league thread is archived')
-    err.status = 400
-    throw err
+    const completedAgo = league.updated_at ? Date.now() - new Date(league.updated_at).getTime() : Infinity
+    if (completedAgo > 24 * 60 * 60 * 1000) {
+      const err = new Error('This league thread is archived')
+      err.status = 400
+      throw err
+    }
   }
 
   const { data: message, error } = await supabase

@@ -251,11 +251,17 @@ export default function LeagueThread({ league }) {
             <textarea
               ref={inputRef}
               value={input}
-              onChange={handleInputChange}
+              onChange={(e) => {
+                handleInputChange(e)
+                // Auto-grow
+                e.target.style.height = 'auto'
+                e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px'
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Message the thread..."
               rows={1}
-              className="flex-1 bg-bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent max-h-24"
+              className="flex-1 bg-bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+              style={{ minHeight: '2.5rem', maxHeight: '6rem' }}
             />
             <button
               onClick={handleSend}
