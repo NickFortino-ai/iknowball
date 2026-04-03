@@ -11,9 +11,7 @@ const sections = [
 \u2022 <strong class="text-white">Picks:</strong> Make daily picks on real games across NFL, NBA, MLB, NHL, and more. Every pick is scored using live odds and permanently tracked \u2014 no hiding from bad takes.
 \u2022 <strong class="text-white">Fantasy Leagues:</strong> Full-featured fantasy football, NBA Daily Fantasy, MLB Daily Fantasy, Home Run Derby, Survivor pools, Brackets, Pick\u2019em, and Squares. Create a league in seconds, invite your squad, and compete with stadium backdrops and real trophies.
 \u2022 <strong class="text-white">Social:</strong> Post takes, react to your friends\u2019 picks, comment, and watch the feed light up. Your connections see everything \u2014 the wins, the losses, and the streaks.
-\u2022 <strong class="text-white">Global Leaderboard:</strong> Climb from Rookie to GOAT. Your score reflects everything \u2014 picks, props, parlays, futures, and league finishes. Filter by sport to see who really knows ball.
-
-Built for the fan who\u2019s tired of clunky fantasy apps and wants something that actually looks and feels like a modern sports experience.`,
+\u2022 <strong class="text-white">Global Leaderboard:</strong> Climb from Rookie to GOAT. Your score reflects everything \u2014 picks, props, parlays, futures, and league finishes. Filter by sport to see who really knows ball.`,
       },
       {
         q: 'Is this gambling?',
