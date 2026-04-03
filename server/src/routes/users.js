@@ -105,7 +105,7 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, title_preference, x_handle, instagram_handle, tiktok_handle, snapchat_handle, youtube_handle, venmo_handle, threads_handle, created_at')
+    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, title_preference, x_handle, instagram_handle, tiktok_handle, snapchat_handle, youtube_handle, venmo_handle, threads_handle, backdrop_image, backdrop_y, created_at')
     .eq('id', id)
     .single()
 
