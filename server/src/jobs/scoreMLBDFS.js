@@ -392,18 +392,19 @@ export async function scoreMLBDFS() {
     logger.info({ date: today, players: playerStats.length, allFinal }, 'MLB DFS scoring pass complete')
   }
 
-  // Check yesterday for late games
+  // Check yesterday for late games — re-score if no winner has been awarded yet
   const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
   yesterday.setDate(yesterday.getDate() - 1)
   const yesterdayStr = yesterday.toISOString().split('T')[0]
 
-  const { count: yesterdayResults } = await supabase
+  const { count: yesterdayWinners } = await supabase
     .from('mlb_dfs_nightly_results')
     .select('id', { count: 'exact', head: true })
     .eq('game_date', yesterdayStr)
     .eq('season', season)
+    .eq('is_night_winner', true)
 
-  if (!yesterdayResults || yesterdayResults === 0) {
+  if (!yesterdayWinners || yesterdayWinners === 0) {
     const yester = await fetchCompletedGameStats(yesterdayStr)
     if (yester.playerStats.length > 0) {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
