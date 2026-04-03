@@ -97,10 +97,10 @@ export function startScheduler() {
   }
 
   if (env.ENABLE_INJURY_SYNC) {
-    cron.schedule('*/30 * * * *', async () => {
+    cron.schedule('*/10 * * * *', async () => {
       try { await syncInjuries() } catch (err) { logger.error({ err }, 'Injury sync job failed') }
     })
-    logger.info('Injury sync scheduled: every 30 minutes')
+    logger.info('Injury sync scheduled: every 10 minutes')
   }
 
   if (env.ENABLE_NBA_DFS) {

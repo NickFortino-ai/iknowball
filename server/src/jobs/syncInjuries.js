@@ -200,5 +200,59 @@ export async function syncInjuries() {
     logger.info({ sportKey, synced, totalTeams: teamNames.length }, 'Injury sync for sport complete')
   }
 
+  // Update DFS salary tables with latest injury statuses
+  try {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const { data: allIntel } = await supabase
+      .from('team_intel')
+      .select('team_name, injuries, sport_key')
+
+    if (allIntel?.length) {
+      // Build player name → injury status map
+      const injuryMap = {}
+      for (const intel of allIntel) {
+        for (const inj of intel.injuries || []) {
+          if (inj.name && inj.status) injuryMap[inj.name] = inj.status
+        }
+      }
+
+      // Update NBA DFS salaries
+      const { data: nbaSalaries } = await supabase
+        .from('nba_dfs_salaries')
+        .select('id, player_name, injury_status')
+        .eq('game_date', today)
+
+      for (const sal of nbaSalaries || []) {
+        const newStatus = injuryMap[sal.player_name] || null
+        if (newStatus !== sal.injury_status) {
+          await supabase
+            .from('nba_dfs_salaries')
+            .update({ injury_status: newStatus })
+            .eq('id', sal.id)
+        }
+      }
+
+      // Update MLB DFS salaries
+      const { data: mlbSalaries } = await supabase
+        .from('mlb_dfs_salaries')
+        .select('id, player_name, injury_status')
+        .eq('game_date', today)
+
+      for (const sal of mlbSalaries || []) {
+        const newStatus = injuryMap[sal.player_name] || null
+        if (newStatus !== sal.injury_status) {
+          await supabase
+            .from('mlb_dfs_salaries')
+            .update({ injury_status: newStatus })
+            .eq('id', sal.id)
+        }
+      }
+
+      logger.info('Updated DFS salary injury statuses')
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to update DFS salary injury statuses')
+  }
+
   logger.info({ totalSynced }, 'Injury sync complete')
 }
