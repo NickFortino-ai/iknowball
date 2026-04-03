@@ -366,19 +366,19 @@ export default function UserProfileModal({ userId, onClose }) {
 
             {/* User backdrop */}
             {user.backdrop_image && (
-              <div className="relative -mx-6 -mt-0 mb-4 h-28 overflow-hidden rounded-t-xl">
+              <div className="relative -mx-6 -mt-0 mb-4 h-44 overflow-hidden rounded-t-xl">
                 <img
                   src={getBackdropUrl(user.backdrop_image)}
                   alt=""
                   className="w-full h-full object-cover"
                   style={{ objectPosition: `center ${user.backdrop_y ?? 50}%` }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-bg-primary from-5% via-bg-primary/50 via-50% to-transparent" />
               </div>
             )}
 
             {user.avatar_url ? (
-              <div className={`flex flex-col items-center mb-4 ${user.backdrop_image ? '-mt-16 relative z-10' : ''}`}>
+              <div className={`flex flex-col items-center mb-4 ${user.backdrop_image ? '-mt-20 relative z-10' : ''}`}>
                 <img
                   src={user.avatar_url}
                   alt=""
