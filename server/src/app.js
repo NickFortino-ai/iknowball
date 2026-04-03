@@ -32,6 +32,7 @@ import injuriesRouter from './routes/injuries.js'
 import linkPreviewRouter from './routes/linkPreview.js'
 import messagesRouter from './routes/messages.js'
 import backdropSubmissionsRouter from './routes/backdropSubmissions.js'
+import newsRouter from './routes/news.js'
 
 const app = express()
 
@@ -72,6 +73,7 @@ app.use('/api/dfs', dfsRouter)
 app.use('/api/nba-dfs', nbaDfsRouter)
 app.use('/api/mlb-dfs', mlbDfsRouter)
 app.use('/api/hr-derby', hrDerbyRouter)
+app.use('/api/news', newsRouter)
 
 app.use(errorHandler)
 

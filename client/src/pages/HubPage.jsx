@@ -23,6 +23,7 @@ import TeamFeed from '../components/feed/TeamFeed'
 import { useTeamsForSport } from '../hooks/useHotTakes'
 import ReceiptsTab from '../components/feed/ReceiptsTab'
 import UserFeedTab from '../components/feed/UserFeedTab'
+import NewsFeed from '../components/feed/NewsFeed'
 import Avatar from '../components/ui/Avatar'
 
 function MyProfileBanner({ profile, onTap }) {
@@ -109,7 +110,7 @@ function FilterPanel({ filterSport, filterTeam, filterTeamSearch, onSelectSport,
   )
 }
 
-const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds'])
+const VALID_SCOPES = new Set(['squad', 'all', 'highlights', 'polls', 'predictions', 'receipts', 'user_feeds', 'news'])
 
 export default function HubPage() {
   const { session } = useAuth()
@@ -242,7 +243,7 @@ export default function HubPage() {
   }
 
   return (
-    <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
+    <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pt-6 pb-32">
       <h1 className="font-display text-3xl mb-6">Hub</h1>
 
       {/* My Profile */}
@@ -450,7 +451,8 @@ export default function HubPage() {
         )}
       </div>
 
-      {/* Activity Feed */}
+      {/* Activity Feed + News sidebar */}
+      <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6">
       <div>
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-xs text-text-muted uppercase tracking-wider flex-shrink-0">Feed</h2>
@@ -463,7 +465,8 @@ export default function HubPage() {
               { key: 'polls', label: 'Polls' },
               { key: 'predictions', label: 'Predictions' },
               { key: 'receipts', label: 'Receipts' },
-            ].map((tab) => (
+              { key: 'news', label: 'News', mobileOnly: true },
+            ].filter((tab) => !tab.mobileOnly || !window.matchMedia('(min-width: 1024px)').matches).map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => handleScopeToggle(tab.key)}
@@ -524,6 +527,8 @@ export default function HubPage() {
           />
         ) : feedScope === 'all' && showFilterPanel ? (
           <TeamFeed onUserTap={setSelectedUserId} />
+        ) : feedScope === 'news' ? (
+          <NewsFeed />
         ) : (
           <ActivityFeed
             onUserTap={setSelectedUserId}
@@ -532,6 +537,15 @@ export default function HubPage() {
             onScrollComplete={() => setScrollToItem(null)}
           />
         )}
+      </div>
+
+      {/* Desktop news sidebar */}
+      <div className="hidden lg:block">
+        <div className="sticky top-4">
+          <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">News</h2>
+          <NewsFeed compact />
+        </div>
+      </div>
       </div>
 
       <UserProfileModal
