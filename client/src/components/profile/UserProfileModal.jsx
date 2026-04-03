@@ -331,16 +331,16 @@ export default function UserProfileModal({ userId, onClose }) {
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-t-2xl md:rounded-2xl max-h-[90vh] md:max-h-[85vh] flex flex-col"
+        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-t-2xl md:rounded-2xl max-h-[90vh] md:max-h-[85vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="sticky top-0 self-end shrink-0 z-10 text-text-muted hover:text-text-primary text-xl leading-none p-4"
+          className="absolute top-0 right-0 z-20 text-text-muted hover:text-text-primary text-xl leading-none p-4"
         >
           &times;
         </button>
-        <div className="overflow-y-auto px-6 pb-20 md:pb-6 -mt-4">
+        <div className="overflow-y-auto px-6 pb-20 md:pb-6">
 
         {isLoading ? (
           <LoadingSpinner />
@@ -366,7 +366,7 @@ export default function UserProfileModal({ userId, onClose }) {
 
             {/* User backdrop */}
             {user.backdrop_image && (
-              <div className="relative -mx-6 -mt-4 mb-4 h-52 overflow-hidden">
+              <div className="relative -mx-6 mb-4 h-52 overflow-hidden">
                 <img
                   src={getBackdropUrl(user.backdrop_image)}
                   alt=""
