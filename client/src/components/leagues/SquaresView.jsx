@@ -176,7 +176,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
       {board.digits_locked && (
         <div className="grid grid-cols-4 gap-2 mb-4">
           {quarters.map((q) => (
-            <div key={q.quarter} className={`bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border p-3 text-center ${
+            <div key={q.quarter} className={`bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border px-2 py-3 text-center ${
               q.winnerId ? 'border-accent' : 'border-text-primary/20'
             }`}>
               <div className="text-xs text-text-muted mb-1">Q{q.quarter}</div>
@@ -184,7 +184,7 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                 <>
                   <div className="font-display text-sm">{q.awayScore}-{q.homeScore}</div>
                   {q.winnerId && (
-                    <div className="text-[10px] text-accent font-semibold mt-1">
+                    <div className="text-[10px] text-accent font-semibold mt-1 truncate px-0.5">
                       {board.claims?.find((c) => c.user_id === q.winnerId)?.users?.username || 'Winner'}
                     </div>
                   )}
@@ -265,13 +265,12 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                     </td>
                   {row.map((cell, c) => {
                     const isMe = cell?.user_id === profile?.id
-                    const isWinning = quarters.some(
+                    const winCount = board.digits_locked ? quarters.filter(
                       (q) =>
                         q.awayScore !== null &&
-                        board.digits_locked &&
                         board.row_digits[r] === q.awayScore % 10 &&
                         board.col_digits[c] === q.homeScore % 10
-                    )
+                    ).length : 0
 
                     return (
                       <td
@@ -281,9 +280,9 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                           else if (cell && onUserTap) onUserTap(cell.user_id)
                           else if (!cell && isSelfSelect && !board.digits_locked) handleClaim(r, c)
                         }}
-                        className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] p-0 overflow-hidden border border-border transition-colors ${
-                          isWinning
-                            ? 'bg-accent/30'
+                        className={`w-10 h-10 lg:w-[4.5rem] lg:h-[4.5rem] p-0 overflow-hidden transition-colors ${
+                          winCount > 0
+                            ? 'bg-accent/20'
                             : cell
                               ? isMe
                                 ? 'bg-accent/10'
@@ -292,6 +291,10 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
                                 ? 'bg-bg-primary hover:bg-bg-card-hover cursor-pointer'
                                 : 'bg-bg-primary'
                         } ${cell ? 'cursor-pointer' : ''}`}
+                        style={winCount > 0 ? {
+                          border: '2px solid #FFD700',
+                          boxShadow: winCount >= 2 ? 'inset 0 0 0 2px #FFD700' : 'none',
+                        } : { border: '1px solid var(--color-border)' }}
                       >
                         <div className="w-full h-full flex items-center justify-center">
                           {cell ? (
