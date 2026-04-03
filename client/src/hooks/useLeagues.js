@@ -333,6 +333,9 @@ export function useSquaresBoard(leagueId) {
       const board = query.state.data
       if (!board) return 5000
       if (!board.digits_locked) return 2000
+      // Poll faster during live game for quarter score updates
+      if (board.games?.status === 'live') return 10000
+      if (board.digits_locked && board.games?.starts_at && new Date(board.games.starts_at) <= new Date() && board.games?.status !== 'final') return 10000
       return 30000
     },
   })

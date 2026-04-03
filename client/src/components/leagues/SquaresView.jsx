@@ -172,8 +172,8 @@ export default function SquaresView({ league, isCommissioner, onUserTap }) {
         </div>
       )}
 
-      {/* Quarter results */}
-      {quarters.some((q) => q.awayScore !== null) && (
+      {/* Quarter results — always visible once digits are locked */}
+      {board.digits_locked && (
         <div className="grid grid-cols-4 gap-2 mb-4">
           {quarters.map((q) => (
             <div key={q.quarter} className={`bg-bg-primary/60 md:bg-bg-primary/40 backdrop-blur-sm rounded-xl border p-3 text-center ${

@@ -38,7 +38,7 @@ function getLeagueTabs(league, isBracketLocked) {
 
   const TABS = {
     survivor: ['Picks', memberOrStandings, 'Thread'],
-    squares: ['Board', memberOrStandings, 'Thread'],
+    squares: ['Board', 'Members', 'Thread'],
     fantasy: ['My Team', 'Players', 'Matchups', memberOrStandings, 'Draft', 'Thread'],
     nba_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
     mlb_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
