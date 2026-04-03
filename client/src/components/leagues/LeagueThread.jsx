@@ -74,7 +74,8 @@ export default function LeagueThread({ league }) {
 
   const { data: searchResults } = useSearchUsers(mentionActive ? mentionQuery : '')
 
-  const isArchived = league.status === 'completed'
+  // Keep thread open for 24 hours after league completes (same window as "active" on My Leagues page)
+  const isArchived = league.status === 'completed' && league.updated_at && (Date.now() - new Date(league.updated_at).getTime() > 24 * 60 * 60 * 1000)
 
   const messages = useMemo(() => {
     if (!data?.pages) return []
