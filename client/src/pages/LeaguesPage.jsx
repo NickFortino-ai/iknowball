@@ -19,6 +19,7 @@ function DraggableLeagueList({ leagues }) {
   const reorder = useReorderLeagues()
   const orderRef = useRef(order)
   const dragStateRef = useRef(null)
+  const justDragged = useRef(false)
 
   useEffect(() => { orderRef.current = order }, [order])
   useEffect(() => { dragStateRef.current = dragState }, [dragState])
@@ -87,6 +88,9 @@ function DraggableLeagueList({ leagues }) {
         const currentOrder = orderRef.current
         reorder.mutate(currentOrder)
         setDragState(null)
+        // Suppress the click that fires after pointerup
+        justDragged.current = true
+        setTimeout(() => { justDragged.current = false }, 50)
       }
       pointerStart.current = null
     }
@@ -120,8 +124,8 @@ function DraggableLeagueList({ leagues }) {
   }
 
   function handleClick(e, leagueId) {
-    // If we were dragging, prevent navigation
-    if (dragStateRef.current) {
+    // If we just finished dragging, suppress navigation
+    if (dragStateRef.current || justDragged.current) {
       e.preventDefault()
       return
     }
