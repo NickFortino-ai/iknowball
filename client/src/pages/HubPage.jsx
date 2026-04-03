@@ -35,17 +35,17 @@ function MyProfileBanner({ profile, onTap }) {
   return (
     <div
       onClick={onTap}
-      className="relative bg-bg-primary border border-text-primary/20 rounded-2xl p-5 mb-6 cursor-pointer hover:bg-text-primary/5 transition-colors overflow-hidden"
+      className={`relative bg-bg-primary border border-text-primary/20 rounded-2xl mb-6 cursor-pointer hover:bg-text-primary/5 transition-colors overflow-hidden lg:max-w-2xl lg:mx-auto ${hasBackdrop ? 'p-5 lg:py-8' : 'p-5'}`}
     >
       {hasBackdrop && (
         <>
           <img
             src={getBackdropUrl(profile.backdrop_image)}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
+            className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none"
             style={{ objectPosition: `center ${profile.backdrop_y ?? 50}%` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/80 via-bg-primary/60 to-bg-primary/80 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/70 via-bg-primary/40 to-bg-primary/70 pointer-events-none" />
         </>
       )}
       <div className="relative z-10 flex items-center gap-4">
