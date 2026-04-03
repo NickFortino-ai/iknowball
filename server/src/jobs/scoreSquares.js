@@ -115,8 +115,10 @@ async function autoScoreQuarters() {
     let espnEventId = null
     let homeLinescores, awayLinescores, isFinal
     try {
+      // Use ET date (ESPN uses US Eastern dates for their scoreboard)
       const gameDate = new Date(game.starts_at)
-      const dateStr = `${gameDate.getFullYear()}${String(gameDate.getMonth() + 1).padStart(2, '0')}${String(gameDate.getDate()).padStart(2, '0')}`
+      const etDate = new Date(gameDate.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+      const dateStr = `${etDate.getFullYear()}${String(etDate.getMonth() + 1).padStart(2, '0')}${String(etDate.getDate()).padStart(2, '0')}`
       const sbRes = await fetch(`${ESPN_BASE}/${espnPath}/scoreboard?dates=${dateStr}`)
       if (!sbRes.ok) continue
       const sbData = await sbRes.json()
