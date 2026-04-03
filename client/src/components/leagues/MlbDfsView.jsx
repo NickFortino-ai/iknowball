@@ -379,8 +379,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   // Standings Tab
   if (tab === 'standings') {
     const standings = standingsData?.standings || []
-    const showWins = standingsData?.championMetric === 'most_wins'
-    const gridCols = showWins ? 'grid-cols-[2.5rem_1fr_3rem_5rem]' : 'grid-cols-[2.5rem_1fr_5rem]'
+    const gridCols = 'grid-cols-[2.5rem_1fr_3rem_5rem]'
     return (
       <div>
         {league.status === 'completed' && (
@@ -402,7 +401,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
             <div className={`grid ${gridCols} gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider`}>
               <span>#</span>
               <span>Player</span>
-              {showWins && <span className="text-right">Wins</span>}
+              <span className="text-right">Wins</span>
               <span className="text-right">Points</span>
             </div>
             {standings.map((s) => {
@@ -420,7 +419,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                       {s.user?.display_name || s.user?.username}
                     </span>
                   </div>
-                  {showWins && <span className="font-display text-lg text-text-primary text-right">{s.nightlyWins}</span>}
+                  <span className="font-display text-lg text-text-primary text-right">{s.nightlyWins}</span>
                   <span className="font-display text-xl text-white text-right">{Math.round(s.totalPoints * 10) / 10}</span>
                 </button>
               )
