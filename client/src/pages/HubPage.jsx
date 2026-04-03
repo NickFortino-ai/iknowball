@@ -399,11 +399,11 @@ export default function HubPage() {
           </div>
         </div>
         {!connections?.length ? (
-          <div className="bg-bg-card border border-border rounded-xl px-4 py-8 text-center text-text-muted text-sm">
+          <div className="bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl px-4 py-8 text-center text-text-muted text-sm">
             No connections yet. Join a league or search for friends above!
           </div>
         ) : squadExpanded && (
-          <div className="bg-bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-xl overflow-hidden">
             {(() => {
               const selfEntry = profile ? {
                 connection_id: 'self',
