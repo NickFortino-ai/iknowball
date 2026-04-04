@@ -325,43 +325,18 @@ export async function trySettleParlay(parlayId) {
 }
 
 export async function recalculateAllUserPoints() {
-  // Sum points_earned from all three settled pick tables per user
-  const { data: pickTotals } = await supabase
-    .from('picks')
-    .select('user_id, points_earned')
-    .eq('status', 'settled')
-    .not('points_earned', 'is', null)
+  // Use raw SQL to aggregate points per user — avoids Supabase row limits
+  const { data: totals, error: totalsErr } = await supabase.rpc('recalculate_user_totals')
 
-  const { data: parlayTotals } = await supabase
-    .from('parlays')
-    .select('user_id, points_earned')
-    .eq('status', 'settled')
-    .not('points_earned', 'is', null)
-
-  const { data: propTotals } = await supabase
-    .from('prop_picks')
-    .select('user_id, points_earned')
-    .eq('status', 'settled')
-    .not('points_earned', 'is', null)
-
-  const { data: futuresTotals } = await supabase
-    .from('futures_picks')
-    .select('user_id, points_earned')
-    .eq('status', 'settled')
-    .not('points_earned', 'is', null)
-
-  const { data: bonusTotals } = await supabase
-    .from('bonus_points')
-    .select('user_id, points')
-    .not('points', 'is', null)
-
-  // Aggregate per user
-  const userPoints = {}
-  for (const row of [...(pickTotals || []), ...(parlayTotals || []), ...(propTotals || []), ...(futuresTotals || [])]) {
-    userPoints[row.user_id] = (userPoints[row.user_id] || 0) + row.points_earned
+  if (totalsErr) {
+    // Fallback: aggregate in multiple queries with no row limit
+    logger.warn({ error: totalsErr }, 'RPC recalculate_user_totals not available, using fallback')
+    return recalculateAllUserPointsFallback()
   }
-  for (const row of (bonusTotals || [])) {
-    userPoints[row.user_id] = (userPoints[row.user_id] || 0) + row.points
+
+  const userPoints = {}
+  for (const row of totals || []) {
+    userPoints[row.user_id] = Number(row.total) || 0
   }
 
   // Get current stored totals
@@ -422,6 +397,54 @@ export async function recalculateAllUserPoints() {
         correct_picks: stat.correct_picks,
         total_points: stat.total_points,
       }, { onConflict: 'user_id,sport_id' })
+  }
+
+  return results
+}
+
+/**
+ * Fallback recalculate that fetches all rows with pagination to avoid row limits.
+ */
+async function recalculateAllUserPointsFallback() {
+  const userPoints = {}
+
+  async function fetchAll(table, statusField, pointsField) {
+    let offset = 0
+    const PAGE = 5000
+    while (true) {
+      let query = supabase.from(table).select(`user_id, ${pointsField}`).not(pointsField, 'is', null).range(offset, offset + PAGE - 1)
+      if (statusField) query = query.eq('status', 'settled')
+      const { data } = await query
+      if (!data?.length) break
+      for (const row of data) {
+        userPoints[row.user_id] = (userPoints[row.user_id] || 0) + (Number(row[pointsField]) || 0)
+      }
+      if (data.length < PAGE) break
+      offset += PAGE
+    }
+  }
+
+  await fetchAll('picks', 'status', 'points_earned')
+  await fetchAll('parlays', 'status', 'points_earned')
+  await fetchAll('prop_picks', 'status', 'points_earned')
+  await fetchAll('futures_picks', 'status', 'points_earned')
+  await fetchAll('bonus_points', null, 'points')
+
+  // Get current stored totals
+  const { data: users } = await supabase.from('users').select('id, total_points')
+
+  const results = []
+  for (const user of (users || [])) {
+    const correctTotal = userPoints[user.id] || 0
+    if (correctTotal !== user.total_points) {
+      const delta = correctTotal - user.total_points
+      const { error } = await supabase.rpc('increment_user_points', { user_row_id: user.id, points_delta: delta })
+      if (error) {
+        logger.error({ error, userId: user.id }, 'Failed to recalculate user points (fallback)')
+      } else {
+        results.push({ userId: user.id, was: user.total_points, now: correctTotal, delta })
+      }
+    }
   }
 
   return results
