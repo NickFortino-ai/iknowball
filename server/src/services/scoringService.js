@@ -100,19 +100,44 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
           const streak = updatedStats?.current_streak || 0
 
           if (streak >= 3) {
-            const { data: streakEvent } = await supabase.from('streak_events').insert({
-              user_id: pick.user_id,
-              sport_id: sportId,
-              streak_length: streak,
-            }).select('id').single()
+            // Update existing active streak event instead of creating a new one per win.
+            // An active streak event is the most recent one for this user+sport
+            // whose streak_length equals streak-1 (the previous count).
+            const { data: existingEvent } = await supabase
+              .from('streak_events')
+              .select('id, streak_length')
+              .eq('user_id', pick.user_id)
+              .eq('sport_id', sportId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            let streakEventId
+            if (existingEvent && existingEvent.streak_length === streak - 1) {
+              // Streak grew by 1 — update the existing event in place
+              await supabase
+                .from('streak_events')
+                .update({ streak_length: streak })
+                .eq('id', existingEvent.id)
+              streakEventId = existingEvent.id
+            } else if (!existingEvent || existingEvent.streak_length < streak - 1) {
+              // New streak or gap (e.g. streak was broken and restarted) — create new event
+              const { data: newEvent } = await supabase.from('streak_events').insert({
+                user_id: pick.user_id,
+                sport_id: sportId,
+                streak_length: streak,
+              }).select('id').single()
+              streakEventId = newEvent?.id
+            }
+            // If existingEvent.streak_length >= streak, skip (duplicate scoring)
 
             // Notify on milestone streaks (5, 10, 15...)
-            if (streak % 5 === 0) {
+            if (streak % 5 === 0 && streakEventId) {
               await createNotification(
                 pick.user_id,
                 'streak_milestone',
                 `You're on a ${streak}-game win streak!`,
-                { streak, sportId, streakId: streakEvent?.id }
+                { streak, sportId, streakId: streakEventId }
               )
             }
           }

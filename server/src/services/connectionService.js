@@ -720,11 +720,10 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     }
   }
 
-  // Process streak events — filter to thresholds; "all" requires 10+
-  const STREAK_THRESHOLDS = new Set([5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
-  const streakMin = isAll ? 10 : 0
+  // Process streak events — show streaks >= 5 (squad/highlights) or >= 10 (all)
+  // Streak events now update in-place as streaks grow, so no threshold matching needed
+  const streakMin = isAll ? 10 : 5
   for (const event of streakEvents.data || []) {
-    if (!STREAK_THRESHOLDS.has(event.streak_length)) continue
     if (event.streak_length < streakMin) continue
     const user = userMap[event.user_id]
     if (!user) continue
