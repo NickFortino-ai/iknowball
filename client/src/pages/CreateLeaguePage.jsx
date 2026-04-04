@@ -446,7 +446,7 @@ export default function CreateLeaguePage() {
         {format && (
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">League Backdrop</label>
-            <div className="grid grid-cols-3 gap-2 max-h-[320px] overflow-y-auto scrollbar-hide rounded-lg">
+            <div className="grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto scrollbar-hide rounded-lg">
               {/* Submit your own */}
               <button
                 type="button"
@@ -492,7 +492,7 @@ export default function CreateLeaguePage() {
                   <img
                     src={`/backdrops/${b.filename}`}
                     alt={b.label}
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
                     <span className="text-[10px] text-white font-medium">{b.label}</span>
