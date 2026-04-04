@@ -442,78 +442,6 @@ export default function CreateLeaguePage() {
           </div>
         )}
 
-        {/* Backdrop picker */}
-        {format && (
-          <div>
-            <label className="block text-sm font-semibold text-text-secondary mb-2">League Backdrop</label>
-            <div className="grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto scrollbar-hide rounded-lg">
-              {/* Submit your own */}
-              <div className="relative" style={{ paddingBottom: '56.25%' }}>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`absolute inset-0 rounded-lg overflow-hidden border-2 border-dashed transition-all flex flex-col items-center justify-center gap-1 ${
-                    customBackdropFile ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-accent/50 bg-bg-primary'
-                  }`}
-                >
-                  {customBackdropPreview ? (
-                    <img src={customBackdropPreview} alt="Custom" className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span className="text-[9px] text-text-muted font-semibold leading-tight text-center px-1">Submit your own</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (!file) return
-                  if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'error'); return }
-                  setCustomBackdropFile(file)
-                  setCustomBackdropPreview(URL.createObjectURL(file))
-                  setBackdropImage('')
-                }}
-              />
-              {(availableBackdrops || []).map((b) => (
-                <div key={b.filename} className="relative" style={{ paddingBottom: '56.25%' }}>
-                  <button
-                    type="button"
-                    onClick={() => { setBackdropImage(backdropImage === b.filename ? '' : b.filename); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
-                    className={`absolute inset-0 rounded-lg overflow-hidden border-2 transition-all ${
-                      backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
-                    }`}
-                  >
-                    <img
-                      src={`/backdrops/${b.filename}`}
-                      alt={b.label}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
-                      <span className="text-[10px] text-white font-medium">{b.label}</span>
-                    </div>
-                    {backdropImage === b.filename && (
-                      <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-text-muted mt-1.5">Optional. Custom images are submitted for admin review.</p>
-          </div>
-        )}
-
         {/* Format-specific settings */}
         {format === 'pickem' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
@@ -1321,6 +1249,78 @@ export default function CreateLeaguePage() {
                 Users must submit brackets before this time
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Backdrop picker — after all settings so format/mode influence available options */}
+        {format && (
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">League Backdrop</label>
+            <div className="grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto scrollbar-hide rounded-lg">
+              {/* Submit your own */}
+              <div className="relative" style={{ paddingBottom: '56.25%' }}>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`absolute inset-0 rounded-lg overflow-hidden border-2 border-dashed transition-all flex flex-col items-center justify-center gap-1 ${
+                    customBackdropFile ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-accent/50 bg-bg-primary'
+                  }`}
+                >
+                  {customBackdropPreview ? (
+                    <img src={customBackdropPreview} alt="Custom" className="absolute inset-0 w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span className="text-[9px] text-text-muted font-semibold leading-tight text-center px-1">Submit your own</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'error'); return }
+                  setCustomBackdropFile(file)
+                  setCustomBackdropPreview(URL.createObjectURL(file))
+                  setBackdropImage('')
+                }}
+              />
+              {(availableBackdrops || []).map((b) => (
+                <div key={b.filename} className="relative" style={{ paddingBottom: '56.25%' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setBackdropImage(backdropImage === b.filename ? '' : b.filename); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
+                    className={`absolute inset-0 rounded-lg overflow-hidden border-2 transition-all ${
+                      backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
+                    }`}
+                  >
+                    <img
+                      src={`/backdrops/${b.filename}`}
+                      alt={b.label}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                      <span className="text-[10px] text-white font-medium">{b.label}</span>
+                    </div>
+                    {backdropImage === b.filename && (
+                      <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-text-muted mt-1.5">Optional. Custom images are submitted for admin review.</p>
           </div>
         )}
 
