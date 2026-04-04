@@ -156,8 +156,8 @@ function DraggableLeagueList({ leagues }) {
       className="space-y-3 relative"
       style={{
         touchAction: isDragging ? 'none' : 'auto',
-        userSelect: isDragging ? 'none' : 'auto',
-        WebkitUserSelect: isDragging ? 'none' : 'auto',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
       onContextMenu={handleContextMenu}
     >
