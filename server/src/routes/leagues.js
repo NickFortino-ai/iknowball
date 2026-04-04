@@ -259,7 +259,8 @@ router.get('/backdrops', requireAuth, async (req, res) => {
   const { sport } = req.query
   const { data: backdrops } = await supabase
     .from('league_backdrops')
-    .select('filename, label, formats')
+    .select('filename, label, formats, sort_order')
+    .order('sort_order', { ascending: true, nullsFirst: false })
     .order('label')
 
   if (!backdrops?.length) return res.json([])
