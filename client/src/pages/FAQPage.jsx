@@ -27,11 +27,11 @@ const sections = [
 
 So instead, we charge $1 a month. Not $0.99 \u2014 because are we still doing the disingenuous 99 cents thing? It\u2019s a dollar. One single dollar.
 
-Here\u2019s what else costs about a dollar: half a cup of coffee. A single sticker from the Dollar Tree. One gumball from the machine at the grocery store. A third of a banana at Whole Foods. The fee your bank charges you for the privilege of having no money. A shot of beer \u2014 not even a full beer, a shot of one.
+Here\u2019s what else costs about a dollar: one third of a gas station coffee. One gumball machine gumball. A third of a banana at Whole Foods. A <em>shot</em> of beer. A pickle. Half a Snickers bar.
 
-We wholeheartedly believe I KNOW BALL will far over-deliver on your monthly dollar investment. This app is awesome and we\u2019re building it every single day to be even more awesome. You\u2019re getting live odds, fantasy leagues, social feeds, leaderboards, records, hot takes, and bragging rights for less than the cost of a vending machine Snickers.
+We wholeheartedly believe I KNOW BALL will far over-deliver on your monthly dollar investment. This app is super fun and can do it all. We monitor its functionality meticulously and will be very quick to respond to any issues that arise in your user experience. This app comes from the experience and expertise of avid sports lovers and serious fantasy competitors who\u2019ve been at it for 25 years. You\u2019re getting live odds, fantasy leagues, social feeds, leaderboards, records, hot takes, and bragging rights for less than the cost of a vending machine Snickers.
 
-You can also go yearly for $10 and save a little. Either way \u2014 we appreciate you.`,
+You can also go yearly for $10 and save a little. Join the movement. This is I KNOW BALL.`,
       },
       {
         q: 'What are the status tiers?',
