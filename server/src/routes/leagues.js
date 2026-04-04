@@ -265,9 +265,15 @@ router.get('/backdrops', requireAuth, async (req, res) => {
 
   if (!backdrops?.length) return res.json([])
 
-  // formats column now stores sport keys (e.g. basketball_nba)
+  // formats column stores sport keys (e.g. basketball_nba) or special tags (e.g. touchdown_survivor)
+  // touchdown_survivor also gets general NFL backdrops
   const filtered = sport
-    ? backdrops.filter((b) => !b.formats?.length || b.formats.includes(sport))
+    ? backdrops.filter((b) => {
+        if (!b.formats?.length) return true
+        if (b.formats.includes(sport)) return true
+        if (sport === 'touchdown_survivor' && b.formats.includes('americanfootball_nfl')) return true
+        return false
+      })
     : backdrops
 
   res.json(filtered)

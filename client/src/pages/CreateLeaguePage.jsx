@@ -129,7 +129,7 @@ export default function CreateLeaguePage() {
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
   const fileInputRef = useRef(null)
-  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport || undefined
+  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : sport || undefined
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [joinsLockedAt, setJoinsLockedAt] = useState('')
 
