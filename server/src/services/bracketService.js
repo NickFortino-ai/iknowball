@@ -16,6 +16,7 @@ export async function createTemplate(userId, data) {
       rounds: data.rounds || [],
       regions: data.regions || null,
       picks_available_at: data.picks_available_at || null,
+      series_format: data.series_format || 'single_elimination',
       created_by: userId,
     })
     .select()
@@ -560,6 +561,8 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     throw err
   }
 
+  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
+
   // Check if tournament lock deadline has passed
   const isLocked = new Date(tournament.locks_at) <= new Date()
   let ffGraceMode = false
@@ -754,13 +757,17 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
 
     const pickRows = ffPicks.map((p) => {
       const matchup = matchupMap[p.template_matchup_id]
-      return {
+      const row = {
         entry_id: entry.id,
         template_matchup_id: p.template_matchup_id,
         round_number: matchup?.round_number || 0,
         position: matchup?.position || 0,
         picked_team: p.picked_team,
       }
+      if (isBestOf7 && p.series_length && [4, 5, 6, 7].includes(p.series_length)) {
+        row.series_length = p.series_length
+      }
+      return row
     })
 
     if (pickRows.length) {
@@ -785,15 +792,22 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     .delete()
     .eq('entry_id', entry.id)
 
+  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
+
   const pickRows = picks.map((p) => {
     const matchup = matchupMap[p.template_matchup_id]
-    return {
+    const row = {
       entry_id: entry.id,
       template_matchup_id: p.template_matchup_id,
       round_number: matchup?.round_number || 0,
       position: matchup?.position || 0,
       picked_team: p.picked_team,
     }
+    // Series length prediction for best-of-7 formats
+    if (isBestOf7 && p.series_length && [4, 5, 6, 7].includes(p.series_length)) {
+      row.series_length = p.series_length
+    }
+    return row
   })
 
   const { error: pickError } = await supabase
@@ -898,7 +912,7 @@ export async function getTemplateResults(templateId) {
   return matchups || []
 }
 
-export async function enterTemplateResult(templateId, templateMatchupId, winner, scoreTop, scoreBottom) {
+export async function enterTemplateResult(templateId, templateMatchupId, winner, scoreTop, scoreBottom, seriesWinsTop, seriesWinsBottom) {
   // Get the template matchup
   const { data: templateMatchup } = await supabase
     .from('bracket_template_matchups')
@@ -926,6 +940,12 @@ export async function enterTemplateResult(templateId, templateMatchupId, winner,
   const templateUpdate = { winner, winning_team_name: winningTeam }
   if (scoreTop != null) templateUpdate.score_top = scoreTop
   if (scoreBottom != null) templateUpdate.score_bottom = scoreBottom
+  if (seriesWinsTop != null) templateUpdate.series_wins_top = seriesWinsTop
+  if (seriesWinsBottom != null) templateUpdate.series_wins_bottom = seriesWinsBottom
+  // Calculate actual series length from series wins
+  if (seriesWinsTop != null && seriesWinsBottom != null) {
+    templateUpdate.actual_series_length = seriesWinsTop + seriesWinsBottom
+  }
 
   await supabase
     .from('bracket_template_matchups')
@@ -951,14 +971,15 @@ export async function enterTemplateResult(templateId, templateMatchupId, winner,
     .eq('template_id', templateId)
 
   for (const tournament of tournaments || []) {
-    await cascadeResultToTournament(tournament, templateMatchup, winner, winningTeam, winningSeed, scoreTop, scoreBottom)
+    await cascadeResultToTournament(tournament, templateMatchup, winner, winningTeam, winningSeed, scoreTop, scoreBottom, seriesWinsTop, seriesWinsBottom)
   }
 
   return { templateMatchupId, winner, winningTeam }
 }
 
-async function cascadeResultToTournament(tournament, templateMatchup, winner, winningTeam, winningSeed, scoreTop, scoreBottom) {
+async function cascadeResultToTournament(tournament, templateMatchup, winner, winningTeam, winningSeed, scoreTop, scoreBottom, seriesWinsTop, seriesWinsBottom) {
   const tournamentId = tournament.id
+  const actualSeriesLength = (seriesWinsTop != null && seriesWinsBottom != null) ? seriesWinsTop + seriesWinsBottom : null
 
   // Update the tournament matchup
   const matchupUpdate = {
@@ -968,6 +989,9 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
   }
   if (scoreTop != null) matchupUpdate.score_top = scoreTop
   if (scoreBottom != null) matchupUpdate.score_bottom = scoreBottom
+  if (seriesWinsTop != null) matchupUpdate.series_wins_top = seriesWinsTop
+  if (seriesWinsBottom != null) matchupUpdate.series_wins_bottom = seriesWinsBottom
+  if (actualSeriesLength != null) matchupUpdate.actual_series_length = actualSeriesLength
 
   await supabase
     .from('bracket_matchups')
@@ -1001,13 +1025,25 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
 
   const losingTeam = winner === 'top' ? templateMatchup.team_bottom : templateMatchup.team_top
 
+  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
+
   for (const pick of allPicks || []) {
     const isCorrect = pick.picked_team === winningTeam
+    let points = isCorrect ? pointsPerCorrect : 0
+
+    // Series length bonus (only for best-of-7 and correct winner picks)
+    if (isBestOf7 && isCorrect && pick.series_length && actualSeriesLength) {
+      const diff = Math.abs(pick.series_length - actualSeriesLength)
+      if (diff === 0) points += 2      // Exact prediction
+      else if (diff === 1) points += 1 // One game off
+      // Two or more off: no bonus
+    }
+
     await supabase
       .from('bracket_picks')
       .update({
         is_correct: isCorrect,
-        points_earned: isCorrect ? pointsPerCorrect : 0,
+        points_earned: points,
       })
       .eq('id', pick.id)
 
