@@ -22,8 +22,16 @@ const sections = [
         a: 'NFL, NBA, NCAAB, NCAAF, WNBA, MLB, NHL, and MLS. Each sport has its own leaderboard filter so you can see who knows ball sport by sport.',
       },
       {
-        q: 'How much does it cost?',
-        a: 'The app is free to use with one small one-time payment to unlock full access. Paid features are in development and will be insanely valuable.',
+        q: 'Why do you charge a subscription?',
+        a: `Honestly? It costs real money to run this app. Servers, APIs, live odds, real-time scoring \u2014 none of that is free. We could plaster the app with obnoxious ads that assault your consciousness every time you try to make a pick, but we respect you too much for that.
+
+So instead, we charge $1 a month. Not $0.99 \u2014 because are we still doing the disingenuous 99 cents thing? It\u2019s a dollar. One single dollar.
+
+Here\u2019s what else costs about a dollar: half a cup of coffee. A single sticker from the Dollar Tree. One gumball from the machine at the grocery store. A third of a banana at Whole Foods. The fee your bank charges you for the privilege of having no money. A shot of beer \u2014 not even a full beer, a shot of one.
+
+We wholeheartedly believe I KNOW BALL will far over-deliver on your monthly dollar investment. This app is awesome and we\u2019re building it every single day to be even more awesome. You\u2019re getting live odds, fantasy leagues, social feeds, leaderboards, records, hot takes, and bragging rights for less than the cost of a vending machine Snickers.
+
+You can also go yearly for $10 and save a little. Either way \u2014 we appreciate you.`,
       },
       {
         q: 'What are the status tiers?',
