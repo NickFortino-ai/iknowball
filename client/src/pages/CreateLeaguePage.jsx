@@ -397,51 +397,6 @@ export default function CreateLeaguePage() {
           />
         </div>}
 
-        {/* Visibility */}
-        <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-2">League Visibility</label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setVisibility('closed')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                visibility === 'closed' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
-              }`}
-            >
-              Invite Only
-            </button>
-            <button
-              type="button"
-              onClick={() => setVisibility('open')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                visibility === 'open' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
-              }`}
-            >
-              Open
-            </button>
-          </div>
-          <p className="text-xs text-text-muted mt-1.5">
-            {visibility === 'open'
-              ? 'Anyone can find and join this league.'
-              : 'Only people with the invite code can join.'}
-          </p>
-        </div>
-
-        {visibility === 'open' && (
-          <div>
-            <label className="block text-sm font-semibold text-text-secondary mb-2">
-              Open Until <span className="text-text-muted font-normal">(optional)</span>
-            </label>
-            <input
-              type="datetime-local"
-              value={joinsLockedAt}
-              onChange={(e) => setJoinsLockedAt(e.target.value)}
-              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-            />
-            <p className="text-xs text-text-muted mt-1.5">After this time, no new members can join.</p>
-          </div>
-        )}
-
         {/* Format-specific settings */}
         {format === 'pickem' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
@@ -1249,6 +1204,51 @@ export default function CreateLeaguePage() {
                 Users must submit brackets before this time
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Visibility */}
+        <div>
+          <label className="block text-sm font-semibold text-text-secondary mb-2">League Visibility</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setVisibility('closed')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                visibility === 'closed' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+              }`}
+            >
+              Invite Only
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibility('open')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                visibility === 'open' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+              }`}
+            >
+              Open
+            </button>
+          </div>
+          <p className="text-xs text-text-muted mt-1.5">
+            {visibility === 'open'
+              ? 'Anyone can find and join this league.'
+              : 'Only people with the invite code can join.'}
+          </p>
+        </div>
+
+        {visibility === 'open' && (
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">
+              Open Until <span className="text-text-muted font-normal">(optional)</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={joinsLockedAt}
+              onChange={(e) => setJoinsLockedAt(e.target.value)}
+              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            />
+            <p className="text-xs text-text-muted mt-1.5">After this time, no new members can join.</p>
           </div>
         )}
 
