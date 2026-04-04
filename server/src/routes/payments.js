@@ -9,30 +9,74 @@ import { verifyTransaction } from '../services/appleIapService.js'
 const router = Router()
 const stripe = new Stripe(env.STRIPE_SECRET_KEY)
 
+const PRICE_IDS = {
+  monthly: 'price_1TIMIVCdrW8CXAu2Tvfepw5t',
+  yearly: 'price_1TIMMxCdrW8CXAu2z4smZ8fD',
+}
+
 router.use(requireAuth)
 
-// Create Stripe Checkout session
+// Create Stripe Checkout session for subscription
 router.post('/create-checkout-session', async (req, res) => {
+  const { plan } = req.body // 'monthly' or 'yearly'
+  const priceId = PRICE_IDS[plan] || PRICE_IDS.monthly
   const origin = env.CORS_ORIGIN.split(',')[0].trim()
 
+  // Get or create Stripe customer
+  let customerId = null
+  const { data: user } = await supabase
+    .from('users')
+    .select('stripe_customer_id, username')
+    .eq('id', req.user.id)
+    .single()
+
+  if (user?.stripe_customer_id) {
+    customerId = user.stripe_customer_id
+  } else {
+    const customer = await stripe.customers.create({
+      metadata: { user_id: req.user.id, username: user?.username || '' },
+    })
+    customerId = customer.id
+    await supabase
+      .from('users')
+      .update({ stripe_customer_id: customerId })
+      .eq('id', req.user.id)
+  }
+
   const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    line_items: [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: { name: 'I Know Ball — Season Access' },
-          unit_amount: 100,
-        },
-        quantity: 1,
-      },
-    ],
-    metadata: { user_id: req.user.id },
+    mode: 'subscription',
+    customer: customerId,
+    line_items: [{ price: priceId, quantity: 1 }],
+    metadata: { user_id: req.user.id, plan: plan || 'monthly' },
+    subscription_data: {
+      metadata: { user_id: req.user.id },
+    },
     success_url: `${origin}/payment?status=success`,
     cancel_url: `${origin}/payment?status=cancelled`,
   })
 
   res.json({ url: session.url })
+})
+
+// Create Stripe billing portal session (manage subscription)
+router.post('/create-portal-session', async (req, res) => {
+  const { data: user } = await supabase
+    .from('users')
+    .select('stripe_customer_id')
+    .eq('id', req.user.id)
+    .single()
+
+  if (!user?.stripe_customer_id) {
+    return res.status(400).json({ error: 'No subscription found' })
+  }
+
+  const origin = env.CORS_ORIGIN.split(',')[0].trim()
+  const portalSession = await stripe.billingPortal.sessions.create({
+    customer: user.stripe_customer_id,
+    return_url: `${origin}/settings`,
+  })
+
+  res.json({ url: portalSession.url })
 })
 
 // Redeem a promo code
@@ -66,9 +110,26 @@ router.post('/redeem-promo', async (req, res) => {
     return res.status(410).json({ error: 'Promo code has reached its usage limit' })
   }
 
+  // Determine if this is a lifetime promo or trial promo
+  const isLifetime = promo.type === 'lifetime' || !promo.type
+  const updateData = {
+    is_paid: true,
+    promo_code_used: promo.code,
+    payment_source: 'promo',
+    is_lifetime: isLifetime,
+    subscription_status: isLifetime ? 'lifetime' : 'active',
+  }
+
+  // If it's a trial promo (e.g., first month free), set expiration
+  if (promo.type === 'trial' && promo.trial_days) {
+    updateData.subscription_expires_at = new Date(Date.now() + promo.trial_days * 24 * 60 * 60 * 1000).toISOString()
+    updateData.is_lifetime = false
+    updateData.subscription_status = 'active'
+  }
+
   const { error: userError } = await supabase
     .from('users')
-    .update({ is_paid: true, promo_code_used: promo.code, payment_source: 'promo' })
+    .update(updateData)
     .eq('id', req.user.id)
 
   if (userError) {
@@ -76,7 +137,7 @@ router.post('/redeem-promo', async (req, res) => {
     return res.status(500).json({ error: 'Failed to apply promo code' })
   }
 
-  logger.info({ userId: req.user.id, code: promo.code }, 'Promo code redeemed')
+  logger.info({ userId: req.user.id, code: promo.code, isLifetime }, 'Promo code redeemed')
   res.json({ success: true })
 })
 
@@ -103,13 +164,21 @@ router.post('/verify-apple-iap', async (req, res) => {
       return res.json({ success: true })
     }
 
-    // Mark user as paid
+    // Determine subscription period from product ID
+    const productId = decoded.productId || ''
+    const isYearly = productId.includes('yearly') || productId.includes('annual')
+    const periodDays = isYearly ? 365 : 30
+
+    // Mark user as subscribed
     const { error } = await supabase
       .from('users')
       .update({
         is_paid: true,
         apple_original_transaction_id: txId,
         payment_source: 'apple',
+        subscription_status: 'active',
+        subscription_plan: isYearly ? 'yearly' : 'monthly',
+        subscription_expires_at: new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString(),
       })
       .eq('id', req.user.id)
 
@@ -118,7 +187,7 @@ router.post('/verify-apple-iap', async (req, res) => {
       return res.status(500).json({ error: 'Database update failed' })
     }
 
-    logger.info({ userId: req.user.id, txId, productId: decoded.productId }, 'User marked as paid via Apple IAP')
+    logger.info({ userId: req.user.id, txId, productId: decoded.productId }, 'User subscribed via Apple IAP')
     res.json({ success: true })
   } catch (err) {
     logger.error({ err, userId: req.user.id }, 'Apple IAP verification failed')
@@ -126,11 +195,11 @@ router.post('/verify-apple-iap', async (req, res) => {
   }
 })
 
-// Check payment status
+// Check payment/subscription status
 router.get('/status', async (req, res) => {
   const { data, error } = await supabase
     .from('users')
-    .select('is_paid')
+    .select('is_paid, is_lifetime, subscription_status, subscription_expires_at, subscription_plan, stripe_customer_id')
     .eq('id', req.user.id)
     .single()
 
@@ -138,7 +207,18 @@ router.get('/status', async (req, res) => {
     return res.status(404).json({ error: 'User not found' })
   }
 
-  res.json({ is_paid: data.is_paid })
+  const hasAccess = data.is_lifetime ||
+    data.subscription_status === 'active' ||
+    (data.subscription_expires_at && new Date(data.subscription_expires_at) > new Date())
+
+  res.json({
+    is_paid: hasAccess,
+    is_lifetime: data.is_lifetime,
+    subscription_status: data.subscription_status,
+    subscription_plan: data.subscription_plan,
+    subscription_expires_at: data.subscription_expires_at,
+    has_stripe: !!data.stripe_customer_id,
+  })
 })
 
 export default router

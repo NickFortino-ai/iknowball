@@ -2,6 +2,15 @@ import { useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 
+function hasAccess(profile) {
+  if (!profile) return false
+  if (profile.is_lifetime) return true
+  if (profile.is_paid) return true
+  if (profile.subscription_status === 'active') return true
+  if (profile.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()) return true
+  return false
+}
+
 export default function ProtectedRoute({ children }) {
   const { session, profile, profileError, loading, switching, fetchProfile } = useAuthStore()
   const retried = useRef(false)
@@ -47,7 +56,7 @@ export default function ProtectedRoute({ children }) {
     )
   }
 
-  if (!profile.is_paid) {
+  if (!hasAccess(profile)) {
     return <Navigate to="/payment" replace />
   }
 

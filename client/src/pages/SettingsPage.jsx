@@ -623,6 +623,41 @@ export default function SettingsPage() {
         {saving ? 'Saving...' : 'Save Settings'}
       </button>
 
+      {/* Subscription */}
+      <Section label="Subscription" defaultOpen={false}>
+        {profile?.is_lifetime ? (
+          <div className="text-sm text-correct font-semibold">Lifetime Access</div>
+        ) : profile?.subscription_status === 'active' ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-primary">Plan</span>
+              <span className="text-sm text-text-secondary font-semibold">{profile.subscription_plan === 'yearly' ? '$10/year' : '$1/month'}</span>
+            </div>
+            {profile.subscription_expires_at && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-text-primary">Renews</span>
+                <span className="text-sm text-text-secondary">{new Date(profile.subscription_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+            )}
+            <button
+              onClick={async () => {
+                try {
+                  const { url } = await api.post('/payments/create-portal-session')
+                  window.location.href = url
+                } catch {
+                  toast('Failed to open subscription management', 'error')
+                }
+              }}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold border border-accent text-accent hover:bg-accent/10 transition-colors"
+            >
+              Manage Subscription
+            </button>
+          </div>
+        ) : (
+          <div className="text-sm text-text-muted">No active subscription</div>
+        )}
+      </Section>
+
       {/* Change Password */}
       <ChangePasswordSection />
 

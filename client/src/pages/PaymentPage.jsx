@@ -31,8 +31,6 @@ function isNewUser(profile) {
 }
 
 async function navigateAfterPayment(fetchProfile, navigate) {
-  // Determine destination BEFORE fetchProfile, because fetchProfile sets is_paid=true
-  // which triggers the onboarding tutorial — the tutorial needs to know where to return
   const league = await attemptPendingJoin()
   if (league) {
     localStorage.setItem('onboardingReturnPath', `/leagues/${league.id}`)
@@ -64,15 +62,16 @@ export default function PaymentPage() {
   const [polling, setPolling] = useState(false)
   const [product, setProduct] = useState(null)
   const [restoringPurchase, setRestoringPurchase] = useState(false)
+  const [plan, setPlan] = useState('yearly') // default to yearly (better value)
   const pollCount = useRef(0)
   const pendingRecoveryAttempted = useRef(false)
 
   const isNative = isIAPAvailable()
   const status = searchParams.get('status')
 
-  // Redirect if already paid
+  // Redirect if already paid/subscribed
   useEffect(() => {
-    if (profile?.is_paid) {
+    if (profile?.is_paid || profile?.is_lifetime) {
       attemptPendingJoin().then((league) => {
         if (league) {
           navigate(`/leagues/${league.id}`, { replace: true })
@@ -101,7 +100,6 @@ export default function PaymentPage() {
 
     getSeasonAccessProduct().then(setProduct)
 
-    // Recover pending transaction from a previous interrupted purchase
     if (!pendingRecoveryAttempted.current) {
       pendingRecoveryAttempted.current = true
       const pendingJws = getPendingTransaction()
@@ -113,7 +111,6 @@ export default function PaymentPage() {
             return navigateAfterPayment(fetchProfile, navigate)
           })
           .catch(() => {
-            // Verification failed — clear stale transaction
             clearPendingTransaction()
             setLoading(false)
           })
@@ -130,8 +127,8 @@ export default function PaymentPage() {
     const interval = setInterval(async () => {
       pollCount.current += 1
       try {
-        const { is_paid } = await api.get('/payments/status')
-        if (is_paid) {
+        const data = await api.get('/payments/status')
+        if (data.is_paid) {
           clearInterval(interval)
           await navigateAfterPayment(fetchProfile, navigate)
         }
@@ -158,7 +155,6 @@ export default function PaymentPage() {
         throw new Error('No transaction returned')
       }
 
-      // Save for crash recovery before server call
       savePendingTransaction(transaction.jwsRepresentation)
 
       await api.post('/payments/verify-apple-iap', {
@@ -168,7 +164,6 @@ export default function PaymentPage() {
       clearPendingTransaction()
       await navigateAfterPayment(fetchProfile, navigate)
     } catch (err) {
-      // User cancelled — no error
       const msg = (err.message || '').toLowerCase()
       if (msg.includes('cancel') || msg.includes('user cancelled')) {
         setLoading(false)
@@ -207,7 +202,7 @@ export default function PaymentPage() {
     setLoading(true)
     setError(null)
     try {
-      const { url } = await api.post('/payments/create-checkout-session')
+      const { url } = await api.post('/payments/create-checkout-session', { plan })
       window.location.href = url
     } catch (err) {
       setError(err.message)
@@ -235,25 +230,18 @@ export default function PaymentPage() {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Processing payment...</p>
+          <p className="text-text-secondary">Activating your subscription...</p>
         </div>
       </div>
     )
   }
 
-  // Determine purchase button label
-  const purchaseLabel = isNative
-    ? product
-      ? `Unlock I KNOW BALL — ${product.priceString}`
-      : 'Purchase unavailable'
-    : 'Unlock I KNOW BALL — $1'
-
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-bg-card rounded-2xl p-8 border border-border">
-        <h1 className="font-display text-3xl text-center mb-2">Unlock I KNOW BALL</h1>
-        <p className="text-text-secondary text-center mb-8">
-          One-time payment to join
+        <h1 className="font-display text-3xl text-center mb-2">I KNOW BALL</h1>
+        <p className="text-text-secondary text-center mb-6">
+          Subscribe to compete, climb the leaderboard, and prove you know ball.
         </p>
 
         {(error || status === 'cancelled') && (
@@ -278,14 +266,56 @@ export default function PaymentPage() {
           </div>
         </div>
 
+        {/* Plan toggle — web only */}
+        {!isNative && (
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setPlan('monthly')}
+              className={`flex-1 py-3 rounded-xl text-center transition-all ${
+                plan === 'monthly'
+                  ? 'bg-accent/10 border-2 border-accent'
+                  : 'bg-bg-primary border border-border hover:border-text-primary/30'
+              }`}
+            >
+              <div className="font-display text-lg text-text-primary">$1</div>
+              <div className="text-xs text-text-muted">per month</div>
+            </button>
+            <button
+              onClick={() => setPlan('yearly')}
+              className={`flex-1 py-3 rounded-xl text-center transition-all relative ${
+                plan === 'yearly'
+                  ? 'bg-accent/10 border-2 border-accent'
+                  : 'bg-bg-primary border border-border hover:border-text-primary/30'
+              }`}
+            >
+              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-correct text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                Save 17%
+              </div>
+              <div className="font-display text-lg text-text-primary">$10</div>
+              <div className="text-xs text-text-muted">per year</div>
+            </button>
+          </div>
+        )}
+
         {/* Purchase button */}
         <button
           onClick={isNative ? handleApplePurchase : handleCheckout}
           disabled={loading || (isNative && !product)}
-          className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 text-lg mb-4"
+          className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 text-lg mb-3"
         >
-          {loading ? 'Processing...' : purchaseLabel}
+          {loading ? 'Processing...' : isNative
+            ? product ? `Subscribe — ${product.priceString}` : 'Purchase unavailable'
+            : `Subscribe — ${plan === 'yearly' ? '$10/year' : '$1/month'}`
+          }
         </button>
+
+        {/* Auto-renewal disclosure */}
+        <p className="text-[10px] text-text-muted text-center mb-4 leading-relaxed">
+          {isNative
+            ? 'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in Settings > Apple ID > Subscriptions.'
+            : `Your subscription will auto-renew at ${plan === 'yearly' ? '$10.00/year' : '$1.00/month'} until cancelled. You can manage or cancel anytime from your account settings.`
+          }
+        </p>
 
         {/* Restore Purchases — native only */}
         {isNative && (
