@@ -7,7 +7,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 
-const LONG_PRESS_MS = 350
+const LONG_PRESS_MS = 400
 
 function DraggableLeagueList({ leagues }) {
   const navigate = useNavigate()
@@ -90,18 +90,27 @@ function DraggableLeagueList({ leagues }) {
         setDragState(null)
         // Suppress the click that fires after pointerup
         justDragged.current = true
-        setTimeout(() => { justDragged.current = false }, 50)
+        setTimeout(() => { justDragged.current = false }, 100)
       }
       pointerStart.current = null
+    }
+
+    // Also listen for touchmove to prevent scrolling during drag
+    function onTouchMove(e) {
+      if (dragStateRef.current && e.cancelable) {
+        e.preventDefault()
+      }
     }
 
     document.addEventListener('pointermove', onMove, { passive: false })
     document.addEventListener('pointerup', onUp)
     document.addEventListener('pointercancel', onUp)
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
     return () => {
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onUp)
       document.removeEventListener('pointercancel', onUp)
+      document.removeEventListener('touchmove', onTouchMove)
     }
   }, [getDropIndex, reorder])
 
@@ -123,6 +132,13 @@ function DraggableLeagueList({ leagues }) {
     }, LONG_PRESS_MS)
   }
 
+  // Prevent context menu on long press (mobile)
+  function handleContextMenu(e) {
+    if (longPressTimer.current || dragStateRef.current) {
+      e.preventDefault()
+    }
+  }
+
   function handleClick(e, leagueId) {
     // If we just finished dragging, suppress navigation
     if (dragStateRef.current || justDragged.current) {
@@ -138,7 +154,12 @@ function DraggableLeagueList({ leagues }) {
   return (
     <div
       className="space-y-3 relative"
-      style={{ touchAction: isDragging ? 'none' : 'auto', userSelect: isDragging ? 'none' : 'auto', WebkitUserSelect: isDragging ? 'none' : 'auto' }}
+      style={{
+        touchAction: isDragging ? 'none' : 'auto',
+        userSelect: isDragging ? 'none' : 'auto',
+        WebkitUserSelect: isDragging ? 'none' : 'auto',
+      }}
+      onContextMenu={handleContextMenu}
     >
       {order.map((id, i) => {
         const league = leagueMap[id]
@@ -172,7 +193,7 @@ function DraggableLeagueList({ leagues }) {
               top: dragState.cardRect.top + offsetY,
               left: dragState.cardRect.left,
               width: dragState.cardRect.width,
-              transition: 'box-shadow 0.2s',
+              transition: 'box-shadow 0.2s, opacity 0.2s',
             }}
           >
             <div className="scale-[1.04] shadow-2xl shadow-black/40 rounded-xl ring-2 ring-accent/50">
