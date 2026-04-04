@@ -78,7 +78,8 @@ router.post(
 
         // Determine plan from price
         const priceId = obj.items?.data?.[0]?.price?.id
-        const plan = priceId === 'price_1TIMMxCdrW8CXAu2z4smZ8fD' ? 'yearly' : 'monthly'
+        const yearlyPriceId = env.STRIPE_YEARLY_PRICE_ID || 'price_1TIMMxCdrW8CXAu2z4smZ8fD'
+        const plan = priceId === yearlyPriceId ? 'yearly' : 'monthly'
 
         const updateData = {
           subscription_status: status === 'active' || status === 'trialing' ? 'active' : status === 'canceled' ? 'cancelled' : 'expired',

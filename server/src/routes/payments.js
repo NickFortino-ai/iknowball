@@ -10,8 +10,8 @@ const router = Router()
 const stripe = new Stripe(env.STRIPE_SECRET_KEY)
 
 const PRICE_IDS = {
-  monthly: 'price_1TIMIVCdrW8CXAu2Tvfepw5t',
-  yearly: 'price_1TIMMxCdrW8CXAu2z4smZ8fD',
+  monthly: env.STRIPE_MONTHLY_PRICE_ID || 'price_1TIMIVCdrW8CXAu2Tvfepw5t',
+  yearly: env.STRIPE_YEARLY_PRICE_ID || 'price_1TIMMxCdrW8CXAu2z4smZ8fD',
 }
 
 router.use(requireAuth)
