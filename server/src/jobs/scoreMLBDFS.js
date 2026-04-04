@@ -176,7 +176,13 @@ async function fetchCompletedGameStats(date) {
 async function upsertPlayerStats(playerStats, date, season) {
   if (!playerStats.length) return
 
-  const rows = playerStats.map((p) => {
+  // Deduplicate by espn_player_id — keep the last entry (most complete stats)
+  const deduped = new Map()
+  for (const p of playerStats) {
+    deduped.set(p.espnPlayerId, p)
+  }
+
+  const rows = [...deduped.values()].map((p) => {
     const s = p.stats
     return {
       espn_player_id: p.espnPlayerId,

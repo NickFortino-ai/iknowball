@@ -793,8 +793,6 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
     .delete()
     .eq('entry_id', entry.id)
 
-  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
-
   const pickRows = picks.map((p) => {
     const matchup = matchupMap[p.template_matchup_id]
     const row = {
