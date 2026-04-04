@@ -62,12 +62,27 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   useEffect(() => {
     if (Object.keys(picks).length === 0 && !entryName && !tiebreakerTop && !tiebreakerBottom) return
     try {
-      localStorage.setItem(draftKey, JSON.stringify({ picks, entryName, tiebreakerTop, tiebreakerBottom }))
+      localStorage.setItem(draftKey, JSON.stringify({ picks, entryName, tiebreakerTop, tiebreakerBottom, seriesLengths }))
     } catch {}
-  }, [picks, entryName, tiebreakerTop, tiebreakerBottom, draftKey])
+  }, [picks, entryName, tiebreakerTop, tiebreakerBottom, seriesLengths, draftKey])
 
   const rounds = tournament?.bracket_templates?.rounds || []
   const regions = tournament?.bracket_templates?.regions || []
+  const isBestOf7 = tournament?.bracket_templates?.series_format === 'best_of_7'
+
+  // Series length predictions (4/5/6/7) for best_of_7 brackets
+  const [seriesLengths, setSeriesLengths] = useState(() => {
+    if (!isBestOf7) return {}
+    const map = {}
+    if (existingPicks?.length) {
+      for (const p of existingPicks) {
+        if (p.series_length) map[p.template_matchup_id] = p.series_length
+      }
+    } else if (savedDraft?.seriesLengths) {
+      return savedDraft.seriesLengths
+    }
+    return map
+  })
 
   function getRoundName(roundNum) {
     const r = rounds.find((r) => r.round_number === roundNum)
@@ -168,8 +183,8 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const isStepComplete = useCallback((step, picksObj) => {
     const pickable = getPickableMatchups(step)
     if (pickable.length === 0) return true
-    return pickable.every((m) => picksObj[m.template_matchup_id])
-  }, [getPickableMatchups])
+    return pickable.every((m) => picksObj[m.template_matchup_id] && (!isBestOf7 || seriesLengths[m.template_matchup_id]))
+  }, [getPickableMatchups, isBestOf7, seriesLengths])
 
   // Find first incomplete step for initial position
   const initialStep = useMemo(() => {
@@ -392,7 +407,8 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const tiebreakerTopValid = tiebreakerTop !== '' && Number.isInteger(Number(tiebreakerTop)) && Number(tiebreakerTop) >= 0 && Number(tiebreakerTop) <= 250
   const tiebreakerBottomValid = tiebreakerBottom !== '' && Number.isInteger(Number(tiebreakerBottom)) && Number(tiebreakerBottom) >= 0 && Number(tiebreakerBottom) <= 250
   const tiebreakerValid = tiebreakerTopValid && tiebreakerBottomValid
-  const canSubmit = allFilled && tiebreakerValid
+  const allSeriesLengthsFilled = !isBestOf7 || allPickableMatchups.every((m) => seriesLengths[m.template_matchup_id])
+  const canSubmit = allFilled && tiebreakerValid && allSeriesLengthsFilled
 
   async function handleSubmit() {
     // Only submit picks for valid, non-bye template matchup IDs
@@ -402,6 +418,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       .map(([template_matchup_id, picked_team]) => ({
         template_matchup_id,
         picked_team,
+        ...(isBestOf7 && seriesLengths[template_matchup_id] ? { series_length: seriesLengths[template_matchup_id] } : {}),
       }))
 
     try {
@@ -526,7 +543,9 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                 <div className="text-[10px] text-text-muted mt-0.5">
                   {currentStep?.isBonus
                     ? '(bonus — not required to submit)'
-                    : `${getRoundPoints(currentStep?.roundNum)} pts per correct pick`
+                    : isBestOf7
+                      ? `${getRoundPoints(currentStep?.roundNum)} pts + series bonus (+2 exact, +1 one-off)`
+                      : `${getRoundPoints(currentStep?.roundNum)} pts per correct pick`
                   }
                 </div>
               </>
@@ -580,6 +599,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             }))}
             rounds={rounds}
             regions={regions}
+            seriesFormat={tournament?.bracket_templates?.series_format}
             initialRegion={currentStep?.region || null}
             onMatchupTap={(matchup) => {
               const stepIdx = steps.findIndex((s) =>
@@ -683,6 +703,27 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                   )}
                 </button>
               </div>
+              {/* Series length picker for best-of-7 brackets */}
+              {isBestOf7 && currentPick && (
+                <div className="px-3 pb-2 pt-1">
+                  <div className="text-[10px] text-text-muted mb-1.5">Series length</div>
+                  <div className="flex gap-1.5">
+                    {[4, 5, 6, 7].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setSeriesLengths((prev) => ({ ...prev, [matchup.template_matchup_id]: n }))}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          seriesLengths[matchup.template_matchup_id] === n
+                            ? 'bg-accent/20 border border-accent text-accent'
+                            : 'bg-bg-card-hover text-text-secondary hover:bg-bg-card-hover/80'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
@@ -753,9 +794,11 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             ? 'Submitting...'
             : !allFilled
               ? `Pick ${totalRequired - filledCount} more games`
-              : !tiebreakerValid
-                ? 'Enter championship scores'
-                : 'Submit Bracket'}
+              : !allSeriesLengthsFilled
+                ? 'Predict all series lengths'
+                : !tiebreakerValid
+                  ? 'Enter championship scores'
+                  : 'Submit Bracket'}
         </button>
         {filledCount > 0 && !allFilled && (
           <button
@@ -800,7 +843,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             </div>
 
             <div className="relative z-10">
-              <div className="text-sm text-text-muted mb-1">Your pick to cut the nets down is</div>
+              <div className="text-sm text-text-muted mb-1">{isBestOf7 ? 'Your pick to win the championship is' : 'Your pick to cut the nets down is'}</div>
               <div className="font-display text-3xl text-accent mt-2 mb-1 animate-pulse">
                 {championModal.team}
               </div>

@@ -236,6 +236,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
     : viewedEntry?.picks || null
 
   const showCourtBg = league.sport === 'basketball_ncaab' || league.sport === 'basketball_wncaab'
+  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
 
   return (
     <div>
@@ -392,6 +393,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             picks={viewingUserId ? displayPicks : null}
             rounds={rounds}
             regions={tournament.bracket_templates?.regions}
+            seriesFormat={tournament.bracket_templates?.series_format}
           />
         </div>
       )}

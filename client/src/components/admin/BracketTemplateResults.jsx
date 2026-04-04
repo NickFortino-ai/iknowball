@@ -10,7 +10,10 @@ export default function BracketTemplateResults({ templateId, onClose }) {
   const setChampionshipScore = useSetChampionshipScore()
   const [selectedMatchup, setSelectedMatchup] = useState(null)
   const [scores, setScores] = useState({})
+  const [seriesWins, setSeriesWins] = useState({})
   const [champScore, setChampScore] = useState('')
+
+  const isBestOf7 = template?.series_format === 'best_of_7'
 
   if (isLoading) return <LoadingSpinner />
 
@@ -33,11 +36,15 @@ export default function BracketTemplateResults({ templateId, onClose }) {
     const matchupScores = scores[matchupId]
     const scoreTop = matchupScores?.top !== '' && matchupScores?.top != null ? matchupScores.top : undefined
     const scoreBottom = matchupScores?.bottom !== '' && matchupScores?.bottom != null ? matchupScores.bottom : undefined
+    const matchupSeriesWins = seriesWins[matchupId]
+    const swTop = matchupSeriesWins?.top !== '' && matchupSeriesWins?.top != null ? matchupSeriesWins.top : undefined
+    const swBottom = matchupSeriesWins?.bottom !== '' && matchupSeriesWins?.bottom != null ? matchupSeriesWins.bottom : undefined
     try {
-      await enterResult.mutateAsync({ templateId, templateMatchupId: matchupId, winner, scoreTop, scoreBottom })
+      await enterResult.mutateAsync({ templateId, templateMatchupId: matchupId, winner, scoreTop, scoreBottom, seriesWinsTop: swTop, seriesWinsBottom: swBottom })
       toast('Result entered and synced to all tournaments', 'success')
       setSelectedMatchup(null)
       setScores((s) => { const next = { ...s }; delete next[matchupId]; return next })
+      setSeriesWins((s) => { const next = { ...s }; delete next[matchupId]; return next })
     } catch (err) {
       toast(err.message || 'Failed to enter result', 'error')
     }
@@ -115,6 +122,9 @@ export default function BracketTemplateResults({ templateId, onClose }) {
                           {isCompleted && m.score_top != null && m.score_bottom != null && (
                             <span className="text-text-muted text-xs ml-1">({m.score_top} - {m.score_bottom})</span>
                           )}
+                          {isCompleted && isBestOf7 && m.series_wins_top != null && m.series_wins_bottom != null && (
+                            <span className="text-text-muted text-xs ml-1">({m.series_wins_top}-{m.series_wins_bottom})</span>
+                          )}
                           <span className="text-text-muted mx-2">vs</span>
                           {m.seed_bottom != null && (
                             <span className="text-text-muted text-xs">({m.seed_bottom}) </span>
@@ -180,6 +190,35 @@ export default function BracketTemplateResults({ templateId, onClose }) {
                             </div>
                             <span className="text-[10px] italic shrink-0">(optional)</span>
                           </div>
+                          {isBestOf7 && (
+                            <div className="flex gap-2 items-center text-xs text-text-muted">
+                              <div className="flex-1 flex items-center gap-1">
+                                <span className="truncate">{m.team_top} wins</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={4}
+                                  value={seriesWins[m.id]?.top ?? ''}
+                                  onChange={(e) => setSeriesWins((s) => ({ ...s, [m.id]: { ...s[m.id], top: e.target.value } }))}
+                                  placeholder="W"
+                                  className="w-12 bg-bg-input border border-border rounded px-2 py-1 text-text-primary text-xs focus:outline-none focus:border-accent"
+                                />
+                              </div>
+                              <div className="flex-1 flex items-center gap-1">
+                                <span className="truncate">{m.team_bottom} wins</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={4}
+                                  value={seriesWins[m.id]?.bottom ?? ''}
+                                  onChange={(e) => setSeriesWins((s) => ({ ...s, [m.id]: { ...s[m.id], bottom: e.target.value } }))}
+                                  placeholder="W"
+                                  className="w-12 bg-bg-input border border-border rounded px-2 py-1 text-text-primary text-xs focus:outline-none focus:border-accent"
+                                />
+                              </div>
+                              <span className="text-[10px] italic shrink-0">series</span>
+                            </div>
+                          )}
                           <div className="flex gap-2">
                           <button
                             onClick={() => handleEnterResult(m.id, 'top')}

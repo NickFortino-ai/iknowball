@@ -267,6 +267,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     }
     return ''
   })
+  const [seriesFormat, setSeriesFormat] = useState(existing?.series_format || 'single_elimination')
   const [regionInput, setRegionInput] = useState('')
   const [rounds, setRounds] = useState(() => {
     if (existing?.rounds?.length) return existing.rounds
@@ -289,6 +290,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
   useEffect(() => {
     if (!existing) return
     setSport(existing.sport || '')
+    setSeriesFormat(existing.series_format || 'single_elimination')
     setName(existing.name || '')
     setTeamCount(existing.team_count || 64)
     setDescription(existing.description || '')
@@ -438,6 +440,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           rounds,
           regions: regions.length > 0 ? regions : undefined,
           picks_available_at: picksAvailableAt ? new Date(picksAvailableAt).toISOString() : null,
+          series_format: seriesFormat,
         })
         id = template.id
         setSavedTemplateId(id)
@@ -451,6 +454,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           rounds,
           regions: regions.length > 0 ? regions : undefined,
           picks_available_at: picksAvailableAt ? new Date(picksAvailableAt).toISOString() : null,
+          series_format: seriesFormat,
         })
       }
       toast('Template saved!', 'success')
@@ -615,6 +619,31 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               placeholder="Optional description"
               className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">Series Format</label>
+            <div className="flex gap-2">
+              {[{ value: 'single_elimination', label: 'Single Elimination' }, { value: 'best_of_7', label: 'Best of 7' }].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSeriesFormat(opt.value)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    seriesFormat === opt.value
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {seriesFormat === 'best_of_7' && (
+              <div className="text-[10px] text-text-muted mt-1">
+                Users will predict series length (4-7 games) per matchup. Bonus: +2 exact, +1 one-off.
+              </div>
+            )}
           </div>
 
           <div>

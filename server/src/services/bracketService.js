@@ -90,6 +90,7 @@ export async function updateTemplate(templateId, userId, data) {
   if (data.rounds !== undefined) updates.rounds = data.rounds
   if (data.regions !== undefined) updates.regions = data.regions
   if (data.picks_available_at !== undefined) updates.picks_available_at = data.picks_available_at
+  if (data.series_format !== undefined) updates.series_format = data.series_format
 
   const { data: updated, error } = await supabase
     .from('bracket_templates')

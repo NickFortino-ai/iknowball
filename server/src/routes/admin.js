@@ -317,11 +317,11 @@ router.get('/bracket-templates/:id', async (req, res) => {
 })
 
 router.post('/bracket-templates', async (req, res) => {
-  const { name, sport, team_count, description, rounds, regions, picks_available_at } = req.body
+  const { name, sport, team_count, description, rounds, regions, picks_available_at, series_format } = req.body
   if (!name || !sport || !team_count) {
     return res.status(400).json({ error: 'name, sport, and team_count are required' })
   }
-  const template = await createTemplate(req.user.id, { name, sport, team_count, description, rounds, regions, picks_available_at })
+  const template = await createTemplate(req.user.id, { name, sport, team_count, description, rounds, regions, picks_available_at, series_format })
   res.status(201).json(template)
 })
 
@@ -369,11 +369,11 @@ router.get('/bracket-templates/:id/results', async (req, res) => {
 })
 
 router.post('/bracket-templates/:id/results', async (req, res) => {
-  const { template_matchup_id, winner, score_top, score_bottom } = req.body
+  const { template_matchup_id, winner, score_top, score_bottom, series_wins_top, series_wins_bottom } = req.body
   if (!template_matchup_id || !winner) {
     return res.status(400).json({ error: 'template_matchup_id and winner are required' })
   }
-  const result = await enterTemplateResult(req.params.id, template_matchup_id, winner, score_top ?? null, score_bottom ?? null)
+  const result = await enterTemplateResult(req.params.id, template_matchup_id, winner, score_top ?? null, score_bottom ?? null, series_wins_top ?? null, series_wins_bottom ?? null)
   res.json(result)
 })
 

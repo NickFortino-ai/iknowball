@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, forwardRef, useImperativeHandle, Fragment } from 'react'
 
-function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {} }) {
+function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {}, isBestOf7 = false }) {
   const [showScore, setShowScore] = useState(false)
 
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -9,7 +9,8 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   const bottomWrong = pick && matchup.status === 'completed' && pick === matchup.team_bottom && matchup.winner === 'top'
 
   const hasScores = matchup.status === 'completed' && matchup.score_top != null && matchup.score_bottom != null
-  const canExpand = !onTap && hasScores
+  const hasSeriesRecord = isBestOf7 && matchup.status === 'completed' && matchup.series_wins_top != null && matchup.series_wins_bottom != null
+  const canExpand = !onTap && (hasScores || hasSeriesRecord)
 
   function handleClick() {
     if (onTap) return onTap(matchup)
@@ -54,6 +55,9 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         ) : (
           matchup.status === 'completed' && matchup.winner === 'top' && <span className="text-correct shrink-0">W</span>
         )}
+        {hasSeriesRecord && matchup.winner === 'top' && (
+          <span className="text-[9px] text-text-muted shrink-0">{matchup.series_wins_top}-{matchup.series_wins_bottom}</span>
+        )}
       </div>
       <div className={`flex items-center gap-1 ${size === 'xl' ? 'px-3 py-3' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'} ${teamClass(matchup.team_bottom, false)}`}>
         {matchup.seed_bottom != null && (
@@ -65,12 +69,19 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         ) : (
           matchup.status === 'completed' && matchup.winner === 'bottom' && <span className="text-correct shrink-0">W</span>
         )}
+        {hasSeriesRecord && matchup.winner === 'bottom' && (
+          <span className="text-[9px] text-text-muted shrink-0">{matchup.series_wins_bottom}-{matchup.series_wins_top}</span>
+        )}
       </div>
       {showScore && (
         <div className="border-t border-border bg-bg-card-hover px-2 py-1 flex items-center justify-center gap-2 text-text-muted">
-          <span>{matchup.score_top} - {matchup.score_bottom}</span>
+          {hasSeriesRecord && <span className="font-semibold">{matchup.series_wins_top}-{matchup.series_wins_bottom}</span>}
+          {hasScores && <span>{matchup.score_top} - {matchup.score_bottom}</span>}
           {pickData?.is_correct && pickData.points_earned > 0 && (
             <span className="text-correct font-semibold">+{pickData.points_earned}</span>
+          )}
+          {isBestOf7 && pickData?.series_length && (
+            <span className="text-[10px]">predicted {pickData.series_length} games</span>
           )}
         </div>
       )}
@@ -78,14 +89,15 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   )
 }
 
-export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion }, ref) {
+export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat }, ref) {
+  const isBestOf7 = seriesFormat === 'best_of_7'
   const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
 
   // Build pick lookup by template_matchup_id
   const pickMap = useMemo(() => {
     const map = {}
     for (const p of picks || []) {
-      map[p.template_matchup_id] = { team: p.picked_team, eliminated: p.is_eliminated, points_earned: p.points_earned, is_correct: p.is_correct }
+      map[p.template_matchup_id] = { team: p.picked_team, eliminated: p.is_eliminated, points_earned: p.points_earned, is_correct: p.is_correct, series_length: p.series_length }
     }
     return map
   }, [picks])
@@ -230,14 +242,14 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
     return resolved
   }, [matchups, picks, pickMap, feederMap, teamSeedMap])
 
-  // Determine facing bracket layout (4+ regions, no specific region selected)
+  // Determine facing bracket layout (2+ regions, no specific region selected)
   const facingLayout = useMemo(() => {
-    if (selectedRegion || !regions || regions.length < 4) return null
+    if (selectedRegion || !regions || regions.length < 2) return null
 
-    // Use regions array order for left/right pairing
-    // First 2 regions go left, last 2 go right — admin controls order
-    const left = [regions[0], regions[1]]
-    const right = [regions[2], regions[3]]
+    // 2 regions: second region left, first region right (West left, East right for NBA)
+    // 4 regions: first 2 left, last 2 right (NCAA-style)
+    const left = regions.length === 2 ? [regions[1]] : [regions[0], regions[1]]
+    const right = regions.length === 2 ? [regions[0]] : [regions[2], regions[3]]
 
     // Determine which rounds have regional matchups vs cross-region
     const regionalRoundSet = new Set()
@@ -263,6 +275,18 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
 
     const ffRound = facingLayout.crossRounds.find((r) => (byRound[r]?.length || 0) === 2)
     const champRound = facingLayout.crossRounds.find((r) => (byRound[r]?.length || 0) === 1)
+
+    // 2-region brackets (NBA): no FF round, just championship in center
+    if (!ffRound && champRound) {
+      return {
+        ffLeft: null,
+        ffRight: null,
+        championship: byRound[champRound]?.[0] || null,
+        ffRound: null,
+        champRound,
+      }
+    }
+
     if (!ffRound) return null
 
     const ffMatchups = [...(byRound[ffRound] || [])].sort((a, b) => a.position - b.position)
@@ -293,11 +317,20 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
     return (byRound[r1] || []).filter((m) => facingLayout.left.includes(m.region)).length
   }, [facingLayout, byRound])
 
-  // Gap-aware grid helpers for facing layout (adds spacer row between the two regions)
-  const perRegionCount = halfR1Count / 2
-  const facingGridTemplate = `repeat(${perRegionCount}, minmax(60px, 1fr)) 20px repeat(${perRegionCount}, minmax(60px, 1fr))`
+  // Gap-aware grid helpers for facing layout
+  // 2 regions per side (NCAA): spacer row between the two regions
+  // 1 region per side (NBA): no spacer needed
+  const regionsPerSide = facingLayout ? facingLayout.left.length : 1
+  const perRegionCount = regionsPerSide > 1 ? halfR1Count / regionsPerSide : halfR1Count
+  const facingGridTemplate = regionsPerSide > 1
+    ? `repeat(${perRegionCount}, minmax(60px, 1fr)) 20px repeat(${perRegionCount}, minmax(60px, 1fr))`
+    : `repeat(${halfR1Count}, minmax(60px, 1fr))`
 
   function facingGridRow(idx, span) {
+    if (regionsPerSide <= 1) {
+      // No gap — simple grid row
+      return `${idx * span + 1} / span ${span}`
+    }
     const start = idx * span + 1
     return start > perRegionCount
       ? `${start + 1} / span ${span}`
@@ -376,6 +409,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         onTap={onMatchupTap}
         size={size}
         playInPickResults={playInPickResults}
+        isBestOf7={isBestOf7}
       />
     )
   }
@@ -604,19 +638,21 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         {useFacing ? (
           /* ── Facing bracket layout ── */
           <div className="relative flex min-w-max py-2">
-            <img
-              src="/ncaa-bracket-ball.png"
-              alt=""
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[calc(100%+3rem)] w-[500px] h-auto opacity-50 pointer-events-none z-0"
-            />
+            {!isBestOf7 && (
+              <img
+                src="/ncaa-bracket-ball.png"
+                alt=""
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[calc(100%+3rem)] w-[500px] h-auto opacity-50 pointer-events-none z-0"
+              />
+            )}
             <div className="relative z-10 flex min-w-max w-full">
               {renderBracketHalf(facingLayout.left, false, 'left')}
-              {renderCenterMatchup(centerMatchups.ffLeft, 'lg', centerMatchups.ffRound)}
+              {centerMatchups.ffLeft && renderCenterMatchup(centerMatchups.ffLeft, 'lg', centerMatchups.ffRound)}
               {centerMatchups.championship && renderCenterLine()}
               {centerMatchups.championship &&
                 renderCenterMatchup(centerMatchups.championship, 'xl', centerMatchups.champRound)}
               {centerMatchups.championship && renderCenterLine()}
-              {renderCenterMatchup(centerMatchups.ffRight, 'lg', centerMatchups.ffRound)}
+              {centerMatchups.ffRight && renderCenterMatchup(centerMatchups.ffRight, 'lg', centerMatchups.ffRound)}
               {renderBracketHalf(facingLayout.right, true, 'right')}
             </div>
           </div>
@@ -679,6 +715,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                               onTap={onMatchupTap}
                               size={cardSize}
                               playInPickResults={playInPickResults}
+                              isBestOf7={isBestOf7}
                             />
                           </div>
                         )
