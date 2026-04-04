@@ -130,8 +130,8 @@ export default function SurvivorView({ league }) {
           onClick={() => setShowPickForm(!showPickForm)}
           className={`w-full py-3 rounded-xl font-display transition-colors mb-4 relative z-10 ${
             board.user_has_picked
-              ? 'bg-bg-primary text-text-secondary hover:bg-bg-primary/80 border border-text-primary/20'
-              : 'bg-accent text-white hover:bg-accent-hover'
+              ? 'bg-bg-primary/50 backdrop-blur-sm text-text-secondary hover:bg-bg-primary/70 border border-accent'
+              : 'bg-accent/90 backdrop-blur-sm text-white hover:bg-accent border border-accent'
           }`}
         >
           {showPickForm
