@@ -459,7 +459,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
         <div className="rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Salary Cap</span>
-            <span className="text-xs text-text-primary font-semibold">{filledSlots}/9 slots</span>
+            <span className="text-xs text-text-primary font-semibold">{filledSlots}/${SLOTS.length} slots</span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className={`font-display text-2xl ${remainingSalary < 0 ? 'text-incorrect' : 'text-correct'}`}>
@@ -473,9 +473,9 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
               style={{ width: `${Math.min((usedSalary / salaryCap) * 100, 100)}%` }}
             />
           </div>
-          {(9 - filledSlots) > 0 && (
+          {(SLOTS.length - filledSlots) > 0 && (
             <div className="mt-2 text-xs text-text-muted text-right">
-              ${Math.round(remainingSalary / (9 - filledSlots)).toLocaleString()} avg per player
+              ${Math.round(remainingSalary / (SLOTS.length - filledSlots)).toLocaleString()} avg per player
             </div>
           )}
         </div>
@@ -555,7 +555,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
         ) : (
           <button
             onClick={handleSubmit}
-            disabled={filledSlots < 9 || remainingSalary < 0 || saveRoster.isPending}
+            disabled={filledSlots < SLOTS.length || remainingSalary < 0 || saveRoster.isPending}
             className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
           >
             {saveRoster.isPending ? 'Saving...' : hasSavedRoster ? 'Save Roster' : 'Submit Roster'}
