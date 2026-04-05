@@ -1,5 +1,7 @@
 import { segmentContent, displayUrl } from '../../lib/urlUtils'
 
+const IMAGE_EXT_REGEX = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i
+
 export default function RichContent({ text, className }) {
   const segments = segmentContent(text)
 
@@ -18,6 +20,15 @@ export default function RichContent({ text, className }) {
                 loading="lazy"
               />
             </div>
+          </div>
+        ) : seg.type === 'url' && IMAGE_EXT_REGEX.test(seg.value) ? (
+          <div key={i} className="mt-2 mb-1" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={seg.value}
+              alt=""
+              className="max-w-full rounded-lg"
+              loading="lazy"
+            />
           </div>
         ) : seg.type === 'url' ? (
           <a
