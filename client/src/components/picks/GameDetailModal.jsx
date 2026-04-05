@@ -1,7 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useGameIntel } from '../../hooks/useGames'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
 import LoadingSpinner from '../ui/LoadingSpinner'
+
+function TeamLogo({ team, sportKey }) {
+  const [err, setErr] = useState(false)
+  const url = getTeamLogoUrl(team, sportKey)
+  if (!url || err) return null
+  return <img src={url} alt="" className="w-12 h-12 object-contain mx-auto" onError={() => setErr(true)} />
+}
 
 export default function GameDetailModal({ gameId, onClose }) {
   const { data, isLoading } = useGameIntel(gameId)
@@ -42,13 +50,15 @@ export default function GameDetailModal({ gameId, onClose }) {
             {(data.homeRecord || data.awayRecord) && (
               <div className="flex items-center justify-between px-2">
                 <div className="text-center flex-1">
-                  <div className="font-display text-base">{game.away_team}</div>
+                  <TeamLogo team={game.away_team} sportKey={game.sports?.key} />
+                  <div className="font-display text-base mt-1">{game.away_team}</div>
                   <div className="text-sm font-bold text-text-primary">{data.awayRecord || '—'}</div>
                   {data.awayLast10 && <div className="text-[10px] text-text-muted">L10: {data.awayLast10}</div>}
                 </div>
                 <div className="text-xs text-text-muted font-semibold">@</div>
                 <div className="text-center flex-1">
-                  <div className="font-display text-base">{game.home_team}</div>
+                  <TeamLogo team={game.home_team} sportKey={game.sports?.key} />
+                  <div className="font-display text-base mt-1">{game.home_team}</div>
                   <div className="text-sm font-bold text-text-primary">{data.homeRecord || '—'}</div>
                   {data.homeLast10 && <div className="text-[10px] text-text-muted">L10: {data.homeLast10}</div>}
                 </div>
