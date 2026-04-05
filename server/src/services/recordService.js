@@ -134,13 +134,15 @@ async function calcLongestWinStreak(sportKey) {
     sportId = sport.id
   }
 
-  const { data: allPicks, error } = await supabase
-    .from('picks')
-    .select('id, user_id, is_correct, updated_at, games!inner(sport_id, starts_at)')
-    .eq('status', 'settled')
-    .not('is_correct', 'is', null)
+  const allPicks = await fetchAll(
+    supabase
+      .from('picks')
+      .select('id, user_id, is_correct, updated_at, games!inner(sport_id, starts_at)')
+      .eq('status', 'settled')
+      .not('is_correct', 'is', null)
+  )
 
-  if (error || !allPicks?.length) return null
+  if (!allPicks.length) return null
 
   // Filter by sport in JS (Supabase nested join filters are unreliable)
   const picks = sportId
@@ -202,14 +204,16 @@ async function calcLongestWinStreak(sportKey) {
 }
 
 async function calcLongestParlayStreak() {
-  const { data: parlays, error } = await supabase
-    .from('parlays')
-    .select('id, user_id, is_correct')
-    .eq('status', 'settled')
-    .not('is_correct', 'is', null)
-    .order('updated_at', { ascending: true })
+  const parlays = await fetchAll(
+    supabase
+      .from('parlays')
+      .select('id, user_id, is_correct')
+      .eq('status', 'settled')
+      .not('is_correct', 'is', null)
+      .order('updated_at', { ascending: true })
+  )
 
-  if (error || !parlays?.length) return null
+  if (!parlays.length) return null
 
   const userParlays = {}
   for (const p of parlays) {
@@ -493,13 +497,15 @@ async function calcFewestPicksToTier(tierMinPoints) {
 }
 
 async function calcBiggestDogLover() {
-  const { data: picks, error } = await supabase
-    .from('picks')
-    .select('user_id, odds_at_pick')
-    .eq('status', 'settled')
-    .not('odds_at_pick', 'is', null)
+  const picks = await fetchAll(
+    supabase
+      .from('picks')
+      .select('user_id, odds_at_pick')
+      .eq('status', 'settled')
+      .not('odds_at_pick', 'is', null)
+  )
 
-  if (error || !picks?.length) return null
+  if (!picks.length) return null
 
   const stats = {}
   for (const p of picks) {
