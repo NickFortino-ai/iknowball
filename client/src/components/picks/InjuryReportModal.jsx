@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useInjuryDetail } from '../../hooks/useInjuries'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
 import LoadingSpinner from '../ui/LoadingSpinner'
+
+function TeamLogo({ team, sportKey }) {
+  const [err, setErr] = useState(false)
+  const url = getTeamLogoUrl(team, sportKey)
+  if (!url || err) return null
+  return <img src={url} alt="" className="w-12 h-12 object-contain mx-auto mb-1" onError={() => setErr(true)} />
+}
 
 const STATUS_STYLES = {
   Out: 'text-incorrect',
@@ -213,7 +221,7 @@ export default function InjuryReportModal({ gameId, onClose }) {
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-6 max-h-[90vh] md:max-h-[85vh] overflow-y-auto"
+        className="relative bg-bg-primary/90 backdrop-blur-md border border-text-primary/20 w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-6 max-h-[90vh] md:max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -235,11 +243,13 @@ export default function InjuryReportModal({ gameId, onClose }) {
             {(data.homeRecord || data.awayRecord) && (
               <div className="flex items-center justify-between mb-4 px-2">
                 <div className="text-center flex-1">
+                  <TeamLogo team={data.away_team} sportKey={data.sportKey} />
                   <div className="text-sm font-bold text-text-primary">{data.awayRecord || '—'}</div>
                   {data.awayLast10 && <div className="text-[10px] text-text-muted">L10: {data.awayLast10}</div>}
                 </div>
                 <div className="text-xs text-text-muted font-semibold">vs</div>
                 <div className="text-center flex-1">
+                  <TeamLogo team={data.home_team} sportKey={data.sportKey} />
                   <div className="text-sm font-bold text-text-primary">{data.homeRecord || '—'}</div>
                   {data.homeLast10 && <div className="text-[10px] text-text-muted">L10: {data.homeLast10}</div>}
                 </div>

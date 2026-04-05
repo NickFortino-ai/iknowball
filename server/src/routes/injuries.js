@@ -149,6 +149,7 @@ router.get('/:game_id', requireAuth, async (req, res) => {
   res.json({
     home_team: game.home_team,
     away_team: game.away_team,
+    sportKey: game.sports.key,
     home: homeData ? { starters: homeData.starters || [], injuries: homeData.injuries || [] } : empty,
     away: awayData ? { starters: awayData.starters || [], injuries: awayData.injuries || [] } : empty,
     homeRecord,
