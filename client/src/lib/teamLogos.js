@@ -44,10 +44,34 @@ const MLB_ABBRS = {
   'Washington Nationals': 'wsh',
 }
 
+const NFL_ABBRS = {
+  'Arizona Cardinals': 'ari', 'Atlanta Falcons': 'atl', 'Baltimore Ravens': 'bal',
+  'Buffalo Bills': 'buf', 'Carolina Panthers': 'car', 'Chicago Bears': 'chi',
+  'Cincinnati Bengals': 'cin', 'Cleveland Browns': 'cle', 'Dallas Cowboys': 'dal',
+  'Denver Broncos': 'den', 'Detroit Lions': 'det', 'Green Bay Packers': 'gb',
+  'Houston Texans': 'hou', 'Indianapolis Colts': 'ind', 'Jacksonville Jaguars': 'jax',
+  'Kansas City Chiefs': 'kc', 'Las Vegas Raiders': 'lv', 'Los Angeles Chargers': 'lac',
+  'Los Angeles Rams': 'lar', 'Miami Dolphins': 'mia', 'Minnesota Vikings': 'min',
+  'New England Patriots': 'ne', 'New Orleans Saints': 'no', 'New York Giants': 'nyg',
+  'New York Jets': 'nyj', 'Philadelphia Eagles': 'phi', 'Pittsburgh Steelers': 'pit',
+  'San Francisco 49ers': 'sf', 'Seattle Seahawks': 'sea', 'Tampa Bay Buccaneers': 'tb',
+  'Tennessee Titans': 'ten', 'Washington Commanders': 'wsh',
+}
+
+const WNBA_ABBRS = {
+  'Atlanta Dream': 'atl', 'Chicago Sky': 'chi', 'Connecticut Sun': 'conn',
+  'Dallas Wings': 'dal', 'Golden State Valkyries': 'gs', 'Indiana Fever': 'ind',
+  'Las Vegas Aces': 'lv', 'Los Angeles Sparks': 'la', 'Minnesota Lynx': 'min',
+  'New York Liberty': 'ny', 'Phoenix Mercury': 'phx', 'Seattle Storm': 'sea',
+  'Washington Mystics': 'wsh',
+}
+
 const SPORT_MAP = {
   icehockey_nhl: { abbrs: NHL_ABBRS, sport: 'nhl' },
   basketball_nba: { abbrs: NBA_ABBRS, sport: 'nba' },
   baseball_mlb: { abbrs: MLB_ABBRS, sport: 'mlb' },
+  americanfootball_nfl: { abbrs: NFL_ABBRS, sport: 'nfl' },
+  basketball_wnba: { abbrs: WNBA_ABBRS, sport: 'wnba' },
 }
 
 export function getTeamLogoUrl(teamName, sportKey) {
