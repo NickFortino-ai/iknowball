@@ -114,10 +114,10 @@ export async function scoreCompletedGame(gameId, winner, sportId) {
 
             let streakEventId
             if (existingEvent && existingEvent.streak_length === streak - 1) {
-              // Streak grew by 1 — update the existing event in place
+              // Streak grew by 1 — update the existing event in place (timestamp too so it rises in feed)
               await supabase
                 .from('streak_events')
-                .update({ streak_length: streak })
+                .update({ streak_length: streak, created_at: new Date().toISOString() })
                 .eq('id', existingEvent.id)
               streakEventId = existingEvent.id
             } else if (!existingEvent || existingEvent.streak_length < streak - 1) {
