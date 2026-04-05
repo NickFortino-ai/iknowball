@@ -346,7 +346,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
         <div>
           {/* User bracket selector (after lock) */}
           {isLocked && entries?.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-4 relative z-10">
               <div className="flex gap-1 overflow-x-auto pb-1">
                 <button
                   onClick={() => setViewingUserId(null)}
