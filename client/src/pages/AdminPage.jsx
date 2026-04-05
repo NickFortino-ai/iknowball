@@ -35,6 +35,8 @@ export default function AdminPage() {
   const [targetUsers, setTargetUsers] = useState([])
   const [userSearch, setUserSearch] = useState('')
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  const [scheduleMode, setScheduleMode] = useState(false)
+  const [scheduledAt, setScheduledAt] = useState('')
 
   const { data: userSearchResults } = useSearchUsers(userSearch)
   const sportKey = sportTabs[activeSport].key
@@ -101,42 +103,55 @@ export default function AdminPage() {
   }
 
   async function handleSendEmail() {
+    const scheduled_at = scheduleMode && scheduledAt ? new Date(scheduledAt).toISOString() : undefined
+    const scheduleLabel = scheduled_at ? `\n\nScheduled for: ${new Date(scheduledAt).toLocaleString()}` : ''
+
     if (emailMode === 'template') {
       const selectedTemplate = emailTemplates?.find((t) => t.id === selectedTemplateId)
       if (!selectedTemplateId || !selectedTemplate) return toast('Select a template', 'error')
       const userCount = templateUserCount?.count || 0
-      if (!confirm(`Send this email to all ${userCount} user(s) in leagues using "${selectedTemplate.name}"?\n\nSubject: ${emailSubject}`)) return
+      if (!confirm(`${scheduled_at ? 'Schedule' : 'Send'} this email to all ${userCount} user(s) in leagues using "${selectedTemplate.name}"?\n\nSubject: ${emailSubject}${scheduleLabel}`)) return
       try {
-        const result = await sendTemplateBracketEmail.mutateAsync({ subject: emailSubject, body: emailBody, templateId: selectedTemplateId })
-        toast(`Email sent to ${result.sent} user(s)${result.failed ? ` (${result.failed} failed)` : ''}`, result.sent > 0 ? 'success' : 'error')
+        const result = await sendTemplateBracketEmail.mutateAsync({ subject: emailSubject, body: emailBody, templateId: selectedTemplateId, scheduled_at })
+        toast(result.scheduled ? `Email scheduled for ${new Date(scheduledAt).toLocaleString()}` : `Email sent to ${result.sent} user(s)${result.failed ? ` (${result.failed} failed)` : ''}`, 'success')
         setEmailSubject('')
         setEmailBody('')
+        setScheduleMode(false)
+        setScheduledAt('')
       } catch (err) {
         toast(err.message || 'Template email failed', 'error')
       }
     } else if (emailMode === 'targeted') {
       const usernames = targetUsers.map((u) => u.username)
       if (!usernames.length) return toast('Select at least one user', 'error')
-      if (!confirm(`Send this email to ${usernames.length} user(s)?\n\n${usernames.join(', ')}\n\nSubject: ${emailSubject}`)) return
+      if (!confirm(`${scheduled_at ? 'Schedule' : 'Send'} this email to ${usernames.length} user(s)?\n\n${usernames.join(', ')}\n\nSubject: ${emailSubject}${scheduleLabel}`)) return
       try {
-        const result = await sendTargetedEmail.mutateAsync({ subject: emailSubject, body: emailBody, usernames })
-        let msg = `Email sent to ${result.sent} user(s)`
-        if (result.failed) msg += ` (${result.failed} failed)`
-        if (result.notFound?.length) msg += `. Not found: ${result.notFound.join(', ')}`
-        toast(msg, result.sent > 0 ? 'success' : 'error')
+        const result = await sendTargetedEmail.mutateAsync({ subject: emailSubject, body: emailBody, usernames, scheduled_at })
+        if (result.scheduled) {
+          toast(`Email scheduled for ${new Date(scheduledAt).toLocaleString()}`, 'success')
+        } else {
+          let msg = `Email sent to ${result.sent} user(s)`
+          if (result.failed) msg += ` (${result.failed} failed)`
+          if (result.notFound?.length) msg += `. Not found: ${result.notFound.join(', ')}`
+          toast(msg, result.sent > 0 ? 'success' : 'error')
+        }
         setEmailSubject('')
         setEmailBody('')
         setTargetUsers([])
+        setScheduleMode(false)
+        setScheduledAt('')
       } catch (err) {
         toast(err.message || 'Targeted email failed', 'error')
       }
     } else {
-      if (!confirm(`Send this email to ALL users?\n\nSubject: ${emailSubject}`)) return
+      if (!confirm(`${scheduled_at ? 'Schedule' : 'Send'} this email to ALL users?\n\nSubject: ${emailSubject}${scheduleLabel}`)) return
       try {
-        const result = await sendEmailBlast.mutateAsync({ subject: emailSubject, body: emailBody })
-        toast(`Email sent to ${result.sent} users${result.failed ? ` (${result.failed} failed)` : ''}`, 'success')
+        const result = await sendEmailBlast.mutateAsync({ subject: emailSubject, body: emailBody, scheduled_at })
+        toast(result.scheduled ? `Email scheduled for ${new Date(scheduledAt).toLocaleString()}` : `Email sent to ${result.sent} users${result.failed ? ` (${result.failed} failed)` : ''}`, 'success')
         setEmailSubject('')
         setEmailBody('')
+        setScheduleMode(false)
+        setScheduledAt('')
       } catch (err) {
         toast(err.message || 'Email blast failed', 'error')
       }
@@ -368,6 +383,29 @@ export default function AdminPage() {
                 className="w-full bg-bg-primary border border-border rounded-lg px-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent resize-y"
               />
             </div>
+            {/* Schedule toggle */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setScheduleMode(!scheduleMode)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                  scheduleMode ? 'bg-bg-primary/50 border-accent text-accent' : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary'
+                }`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Schedule Send
+              </button>
+              {scheduleMode && (
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+                />
+              )}
+            </div>
             <button
               onClick={handleSendEmail}
               disabled={
@@ -375,16 +413,19 @@ export default function AdminPage() {
                 || !emailSubject.trim() || !emailBody.trim()
                 || (emailMode === 'targeted' && !targetUsers.length)
                 || (emailMode === 'template' && !selectedTemplateId)
+                || (scheduleMode && !scheduledAt)
               }
               className="bg-accent hover:bg-accent/90 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
             >
               {(sendEmailBlast.isPending || sendTargetedEmail.isPending || sendTemplateBracketEmail.isPending)
                 ? 'Sending...'
-                : emailMode === 'template'
-                  ? `Send to ${emailTemplates?.find((t) => t.id === selectedTemplateId)?.name || 'Template'} Users`
-                  : emailMode === 'targeted'
-                    ? 'Send to Selected Users'
-                    : 'Send to All Users'}
+                : scheduleMode
+                  ? 'Schedule Email'
+                  : emailMode === 'template'
+                    ? `Send to ${emailTemplates?.find((t) => t.id === selectedTemplateId)?.name || 'Template'} Users`
+                    : emailMode === 'targeted'
+                      ? 'Send to Selected Users'
+                      : 'Send to All Users'}
             </button>
           </div>
         </div>
@@ -403,13 +444,20 @@ export default function AdminPage() {
                         {new Date(log.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </div>
                     </div>
-                    <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded ${
-                      log.type === 'blast' ? 'bg-accent/10 text-accent'
-                        : log.type === 'template_blast' ? 'bg-purple-500/10 text-purple-400'
-                        : 'bg-blue-500/10 text-blue-400'
-                    }`}>
-                      {log.type === 'blast' ? 'All Users' : log.type === 'template_blast' ? 'Template' : 'Targeted'}
-                    </span>
+                    <div className="flex gap-1.5 shrink-0">
+                      {log.email_status === 'scheduled' && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                          Scheduled {log.scheduled_at ? new Date(log.scheduled_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}
+                        </span>
+                      )}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+                        log.type === 'blast' ? 'bg-accent/10 text-accent'
+                          : log.type === 'template_blast' ? 'bg-purple-500/10 text-purple-400'
+                          : 'bg-blue-500/10 text-blue-400'
+                      }`}>
+                        {log.type === 'blast' ? 'All Users' : log.type === 'template_blast' ? 'Template' : 'Targeted'}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex gap-4 text-xs mb-2">
                     <span className="text-correct">{log.sent} sent</span>

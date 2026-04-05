@@ -149,27 +149,56 @@ router.post('/recalculate-records', async (req, res) => {
 })
 
 router.post('/email-blast', async (req, res) => {
-  const { subject, body } = req.body
+  const { subject, body, scheduled_at } = req.body
   if (!subject || !body) {
     return res.status(400).json({ error: 'subject and body are required' })
+  }
+  if (scheduled_at) {
+    await supabase.from('email_logs').insert({
+      type: 'blast', subject, body,
+      scheduled_at: new Date(scheduled_at).toISOString(),
+      email_status: 'scheduled',
+      total: 0, sent: 0, failed: 0,
+    })
+    return res.json({ scheduled: true, scheduled_at })
   }
   const result = await sendEmailBlast(subject, body)
   res.json(result)
 })
 
 router.post('/email-targeted', async (req, res) => {
-  const { subject, body, usernames } = req.body
+  const { subject, body, usernames, scheduled_at } = req.body
   if (!subject || !body || !usernames?.length) {
     return res.status(400).json({ error: 'subject, body, and usernames are required' })
+  }
+  if (scheduled_at) {
+    await supabase.from('email_logs').insert({
+      type: 'targeted', subject, body,
+      recipients_requested: usernames,
+      scheduled_at: new Date(scheduled_at).toISOString(),
+      email_status: 'scheduled',
+      total: usernames.length, sent: 0, failed: 0,
+    })
+    return res.json({ scheduled: true, scheduled_at })
   }
   const result = await sendTargetedEmail(subject, body, usernames)
   res.json(result)
 })
 
 router.post('/email-template-blast', async (req, res) => {
-  const { subject, body, templateId } = req.body
+  const { subject, body, templateId, scheduled_at } = req.body
   if (!subject || !body || !templateId) {
     return res.status(400).json({ error: 'subject, body, and templateId are required' })
+  }
+  if (scheduled_at) {
+    await supabase.from('email_logs').insert({
+      type: 'template_blast', subject, body,
+      recipients_requested: [templateId],
+      scheduled_at: new Date(scheduled_at).toISOString(),
+      email_status: 'scheduled',
+      total: 0, sent: 0, failed: 0,
+    })
+    return res.json({ scheduled: true, scheduled_at })
   }
   const result = await sendTemplateBracketEmail(subject, body, templateId)
   res.json(result)

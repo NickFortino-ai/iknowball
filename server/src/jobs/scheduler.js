@@ -21,6 +21,7 @@ import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
 import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
+import { sendScheduledEmails } from './sendScheduledEmails.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -70,6 +71,12 @@ export function startScheduler() {
     })
     logger.info('Recap notifications scheduled: every 5 minutes (sends when visible_after passes)')
   }
+
+  // Send scheduled emails every minute
+  cron.schedule('* * * * *', async () => {
+    try { await sendScheduledEmails() } catch (err) { logger.error({ err }, 'Scheduled email job failed') }
+  })
+  logger.info('Scheduled email sender: every minute')
 
   if (env.ENABLE_RECORD_CALC) {
     // Snapshot crown holders daily at 3:50 AM EST

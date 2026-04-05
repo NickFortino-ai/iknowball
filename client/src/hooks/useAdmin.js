@@ -133,7 +133,7 @@ export function useRecalculateRecords() {
 export function useSendEmailBlast() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ subject, body }) => api.post('/admin/email-blast', { subject, body }),
+    mutationFn: ({ subject, body, scheduled_at }) => api.post('/admin/email-blast', { subject, body, scheduled_at }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'email-logs'] }),
   })
 }
@@ -141,7 +141,7 @@ export function useSendEmailBlast() {
 export function useSendTargetedEmail() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ subject, body, usernames }) => api.post('/admin/email-targeted', { subject, body, usernames }),
+    mutationFn: ({ subject, body, usernames, scheduled_at }) => api.post('/admin/email-targeted', { subject, body, usernames, scheduled_at }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'email-logs'] }),
   })
 }
@@ -323,8 +323,8 @@ export function useSetChampionshipScore() {
 export function useSendTemplateBracketEmail() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ subject, body, templateId }) =>
-      api.post('/admin/email-template-blast', { subject, body, templateId }),
+    mutationFn: ({ subject, body, templateId, scheduled_at }) =>
+      api.post('/admin/email-template-blast', { subject, body, templateId, scheduled_at }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'email-logs'] }),
   })
 }
