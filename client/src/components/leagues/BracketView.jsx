@@ -325,10 +325,10 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                 <button
                   key={t}
                   onClick={() => onTabSelect?.(i)}
-                  className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors border backdrop-blur-sm ${
                     activeTabIndex === i
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-card/60 backdrop-blur-sm text-text-secondary hover:bg-bg-card-hover/60'
+                      ? 'bg-bg-primary/50 border-accent text-accent'
+                      : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
                   }`}
                 >
                   {t}
