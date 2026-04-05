@@ -1,5 +1,3 @@
-import TierBadge from '../ui/TierBadge'
-import { getTier } from '../../lib/scoring'
 import EmptyState from '../ui/EmptyState'
 import Avatar from '../ui/Avatar'
 
@@ -37,7 +35,6 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
               <span className="px-4 py-3 text-accent font-semibold w-10">{i + 1}</span>
               <div className="px-4 py-3 flex-1 min-w-0 flex items-center gap-3">
                 <Avatar user={e.users} size="lg" />
-                <TierBadge tier={getTier(e.users?.total_points || 0).name} size="xs" />
                 <span className="font-semibold truncate">
                   {e.users?.display_name || e.users?.username}
                 </span>

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import TierBadge from '../ui/TierBadge'
 import { getTier } from '../../lib/scoring'
 import EmptyState from '../ui/EmptyState'
 import GameCard from '../picks/GameCard'
@@ -90,7 +89,6 @@ function StandingsTable({ standings, leagueId }) {
             <div className="flex items-center">
               <span className="px-4 py-3 text-text-muted font-semibold w-10">{s.rank}</span>
               <div className="px-4 py-3 flex-1 min-w-0 flex items-center gap-2">
-                <TierBadge tier={getTier(s.user?.total_points || 0).name} size="xs" />
                 <span className="font-semibold truncate">
                   {s.user?.display_name || s.user?.username}
                 </span>
