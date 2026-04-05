@@ -16,7 +16,22 @@ function toScope(crownKey) {
 export async function snapshotCrowns() {
   logger.info('Starting daily crown snapshot')
 
-  const holders = await getAllCrownHolders()
+  let holders
+  try {
+    holders = await getAllCrownHolders()
+  } catch (err) {
+    logger.error({ err }, 'getAllCrownHolders failed — falling back to global only')
+    // Fallback: just snapshot the global crown from users table directly
+    const { data: topUser } = await supabase
+      .from('users')
+      .select('id')
+      .order('total_points', { ascending: false })
+      .limit(1)
+      .single()
+    if (topUser) {
+      holders = { 'I KNOW BALL': { id: topUser.id } }
+    }
+  }
 
   if (!holders || Object.keys(holders).length === 0) {
     logger.info('No crown holders found, skipping snapshot')
