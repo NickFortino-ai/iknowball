@@ -605,36 +605,15 @@ export default function AdminPage() {
                   ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
                   : prop.player_name
                 return (
-                <div key={prop.id} className="flex items-center gap-2 py-2 first:pt-0 ml-0 sm:ml-20 border-t border-white/10 first:border-t-0">
+                <div key={prop.id} className="flex items-center gap-2 py-1.5 first:pt-0 ml-0 sm:ml-20 border-t border-white/10 first:border-t-0">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
+                    <span className="text-sm font-medium truncate">
                       {shortName} — {prop.market_label} ({prop.line})
-                    </div>
-                    <div className="text-xs text-text-muted truncate">
+                    </span>
+                    <span className="text-xs text-text-muted ml-2">
                       {prop.games?.away_team} @ {prop.games?.home_team}
-                    </div>
+                    </span>
                   </div>
-                  {(prop.status === 'published' || prop.status === 'locked') && (
-                    <div className="flex gap-1">
-                      {['over', 'under', 'push'].map((outcome) => (
-                        <button
-                          key={outcome}
-                          onClick={() => handleSettle(prop.id, outcome)}
-                          disabled={settleProps.isPending}
-                          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors disabled:opacity-50 ${
-                            outcome === 'over'
-                              ? 'bg-correct/20 text-correct hover:bg-correct/30'
-                              : outcome === 'under'
-                                ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
-                                : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
-                          }`}
-                        >
-                          <span className="hidden sm:inline">{outcome.charAt(0).toUpperCase() + outcome.slice(1)}</span>
-                          <span className="sm:hidden">{outcome[0].toUpperCase()}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                   {prop.outcome && (
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                       prop.outcome === 'over' ? 'bg-correct/20 text-correct'
@@ -645,18 +624,10 @@ export default function AdminPage() {
                     </span>
                   )}
                   {prop.status === 'voided' && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-text-muted/20 text-text-muted">
-                      VOIDED
-                    </span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-text-muted/20 text-text-muted">VOIDED</span>
                   )}
-                  {prop.status !== 'voided' && (
-                    <button
-                      onClick={() => handleVoid(prop.id)}
-                      disabled={voidProp.isPending}
-                      className="text-xs text-incorrect hover:underline shrink-0"
-                    >
-                      Void
-                    </button>
+                  {(prop.status === 'published' || prop.status === 'locked') && !prop.outcome && (
+                    <span className="text-xs text-text-muted">Pending</span>
                   )}
                 </div>
                 )
@@ -686,36 +657,15 @@ export default function AdminPage() {
                     ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
                     : prop.player_name
                   return (
-                    <div key={prop.id} className="flex items-center gap-2 py-2 first:pt-0 ml-0 sm:ml-20 border-t border-white/10 first:border-t-0">
+                    <div key={prop.id} className="flex items-center gap-2 py-1.5 first:pt-0 ml-0 sm:ml-20 border-t border-white/10 first:border-t-0">
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">
+                        <span className="text-sm font-medium truncate">
                           {shortName} — {prop.market_label} ({prop.line})
-                        </div>
-                        <div className="text-xs text-text-muted truncate">
+                        </span>
+                        <span className="text-xs text-text-muted ml-2">
                           {prop.games?.away_team} @ {prop.games?.home_team}
-                        </div>
+                        </span>
                       </div>
-                      {(prop.status === 'published' || prop.status === 'locked') && (
-                        <div className="flex gap-1">
-                          {['over', 'under', 'push'].map((outcome) => (
-                            <button
-                              key={outcome}
-                              onClick={() => handleSettle(prop.id, outcome)}
-                              disabled={settleProps.isPending}
-                              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors disabled:opacity-50 ${
-                                outcome === 'over'
-                                  ? 'bg-correct/20 text-correct hover:bg-correct/30'
-                                  : outcome === 'under'
-                                    ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
-                                    : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
-                              }`}
-                            >
-                              <span className="hidden sm:inline">{outcome.charAt(0).toUpperCase() + outcome.slice(1)}</span>
-                          <span className="sm:hidden">{outcome[0].toUpperCase()}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
                       {prop.outcome && (
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                           prop.outcome === 'over' ? 'bg-correct/20 text-correct'
@@ -724,6 +674,9 @@ export default function AdminPage() {
                         }`}>
                           {prop.outcome.toUpperCase()}
                         </span>
+                      )}
+                      {(prop.status === 'published' || prop.status === 'locked') && !prop.outcome && (
+                        <span className="text-xs text-text-muted">Pending</span>
                       )}
                     </div>
                   )
