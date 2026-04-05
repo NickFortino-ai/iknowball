@@ -235,7 +235,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
     ? myEntry?.picks
     : viewedEntry?.picks || null
 
-  const showCourtBg = league.sport === 'basketball_ncaab' || league.sport === 'basketball_wncaab'
+  const showCourtBg = !league.backdrop_image && (league.sport === 'basketball_ncaab' || league.sport === 'basketball_wncaab')
   const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
 
   return (

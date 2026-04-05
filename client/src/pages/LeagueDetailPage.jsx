@@ -883,7 +883,7 @@ export default function LeagueDetailPage() {
     new Date(bracketTournament.locks_at) <= new Date()
   const tabs = getLeagueTabs(league, isBracketLocked)
   const isCommissioner = league.commissioner_id === profile?.id
-  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format)
+  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy', 'bracket'].includes(league.format)
 
   function startBackdropDrag(e) {
     e.preventDefault()
