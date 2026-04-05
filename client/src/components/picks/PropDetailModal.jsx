@@ -26,12 +26,16 @@ export default function PropDetailModal({ propPickId, onClose }) {
   const game = prop?.games
   const sport = game?.sports
   const isSettled = pick?.status === 'settled'
+  const isLive = game?.status === 'in_progress'
+  const borderColor = isSettled
+    ? pick?.is_correct ? 'border-correct' : pick?.is_correct === false ? 'border-incorrect' : 'border-text-primary/20'
+    : isLive ? 'border-accent' : 'border-text-primary/20'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 max-h-[95vh] md:max-h-[85vh] overflow-y-auto"
+        className={`relative bg-bg-primary/90 backdrop-blur-md border ${borderColor} w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 max-h-[95vh] md:max-h-[85vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
         <button
