@@ -127,7 +127,8 @@ function groupByType(items) {
     if (unsettled && new Date(item.date) > now) {
       continue
     }
-    const key = unsettled ? 'live' : item.type
+    // Only show as "live" if the game is actually live, not just unsettled
+    const key = unsettled && item.game_status === 'live' ? 'live' : item.type
     if (!groups[key]) groups[key] = []
     groups[key].push(item)
   }
