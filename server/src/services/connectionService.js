@@ -721,10 +721,17 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   }
 
   // Process streak events — show streaks >= 5 (squad/highlights) or >= 10 (all)
-  // Streak events now update in-place as streaks grow, so no threshold matching needed
+  // Deduplicate: per user+sport, only show the highest streak (old data may have one row per win)
   const streakMin = isAll ? 10 : 5
+  const bestStreaks = {}
   for (const event of streakEvents.data || []) {
     if (event.streak_length < streakMin) continue
+    const key = `${event.user_id}|${event.sports?.name}`
+    if (!bestStreaks[key] || event.streak_length > bestStreaks[key].streak_length) {
+      bestStreaks[key] = event
+    }
+  }
+  for (const event of Object.values(bestStreaks)) {
     const user = userMap[event.user_id]
     if (!user) continue
     feed.push({
