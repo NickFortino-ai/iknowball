@@ -177,6 +177,11 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         return `This league runs through the playoffs${endCondition ? ` or ${endCondition}` : ''}.`
       }
       if (dateRange) {
+        // dateRange is "Starts Apr 5" (no end) or "Apr 5 – Apr 20" (range)
+        const isStartOnly = dateRange.startsWith('Starts')
+        if (isStartOnly) {
+          return `This league starts ${dateRange.replace('Starts ', '')}${endCondition ? ` and runs until ${endCondition}` : ''}.`
+        }
         return `This league runs ${dateRange}${endCondition ? ` or ${endCondition}` : ''}.`
       }
       return ''
