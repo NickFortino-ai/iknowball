@@ -912,7 +912,7 @@ export default function LeagueDetailPage() {
   }
 
   return (
-    <div className={`mx-auto px-4 py-6 relative ${['nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'fantasy', 'squares'].includes(league.format) ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'}`}>
+    <div className={`mx-auto px-4 py-6 relative ${['nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'fantasy', 'squares', 'bracket'].includes(league.format) ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'}`}>
       {/* Full hero backdrop — shows for leagues with a backdrop_image or fantasy/DFS formats */}
       {hasBackdrop && (
         <div
