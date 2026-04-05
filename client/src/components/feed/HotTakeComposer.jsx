@@ -67,9 +67,31 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
   const [inlineMatches, setInlineMatches] = useState([])
   const [inlineDropdownPos, setInlineDropdownPos] = useState(null)
 
+  // Extract image URLs from content, store separately, strip from visible text
+  const [imageUrlsFromText, setImageUrlsFromText] = useState([])
+
   function handleContentChange(e) {
-    const val = e.target.value
+    let val = e.target.value
     const cursorPos = e.target.selectionStart
+
+    // Detect image URLs, extract them, remove from text
+    const imgMatches = val.match(IMAGE_URL_REGEX)
+    if (imgMatches?.length) {
+      const newUrls = imgMatches.map((u) => u.startsWith('http') ? u : `https://${u}`)
+      setImageUrlsFromText((prev) => {
+        const existing = new Set(prev)
+        const merged = [...prev]
+        for (const u of newUrls) {
+          if (!existing.has(u)) merged.push(u)
+        }
+        return merged
+      })
+      // Remove the URL from the text content
+      for (const match of imgMatches) {
+        val = val.replace(match, '').trim()
+      }
+    }
+
     setContent(val)
 
     // Detect @mention at cursor position
@@ -176,8 +198,13 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
     const trimmedPollOptions = postType === 'poll' ? pollOptions.filter((o) => o.trim()).map((o) => o.trim()) : undefined
 
+    // Re-append image URLs to content so they render inline via RichContent
+    const finalContent = imageUrlsFromText.length
+      ? [content.trim(), ...imageUrlsFromText].filter(Boolean).join('\n')
+      : content.trim()
+
     createHotTake.mutate(
-      { content: content.trim(), team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined, post_type: postType, poll_options: trimmedPollOptions },
+      { content: finalContent, team_tags: teamTags.length ? teamTags : undefined, sport_key: selectedSport || undefined, image_url: imageUrl, image_urls: imageUrls, video_url: videoUrl, user_tags: userTags.length ? userTags.map((u) => u.id) : undefined, post_type: postType, poll_options: trimmedPollOptions },
       {
         onSuccess: () => {
           setContent('')
@@ -189,6 +216,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
           setSelectedSport(null)
           setTeamSearch('')
           setExpanded(false)
+          setImageUrlsFromText([])
           removeImage()
           removeVideo()
           queryClient.invalidateQueries({ queryKey: ['hotTakes', 'team'] })
@@ -215,6 +243,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     setMentionQuery('')
     setSelectedSport(null)
     setTeamSearch('')
+    setImageUrlsFromText([])
     removeImage()
     removeVideo()
   }
@@ -356,24 +385,27 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
             )}
           </div>
 
-          {/* Image URL preview (from pasted URLs in text) */}
-          {(() => {
-            const matches = content.match(IMAGE_URL_REGEX)
-            if (!matches?.length || previewUrls.length > 0) return null
-            return (
-              <div className="mt-2 space-y-2">
-                {matches.slice(0, 2).map((url, i) => (
+          {/* Image URL preview (from pasted URLs) */}
+          {imageUrlsFromText.length > 0 && previewUrls.length === 0 && (
+            <div className="mt-2 space-y-2">
+              {imageUrlsFromText.map((url, i) => (
+                <div key={i} className="relative inline-block">
                   <img
-                    key={i}
-                    src={url.startsWith('http') ? url : `https://${url}`}
+                    src={url}
                     alt="Preview"
                     className="max-w-full max-h-48 rounded-lg object-contain"
                     onError={(e) => { e.target.style.display = 'none' }}
                   />
-                ))}
-              </div>
-            )
-          })()}
+                  <button
+                    onClick={() => setImageUrlsFromText((prev) => prev.filter((_, j) => j !== i))}
+                    className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-black/90"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Image previews */}
           {previewUrls.length > 0 && (
