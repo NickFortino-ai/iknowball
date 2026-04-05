@@ -537,50 +537,40 @@ export default function AdminPage() {
           {!unsettledProps.length ? (
             <p className="text-sm text-text-muted">All featured props are settled.</p>
           ) : (
-            <div className="space-y-2">
-              {unsettledProps.map((prop) => {
-                const nameParts = prop.player_name?.split(' ') || []
-                const shortName = nameParts.length >= 2
-                  ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
-                  : prop.player_name
-                return (
-                  <div key={prop.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-bg-secondary/50 border border-border">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        {shortName} — {prop.market_label} ({prop.line})
-                      </div>
-                      <div className="text-xs text-text-muted truncate">
-                        {prop.games?.away_team} @ {prop.games?.home_team} · {new Date(prop.featured_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      {['over', 'under', 'push'].map((outcome) => (
-                        <button
-                          key={outcome}
-                          onClick={() => handleSettle(prop.id, outcome)}
-                          disabled={settleProps.isPending}
-                          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors disabled:opacity-50 ${
-                            outcome === 'over'
-                              ? 'bg-correct/20 text-correct hover:bg-correct/30'
-                              : outcome === 'under'
-                                ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
-                                : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
-                          }`}
-                        >
-                          {outcome.charAt(0).toUpperCase() + outcome.slice(1)}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => handleVoid(prop.id)}
-                        disabled={voidProp.isPending}
-                        className="text-xs text-text-muted hover:text-incorrect px-1"
-                      >
-                        Void
-                      </button>
-                    </div>
+            <div className="space-y-3">
+              {unsettledProps.map((prop) => (
+                <div key={prop.id} className="rounded-xl bg-bg-secondary/50 border border-border p-4">
+                  <div className="text-base font-semibold text-text-primary mb-1">
+                    {prop.player_name}
                   </div>
-                )
-              })}
+                  <div className="text-sm text-accent font-medium mb-2">
+                    {prop.market_label} — {prop.line}
+                  </div>
+                  <div className="text-xs text-text-muted mb-3">
+                    {prop.games?.away_team} @ {prop.games?.home_team} · {new Date(prop.featured_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {['over', 'under', 'push', 'void'].map((action) => (
+                      <button
+                        key={action}
+                        onClick={() => action === 'void' ? handleVoid(prop.id) : handleSettle(prop.id, action)}
+                        disabled={settleProps.isPending || voidProp.isPending}
+                        className={`py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 ${
+                          action === 'over'
+                            ? 'bg-correct/20 text-correct hover:bg-correct/30 border border-correct/30'
+                            : action === 'under'
+                              ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30 border border-incorrect/30'
+                              : action === 'push'
+                                ? 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30 border border-text-muted/30'
+                                : 'bg-bg-primary text-text-muted hover:text-incorrect border border-text-primary/20'
+                        }`}
+                      >
+                        {action.charAt(0).toUpperCase() + action.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
