@@ -35,7 +35,7 @@ function formatLiveStatus(game) {
   return parts.join(' · ')
 }
 
-export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle, onCardClick, isFirstCard, hasInjuryData, onInjuryClick, transparent }) {
+export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle, onCardClick, isFirstCard, hasInjuryData, onInjuryClick, transparent, sportKey }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
   const isLive = game.status === 'live'
@@ -106,6 +106,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             state={getButtonState('away')}
             disabled={isLocked || isSubmitting}
             onClick={(e) => handleClick('away', e)}
+            sportKey={sportKey}
           />
           {isFinal && (
             <div className="text-center text-xs text-text-muted mt-1">
@@ -127,6 +128,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             state={getButtonState('home')}
             disabled={isLocked || isSubmitting}
             onClick={(e) => handleClick('home', e)}
+            sportKey={sportKey}
           />
           {isFinal && (
             <div className="text-center text-xs text-text-muted mt-1">

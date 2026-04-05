@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import OddsDisplay from './OddsDisplay'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
 
 const stateStyles = {
   default: 'bg-bg-primary hover:bg-bg-card-hover border-border hover:border-border-hover',
@@ -9,9 +11,17 @@ const stateStyles = {
   incorrect: 'bg-bg-primary border-incorrect',
 }
 
-export default function PickButton({ team, odds, score, isLive, state = 'default', onClick, disabled }) {
+function PickLogo({ team, sportKey }) {
+  const [err, setErr] = useState(false)
+  const url = getTeamLogoUrl(team, sportKey)
+  if (!url || err) return null
+  return <img src={url} alt="" className="w-10 h-10 object-contain mx-auto my-1.5" onError={() => setErr(true)} />
+}
+
+export default function PickButton({ team, odds, score, isLive, state = 'default', onClick, disabled, sportKey }) {
   const style = stateStyles[state] || stateStyles.default
   const hasResult = score != null
+  const hasLogo = !!getTeamLogoUrl(team, sportKey)
 
   // When showing scores (live/final), use dark background for all states
   const bgOverride = hasResult && state === 'default' ? 'bg-bg-primary border-border' : ''
@@ -22,7 +32,7 @@ export default function PickButton({ team, odds, score, isLive, state = 'default
       disabled={disabled || state === 'locked' || state === 'locked-picked' || state === 'correct' || state === 'incorrect'}
       className={`w-full min-w-0 p-4 rounded-xl border transition-all ${bgOverride || style} ${disabled && !hasResult ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
-      <div className={`font-semibold text-xs sm:text-sm mb-1 truncate ${
+      <div className={`font-semibold text-xs sm:text-sm truncate ${hasLogo ? 'mb-0' : 'mb-1'} ${
         state === 'correct' ? 'text-correct'
         : state === 'incorrect' ? 'text-incorrect'
         : hasResult ? 'text-white'
@@ -30,15 +40,16 @@ export default function PickButton({ team, odds, score, isLive, state = 'default
       }`}>
         {team}
       </div>
+      <PickLogo team={team} sportKey={sportKey} />
       {score != null ? (
-        <div className={`text-lg font-display ${
+        <div className={`${hasLogo ? 'text-base' : 'text-lg'} font-display ${
           isLive && (state === 'locked-picked') ? 'text-accent'
           : state === 'correct' ? 'text-correct'
           : state === 'incorrect' ? 'text-incorrect'
           : 'text-white'
         }`}>{score}</div>
       ) : (
-        <OddsDisplay odds={odds} isSelected={state === 'selected'} />
+        <OddsDisplay odds={odds} isSelected={state === 'selected'} small={hasLogo} />
       )}
     </button>
   )

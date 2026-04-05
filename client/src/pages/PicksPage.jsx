@@ -354,6 +354,7 @@ export default function PicksPage() {
                   hasInjuryData={INTEL_SPORTS.has(sportKey)}
                   onInjuryClick={() => setInjuryGameId(game.id)}
                   onCardClick={GAME_INTEL_SPORTS.has(sportKey) ? () => setDetailGameId(game.id) : undefined}
+                  sportKey={sportKey}
                 />
               ))}
             </div>

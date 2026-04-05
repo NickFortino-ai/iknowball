@@ -347,6 +347,7 @@ function LeaguePicksView({ league, standings }) {
               isSubmitting={submitPick.isPending || deletePick.isPending}
               hasInjuryData={INTEL_SPORTS.has(game.sports?.key)}
               onInjuryClick={() => setInjuryGameId(game.id)}
+              sportKey={game.sports?.key}
               transparent
             />
           ))}
