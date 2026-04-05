@@ -33,8 +33,8 @@ export default function NewsFeed({ compact }) {
           <button
             key={tab.key}
             onClick={() => setSport(tab.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              sport === tab.key ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+              sport === tab.key ? 'bg-bg-primary/50 border-accent text-accent' : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
             }`}
           >
             {tab.label}

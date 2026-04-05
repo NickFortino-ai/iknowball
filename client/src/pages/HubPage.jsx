@@ -472,20 +472,20 @@ export default function HubPage() {
           <h2 className="text-xs text-text-muted uppercase tracking-wider flex-shrink-0">Feed</h2>
           <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar">
             {[
+              { key: 'all', label: 'All of IKB' },
               { key: 'squad', label: 'My Squad' },
               { key: 'highlights', label: 'Me' },
-              { key: 'all', label: 'All of IKB' },
+              { key: 'news', label: 'News', mobileOnly: true },
               { key: 'user_feeds', label: 'User Feeds' },
               { key: 'polls', label: 'Polls' },
               { key: 'predictions', label: 'Predictions' },
               { key: 'receipts', label: 'Receipts' },
-              { key: 'news', label: 'News', mobileOnly: true },
             ].filter((tab) => !tab.mobileOnly || !window.matchMedia('(min-width: 1024px)').matches).map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => handleScopeToggle(tab.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${
-                  feedScope === tab.key ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap flex-shrink-0 border ${
+                  feedScope === tab.key ? 'bg-bg-primary/50 border-accent text-accent' : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
                 }`}
               >
                 {tab.label}
