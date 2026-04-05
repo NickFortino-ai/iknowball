@@ -194,7 +194,7 @@ export default function HubPage() {
   // Default to 'all' feed when user has no connections (but don't override query param tab)
   useEffect(() => {
     if (!connectionsLoading && !hasManuallyToggled.current) {
-      setFeedScope(connections?.length ? 'squad' : 'all')
+      setFeedScope('all')
     }
   }, [connections, connectionsLoading])
 
