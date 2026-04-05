@@ -416,7 +416,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
   }
 
   return (
-    <div className="bg-bg-card rounded-xl border border-border p-4 mb-6">
+    <div className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-6">
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex items-center justify-between w-full"
