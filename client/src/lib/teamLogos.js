@@ -27,7 +27,7 @@ const NBA_ABBRS = {
   'New York Knicks': 'ny', 'Oklahoma City Thunder': 'okc', 'Orlando Magic': 'orl',
   'Philadelphia 76ers': 'phi', 'Phoenix Suns': 'phx', 'Portland Trail Blazers': 'por',
   'Sacramento Kings': 'sac', 'San Antonio Spurs': 'sa', 'Toronto Raptors': 'tor',
-  'Utah Jazz': 'uta', 'Washington Wizards': 'wsh',
+  'Utah Jazz': 'utah', 'Washington Wizards': 'wsh',
 }
 
 const MLB_ABBRS = {
