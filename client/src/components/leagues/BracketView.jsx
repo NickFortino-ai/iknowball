@@ -239,7 +239,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
   const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
 
   return (
-    <div>
+    <div className="relative z-10">
       {/* Hero area with optional court background for March Madness */}
       <div className={`relative rounded-xl mb-4 overflow-hidden ${showCourtBg ? '' : ''}`}>
         {showCourtBg && (
