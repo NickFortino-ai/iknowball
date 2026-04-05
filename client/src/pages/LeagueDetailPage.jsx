@@ -464,7 +464,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               }}
               disabled={updateLeague.isPending}
               className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                league.duration === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                league.duration === opt.value ? 'bg-accent text-white border border-accent' : 'bg-bg-primary text-text-secondary border border-text-primary/20'
               }`}
             >
               {opt.label}
@@ -520,7 +520,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
                     onClick={() => save({ pick_frequency: opt.value })}
                     disabled={updateLeague.isPending || hasLockedPicks}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                      (settings.pick_frequency || 'weekly') === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                      (settings.pick_frequency || 'weekly') === opt.value ? 'bg-accent text-white border border-accent' : 'bg-bg-primary text-text-secondary border border-text-primary/20'
                     } ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {opt.label}
@@ -561,7 +561,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
                   onClick={() => save({ lock_odds_at: opt.value })}
                   disabled={updateLeague.isPending}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    (settings.lock_odds_at || 'game_start') === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                    (settings.lock_odds_at || 'game_start') === opt.value ? 'bg-accent text-white border border-accent' : 'bg-bg-primary text-text-secondary border border-text-primary/20'
                   }`}
                 >
                   {opt.label}
@@ -586,7 +586,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
                   onClick={() => save({ lives: n })}
                   disabled={updateLeague.isPending || hasLockedPicks}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    (settings.lives || 1) === n ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                    (settings.lives || 1) === n ? 'bg-accent text-white border border-accent' : 'bg-bg-primary text-text-secondary border border-text-primary/20'
                   } ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {n} {n === 1 ? 'Life' : 'Lives'}
@@ -610,7 +610,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
                     onClick={() => save({ pick_frequency: opt.value })}
                     disabled={updateLeague.isPending || hasLockedPicks}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                      (settings.pick_frequency || 'weekly') === opt.value ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary'
+                      (settings.pick_frequency || 'weekly') === opt.value ? 'bg-accent text-white border border-accent' : 'bg-bg-primary text-text-secondary border border-text-primary/20'
                     } ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {opt.label}
