@@ -115,8 +115,8 @@ function getMonthStats(items) {
   return { wins, losses, net }
 }
 
-const TYPE_ORDER = ['live', 'pick', 'parlay', 'prop', 'futures', 'bonus']
-const TYPE_LABELS = { live: 'Live', pick: 'Picks', parlay: 'Parlays', prop: 'Props', futures: 'Futures', bonus: 'Bonuses' }
+const TYPE_ORDER = ['pick', 'parlay', 'prop', 'futures', 'bonus']
+const TYPE_LABELS = { pick: 'Picks', parlay: 'Parlays', prop: 'Props', futures: 'Futures', bonus: 'Bonuses' }
 
 function groupByType(items) {
   const now = new Date()
@@ -127,8 +127,7 @@ function groupByType(items) {
     if (unsettled && new Date(item.date) > now) {
       continue
     }
-    // Only show as "live" if the game is actually live, not just unsettled
-    const key = unsettled && item.game_status === 'live' ? 'live' : item.type
+    const key = item.type
     if (!groups[key]) groups[key] = []
     groups[key].push(item)
   }
