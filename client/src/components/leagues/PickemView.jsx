@@ -4,7 +4,7 @@ import TierBadge from '../ui/TierBadge'
 import { getTier } from '../../lib/scoring'
 import EmptyState from '../ui/EmptyState'
 import GameCard from '../picks/GameCard'
-import InjuryReportModal from '../picks/InjuryReportModal'
+import GameIntelModal from '../picks/GameIntelModal'
 import { toast } from '../ui/Toast'
 import {
   useLeagueWeeks,
@@ -353,7 +353,7 @@ function LeaguePicksView({ league, standings }) {
         </div>
       )}
 
-      <InjuryReportModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
+      <GameIntelModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
     </div>
   )
 }

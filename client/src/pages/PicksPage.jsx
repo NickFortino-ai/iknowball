@@ -11,7 +11,7 @@ import ParlaySlip from '../components/picks/ParlaySlip'
 import ParlayCard from '../components/picks/ParlayCard'
 import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import FuturesSection from '../components/picks/FuturesSection'
-import InjuryReportModal from '../components/picks/InjuryReportModal'
+import GameIntelModal from '../components/picks/GameIntelModal'
 import GameDetailModal from '../components/picks/GameDetailModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
@@ -363,7 +363,7 @@ export default function PicksPage() {
         </>
       )}
 
-      <InjuryReportModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
+      <GameIntelModal gameId={injuryGameId} onClose={() => setInjuryGameId(null)} />
       <GameDetailModal gameId={detailGameId} onClose={() => setDetailGameId(null)} />
     </div>
   )

@@ -206,7 +206,7 @@ function TeamSection({ teamName, starters, injuries }) {
   )
 }
 
-export default function InjuryReportModal({ gameId, onClose }) {
+export default function GameIntelModal({ gameId, onClose }) {
   const { data, isLoading } = useInjuryDetail(gameId)
 
   useEffect(() => {
