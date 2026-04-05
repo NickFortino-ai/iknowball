@@ -278,7 +278,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                     return (
                       <div
                         key={`${item.type}-${item.id}`}
-                        className={`bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
+                        className={`bg-bg-primary/50 rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
                         onClick={isTappable ? () => onItemTap(item.type, item.id) : undefined}
                       >
                         <div className="min-w-0">
@@ -358,7 +358,7 @@ export default function PickHistoryByMonth({ picks, parlays, propPicks, futuresP
                                 <Fragment key={`${item.type}-${item.id}`}>
                                   {showDivider && <hr className="border-t border-white/15 my-1" />}
                                   <div
-                                    className={`bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
+                                    className={`bg-bg-primary/50 rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between${isTappable ? ' cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors' : ''}`}
                                     onClick={isTappable ? () => onItemTap(item.type, item.id) : undefined}
                                   >
                                     <div className="min-w-0">
