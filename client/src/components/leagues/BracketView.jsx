@@ -394,6 +394,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             rounds={rounds}
             regions={tournament.bracket_templates?.regions}
             seriesFormat={tournament.bracket_templates?.series_format}
+            sportKey={league.sport}
           />
         </div>
       )}

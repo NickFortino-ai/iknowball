@@ -1,6 +1,15 @@
 import { useMemo, useState, useRef, forwardRef, useImperativeHandle, Fragment } from 'react'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
 
-function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {}, isBestOf7 = false }) {
+function TeamLogo({ team, sportKey, size }) {
+  const [err, setErr] = useState(false)
+  const url = getTeamLogoUrl(team, sportKey)
+  if (!url || err) return null
+  const px = size === 'xl' ? 'w-5 h-5' : size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'
+  return <img src={url} alt="" className={`${px} object-contain shrink-0`} onError={() => setErr(true)} />
+}
+
+function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey }) {
   const [showScore, setShowScore] = useState(false)
 
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -46,6 +55,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
       onClick={isClickable ? handleClick : undefined}
     >
       <div className={`flex items-center gap-1 ${size === 'xl' ? 'px-3 py-3' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'} border-b border-border ${teamClass(matchup.team_top, true)}`}>
+        <TeamLogo team={matchup.team_top} sportKey={sportKey} size={size} />
         {matchup.seed_top != null && (
           <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{matchup.seed_top}</span>
         )}
@@ -60,6 +70,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         )}
       </div>
       <div className={`flex items-center gap-1 ${size === 'xl' ? 'px-3 py-3' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'} ${teamClass(matchup.team_bottom, false)}`}>
+        <TeamLogo team={matchup.team_bottom} sportKey={sportKey} size={size} />
         {matchup.seed_bottom != null && (
           <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{matchup.seed_bottom}</span>
         )}
@@ -89,7 +100,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   )
 }
 
-export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat }, ref) {
+export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey }, ref) {
   const isBestOf7 = seriesFormat === 'best_of_7'
   const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
 
@@ -410,6 +421,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         size={size}
         playInPickResults={playInPickResults}
         isBestOf7={isBestOf7}
+        sportKey={sportKey}
       />
     )
   }
@@ -716,6 +728,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                               size={cardSize}
                               playInPickResults={playInPickResults}
                               isBestOf7={isBestOf7}
+                              sportKey={sportKey}
                             />
                           </div>
                         )
