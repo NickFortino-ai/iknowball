@@ -1463,7 +1463,7 @@ export default function LeagueDetailPage() {
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={() => setShowSettingsModal(false)}>
           <div className="absolute inset-0 bg-black/60" />
           <div
-            className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-6 max-h-[80vh] overflow-y-auto"
+            className="relative bg-bg-primary/80 backdrop-blur-md border border-text-primary/20 w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-6 max-h-[80vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
