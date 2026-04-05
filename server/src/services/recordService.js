@@ -256,13 +256,15 @@ async function calcLongestParlayStreak() {
 }
 
 async function calcLongestPropStreak() {
-  const { data: picks, error } = await supabase
-    .from('prop_picks')
-    .select('id, user_id, is_correct, updated_at')
-    .eq('status', 'settled')
-    .not('is_correct', 'is', null)
+  const picks = await fetchAll(
+    supabase
+      .from('prop_picks')
+      .select('id, user_id, is_correct, updated_at')
+      .eq('status', 'settled')
+      .not('is_correct', 'is', null)
+  )
 
-  if (error || !picks?.length) return null
+  if (!picks.length) return null
 
   // Sort by updated_at in JS
   picks.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at))
@@ -308,13 +310,15 @@ async function calcLongestPropStreak() {
 }
 
 async function calcHighestPropPct() {
-  const { data: picks, error } = await supabase
-    .from('prop_picks')
-    .select('user_id, is_correct')
-    .eq('status', 'settled')
-    .not('is_correct', 'is', null)
+  const picks = await fetchAll(
+    supabase
+      .from('prop_picks')
+      .select('user_id, is_correct')
+      .eq('status', 'settled')
+      .not('is_correct', 'is', null)
+  )
 
-  if (error || !picks?.length) return null
+  if (!picks.length) return null
 
   const stats = {}
   for (const p of picks) {
@@ -346,12 +350,14 @@ async function calcHighestPropPct() {
 
 async function calcLongestSurvivorStreak() {
   // Only count 1-life survivor leagues
-  const { data: picks, error } = await supabase
-    .from('survivor_picks')
-    .select('user_id, league_id, status, league_weeks(week_number), leagues!inner(settings)')
-    .in('status', ['survived', 'eliminated'])
+  const picks = await fetchAll(
+    supabase
+      .from('survivor_picks')
+      .select('user_id, league_id, status, league_weeks(week_number), leagues!inner(settings)')
+      .in('status', ['survived', 'eliminated'])
+  )
 
-  if (error || !picks?.length) return null
+  if (!picks.length) return null
 
   // Filter to 1-life leagues only
   const oneLifePicks = picks.filter((p) => {
@@ -536,30 +542,41 @@ async function calcBiggestDogLover() {
 }
 
 async function calcGreatClimb() {
-  // Get all snapshots
-  const { data: snapshots, error } = await supabase
-    .from('leaderboard_rank_snapshots')
-    .select('user_id, rank')
-    .eq('scope', 'global')
+  // Get all snapshots sorted chronologically
+  const snapshots = await fetchAll(
+    supabase
+      .from('leaderboard_rank_snapshots')
+      .select('user_id, rank, snapshot_date')
+      .eq('scope', 'global')
+      .order('snapshot_date', { ascending: true })
+  )
 
-  if (error || !snapshots?.length) return null
+  if (!snapshots.length) return null
 
-  const userRanks = {}
-  for (const s of snapshots) {
-    if (!userRanks[s.user_id]) userRanks[s.user_id] = { max: 0, min: Infinity }
-    if (s.rank > userRanks[s.user_id].max) userRanks[s.user_id].max = s.rank
-    if (s.rank < userRanks[s.user_id].min) userRanks[s.user_id].min = s.rank
-  }
-
+  // For each user, track the worst rank seen so far as we walk chronologically.
+  // The climb is worst_rank_before - current_rank (must be upward movement).
+  const userWorstSoFar = {} // user_id -> worst rank seen so far
   let bestUserId = null
   let bestClimb = 0
+  let bestWorst = 0
+  let bestBest = 0
 
-  for (const [userId, ranks] of Object.entries(userRanks)) {
-    // Climb = worst rank - best rank (higher is better climb)
-    const climb = ranks.max - ranks.min
+  for (const s of snapshots) {
+    if (!userWorstSoFar[s.user_id]) {
+      userWorstSoFar[s.user_id] = s.rank
+    } else {
+      // Update worst seen so far (higher rank number = worse position)
+      if (s.rank > userWorstSoFar[s.user_id]) {
+        userWorstSoFar[s.user_id] = s.rank
+      }
+    }
+    // Climb = worst position before now - current position
+    const climb = userWorstSoFar[s.user_id] - s.rank
     if (climb > bestClimb) {
       bestClimb = climb
-      bestUserId = userId
+      bestUserId = s.user_id
+      bestWorst = userWorstSoFar[s.user_id]
+      bestBest = s.rank
     }
   }
 
@@ -567,18 +584,20 @@ async function calcGreatClimb() {
   return {
     holderId: bestUserId,
     value: bestClimb,
-    metadata: { worstRank: userRanks[bestUserId].max, bestRank: userRanks[bestUserId].min },
+    metadata: { worstRank: bestWorst, bestRank: bestBest },
   }
 }
 
 async function calcLongestCrownTenure() {
-  const { data: snapshots, error } = await supabase
-    .from('crown_snapshots')
-    .select('user_id, snapshot_date')
-    .eq('scope', 'global')
-    .order('snapshot_date', { ascending: true })
+  const snapshots = await fetchAll(
+    supabase
+      .from('crown_snapshots')
+      .select('user_id, snapshot_date')
+      .eq('scope', 'global')
+      .order('snapshot_date', { ascending: true })
+  )
 
-  if (error || !snapshots?.length) return null
+  if (!snapshots.length) return null
 
   let bestUserId = null
   let bestStreak = 0

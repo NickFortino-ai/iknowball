@@ -208,6 +208,16 @@ function RecordCard({ record, onUserTap }) {
 
       {expanded && hasSubs && (
         <div className="border-t border-border">
+          {record.record_key === 'longest_win_streak' && (
+            <div className="px-4 py-2 flex items-center gap-1.5 text-[10px] text-text-muted border-b border-border">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span>Sport-specific streaks may include losses in other sports during the streak period</span>
+            </div>
+          )}
           {record.sub_records
             .filter((s) => s.record_holder_id != null)
             .map((sub) => (
