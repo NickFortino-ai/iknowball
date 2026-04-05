@@ -94,7 +94,7 @@ function formatDateRange(startsAt, endsAt) {
   return null
 }
 
-function LeagueConditions({ league, isCommissioner, updateLeague }) {
+function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
   const settings = league.settings || {}
@@ -158,7 +158,6 @@ function LeagueConditions({ league, isCommissioner, updateLeague }) {
   }
 
   const autoConnect = league.my_auto_connect ?? true
-  const isBracket = league.format === 'bracket'
 
   // Build narrative description
   function buildNarrative() {
@@ -238,6 +237,19 @@ function LeagueConditions({ league, isCommissioner, updateLeague }) {
       return `Pick MLB players you think will hit home runs each day. The more homers your picks hit, the more points you earn. Track your picks against the rest of the league and climb the standings.`
     }
 
+    if (league.format === 'bracket') {
+      const rounds = bracketTournament?.bracket_templates?.rounds || []
+      const isBo7 = bracketTournament?.bracket_templates?.series_format === 'best_of_7'
+      const roundScoring = rounds
+        .filter((r) => r.round_number > 0)
+        .sort((a, b) => a.round_number - b.round_number)
+        .map((r) => `${r.name}: ${r.points_per_correct} pts`)
+        .join(', ')
+      const seriesBonus = isBo7 ? ' For each correct winner, predict the series length (4–7 games) for bonus points: +2 for exact, +1 for one game off.' : ''
+      const globalImpact = `When the tournament ends, your finishing position affects your global score: top half earns points, bottom half loses points (N+1−2×rank), plus a +10 champion bonus for 1st place.`
+      return `Fill out your bracket before the lock deadline. Earn points for each correct pick — later rounds are worth more. ${roundScoring ? `Scoring: ${roundScoring}.` : ''}${seriesBonus} A tiebreaker score prediction on the championship game breaks ties in the standings. ${globalImpact}`
+    }
+
     return null
   }
 
@@ -259,17 +271,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague }) {
   }
 
   return (
-    <div className={isBracket ? 'mb-4' : 'rounded-xl border border-text-primary/20 p-4 mb-6'}>
-      {isBracket ? (
-        <div className="flex items-center gap-3 text-xs text-text-muted">
-          {items.map((item, i) => (
-            <span key={item.label}>
-              {i > 0 && <span className="mr-3">·</span>}
-              {item.label}: {item.value}
-            </span>
-          ))}
-        </div>
-      ) : (
+    <div className="rounded-xl border border-text-primary/20 p-4 mb-6">
         <div>
           <button onClick={toggleCollapsed} className="flex items-center justify-between w-full">
             <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">How this league works</span>
@@ -337,7 +339,6 @@ function LeagueConditions({ league, isCommissioner, updateLeague }) {
             </div>
           )}
         </div>
-      )}
       {league.status !== 'completed' && !league.all_members_connected && (
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <span className="text-xs text-text-muted">Add league mates to squad when league ends</span>
@@ -1475,7 +1476,7 @@ export default function LeagueDetailPage() {
               </button>
             </div>
 
-            <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} />
+            <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} bracketTournament={bracketTournament} />
 
             {isCommissioner && league.settings_editable && (
               <div className="mt-4">
