@@ -218,6 +218,12 @@ export default function AdminPage() {
     return { dateStr, label, props: dayProps }
   })
   const [showPrevious, setShowPrevious] = useState(false)
+  const [propsView, setPropsView] = useState('set') // 'set' | 'settle'
+
+  // Unsettled featured props sorted oldest first
+  const unsettledProps = (featuredProps || [])
+    .filter((p) => p.status === 'locked' || p.status === 'published')
+    .sort((a, b) => new Date(a.featured_date) - new Date(b.featured_date))
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -504,6 +510,83 @@ export default function AdminPage() {
       {adminSection === 'positions' && <PlayerPositionPanel />}
 
       {adminSection === 'props' && <>
+      {/* Set / Settle toggle */}
+      <div className="flex gap-2 mb-4">
+        {[
+          { key: 'set', label: 'Set' },
+          { key: 'settle', label: `Settle${unsettledProps.length ? ` (${unsettledProps.length})` : ''}` },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setPropsView(tab.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+              propsView === tab.key
+                ? 'bg-bg-primary/50 border-accent text-accent'
+                : 'bg-bg-primary/50 border-text-primary/20 text-text-secondary hover:border-text-primary/40'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Settle view — all unsettled featured props, oldest first */}
+      {propsView === 'settle' && (
+        <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6">
+          <h2 className="font-semibold text-sm mb-3">Unsettled Props</h2>
+          {!unsettledProps.length ? (
+            <p className="text-sm text-text-muted">All featured props are settled.</p>
+          ) : (
+            <div className="space-y-2">
+              {unsettledProps.map((prop) => {
+                const nameParts = prop.player_name?.split(' ') || []
+                const shortName = nameParts.length >= 2
+                  ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
+                  : prop.player_name
+                return (
+                  <div key={prop.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-bg-secondary/50 border border-border">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {shortName} — {prop.market_label} ({prop.line})
+                      </div>
+                      <div className="text-xs text-text-muted truncate">
+                        {prop.games?.away_team} @ {prop.games?.home_team} · {new Date(prop.featured_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      {['over', 'under', 'push'].map((outcome) => (
+                        <button
+                          key={outcome}
+                          onClick={() => handleSettle(prop.id, outcome)}
+                          disabled={settleProps.isPending}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors disabled:opacity-50 ${
+                            outcome === 'over'
+                              ? 'bg-correct/20 text-correct hover:bg-correct/30'
+                              : outcome === 'under'
+                                ? 'bg-incorrect/20 text-incorrect hover:bg-incorrect/30'
+                                : 'bg-text-muted/20 text-text-muted hover:bg-text-muted/30'
+                          }`}
+                        >
+                          {outcome.charAt(0).toUpperCase() + outcome.slice(1)}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handleVoid(prop.id)}
+                        disabled={voidProp.isPending}
+                        className="text-xs text-text-muted hover:text-incorrect px-1"
+                      >
+                        Void
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {propsView === 'set' && <>
       {/* Featured Schedule — 7-day overview */}
       <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6">
         <h2 className="font-semibold text-sm mb-3">Featured Schedule</h2>
@@ -779,6 +862,7 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
+      </>}
       </>}
     </div>
   )
