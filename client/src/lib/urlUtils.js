@@ -1,4 +1,4 @@
-const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g
+const URL_REGEX = /(?:https?:\/\/|www\.)[^\s<>"{}|\\^`[\]]+/g
 const EMBED_REGEX = /<iframe[^>]+src=["']https?:\/\/(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)[^"']*["'][^>]*>(?:<\/iframe>)?/g
 
 export function extractFirstUrl(text) {

@@ -1,6 +1,7 @@
 import { segmentContent, displayUrl } from '../../lib/urlUtils'
 
 const IMAGE_EXT_REGEX = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i
+const IMAGE_URL_LOOSE = /(?:https?:\/\/|www\.)[^\s]+\.(jpg|jpeg|png|gif|webp)(\?[^\s]*)?/i
 
 export default function RichContent({ text, className }) {
   const segments = segmentContent(text)
@@ -24,7 +25,7 @@ export default function RichContent({ text, className }) {
         ) : seg.type === 'url' && IMAGE_EXT_REGEX.test(seg.value) ? (
           <div key={i} className="mt-2 mb-1" onClick={(e) => e.stopPropagation()}>
             <img
-              src={seg.value}
+              src={seg.value.startsWith('http') ? seg.value : `https://${seg.value}`}
               alt=""
               className="max-w-full rounded-lg"
               loading="lazy"
@@ -33,7 +34,7 @@ export default function RichContent({ text, className }) {
         ) : seg.type === 'url' ? (
           <a
             key={i}
-            href={seg.value}
+            href={seg.value.startsWith('http') ? seg.value : `https://${seg.value}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-accent hover:underline break-all"

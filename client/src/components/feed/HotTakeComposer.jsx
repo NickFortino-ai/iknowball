@@ -10,6 +10,7 @@ import TeamAutocomplete from './TeamAutocomplete'
 import { toast } from '../ui/Toast'
 
 const MAX_CHARS = 280
+const IMAGE_URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+\.(jpg|jpeg|png|gif|webp)(\?[^\s]*)?/gi
 
 const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
@@ -354,6 +355,25 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               </div>
             )}
           </div>
+
+          {/* Image URL preview (from pasted URLs in text) */}
+          {(() => {
+            const matches = content.match(IMAGE_URL_REGEX)
+            if (!matches?.length || previewUrls.length > 0) return null
+            return (
+              <div className="mt-2 space-y-2">
+                {matches.slice(0, 2).map((url, i) => (
+                  <img
+                    key={i}
+                    src={url.startsWith('http') ? url : `https://${url}`}
+                    alt="Preview"
+                    className="max-w-full max-h-48 rounded-lg object-contain"
+                    onError={(e) => { e.target.style.display = 'none' }}
+                  />
+                ))}
+              </div>
+            )
+          })()}
 
           {/* Image previews */}
           {previewUrls.length > 0 && (
