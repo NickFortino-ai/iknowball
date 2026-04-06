@@ -198,7 +198,7 @@ export default function CreateLeaguePage() {
         name,
         format,
         sport: format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : format === 'fantasy' ? 'americanfootball_nfl' : sport,
-        duration: isFantasyFormat ? 'full_season' : format === 'squares' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
+        duration: isFantasyFormat ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
@@ -238,7 +238,7 @@ export default function CreateLeaguePage() {
   }
 
   const autoSportFormats = ['nba_dfs', 'mlb_dfs', 'hr_derby']
-  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares']
+  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares', 'bracket']
   const canSubmit = name && format && (sport || autoSportFormats.includes(format)) && (noDurationFormats.includes(format) || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
@@ -314,8 +314,8 @@ export default function CreateLeaguePage() {
           </div>
         </div>}
 
-        {/* Duration (not for fantasy/DFS formats — always full season) */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares'].includes(format) && <>
+        {/* Duration (not for fantasy/DFS/squares/bracket — bracket runs from picks lock to championship game) */}
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares', 'bracket'].includes(format) && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
