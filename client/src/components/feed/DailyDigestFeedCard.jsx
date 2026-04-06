@@ -1,7 +1,7 @@
 export default function DailyDigestFeedCard({ item }) {
   const { highlights } = item
 
-  const hasHighlights = highlights.biggestUnderdog || highlights.bestParlay || highlights.streaks?.length > 0 || highlights.records?.length > 0
+  const hasHighlights = highlights.biggestUnderdog || highlights.bestParlay || highlights.biggestDay || highlights.streaks?.length > 0 || highlights.records?.length > 0
   if (!hasHighlights) return null
 
   return (
@@ -25,6 +25,12 @@ export default function DailyDigestFeedCard({ item }) {
             <div className="text-sm text-text-secondary">
               <span className="text-correct font-bold">{'\uD83C\uDFB0'} Best parlay:</span>{' '}
               <span className="text-accent">@{highlights.bestParlay.username}</span> hit a {highlights.bestParlay.legs}-legger for +{highlights.bestParlay.points} pts
+            </div>
+          )}
+          {highlights.biggestDay && (
+            <div className="text-sm text-text-secondary">
+              <span className="text-green-400 font-bold">{'\uD83D\uDCB0'} Biggest day:</span>{' '}
+              <span className="text-accent">@{highlights.biggestDay.username}</span> earned +{highlights.biggestDay.points} pts
             </div>
           )}
           {highlights.streaks?.map((s, i) => (

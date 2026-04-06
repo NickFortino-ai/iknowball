@@ -1434,6 +1434,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       let biggestUnderdog = null, bestParlay = null
       const streakItems = []
       const recordItems = []
+      const userPoints = {} // userId -> { username, total }
 
       for (const item of yesterdayItems) {
         if (item.type === 'underdog_hit' && (!biggestUnderdog || item.pick.odds_at_pick > biggestUnderdog.odds)) {
@@ -1454,9 +1455,28 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         } else if (item.type === 'record') {
           recordItems.push({ username: item.username, record: item.record.display_name, value: item.record.new_value })
         }
+
+        // Track points per user for biggest point day
+        const pts = item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss'
+          ? item.pick?.points_earned
+          : item.type === 'parlay' || item.type === 'bad_beat'
+            ? item.parlay?.points_earned
+            : null
+        if (pts != null && item.userId) {
+          if (!userPoints[item.userId]) userPoints[item.userId] = { username: item.username, total: 0 }
+          userPoints[item.userId].total += pts
+        }
       }
 
-      const hasHighlights = biggestUnderdog || bestParlay || streakItems.length > 0 || recordItems.length > 0
+      // Find biggest point day (minimum +20 to be noteworthy)
+      let biggestDay = null
+      for (const [, data] of Object.entries(userPoints)) {
+        if (data.total >= 20 && (!biggestDay || data.total > biggestDay.points)) {
+          biggestDay = { username: data.username, points: data.total }
+        }
+      }
+
+      const hasHighlights = biggestUnderdog || bestParlay || biggestDay || streakItems.length > 0 || recordItems.length > 0
       if (hasHighlights) {
         feed.push({
           type: 'daily_digest',
@@ -1466,6 +1486,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
           highlights: {
             biggestUnderdog,
             bestParlay,
+            biggestDay,
             streaks: streakItems.slice(0, 3),
             records: recordItems.slice(0, 3),
           },
