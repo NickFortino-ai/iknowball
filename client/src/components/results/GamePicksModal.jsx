@@ -45,8 +45,8 @@ function generateShareCard(game, userPick, totalCounts) {
     calcY += 28 + 72
     if (userPick.points_earned != null) calcY += 40
   }
-  const total = (totalCounts?.home || 0) + (totalCounts?.away || 0)
-  if (total > 0) {
+  const totalCalc = (totalCounts?.home || 0) + (totalCounts?.away || 0)
+  if (totalCalc > 0) {
     calcY += 8 + 20 + 12 + 14 + 24
   } else {
     calcY += 32
