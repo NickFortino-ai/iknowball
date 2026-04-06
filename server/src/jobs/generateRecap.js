@@ -61,12 +61,11 @@ export async function generateWeeklyRecap() {
   if (weeklyData.longestStreakUser) featuredSet.add(weeklyData.longestStreakUser.user_id)
   const featuredUserIds = [...featuredSet]
 
-  // Set visible_after to 9:00 AM Pacific on the current day
-  // Use Intl to get today's date in Pacific, then construct the target time
+  // Set visible_after to 1:00 PM Pacific on the current day (admin has until then to edit)
   const pacificDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
   const pacificNow = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', timeZoneName: 'short' })
   const offset = pacificNow.includes('PDT') ? '-07:00' : '-08:00'
-  const visibleAfter = new Date(`${pacificDate}T09:00:00${offset}`)
+  const visibleAfter = new Date(`${pacificDate}T13:00:00${offset}`)
 
   // Save to DB (notifications/emails are sent separately after visible_after)
   const { error: insertError } = await supabase.from('weekly_recaps').insert({

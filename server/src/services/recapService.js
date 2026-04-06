@@ -16,7 +16,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
   // 1. Settled picks in the date range
   const { data: picks } = await supabase
     .from('picks')
-    .select('user_id, points_earned, is_correct, odds_at_pick, reward_points, picked_team, games(home_team, away_team)')
+    .select('user_id, points_earned, is_correct, odds_at_pick, reward_points, risk_points, picked_team, games(home_team, away_team, home_score, away_score, sports(name))')
     .eq('status', 'settled')
     .not('points_earned', 'is', null)
     .gte('updated_at', startISO)
@@ -25,7 +25,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
   // 2. Settled parlays
   const { data: parlays } = await supabase
     .from('parlays')
-    .select('user_id, points_earned, is_correct, leg_count')
+    .select('user_id, points_earned, is_correct, leg_count, risk_points, reward_points, combined_multiplier')
     .eq('status', 'settled')
     .not('points_earned', 'is', null)
     .gte('updated_at', startISO)
@@ -83,6 +83,8 @@ export async function collectWeeklyData(weekStart, weekEnd) {
         biggest_underdog_reward: 0,
         biggest_underdog_game: null,
         biggest_underdog_picked: null,
+        pick_details: [],
+        parlay_details: [],
         total_picks: 0,
       }
     }
@@ -94,6 +96,17 @@ export async function collectWeeklyData(weekStart, weekEnd) {
     const u = getUser(p.user_id)
     u.total_picks++
     u.picks_points += p.points_earned
+    const pickedTeam = p.picked_team === 'home' ? p.games?.home_team : p.games?.away_team
+    u.pick_details.push({
+      picked_team: pickedTeam,
+      game: p.games ? `${p.games.away_team} @ ${p.games.home_team}` : null,
+      final_score: p.games && p.games.away_score != null && p.games.home_score != null
+        ? `${p.games.away_score}-${p.games.home_score}` : null,
+      sport: p.games?.sports?.name || null,
+      odds: p.odds_at_pick,
+      points_earned: p.points_earned,
+      is_correct: p.is_correct,
+    })
     if (p.is_correct === true) {
       u.picks_wins++
       // Track biggest underdog hit (positive odds = underdog)
@@ -121,6 +134,14 @@ export async function collectWeeklyData(weekStart, weekEnd) {
     u.parlays_total++
     u.parlays_points += p.points_earned
     if (p.is_correct === true) u.parlays_won++
+    u.parlay_details.push({
+      leg_count: p.leg_count,
+      multiplier: p.combined_multiplier,
+      risk: p.risk_points,
+      reward: p.reward_points,
+      points_earned: p.points_earned,
+      is_correct: p.is_correct,
+    })
   }
 
   // Aggregate prop picks
@@ -189,6 +210,28 @@ export async function collectWeeklyData(weekStart, weekEnd) {
 
     const streak = streakMap[u.user_id] || { length: 0, sport: null }
 
+    // Notable picks: best single pick, worst single pick, biggest underdog hit
+    const sortedPicks = [...u.pick_details].sort((a, b) => b.points_earned - a.points_earned)
+    const bestPick = sortedPicks[0] && sortedPicks[0].points_earned > 0 ? sortedPicks[0] : null
+    const worstPick = sortedPicks.length && sortedPicks[sortedPicks.length - 1].points_earned < 0
+      ? sortedPicks[sortedPicks.length - 1] : null
+    const underdogHits = u.pick_details.filter((p) => p.is_correct && p.odds > 0)
+      .sort((a, b) => b.odds - a.odds)
+    const biggestUpset = underdogHits[0] || null
+    const notablePicks = [bestPick, worstPick, biggestUpset].filter(Boolean)
+    // Dedup by game+picked_team
+    const seenKeys = new Set()
+    const dedupedPicks = notablePicks.filter((p) => {
+      const k = `${p.game}|${p.picked_team}|${p.points_earned}`
+      if (seenKeys.has(k)) return false
+      seenKeys.add(k)
+      return true
+    })
+
+    // Notable parlay: biggest winning parlay
+    const wonParlays = u.parlay_details.filter((p) => p.is_correct).sort((a, b) => b.points_earned - a.points_earned)
+    const notableParlay = wonParlays[0] || null
+
     return {
       user_id: u.user_id,
       username: info.username || 'Unknown',
@@ -205,6 +248,8 @@ export async function collectWeeklyData(weekStart, weekEnd) {
       rank_change: rankChange,
       tier_change: tierChange,
       total_picks: u.total_picks,
+      notable_picks: dedupedPicks,
+      notable_parlay: notableParlay,
     }
   })
 
@@ -360,14 +405,51 @@ export async function collectWeeklyData(weekStart, weekEnd) {
     }
   }
 
-  return { top5, allUsers: enriched, pickOfWeekUser, biggestFallUser, longestStreakUser, recordsBroken, crownChanges, currentCrownHolders }
+  // --- Big league winners (leagues with 10+ members completed this week) ---
+  const bigLeagueWinners = []
+  const { data: winNotifs } = await supabase
+    .from('notifications')
+    .select('user_id, metadata, created_at')
+    .eq('type', 'league_win')
+    .gte('created_at', startISO)
+    .lte('created_at', endISO)
+
+  const seenLeagueIds = new Set()
+  for (const n of winNotifs || []) {
+    const md = n.metadata || {}
+    if (md.isWinner !== true) continue
+    if (!md.memberCount || md.memberCount < 10) continue
+    if (seenLeagueIds.has(md.leagueId)) continue
+    seenLeagueIds.add(md.leagueId)
+
+    const info = userInfoMap[n.user_id] || {}
+    const enrichedUser = enriched.find((e) => e.user_id === n.user_id)
+    const p = getPronouns(info.title_preference)
+    bigLeagueWinners.push({
+      user_id: n.user_id,
+      name: info.display_name || info.username || 'Unknown',
+      username: info.username || 'Unknown',
+      pronouns: `${p.subject}/${p.object}/${p.possessive}`,
+      league_name: md.leagueName || 'Unknown League',
+      league_format: md.format || null,
+      member_count: md.memberCount,
+      points_awarded: md.points ?? null,
+      notable_picks: enrichedUser?.notable_picks || [],
+      notable_parlay: enrichedUser?.notable_parlay || null,
+      weekly_record: enrichedUser ? `${enrichedUser.record.wins}-${enrichedUser.record.losses}` : null,
+      weekly_points: enrichedUser?.weekly_points ?? null,
+    })
+  }
+
+  return { top5, allUsers: enriched, pickOfWeekUser, biggestFallUser, longestStreakUser, recordsBroken, crownChanges, currentCrownHolders, bigLeagueWinners }
 }
 
 /**
  * Call Claude API to generate the weekly headlines narrative.
  */
 export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
-  const { top5, pickOfWeekUser, biggestFallUser, longestStreakUser, recordsBroken, crownChanges } = weeklyData
+  const { top5, allUsers, pickOfWeekUser, biggestFallUser, longestStreakUser, recordsBroken, crownChanges, bigLeagueWinners } = weeklyData
+  const top5Ids = new Set(top5.map((u) => u.user_id))
 
   const dataPayload = {
     dateRange: `${weekStart} to ${weekEnd}`,
@@ -387,6 +469,8 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
         parlays: u.parlays,
         current_streak: u.current_streak,
         total_picks: u.total_picks,
+        notable_picks: u.notable_picks,
+        notable_parlay: u.notable_parlay,
       }
     }),
     pickOfWeek: pickOfWeekUser ? {
@@ -397,6 +481,8 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
       reward: pickOfWeekUser.biggest_underdog.reward,
       game: pickOfWeekUser.biggest_underdog.game,
       picked_team: pickOfWeekUser.biggest_underdog.picked_team,
+      notable_picks: pickOfWeekUser.notable_picks,
+      notable_parlay: pickOfWeekUser.notable_parlay,
     } : null,
     biggestFall: biggestFallUser ? {
       name: biggestFallUser.display_name,
@@ -404,6 +490,8 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
       pronouns: `${getPronouns(biggestFallUser.title_preference).subject}/${getPronouns(biggestFallUser.title_preference).object}/${getPronouns(biggestFallUser.title_preference).possessive}`,
       weekly_points: biggestFallUser.weekly_points,
       record: `${biggestFallUser.record.wins}-${biggestFallUser.record.losses}`,
+      notable_picks: biggestFallUser.notable_picks,
+      notable_parlay: biggestFallUser.notable_parlay,
     } : null,
     longestStreak: longestStreakUser ? {
       name: longestStreakUser.display_name,
@@ -411,16 +499,45 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
       pronouns: `${getPronouns(longestStreakUser.title_preference).subject}/${getPronouns(longestStreakUser.title_preference).object}/${getPronouns(longestStreakUser.title_preference).possessive}`,
       streak: longestStreakUser.current_streak.length,
       sport: longestStreakUser.current_streak.sport,
+      notable_picks: longestStreakUser.notable_picks,
+      notable_parlay: longestStreakUser.notable_parlay,
     } : null,
+    honorableMentions: (allUsers || [])
+      .filter((u) => u.total_picks >= 10 && !top5Ids.has(u.user_id))
+      .map((u) => {
+        const p = getPronouns(u.title_preference)
+        return {
+          name: u.display_name,
+          username: u.username,
+          pronouns: `${p.subject}/${p.object}/${p.possessive}`,
+          record: `${u.record.wins}-${u.record.losses}`,
+          weekly_points: u.weekly_points,
+          tier: u.tier,
+          rank_change: u.rank_change,
+          total_picks: u.total_picks,
+          current_streak: u.current_streak,
+          notable_picks: u.notable_picks,
+          notable_parlay: u.notable_parlay,
+        }
+      }),
     recordsBroken: recordsBroken || [],
     crownChanges: crownChanges || [],
+    bigLeagueWinners: bigLeagueWinners || [],
   }
 
-  const prompt = `You are the voice of I KNOW BALL, a sports prediction app. Write a weekly headlines recap for the top 5 users this week. For each user, write a 1-2 sentence narrative that's fun, competitive, and highlights their boldest picks, biggest wins, or interesting patterns. Be conversational with a little trash talk energy. Also include: Pick of the Week (biggest underdog hit), Biggest Fall (user who lost the most points), and Longest Active Streak. Make it feel like something users would want to screenshot and share.
+  const prompt = `You are the voice of I KNOW BALL, a sports prediction app. Write a weekly headlines recap for the top 5 users this week. For each user, write a 1-2 sentence narrative that's fun, competitive, and conversational with a little trash talk energy. Also include: Pick of the Week (biggest underdog hit), Biggest Fall (user who lost the most points), and Longest Active Streak.
 
-Use each user's specified pronouns (provided in their data as "pronouns": "he/him/his", "she/her/her", or "they/them/their") when referring to them in third person.
+ACCURACY RULES — THESE ARE NON-NEGOTIABLE:
+1. Only state facts that are explicitly present in the JSON data payload below. Do NOT invent, infer, or embellish.
+2. Do NOT mention any specific game, team, score, opponent, player, or matchup unless it appears verbatim in the data. Game/team/sport info lives inside "notable_picks", "notable_parlay", and "biggest_underdog" — nothing else.
+3. You MAY cite a user's notable_picks (best hit, worst miss, biggest upset) and notable_parlay verbatim. Use the "picked_team", "game", "sport", "odds", and "points_earned" fields exactly as they appear. Do not guess the opponent or score.
+4. If a user has no notable_picks or notable_parlay entries, keep their narrative general — talk about their record, weekly points, rank movement, tier change, or streak. Do not invent specifics.
+5. Do NOT invent sports, leagues, or weeks (e.g. "their Week 8 NFL run"). The only sport you can name is what's in "current_streak.sport" or implied by the underdog game.
+6. When mentioning a user's underdog pick, ALWAYS use the "picked_team" field verbatim. Do NOT guess the team from the matchup or odds.
+7. Numbers (points, records, odds, streaks) must match the payload exactly.
+8. Use each user's specified pronouns (from their "pronouns" field) in third person.
 
-IMPORTANT: When mentioning a user's underdog pick, ALWAYS use the "picked_team" field to identify which team they picked. Do NOT guess or infer the team from the game matchup or odds — use the exact team name from "picked_team".
+If you're tempted to write something specific and you can't point to the exact field in the data, rewrite it more generally. A boring-but-accurate line is always better than a fun-but-wrong one.
 
 Use this exact format:
 
@@ -438,6 +555,10 @@ Use this exact format:
 **Biggest Fall**: {user} — {description}
 **Longest Active Streak**: {user} — {description}
 
+The "honorableMentions" array contains users who made 10+ picks this week but didn't crack the top 5. You don't need to write a full section for them, but if any of them had a particularly noteworthy notable_pick or notable_parlay, you may weave a brief mention into the AWARDS section or a short "HONORABLE MENTIONS" section (optional). Same accuracy rules apply.
+
+If the "bigLeagueWinners" array is non-empty, add a "## BIG LEAGUE WINNERS" section. For each entry, write 1-2 sentences highlighting the user, the league they won (use "league_name" verbatim), the member count, and how they won it — you may cite their notable_picks / notable_parlay / weekly_record / weekly_points to add color. Same accuracy rules apply: only cite fields present in the entry.
+
 If any all-time records were broken this week (provided in recordsBroken), add a "RECORDS BROKEN" section and highlight them prominently. If any crowns (leaderboard #1 spots) changed hands this week (provided in crownChanges), add a "CROWN WATCH" section mentioning the new holder and who they dethroned. Only include these sections if the arrays are non-empty.
 
 Here is the data:
@@ -451,7 +572,7 @@ ${JSON.stringify(dataPayload, null, 2)}`
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }],
     }),
