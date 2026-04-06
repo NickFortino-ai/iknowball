@@ -40,6 +40,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
   const isLive = game.status === 'live'
+  const isPostponed = game.status === 'postponed'
   const hasLiveScores = isLive && game.live_home_score != null
 
   function getButtonState(side) {
@@ -54,6 +55,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
       return 'default'
     }
     // This side is picked
+    if (isPostponed) return 'postponed'
     if (isFinal) {
       return userPick.is_correct ? 'correct' : 'incorrect'
     }
@@ -87,12 +89,14 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         <span className="text-xs text-text-muted uppercase tracking-wider">
           {game.sports?.name || 'NFL'}
         </span>
-        <span className="text-xs text-text-muted">
-          {isFinal
-            ? 'Final'
-            : isLive
-              ? formatLiveStatus(game)
-              : formatGameTime(game.starts_at)
+        <span className={`text-xs ${isPostponed ? 'text-yellow-500 font-semibold' : 'text-text-muted'}`}>
+          {isPostponed
+            ? 'Postponed'
+            : isFinal
+              ? 'Final'
+              : isLive
+                ? formatLiveStatus(game)
+                : formatGameTime(game.starts_at)
           }
         </span>
       </div>
@@ -143,7 +147,13 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         </div>
       </div>
 
-      {userPick?.status === 'settled' && userPick.points_earned !== null && (
+      {isPostponed && userPick && (
+        <div className="mt-3 text-center text-sm font-semibold text-yellow-500">
+          Game postponed — pick will settle when rescheduled
+        </div>
+      )}
+
+      {!isPostponed && userPick?.status === 'settled' && userPick.points_earned !== null && (
         <div className={`mt-3 text-center text-sm font-semibold ${userPick.points_earned > 0 ? 'text-correct' : userPick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
           {userPick.points_earned > 0 ? '+' : ''}{userPick.points_earned} pts
         </div>

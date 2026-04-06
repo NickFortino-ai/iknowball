@@ -71,12 +71,13 @@ async function scoreSport(sportKey) {
     const homePoints = parseInt(homeScore?.score || '0', 10)
     const awayPoints = parseInt(awayScore?.score || '0', 10)
 
-    // Skip 0-0 "completed" games — likely postponed/cancelled (especially MLB)
+    // 0-0 "completed" games are postponed/cancelled (Odds API has no postponed flag,
+    // especially common in MLB rainouts). Mark explicitly so picks don't settle.
     if (homePoints === 0 && awayPoints === 0) {
-      logger.info({ gameId: game.id, home: game.home_team, away: game.away_team }, 'Skipping 0-0 completed game (likely postponed)')
+      logger.info({ gameId: game.id, home: game.home_team, away: game.away_team }, 'Marking 0-0 completed game as postponed')
       await supabase
         .from('games')
-        .update({ status: 'upcoming', updated_at: new Date().toISOString() })
+        .update({ status: 'postponed', updated_at: new Date().toISOString() })
         .eq('id', game.id)
       continue
     }

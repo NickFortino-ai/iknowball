@@ -70,9 +70,11 @@ export async function fetchESPNScoreboard(sportKey, date = null) {
     const status = competition.status || event.status
     const statusType = status?.type?.name
     const liveStatuses = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_FIRST_HALF', 'STATUS_SECOND_HALF', 'STATUS_HALFTIME', 'STATUS_OVERTIME']
-    const finalStatuses = ['STATUS_FINAL', 'STATUS_FULL_TIME', 'STATUS_POSTPONED', 'STATUS_CANCELED']
+    const finalStatuses = ['STATUS_FINAL', 'STATUS_FULL_TIME']
+    const postponedStatuses = ['STATUS_POSTPONED', 'STATUS_CANCELED', 'STATUS_SUSPENDED', 'STATUS_RAIN_DELAY']
     const state = liveStatuses.includes(statusType) ? 'in'
       : finalStatuses.includes(statusType) ? 'post'
+      : postponedStatuses.includes(statusType) ? 'postponed'
       : 'pre'
 
     // For baseball, use shortDetail (e.g. "Top 5th") as period instead of raw inning number

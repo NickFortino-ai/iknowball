@@ -99,6 +99,19 @@ async function syncSportLiveScores(sportKey) {
         continue
       }
       updated++
+    } else if (match.state === 'postponed' && game.status !== 'postponed' && game.status !== 'final') {
+      // ESPN says game is postponed/canceled — mark it so picks aren't settled
+      const { error } = await supabase
+        .from('games')
+        .update({ status: 'postponed', updated_at: new Date().toISOString() })
+        .eq('id', game.id)
+      if (error) {
+        logger.error({ error, gameId: game.id }, 'Failed to mark game postponed')
+        continue
+      }
+      logger.info({ gameId: game.id, home: game.home_team, away: game.away_team }, 'Marked game postponed via ESPN')
+      updated++
+      continue
     } else if (match.state === 'post' && game.status === 'live') {
       // ESPN says game is final but our DB still has it as live — finalize it
       let winner = null

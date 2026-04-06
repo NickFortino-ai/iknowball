@@ -14,14 +14,16 @@ function TeamLogo({ team, sportKey }) {
 export default function PickResultCard({ pick, game, totalCounts }) {
   if (!pick || !game) return null
 
-  const isCorrect = pick.is_correct === true
-  const isLost = pick.is_correct === false
-  const isPush = pick.is_correct === null && pick.status === 'settled'
-  const isSettled = pick.status === 'settled'
-  const isLive = game.status === 'live' || game.status === 'in_progress'
+  const isPostponed = game.status === 'postponed'
+  const isCorrect = !isPostponed && pick.is_correct === true
+  const isLost = !isPostponed && pick.is_correct === false
+  const isPush = !isPostponed && pick.is_correct === null && pick.status === 'settled'
+  const isSettled = !isPostponed && pick.status === 'settled'
+  const isLive = !isPostponed && (game.status === 'live' || game.status === 'in_progress')
   const pickedTeam = pick.picked_team === 'home' ? game.home_team : game.away_team
 
-  const borderColor = isCorrect ? 'border-correct'
+  const borderColor = isPostponed ? 'border-yellow-500'
+    : isCorrect ? 'border-correct'
     : isLost ? 'border-incorrect'
     : isLive ? 'border-accent'
     : 'border-text-primary/20'
@@ -49,8 +51,8 @@ export default function PickResultCard({ pick, game, totalCounts }) {
             <div className="text-sm font-semibold text-text-primary truncate">{game.away_team}</div>
             {hasScores && <div className="text-2xl font-display font-bold text-text-primary mt-0.5">{awayScore}</div>}
           </div>
-          <div className="text-xs text-text-muted font-semibold shrink-0">
-            {isSettled ? 'FINAL' : isLive ? 'LIVE' : '@'}
+          <div className={`text-xs font-semibold shrink-0 ${isPostponed ? 'text-yellow-500' : 'text-text-muted'}`}>
+            {isPostponed ? 'POSTPONED' : isSettled ? 'FINAL' : isLive ? 'LIVE' : '@'}
           </div>
           <div className="text-center flex-1 min-w-0">
             <TeamLogo team={game.home_team} sportKey={game.sports?.key} />
@@ -65,9 +67,12 @@ export default function PickResultCard({ pick, game, totalCounts }) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-              isCorrect ? 'bg-correct/20 text-correct' : isLost ? 'bg-incorrect/20 text-incorrect' : 'bg-text-muted/20 text-text-muted'
+              isPostponed ? 'bg-yellow-500/20 text-yellow-500'
+              : isCorrect ? 'bg-correct/20 text-correct'
+              : isLost ? 'bg-incorrect/20 text-incorrect'
+              : 'bg-text-muted/20 text-text-muted'
             }`}>
-              {isPush ? '—' : isCorrect ? '✓' : isLost ? '✗' : '?'}
+              {isPostponed ? '⏸' : isPush ? '—' : isCorrect ? '✓' : isLost ? '✗' : '?'}
             </span>
             <span className="text-sm text-text-secondary">Picked</span>
             <span className="text-sm font-semibold text-text-primary truncate">{pickedTeam}</span>
