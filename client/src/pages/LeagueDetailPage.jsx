@@ -1068,35 +1068,35 @@ export default function LeagueDetailPage() {
           : `/trophies/medal-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
         const outlasted = mc > 1 ? mc - 1 : 0
         return (
-        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-10 px-6 relative overflow-hidden">
+        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-8 px-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
-          <div className="relative flex items-center justify-center gap-4">
-            <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0 animate-trophy-float drop-shadow-[0_0_12px_rgba(234,179,8,0.3)]" />
-            <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer shrink-0">
-              {league.champion.user.avatar_url ? (
-                <img
-                  src={league.champion.user.avatar_url}
-                  alt={league.champion.user.display_name}
-                  className="w-28 h-28 rounded-full object-cover ring-3 ring-yellow-500"
-                />
-              ) : (
-                <Avatar user={league.champion.user} size="2xl" className="!w-28 !h-28 !text-4xl" />
-              )}
-            </button>
-            <div className="min-w-0">
-              <div className="font-display text-xl text-white">
-                {league.champion.user.display_name || league.champion.user.username}
-              </div>
-              <div className="text-sm text-text-secondary">won this league!</div>
-              <div className="text-sm text-yellow-400 font-semibold mt-1">
-                +{league.champion.points} pts earned
-              </div>
-              {outlasted > 0 && (
-                <div className="text-sm text-text-muted mt-0.5">
-                  Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
-                </div>
-              )}
+          <div className="relative flex flex-col items-center text-center">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0 animate-trophy-float drop-shadow-[0_0_12px_rgba(234,179,8,0.3)]" />
+              <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer shrink-0">
+                {league.champion.user.avatar_url ? (
+                  <img
+                    src={league.champion.user.avatar_url}
+                    alt={league.champion.user.display_name}
+                    className="w-24 h-24 rounded-full object-cover ring-3 ring-yellow-500"
+                  />
+                ) : (
+                  <Avatar user={league.champion.user} size="2xl" className="!w-24 !h-24 !text-4xl" />
+                )}
+              </button>
             </div>
+            <div className="font-display text-2xl text-white">
+              {league.champion.user.display_name || league.champion.user.username}
+            </div>
+            <div className="text-sm text-text-secondary mt-0.5">won this league!</div>
+            <div className="text-base text-yellow-400 font-semibold mt-2">
+              +{league.champion.points} pts earned
+            </div>
+            {outlasted > 0 && (
+              <div className="text-sm text-text-muted mt-1">
+                Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
+              </div>
+            )}
           </div>
         </div>
         )
