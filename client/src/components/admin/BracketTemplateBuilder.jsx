@@ -921,7 +921,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               onClick={handleGenerateMatchups}
               className="w-full py-2 rounded-xl text-sm bg-bg-card text-text-secondary hover:bg-bg-card-hover border border-border transition-colors"
             >
-              Regenerate Bracket (NCAA seed order)
+              Regenerate Bracket (standard seed order)
             </button>
             <div className="flex gap-2">
               <button
