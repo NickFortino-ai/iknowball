@@ -39,7 +39,9 @@ function getUnsubscribeUrl(userId) {
 
 function appendUnsubscribeFooter(html, userId) {
   const url = getUnsubscribeUrl(userId)
-  return `${html}<br/><hr style="border:none;border-top:1px solid #333;margin:24px 0 12px"/><p style="font-size:12px;color:#888;text-align:center"><a href="${url}" style="color:#888">Unsubscribe</a> from I KNOW BALL emails</p>`
+  const baseUrl = env.CORS_ORIGIN.split(',')[0].trim()
+  const header = `<div style="text-align:center;padding:20px 0 16px;border-bottom:1px solid #222;margin-bottom:24px"><img src="${baseUrl}/ikb-brand.png" alt="I KNOW BALL" style="max-width:200px;height:auto" /></div>`
+  return `${header}${html}<br/><hr style="border:none;border-top:1px solid #333;margin:24px 0 12px"/><p style="font-size:12px;color:#888;text-align:center"><a href="${url}" style="color:#888">Unsubscribe</a> from I KNOW BALL emails</p>`
 }
 
 export async function getSubscribedUsers() {
