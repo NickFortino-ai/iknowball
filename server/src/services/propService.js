@@ -535,16 +535,21 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       const playerName = pick.player_props?.player_name
       const espnId = idMap[playerName]
       const marketKey = pick.player_props?.market_key
+      const gameStatus = pick.player_props?.games?.status
 
       const nba = (espnId && nbaById[espnId]) || nbaByName[playerName]
       const mlb = (espnId && mlbById[espnId]) || mlbByName[playerName]
 
       if (nba) {
-        pick.live_stat = mapNbaStatToMarket(nba, marketKey)
+        const mapped = mapNbaStatToMarket(nba, marketKey)
+        pick.live_stat = mapped
+        logger.info({ playerName, marketKey, mapped, gameStatus, raw: nba }, 'Live stat enriched (NBA)')
       } else if (mlb) {
-        pick.live_stat = mapMlbStatToMarket(mlb, marketKey)
+        const mapped = mapMlbStatToMarket(mlb, marketKey)
+        pick.live_stat = mapped
+        logger.info({ playerName, marketKey, mapped, gameStatus }, 'Live stat enriched (MLB)')
       } else {
-        logger.warn({ playerName, espnId, marketKey, today }, 'Live stat enrichment: no stats found for player')
+        logger.warn({ playerName, espnId, marketKey, today, gameStatus, nbaByIdKeys: Object.keys(nbaById), nbaByNameKeys: Object.keys(nbaByName) }, 'Live stat enrichment: no stats found for player')
       }
     }
   } catch (err) {
