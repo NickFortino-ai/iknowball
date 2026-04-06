@@ -748,8 +748,17 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     })
   }
 
-  // Process records broken
+  // Process records broken — dedup: per (user, record_key), only keep the highest/latest break
+  const bestRecordBreak = {}
   for (const record of recordsBroken.data || []) {
+    const key = `${record.new_holder_id}|${record.record_key}`
+    const existing = bestRecordBreak[key]
+    if (!existing || (record.new_value || 0) > (existing.new_value || 0)) {
+      bestRecordBreak[key] = record
+    }
+  }
+
+  for (const record of Object.values(bestRecordBreak)) {
     const user = userMap[record.new_holder_id]
     if (!user) continue
     let previous_holder_username = null
