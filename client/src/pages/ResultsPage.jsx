@@ -207,6 +207,7 @@ export default function ResultsPage() {
                   userPick={pick}
                   reactions={reactionsBatch?.[pick.id]}
                   onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
+                  sportKey={pick.games?.sports?.key}
                 />
               ))}
               {todayParlays.map((parlay) => (
@@ -263,6 +264,7 @@ export default function ResultsPage() {
                             userPick={pick}
                             reactions={reactionsBatch?.[pick.id]}
                             onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
+                            sportKey={pick.games?.sports?.key}
                           />
                         ))}
                       </Fragment>
