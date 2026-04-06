@@ -29,7 +29,8 @@ function formatLiveStatus(game) {
         periodLabel = `P${game.period}`
       }
     }
-    const detail = [periodLabel, game.clock].filter(Boolean).join(' ')
+    const showClock = game.clock && !sportKey.includes('baseball')
+    const detail = [periodLabel, showClock ? game.clock : null].filter(Boolean).join(' ')
     if (detail) parts.push(detail)
   }
   return parts.join(' · ')

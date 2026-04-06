@@ -75,13 +75,19 @@ export async function fetchESPNScoreboard(sportKey, date = null) {
       : finalStatuses.includes(statusType) ? 'post'
       : 'pre'
 
+    // For baseball, use shortDetail (e.g. "Top 5th") as period instead of raw inning number
+    const shortDetail = status?.type?.shortDetail || null
+    const isBaseball = sport.path.includes('baseball')
+    const period = isBaseball && shortDetail ? shortDetail : (status?.period ? String(status.period) : null)
+    const clock = isBaseball ? null : (status?.displayClock || null)
+
     return {
       homeTeam: homeComp.team?.displayName || homeComp.team?.name || '',
       awayTeam: awayComp.team?.displayName || awayComp.team?.name || '',
       homeScore: parseInt(homeComp.score || '0', 10),
       awayScore: parseInt(awayComp.score || '0', 10),
-      period: status?.period ? String(status.period) : null,
-      clock: status?.displayClock || null,
+      period,
+      clock,
       state,
     }
   }).filter(Boolean)
