@@ -201,31 +201,48 @@ router.get('/bracket-templates/active', requireAuth, async (req, res) => {
 router.get('/open', requireAuth, async (req, res) => {
   const now = new Date().toISOString()
 
-  // Get leagues that are open visibility, not completed, and not past their join lock
+  // Get leagues that are open visibility, haven't started yet, not completed,
+  // not past their join lock, and not past their end date
   const { data: leagues, error } = await supabase
     .from('leagues')
     .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, backdrop_image, backdrop_y, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
     .eq('visibility', 'open')
-    .in('status', ['open', 'active'])
+    .eq('status', 'open')
     .or(`joins_locked_at.is.null,joins_locked_at.gt.${now}`)
+    .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order('created_at', { ascending: false })
     .limit(50)
 
   if (error) throw error
 
-  // Get member counts and check which ones the user is already in
+  // Get member counts and check which ones the user is already in.
+  // Paginate to bypass Supabase 1000-row default limit — with up to 50 leagues
+  // this can easily exceed 1000 rows and silently truncate, breaking the
+  // "already joined" filter and member_count.
   const leagueIds = (leagues || []).map((l) => l.id)
 
-  const { data: members } = leagueIds.length
-    ? await supabase
+  async function fetchAllMembers(ids) {
+    const PAGE = 1000
+    let all = []
+    let offset = 0
+    while (true) {
+      const { data, error: memErr } = await supabase
         .from('league_members')
         .select('league_id, user_id')
-        .in('league_id', leagueIds)
-    : { data: [] }
+        .in('league_id', ids)
+        .range(offset, offset + PAGE - 1)
+      if (memErr) throw memErr
+      all = all.concat(data || [])
+      if (!data || data.length < PAGE) break
+      offset += PAGE
+    }
+    return all
+  }
+  const members = leagueIds.length ? await fetchAllMembers(leagueIds) : []
 
   const countMap = {}
   const userLeagues = new Set()
-  for (const m of members || []) {
+  for (const m of members) {
     countMap[m.league_id] = (countMap[m.league_id] || 0) + 1
     if (m.user_id === req.user.id) userLeagues.add(m.league_id)
   }
