@@ -31,8 +31,28 @@ function roundRect(ctx, x, y, w, h, r) {
 
 function generateShareCard(game, userPick, totalCounts) {
   const W = 600
-  const H = 520
   const PAD = 40
+
+  // First pass: calculate required height based on content
+  // Header (brand + sport): 48 + 28 + 24 = 100
+  // Matchup card: 140
+  // Gap before pick: 28
+  // Pick row: 56 + (points ? 40 : 0) if userPick
+  // All picks section: 60 if total > 0, else 32
+  // Footer: 40
+  let calcY = 48 + 28 + 24 + 140
+  if (userPick) {
+    calcY += 28 + 72
+    if (userPick.points_earned != null) calcY += 40
+  }
+  const total = (totalCounts?.home || 0) + (totalCounts?.away || 0)
+  if (total > 0) {
+    calcY += 8 + 20 + 12 + 14 + 24
+  } else {
+    calcY += 32
+  }
+  const H = calcY + 40 // footer space
+
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
