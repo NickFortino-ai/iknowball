@@ -46,6 +46,18 @@ export default function PickDetailModal({ pickId, onClose }) {
     return () => { if (cardUrl) URL.revokeObjectURL(cardUrl) }
   }, [cardUrl])
 
+  const handleShare = useCallback(() => {
+    if (!pick?.games) return
+    const canvas = generateShareCard(pick.games, pick, gamePicksData?.totalCounts)
+    canvas.toBlob((blob) => {
+      if (cardUrl) URL.revokeObjectURL(cardUrl)
+      setCardBlob(blob)
+      setCardUrl(URL.createObjectURL(blob))
+    }, 'image/png')
+    setShareMode(true)
+    setCopied(false)
+  }, [pick, gamePicksData, cardUrl])
+
   if (!pickId) return null
 
   async function handleSubmitFlex() {
@@ -59,18 +71,6 @@ export default function PickDetailModal({ pickId, onClose }) {
       toast(err.message || 'Failed to flex', 'error')
     }
   }
-
-  const handleShare = useCallback(() => {
-    if (!pick?.games) return
-    const canvas = generateShareCard(pick.games, pick, gamePicksData?.totalCounts)
-    canvas.toBlob((blob) => {
-      if (cardUrl) URL.revokeObjectURL(cardUrl)
-      setCardBlob(blob)
-      setCardUrl(URL.createObjectURL(blob))
-    }, 'image/png')
-    setShareMode(true)
-    setCopied(false)
-  }, [pick, gamePicksData, cardUrl])
 
   async function handleCopyImage() {
     if (!cardBlob) return
