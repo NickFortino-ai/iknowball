@@ -1130,6 +1130,17 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       flex_parlay: take.flex_parlay_id ? flexParlayMap[take.flex_parlay_id] : null,
       flex_prop_pick: take.flex_prop_pick_id ? flexPropMap[take.flex_prop_pick_id] : null,
     } : {}
+
+    // For All of IKB scope, only show flexes if the underlying item meets the auto-threshold
+    if (isFlex && isAll) {
+      const p = flexData.flex_pick
+      const pl = flexData.flex_parlay
+      // Prop flexes never qualify for All of IKB (props aren't in auto feed)
+      if (flexData.flex_prop_pick) continue
+      if (p && (p.odds_at_pick || 0) < 300) continue
+      if (pl && ((pl.leg_count || 0) < 4 || (pl.combined_multiplier || 0) < 4)) continue
+    }
+
     feed.push({
       type: 'hot_take',
       id: take.id,
