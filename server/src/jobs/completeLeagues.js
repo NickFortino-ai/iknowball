@@ -407,28 +407,42 @@ export async function completeLeagues() {
 
   for (const league of leagues) {
     try {
-      // Check for unfinished games within the league's date range
-      let gamesQuery = supabase
-        .from('games')
-        .select('id', { count: 'exact', head: true })
-        .gte('starts_at', league.starts_at)
-        .lte('starts_at', league.ends_at)
-        .neq('status', 'final')
-
-      if (league.sport && league.sport !== 'all') {
-        const { data: sportRow } = await supabase
-          .from('sports')
-          .select('id')
-          .eq('key', league.sport)
+      // Bracket leagues: complete when championship total score is set (admin signal)
+      if (league.format === 'bracket') {
+        const { data: tournament } = await supabase
+          .from('bracket_tournaments')
+          .select('championship_total_score')
+          .eq('league_id', league.id)
           .single()
-        if (sportRow) gamesQuery = gamesQuery.eq('sport_id', sportRow.id)
-      }
 
-      const { count: unfinished } = await gamesQuery
+        if (tournament?.championship_total_score == null) {
+          logger.info({ leagueId: league.id }, 'Skipping bracket completion — championship score not set')
+          continue
+        }
+      } else {
+        // Non-bracket leagues: check for unfinished games within the league's date range
+        let gamesQuery = supabase
+          .from('games')
+          .select('id', { count: 'exact', head: true })
+          .gte('starts_at', league.starts_at)
+          .lte('starts_at', league.ends_at)
+          .neq('status', 'final')
 
-      if (unfinished > 0) {
-        logger.info({ leagueId: league.id, unfinished }, 'Skipping league completion — unfinished games remain')
-        continue
+        if (league.sport && league.sport !== 'all') {
+          const { data: sportRow } = await supabase
+            .from('sports')
+            .select('id')
+            .eq('key', league.sport)
+            .single()
+          if (sportRow) gamesQuery = gamesQuery.eq('sport_id', sportRow.id)
+        }
+
+        const { count: unfinished } = await gamesQuery
+
+        if (unfinished > 0) {
+          logger.info({ leagueId: league.id, unfinished }, 'Skipping league completion — unfinished games remain')
+          continue
+        }
       }
 
       if (league.format === 'pickem') {
