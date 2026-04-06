@@ -11,7 +11,7 @@ const CARD_BG = '#141419'
 const ACCENT = '#FF4D00'
 const WHITE = '#FFFFFF'
 const MUTED = '#71717A'
-const BORDER = '#27272A'
+const BORDER = 'rgba(255, 255, 255, 0.2)'
 const GREEN = '#22C55E'
 const RED = '#EF4444'
 
@@ -62,6 +62,12 @@ function generateShareCard(game, userPick, totalCounts) {
   ctx.fillStyle = BG
   roundRect(ctx, 0, 0, W, H, 24)
   ctx.fill()
+
+  // Glass edge border
+  ctx.strokeStyle = BORDER
+  ctx.lineWidth = 2
+  roundRect(ctx, 1, 1, W - 2, H - 2, 23)
+  ctx.stroke()
 
   // Clip to rounded rect
   ctx.save()
@@ -238,8 +244,8 @@ function generateShareCard(game, userPick, totalCounts) {
   }
 
   // Footer URL
-  ctx.font = '500 13px -apple-system, BlinkMacSystemFont, sans-serif'
-  ctx.fillStyle = MUTED
+  ctx.font = '700 15px -apple-system, BlinkMacSystemFont, sans-serif'
+  ctx.fillStyle = WHITE
   ctx.textAlign = 'center'
   ctx.fillText('iknowball.club', W / 2, H - 24)
 
