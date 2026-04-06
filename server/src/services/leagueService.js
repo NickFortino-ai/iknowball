@@ -143,13 +143,18 @@ export async function createLeague(userId, data) {
 }
 
 export async function generateLeagueWeeks(league) {
-  if (!league.starts_at || !league.ends_at) return
+  if (!league.starts_at) return
 
   const isDaily = league.settings?.pick_frequency === 'daily'
   const periods = []
   let periodNum = 1
   const current = new Date(league.starts_at)
-  const end = new Date(league.ends_at)
+  // Survivor "last one standing" leagues have no ends_at — generate enough
+  // periods to cover the foreseeable horizon (1 year). extendLeagueWeeks
+  // tops them up if a league runs longer.
+  const end = league.ends_at
+    ? new Date(league.ends_at)
+    : new Date(new Date(league.starts_at).getTime() + 365 * 24 * 60 * 60 * 1000)
 
   if (isDaily) {
     // Daily mode: one entry per day

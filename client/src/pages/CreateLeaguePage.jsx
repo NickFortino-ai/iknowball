@@ -24,6 +24,7 @@ const SPORT_OPTIONS = [
   { value: 'basketball_wncaab', label: 'WNCAAB' },
   { value: 'americanfootball_ncaaf', label: 'NCAAF' },
   { value: 'basketball_wnba', label: 'WNBA' },
+  { value: 'icehockey_nhl', label: 'NHL' },
   { value: 'all', label: 'All Sports' },
 ]
 
