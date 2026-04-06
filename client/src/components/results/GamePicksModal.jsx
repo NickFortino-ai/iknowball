@@ -31,7 +31,7 @@ function roundRect(ctx, x, y, w, h, r) {
 
 function generateShareCard(game, userPick, totalCounts) {
   const W = 600
-  const H = 700
+  const H = 520
   const PAD = 40
   const canvas = document.createElement('canvas')
   canvas.width = W
