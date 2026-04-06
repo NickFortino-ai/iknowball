@@ -780,11 +780,33 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
       )}
 
       {/* Step 3: Teams & Seeds */}
-      {step === 3 && (
+      {step === 3 && (() => {
+        // Detect if matchups are stale relative to the configured regions
+        // (e.g. user added regions after the matchups were first generated).
+        const matchupRegions = new Set(matchups.map((m) => m.region).filter(Boolean))
+        const configuredRegions = new Set(regions)
+        const regionsMismatch = (
+          matchupRegions.size !== configuredRegions.size ||
+          [...configuredRegions].some((r) => !matchupRegions.has(r))
+        )
+        return (
         <div className="space-y-4">
           <div className="text-sm text-text-muted mb-2">
             Enter Round 1 teams and seeds. Later rounds auto-populate from bracket structure.
           </div>
+
+          {regionsMismatch && regions.length > 0 && (
+            <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm text-yellow-300 flex items-center justify-between gap-3">
+              <span>Regions changed — regenerate to apply <b>{regions.join(', ')}</b> seeding.</span>
+              <button
+                type="button"
+                onClick={handleGenerateMatchups}
+                className="px-3 py-1.5 rounded-lg bg-yellow-500 text-bg-primary text-xs font-semibold hover:bg-yellow-400 transition-colors shrink-0"
+              >
+                Regenerate
+              </button>
+            </div>
+          )}
 
           {teamCount === 68 && (
             <div className={`text-sm font-semibold text-center py-2 rounded-lg ${
@@ -942,7 +964,8 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
