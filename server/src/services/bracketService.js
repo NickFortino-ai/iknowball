@@ -17,6 +17,12 @@ export async function createTemplate(userId, data) {
       regions: data.regions || null,
       picks_available_at: data.picks_available_at || null,
       series_format: data.series_format || 'single_elimination',
+      bracket_image: data.bracket_image || null,
+      bracket_image_x: data.bracket_image_x ?? 50,
+      bracket_image_y: data.bracket_image_y ?? 50,
+      bracket_image_scale: data.bracket_image_scale ?? 1.0,
+      bracket_image_opacity: data.bracket_image_opacity ?? 0.4,
+      bracket_image_position: data.bracket_image_position || 'behind',
       created_by: userId,
     })
     .select()
@@ -91,6 +97,12 @@ export async function updateTemplate(templateId, userId, data) {
   if (data.regions !== undefined) updates.regions = data.regions
   if (data.picks_available_at !== undefined) updates.picks_available_at = data.picks_available_at
   if (data.series_format !== undefined) updates.series_format = data.series_format
+  if (data.bracket_image !== undefined) updates.bracket_image = data.bracket_image
+  if (data.bracket_image_x !== undefined) updates.bracket_image_x = data.bracket_image_x
+  if (data.bracket_image_y !== undefined) updates.bracket_image_y = data.bracket_image_y
+  if (data.bracket_image_scale !== undefined) updates.bracket_image_scale = data.bracket_image_scale
+  if (data.bracket_image_opacity !== undefined) updates.bracket_image_opacity = data.bracket_image_opacity
+  if (data.bracket_image_position !== undefined) updates.bracket_image_position = data.bracket_image_position
 
   const { data: updated, error } = await supabase
     .from('bracket_templates')

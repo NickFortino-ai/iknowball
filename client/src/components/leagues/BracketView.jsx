@@ -235,13 +235,41 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
     ? myEntry?.picks
     : viewedEntry?.picks || null
 
-  const showCourtBg = !league.backdrop_image && (league.sport === 'basketball_ncaab' || league.sport === 'basketball_wncaab')
-  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
+  const template = tournament.bracket_templates || {}
+  const templateImage = template.bracket_image
+  const hasTemplateImage = !!templateImage
+  const fallbackCourtBg = !league.backdrop_image && !hasTemplateImage && (league.sport === 'basketball_ncaab' || league.sport === 'basketball_wncaab')
+  const showCourtBg = fallbackCourtBg
+  const isBestOf7 = template.series_format === 'best_of_7'
 
   return (
     <div className="relative z-10">
-      {/* Hero area with optional court background for March Madness */}
-      <div className={`relative rounded-xl mb-4 overflow-hidden ${showCourtBg ? '' : ''}`}>
+      {/* Hero area with optional centerpiece image */}
+      <div className="relative rounded-xl mb-4 overflow-hidden">
+        {hasTemplateImage && (
+          <>
+            <img
+              src={templateImage}
+              alt=""
+              draggable={false}
+              style={{
+                position: 'absolute',
+                left: `${template.bracket_image_x ?? 50}%`,
+                top: `${template.bracket_image_y ?? 50}%`,
+                transform: `translate(-50%, -50%) scale(${template.bracket_image_scale ?? 1})`,
+                opacity: template.bracket_image_opacity ?? 0.4,
+                maxWidth: '80%',
+                maxHeight: '100%',
+                zIndex: template.bracket_image_position === 'above_finals' ? 20 : 1,
+                pointerEvents: 'none',
+                userSelect: 'none',
+              }}
+            />
+            {template.bracket_image_position !== 'above_finals' && (
+              <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/70 via-transparent to-bg-primary pointer-events-none" />
+            )}
+          </>
+        )}
         {showCourtBg && (
           <>
             <img

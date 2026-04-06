@@ -8,6 +8,7 @@ import {
 } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
+import { supabase } from '../../lib/supabase'
 
 function TeamAutocomplete({ value, onChange, placeholder, disabled, teams }) {
   const [open, setOpen] = useState(false)
@@ -269,6 +270,13 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     return ''
   })
   const [seriesFormat, setSeriesFormat] = useState(existing?.series_format || 'single_elimination')
+  const [bracketImage, setBracketImage] = useState(existing?.bracket_image || '')
+  const [bracketImageX, setBracketImageX] = useState(existing?.bracket_image_x ?? 50)
+  const [bracketImageY, setBracketImageY] = useState(existing?.bracket_image_y ?? 50)
+  const [bracketImageScale, setBracketImageScale] = useState(existing?.bracket_image_scale ?? 1.0)
+  const [bracketImageOpacity, setBracketImageOpacity] = useState(existing?.bracket_image_opacity ?? 0.4)
+  const [bracketImagePosition, setBracketImagePosition] = useState(existing?.bracket_image_position || 'behind')
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [regionInput, setRegionInput] = useState('')
   const [rounds, setRounds] = useState(() => {
     if (existing?.rounds?.length) return existing.rounds
@@ -296,6 +304,12 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     setTeamCount(existing.team_count || 64)
     setDescription(existing.description || '')
     setRegions(existing.regions || [])
+    setBracketImage(existing.bracket_image || '')
+    setBracketImageX(existing.bracket_image_x ?? 50)
+    setBracketImageY(existing.bracket_image_y ?? 50)
+    setBracketImageScale(existing.bracket_image_scale ?? 1.0)
+    setBracketImageOpacity(existing.bracket_image_opacity ?? 0.4)
+    setBracketImagePosition(existing.bracket_image_position || 'behind')
     if (existing.picks_available_at) {
       const d = new Date(existing.picks_available_at)
       setPicksAvailableAt(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)
@@ -373,6 +387,39 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     }))
   }
 
+  async function handleImageUpload(file) {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast('Please select an image file', 'error')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast('Image must be under 5 MB', 'error')
+      return
+    }
+    setUploadingImage(true)
+    try {
+      const ext = file.name.split('.').pop() || 'png'
+      const path = `${savedTemplateId || 'new'}-${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('bracket-images')
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (uploadError) throw uploadError
+      const { data: { publicUrl } } = supabase.storage.from('bracket-images').getPublicUrl(path)
+      setBracketImage(publicUrl)
+      // Reset positioning to defaults on new upload
+      setBracketImageX(50)
+      setBracketImageY(50)
+      setBracketImageScale(1.0)
+      setBracketImageOpacity(0.4)
+      toast('Image uploaded', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to upload image', 'error')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   function handleAddRegion() {
     if (regionInput.trim() && !regions.includes(regionInput.trim())) {
       setRegions([...regions, regionInput.trim()])
@@ -442,6 +489,12 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           regions: regions.length > 0 ? regions : undefined,
           picks_available_at: picksAvailableAt ? new Date(picksAvailableAt).toISOString() : null,
           series_format: seriesFormat,
+          bracket_image: bracketImage || null,
+          bracket_image_x: bracketImageX,
+          bracket_image_y: bracketImageY,
+          bracket_image_scale: bracketImageScale,
+          bracket_image_opacity: bracketImageOpacity,
+          bracket_image_position: bracketImagePosition,
         })
         id = template.id
         setSavedTemplateId(id)
@@ -456,6 +509,12 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           regions: regions.length > 0 ? regions : undefined,
           picks_available_at: picksAvailableAt ? new Date(picksAvailableAt).toISOString() : null,
           series_format: seriesFormat,
+          bracket_image: bracketImage || null,
+          bracket_image_x: bracketImageX,
+          bracket_image_y: bracketImageY,
+          bracket_image_scale: bracketImageScale,
+          bracket_image_opacity: bracketImageOpacity,
+          bracket_image_position: bracketImagePosition,
         })
       }
       toast('Template saved!', 'success')
@@ -540,7 +599,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
 
       {/* Step indicator */}
       <div className="flex gap-1 mb-6">
-        {[1, 2, 3].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <button
             key={s}
             onClick={() => setStep(s)}
@@ -548,7 +607,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               step === s ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
             }`}
           >
-            {s === 1 ? 'Details' : s === 2 ? 'Rounds' : 'Teams'}
+            {s === 1 ? 'Details' : s === 2 ? 'Rounds' : s === 3 ? 'Teams' : 'Image'}
           </button>
         ))}
       </div>
@@ -961,11 +1020,214 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               >
                 {saveMatchups.isPending ? 'Saving...' : saved ? 'Saved \u2713' : 'Save Template'}
               </button>
+              <button
+                onClick={() => setStep(4)}
+                className="flex-1 py-3 rounded-xl font-display text-lg bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors"
+              >
+                Next: Image
+              </button>
             </div>
           </div>
         </div>
         )
       })()}
+
+      {/* Step 4: Bracket Image (optional centerpiece) */}
+      {step === 4 && (
+        <div className="space-y-4">
+          <div className="text-sm text-text-muted mb-2">
+            Optional: upload a centerpiece image that appears on the bracket. Drag it inside the preview to position, and use the sliders to scale and adjust opacity.
+          </div>
+
+          {/* Upload */}
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">Bracket Image</label>
+            <div className="flex gap-2 items-center">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleImageUpload(e.target.files?.[0])}
+                disabled={uploadingImage}
+                className="flex-1 text-xs text-text-muted file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-accent file:text-white file:font-semibold file:cursor-pointer file:hover:bg-accent-hover"
+              />
+              {bracketImage && (
+                <button
+                  type="button"
+                  onClick={() => setBracketImage('')}
+                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-bg-card text-text-secondary hover:bg-incorrect/20 hover:text-incorrect transition-colors"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {uploadingImage && <div className="text-xs text-text-muted mt-1">Uploading…</div>}
+          </div>
+
+          {/* Position toggle */}
+          {bracketImage && (
+            <div>
+              <label className="block text-sm font-semibold text-text-secondary mb-2">Layer</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'behind', label: 'Behind bracket' },
+                  { value: 'above_finals', label: 'Above championship slot' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setBracketImagePosition(opt.value)}
+                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      bracketImagePosition === opt.value
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Live preview with drag-to-position */}
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">Preview</label>
+            <BracketImagePreview
+              imageUrl={bracketImage}
+              x={bracketImageX}
+              y={bracketImageY}
+              scale={bracketImageScale}
+              opacity={bracketImageOpacity}
+              position={bracketImagePosition}
+              onPositionChange={(x, y) => { setBracketImageX(x); setBracketImageY(y) }}
+            />
+          </div>
+
+          {bracketImage && (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-text-secondary mb-2">
+                  Scale <span className="text-text-muted font-normal">{bracketImageScale.toFixed(2)}x</span>
+                </label>
+                <input
+                  type="range"
+                  min={0.3}
+                  max={3}
+                  step={0.05}
+                  value={bracketImageScale}
+                  onChange={(e) => setBracketImageScale(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-text-secondary mb-2">
+                  Opacity <span className="text-text-muted font-normal">{Math.round(bracketImageOpacity * 100)}%</span>
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={bracketImageOpacity}
+                  onChange={(e) => setBracketImageOpacity(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setStep(3)}
+              className="flex-1 py-3 rounded-xl font-display text-lg bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleSaveTemplate}
+              disabled={createTemplate.isPending || updateTemplate.isPending}
+              className="flex-1 py-3 rounded-xl font-display text-lg bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+            >
+              {createTemplate.isPending || updateTemplate.isPending ? 'Saving...' : 'Save Template'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BracketImagePreview({ imageUrl, x, y, scale, opacity, position, onPositionChange }) {
+  const containerRef = useRef(null)
+  const [dragging, setDragging] = useState(false)
+
+  function handlePointerDown(e) {
+    if (!imageUrl) return
+    setDragging(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  function handlePointerMove(e) {
+    if (!dragging || !containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    const newX = ((e.clientX - rect.left) / rect.width) * 100
+    const newY = ((e.clientY - rect.top) / rect.height) * 100
+    onPositionChange(Math.max(0, Math.min(100, newX)), Math.max(0, Math.min(100, newY)))
+  }
+  function handlePointerUp(e) {
+    setDragging(false)
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      className={`relative w-full aspect-[16/10] rounded-xl border border-border bg-bg-primary overflow-hidden ${imageUrl ? 'cursor-grab active:cursor-grabbing' : ''}`}
+    >
+      {/* Mock bracket layout */}
+      <div className="absolute inset-0 p-3 flex items-center justify-between">
+        <div className="space-y-2">
+          {[1,2,3,4].map((i) => <div key={i} className="w-16 h-3 rounded bg-bg-card border border-border" />)}
+        </div>
+        <div className="space-y-2">
+          {[1,2].map((i) => <div key={i} className="w-16 h-3 rounded bg-bg-card border border-border" />)}
+        </div>
+        <div className="w-20 h-4 rounded bg-accent/30 border border-accent" />
+        <div className="space-y-2">
+          {[1,2].map((i) => <div key={i} className="w-16 h-3 rounded bg-bg-card border border-border" />)}
+        </div>
+        <div className="space-y-2">
+          {[1,2,3,4].map((i) => <div key={i} className="w-16 h-3 rounded bg-bg-card border border-border" />)}
+        </div>
+      </div>
+
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt=""
+          draggable={false}
+          style={{
+            position: 'absolute',
+            left: `${x}%`,
+            top: `${y}%`,
+            transform: `translate(-50%, -50%) scale(${scale})`,
+            opacity,
+            maxWidth: '60%',
+            maxHeight: '80%',
+            zIndex: position === 'above_finals' ? 20 : 5,
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        />
+      )}
+
+      {!imageUrl && (
+        <div className="absolute inset-0 flex items-center justify-center text-xs text-text-muted">
+          Upload an image to preview it on the bracket
+        </div>
+      )}
     </div>
   )
 }

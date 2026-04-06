@@ -346,11 +346,15 @@ router.get('/bracket-templates/:id', async (req, res) => {
 })
 
 router.post('/bracket-templates', async (req, res) => {
-  const { name, sport, team_count, description, rounds, regions, picks_available_at, series_format } = req.body
+  const { name, sport, team_count, description, rounds, regions, picks_available_at, series_format,
+          bracket_image, bracket_image_x, bracket_image_y, bracket_image_scale, bracket_image_opacity, bracket_image_position } = req.body
   if (!name || !sport || !team_count) {
     return res.status(400).json({ error: 'name, sport, and team_count are required' })
   }
-  const template = await createTemplate(req.user.id, { name, sport, team_count, description, rounds, regions, picks_available_at, series_format })
+  const template = await createTemplate(req.user.id, {
+    name, sport, team_count, description, rounds, regions, picks_available_at, series_format,
+    bracket_image, bracket_image_x, bracket_image_y, bracket_image_scale, bracket_image_opacity, bracket_image_position,
+  })
   res.status(201).json(template)
 })
 
