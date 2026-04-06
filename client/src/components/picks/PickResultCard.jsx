@@ -1,4 +1,13 @@
+import { useState } from 'react'
 import { formatOdds } from '../../lib/scoring'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
+
+function TeamLogo({ team, sportKey }) {
+  const [err, setErr] = useState(false)
+  const url = getTeamLogoUrl(team, sportKey)
+  if (!url || err) return null
+  return <img src={url} alt="" className="w-10 h-10 object-contain mx-auto mb-1" onError={() => setErr(true)} />
+}
 
 // Reusable pick result display: matchup card + user pick + ALL PICKS bar
 // Used in PickDetailModal and feed FlexTargetCard
@@ -36,6 +45,7 @@ export default function PickResultCard({ pick, game, totalCounts }) {
         <div className="text-xs text-text-muted uppercase tracking-wider mb-1">{game.sports?.name || ''}</div>
         <div className="flex items-center justify-between gap-3">
           <div className="text-center flex-1 min-w-0">
+            <TeamLogo team={game.away_team} sportKey={game.sports?.key} />
             <div className="text-sm font-semibold text-text-primary truncate">{game.away_team}</div>
             {hasScores && <div className="text-2xl font-display font-bold text-text-primary mt-0.5">{awayScore}</div>}
           </div>
@@ -43,6 +53,7 @@ export default function PickResultCard({ pick, game, totalCounts }) {
             {isSettled ? 'FINAL' : isLive ? 'LIVE' : '@'}
           </div>
           <div className="text-center flex-1 min-w-0">
+            <TeamLogo team={game.home_team} sportKey={game.sports?.key} />
             <div className="text-sm font-semibold text-text-primary truncate">{game.home_team}</div>
             {hasScores && <div className="text-2xl font-display font-bold text-text-primary mt-0.5">{homeScore}</div>}
           </div>
