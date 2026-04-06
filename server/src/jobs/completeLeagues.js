@@ -141,6 +141,12 @@ async function awardPositionBasedPoints(league, standings, formatLabel) {
 
         const winnerName = entry.user?.display_name || entry.user?.username || 'Someone'
         await notifyLeagueMembers(league, entry.user_id, winnerName, formatLabel.toLowerCase())
+      } else {
+        // Notify non-winners of their global score impact
+        const pointsLabel = totalPoints >= 0 ? `+${totalPoints}` : `${totalPoints}`
+        await createNotification(entry.user_id, 'league_win',
+          `${league.name} is complete. You finished ${tiedLabel} of ${n} (${pointsLabel} pts to your global score).`,
+          { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: league.format, isWinner: false })
       }
 
       logger.info({ userId: entry.user_id, leagueId: league.id, rank, totalPoints, tied: groupSize > 1 }, `${formatLabel} standing awarded`)
@@ -254,6 +260,8 @@ async function awardLeaguePickPoints(league) {
   if (!standings?.length) return
 
   // Award each user their net points as a bonus_points entry
+  const memberCount = await getLeagueMemberCount(league.id)
+
   for (const entry of standings) {
     if (entry.total_points === 0) continue
 
@@ -263,14 +271,24 @@ async function awardLeaguePickPoints(league) {
 
   // Award winner bonus (member count points)
   const winnerId = standings[0].user_id
-  const memberCount = await getLeagueMemberCount(league.id)
 
   await awardUserPoints(winnerId, league, memberCount,
     `Won ${memberCount}-person league +${memberCount} pts`, 'league_win')
 
+  const totalWinnerPoints = (standings[0].total_points || 0) + memberCount
   await createNotification(winnerId, 'league_win',
-    `You won the ${league.name} league! +${memberCount} pts`,
-    { leagueId: league.id, leagueName: league.name, points: memberCount, memberCount, format: 'pickem', isWinner: true })
+    `You won the ${league.name} league! +${totalWinnerPoints} pts to your global score.`,
+    { leagueId: league.id, leagueName: league.name, points: totalWinnerPoints, memberCount, format: 'pickem', isWinner: true })
+
+  // Notify non-winners of their points
+  for (const entry of standings) {
+    if (entry.user_id === winnerId) continue
+    if (entry.total_points === 0) continue
+    const pointsLabel = entry.total_points > 0 ? `+${entry.total_points}` : `${entry.total_points}`
+    await createNotification(entry.user_id, 'league_win',
+      `${league.name} is complete. You earned ${pointsLabel} pts to your global score.`,
+      { leagueId: league.id, leagueName: league.name, points: entry.total_points, memberCount, format: 'pickem', isWinner: false })
+  }
 
   const winnerName = standings[0].user?.display_name || standings[0].user?.username || 'Someone'
   await notifyLeagueMembers(league, winnerId, winnerName, 'pickem')
