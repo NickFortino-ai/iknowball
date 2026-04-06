@@ -50,7 +50,7 @@ export default function PickReactions({ pickId, compact = false, reactions: exte
   }
 
   return (
-    <div className="flex gap-1 flex-wrap">
+    <div className="flex gap-3 flex-wrap">
       {REACTIONS.map((r) => {
         const info = reactionMap[r.type]
         const hasReacted = info?.hasReacted

@@ -61,7 +61,7 @@ export default function PickDetailModal({ pickId, onClose }) {
         ) : !pick ? (
           <p className="text-text-muted text-center">Pick not found</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Sport badge */}
             {sport && (
               <span className="text-xs text-text-muted uppercase tracking-wider">
@@ -97,9 +97,7 @@ export default function PickDetailModal({ pickId, onClose }) {
             </div>
 
             {/* Reactions */}
-            <div className="rounded-xl border border-text-primary/20 p-4">
-              <PickReactions pickId={pickId} />
-            </div>
+            <PickReactions pickId={pickId} />
 
             {/* Comments (pre-expanded) */}
             <div className="rounded-xl border border-text-primary/20 p-4">
