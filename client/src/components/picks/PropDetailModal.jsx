@@ -1,10 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { usePropPick } from '../../hooks/useProps'
 import { useAuth } from '../../hooks/useAuth'
 import { useConnectionStatus } from '../../hooks/useConnections'
+import { useCreateFlex } from '../../hooks/useHotTakes'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickComments from '../social/PickComments'
+import { toast } from '../ui/Toast'
 
 export default function PropDetailModal({ propPickId, onClose }) {
   const { data: pick, isLoading } = usePropPick(propPickId)
@@ -13,6 +15,9 @@ export default function PropDetailModal({ propPickId, onClose }) {
   const isOwn = ownerId && ownerId === session?.user?.id
   const { data: connData } = useConnectionStatus(!isOwn ? ownerId : null)
   const canComment = isOwn || connData?.status === 'connected'
+  const createFlex = useCreateFlex()
+  const [flexing, setFlexing] = useState(false)
+  const [flexText, setFlexText] = useState('')
 
   useEffect(() => {
     if (!propPickId) return
@@ -21,6 +26,20 @@ export default function PropDetailModal({ propPickId, onClose }) {
   }, [propPickId])
 
   if (!propPickId) return null
+
+  async function handleSubmitFlex() {
+    try {
+      await createFlex.mutateAsync({ content: flexText, propPickId })
+      toast('Flex posted to squad!', 'success')
+      setFlexing(false)
+      setFlexText('')
+      onClose?.()
+    } catch (err) {
+      toast(err.message || 'Failed to flex', 'error')
+    }
+  }
+
+  const canFlex = isOwn && pick?.status === 'settled' && pick?.is_correct === true
 
   const prop = pick?.player_props
   const game = prop?.games
@@ -38,12 +57,43 @@ export default function PropDetailModal({ propPickId, onClose }) {
         className={`relative bg-bg-primary/90 backdrop-blur-md border ${borderColor} w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 max-h-[95vh] md:max-h-[85vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-text-muted hover:text-text-primary text-xl leading-none p-3"
-        >
-          &times;
-        </button>
+        {/* Top bar: flex button + close */}
+        <div className="flex items-center justify-between mb-3">
+          {canFlex && !flexing ? (
+            <button
+              onClick={() => setFlexing(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-text-primary hover:opacity-80 transition-opacity"
+            >
+              <img src="/flex-button.png" alt="" className="w-6 h-6 object-contain" />
+              <span>Flex to Squad</span>
+            </button>
+          ) : <div />}
+          <button
+            onClick={onClose}
+            className="text-text-muted hover:text-text-primary text-xl leading-none w-8 h-8 flex items-center justify-center"
+          >
+            &times;
+          </button>
+        </div>
+
+        {flexing && (
+          <div className="mb-4">
+            <textarea
+              value={flexText}
+              onChange={(e) => setFlexText(e.target.value)}
+              placeholder="Let them know!"
+              rows={2}
+              className="w-full bg-bg-primary/50 border border-accent rounded-lg px-3 py-2 text-sm font-semibold text-white placeholder-text-muted focus:outline-none resize-none"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end mt-2">
+              <button onClick={() => { setFlexing(false); setFlexText('') }} className="text-xs text-text-muted hover:text-text-secondary px-3 py-1.5">Cancel</button>
+              <button onClick={handleSubmitFlex} disabled={createFlex.isPending} className="text-xs font-semibold bg-accent text-white px-4 py-1.5 rounded-lg hover:bg-accent-hover disabled:opacity-50">
+                {createFlex.isPending ? 'Posting...' : 'Flex'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <LoadingSpinner />

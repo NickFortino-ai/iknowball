@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
-import { createHotTake, updateHotTake, deleteHotTake, getHotTakesByUser, createReminder, askForHotTakes } from '../services/hotTakeService.js'
+import { createHotTake, updateHotTake, deleteHotTake, getHotTakesByUser, createReminder, askForHotTakes, createFlex } from '../services/hotTakeService.js'
 import { toggleBookmark, getBookmarkedHotTakes, getBookmarkStatusBatch } from '../services/socialService.js'
 import { checkUserMuted, checkContent } from '../services/contentFilterService.js'
 import { supabase } from '../config/supabase.js'
@@ -22,6 +22,29 @@ const hotTakeSchema = z.object({
   poll_options: z.array(z.string().min(1).max(100)).min(2).max(6).optional(),
 }).refine((data) => data.content || data.image_url || data.image_urls?.length || data.video_url, {
   message: 'Post must have text, an image, or a video',
+})
+
+const flexSchema = z.object({
+  content: z.string().optional().default(''),
+  pickId: z.string().uuid().optional(),
+  parlayId: z.string().uuid().optional(),
+  propPickId: z.string().uuid().optional(),
+})
+
+router.post('/flex', requireAuth, validate(flexSchema), async (req, res) => {
+  if (await checkUserMuted(req.user.id)) {
+    return res.status(403).json({ error: 'Your posting privileges have been suspended' })
+  }
+  const filterResult = await checkContent(req.validated.content)
+  if (filterResult.blocked) {
+    return res.status(400).json({ error: 'Your flex contains inappropriate language. Please revise and try again.' })
+  }
+  try {
+    const flex = await createFlex(req.user.id, req.validated)
+    res.status(201).json(flex)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
 })
 
 router.post('/', requireAuth, validate(hotTakeSchema), async (req, res) => {

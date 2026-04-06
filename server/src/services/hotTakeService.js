@@ -35,6 +35,91 @@ export async function createHotTake(userId, content, teamTags, sportKey, imageUr
   return data
 }
 
+export async function createFlex(userId, { content, pickId, parlayId, propPickId }) {
+  // Validate: exactly one target must be provided
+  const targets = [pickId, parlayId, propPickId].filter(Boolean)
+  if (targets.length !== 1) {
+    const err = new Error('Exactly one of pickId, parlayId, or propPickId must be provided')
+    err.status = 400
+    throw err
+  }
+
+  // Verify ownership and that the item is correct (is_correct = true)
+  if (pickId) {
+    const { data: pick } = await supabase
+      .from('picks')
+      .select('user_id, is_correct, status')
+      .eq('id', pickId)
+      .single()
+    if (!pick || pick.user_id !== userId) {
+      const err = new Error('Pick not found or not owned by you')
+      err.status = 403
+      throw err
+    }
+    if (pick.status !== 'settled' || pick.is_correct !== true) {
+      const err = new Error('Only correct settled picks can be flexed')
+      err.status = 400
+      throw err
+    }
+  } else if (parlayId) {
+    const { data: parlay } = await supabase
+      .from('parlays')
+      .select('user_id, is_correct, status')
+      .eq('id', parlayId)
+      .single()
+    if (!parlay || parlay.user_id !== userId) {
+      const err = new Error('Parlay not found or not owned by you')
+      err.status = 403
+      throw err
+    }
+    if (parlay.status !== 'settled' || parlay.is_correct !== true) {
+      const err = new Error('Only correct settled parlays can be flexed')
+      err.status = 400
+      throw err
+    }
+  } else if (propPickId) {
+    const { data: pp } = await supabase
+      .from('prop_picks')
+      .select('user_id, is_correct, status')
+      .eq('id', propPickId)
+      .single()
+    if (!pp || pp.user_id !== userId) {
+      const err = new Error('Prop pick not found or not owned by you')
+      err.status = 403
+      throw err
+    }
+    if (pp.status !== 'settled' || pp.is_correct !== true) {
+      const err = new Error('Only correct settled prop picks can be flexed')
+      err.status = 400
+      throw err
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('hot_takes')
+    .insert({
+      user_id: userId,
+      content: content || '',
+      post_type: 'flex',
+      flex_pick_id: pickId || null,
+      flex_parlay_id: parlayId || null,
+      flex_prop_pick_id: propPickId || null,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      const err = new Error('You have already flexed this item')
+      err.status = 409
+      throw err
+    }
+    throw error
+  }
+
+  return data
+}
+
 export async function getHotTakesByUser(userId) {
   const { data, error } = await supabase
     .from('hot_takes')

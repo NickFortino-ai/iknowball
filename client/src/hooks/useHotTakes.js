@@ -16,6 +16,18 @@ export function useCreateHotTake() {
   })
 }
 
+export function useCreateFlex() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ content, pickId, parlayId, propPickId }) =>
+      api.post('/hot-takes/flex', { content, pickId, parlayId, propPickId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connections', 'activity'] })
+    },
+  })
+}
+
 export function useHotTakeById(hotTakeId) {
   return useQuery({
     queryKey: ['hotTakes', hotTakeId],

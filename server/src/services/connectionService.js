@@ -505,7 +505,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
     // Source 9: Hot takes (posts, predictions, polls)
     (() => {
-      const htSelect = 'id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at'
+      const htSelect = 'id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at, flex_pick_id, flex_parlay_id, flex_prop_pick_id'
       let htQuery
       if (isPolls) {
         htQuery = supabase.from('hot_takes').select(htSelect).eq('post_type', 'poll')
@@ -1084,10 +1084,52 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     }
   }
 
+  // Collect flex target IDs to fetch pick/parlay/prop data for flexes
+  const flexPickIds = new Set()
+  const flexParlayIds = new Set()
+  const flexPropPickIds = new Set()
+  for (const take of hotTakes.data || []) {
+    if (take.post_type === 'flex') {
+      if (take.flex_pick_id) flexPickIds.add(take.flex_pick_id)
+      if (take.flex_parlay_id) flexParlayIds.add(take.flex_parlay_id)
+      if (take.flex_prop_pick_id) flexPropPickIds.add(take.flex_prop_pick_id)
+    }
+  }
+
+  const [flexPicksRes, flexParlaysRes, flexPropsRes] = await Promise.all([
+    flexPickIds.size > 0
+      ? supabase.from('picks').select('id, picked_team, is_correct, odds_at_pick, points_earned, multiplier, risk_points, games(id, home_team, away_team, home_score, away_score, sports(key, name))').in('id', [...flexPickIds])
+      : Promise.resolve({ data: [] }),
+    flexParlayIds.size > 0
+      ? supabase.from('parlays').select('id, leg_count, combined_multiplier, points_earned, is_correct, parlay_legs(id, picked_team, odds_at_lock, odds_at_submission, status, games(home_team, away_team, sports(name)))').in('id', [...flexParlayIds])
+      : Promise.resolve({ data: [] }),
+    flexPropPickIds.size > 0
+      ? supabase.from('prop_picks').select('id, picked_side, is_correct, points_earned, player_props(id, player_name, line, market_label, actual_value, games(home_team, away_team, sports(key, name)))').in('id', [...flexPropPickIds])
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const flexPickMap = {}
+  for (const p of flexPicksRes.data || []) flexPickMap[p.id] = p
+  const flexParlayMap = {}
+  for (const p of flexParlaysRes.data || []) flexParlayMap[p.id] = p
+  const flexPropMap = {}
+  for (const p of flexPropsRes.data || []) flexPropMap[p.id] = p
+
+  // Build flex dedup sets (to suppress auto feed entries for same items)
+  const flexedPickIds = new Set([...flexPickIds])
+  const flexedParlayIds = new Set([...flexParlayIds])
+  const flexedPropIds = new Set([...flexPropPickIds])
+
   // Process hot takes
   for (const take of hotTakes.data || []) {
     const user = userMap[take.user_id]
     if (!user) continue
+    const isFlex = take.post_type === 'flex'
+    const flexData = isFlex ? {
+      flex_pick: take.flex_pick_id ? flexPickMap[take.flex_pick_id] : null,
+      flex_parlay: take.flex_parlay_id ? flexParlayMap[take.flex_parlay_id] : null,
+      flex_prop_pick: take.flex_prop_pick_id ? flexPropMap[take.flex_prop_pick_id] : null,
+    } : {}
     feed.push({
       type: 'hot_take',
       id: take.id,
@@ -1103,8 +1145,22 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
         video_url: take.video_url,
         post_type: take.post_type || 'post',
+        ...flexData,
       },
     })
+  }
+
+  // Dedup: remove auto-generated feed entries for picks/parlays/props that have been flexed
+  for (let i = feed.length - 1; i >= 0; i--) {
+    const item = feed[i]
+    if (item.type === 'hot_take') continue
+    if ((item.type === 'pick' || item.type === 'underdog_hit' || item.type === 'multiplier_hit' || item.type === 'multiplier_miss') && item.pick?.id && flexedPickIds.has(item.pick.id)) {
+      feed.splice(i, 1)
+    } else if ((item.type === 'parlay' || item.type === 'bad_beat') && item.parlay?.id && flexedParlayIds.has(item.parlay.id)) {
+      feed.splice(i, 1)
+    } else if (item.type === 'prop' && item.prop_pick?.id && flexedPropIds.has(item.prop_pick.id)) {
+      feed.splice(i, 1)
+    }
   }
 
   // For polls scope, re-sort by recent vote activity (engagement velocity)

@@ -18,6 +18,83 @@ import { extractFirstUrl } from '../../lib/urlUtils'
 let feedUnmuted = false
 let mountedVideoCount = 0
 
+// Renders the pick/parlay/prop embedded in a flex post
+function FlexTargetCard({ hot_take }) {
+  const pick = hot_take.flex_pick
+  const parlay = hot_take.flex_parlay
+  const prop = hot_take.flex_prop_pick
+
+  if (pick) {
+    const game = pick.games
+    const pickedTeam = pick.picked_team === 'home' ? game?.home_team : game?.away_team
+    const oddsStr = pick.odds_at_pick > 0 ? `+${pick.odds_at_pick}` : `${pick.odds_at_pick}`
+    return (
+      <div className="bg-bg-primary/50 border border-correct rounded-xl p-4 mb-2">
+        <div className="text-xs text-text-muted uppercase tracking-wider mb-1">{game?.sports?.name || ''}</div>
+        <div className="text-sm font-semibold text-text-primary mb-1">{game?.away_team} @ {game?.home_team}</div>
+        {game?.home_score != null && (
+          <div className="text-xs text-text-muted mb-2">Final: {game.away_team} {game.away_score} - {game.home_team} {game.home_score}</div>
+        )}
+        <div className="text-sm text-text-secondary">
+          Picked: <span className="font-semibold text-text-primary">{pickedTeam}</span>
+          <span className="text-text-muted ml-2">({oddsStr})</span>
+        </div>
+        <div className="text-base font-bold text-correct mt-2">+{pick.points_earned} pts{pick.multiplier > 1 && ` (${pick.multiplier}x)`}</div>
+      </div>
+    )
+  }
+
+  if (parlay) {
+    return (
+      <div className="bg-bg-primary/50 border border-correct rounded-xl p-4 mb-2 parlay-win-glow">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-semibold text-text-primary">{parlay.leg_count}-Leg Parlay</span>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-correct/20 text-correct">Won</span>
+          <span className="text-sm font-bold text-correct ml-auto">+{parlay.points_earned} pts</span>
+        </div>
+        <div className="space-y-1">
+          {(parlay.parlay_legs || []).map((leg) => {
+            const team = leg.picked_team === 'home' ? leg.games?.home_team : leg.games?.away_team
+            return (
+              <div key={leg.id} className="flex items-center justify-between text-xs bg-bg-secondary rounded px-2 py-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-text-muted uppercase">{leg.games?.sports?.name || ''}</span>
+                  <span className="text-text-primary font-medium truncate">{team}</span>
+                </div>
+                <span className="text-correct font-bold">W</span>
+              </div>
+            )
+          })}
+        </div>
+        <div className="text-center text-xs text-text-muted mt-2">Combined: {Number(parlay.combined_multiplier).toFixed(2)}x</div>
+      </div>
+    )
+  }
+
+  if (prop) {
+    const player_prop = prop.player_props
+    const game = player_prop?.games
+    return (
+      <div className="bg-bg-primary/50 border border-correct rounded-xl p-4 mb-2">
+        <div className="text-xs text-text-muted uppercase tracking-wider mb-1">{game?.sports?.name || ''}</div>
+        <div className="text-sm font-semibold text-text-primary mb-1">{player_prop?.player_name} — {player_prop?.line} {player_prop?.market_label}</div>
+        {game && (
+          <div className="text-xs text-text-muted mb-2">{game.away_team} @ {game.home_team}</div>
+        )}
+        <div className="text-sm text-text-secondary">
+          Picked: <span className="font-semibold text-text-primary capitalize">{prop.picked_side}</span>
+          {player_prop?.actual_value != null && (
+            <span className="text-text-muted ml-2">(actual: {player_prop.actual_value})</span>
+          )}
+        </div>
+        <div className="text-base font-bold text-correct mt-2">+{prop.points_earned} pts</div>
+      </div>
+    )
+  }
+
+  return null
+}
+
 function FeedVideo({ url }) {
   const videoRef = useRef(null)
   const containerRef = useRef(null)
@@ -366,7 +443,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   return (
     <FeedCardWrapper
       item={item}
-      borderColor={hot_take.post_type === 'prediction' ? 'green' : hot_take.post_type === 'poll' ? 'orange' : 'purple'}
+      borderColor={hot_take.post_type === 'flex' ? 'green' : hot_take.post_type === 'prediction' ? 'green' : hot_take.post_type === 'poll' ? 'orange' : 'purple'}
       targetType="hot_take"
       targetId={hot_take.id}
       reactions={reactions}
@@ -604,9 +681,29 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           {hot_take.post_type === 'poll' && (
             <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 mb-1">Poll</span>
           )}
+          {hot_take.post_type === 'flex' && (
+            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-accent/20 text-accent mb-1">
+              <img src="/flex-button.png" alt="" className="w-3 h-3 object-contain" />
+              Flex
+            </span>
+          )}
 
-          {/* Content */}
-          <RichContent text={hot_take.content} className="text-sm text-text-primary leading-relaxed" />
+          {/* Flex comment (white bold, appears ABOVE the pick card) */}
+          {hot_take.post_type === 'flex' && hot_take.content && (
+            <div className="text-base font-bold text-white leading-relaxed mb-3">
+              <RichContent text={hot_take.content} />
+            </div>
+          )}
+
+          {/* Flex pick/parlay/prop card */}
+          {hot_take.post_type === 'flex' && (
+            <FlexTargetCard hot_take={hot_take} />
+          )}
+
+          {/* Content (non-flex posts) */}
+          {hot_take.post_type !== 'flex' && (
+            <RichContent text={hot_take.content} className="text-sm text-text-primary leading-relaxed" />
+          )}
 
           {/* Poll options */}
           {hot_take.post_type === 'poll' && (
