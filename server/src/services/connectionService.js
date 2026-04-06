@@ -1107,7 +1107,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
   const [flexPicksRes, flexParlaysRes, flexPropsRes] = await Promise.all([
     flexPickIds.size > 0
-      ? supabase.from('picks').select('id, picked_team, is_correct, odds_at_pick, points_earned, multiplier, risk_points, games(id, home_team, away_team, home_score, away_score, sports(key, name))').in('id', [...flexPickIds])
+      ? supabase.from('picks').select('id, game_id, picked_team, is_correct, odds_at_pick, points_earned, multiplier, risk_points, status, games(id, home_team, away_team, home_score, away_score, status, sports(key, name))').in('id', [...flexPickIds])
       : Promise.resolve({ data: [] }),
     flexParlayIds.size > 0
       ? supabase.from('parlays').select('id, leg_count, combined_multiplier, points_earned, is_correct, parlay_legs(id, picked_team, odds_at_lock, odds_at_submission, status, games(home_team, away_team, sports(name)))').in('id', [...flexParlayIds])
@@ -1117,8 +1117,29 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       : Promise.resolve({ data: [] }),
   ])
 
+  // Fetch ALL PICKS counts for flex pick games
+  const flexGameIds = new Set()
+  for (const p of flexPicksRes.data || []) if (p.game_id) flexGameIds.add(p.game_id)
+  const flexGamePickCounts = {}
+  if (flexGameIds.size > 0) {
+    const { data: allPicksOnGames } = await supabase
+      .from('picks')
+      .select('game_id, picked_team')
+      .in('game_id', [...flexGameIds])
+      .eq('status', 'settled')
+    for (const p of allPicksOnGames || []) {
+      if (!flexGamePickCounts[p.game_id]) flexGamePickCounts[p.game_id] = { home: 0, away: 0 }
+      if (p.picked_team === 'home') flexGamePickCounts[p.game_id].home++
+      else if (p.picked_team === 'away') flexGamePickCounts[p.game_id].away++
+    }
+  }
+
   const flexPickMap = {}
-  for (const p of flexPicksRes.data || []) flexPickMap[p.id] = p
+  for (const p of flexPicksRes.data || []) {
+    // Attach pick counts to the flex pick
+    p.totalCounts = flexGamePickCounts[p.game_id] || { home: 0, away: 0 }
+    flexPickMap[p.id] = p
+  }
   const flexParlayMap = {}
   for (const p of flexParlaysRes.data || []) flexParlayMap[p.id] = p
   const flexPropMap = {}

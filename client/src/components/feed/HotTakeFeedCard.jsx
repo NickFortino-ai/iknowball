@@ -13,6 +13,7 @@ import RichContent from './RichContent'
 import PollDisplay from './PollDisplay'
 import LinkPreview from './LinkPreview'
 import { extractFirstUrl } from '../../lib/urlUtils'
+import PickResultCard from '../picks/PickResultCard'
 
 // Module-level feed mute preference — resets when all FeedVideo instances unmount (navigation away)
 let feedUnmuted = false
@@ -25,21 +26,9 @@ function FlexTargetCard({ hot_take }) {
   const prop = hot_take.flex_prop_pick
 
   if (pick) {
-    const game = pick.games
-    const pickedTeam = pick.picked_team === 'home' ? game?.home_team : game?.away_team
-    const oddsStr = pick.odds_at_pick > 0 ? `+${pick.odds_at_pick}` : `${pick.odds_at_pick}`
     return (
-      <div className="bg-bg-primary/50 border border-correct rounded-xl p-4 mb-2">
-        <div className="text-xs text-text-muted uppercase tracking-wider mb-1">{game?.sports?.name || ''}</div>
-        <div className="text-sm font-semibold text-text-primary mb-1">{game?.away_team} @ {game?.home_team}</div>
-        {game?.home_score != null && (
-          <div className="text-xs text-text-muted mb-2">Final: {game.away_team} {game.away_score} - {game.home_team} {game.home_score}</div>
-        )}
-        <div className="text-sm text-text-secondary">
-          Picked: <span className="font-semibold text-text-primary">{pickedTeam}</span>
-          <span className="text-text-muted ml-2">({oddsStr})</span>
-        </div>
-        <div className="text-base font-bold text-correct mt-2">+{pick.points_earned} pts{pick.multiplier > 1 && ` (${pick.multiplier}x)`}</div>
+      <div className="mb-2">
+        <PickResultCard pick={pick} game={pick.games} totalCounts={pick.totalCounts} />
       </div>
     )
   }

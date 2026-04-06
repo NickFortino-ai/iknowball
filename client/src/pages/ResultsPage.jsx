@@ -11,7 +11,7 @@ import PropCard from '../components/picks/PropCard'
 import FuturesPickCard from '../components/picks/FuturesPickCard'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
-import GamePicksModal from '../components/results/GamePicksModal'
+import PickDetailModal from '../components/social/PickDetailModal'
 
 function getParlayGameDate(parlay) {
   const starts = (parlay.parlay_legs || [])
@@ -92,8 +92,7 @@ function loadCollapsed() {
 export default function ResultsPage() {
   const { profile } = useAuth()
   const [collapsed, setCollapsed] = useState(loadCollapsed)
-  const [selectedGame, setSelectedGame] = useState(null)
-  const [selectedPick, setSelectedPick] = useState(null)
+  const [selectedPickId, setSelectedPickId] = useState(null)
 
   const toggleSection = useCallback((section, defaultCollapsed) => {
     setCollapsed((prev) => {
@@ -206,7 +205,7 @@ export default function ResultsPage() {
                   game={pick.games}
                   userPick={pick}
                   reactions={reactionsBatch?.[pick.id]}
-                  onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
+                  onCardClick={() => setSelectedPickId(pick.id)}
                   sportKey={pick.games?.sports?.key}
                 />
               ))}
@@ -263,7 +262,7 @@ export default function ResultsPage() {
                             game={pick.games}
                             userPick={pick}
                             reactions={reactionsBatch?.[pick.id]}
-                            onCardClick={() => { setSelectedGame(pick.games); setSelectedPick(pick) }}
+                            onCardClick={() => setSelectedPickId(pick.id)}
                             sportKey={pick.games?.sports?.key}
                           />
                         ))}
@@ -361,7 +360,7 @@ export default function ResultsPage() {
           })()}
         </>
       )}
-      <GamePicksModal game={selectedGame} userPick={selectedPick} onClose={() => { setSelectedGame(null); setSelectedPick(null) }} />
+      <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />
     </div>
   )
 }
