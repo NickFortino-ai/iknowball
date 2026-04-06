@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useGamePicks } from '../../hooks/usePicks'
+import { useCreateFlex } from '../../hooks/useHotTakes'
 import { formatOdds } from '../../lib/scoring'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
@@ -259,16 +260,34 @@ export default function GamePicksModal({ game, userPick, onClose }) {
   const [cardBlob, setCardBlob] = useState(null)
   const [cardUrl, setCardUrl] = useState(null)
   const [copied, setCopied] = useState(false)
+  const createFlex = useCreateFlex()
+  const [flexing, setFlexing] = useState(false)
+  const [flexText, setFlexText] = useState('')
 
   useEffect(() => {
     if (!game) return
     setShareMode(false)
     setCardBlob(null)
+    setFlexing(false)
+    setFlexText('')
     if (cardUrl) URL.revokeObjectURL(cardUrl)
     setCardUrl(null)
     lockScroll()
     return () => unlockScroll()
   }, [game])
+
+  async function handleSubmitFlex() {
+    if (!userPick?.id) return
+    try {
+      await createFlex.mutateAsync({ content: flexText, pickId: userPick.id })
+      toast('Flex posted to squad!', 'success')
+      setFlexing(false)
+      setFlexText('')
+      onClose?.()
+    } catch (err) {
+      toast(err.message || 'Failed to flex', 'error')
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -417,17 +436,48 @@ export default function GamePicksModal({ game, userPick, onClose }) {
               )}
             </div>
 
-            {/* Share Button */}
-            {canShare && (
-              <button
-                onClick={handleShare}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent/10 text-accent text-sm font-semibold hover:bg-accent/20 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Share Pick
-              </button>
+            {/* Flex composer */}
+            {flexing && (
+              <div className="mb-3">
+                <textarea
+                  value={flexText}
+                  onChange={(e) => setFlexText(e.target.value)}
+                  placeholder="Let them know!"
+                  rows={2}
+                  className="w-full bg-bg-primary/50 border border-accent rounded-lg px-3 py-2 text-sm font-semibold text-white placeholder-text-muted focus:outline-none resize-none"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end mt-2">
+                  <button onClick={() => { setFlexing(false); setFlexText('') }} className="text-xs text-text-muted hover:text-text-secondary px-3 py-1.5">Cancel</button>
+                  <button onClick={handleSubmitFlex} disabled={createFlex.isPending} className="text-xs font-semibold bg-accent text-white px-4 py-1.5 rounded-lg hover:bg-accent-hover disabled:opacity-50">
+                    {createFlex.isPending ? 'Posting...' : 'Flex'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            {canShare && !flexing && (
+              <div className="space-y-2">
+                {userPick?.is_correct === true && (
+                  <button
+                    onClick={() => setFlexing(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors"
+                  >
+                    <img src="/flex-button.png" alt="" className="w-5 h-5 object-contain" />
+                    Flex to Squad
+                  </button>
+                )}
+                <button
+                  onClick={handleShare}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent/10 text-accent text-sm font-semibold hover:bg-accent/20 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Share Pick
+                </button>
+              </div>
             )}
 
             {/* Share Card + Options */}
