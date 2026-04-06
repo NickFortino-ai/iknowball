@@ -489,8 +489,13 @@ export async function completeLeagues() {
         logger.error({ err, leagueId: league.id }, 'Failed to auto-connect league members on completion')
       }
 
-      // Generate DFS league activity report
-      if (['nba_dfs', 'mlb_dfs'].includes(league.format)) {
+      // Generate league activity report for DFS and salary cap fantasy
+      let generateReport = ['nba_dfs', 'mlb_dfs'].includes(league.format)
+      if (!generateReport && league.format === 'fantasy') {
+        const { data: fs } = await supabase.from('fantasy_settings').select('format').eq('league_id', league.id).single()
+        if (fs?.format === 'salary_cap') generateReport = true
+      }
+      if (generateReport) {
         try {
           const report = await generateLeagueReport(league)
           if (report) {
