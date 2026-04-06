@@ -143,6 +143,11 @@ export default function PickDetailModal({ pickId, onClose }) {
             {/* Comments */}
             <div className="rounded-xl border border-text-primary/20 p-4">
               <PickComments pickId={pickId} initialExpanded hideForm={!canComment} />
+              {!canComment && (
+                <div className="text-xs text-text-muted text-center mt-2">
+                  Connect with this user to comment on their picks.
+                </div>
+              )}
             </div>
           </div>
         )}
