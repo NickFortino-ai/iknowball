@@ -777,6 +777,20 @@ export async function autoEliminateMissedPicks() {
     if (!weeks?.length) continue
 
     for (const week of weeks) {
+      // Don't retroactively eliminate users for periods that ended more than
+      // 24 hours ago — this guards against backfills, cron downtime, and any
+      // case where a period was added or activated after it had already ended.
+      const weekEndedMs = new Date(week.ends_at).getTime()
+      const ageHours = (Date.now() - weekEndedMs) / (1000 * 60 * 60)
+      if (ageHours > 24) {
+        await supabase
+          .from('league_weeks')
+          .update({ missed_picks_processed: true })
+          .eq('id', week.id)
+        logger.info({ leagueId: league.id, weekId: week.id, ageHours }, 'Skipping retroactive missed-pick processing for old period')
+        continue
+      }
+
       const displayPeriodNum = await getDisplayPeriodNumber(league.id, week.week_number)
 
       // Count games in this period, filtered by sport if not 'all'
