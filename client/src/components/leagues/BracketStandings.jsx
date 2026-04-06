@@ -1,7 +1,7 @@
 import EmptyState from '../ui/EmptyState'
 import Avatar from '../ui/Avatar'
 
-export default function BracketStandings({ entries, championshipTotalScore, onViewBracket }) {
+export default function BracketStandings({ entries, championshipTotalScore, onViewBracket, isCompleted }) {
   if (!entries?.length) {
     return <EmptyState title="No entries yet" message="No one has submitted a bracket yet" />
   }
@@ -17,7 +17,7 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
               <th className="px-3 py-3 text-left font-medium w-10">#</th>
               <th className="px-3 py-3 text-left font-medium">Player</th>
               <th className="px-3 py-3 text-right font-medium w-20">Points</th>
-              <th className="px-3 py-3 text-right font-medium w-20">Possible</th>
+              {!isCompleted && <th className="px-3 py-3 text-right font-medium w-20">Possible</th>}
               {hasActualScore && (
                 <th className="px-3 py-3 text-right font-medium w-16">TB</th>
               )}
@@ -51,7 +51,7 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
                     </div>
                   </td>
                   <td className="px-3 py-3 text-right font-semibold text-accent whitespace-nowrap">{e.total_points}</td>
-                  <td className="px-3 py-3 text-right text-text-primary whitespace-nowrap">{e.possible_points}</td>
+                  {!isCompleted && <td className="px-3 py-3 text-right text-text-primary whitespace-nowrap">{e.possible_points}</td>}
                   {hasActualScore && (
                     <td className="px-3 py-3 text-right whitespace-nowrap">
                       {distance != null ? (

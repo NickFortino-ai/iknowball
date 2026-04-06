@@ -403,6 +403,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
         <BracketStandings
           entries={entries}
           championshipTotalScore={tournament?.championship_total_score}
+          isCompleted={league.status === 'completed'}
           onViewBracket={isLocked ? (userId) => {
             setViewingUserId(userId)
             onTabChange?.('bracket')
