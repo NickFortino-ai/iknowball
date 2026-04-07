@@ -210,9 +210,9 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       const isSalaryCap = fantasySettings?.format === 'salary_cap'
       if (isSalaryCap) {
         const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
-        return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest ESPN news and analysis. Top finishers earn bonus points on the global leaderboard.`
+        return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Top finishers earn bonus points on the global leaderboard.`
       }
-      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster with free-agent pickups (waivers process Wednesday 3 AM ET), trades, and IR moves. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest ESPN news and analysis. Top finishers earn bonus points on the global leaderboard.`
+      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster with free-agent pickups (waivers process Wednesday 3 AM ET), trades, and IR moves. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Top finishers earn bonus points on the global leaderboard.`
     }
 
     if (league.format === 'squares') {
