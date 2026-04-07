@@ -289,20 +289,23 @@ export default function FantasyDraftRoom({ league }) {
 
   // Live draft
   return (
-    <div className="space-y-4">
-      {/* Current pick banner */}
-      <div className={`rounded-xl p-4 text-center ${isMyTurn ? 'bg-accent/20 border border-accent' : 'bg-bg-card border border-border'}`}>
-        <div className="text-xs text-text-muted uppercase tracking-wider mb-1">
-          Round {currentPick?.round} · Pick {currentPick?.pick_number}
-        </div>
-        <div className="font-display text-lg text-text-primary">
-          {isMyTurn ? "You're on the clock!" : `${currentPick?.users?.display_name || 'Someone'} is picking...`}
-        </div>
-        {timerSeconds != null && (
-          <div className={`font-display text-2xl mt-1 ${timerSeconds <= 10 ? 'text-incorrect' : 'text-text-primary'}`}>
-            {Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')}
+    <div className="space-y-3 md:space-y-4">
+      {/* Sticky pick banner — keeps timer + on-the-clock status visible while scrolling on mobile */}
+      <div className={`sticky top-0 z-20 -mx-2 px-2 pt-1 md:static md:mx-0 md:px-0 md:pt-0`}>
+      <div className={`rounded-xl p-3 md:p-4 text-center ${isMyTurn ? 'bg-accent/20 border border-accent' : 'bg-bg-card border border-border'}`}>
+        <div className="flex items-center justify-center gap-2 md:block">
+          <div className="text-[10px] md:text-xs text-text-muted uppercase tracking-wider md:mb-1">
+            R{currentPick?.round} · Pick {currentPick?.pick_number}
           </div>
-        )}
+          <div className="font-display text-sm md:text-lg text-text-primary md:mt-0">
+            {isMyTurn ? "You're on the clock!" : `${currentPick?.users?.display_name || 'Someone'} is picking...`}
+          </div>
+          {timerSeconds != null && (
+            <div className={`font-display text-lg md:text-2xl md:mt-1 ${timerSeconds <= 10 ? 'text-incorrect' : 'text-text-primary'}`}>
+              {Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')}
+            </div>
+          )}
+        </div>
         {isCommissioner && (
           <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
             <button
@@ -333,6 +336,7 @@ export default function FantasyDraftRoom({ league }) {
             Recording for {currentPick?.users?.display_name || 'on-the-clock user'} · turn check disabled
           </div>
         )}
+      </div>
       </div>
 
       {/* Tabs */}
@@ -382,19 +386,19 @@ export default function FantasyDraftRoom({ league }) {
               ))}
             </div>
           </div>
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-[55vh] md:max-h-96 overflow-y-auto">
             {(availablePlayers || []).map((player) => {
               const isQueued = queuedIds.has(player.id)
               return (
                 <div
                   key={player.id}
-                  className={`w-full flex items-center gap-3 px-3 py-2 border-b border-border last:border-0 transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-3 md:py-2 border-b border-border last:border-0 transition-colors ${
                     (isMyTurn || offlineMode) ? 'hover:bg-accent/10' : 'opacity-60'
                   }`}
                 >
                   <button
                     onClick={() => toggleQueue(player.id)}
-                    className={`shrink-0 p-1 rounded transition-colors ${isQueued ? 'text-yellow-400' : 'text-text-muted hover:text-yellow-400'}`}
+                    className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary transition-colors ${isQueued ? 'text-yellow-400' : 'text-text-muted hover:text-yellow-400'}`}
                     title={isQueued ? 'Remove from queue' : 'Add to queue'}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill={isQueued ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -475,9 +479,9 @@ export default function FantasyDraftRoom({ league }) {
                     <div className="text-xs font-semibold text-text-primary truncate">{q.nfl_players?.full_name}</div>
                     <div className="text-[10px] text-text-muted">{q.nfl_players?.position} · {q.nfl_players?.team || 'FA'}</div>
                   </div>
-                  <button onClick={() => moveQueue(q.player_id, 'up')} disabled={i === 0} className="text-text-muted hover:text-text-primary p-1 disabled:opacity-30" title="Move up">▲</button>
-                  <button onClick={() => moveQueue(q.player_id, 'down')} disabled={i === queue.length - 1} className="text-text-muted hover:text-text-primary p-1 disabled:opacity-30" title="Move down">▼</button>
-                  <button onClick={() => toggleQueue(q.player_id)} className="text-text-muted hover:text-incorrect p-1" title="Remove">×</button>
+                  <button onClick={() => moveQueue(q.player_id, 'up')} disabled={i === 0} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move up">▲</button>
+                  <button onClick={() => moveQueue(q.player_id, 'down')} disabled={i === queue.length - 1} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary disabled:opacity-30" title="Move down">▼</button>
+                  <button onClick={() => toggleQueue(q.player_id)} className="text-text-muted hover:text-incorrect w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary text-lg" title="Remove">×</button>
                 </div>
               ))}
             </div>
@@ -622,7 +626,7 @@ function SlotRow({ label, player }) {
 
 function DraftLogList({ completedPicks, numTeams, profileId, listRef }) {
   return (
-    <div ref={listRef} className="max-h-96 overflow-y-auto">
+    <div ref={listRef} className="max-h-[60vh] md:max-h-96 overflow-y-auto">
       {completedPicks.map((pick) => (
         <div
           key={pick.id}
