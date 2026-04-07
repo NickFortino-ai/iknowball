@@ -102,6 +102,27 @@ function getNotificationRoute(notification) {
     case 'squares_quarter_win':
     case 'survivor_result':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+
+    // Fantasy football notifications — all route to the league with a tab hint
+    case 'fantasy_trade_proposed':
+    case 'fantasy_trade_accepted':
+    case 'fantasy_trade_declined':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Trades` : null
+
+    case 'fantasy_waiver_awarded':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=My+Team` : null
+    case 'fantasy_waiver_failed':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Players` : null
+
+    case 'nfl_injury_warning':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=My+Team` : null
+
+    case 'fantasy_stat_correction':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Live` : null
+
+    case 'league_report':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+
     default:
       return null
   }

@@ -811,6 +811,140 @@ export async function generateMatchups(leagueId) {
 }
 
 // =====================================================================
+// STAT CORRECTIONS
+// =====================================================================
+
+/**
+ * Detect stat corrections by comparing pre-upsert vs post-upsert pts.
+ *
+ * Only called after a sync that ran outside the live game window — during
+ * games, points naturally fluctuate and aren't "corrections."
+ *
+ * For each player whose half-PPR points changed by >= 0.1, notify every
+ * roster owner (traditional starters + bench, salary cap rosters for the
+ * affected week). Dedup on (player_id, week, season, old_pts → new_pts) so
+ * the same correction never fires twice.
+ */
+const STAT_CORRECTION_THRESHOLD = 0.1
+
+export async function detectAndNotifyStatCorrections(week, season, newRows, oldStatsByPlayer) {
+  const corrections = []
+  for (const r of newRows) {
+    const old = oldStatsByPlayer[r.player_id]
+    if (!old) continue
+    // Don't fire for first-time inserts (old row had no points yet)
+    if (old.pts_half_ppr == null) continue
+    const oldPts = Number(old.pts_half_ppr) || 0
+    const newPts = Number(r.pts_half_ppr) || 0
+    if (Math.abs(newPts - oldPts) >= STAT_CORRECTION_THRESHOLD) {
+      corrections.push({
+        player_id: r.player_id,
+        old_pts: Math.round(oldPts * 10) / 10,
+        new_pts: Math.round(newPts * 10) / 10,
+        delta: Math.round((newPts - oldPts) * 10) / 10,
+      })
+    }
+  }
+
+  if (!corrections.length) return { detected: 0, notified: 0 }
+
+  // Find every fantasy league roster row containing any corrected player
+  const playerIds = corrections.map((c) => c.player_id)
+  const correctionByPlayer = {}
+  for (const c of corrections) correctionByPlayer[c.player_id] = c
+
+  // Player names for the notification copy
+  const { data: playerInfo } = await supabase
+    .from('nfl_players')
+    .select('id, full_name')
+    .in('id', playerIds)
+  const nameById = {}
+  for (const p of playerInfo || []) nameById[p.id] = p.full_name
+
+  // Traditional fantasy rosters (any slot — bench too)
+  const { data: tradRows } = await supabase
+    .from('fantasy_rosters')
+    .select('user_id, league_id, player_id, leagues(name, format)')
+    .in('player_id', playerIds)
+
+  // Salary cap rosters for this week
+  const { data: dfsSlots } = await supabase
+    .from('dfs_roster_slots')
+    .select('player_id, dfs_rosters!inner(user_id, league_id, nfl_week, season, leagues(name))')
+    .in('player_id', playerIds)
+    .eq('dfs_rosters.nfl_week', week)
+    .eq('dfs_rosters.season', season)
+
+  const ownerships = []
+  for (const r of tradRows || []) {
+    if (r.leagues?.format !== 'fantasy') continue
+    ownerships.push({
+      user_id: r.user_id,
+      league_id: r.league_id,
+      league_name: r.leagues?.name || 'your league',
+      player_id: r.player_id,
+    })
+  }
+  for (const s of dfsSlots || []) {
+    ownerships.push({
+      user_id: s.dfs_rosters.user_id,
+      league_id: s.dfs_rosters.league_id,
+      league_name: s.dfs_rosters.leagues?.name || 'your league',
+      player_id: s.player_id,
+    })
+  }
+
+  if (!ownerships.length) return { detected: corrections.length, notified: 0 }
+
+  // Dedup against existing stat-correction notifications already sent for the
+  // same player/week/season/new_pts (so the same correction never fires twice)
+  const { data: existingNotifs } = await supabase
+    .from('notifications')
+    .select('user_id, metadata')
+    .eq('type', 'fantasy_stat_correction')
+    .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+
+  const sentSet = new Set()
+  for (const n of existingNotifs || []) {
+    const md = n.metadata || {}
+    if (md.player_id && md.week === week && md.season === season && md.new_pts != null) {
+      sentSet.add(`${n.user_id}|${md.player_id}|${md.week}|${md.season}|${md.new_pts}`)
+    }
+  }
+
+  let notified = 0
+  for (const own of ownerships) {
+    const c = correctionByPlayer[own.player_id]
+    const dedupKey = `${own.user_id}|${own.player_id}|${week}|${season}|${c.new_pts}`
+    if (sentSet.has(dedupKey)) continue
+    sentSet.add(dedupKey)
+    const playerName = nameById[own.player_id] || 'A player'
+    const direction = c.delta > 0 ? 'gained' : 'lost'
+    const absDelta = Math.abs(c.delta).toFixed(1)
+    try {
+      const { createNotification } = await import('./notificationService.js')
+      await createNotification(own.user_id, 'fantasy_stat_correction',
+        `${playerName} stat correction in ${own.league_name}: ${direction} ${absDelta} pts (now ${c.new_pts}).`,
+        {
+          leagueId: own.league_id,
+          player_id: own.player_id,
+          week,
+          season,
+          old_pts: c.old_pts,
+          new_pts: c.new_pts,
+          delta: c.delta,
+        })
+      notified++
+    } catch (err) {
+      logger.error({ err, ownership: own }, 'Failed to send stat correction notification')
+    }
+  }
+
+  logger.info({ detected: corrections.length, notified, week, season }, 'Stat corrections processed')
+  return { detected: corrections.length, notified }
+}
+
+// =====================================================================
 // PLAYER DETAIL
 // =====================================================================
 

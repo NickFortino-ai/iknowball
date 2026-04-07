@@ -204,6 +204,24 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
       updated_at: new Date().toISOString(),
     }))
 
+  // Snapshot pre-existing stats so we can detect corrections after the upsert
+  // (only meaningful outside live game windows — during games, point changes
+  // are normal, not corrections)
+  let oldStatsByPlayer = null
+  try {
+    const { isInNflGameWindow } = await import('../jobs/syncNflStats.js')
+    if (!isInNflGameWindow()) {
+      const { data: existing } = await supabase
+        .from('nfl_player_stats')
+        .select('player_id, pts_ppr, pts_half_ppr, pts_std')
+        .eq('season', season)
+        .eq('week', week)
+        .in('player_id', rows.map((r) => r.player_id))
+      oldStatsByPlayer = {}
+      for (const r of existing || []) oldStatsByPlayer[r.player_id] = r
+    }
+  } catch { /* non-fatal */ }
+
   // Batch upsert
   const CHUNK = 500
   let upserted = 0
@@ -217,6 +235,16 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
       logger.error({ error, offset: i }, 'Failed to upsert stats chunk')
     } else {
       upserted += chunk.length
+    }
+  }
+
+  // Stat correction detection — fire notifications for corrected players
+  if (oldStatsByPlayer) {
+    try {
+      const { detectAndNotifyStatCorrections } = await import('./fantasyService.js')
+      await detectAndNotifyStatCorrections(week, season, rows, oldStatsByPlayer)
+    } catch (err) {
+      logger.error({ err, season, week }, 'Stat correction detection failed')
     }
   }
 

@@ -841,6 +841,23 @@ export default function LeagueDetailPage() {
     }
   }, [editingNote])
 
+  // Deep link via ?tab=Trades, ?tab=My+Team, ?tab=Live, etc.
+  useEffect(() => {
+    if (!league || tabInitialized) return
+    const urlTab = searchParams.get('tab')
+    if (urlTab) {
+      const tabs = getLeagueTabs(league, false)
+      // Match case-insensitively + accept '+' / spaces interchangeably
+      const normalize = (s) => s.toLowerCase().replace(/[+_-]/g, ' ').trim()
+      const idx = tabs.findIndex((t) => normalize(t) === normalize(urlTab))
+      if (idx >= 0) {
+        setActiveTab(idx)
+        setTabInitialized(true)
+        return
+      }
+    }
+  }, [league, searchParams, tabInitialized])
+
   // Default tab selection
   useEffect(() => {
     if (!league || tabInitialized) return
