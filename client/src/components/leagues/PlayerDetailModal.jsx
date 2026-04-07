@@ -206,9 +206,12 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose }) {
 
             {/* Current week stat line */}
             <div>
-              <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">
-                {data.current_week ? `Week ${data.current_week.week}` : 'Latest Week'}
-              </h3>
+              <div className="flex items-baseline justify-between mb-2">
+                <h3 className="text-xs uppercase text-text-muted tracking-wider">
+                  {data.current_week ? `Week ${data.current_week.week}` : 'Latest Week'}
+                </h3>
+                <span className="text-[9px] text-text-muted italic">Pts shown in this league's scoring</span>
+              </div>
               <CurrentWeekStatLine position={data.player.position} week={data.current_week} />
             </div>
 
