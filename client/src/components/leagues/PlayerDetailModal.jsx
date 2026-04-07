@@ -36,6 +36,11 @@ function columnsFor(position) {
       { key: 'pass_int', label: 'INT' },
       { key: 'rush_yd', label: 'RuYD' },
       { key: 'rush_td', label: 'RuTD' },
+      // Trick plays — QB rarely gets these but we show them when they happen
+      { key: 'rec_tgt', label: 'TGT' },
+      { key: 'rec', label: 'REC' },
+      { key: 'rec_yd', label: 'ReYD' },
+      { key: 'rec_td', label: 'ReTD' },
     ]
   }
   if (position === 'K') {
