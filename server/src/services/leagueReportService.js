@@ -373,15 +373,15 @@ async function generateNflSalaryCapReport(leagueId) {
     return null
   }
 
-  // Build per-roster point totals from nfl_player_stats so the report respects
-  // the league's actual scoring format (PPR / Half PPR / Standard).
+  // Build per-roster point totals from nfl_player_stats using the league's
+  // custom scoring rules (or preset defaults if no rules set).
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('scoring_format')
+    .select('scoring_format, scoring_rules')
     .eq('league_id', leagueId)
     .single()
-  const scoringKey = settings?.scoring_format === 'ppr' ? 'pts_ppr'
-    : settings?.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+  const { applyScoringRules, buildScoringRulesFromPreset } = await import('./fantasyService.js')
+  const leagueRules = settings?.scoring_rules || buildScoringRulesFromPreset(settings?.scoring_format)
 
   const allPlayerIds = [...new Set(rosters.flatMap((r) => (r.dfs_roster_slots || []).map((s) => s.player_id)).filter(Boolean))]
   const allWeeks = contestWeeks
@@ -391,7 +391,7 @@ async function generateNflSalaryCapReport(leagueId) {
   if (allPlayerIds.length) {
     const { data } = await supabase
       .from('nfl_player_stats')
-      .select(`player_id, week, season, ${scoringKey}`)
+      .select('player_id, week, season, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .in('player_id', allPlayerIds)
       .in('week', allWeeks)
       .in('season', seasonsArr)
@@ -399,7 +399,7 @@ async function generateNflSalaryCapReport(leagueId) {
   }
   const statsMap = {}
   for (const st of statsRows) {
-    statsMap[`${st.player_id}|${st.week}|${st.season}`] = Number(st[scoringKey]) || 0
+    statsMap[`${st.player_id}|${st.week}|${st.season}`] = applyScoringRules(st, leagueRules)
   }
 
   // Headshot map (player_id → url)

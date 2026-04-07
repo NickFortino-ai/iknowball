@@ -1148,8 +1148,7 @@ async function fetchEspnPlayerNews(espnId) {
  */
 export async function getPlayerDetail(leagueId, playerId) {
   const settings = await getFantasySettings(leagueId)
-  const scoringKey = settings?.scoring_format === 'ppr' ? 'pts_ppr'
-    : settings?.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+  const leagueRules = settings?.scoring_rules || buildScoringRulesFromPreset(settings?.scoring_format)
   const season = settings?.season || new Date().getUTCFullYear()
 
   const { data: player } = await supabase
@@ -1166,14 +1165,16 @@ export async function getPlayerDetail(leagueId, playerId) {
 
   const { data: weeks } = await supabase
     .from('nfl_player_stats')
-    .select('week, season, pts_ppr, pts_half_ppr, pts_std, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, fgm, fgm_50_plus, xpm, def_td, def_int, def_sack, def_fum_rec, def_safety, def_pts_allowed')
+    .select('week, season, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
     .eq('player_id', playerId)
     .eq('season', season)
     .order('week', { ascending: true })
 
+  // Apply this league's scoring rules to each week, so the per-week pts the
+  // user sees in the modal exactly match what their team would have scored.
   const weeklyStats = (weeks || []).map((w) => ({
     week: w.week,
-    pts: Number(w[scoringKey]) || 0,
+    pts: applyScoringRules(w, leagueRules),
     pass_yd: Number(w.pass_yd) || 0,
     pass_td: w.pass_td || 0,
     pass_int: w.pass_int || 0,
@@ -1183,7 +1184,7 @@ export async function getPlayerDetail(leagueId, playerId) {
     rec_yd: Number(w.rec_yd) || 0,
     rec_td: w.rec_td || 0,
     fum_lost: w.fum_lost || 0,
-    fgm: w.fgm || 0,
+    fgm: (w.fgm_0_39 || 0) + (w.fgm_40_49 || 0) + (w.fgm_50_plus || 0),
     fgm_50_plus: w.fgm_50_plus || 0,
     xpm: w.xpm || 0,
     def_td: w.def_td || 0,

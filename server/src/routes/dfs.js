@@ -116,7 +116,7 @@ router.get('/live', async (req, res) => {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pts_ppr, pts_half_ppr, pts_std, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, fgm, fgm_50_plus, xpm, def_td, def_int, def_sack, def_fum_rec, def_safety, def_pts_allowed')
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .eq('week', w)
       .eq('season', s)
       .in('player_id', [...new Set(allPlayerIds)])
@@ -124,18 +124,18 @@ router.get('/live', async (req, res) => {
     for (const st of stats || []) statsMap[st.player_id] = st
   }
 
-  // Season averages for per-player projection
+  // Season averages for per-player projection — apply this league's custom rules
   const seasonAvgMap = {}
   if (allPlayerIds.length) {
     const { data: seasonStats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pts_half_ppr')
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .eq('season', s)
       .in('player_id', [...new Set(allPlayerIds)])
     const totals = {}
     for (const st of seasonStats || []) {
       if (!totals[st.player_id]) totals[st.player_id] = { total: 0, games: 0 }
-      totals[st.player_id].total += Number(st.pts_half_ppr) || 0
+      totals[st.player_id].total += applyScoringRules(st, leagueRules)
       totals[st.player_id].games++
     }
     for (const [pid, t] of Object.entries(totals)) {
@@ -294,7 +294,7 @@ router.get('/matchup-live', async (req, res) => {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pts_ppr, pts_half_ppr, pts_std, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, fgm, fgm_50_plus, xpm, def_td, def_int, def_sack, def_fum_rec, def_safety, def_pts_allowed')
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .eq('week', w)
       .eq('season', s)
       .in('player_id', [...new Set(allPlayerIds)])

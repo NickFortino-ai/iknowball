@@ -67,8 +67,9 @@ function onSuccess() {
  * Auto-detect the current NFL week and sync weekly stats from Sleeper.
  * Runs frequently during NFL game windows so live fantasy scores stay fresh.
  *
- * Sleeper updates pts_ppr / pts_half_ppr / pts_std continuously during games,
- * so polling Sleeper every 15 seconds during games is the closest equivalent
+ * Sleeper updates raw NFL stats (yards, TDs, receptions, etc.) continuously
+ * during games. Our app does its own scoring math against each league's
+ * custom rules, so 15-second polling on raw stats is the closest equivalent
  * to "real time" updates without paying for a premium feed.
  */
 export async function syncNflStatsCurrentWeek() {
