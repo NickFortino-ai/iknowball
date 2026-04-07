@@ -553,6 +553,68 @@ export async function startDraft(leagueId) {
 }
 
 /**
+ * Scheduled draft starter: scan every pending draft whose draft_date has
+ * arrived and start it. If the commissioner never randomized the order,
+ * we auto-initialize first so the league isn't stuck. Notifies all members.
+ *
+ * Returns the number of drafts started.
+ */
+export async function processScheduledDraftStarts() {
+  const nowIso = new Date().toISOString()
+  const { data: pending } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, draft_date')
+    .eq('draft_status', 'pending')
+    .not('draft_date', 'is', null)
+    .lte('draft_date', nowIso)
+
+  if (!pending?.length) return 0
+
+  let started = 0
+  for (const row of pending) {
+    try {
+      // Make sure pick slots exist; if not, randomize first
+      const { count } = await supabase
+        .from('fantasy_draft_picks')
+        .select('id', { count: 'exact', head: true })
+        .eq('league_id', row.league_id)
+
+      if (!count) {
+        try {
+          await initializeDraft(row.league_id)
+        } catch (err) {
+          logger.error({ err, leagueId: row.league_id }, 'Scheduled draft: failed to auto-initialize order')
+          continue
+        }
+      }
+
+      await startDraft(row.league_id)
+      started++
+      logger.info({ leagueId: row.league_id }, 'Scheduled draft started')
+
+      // Notify every league member
+      try {
+        const { createNotification } = await import('./notificationService.js')
+        const { data: members } = await supabase
+          .from('league_members')
+          .select('user_id')
+          .eq('league_id', row.league_id)
+        for (const m of members || []) {
+          await createNotification(m.user_id, 'fantasy_draft_started',
+            'Your fantasy draft has started — get on the clock!',
+            { leagueId: row.league_id })
+        }
+      } catch (err) {
+        logger.error({ err, leagueId: row.league_id }, 'Failed to send draft started notifications')
+      }
+    } catch (err) {
+      logger.error({ err, leagueId: row.league_id }, 'Scheduled draft start failed')
+    }
+  }
+  return started
+}
+
+/**
  * Tick-loop helper: scan every in-progress draft, find the on-the-clock pick,
  * and if its deadline has passed, auto-pick for that user.
  *
@@ -623,6 +685,11 @@ let _draftTickTimer = null
 const DRAFT_TICK_MS = 10 * 1000
 export function startDraftAutopickLoop() {
   async function tick() {
+    try {
+      await processScheduledDraftStarts()
+    } catch (err) {
+      logger.error({ err }, 'Scheduled draft start tick error')
+    }
     try {
       await processDraftAutopicks()
     } catch (err) {

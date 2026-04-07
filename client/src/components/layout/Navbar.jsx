@@ -109,6 +109,9 @@ function getNotificationRoute(notification) {
     case 'fantasy_trade_declined':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Trades` : null
 
+    case 'fantasy_draft_started':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Draft` : null
+
     case 'fantasy_waiver_awarded':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=My+Team` : null
     case 'fantasy_waiver_failed':
