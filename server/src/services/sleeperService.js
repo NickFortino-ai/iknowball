@@ -94,8 +94,34 @@ export async function syncPlayers() {
     }
   }
 
+  // Retire-cleanup pass: any row in nfl_players not present in this active
+  // set should have its team nulled out so it stops showing up in draft
+  // pools. Sleeper marks retired players inactive, but we still have stale
+  // rows for them with their old team — which is why someone like Ben
+  // Roethlisberger was leaking into the player list years after retiring.
+  const activeIds = new Set(players.map((p) => p.id))
+  const { data: existingActive } = await supabase
+    .from('nfl_players')
+    .select('id')
+    .not('team', 'is', null)
+  const stale = (existingActive || []).filter((r) => !activeIds.has(r.id)).map((r) => r.id)
+  if (stale.length) {
+    // Process in chunks to avoid IN-list payload limits
+    const RETIRE_CHUNK = 200
+    let retired = 0
+    for (let i = 0; i < stale.length; i += RETIRE_CHUNK) {
+      const ids = stale.slice(i, i + RETIRE_CHUNK)
+      const { error } = await supabase
+        .from('nfl_players')
+        .update({ team: null, status: 'retired' })
+        .in('id', ids)
+      if (!error) retired += ids.length
+    }
+    logger.info({ retired }, 'Retired stale NFL players')
+  }
+
   logger.info({ upserted, total: players.length }, 'NFL player sync complete')
-  return { upserted, total: players.length }
+  return { upserted, total: players.length, retired_cleanup: stale.length }
 }
 
 /**
