@@ -178,21 +178,28 @@ function snakeOrder(numTeams, totalRounds) {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// LocalStorage history
+// LocalStorage: two lists — recent (capped) + saved (uncapped, bookmarked)
 
-const HISTORY_KEY = 'mockDraftHistory'
-const MAX_HISTORY = 5
+const RECENT_KEY = 'mockDraftHistory'  // legacy key, kept for back-compat
+const SAVED_KEY = 'mockDraftSaved'
+const MAX_RECENT = 5
 
-function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
+function loadRecent() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch { return [] }
 }
-function saveToHistory(mock) {
-  const list = loadHistory()
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') } catch { return [] }
+}
+function persistRecent(list) {
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)))
+}
+function persistSaved(list) {
+  localStorage.setItem(SAVED_KEY, JSON.stringify(list))
+}
+function addRecent(mock) {
+  const list = loadRecent()
   list.unshift(mock)
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, MAX_HISTORY)))
-}
-function clearHistory() {
-  localStorage.removeItem(HISTORY_KEY)
+  persistRecent(list)
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -201,7 +208,8 @@ function clearHistory() {
 export default function MockDraftPage() {
   const [screen, setScreen] = useState('home') // home | setup | draft | review
   const [config, setConfig] = useState(null)
-  const [history, setHistory] = useState(loadHistory())
+  const [recent, setRecent] = useState(loadRecent())
+  const [saved, setSaved] = useState(loadSaved())
   const [reviewMock, setReviewMock] = useState(null)
 
   function startMock(cfg) {
@@ -210,10 +218,30 @@ export default function MockDraftPage() {
   }
 
   function finishMock(mockResult) {
-    saveToHistory(mockResult)
-    setHistory(loadHistory())
+    addRecent(mockResult)
+    setRecent(loadRecent())
     setReviewMock(mockResult)
     setScreen('review')
+  }
+
+  // Bookmark a mock — moves it from recent to saved
+  function bookmarkMock(mock) {
+    const nextSaved = [mock, ...loadSaved().filter((m) => m.id !== mock.id)]
+    persistSaved(nextSaved)
+    setSaved(nextSaved)
+    const nextRecent = loadRecent().filter((m) => m.id !== mock.id)
+    persistRecent(nextRecent)
+    setRecent(nextRecent)
+  }
+
+  // Delete from either list permanently
+  function deleteMock(mockId) {
+    const nextRecent = loadRecent().filter((m) => m.id !== mockId)
+    persistRecent(nextRecent)
+    setRecent(nextRecent)
+    const nextSaved = loadSaved().filter((m) => m.id !== mockId)
+    persistSaved(nextSaved)
+    setSaved(nextSaved)
   }
 
   return (
@@ -225,10 +253,12 @@ export default function MockDraftPage() {
 
       {screen === 'home' && (
         <HomeScreen
-          history={history}
+          recent={recent}
+          saved={saved}
           onStartNew={() => setScreen('setup')}
           onReview={(m) => { setReviewMock(m); setScreen('review') }}
-          onClearHistory={() => { clearHistory(); setHistory([]) }}
+          onBookmark={bookmarkMock}
+          onDelete={deleteMock}
         />
       )}
       {screen === 'setup' && (
@@ -254,7 +284,7 @@ export default function MockDraftPage() {
 // ────────────────────────────────────────────────────────────────────
 // Home
 
-function HomeScreen({ history, onStartNew, onReview, onClearHistory }) {
+function HomeScreen({ recent, saved, onStartNew, onReview, onBookmark, onDelete }) {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-5">
@@ -271,41 +301,76 @@ function HomeScreen({ history, onStartNew, onReview, onClearHistory }) {
         </button>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs uppercase text-text-muted tracking-wider">Recent Mocks</h3>
-          {history.length > 0 && (
-            <button onClick={onClearHistory} className="text-[10px] text-text-muted hover:text-incorrect">Clear all</button>
-          )}
+      <MockList
+        title="Recent Mocks"
+        emptyText="Your last 5 mocks will show up here."
+        list={recent}
+        onReview={onReview}
+        onBookmark={onBookmark}
+        onDelete={onDelete}
+        showBookmark
+      />
+      <MockList
+        title="Saved Mocks"
+        emptyText="Bookmark a mock to save it here permanently."
+        list={saved}
+        onReview={onReview}
+        onDelete={onDelete}
+      />
+    </div>
+  )
+}
+
+function MockList({ title, emptyText, list, onReview, onBookmark, onDelete, showBookmark }) {
+  return (
+    <div>
+      <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">{title}</h3>
+      {list.length === 0 ? (
+        <div className="rounded-xl border border-text-primary/10 p-6 text-center text-sm text-text-muted">
+          {emptyText}
         </div>
-        {history.length === 0 ? (
-          <div className="rounded-xl border border-text-primary/10 p-6 text-center text-sm text-text-muted">
-            Your last 5 mocks will show up here.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {history.map((m) => (
+      ) : (
+        <div className="space-y-2">
+          {list.map((m) => (
+            <div
+              key={m.id}
+              className="flex items-center gap-2 rounded-xl border border-text-primary/20 bg-bg-primary p-3"
+            >
               <button
-                key={m.id}
                 onClick={() => onReview(m)}
-                className="w-full text-left rounded-xl border border-text-primary/15 bg-bg-card p-3 hover:bg-bg-secondary transition-colors"
+                className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-text-primary">
-                      {m.config.numTeams}-team {m.config.scoring.toUpperCase()}, pick #{m.config.userSlot + 1}
-                    </div>
-                    <div className="text-[11px] text-text-muted">
-                      {new Date(m.completedAt).toLocaleString()} · {m.config.rounds} rounds
-                    </div>
-                  </div>
-                  <div className="text-text-muted">→</div>
+                <div className="text-sm font-semibold text-text-primary truncate">
+                  {m.config.numTeams}-team {m.config.scoring.toUpperCase()}, pick #{m.config.userSlot + 1}
+                </div>
+                <div className="text-[11px] text-text-muted">
+                  {new Date(m.completedAt).toLocaleString()} · {m.config.rounds} rounds
                 </div>
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+              {showBookmark && (
+                <button
+                  onClick={() => onBookmark(m)}
+                  title="Save permanently"
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-text-muted hover:text-yellow-400 active:bg-bg-secondary transition-colors"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (confirm('Delete this mock forever?')) onDelete(m.id)
+                }}
+                title="Delete forever"
+                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-text-muted hover:text-incorrect active:bg-bg-secondary text-lg transition-colors"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
