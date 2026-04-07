@@ -178,6 +178,17 @@ export function startScheduler() {
     })
     logger.info('NFL injury warnings scheduled: every hour')
 
+    // Fantasy waivers — process all pending claims at 3:00 AM ET Wednesdays
+    cron.schedule('0 3 * * 3', async () => {
+      try {
+        const { processAllPendingWaivers } = await import('../services/fantasyService.js')
+        await processAllPendingWaivers()
+      } catch (err) {
+        logger.error({ err }, 'Fantasy waivers cron failed')
+      }
+    }, { timezone: 'America/New_York' })
+    logger.info('Fantasy waivers scheduled: Wednesdays 3:00 AM ET')
+
     // NBA prop auto-settlement suspended — settling manually via admin
     // cron.schedule('*/2 * * * *', async () => {
     //   try { await settleNBAProps() } catch (err) { logger.error({ err }, 'NBA prop auto-settlement failed') }

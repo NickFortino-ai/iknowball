@@ -634,6 +634,42 @@ export function useRespondToTrade(leagueId) {
   })
 }
 
+export function useWaiverState(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'waivers', 'state'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/waivers/state`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useMyWaiverClaims(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'waivers', 'claims'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/waivers/claims`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useSubmitWaiverClaim(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload) => api.post(`/leagues/${leagueId}/fantasy/waivers/claims`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'waivers'] })
+    },
+  })
+}
+
+export function useCancelWaiverClaim(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (claimId) => api.delete(`/leagues/${leagueId}/fantasy/waivers/claims/${claimId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'waivers'] })
+    },
+  })
+}
+
 export function useAvailablePlayers(leagueId, query, position) {
   const params = new URLSearchParams()
   if (query) params.set('q', query)

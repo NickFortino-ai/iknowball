@@ -848,6 +848,12 @@ import {
   declineTrade,
   cancelTrade,
   getTradesForLeague,
+  submitWaiverClaim,
+  cancelWaiverClaim,
+  getMyWaiverClaims,
+  getWaiverState,
+  getWaiverStateForLeague,
+  processLeagueWaivers,
 } from '../services/fantasyService.js'
 
 // Get fantasy settings
@@ -980,6 +986,53 @@ router.post('/:id/fantasy/trades/:tradeId/cancel', requireAuth, async (req, res)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
   }
+})
+
+// === Waivers ===
+router.get('/:id/fantasy/waivers/state', requireAuth, async (req, res) => {
+  const all = await getWaiverStateForLeague(req.params.id)
+  const me = all.find((s) => s.user_id === req.user.id) || null
+  res.json({ league: all, me })
+})
+
+router.get('/:id/fantasy/waivers/claims', requireAuth, async (req, res) => {
+  const data = await getMyWaiverClaims(req.params.id, req.user.id)
+  res.json(data)
+})
+
+router.post('/:id/fantasy/waivers/claims', requireAuth, async (req, res) => {
+  try {
+    const { add_player_id, drop_player_id, bid_amount } = req.body
+    const result = await submitWaiverClaim(req.params.id, req.user.id, add_player_id, drop_player_id, bid_amount || 0)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.delete('/:id/fantasy/waivers/claims/:claimId', requireAuth, async (req, res) => {
+  try {
+    const result = await cancelWaiverClaim(req.params.claimId, req.user.id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Commissioner can manually process waivers (e.g. mid-week)
+router.post('/:id/fantasy/waivers/process', requireAuth, async (req, res) => {
+  // Verify commissioner
+  const { data: member } = await supabase
+    .from('league_members')
+    .select('role')
+    .eq('league_id', req.params.id)
+    .eq('user_id', req.user.id)
+    .maybeSingle()
+  if (member?.role !== 'commissioner') {
+    return res.status(403).json({ error: 'Only the commissioner can manually process waivers' })
+  }
+  const result = await processLeagueWaivers(req.params.id)
+  res.json(result)
 })
 
 // Generate matchups (commissioner, after draft)

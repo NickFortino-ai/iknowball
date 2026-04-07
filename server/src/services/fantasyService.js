@@ -241,6 +241,12 @@ export async function makeDraftPick(leagueId, userId, playerId) {
     } catch (err) {
       logger.error({ err, leagueId }, 'Failed to auto-fill lineups post-draft')
     }
+    // Initialize waiver priority + FAAB budget for every member
+    try {
+      await initializeWaiverState(leagueId)
+    } catch (err) {
+      logger.error({ err, leagueId }, 'Failed to initialize waiver state post-draft')
+    }
   }
 
   return { pick, remaining }
@@ -802,6 +808,409 @@ export async function generateMatchups(leagueId) {
 
   logger.info({ leagueId, matchups: matchups.length, weeks: regularSeasonWeeks }, 'Matchups generated')
   return { matchups: matchups.length, weeks: regularSeasonWeeks }
+}
+
+// =====================================================================
+// WAIVERS
+// =====================================================================
+
+/**
+ * Initialize per-user waiver state for a league. Called once after the draft
+ * completes — sets each member's starting priority (reverse draft order if
+ * available, else random) and FAAB budget.
+ */
+export async function initializeWaiverState(leagueId) {
+  const settings = await getFantasySettings(leagueId)
+  if (!settings) return
+
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+  if (!members?.length) return
+
+  // Reverse draft order = standard inverse-of-draft waiver order. Worst draft
+  // pick gets best waiver priority. We approximate by pulling fantasy_settings
+  // .draft_order if present, else just use member order.
+  const draftOrder = Array.isArray(settings.draft_order) ? settings.draft_order : null
+  const orderedUsers = draftOrder
+    ? [...draftOrder].reverse()
+    : members.map((m) => m.user_id)
+
+  const rows = orderedUsers.map((userId, i) => ({
+    league_id: leagueId,
+    user_id: userId,
+    priority: i + 1,
+    faab_remaining: settings.faab_starting_budget || 100,
+  }))
+
+  // Make sure every member is in the list (in case draftOrder was incomplete)
+  const seen = new Set(orderedUsers)
+  for (const m of members) {
+    if (!seen.has(m.user_id)) {
+      rows.push({
+        league_id: leagueId,
+        user_id: m.user_id,
+        priority: rows.length + 1,
+        faab_remaining: settings.faab_starting_budget || 100,
+      })
+    }
+  }
+
+  const { error } = await supabase
+    .from('fantasy_waiver_state')
+    .upsert(rows, { onConflict: 'league_id,user_id' })
+  if (error) logger.error({ error, leagueId }, 'Failed to initialize waiver state')
+  else logger.info({ leagueId, members: rows.length }, 'Waiver state initialized')
+}
+
+export async function getWaiverState(leagueId, userId) {
+  const { data } = await supabase
+    .from('fantasy_waiver_state')
+    .select('*')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  return data
+}
+
+export async function getWaiverStateForLeague(leagueId) {
+  const { data } = await supabase
+    .from('fantasy_waiver_state')
+    .select('*, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', leagueId)
+    .order('priority', { ascending: true })
+  return data || []
+}
+
+/**
+ * Submit a new waiver claim. Validates ownership, available player, FAAB budget,
+ * and replaces any existing pending claim from the same user for the same player.
+ */
+export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlayerId, bidAmount = 0) {
+  if (!addPlayerId) {
+    const err = new Error('add_player_id required')
+    err.status = 400
+    throw err
+  }
+
+  // Check the player isn't already rostered
+  const { data: existing } = await supabase
+    .from('fantasy_rosters')
+    .select('id')
+    .eq('league_id', leagueId)
+    .eq('player_id', addPlayerId)
+    .maybeSingle()
+  if (existing) {
+    const err = new Error('Player is already rostered')
+    err.status = 409
+    throw err
+  }
+
+  // Check drop player belongs to the user (if specified)
+  if (dropPlayerId) {
+    const { data: dropRoster } = await supabase
+      .from('fantasy_rosters')
+      .select('user_id')
+      .eq('league_id', leagueId)
+      .eq('player_id', dropPlayerId)
+      .single()
+    if (!dropRoster || dropRoster.user_id !== userId) {
+      const err = new Error('You can only drop your own players')
+      err.status = 403
+      throw err
+    }
+  }
+
+  // FAAB budget check
+  const settings = await getFantasySettings(leagueId)
+  if (settings?.waiver_type === 'faab') {
+    if (bidAmount < 0) {
+      const err = new Error('Bid must be non-negative')
+      err.status = 400
+      throw err
+    }
+    const state = await getWaiverState(leagueId, userId)
+    if (!state) {
+      const err = new Error('Waiver state not initialized — draft not complete?')
+      err.status = 400
+      throw err
+    }
+    if (bidAmount > state.faab_remaining) {
+      const err = new Error(`Bid exceeds your FAAB budget ($${state.faab_remaining})`)
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Replace any existing pending claim from this user for the same player
+  await supabase
+    .from('fantasy_waiver_claims')
+    .delete()
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('add_player_id', addPlayerId)
+    .eq('status', 'pending')
+
+  const { data, error } = await supabase
+    .from('fantasy_waiver_claims')
+    .insert({
+      league_id: leagueId,
+      user_id: userId,
+      add_player_id: addPlayerId,
+      drop_player_id: dropPlayerId || null,
+      bid_amount: bidAmount,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function cancelWaiverClaim(claimId, userId) {
+  const { data: claim } = await supabase
+    .from('fantasy_waiver_claims')
+    .select('*')
+    .eq('id', claimId)
+    .single()
+  if (!claim || claim.user_id !== userId) {
+    const err = new Error('Claim not found')
+    err.status = 404
+    throw err
+  }
+  if (claim.status !== 'pending') {
+    const err = new Error('Claim is no longer pending')
+    err.status = 400
+    throw err
+  }
+  await supabase
+    .from('fantasy_waiver_claims')
+    .update({ status: 'cancelled', processed_at: new Date().toISOString() })
+    .eq('id', claimId)
+  return { cancelled: true }
+}
+
+export async function getMyWaiverClaims(leagueId, userId) {
+  const { data } = await supabase
+    .from('fantasy_waiver_claims')
+    .select('*, add_player:nfl_players!fantasy_waiver_claims_add_player_id_fkey(id, full_name, position, team, headshot_url), drop_player:nfl_players!fantasy_waiver_claims_drop_player_id_fkey(id, full_name, position, team, headshot_url)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  return data || []
+}
+
+/**
+ * Process all pending waiver claims for a single league.
+ *
+ * Algorithm:
+ *   FAAB: process players one at a time. For each player, the highest bid wins.
+ *         Tiebreak by waiver priority (lower = better). Winner pays the bid.
+ *   Priority/Rolling: process players one at a time. For each player, the
+ *         claimant with the lowest waiver priority number wins. Winner moves
+ *         to the back of the queue.
+ *
+ * Each successful claim adds the player to the user's bench (and drops the
+ * specified drop player if set). Failed claims get fail_reason set.
+ */
+export async function processLeagueWaivers(leagueId) {
+  const settings = await getFantasySettings(leagueId)
+  if (!settings) return { processed: 0 }
+  const isFaab = settings.waiver_type === 'faab'
+
+  const { data: claims } = await supabase
+    .from('fantasy_waiver_claims')
+    .select('*')
+    .eq('league_id', leagueId)
+    .eq('status', 'pending')
+  if (!claims?.length) return { processed: 0 }
+
+  // Group by add_player_id
+  const claimsByPlayer = {}
+  for (const c of claims) {
+    if (!claimsByPlayer[c.add_player_id]) claimsByPlayer[c.add_player_id] = []
+    claimsByPlayer[c.add_player_id].push(c)
+  }
+
+  // Get current waiver state for tiebreak / priority sort
+  const stateRows = await getWaiverStateForLeague(leagueId)
+  const stateByUser = {}
+  for (const s of stateRows) stateByUser[s.user_id] = s
+
+  let processed = 0
+  for (const [playerId, playerClaims] of Object.entries(claimsByPlayer)) {
+    // Confirm the player isn't already rostered (could have been added since claim)
+    const { data: roster } = await supabase
+      .from('fantasy_rosters')
+      .select('id')
+      .eq('league_id', leagueId)
+      .eq('player_id', playerId)
+      .maybeSingle()
+    if (roster) {
+      // Player is no longer free — fail every claim
+      for (const c of playerClaims) {
+        await supabase
+          .from('fantasy_waiver_claims')
+          .update({ status: 'failed', fail_reason: 'Player no longer available', processed_at: new Date().toISOString() })
+          .eq('id', c.id)
+      }
+      continue
+    }
+
+    // Sort to find the winner
+    let winner
+    if (isFaab) {
+      playerClaims.sort((a, b) => {
+        if (b.bid_amount !== a.bid_amount) return b.bid_amount - a.bid_amount
+        const aPri = stateByUser[a.user_id]?.priority || 999
+        const bPri = stateByUser[b.user_id]?.priority || 999
+        return aPri - bPri
+      })
+      // Re-validate the top bid against current FAAB
+      while (playerClaims.length) {
+        const top = playerClaims[0]
+        const state = stateByUser[top.user_id]
+        if (!state || top.bid_amount > state.faab_remaining) {
+          await supabase
+            .from('fantasy_waiver_claims')
+            .update({ status: 'failed', fail_reason: 'Insufficient FAAB', processed_at: new Date().toISOString() })
+            .eq('id', top.id)
+          playerClaims.shift()
+          continue
+        }
+        winner = top
+        break
+      }
+    } else {
+      playerClaims.sort((a, b) => {
+        const aPri = stateByUser[a.user_id]?.priority || 999
+        const bPri = stateByUser[b.user_id]?.priority || 999
+        return aPri - bPri
+      })
+      winner = playerClaims[0]
+    }
+
+    if (!winner) continue
+
+    // Apply the winning claim: drop player if specified, then add new player
+    let addOk = false
+    try {
+      if (winner.drop_player_id) {
+        await supabase
+          .from('fantasy_rosters')
+          .delete()
+          .eq('league_id', leagueId)
+          .eq('player_id', winner.drop_player_id)
+          .eq('user_id', winner.user_id)
+      }
+      const { error: insertErr } = await supabase
+        .from('fantasy_rosters')
+        .insert({
+          league_id: leagueId,
+          user_id: winner.user_id,
+          player_id: winner.add_player_id,
+          slot: 'bench',
+          acquired_via: 'waiver',
+        })
+      if (insertErr) throw insertErr
+      addOk = true
+    } catch (err) {
+      logger.error({ err, claimId: winner.id }, 'Failed to apply waiver claim')
+      await supabase
+        .from('fantasy_waiver_claims')
+        .update({ status: 'failed', fail_reason: 'Roster update failed', processed_at: new Date().toISOString() })
+        .eq('id', winner.id)
+      continue
+    }
+
+    // Mark winner awarded
+    await supabase
+      .from('fantasy_waiver_claims')
+      .update({ status: 'awarded', processed_at: new Date().toISOString() })
+      .eq('id', winner.id)
+    processed++
+
+    // Update waiver state
+    if (isFaab) {
+      const newRemaining = (stateByUser[winner.user_id]?.faab_remaining || 0) - winner.bid_amount
+      await supabase
+        .from('fantasy_waiver_state')
+        .update({ faab_remaining: newRemaining, updated_at: new Date().toISOString() })
+        .eq('league_id', leagueId)
+        .eq('user_id', winner.user_id)
+      stateByUser[winner.user_id].faab_remaining = newRemaining
+    } else {
+      // Rolling priority: winner goes to the back, everyone else with worse
+      // priority moves up by 1
+      const winnerPri = stateByUser[winner.user_id]?.priority || stateRows.length
+      const maxPri = stateRows.length
+      // Move winner to back
+      await supabase
+        .from('fantasy_waiver_state')
+        .update({ priority: maxPri, updated_at: new Date().toISOString() })
+        .eq('league_id', leagueId)
+        .eq('user_id', winner.user_id)
+      stateByUser[winner.user_id].priority = maxPri
+      // Bump everyone after winner up by 1
+      for (const s of stateRows) {
+        if (s.user_id !== winner.user_id && s.priority > winnerPri) {
+          await supabase
+            .from('fantasy_waiver_state')
+            .update({ priority: s.priority - 1, updated_at: new Date().toISOString() })
+            .eq('league_id', leagueId)
+            .eq('user_id', s.user_id)
+          stateByUser[s.user_id].priority = s.priority - 1
+        }
+      }
+    }
+
+    // Notify winner
+    try {
+      const { createNotification } = await import('./notificationService.js')
+      const { data: addPlayer } = await supabase.from('nfl_players').select('full_name').eq('id', winner.add_player_id).single()
+      await createNotification(winner.user_id, 'fantasy_waiver_awarded',
+        `You won the waiver claim for ${addPlayer?.full_name || 'your player'}!`,
+        { leagueId, playerId: winner.add_player_id })
+    } catch (err) { logger.error({ err }, 'Failed to send awarded notification') }
+
+    // Fail and notify the losers
+    for (const loser of playerClaims) {
+      if (loser.id === winner.id) continue
+      await supabase
+        .from('fantasy_waiver_claims')
+        .update({ status: 'failed', fail_reason: 'Outbid by another claim', processed_at: new Date().toISOString() })
+        .eq('id', loser.id)
+      try {
+        const { createNotification } = await import('./notificationService.js')
+        const { data: addPlayer } = await supabase.from('nfl_players').select('full_name').eq('id', loser.add_player_id).single()
+        await createNotification(loser.user_id, 'fantasy_waiver_failed',
+          `Your waiver claim for ${addPlayer?.full_name || 'a player'} was unsuccessful.`,
+          { leagueId, playerId: loser.add_player_id })
+      } catch (err) { logger.error({ err }, 'Failed to send failed notification') }
+    }
+  }
+
+  logger.info({ leagueId, processed }, 'Waivers processed for league')
+  return { processed }
+}
+
+/**
+ * Process every traditional fantasy league with pending claims.
+ * Called by the weekly waiver cron.
+ */
+export async function processAllPendingWaivers() {
+  const { data: leagues } = await supabase
+    .from('fantasy_settings')
+    .select('league_id')
+  if (!leagues?.length) return
+  for (const l of leagues) {
+    try {
+      await processLeagueWaivers(l.league_id)
+    } catch (err) {
+      logger.error({ err, leagueId: l.league_id }, 'processLeagueWaivers failed')
+    }
+  }
 }
 
 // =====================================================================
