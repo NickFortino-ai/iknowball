@@ -184,7 +184,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
       : null
 
     return (
-      <div className="relative bg-bg-primary/20 backdrop-blur-sm rounded-xl border border-text-primary/20 p-6 text-center">
+      <div className="relative p-6 text-center">
         <div className="text-4xl mb-3">{
           (() => {
             const s = league.sport
