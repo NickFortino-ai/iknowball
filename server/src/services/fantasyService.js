@@ -656,6 +656,52 @@ export async function setDraftQueue(leagueId, userId, playerIds) {
 }
 
 /**
+ * Pre-start heads-up: 10 minutes before a draft is scheduled to start, send
+ * every league member a notification. Deduped via draft_pre_start_notified_at.
+ */
+export async function processDraftPreStartNotifications() {
+  const now = Date.now()
+  const tenMinFromNow = new Date(now + 10 * 60 * 1000).toISOString()
+  const fiveMinFromNow = new Date(now + 5 * 60 * 1000).toISOString()
+
+  // Drafts pending, scheduled in the next ~10 min, not yet notified
+  const { data: pending } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, draft_date')
+    .eq('draft_status', 'pending')
+    .not('draft_date', 'is', null)
+    .is('draft_pre_start_notified_at', null)
+    .gte('draft_date', fiveMinFromNow)
+    .lte('draft_date', tenMinFromNow)
+
+  if (!pending?.length) return 0
+
+  let notified = 0
+  for (const row of pending) {
+    try {
+      const { createNotification } = await import('./notificationService.js')
+      const { data: members } = await supabase
+        .from('league_members')
+        .select('user_id')
+        .eq('league_id', row.league_id)
+      for (const m of members || []) {
+        await createNotification(m.user_id, 'fantasy_draft_starting_soon',
+          'Your fantasy draft starts in 10 minutes — get ready!',
+          { leagueId: row.league_id })
+      }
+      await supabase
+        .from('fantasy_settings')
+        .update({ draft_pre_start_notified_at: new Date().toISOString() })
+        .eq('league_id', row.league_id)
+      notified++
+    } catch (err) {
+      logger.error({ err, leagueId: row.league_id }, 'Pre-start draft notification failed')
+    }
+  }
+  return notified
+}
+
+/**
  * Scheduled draft starter: scan every pending draft whose draft_date has
  * arrived and start it. If the commissioner never randomized the order,
  * we auto-initialize first so the league isn't stuck. Notifies all members.
@@ -788,6 +834,11 @@ let _draftTickTimer = null
 const DRAFT_TICK_MS = 10 * 1000
 export function startDraftAutopickLoop() {
   async function tick() {
+    try {
+      await processDraftPreStartNotifications()
+    } catch (err) {
+      logger.error({ err }, 'Draft pre-start notification tick error')
+    }
     try {
       await processScheduledDraftStarts()
     } catch (err) {

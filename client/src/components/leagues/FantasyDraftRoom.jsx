@@ -112,6 +112,40 @@ export default function FantasyDraftRoom({ league }) {
     return () => clearInterval(interval)
   }, [draftStatus, currentPick?.pick_number, settings?.draft_pick_timer])
 
+  // "You're on the clock" in-room alert — fires only when isMyTurn flips
+  // false → true. Plays a beep, toasts, and flashes the document title so
+  // users with the tab in the background notice.
+  const wasMyTurnRef = useRef(false)
+  useEffect(() => {
+    if (isMyTurn && !wasMyTurnRef.current && draftStatus === 'in_progress') {
+      toast("You're on the clock!", 'success')
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext
+        if (Ctx) {
+          const ctx = new Ctx()
+          const o = ctx.createOscillator()
+          const g = ctx.createGain()
+          o.connect(g); g.connect(ctx.destination)
+          o.frequency.value = 880
+          g.gain.setValueAtTime(0.15, ctx.currentTime)
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+          o.start(); o.stop(ctx.currentTime + 0.4)
+        }
+      } catch {}
+      const original = document.title
+      let flashCount = 0
+      const flashTimer = setInterval(() => {
+        document.title = flashCount % 2 === 0 ? "⏰ YOU'RE UP" : original
+        flashCount++
+        if (flashCount > 10) {
+          clearInterval(flashTimer)
+          document.title = original
+        }
+      }, 800)
+    }
+    wasMyTurnRef.current = isMyTurn
+  }, [isMyTurn, draftStatus])
+
   // Auto-scroll to latest pick
   useEffect(() => {
     if (pickListRef.current) {
