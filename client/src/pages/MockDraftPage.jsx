@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
-import DraftPlayerDetailModal from '../components/leagues/DraftPlayerDetailModal'
+import DraftPlayerPreview from '../components/leagues/DraftPlayerPreview'
 
 // ────────────────────────────────────────────────────────────────────
 // Bot personalities
@@ -616,6 +616,16 @@ function DraftScreen({ config, onExit, onComplete }) {
         </div>
       </div>
 
+      {/* Embedded player preview */}
+      {detailPlayer && (
+        <DraftPlayerPreview
+          playerId={detailPlayer.id}
+          mockScoring={config.scoring}
+          onClose={() => setDetailPlayer(null)}
+          onDraft={isUserTurn ? () => { handleUserPick(detailPlayer); setDetailPlayer(null) } : null}
+        />
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto border-b border-text-primary/10">
         {['Players', 'My Roster', 'Board', 'Log'].map((t) => {
@@ -729,14 +739,6 @@ function DraftScreen({ config, onExit, onComplete }) {
         </div>
       )}
 
-      {detailPlayer && (
-        <DraftPlayerDetailModal
-          playerId={detailPlayer.id}
-          mockScoring={config.scoring}
-          onClose={() => setDetailPlayer(null)}
-          onDraft={isUserTurn ? () => { handleUserPick(detailPlayer); setDetailPlayer(null) } : null}
-        />
-      )}
     </div>
   )
 }

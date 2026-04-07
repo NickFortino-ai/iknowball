@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useMyRankings } from '../../hooks/useLeagues'
-import DraftPlayerDetailModal from './DraftPlayerDetailModal'
+import DraftPlayerPreview from './DraftPlayerPreview'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -342,6 +342,18 @@ export default function FantasyDraftRoom({ league }) {
       </div>
       </div>
 
+      {/* Embedded player preview (replaces the old modal) */}
+      {detailPlayerId && (
+        <DraftPlayerPreview
+          leagueId={league.id}
+          playerId={detailPlayerId}
+          onClose={() => setDetailPlayerId(null)}
+          onDraft={(isMyTurn || offlineMode)
+            ? async () => { await handlePick(detailPlayerId); setDetailPlayerId(null) }
+            : null}
+        />
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto border-b border-text-primary/10">
         {['Players', 'My Roster', 'Board', 'Queue', 'Log'].map((t) => {
@@ -547,16 +559,6 @@ export default function FantasyDraftRoom({ league }) {
         </div>
       )}
 
-      {detailPlayerId && (
-        <DraftPlayerDetailModal
-          leagueId={league.id}
-          playerId={detailPlayerId}
-          onClose={() => setDetailPlayerId(null)}
-          onDraft={(isMyTurn || offlineMode)
-            ? async () => { await handlePick(detailPlayerId); setDetailPlayerId(null) }
-            : null}
-        />
-      )}
     </div>
   )
 }
