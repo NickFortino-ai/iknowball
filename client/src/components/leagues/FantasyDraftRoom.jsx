@@ -67,6 +67,7 @@ export default function FantasyDraftRoom({ league }) {
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [timerSeconds, setTimerSeconds] = useState(null)
+  const [activeTab, setActiveTab] = useState('Players')
   const pickListRef = useRef(null)
 
   const { data: availablePlayers } = useAvailablePlayers(
@@ -235,6 +236,11 @@ export default function FantasyDraftRoom({ league }) {
     )
   }
 
+  // Build my roster slot map from commissioner's roster_slots config
+  const myPicks = completedPicks.filter((p) => p.user_id === profile?.id)
+  const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
+  const slotPlan = buildSlotPlan(rosterSlots, myPicks)
+
   // Live draft
   return (
     <div className="space-y-4">
@@ -265,7 +271,29 @@ export default function FantasyDraftRoom({ league }) {
         )}
       </div>
 
-      {/* Two-column layout: players + draft log */}
+      {/* Tabs */}
+      <div className="flex gap-1 overflow-x-auto border-b border-text-primary/10">
+        {['Players', 'My Roster', 'Queue', 'Log'].map((t) => {
+          const isActive = activeTab === t
+          const filledCount = slotPlan.filled
+          const totalCount = slotPlan.totalStarters
+          const badge = t === 'My Roster' ? `${filledCount}/${totalCount}` : t === 'Queue' ? (queue?.length || 0) : null
+          return (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className={`px-3 py-2 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                isActive ? 'border-accent text-accent' : 'border-transparent text-text-muted hover:text-text-primary'
+              }`}
+            >
+              {t}{badge != null ? ` (${badge})` : ''}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'Players' && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Player search + list */}
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
@@ -349,97 +377,220 @@ export default function FantasyDraftRoom({ league }) {
           </div>
         </div>
 
-        {/* Draft log */}
+        {/* Desktop-only side panel: log */}
+        <div className="hidden md:block rounded-xl border border-text-primary/20 overflow-hidden">
+          <div className="p-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-text-primary">Draft Log</h3>
+          </div>
+          <DraftLogList completedPicks={completedPicks} numTeams={settings?.num_teams || 10} profileId={profile?.id} listRef={pickListRef} />
+        </div>
+      </div>
+      )}
+
+      {activeTab === 'My Roster' && (
+        <RosterNeedsView slotPlan={slotPlan} />
+      )}
+
+      {activeTab === 'Queue' && (
+        <div className="rounded-xl border border-text-primary/20 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-text-primary">My Queue</h3>
+            <span className="text-[10px] text-text-muted italic">Auto-picks from here when your clock runs out</span>
+          </div>
+          {(queue || []).length === 0 ? (
+            <p className="text-xs text-text-muted">Star players in the Players tab to queue them up.</p>
+          ) : (
+            <div className="space-y-1">
+              {queue.map((q, i) => (
+                <div key={q.player_id} className="flex items-center gap-2 bg-bg-card rounded-lg px-2 py-1.5">
+                  <span className="text-xs text-text-muted w-5 text-center shrink-0">{i + 1}</span>
+                  {q.nfl_players?.headshot_url && (
+                    <img src={q.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold text-text-primary truncate">{q.nfl_players?.full_name}</div>
+                    <div className="text-[10px] text-text-muted">{q.nfl_players?.position} · {q.nfl_players?.team || 'FA'}</div>
+                  </div>
+                  <button onClick={() => moveQueue(q.player_id, 'up')} disabled={i === 0} className="text-text-muted hover:text-text-primary p-1 disabled:opacity-30" title="Move up">▲</button>
+                  <button onClick={() => moveQueue(q.player_id, 'down')} disabled={i === queue.length - 1} className="text-text-muted hover:text-text-primary p-1 disabled:opacity-30" title="Move down">▼</button>
+                  <button onClick={() => toggleQueue(q.player_id)} className="text-text-muted hover:text-incorrect p-1" title="Remove">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'Log' && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="p-3 border-b border-border">
             <h3 className="text-sm font-semibold text-text-primary">Draft Log</h3>
           </div>
-          <div ref={pickListRef} className="max-h-96 overflow-y-auto">
-            {completedPicks.map((pick) => (
-              <div
-                key={pick.id}
-                className={`flex items-center gap-3 px-3 py-2 border-b border-border last:border-0 ${
-                  pick.user_id === profile?.id ? 'bg-accent/5' : ''
-                }`}
-              >
-                <span className="text-xs text-text-muted w-8 shrink-0">
-                  {pick.round}.{((pick.pick_number - 1) % (settings?.num_teams || 10)) + 1}
-                </span>
-                {pick.nfl_players?.headshot_url && (
-                  <img
-                    src={pick.nfl_players.headshot_url}
-                    alt=""
-                    className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                    onError={(e) => { e.target.style.display = 'none' }}
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-text-primary truncate">
-                    {pick.nfl_players?.full_name}
-                  </div>
-                  <div className="text-xs text-text-muted">
-                    {pick.nfl_players?.position} · {pick.nfl_players?.team} — {pick.users?.display_name || pick.users?.username}
-                    {pick.is_auto_pick && <span className="text-yellow-400 ml-1">(auto)</span>}
-                  </div>
-                </div>
-              </div>
+          <DraftLogList completedPicks={completedPicks} numTeams={settings?.num_teams || 10} profileId={profile?.id} listRef={pickListRef} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Helpers
+
+const STARTER_SLOT_LABELS = {
+  qb: 'QB', rb: 'RB', wr: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'D/ST',
+  superflex: 'SUPER FLEX',
+}
+const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
+const SUPERFLEX_ELIGIBLE = ['QB', 'RB', 'WR', 'TE']
+
+/**
+ * Given the commissioner's roster_slots config and the user's drafted picks,
+ * return an ordered list of starter slots with the player (or null) filling each,
+ * plus the bench list. Greedy assignment: best player per primary slot first,
+ * leftover RB/WR/TE flow into FLEX, leftovers go to bench.
+ */
+function buildSlotPlan(rosterSlots, myPicks) {
+  const players = myPicks.map((p) => ({
+    id: p.player_id,
+    name: p.nfl_players?.full_name,
+    position: p.nfl_players?.position,
+    team: p.nfl_players?.team,
+    headshot: p.nfl_players?.headshot_url,
+  }))
+  const remaining = [...players]
+  function take(pos) {
+    const idx = remaining.findIndex((p) => p.position === pos)
+    if (idx >= 0) return remaining.splice(idx, 1)[0]
+    return null
+  }
+  function takeAny(positions) {
+    const idx = remaining.findIndex((p) => positions.includes(p.position))
+    if (idx >= 0) return remaining.splice(idx, 1)[0]
+    return null
+  }
+
+  const slots = [] // { slot, label, player }
+  const order = ['qb', 'rb', 'wr', 'te', 'flex', 'superflex', 'k', 'def']
+  for (const slotKey of order) {
+    const count = rosterSlots[slotKey] || 0
+    for (let i = 0; i < count; i++) {
+      let player = null
+      if (slotKey === 'flex') player = takeAny(FLEX_ELIGIBLE)
+      else if (slotKey === 'superflex') player = takeAny(SUPERFLEX_ELIGIBLE)
+      else player = take(slotKey.toUpperCase())
+      slots.push({ slot: slotKey, label: STARTER_SLOT_LABELS[slotKey] || slotKey.toUpperCase(), player })
+    }
+  }
+
+  const benchCount = rosterSlots.bench || 0
+  const bench = remaining.slice(0, benchCount)
+  const overflow = remaining.slice(benchCount) // shouldn't happen normally
+
+  const filled = slots.filter((s) => s.player).length
+  return { slots, bench, overflow, filled, totalStarters: slots.length, benchCount }
+}
+
+function RosterNeedsView({ slotPlan }) {
+  // Compute "need" summary by counting empty starter slots per label
+  const needCounts = {}
+  for (const s of slotPlan.slots) {
+    if (!s.player) needCounts[s.label] = (needCounts[s.label] || 0) + 1
+  }
+  const needList = Object.entries(needCounts)
+  return (
+    <div className="space-y-4">
+      {needList.length > 0 && (
+        <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3 text-center">
+          <span className="text-xs text-yellow-400 font-semibold uppercase tracking-wider">Still need: </span>
+          <span className="text-xs text-text-primary">
+            {needList.map(([label, n], i) => (
+              <span key={label}>{i > 0 ? ', ' : ''}{n} {label}</span>
             ))}
-            {completedPicks.length === 0 && (
-              <div className="text-center text-sm text-text-muted py-8">Waiting for first pick...</div>
-            )}
-          </div>
+          </span>
+        </div>
+      )}
+      <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+        <div className="p-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-text-primary">Starting Lineup</h3>
+        </div>
+        <div className="divide-y divide-border">
+          {slotPlan.slots.map((s, i) => (
+            <SlotRow key={i} label={s.label} player={s.player} />
+          ))}
         </div>
       </div>
-
-      {/* My roster so far */}
-      <div className="rounded-xl border border-text-primary/20 p-4">
-        <h3 className="text-sm font-semibold text-text-primary mb-3">My Picks</h3>
-        <div className="flex flex-wrap gap-2">
-          {completedPicks
-            .filter((p) => p.user_id === profile?.id)
-            .map((pick) => (
-              <div key={pick.id} className="flex items-center gap-2 bg-bg-card rounded-lg px-3 py-1.5">
-                {pick.nfl_players?.headshot_url && (
-                  <img src={pick.nfl_players.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover" onError={(e) => { e.target.style.display = 'none' }} />
-                )}
-                <span className="text-xs font-semibold text-text-primary">{pick.nfl_players?.full_name}</span>
-                <span className="text-xs text-text-muted">{pick.nfl_players?.position}</span>
-              </div>
-            ))}
-          {completedPicks.filter((p) => p.user_id === profile?.id).length === 0 && (
-            <span className="text-xs text-text-muted">No picks yet</span>
+      <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+        <div className="p-3 border-b border-border flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-text-primary">Bench</h3>
+          <span className="text-[10px] text-text-muted">{slotPlan.bench.length} / {slotPlan.benchCount}</span>
+        </div>
+        <div className="divide-y divide-border">
+          {slotPlan.bench.length === 0 && (
+            <div className="px-3 py-4 text-xs text-text-muted text-center">Empty</div>
           )}
+          {slotPlan.bench.map((p) => <SlotRow key={p.id} label="BN" player={p} />)}
         </div>
       </div>
+    </div>
+  )
+}
 
-      {/* Pre-rank queue */}
-      <div className="rounded-xl border border-text-primary/20 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-text-primary">My Queue</h3>
-          <span className="text-[10px] text-text-muted italic">Auto-picks from here when your clock runs out</span>
-        </div>
-        {(queue || []).length === 0 ? (
-          <p className="text-xs text-text-muted">Star players in the list above to queue them up.</p>
-        ) : (
-          <div className="space-y-1">
-            {queue.map((q, i) => (
-              <div key={q.player_id} className="flex items-center gap-2 bg-bg-card rounded-lg px-2 py-1.5">
-                <span className="text-xs text-text-muted w-5 text-center shrink-0">{i + 1}</span>
-                {q.nfl_players?.headshot_url && (
-                  <img src={q.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-text-primary truncate">{q.nfl_players?.full_name}</div>
-                  <div className="text-[10px] text-text-muted">{q.nfl_players?.position} · {q.nfl_players?.team || 'FA'}</div>
-                </div>
-                <button onClick={() => moveQueue(q.player_id, 'up')} disabled={i === 0} className="text-text-muted hover:text-text-primary p-1 disabled:opacity-30" title="Move up">▲</button>
-                <button onClick={() => moveQueue(q.player_id, 'down')} disabled={i === queue.length - 1} className="text-text-muted hover:text-text-primary p-1 disabled:opacity-30" title="Move down">▼</button>
-                <button onClick={() => toggleQueue(q.player_id)} className="text-text-muted hover:text-incorrect p-1" title="Remove">×</button>
-              </div>
-            ))}
+function SlotRow({ label, player }) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted w-12 shrink-0">{label}</span>
+      {player ? (
+        <>
+          {player.headshot && (
+            <img src={player.headshot} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-card shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-text-primary truncate">{player.name}</div>
+            <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <span className="text-xs text-text-muted italic">empty</span>
+      )}
+    </div>
+  )
+}
+
+function DraftLogList({ completedPicks, numTeams, profileId, listRef }) {
+  return (
+    <div ref={listRef} className="max-h-96 overflow-y-auto">
+      {completedPicks.map((pick) => (
+        <div
+          key={pick.id}
+          className={`flex items-center gap-3 px-3 py-2 border-b border-border last:border-0 ${
+            pick.user_id === profileId ? 'bg-accent/5' : ''
+          }`}
+        >
+          <span className="text-xs text-text-muted w-8 shrink-0">
+            {pick.round}.{((pick.pick_number - 1) % numTeams) + 1}
+          </span>
+          {pick.nfl_players?.headshot_url && (
+            <img
+              src={pick.nfl_players.headshot_url}
+              alt=""
+              className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-text-primary truncate">
+              {pick.nfl_players?.full_name}
+            </div>
+            <div className="text-xs text-text-muted">
+              {pick.nfl_players?.position} · {pick.nfl_players?.team} — {pick.users?.display_name || pick.users?.username}
+              {pick.is_auto_pick && <span className="text-yellow-400 ml-1">(auto)</span>}
+            </div>
+          </div>
+        </div>
+      ))}
+      {completedPicks.length === 0 && (
+        <div className="text-center text-sm text-text-muted py-8">Waiting for first pick...</div>
+      )}
     </div>
   )
 }
