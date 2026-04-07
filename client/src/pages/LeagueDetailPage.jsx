@@ -1133,6 +1133,7 @@ export default function LeagueDetailPage() {
                 Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
               </div>
             )}
+            </div>
           </div>
         </div>
         )
