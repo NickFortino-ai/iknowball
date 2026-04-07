@@ -236,6 +236,12 @@ export default function LeaguesPage() {
           >
             Create League
           </Link>
+          <Link
+            to="/leagues/mock-draft"
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/5 backdrop-blur text-text-secondary hover:bg-white/10 transition-colors border border-accent text-center"
+          >
+            Mock Draft
+          </Link>
         </div>
       </div>
 
