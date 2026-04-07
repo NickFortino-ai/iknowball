@@ -54,6 +54,38 @@ export async function createParlay(userId, legs) {
     }
   }
 
+  // Defense in depth: catch duplicate-game corruption (same matchup synced
+  // twice — one stale row says 'upcoming' with a future timestamp, the real
+  // row says 'live' or 'final'). Look for any sibling game between the same
+  // two teams within a 24h window that ISN'T upcoming. If we find one, the
+  // game has clearly already started — reject.
+  // Need full game info for this check
+  const { data: fullGames } = await supabase
+    .from('games')
+    .select('id, home_team, away_team, starts_at, sport_id')
+    .in('id', gameIds)
+
+  for (const g of fullGames || []) {
+    const startMs = new Date(g.starts_at).getTime()
+    const lo = new Date(startMs - 24 * 60 * 60 * 1000).toISOString()
+    const hi = new Date(startMs + 24 * 60 * 60 * 1000).toISOString()
+    const { data: siblings } = await supabase
+      .from('games')
+      .select('id, status, starts_at')
+      .eq('sport_id', g.sport_id)
+      .eq('home_team', g.home_team)
+      .eq('away_team', g.away_team)
+      .gte('starts_at', lo)
+      .lte('starts_at', hi)
+      .neq('id', g.id)
+    const liveOrFinal = (siblings || []).find((s) => s.status !== 'upcoming')
+    if (liveOrFinal) {
+      const err = new Error(`That game is already in progress or final (${g.away_team} @ ${g.home_team}). Try refreshing the page.`)
+      err.status = 400
+      throw err
+    }
+  }
+
   // Calculate combined multiplier
   let combinedMultiplier = 1
   const legData = []
