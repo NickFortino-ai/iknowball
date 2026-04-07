@@ -1,8 +1,21 @@
 import { syncWeeklyStats, getNFLState } from '../services/sleeperService.js'
 import { logger } from '../utils/logger.js'
 
-// Track Sleeper rate-limit responses so we can back off if they push back
-let consecutive429s = 0
+// Graceful degradation ladder for Sleeper rate limiting.
+// Each entry: { rateMs (sync interval), penaltyMs (one-time wait after 429 before resuming) }
+const RATE_LADDER = [
+  { rateMs: 15 * 1000, penaltyMs: 0 },             // 0: ideal — 15 sec
+  { rateMs: 20 * 1000, penaltyMs: 60 * 1000 },     // 1: 1 min wait → 20 sec
+  { rateMs: 30 * 1000, penaltyMs: 60 * 1000 },     // 2: 1 min wait → 30 sec
+  { rateMs: 45 * 1000, penaltyMs: 2 * 60 * 1000 }, // 3: 2 min wait → 45 sec
+  { rateMs: 60 * 1000, penaltyMs: 2 * 60 * 1000 }, // 4: 2 min wait → 60 sec
+  { rateMs: 90 * 1000, penaltyMs: 5 * 60 * 1000 }, // 5+: 5 min wait → 90 sec
+]
+const SUCCESS_TO_RECOVER = 20 // successful syncs needed at current rate before stepping back down
+
+let rateIndex = 0
+let pendingPenaltyMs = 0   // applied to the NEXT delay only (post-429)
+let successesAtCurrent = 0
 
 export function isInNflGameWindow() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
@@ -19,11 +32,35 @@ export function isInNflGameWindow() {
 }
 
 export function getNextNflSyncDelayMs() {
-  // If Sleeper has thrown 429 recently, back off aggressively until they recover
-  if (consecutive429s >= 3) return 5 * 60 * 1000        // 5 min
-  if (consecutive429s > 0) return 60 * 1000             // 1 min
-  if (isInNflGameWindow()) return 15 * 1000              // 15 sec — live games
-  return 5 * 60 * 1000                                   // 5 min — between game days
+  // Off-window: no need to be aggressive
+  if (!isInNflGameWindow()) return 5 * 60 * 1000
+
+  // One-time penalty wait after a 429, then resume at the new rate
+  if (pendingPenaltyMs > 0) {
+    const wait = pendingPenaltyMs
+    pendingPenaltyMs = 0
+    return wait
+  }
+
+  return RATE_LADDER[rateIndex].rateMs
+}
+
+function on429() {
+  // Step up the ladder, capped at the slowest tier
+  rateIndex = Math.min(rateIndex + 1, RATE_LADDER.length - 1)
+  pendingPenaltyMs = RATE_LADDER[rateIndex].penaltyMs
+  successesAtCurrent = 0
+  logger.warn({ rateIndex, newRateSec: RATE_LADDER[rateIndex].rateMs / 1000, penaltyMs: pendingPenaltyMs }, 'Sleeper 429 — stepping up sync interval')
+}
+
+function onSuccess() {
+  if (rateIndex === 0) return
+  successesAtCurrent++
+  if (successesAtCurrent >= SUCCESS_TO_RECOVER) {
+    rateIndex = Math.max(rateIndex - 1, 0)
+    successesAtCurrent = 0
+    logger.info({ rateIndex, newRateSec: RATE_LADDER[rateIndex].rateMs / 1000 }, 'Sleeper recovered — stepping down sync interval')
+  }
 }
 
 /**
@@ -61,13 +98,12 @@ export async function syncNflStatsCurrentWeek() {
   // but caller can choose to skip via the cron expression.
   try {
     const result = await syncWeeklyStats(season, week)
-    consecutive429s = 0
+    onSuccess()
     logger.info({ season, week, ...result }, 'NFL stats auto-sync complete')
     return result
   } catch (err) {
     if (err?.message?.includes('429')) {
-      consecutive429s++
-      logger.warn({ consecutive429s }, 'Sleeper returned 429, backing off')
+      on429()
     } else {
       logger.error({ err, season, week }, 'NFL stats auto-sync failed')
     }
