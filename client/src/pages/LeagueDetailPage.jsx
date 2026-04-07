@@ -11,6 +11,7 @@ import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
 import LeagueThread from '../components/leagues/LeagueThread'
 import FantasyDraftRoom from '../components/leagues/FantasyDraftRoom'
+import FantasyMyRankings from '../components/leagues/FantasyMyRankings'
 import FantasyMyTeam from '../components/leagues/FantasyMyTeam'
 import FantasyPlayerBrowser from '../components/leagues/FantasyPlayerBrowser'
 import FantasyTrades from '../components/leagues/FantasyTrades'
@@ -27,7 +28,7 @@ import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl } from '../lib/backdropUrl'
 
-function getLeagueTabs(league, isBracketLocked) {
+function getLeagueTabs(league, isBracketLocked, fantasySettings) {
   const isOpen = league.status === 'open'
   const memberOrStandings = isOpen ? 'Members' : 'Standings'
 
@@ -38,10 +39,17 @@ function getLeagueTabs(league, isBracketLocked) {
     return isBracketLocked ? ['Bracket', 'Standings', 'Thread'] : ['Bracket', memberOrStandings, 'Thread']
   }
 
+  if (league.format === 'fantasy') {
+    const draftDone = fantasySettings?.draft_status === 'completed'
+    const tabs = ['My Team', 'Players', 'Live', 'Matchups', 'Trades', memberOrStandings, 'Draft']
+    if (!draftDone) tabs.splice(tabs.indexOf('Draft') + 1, 0, 'My Rankings')
+    tabs.push('Thread')
+    return tabs
+  }
+
   const TABS = {
     survivor: ['Picks', memberOrStandings, 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
-    fantasy: ['My Team', 'Players', 'Live', 'Matchups', 'Trades', memberOrStandings, 'Draft', 'Thread'],
     nba_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
     mlb_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
     hr_derby: ['Picks', memberOrStandings, 'Thread'],
@@ -910,7 +918,7 @@ export default function LeagueDetailPage() {
 
   const isBracketLocked = league.format === 'bracket' && bracketTournament &&
     new Date(bracketTournament.locks_at) <= new Date()
-  const tabs = getLeagueTabs(league, isBracketLocked)
+  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings)
   const isCommissioner = league.commissioner_id === profile?.id
   // Bracket leagues don't auto-fallback to a default arena — they should be black
   // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
@@ -1459,6 +1467,10 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Draft' && league.format === 'fantasy' && (
         <div className="relative z-10"><FantasyDraftRoom league={league} /></div>
+      )}
+
+      {tabs[activeTab] === 'My Rankings' && league.format === 'fantasy' && (
+        <div className="relative z-10"><FantasyMyRankings league={league} /></div>
       )}
 
       {tabs[activeTab] === 'My Team' && league.format === 'fantasy' && (

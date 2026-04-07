@@ -748,6 +748,30 @@ export function useResumeDraft() {
   })
 }
 
+export function useMyRankings(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'myRankings'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/my-rankings`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useSetMyRankings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, playerIds }) => api.put(`/leagues/${leagueId}/fantasy/my-rankings`, { playerIds }),
+    onSuccess: (_d, { leagueId }) => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'myRankings'] }),
+  })
+}
+
+export function useResetMyRankings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/fantasy/my-rankings/reset`),
+    onSuccess: (_d, leagueId) => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'myRankings'] }),
+  })
+}
+
 export function useDraftQueue(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'draftQueue'],

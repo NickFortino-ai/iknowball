@@ -609,6 +609,107 @@ export async function startDraft(leagueId) {
 }
 
 /**
+ * Get a user's per-league custom rankings. If empty, lazily seeds with the
+ * top 200 active players ordered by the league's scoring projection.
+ * Returns a flat ordered list with full player data joined.
+ */
+const RANKINGS_SEED_SIZE = 200
+const SCORING_PROJ_COL = {
+  ppr: 'projected_pts_ppr',
+  half_ppr: 'projected_pts_half_ppr',
+  standard: 'projected_pts_standard',
+}
+
+async function seedUserRankings(leagueId, userId) {
+  const settings = await getFantasySettings(leagueId)
+  const projCol = SCORING_PROJ_COL[settings?.scoring_format] || 'projected_pts_half_ppr'
+
+  const { data: top } = await supabase
+    .from('nfl_players')
+    .select(`id, ${projCol}`)
+    .eq('status', 'Active')
+    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+    .not('team', 'is', null)
+    .order(projCol, { ascending: false, nullsFirst: false })
+    .limit(RANKINGS_SEED_SIZE)
+
+  if (!top?.length) return
+  const rows = top.map((p, i) => ({
+    league_id: leagueId,
+    user_id: userId,
+    player_id: p.id,
+    rank: i,
+  }))
+  const { error } = await supabase.from('fantasy_user_rankings').insert(rows)
+  if (error) throw error
+}
+
+export async function getMyRankings(leagueId, userId) {
+  const { data: existing, error: existingErr } = await supabase
+    .from('fantasy_user_rankings')
+    .select('player_id, rank')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .limit(1)
+  if (existingErr) throw existingErr
+
+  if (!existing?.length) {
+    await seedUserRankings(leagueId, userId)
+  }
+
+  const { data, error } = await supabase
+    .from('fantasy_user_rankings')
+    .select('player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_standard, search_rank)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .order('rank', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Replace a user's rankings with the given ordered list of player IDs.
+ * Wipes existing and re-inserts in order — simple and correct.
+ */
+export async function setMyRankings(leagueId, userId, playerIds) {
+  if (!Array.isArray(playerIds)) {
+    const err = new Error('playerIds must be an array')
+    err.status = 400
+    throw err
+  }
+  await supabase
+    .from('fantasy_user_rankings')
+    .delete()
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+
+  if (!playerIds.length) return { count: 0 }
+  const rows = playerIds.map((pid, i) => ({
+    league_id: leagueId,
+    user_id: userId,
+    player_id: pid,
+    rank: i,
+  }))
+  const { error } = await supabase.from('fantasy_user_rankings').insert(rows)
+  if (error) throw error
+  return { count: rows.length }
+}
+
+/**
+ * Wipe + re-seed from current ADP. Used when projections have shifted and
+ * the user wants a fresh starting point.
+ */
+export async function resetMyRankings(leagueId, userId) {
+  await supabase
+    .from('fantasy_user_rankings')
+    .delete()
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+  await seedUserRankings(leagueId, userId)
+  return { reset: true }
+}
+
+/**
  * Pause an in-progress draft (commissioner only — caller must enforce).
  * Autopick loop will skip paused drafts entirely.
  */

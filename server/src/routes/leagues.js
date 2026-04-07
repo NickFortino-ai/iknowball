@@ -843,6 +843,9 @@ import {
   setDraftQueue,
   pauseDraft,
   resumeDraft,
+  getMyRankings,
+  setMyRankings,
+  resetMyRankings,
   getRoster,
   searchAvailablePlayers,
   generateMatchups,
@@ -926,6 +929,25 @@ router.post('/:id/fantasy/draft/offline-pick', requireAuth, async (req, res) => 
 router.get('/:id/fantasy/draft', requireAuth, async (req, res) => {
   const data = await getDraftBoard(req.params.id)
   res.json(data)
+})
+
+// Get my custom rankings (lazily seeds from ADP on first call)
+router.get('/:id/fantasy/my-rankings', requireAuth, async (req, res) => {
+  const data = await getMyRankings(req.params.id, req.user.id)
+  res.json(data)
+})
+
+// Replace my custom rankings
+router.put('/:id/fantasy/my-rankings', requireAuth, async (req, res) => {
+  const { playerIds } = req.body
+  const result = await setMyRankings(req.params.id, req.user.id, playerIds || [])
+  res.json(result)
+})
+
+// Reset my rankings — wipe and re-seed from current ADP
+router.post('/:id/fantasy/my-rankings/reset', requireAuth, async (req, res) => {
+  const result = await resetMyRankings(req.params.id, req.user.id)
+  res.json(result)
 })
 
 // Get my pre-rank draft queue

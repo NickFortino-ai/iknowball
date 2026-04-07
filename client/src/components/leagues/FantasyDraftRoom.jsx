@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick } from '../../hooks/useLeagues'
+import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useMyRankings } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -70,6 +70,8 @@ export default function FantasyDraftRoom({ league }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [timerSeconds, setTimerSeconds] = useState(null)
   const [activeTab, setActiveTab] = useState('Players')
+  const [playerView, setPlayerView] = useState('ADP') // 'ADP' or 'My Rankings'
+  const { data: myRankings } = useMyRankings(league.id)
   const pickListRef = useRef(null)
 
   const { data: availablePlayers } = useAvailablePlayers(
@@ -366,6 +368,17 @@ export default function FantasyDraftRoom({ league }) {
         {/* Player search + list */}
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="p-3 border-b border-border">
+            <div className="flex gap-1 mb-2">
+              {['ADP', 'My Rankings'].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setPlayerView(v)}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                    playerView === v ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary'
+                  }`}
+                >{v}</button>
+              ))}
+            </div>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -387,7 +400,26 @@ export default function FantasyDraftRoom({ league }) {
             </div>
           </div>
           <div className="max-h-[55vh] md:max-h-96 overflow-y-auto">
-            {(availablePlayers || []).map((player) => {
+            {(() => {
+              // When My Rankings view is active, reorder the available list by user's ranking
+              let displayList = availablePlayers || []
+              if (playerView === 'My Rankings' && myRankings?.length) {
+                const draftedSet = new Set(picks.filter((p) => p.player_id).map((p) => p.player_id))
+                const inLeague = new Set(displayList.map((p) => p.id))
+                const ranked = []
+                const seenIds = new Set()
+                for (const r of myRankings) {
+                  if (draftedSet.has(r.player_id)) continue
+                  if (!inLeague.has(r.player_id)) continue
+                  const p = displayList.find((x) => x.id === r.player_id)
+                  if (p) { ranked.push(p); seenIds.add(p.id) }
+                }
+                // Append any available players not in user's rankings at the end
+                const tail = displayList.filter((p) => !seenIds.has(p.id))
+                displayList = [...ranked, ...tail]
+              }
+              return displayList
+            })().map((player) => {
               const isQueued = queuedIds.has(player.id)
               return (
                 <div
