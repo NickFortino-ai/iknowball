@@ -549,7 +549,7 @@ function DraftScreen({ config, onExit, onComplete }) {
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto border-b border-text-primary/10">
-        {['Players', 'My Roster', 'Log'].map((t) => {
+        {['Players', 'My Roster', 'Board', 'Log'].map((t) => {
           const isActive = activeTab === t
           const badge = t === 'My Roster' ? `${slotPlan.filled}/${slotPlan.totalStarters}` : null
           return (
@@ -622,6 +622,12 @@ function DraftScreen({ config, onExit, onComplete }) {
       )}
 
       {activeTab === 'My Roster' && <RosterNeedsView slotPlan={slotPlan} />}
+
+      {activeTab === 'Board' && (
+        <div className="rounded-xl border border-text-primary/20 p-2 overflow-hidden">
+          <MockDraftBoard picks={picks} numTeams={config.numTeams} userSlot={config.userSlot} personalities={personalities} />
+        </div>
+      )}
 
       {activeTab === 'Log' && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
@@ -715,6 +721,76 @@ function RosterNeedsView({ slotPlan }) {
           {slotPlan.bench.map((p) => <SlotRow key={p.id} label="BN" player={p} />)}
         </div>
       </div>
+    </div>
+  )
+}
+
+const POS_BG = {
+  QB: 'bg-red-500/25 text-red-200 border-red-500/40',
+  RB: 'bg-green-500/25 text-green-200 border-green-500/40',
+  WR: 'bg-yellow-500/25 text-yellow-200 border-yellow-500/40',
+  TE: 'bg-blue-500/25 text-blue-200 border-blue-500/40',
+  K: 'bg-gray-500/25 text-gray-200 border-gray-500/40',
+  DEF: 'bg-purple-500/25 text-purple-200 border-purple-500/40',
+}
+
+function MockDraftBoard({ picks, numTeams, userSlot, personalities }) {
+  const totalRounds = Math.ceil(picks.length / numTeams) || 1
+  const grid = []
+  for (let r = 0; r < totalRounds; r++) {
+    const row = []
+    const reverse = r % 2 === 1
+    for (let c = 0; c < numTeams; c++) {
+      const colIdx = reverse ? numTeams - 1 - c : c
+      const overall = r * numTeams + colIdx + 1
+      const pick = picks.find((p) => p.overall === overall)
+      row.push(pick || null)
+    }
+    grid.push(row)
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="text-xs border-collapse min-w-full">
+        <thead>
+          <tr>
+            <th className="px-1 py-2 text-text-muted font-semibold text-center w-8 border border-text-primary/15">Rd</th>
+            {Array.from({ length: numTeams }, (_, i) => (
+              <th key={i} className={`px-2 py-2 font-semibold text-center border border-text-primary/15 whitespace-nowrap ${i === userSlot ? 'text-accent' : 'text-text-secondary'}`}>
+                <div className="text-text-muted text-[10px]">{i + 1}</div>
+                {i === userSlot ? 'You' : `Bot`}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grid.map((row, ri) => (
+            <tr key={ri}>
+              <td className="px-1 py-1 text-center text-text-muted font-semibold border border-text-primary/15">
+                <div className="flex items-center gap-0.5 justify-center">
+                  {ri + 1}
+                  <span className="text-[8px]">{ri % 2 === 0 ? '→' : '←'}</span>
+                </div>
+              </td>
+              {row.map((pick, ci) => {
+                const pos = pick?.player?.position
+                const cls = pos ? POS_BG[pos] || '' : ''
+                return (
+                  <td key={ci} className={`px-1.5 py-1.5 border border-text-primary/15 ${cls}`}>
+                    {pick?.player ? (
+                      <div className="min-w-[80px]">
+                        <div className="font-semibold truncate">{pick.player.full_name}</div>
+                        <div className="text-[10px] opacity-70">{pos} ({pick.player.team})</div>
+                      </div>
+                    ) : (
+                      <div className="min-w-[80px] text-text-muted text-center">—</div>
+                    )}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

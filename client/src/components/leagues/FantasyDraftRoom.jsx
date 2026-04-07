@@ -343,7 +343,7 @@ export default function FantasyDraftRoom({ league }) {
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto border-b border-text-primary/10">
-        {['Players', 'My Roster', 'Queue', 'Log'].map((t) => {
+        {['Players', 'My Roster', 'Board', 'Queue', 'Log'].map((t) => {
           const isActive = activeTab === t
           const filledCount = slotPlan.filled
           const totalCount = slotPlan.totalStarters
@@ -489,6 +489,12 @@ export default function FantasyDraftRoom({ league }) {
 
       {activeTab === 'My Roster' && (
         <RosterNeedsView slotPlan={slotPlan} />
+      )}
+
+      {activeTab === 'Board' && (
+        <div className="rounded-xl border border-text-primary/20 p-2 overflow-hidden">
+          <DraftBoard picks={picks} settings={settings} profileId={profile?.id} />
+        </div>
       )}
 
       {activeTab === 'Queue' && (
