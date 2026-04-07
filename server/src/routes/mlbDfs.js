@@ -238,13 +238,31 @@ router.get('/live', async (req, res) => {
   const anyLive = Object.values(gameStateMap).some((g) => g.status === 'live')
   const allFinal = Object.values(gameStateMap).length > 0 && Object.values(gameStateMap).every((g) => g.status === 'final')
 
+  // Fetch current injury statuses for all rostered players
+  const injuryMap = {}
+  if (allEspnIds.length) {
+    try {
+      const pool = await getMLBPlayerPool(date)
+      for (const p of pool || []) {
+        if (p.espn_player_id) injuryMap[p.espn_player_id] = p.injury_status || null
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Canonical slot order so the live roster matches the roster tab
+  const SLOT_ORDER = ['SP', 'C', '1B', '2B', 'SS', '3B', 'OF1', 'OF2', 'OF3', 'UTIL']
+  const slotOrderIdx = (s) => {
+    const idx = SLOT_ORDER.indexOf(s)
+    return idx === -1 ? 99 : idx
+  }
+
   const result = members.map((m) => {
     const roster = rosterMap[m.user_id]
     const hasRoster = !!roster
     let totalPoints = 0
     let memberStatus = 'upcoming'
 
-    const slots = (roster?.mlb_dfs_roster_slots || []).map((slot) => {
+    const slots = (roster?.mlb_dfs_roster_slots || []).slice().sort((a, b) => slotOrderIdx(a.roster_slot) - slotOrderIdx(b.roster_slot)).map((slot) => {
       const gs = gameStateMap[slot.espn_player_id] || {}
       const pts = Number(slot.points_earned) || 0
       totalPoints += pts
@@ -269,6 +287,7 @@ router.get('/live', async (req, res) => {
         away_score: gs.awayScore ?? null,
         inning: gs.inning || null,
         stats: playerStatsMap[slot.espn_player_id] || null,
+        injury_status: hidden ? null : (injuryMap[slot.espn_player_id] || null),
       }
     })
 

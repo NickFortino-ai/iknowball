@@ -324,13 +324,31 @@ router.get('/live', async (req, res) => {
   // NBA game duration ~150 minutes
   const GAME_DURATION_MIN = 150
 
+  // Fetch current injury statuses for all rostered players
+  const injuryMap = {}
+  if (allEspnIds.length) {
+    try {
+      const pool = await getNBAPlayerPool(date)
+      for (const p of pool || []) {
+        if (p.espn_player_id) injuryMap[p.espn_player_id] = p.injury_status || null
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Canonical slot order so the live roster matches the roster tab
+  const SLOT_ORDER = ['PG1', 'PG2', 'SG1', 'SG2', 'SF1', 'SF2', 'PF1', 'PF2', 'C']
+  const slotOrderIdx = (s) => {
+    const idx = SLOT_ORDER.indexOf(s)
+    return idx === -1 ? 99 : idx
+  }
+
   // Build response
   const result = members.map((m) => {
     const roster = rosterMap[m.user_id]
     const isMe = m.user_id === req.user.id
     let minutesRemaining = 0
 
-    const slots = (roster?.nba_dfs_roster_slots || []).map((slot) => {
+    const slots = (roster?.nba_dfs_roster_slots || []).slice().sort((a, b) => slotOrderIdx(a.roster_slot) - slotOrderIdx(b.roster_slot)).map((slot) => {
       const gs = gameStateMap[slot.espn_player_id] || { status: 'upcoming' }
       const visible = isMe || allFinal || gs.status === 'live' || gs.status === 'final'
 
@@ -361,6 +379,7 @@ router.get('/live', async (req, res) => {
         home_score: gs.homeScore ?? null,
         away_score: gs.awayScore ?? null,
         stats: hasGameStats ? (playerStatsMap[slot.espn_player_id] || null) : null,
+        injury_status: visible ? (injuryMap[slot.espn_player_id] || null) : null,
       }
     })
 

@@ -250,6 +250,7 @@ function LiveView({ league, date: leagueDate }) {
                           <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
                             <div className="flex items-center gap-2 lg:w-44 lg:shrink-0">
                               <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
+                              {slot.injury_status && <InjuryBadge status={slot.injury_status} />}
                               {isDNP && (
                                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-incorrect/20 text-incorrect shrink-0">DNP</span>
                               )}

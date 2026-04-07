@@ -196,8 +196,9 @@ function MlbLiveView({ league, date: leagueDate }) {
                                   onError={(e) => { e.target.style.display = 'none' }} />
                               )}
                               <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
-                                <div className="lg:w-44 lg:shrink-0">
-                                  <span className="text-base font-bold text-text-primary truncate block">{slot.player_name}</span>
+                                <div className="lg:w-44 lg:shrink-0 flex items-center gap-1.5">
+                                  <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
+                                  {slot.injury_status && <InjuryBadge status={slot.injury_status} />}
                                 </div>
                                 {statLine && (
                                   <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
