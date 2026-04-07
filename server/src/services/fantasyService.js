@@ -622,7 +622,30 @@ export async function getGlobalRank(leagueId, userId) {
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (!mine) return null
+  if (!mine) {
+    // No ranking row — figure out why so the UI can explain it
+    // 1. Has the cron ever run at all?
+    const { count: anyGroups } = await supabase
+      .from('fantasy_format_groups')
+      .select('format_hash', { count: 'exact', head: true })
+    if (!anyGroups) {
+      return { status: 'pending', reason: 'not_yet_computed' }
+    }
+
+    // 2. Does this league use custom scoring rules?
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('scoring_rules, num_teams, scoring_format')
+      .eq('league_id', leagueId)
+      .single()
+
+    const hasCustomRules = !!(settings?.scoring_rules && Object.keys(settings.scoring_rules).length)
+    return {
+      status: 'no_group',
+      reason: hasCustomRules ? 'custom_rules' : 'unique_format',
+      league_settings: settings || null,
+    }
+  }
 
   // Format group details
   const { data: group } = await supabase
@@ -657,6 +680,7 @@ export async function getGlobalRank(leagueId, userId) {
   }
 
   return {
+    status: 'ok',
     format: group,
     me: mine,
     top10: top10 || [],

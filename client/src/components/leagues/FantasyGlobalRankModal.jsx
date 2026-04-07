@@ -29,8 +29,8 @@ export default function FantasyGlobalRankModal({ leagueId, onClose }) {
 
         {isLoading ? (
           <div className="p-10 flex items-center justify-center"><LoadingSpinner /></div>
-        ) : !data ? (
-          <NoDataState />
+        ) : !data || data.status !== 'ok' ? (
+          <EmptyState data={data} />
         ) : (
           <Body data={data} myUserId={profile?.id} />
         )}
@@ -39,16 +39,45 @@ export default function FantasyGlobalRankModal({ leagueId, onClose }) {
   )
 }
 
-function NoDataState() {
+function EmptyState({ data }) {
+  const reason = data?.reason
+  if (reason === 'not_yet_computed') {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <div className="text-4xl">🏆</div>
+        <h3 className="font-display text-lg text-text-primary">Rankings not computed yet</h3>
+        <p className="text-sm text-text-muted">
+          Global rankings refresh nightly at 4 AM ET. Check back tomorrow.
+        </p>
+      </div>
+    )
+  }
+  if (reason === 'custom_rules') {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <div className="text-4xl">🏆</div>
+        <h3 className="font-display text-lg text-text-primary">Your league has unique scoring</h3>
+        <p className="text-sm text-text-muted">
+          Your commissioner has customized the scoring rules, and no other league on IKB
+          uses the exact same setup. We only compare teams scored identically — otherwise
+          the points wouldn't be apples-to-apples.
+        </p>
+        <p className="text-xs text-text-muted italic">
+          Tip: spread the word about your league's format. Once another league copies it,
+          you'll start showing up in the rankings.
+        </p>
+      </div>
+    )
+  }
   return (
     <div className="p-8 text-center space-y-3">
       <div className="text-4xl">🏆</div>
-      <h3 className="font-display text-lg text-text-primary">No comparison group yet</h3>
+      <h3 className="font-display text-lg text-text-primary">No matching leagues yet</h3>
       <p className="text-sm text-text-muted">
-        We rank teams against every other team across IKB with the exact same format
-        (roster slots, scoring, member count). At least 2 leagues with matching settings
-        must exist for a group to form. Check back after the next nightly refresh.
+        We didn't find another IKB league with your exact roster + scoring + member count.
+        At least 2 leagues with matching settings must exist for a comparison group to form.
       </p>
+      <p className="text-xs text-text-muted italic">Check back after the next nightly refresh.</p>
     </div>
   )
 }
