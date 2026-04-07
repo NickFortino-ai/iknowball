@@ -878,6 +878,38 @@ export async function getPlayerDetail(leagueId, playerId) {
   // Determine "current" week — most recent stat row, else fall back to season-high week
   const currentWeek = weeklyStats.length ? weeklyStats[weeklyStats.length - 1] : null
 
+  // Look up the richer ESPN injury detail (body part + short comment) from
+  // the team_intel table populated by the syncInjuries cron.
+  let injuryDetail = null
+  if (player.team) {
+    // ESPN team_intel uses team_name as the full team display name. Sleeper
+    // gives us the abbreviation, so we have to look up by the player's full
+    // name across the team's injuries array.
+    const { data: intelRows } = await supabase
+      .from('team_intel')
+      .select('team_name, injuries')
+      .eq('sport_key', 'americanfootball_nfl')
+    for (const row of intelRows || []) {
+      const match = (row.injuries || []).find((i) => i.name === player.full_name)
+      if (match) {
+        injuryDetail = {
+          status: match.status || player.injury_status,
+          detail: match.detail || null,
+          body_part: player.injury_body_part || null,
+        }
+        break
+      }
+    }
+  }
+  // Fall back to the Sleeper-provided fields if ESPN didn't have a match
+  if (!injuryDetail && (player.injury_status || player.injury_body_part)) {
+    injuryDetail = {
+      status: player.injury_status,
+      detail: null,
+      body_part: player.injury_body_part || null,
+    }
+  }
+
   return {
     player: {
       id: player.id,
@@ -903,6 +935,7 @@ export async function getPlayerDetail(leagueId, playerId) {
     },
     current_week: currentWeek,
     weekly_stats: weeklyStats,
+    injury_detail: injuryDetail,
   }
 }
 

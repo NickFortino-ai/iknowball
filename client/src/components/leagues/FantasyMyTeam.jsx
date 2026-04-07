@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useFantasyRoster, useSetFantasyLineup } from '../../hooks/useLeagues'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
-import PlayerDetailModal, { PlayerNoteIcon } from './PlayerDetailModal'
+import PlayerDetailModal from './PlayerDetailModal'
 
 const INJURY_COLORS = {
   Out: 'bg-incorrect/20 text-incorrect',
@@ -52,7 +52,8 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <img
             src={row.nfl_players.headshot_url}
             alt=""
-            className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0"
+            className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={(e) => { e.stopPropagation(); onViewDetail?.(row.player_id) }}
             onError={(e) => { e.target.style.display = 'none' }}
           />
         )}
@@ -63,9 +64,6 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           </div>
           <div className="text-xs text-text-muted">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
-        {row?.player_id && onViewDetail && (
-          <PlayerNoteIcon onClick={() => onViewDetail(row.player_id)} />
-        )}
         {(canIR && !isInIR && onMoveToIR) && (
           <span
             role="button"

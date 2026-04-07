@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { SkeletonCard } from '../ui/Skeleton'
-import PlayerDetailModal, { PlayerNoteIcon } from './PlayerDetailModal'
+import PlayerDetailModal from './PlayerDetailModal'
 import LeagueReport from './LeagueReport'
 
 const SLOT_LABELS = { QB: 'QB', RB1: 'RB', RB2: 'RB', WR1: 'WR', WR2: 'WR', WR3: 'WR', TE: 'TE', FLEX: 'FLX', DEF: 'DEF' }
@@ -158,12 +158,22 @@ function SalaryCapLive({ league, week, season }) {
                       ) : (
                         <>
                           {slot.headshot_url && (
-                            <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
-                              onError={(e) => { e.target.style.display = 'none' }} />
+                            <img
+                              src={slot.headshot_url}
+                              alt=""
+                              className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                              loading="eager"
+                              decoding="async"
+                              onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
+                              onError={(e) => { e.target.style.display = 'none' }}
+                            />
                           )}
                           <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
-                            <div className="lg:w-44 lg:shrink-0 flex items-center gap-1.5">
-                              <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
+                            <div
+                              className="lg:w-44 lg:shrink-0 flex items-center gap-1.5 cursor-pointer"
+                              onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
+                            >
+                              <span className="text-base font-bold text-text-primary truncate hover:text-accent transition-colors">{slot.player_name}</span>
                               {slot.injury_status && (
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                                   slot.injury_status === 'Out' || slot.injury_status === 'IR'
@@ -199,9 +209,6 @@ function SalaryCapLive({ league, week, season }) {
                                 <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
                               )}
                             </div>
-                          )}
-                          {slot.player_id && (
-                            <PlayerNoteIcon onClick={() => setDetailPlayerId(slot.player_id)} />
                           )}
                         </>
                       )}
@@ -334,12 +341,20 @@ function MatchupLive({ league, week, season }) {
                         <div key={slot.slot} className={`flex items-center gap-2 px-3 py-2.5 border-b border-text-primary/5 border-l-2 ${slotBorder}`}>
                           <span className="text-[10px] font-bold text-text-muted w-6 shrink-0">{H2H_SLOT_LABELS[slot.slot] || slot.slot.toUpperCase()}</span>
                           {slot.headshot_url && (
-                            <img src={slot.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                              onError={(e) => { e.target.style.display = 'none' }} />
+                            <img
+                              src={slot.headshot_url}
+                              alt=""
+                              className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
+                              onError={(e) => { e.target.style.display = 'none' }}
+                            />
                           )}
-                          <div className="flex-1 min-w-0">
+                          <div
+                            className="flex-1 min-w-0 cursor-pointer"
+                            onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
+                          >
                             <div className="text-xs font-bold text-text-primary truncate flex items-center gap-1">
-                              <span className="truncate">{slot.player_name}</span>
+                              <span className="truncate hover:text-accent transition-colors">{slot.player_name}</span>
                               {slot.injury_status && (
                                 <span className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 ${
                                   slot.injury_status === 'Out' || slot.injury_status === 'IR'
@@ -367,9 +382,6 @@ function MatchupLive({ league, week, season }) {
                               <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
                             )}
                           </div>
-                          {slot.player_id && (
-                            <PlayerNoteIcon onClick={() => setDetailPlayerId(slot.player_id)} />
-                          )}
                         </div>
                       )
                     })}
@@ -383,12 +395,20 @@ function MatchupLive({ league, week, season }) {
                         <div key={slot.slot} className={`flex items-center gap-2 px-3 py-2.5 border-b border-text-primary/5 border-l-2 ${slotBorder}`}>
                           <span className="text-[10px] font-bold text-text-muted w-6 shrink-0">{H2H_SLOT_LABELS[slot.slot] || slot.slot.toUpperCase()}</span>
                           {slot.headshot_url && (
-                            <img src={slot.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                              onError={(e) => { e.target.style.display = 'none' }} />
+                            <img
+                              src={slot.headshot_url}
+                              alt=""
+                              className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
+                              onError={(e) => { e.target.style.display = 'none' }}
+                            />
                           )}
-                          <div className="flex-1 min-w-0">
+                          <div
+                            className="flex-1 min-w-0 cursor-pointer"
+                            onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
+                          >
                             <div className="text-xs font-bold text-text-primary truncate flex items-center gap-1">
-                              <span className="truncate">{slot.player_name}</span>
+                              <span className="truncate hover:text-accent transition-colors">{slot.player_name}</span>
                               {slot.injury_status && (
                                 <span className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 ${
                                   slot.injury_status === 'Out' || slot.injury_status === 'IR'
@@ -416,9 +436,6 @@ function MatchupLive({ league, week, season }) {
                               <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
                             )}
                           </div>
-                          {slot.player_id && (
-                            <PlayerNoteIcon onClick={() => setDetailPlayerId(slot.player_id)} />
-                          )}
                         </div>
                       )
                     })}

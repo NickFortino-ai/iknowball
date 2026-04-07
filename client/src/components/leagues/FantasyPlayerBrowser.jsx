@@ -4,7 +4,7 @@ import {
   useFantasySettings, useWaiverState, useMyWaiverClaims, useSubmitWaiverClaim, useCancelWaiverClaim,
 } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
-import PlayerDetailModal, { PlayerNoteIcon } from './PlayerDetailModal'
+import PlayerDetailModal from './PlayerDetailModal'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 
@@ -170,18 +170,18 @@ export default function FantasyPlayerBrowser({ league }) {
               <img
                 src={player.headshot_url}
                 alt=""
-                className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setDetailPlayerId(player.id)}
                 onError={(e) => { e.target.style.display = 'none' }}
               />
             )}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailPlayerId(player.id)}>
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-semibold text-text-primary truncate">{player.full_name}</span>
+                <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
                 <InjuryBadge status={player.injury_status} />
               </div>
               <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
             </div>
-            <PlayerNoteIcon onClick={() => setDetailPlayerId(player.id)} />
             {!isDraftPhase && roster?.length > 0 && (
               <button
                 onClick={() => setAddingPlayer(player)}
