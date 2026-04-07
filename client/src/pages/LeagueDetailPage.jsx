@@ -803,6 +803,7 @@ export default function LeagueDetailPage() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const { data: league, isLoading } = useLeague(id)
+  const { data: fantasySettings } = useFantasySettings(league?.format === 'fantasy' ? id : null)
   const { data: standings } = useLeagueStandings(id)
   const { data: bracketTournament } = useBracketTournament(league?.format === 'bracket' ? id : null)
   const { data: bracketEntries } = useBracketEntries(league?.format === 'bracket' ? id : null)
