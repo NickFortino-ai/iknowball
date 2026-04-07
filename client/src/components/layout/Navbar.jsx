@@ -152,13 +152,19 @@ export default function Navbar() {
   const desktopMenuRef = useRef(null)
   const wasOpenRef = useRef(false)
 
-  // Refetch notifications when dropdown opens, mark read when it closes
+  // Mark all read AS SOON AS the dropdown opens, not when it closes.
+  // Closing-triggered mark-read is unreliable on iPad/iOS Safari because users
+  // tap a notification → navigate → component state transitions don't fire
+  // the close handler. Mark-on-open also feels snappier — the badge clears
+  // immediately. Optimistic update wipes the local count even before the
+  // server roundtrip lands.
   const queryClient = useQueryClient()
   useEffect(() => {
     if (showInvites) {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
-    }
-    if (wasOpenRef.current && !showInvites) {
+      // Optimistic: zero the badge instantly
+      queryClient.setQueryData(['notifications', 'unread-count'], { count: 0 })
+      // Server-side: persist the read state
       markAllRead.mutate()
     }
     wasOpenRef.current = showInvites
