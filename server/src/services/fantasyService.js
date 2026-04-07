@@ -467,3 +467,114 @@ export async function generateMatchups(leagueId) {
   logger.info({ leagueId, matchups: matchups.length, weeks: regularSeasonWeeks }, 'Matchups generated')
   return { matchups: matchups.length, weeks: regularSeasonWeeks }
 }
+
+/**
+ * Score every traditional H2H fantasy matchup for a given week+season.
+ *
+ * Persists home_points / away_points / status onto fantasy_matchups so that:
+ *   - Live H2H view reads pre-computed totals (faster, fewer per-call joins)
+ *   - completeLeagues can compute final standings from W/L records
+ *
+ * Should be called after nfl_player_stats is fresh for the week.
+ * Mirrors scoreNflDfsWeek (salary cap) but for traditional starting lineups
+ * — reads roster slots and treats every non-bench/IR slot as starting.
+ */
+const STARTER_SLOT_KEYS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
+
+export async function scoreFantasyMatchupsWeek(week, season) {
+  // 1. Find every traditional fantasy league that has a matchup for this week
+  const { data: matchups } = await supabase
+    .from('fantasy_matchups')
+    .select('id, league_id, week, home_user_id, away_user_id')
+    .eq('week', week)
+
+  if (!matchups?.length) {
+    logger.info({ week, season }, 'No fantasy H2H matchups for week')
+    return { scored: 0 }
+  }
+
+  const leagueIds = [...new Set(matchups.map((m) => m.league_id))]
+
+  // 2. Per-league scoring format
+  const { data: settingsRows } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, scoring_format, format')
+    .in('league_id', leagueIds)
+  const scoringByLeague = {}
+  const isTraditional = {}
+  for (const s of settingsRows || []) {
+    scoringByLeague[s.league_id] = s.scoring_format === 'ppr' ? 'pts_ppr'
+      : s.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+    isTraditional[s.league_id] = s.format !== 'salary_cap'
+  }
+
+  // 3. Get every active starting roster (slot in starter set, not bench/IR)
+  const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
+  const { data: rosterRows } = await supabase
+    .from('fantasy_rosters')
+    .select('league_id, user_id, player_id, slot')
+    .in('league_id', leagueIds)
+    .in('user_id', userIds)
+
+  // 4. Fetch stats for all rostered starting players
+  const allPlayerIds = [...new Set((rosterRows || [])
+    .filter((r) => STARTER_SLOT_KEYS.has((r.slot || '').toLowerCase()))
+    .map((r) => r.player_id))]
+
+  const statsMap = {}
+  if (allPlayerIds.length) {
+    const { data: stats } = await supabase
+      .from('nfl_player_stats')
+      .select('player_id, pts_ppr, pts_half_ppr, pts_std')
+      .eq('week', week)
+      .eq('season', season)
+      .in('player_id', allPlayerIds)
+    for (const st of stats || []) statsMap[st.player_id] = st
+  }
+
+  // 5. Sum starter points per (league, user)
+  const userPointsMap = {} // `${leagueId}|${userId}` → sum
+  for (const r of rosterRows || []) {
+    if (!STARTER_SLOT_KEYS.has((r.slot || '').toLowerCase())) continue
+    if (!isTraditional[r.league_id]) continue
+    const scoringKey = scoringByLeague[r.league_id] || 'pts_half_ppr'
+    const st = statsMap[r.player_id]
+    const pts = st ? Number(st[scoringKey]) || 0 : 0
+    const key = `${r.league_id}|${r.user_id}`
+    userPointsMap[key] = (userPointsMap[key] || 0) + pts
+  }
+
+  // 6. Determine if the week is "complete" — all NFL games for this week are final
+  // For now we mark status='active' until the cron explicitly finalizes via the
+  // late-night Monday tick. The complete-leagues code already accepts 'completed'
+  // matchups for standings; we'll flip status to 'completed' once Monday games end.
+  const now = new Date()
+  const easternHour = parseInt(new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getHours(), 10)
+  const easternDay = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getDay()
+  // Mark completed if it's after 3 AM Tuesday Eastern (post-MNF)
+  const weekIsFinal = (easternDay === 2 && easternHour >= 3) || (easternDay > 2 && easternDay !== 0)
+
+  // 7. Update each matchup with home/away points
+  let scored = 0
+  for (const m of matchups) {
+    if (!isTraditional[m.league_id]) continue
+    const homePts = userPointsMap[`${m.league_id}|${m.home_user_id}`] || 0
+    const awayPts = userPointsMap[`${m.league_id}|${m.away_user_id}`] || 0
+    const { error } = await supabase
+      .from('fantasy_matchups')
+      .update({
+        home_points: Math.round(homePts * 100) / 100,
+        away_points: Math.round(awayPts * 100) / 100,
+        status: weekIsFinal ? 'completed' : 'active',
+      })
+      .eq('id', m.id)
+    if (error) {
+      logger.error({ error, matchupId: m.id }, 'Failed to update fantasy matchup score')
+    } else {
+      scored++
+    }
+  }
+
+  logger.info({ week, season, scored, leagues: leagueIds.length }, 'Fantasy H2H matchup scoring complete')
+  return { scored }
+}

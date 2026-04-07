@@ -766,7 +766,12 @@ export function useNflDfsLive(leagueId, week, season) {
     queryKey: ['nfl-dfs', leagueId, 'live', week, season],
     queryFn: () => api.get(`/dfs/live?league_id=${leagueId}&week=${week}&season=${season}`),
     enabled: !!leagueId && !!week,
-    refetchInterval: 20000,
+    // 5s during live games, 10s otherwise. People expect near-instant updates.
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const anyLive = data?.any_live || data?.members?.some((m) => m.slots?.some((s) => s.game_status === 'live'))
+      return anyLive ? 5000 : 10000
+    },
   })
 }
 
@@ -775,7 +780,14 @@ export function useFantasyMatchupLive(leagueId, week, season) {
     queryKey: ['fantasy', leagueId, 'matchup-live', week, season],
     queryFn: () => api.get(`/dfs/matchup-live?league_id=${leagueId}&week=${week}&season=${season}`),
     enabled: !!leagueId && !!week,
-    refetchInterval: 20000,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const anyLive = data?.matchups?.some((m) =>
+        m.home_roster?.some((s) => s.game_status === 'live') ||
+        m.away_roster?.some((s) => s.game_status === 'live')
+      )
+      return anyLive ? 5000 : 10000
+    },
   })
 }
 

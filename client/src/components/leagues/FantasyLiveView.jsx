@@ -15,22 +15,40 @@ function buildStatLine(stats, position) {
   const parts = []
   if (position === 'QB') {
     if (stats.pass_yds) parts.push(`${stats.pass_yds} PaYD`)
-    if (stats.pass_td) parts.push(`${stats.pass_td} TD`)
+    if (stats.pass_td) parts.push(`${stats.pass_td} PaTD`)
     if (stats.int) parts.push(`${stats.int} INT`)
     if (stats.rush_yds) parts.push(`${stats.rush_yds} RuYD`)
-    if (stats.rush_td) parts.push(`${stats.rush_td} RTD`)
+    if (stats.rush_td) parts.push(`${stats.rush_td} RuTD`)
+  } else if (position === 'K') {
+    if (stats.fgm) parts.push(`${stats.fgm} FG`)
+    if (stats.fgm_50_plus) parts.push(`${stats.fgm_50_plus} 50+`)
+    if (stats.xpm) parts.push(`${stats.xpm} XP`)
   } else if (position === 'DEF') {
-    // DEF stats would go here when available
-    return null
+    if (stats.def_sack) parts.push(`${stats.def_sack} SK`)
+    if (stats.def_int) parts.push(`${stats.def_int} INT`)
+    if (stats.def_fum_rec) parts.push(`${stats.def_fum_rec} FR`)
+    if (stats.def_td) parts.push(`${stats.def_td} TD`)
+    if (stats.def_safety) parts.push(`${stats.def_safety} SAF`)
+    if (stats.def_pts_allowed != null) parts.push(`${stats.def_pts_allowed} PA`)
   } else {
     if (stats.rush_yds) parts.push(`${stats.rush_yds} RuYD`)
-    if (stats.rush_td) parts.push(`${stats.rush_td} RTD`)
+    if (stats.rush_td) parts.push(`${stats.rush_td} RuTD`)
     if (stats.rec) parts.push(`${stats.rec} REC`)
     if (stats.rec_yds) parts.push(`${stats.rec_yds} ReYD`)
-    if (stats.rec_td) parts.push(`${stats.rec_td} RTD`)
+    if (stats.rec_td) parts.push(`${stats.rec_td} ReTD`)
     if (stats.fum) parts.push(`${stats.fum} FUM`)
   }
   return parts.length > 0 ? parts.join(' \u00b7 ') : null
+}
+
+function gameClockLabel(slot) {
+  if (slot.game_status === 'final') return 'Final'
+  if (slot.game_status === 'live') {
+    const period = slot.game_period ? `Q${slot.game_period}` : ''
+    const clock = slot.game_clock ? slot.game_clock : ''
+    return [period, clock].filter(Boolean).join(' ') || 'Live'
+  }
+  return null
 }
 
 function SlotBorder({ status }) {
@@ -74,6 +92,12 @@ function SalaryCapLive({ league, week, season }) {
         const isExpanded = expandedUserId === m.user_id
         const borderColor = m.status === 'final' ? 'border-correct/50' : m.status === 'live' ? 'border-accent/50' : 'border-text-primary/20'
 
+        // Slot status counters for the subtle "yet to play / playing / done" line
+        const slots = m.slots || []
+        const yetToPlay = slots.filter((s) => s.game_status === 'upcoming').length
+        const playing = slots.filter((s) => s.game_status === 'live').length
+        const done = slots.filter((s) => s.game_status === 'final').length
+
         return (
           <div key={m.user_id}>
             <button
@@ -86,6 +110,15 @@ function SalaryCapLive({ league, week, season }) {
                   <span className={`font-bold truncate ${isWinner ? 'text-lg text-accent' : isMe ? 'text-accent text-base' : 'text-text-primary text-base'}`}>
                     {m.user?.display_name || m.user?.username}
                   </span>
+                  {m.has_roster && slots.length > 0 && (yetToPlay > 0 || playing > 0) && (
+                    <div className="text-[10px] text-text-muted mt-0.5">
+                      {playing > 0 && <span className="text-accent">{playing} playing</span>}
+                      {playing > 0 && yetToPlay > 0 && <span> · </span>}
+                      {yetToPlay > 0 && <span>{yetToPlay} yet to play</span>}
+                      {done > 0 && (playing > 0 || yetToPlay > 0) && <span> · </span>}
+                      {done > 0 && <span>{done} done</span>}
+                    </div>
+                  )}
                   {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
                 </div>
                 <span className={`font-display ${all_final && idx === 0 ? 'text-2xl' : 'text-xl'} text-white`}>
@@ -287,7 +320,14 @@ function MatchupLive({ league, week, season }) {
                                 </span>
                               )}
                             </div>
-                            {statLine && <div className="text-[10px] text-text-muted truncate">{statLine}</div>}
+                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted truncate">
+                              {statLine && <span className="truncate">{statLine}</span>}
+                              {gameClockLabel(slot) && (
+                                <span className={`shrink-0 ${slot.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
+                                  {statLine ? '· ' : ''}{gameClockLabel(slot)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <span className={`text-xs font-display shrink-0 ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
                             {slot.points > 0 ? slot.points.toFixed(1) : '—'}
@@ -321,7 +361,14 @@ function MatchupLive({ league, week, season }) {
                                 </span>
                               )}
                             </div>
-                            {statLine && <div className="text-[10px] text-text-muted truncate">{statLine}</div>}
+                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted truncate">
+                              {statLine && <span className="truncate">{statLine}</span>}
+                              {gameClockLabel(slot) && (
+                                <span className={`shrink-0 ${slot.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
+                                  {statLine ? '· ' : ''}{gameClockLabel(slot)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <span className={`text-xs font-display shrink-0 ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
                             {slot.points > 0 ? slot.points.toFixed(1) : '—'}

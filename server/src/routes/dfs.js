@@ -107,7 +107,7 @@ router.get('/live', async (req, res) => {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pts_half_ppr, pass_yards, pass_td, interceptions, rush_yards, rush_td, receptions, rec_yards, rec_td, fumbles_lost')
+      .select('player_id, pts_ppr, pts_half_ppr, pts_std, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, fgm, fgm_50_plus, xpm, def_td, def_int, def_sack, def_fum_rec, def_safety, def_pts_allowed')
       .eq('week', w)
       .eq('season', s)
       .in('player_id', [...new Set(allPlayerIds)])
@@ -183,15 +183,24 @@ router.get('/live', async (req, res) => {
         home_score: gs.homeScore ?? null,
         away_score: gs.awayScore ?? null,
         stats: hasStats ? {
-          pass_yds: stat.pass_yards || 0,
+          pass_yds: Number(stat.pass_yd) || 0,
           pass_td: stat.pass_td || 0,
-          int: stat.interceptions || 0,
-          rush_yds: stat.rush_yards || 0,
+          int: stat.pass_int || 0,
+          rush_yds: Number(stat.rush_yd) || 0,
           rush_td: stat.rush_td || 0,
-          rec: stat.receptions || 0,
-          rec_yds: stat.rec_yards || 0,
+          rec: stat.rec || 0,
+          rec_yds: Number(stat.rec_yd) || 0,
           rec_td: stat.rec_td || 0,
-          fum: stat.fumbles_lost || 0,
+          fum: stat.fum_lost || 0,
+          fgm: stat.fgm || 0,
+          fgm_50_plus: stat.fgm_50_plus || 0,
+          xpm: stat.xpm || 0,
+          def_td: stat.def_td || 0,
+          def_int: stat.def_int || 0,
+          def_sack: Number(stat.def_sack) || 0,
+          def_fum_rec: stat.def_fum_rec || 0,
+          def_safety: stat.def_safety || 0,
+          def_pts_allowed: stat.def_pts_allowed,
         } : null,
       }
     })
@@ -247,7 +256,7 @@ router.get('/matchup-live', async (req, res) => {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pts_half_ppr, pts_ppr, pts_std, pass_yards, pass_td, interceptions, rush_yards, rush_td, receptions, rec_yards, rec_td, fumbles_lost')
+      .select('player_id, pts_ppr, pts_half_ppr, pts_std, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, fgm, fgm_50_plus, xpm, def_td, def_int, def_sack, def_fum_rec, def_safety, def_pts_allowed')
       .eq('week', w)
       .eq('season', s)
       .in('player_id', [...new Set(allPlayerIds)])
@@ -357,15 +366,24 @@ router.get('/matchup-live', async (req, res) => {
       points: pts,
       projected: Math.round(projected * 100) / 100,
       stats: stat ? {
-        pass_yds: stat.pass_yards || 0,
+        pass_yds: Number(stat.pass_yd) || 0,
         pass_td: stat.pass_td || 0,
-        int: stat.interceptions || 0,
-        rush_yds: stat.rush_yards || 0,
+        int: stat.pass_int || 0,
+        rush_yds: Number(stat.rush_yd) || 0,
         rush_td: stat.rush_td || 0,
-        rec: stat.receptions || 0,
-        rec_yds: stat.rec_yards || 0,
+        rec: stat.rec || 0,
+        rec_yds: Number(stat.rec_yd) || 0,
         rec_td: stat.rec_td || 0,
-        fum: stat.fumbles_lost || 0,
+        fum: stat.fum_lost || 0,
+        fgm: stat.fgm || 0,
+        fgm_50_plus: stat.fgm_50_plus || 0,
+        xpm: stat.xpm || 0,
+        def_td: stat.def_td || 0,
+        def_int: stat.def_int || 0,
+        def_sack: Number(stat.def_sack) || 0,
+        def_fum_rec: stat.def_fum_rec || 0,
+        def_safety: stat.def_safety || 0,
+        def_pts_allowed: stat.def_pts_allowed,
       } : null,
     })
   }

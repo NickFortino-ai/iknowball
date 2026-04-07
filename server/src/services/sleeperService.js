@@ -231,6 +231,15 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
     logger.error({ err, season, week }, 'NFL DFS weekly scoring failed after stats sync')
   }
 
+  // Also score traditional H2H matchups so fantasy_matchups.home_points/away_points
+  // stay current. Without this, traditional standings would be all zeros.
+  try {
+    const { scoreFantasyMatchupsWeek } = await import('./fantasyService.js')
+    await scoreFantasyMatchupsWeek(week, season)
+  } catch (err) {
+    logger.error({ err, season, week }, 'Fantasy H2H matchup scoring failed after stats sync')
+  }
+
   return { upserted, total: rows.length }
 }
 

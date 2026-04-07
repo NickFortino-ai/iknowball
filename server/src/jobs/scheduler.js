@@ -22,6 +22,8 @@ import { settleNBAProps } from './settleNBAProps.js'
 import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
+import { syncNflStatsCurrentWeek } from './syncNflStats.js'
+import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -139,6 +141,42 @@ export function startScheduler() {
       try { await syncMLBLineups() } catch (err) { logger.error({ err }, 'MLB lineup sync job failed') }
     })
     logger.info('MLB lineup sync scheduled: every 5 minutes')
+
+    // NFL stats — Sleeper updates throughout games. Auto-sync every 2 minutes
+    // during NFL game windows (Thu/Sun/Mon, ET), and every 30 minutes otherwise
+    // to catch any late stat corrections without hammering the API on a dead day.
+    // Game windows (US Eastern):
+    //   Thursday 19:00 — Friday 02:00
+    //   Sunday   12:00 — Monday    02:00
+    //   Monday   19:00 — Tuesday   02:00
+    cron.schedule('*/2 * * * *', async () => {
+      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+      const day = now.getDay() // 0=Sun, 1=Mon, 2=Tue, 4=Thu, 5=Fri
+      const hour = now.getHours()
+      const inWindow =
+        (day === 4 && hour >= 19) ||
+        (day === 5 && hour < 2) ||
+        (day === 0 && hour >= 12) ||
+        (day === 1 && hour < 2) ||
+        (day === 1 && hour >= 19) ||
+        (day === 2 && hour < 2)
+      if (!inWindow) return
+      try { await syncNflStatsCurrentWeek() } catch (err) { logger.error({ err }, 'NFL stats game-window sync failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('NFL stats game-window sync scheduled: every 2 min during NFL game windows ET')
+
+    // Off-window sparse pass to catch late stat corrections
+    cron.schedule('15 * * * *', async () => {
+      try { await syncNflStatsCurrentWeek() } catch (err) { logger.error({ err }, 'NFL stats hourly sync failed') }
+    })
+    logger.info('NFL stats hourly sync scheduled: every hour')
+
+    // NFL injury warnings — once an hour, sends notifications when an Out/IR
+    // player is on someone's traditional starting lineup or salary cap roster.
+    cron.schedule('30 * * * *', async () => {
+      try { await sendNflInjuryWarnings() } catch (err) { logger.error({ err }, 'NFL injury warnings job failed') }
+    })
+    logger.info('NFL injury warnings scheduled: every hour')
 
     // NBA prop auto-settlement suspended — settling manually via admin
     // cron.schedule('*/2 * * * *', async () => {
