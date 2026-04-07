@@ -866,18 +866,19 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
   const draftedIds = (drafted || []).map((d) => d.player_id)
   const excludeIds = [...new Set([...rosteredIds, ...draftedIds])]
 
+  // Pull a wider set so we can compute positional ranks across all
+  // available players (not just the top 50 by raw search_rank).
   let dbQuery = supabase
     .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr')
+    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week')
     .eq('status', 'Active')
     .not('team', 'is', null)
-    .order('search_rank', { ascending: true })
-    .limit(50)
+    .order('projected_pts_half_ppr', { ascending: false, nullsFirst: false })
+    .limit(400)
 
   if (query) {
     dbQuery = dbQuery.ilike('full_name', `%${query}%`)
   }
-
   if (position) {
     dbQuery = dbQuery.eq('position', position)
   }
@@ -885,9 +886,47 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
   const { data, error } = await dbQuery
   if (error) throw error
 
-  // Filter out taken players client-side (Supabase doesn't support NOT IN for large arrays easily)
   const excludeSet = new Set(excludeIds)
-  return (data || []).filter((p) => !excludeSet.has(p.id))
+  const available = (data || []).filter((p) => !excludeSet.has(p.id))
+
+  // Compute positional rank among ALL still-available players (regardless
+  // of the current position filter) so the badge stays meaningful.
+  // For that we need a second pass without the position filter.
+  let posRanks = null
+  if (position) {
+    const { data: allPos } = await supabase
+      .from('nfl_players')
+      .select('id, position, projected_pts_half_ppr, search_rank')
+      .eq('status', 'Active')
+      .eq('position', position)
+      .not('team', 'is', null)
+      .order('projected_pts_half_ppr', { ascending: false, nullsFirst: false })
+      .limit(400)
+    posRanks = {}
+    let r = 0
+    for (const p of allPos || []) {
+      if (excludeSet.has(p.id)) continue
+      r++
+      posRanks[p.id] = r
+    }
+  } else {
+    // Compute per-position ranks across the unfiltered pull
+    const byPos = {}
+    for (const p of available) {
+      if (!byPos[p.position]) byPos[p.position] = []
+      byPos[p.position].push(p)
+    }
+    posRanks = {}
+    for (const arr of Object.values(byPos)) {
+      arr.sort((a, b) => (b.projected_pts_half_ppr || 0) - (a.projected_pts_half_ppr || 0))
+      arr.forEach((p, i) => { posRanks[p.id] = i + 1 })
+    }
+  }
+
+  return available.slice(0, 50).map((p) => ({
+    ...p,
+    pos_rank: posRanks?.[p.id] || null,
+  }))
 }
 
 /**

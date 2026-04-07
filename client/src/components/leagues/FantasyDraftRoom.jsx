@@ -325,10 +325,19 @@ export default function FantasyDraftRoom({ league }) {
                         <span className="text-sm font-semibold text-text-primary truncate">{player.full_name}</span>
                         <InjuryBadge status={player.injury_status} />
                       </div>
-                      <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                      <div className="text-xs text-text-muted flex items-center gap-1.5">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${POS_COLORS[player.position] || 'bg-text-primary/10 text-text-muted'}`}>
+                          {player.position}{player.pos_rank ? player.pos_rank : ''}
+                        </span>
+                        <span>{player.team || 'FA'}</span>
+                        {player.bye_week && <span className="text-text-muted">· Bye {player.bye_week}</span>}
+                      </div>
                     </div>
-                    <div className="text-xs text-text-muted shrink-0">
-                      #{player.search_rank}
+                    <div className="text-right shrink-0">
+                      {player.projected_pts_half_ppr != null && (
+                        <div className="text-sm font-display text-accent">{Number(player.projected_pts_half_ppr).toFixed(1)}</div>
+                      )}
+                      <div className="text-[10px] text-text-muted">proj</div>
                     </div>
                   </button>
                 </div>
