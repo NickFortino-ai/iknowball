@@ -187,17 +187,6 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
     return (
       <div className="relative p-6 text-center">
-        <div className="text-4xl mb-3">{
-          (() => {
-            const s = league.sport
-            if (s === 'icehockey_nhl') return '\u{1F3D2}' // ice hockey
-            if (s === 'baseball_mlb') return '\u26BE'      // baseball
-            if (s === 'americanfootball_nfl' || s === 'americanfootball_ncaaf') return '\u{1F3C8}' // football
-            if (s === 'soccer_usa_mls') return '\u26BD'    // soccer
-            if (s && s.includes('basketball')) return '\u{1F3C0}' // basketball
-            return '\u{1F3C6}' // trophy default
-          })()
-        }</div>
         <h3 className="font-display text-lg text-text-primary mb-2">
           Welcome to {league.name || templateName || 'the Tournament'}!
         </h3>
@@ -277,9 +266,6 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                 userSelect: 'none',
               }}
             />
-            {template.bracket_image_position !== 'above_finals' && (
-              <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/70 via-transparent to-bg-primary pointer-events-none" />
-            )}
           </>
         )}
         {showCourtBg && (
