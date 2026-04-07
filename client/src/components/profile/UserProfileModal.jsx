@@ -141,6 +141,11 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
                   ))}
                 </div>
               )}
+              {isOpen && sportPicks.length === 0 && (
+                <div className="mt-1 bg-bg-card rounded-lg border border-border px-4 py-3 text-xs text-text-muted text-center">
+                  No picks in this sport yet — points contributed by league finishes (see Leagues below).
+                </div>
+              )}
             </div>
           )
         })}

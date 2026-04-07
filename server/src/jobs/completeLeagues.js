@@ -48,11 +48,12 @@ async function awardUserPoints(userId, league, points, label, type) {
       .single()
 
     if (sport) {
-      await supabase.rpc('update_sport_stats', {
+      // Use add_sport_points_only so league finishes don't get counted as
+      // picks in W/L. Points still flow to the sport's total.
+      await supabase.rpc('add_sport_points_only', {
         p_user_id: userId,
         p_sport_id: sport.id,
-        p_is_correct: points > 0,
-        p_points: Math.abs(points),
+        p_points: points,
       })
     }
   }
