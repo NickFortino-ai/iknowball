@@ -72,7 +72,7 @@ function Body({ data, myUserId }) {
           {' · '}
           <span>{ppg} per game</span>
         </div>
-        {me.rank_in_group === 1 && format.team_count >= 10 && (
+        {me.rank_in_group === 1 && (
           <div className="mt-3 inline-block px-3 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-xs font-bold">
             🏆 CURRENTLY #1 IN IKB
           </div>
