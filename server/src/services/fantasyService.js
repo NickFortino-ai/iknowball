@@ -811,6 +811,102 @@ export async function generateMatchups(leagueId) {
 }
 
 // =====================================================================
+// PLAYER DETAIL
+// =====================================================================
+
+/**
+ * Get a player's full detail for a fantasy league context:
+ *   - profile (name, position, team, headshot, injury_status)
+ *   - per-week stats this season (for the previous-games table)
+ *   - current/most-recent week's stats expanded for the live stat line
+ *
+ * Per-week pts uses the league's scoring format. The 'current' week is
+ * determined by Sleeper's NFL state when called.
+ */
+export async function getPlayerDetail(leagueId, playerId) {
+  const settings = await getFantasySettings(leagueId)
+  const scoringKey = settings?.scoring_format === 'ppr' ? 'pts_ppr'
+    : settings?.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+  const season = settings?.season || new Date().getUTCFullYear()
+
+  const { data: player } = await supabase
+    .from('nfl_players')
+    .select('id, full_name, position, team, headshot_url, injury_status, injury_body_part, age, years_exp, college, height, weight, number, espn_id, projected_pts_half_ppr')
+    .eq('id', playerId)
+    .single()
+
+  if (!player) {
+    const err = new Error('Player not found')
+    err.status = 404
+    throw err
+  }
+
+  const { data: weeks } = await supabase
+    .from('nfl_player_stats')
+    .select('week, season, pts_ppr, pts_half_ppr, pts_std, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, fgm, fgm_50_plus, xpm, def_td, def_int, def_sack, def_fum_rec, def_safety, def_pts_allowed')
+    .eq('player_id', playerId)
+    .eq('season', season)
+    .order('week', { ascending: true })
+
+  const weeklyStats = (weeks || []).map((w) => ({
+    week: w.week,
+    pts: Number(w[scoringKey]) || 0,
+    pass_yd: Number(w.pass_yd) || 0,
+    pass_td: w.pass_td || 0,
+    pass_int: w.pass_int || 0,
+    rush_yd: Number(w.rush_yd) || 0,
+    rush_td: w.rush_td || 0,
+    rec: w.rec || 0,
+    rec_yd: Number(w.rec_yd) || 0,
+    rec_td: w.rec_td || 0,
+    fum_lost: w.fum_lost || 0,
+    fgm: w.fgm || 0,
+    fgm_50_plus: w.fgm_50_plus || 0,
+    xpm: w.xpm || 0,
+    def_td: w.def_td || 0,
+    def_int: w.def_int || 0,
+    def_sack: Number(w.def_sack) || 0,
+    def_fum_rec: w.def_fum_rec || 0,
+    def_safety: w.def_safety || 0,
+    def_pts_allowed: w.def_pts_allowed,
+  }))
+
+  const totalPts = weeklyStats.reduce((sum, w) => sum + w.pts, 0)
+  const gamesPlayed = weeklyStats.length
+  const avgPts = gamesPlayed > 0 ? totalPts / gamesPlayed : 0
+
+  // Determine "current" week — most recent stat row, else fall back to season-high week
+  const currentWeek = weeklyStats.length ? weeklyStats[weeklyStats.length - 1] : null
+
+  return {
+    player: {
+      id: player.id,
+      full_name: player.full_name,
+      position: player.position,
+      team: player.team,
+      headshot_url: player.headshot_url,
+      injury_status: player.injury_status,
+      injury_body_part: player.injury_body_part,
+      age: player.age,
+      years_exp: player.years_exp,
+      college: player.college,
+      height: player.height,
+      weight: player.weight,
+      number: player.number,
+      projected_pts_half_ppr: player.projected_pts_half_ppr,
+    },
+    season_summary: {
+      season,
+      games_played: gamesPlayed,
+      total_pts: Math.round(totalPts * 10) / 10,
+      avg_pts: Math.round(avgPts * 10) / 10,
+    },
+    current_week: currentWeek,
+    weekly_stats: weeklyStats,
+  }
+}
+
+// =====================================================================
 // WAIVERS
 // =====================================================================
 

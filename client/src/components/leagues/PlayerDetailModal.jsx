@@ -1,0 +1,226 @@
+import { useEffect } from 'react'
+import { usePlayerDetail } from '../../hooks/useLeagues'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
+import LoadingSpinner from '../ui/LoadingSpinner'
+
+const INJURY_COLORS = {
+  Out: 'bg-incorrect/20 text-incorrect',
+  IR: 'bg-incorrect/20 text-incorrect',
+  Questionable: 'bg-yellow-500/20 text-yellow-500',
+  Doubtful: 'bg-yellow-500/20 text-yellow-500',
+  Probable: 'bg-correct/20 text-correct',
+  'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
+}
+
+function InjuryBadge({ status }) {
+  if (!status) return null
+  return (
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'}`}>
+      {status}
+    </span>
+  )
+}
+
+/**
+ * Returns the column set used in the per-week stats table for a given position.
+ * Skill positions share the same set; QB / K / DEF have their own.
+ */
+function columnsFor(position) {
+  if (position === 'QB') {
+    return [
+      { key: 'pts', label: 'Pts' },
+      { key: 'pass_yd', label: 'PaYD' },
+      { key: 'pass_td', label: 'PaTD' },
+      { key: 'pass_int', label: 'INT' },
+      { key: 'rush_yd', label: 'RuYD' },
+      { key: 'rush_td', label: 'RuTD' },
+    ]
+  }
+  if (position === 'K') {
+    return [
+      { key: 'pts', label: 'Pts' },
+      { key: 'fgm', label: 'FG' },
+      { key: 'fgm_50_plus', label: '50+' },
+      { key: 'xpm', label: 'XP' },
+    ]
+  }
+  if (position === 'DEF') {
+    return [
+      { key: 'pts', label: 'Pts' },
+      { key: 'def_sack', label: 'SK' },
+      { key: 'def_int', label: 'INT' },
+      { key: 'def_fum_rec', label: 'FR' },
+      { key: 'def_td', label: 'TD' },
+      { key: 'def_safety', label: 'SAF' },
+      { key: 'def_pts_allowed', label: 'PA' },
+    ]
+  }
+  // RB / WR / TE
+  return [
+    { key: 'pts', label: 'Pts' },
+    { key: 'rush_yd', label: 'RuYD' },
+    { key: 'rush_td', label: 'RuTD' },
+    { key: 'rec', label: 'REC' },
+    { key: 'rec_yd', label: 'ReYD' },
+    { key: 'rec_td', label: 'ReTD' },
+    { key: 'fum_lost', label: 'FUM' },
+  ]
+}
+
+function CurrentWeekStatLine({ position, week }) {
+  if (!week) {
+    return <p className="text-xs text-text-muted text-center">No stats yet this week.</p>
+  }
+  const columns = columnsFor(position)
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+      {columns.map((col) => {
+        const val = week[col.key]
+        const display = val == null ? '—' : col.key === 'pts' ? Number(val).toFixed(1) : val
+        return (
+          <div key={col.key} className="bg-bg-card rounded-lg border border-text-primary/10 px-3 py-2 text-center">
+            <div className="text-[10px] uppercase text-text-muted tracking-wider">{col.label}</div>
+            <div className={`font-display text-base ${col.key === 'pts' ? 'text-accent' : 'text-text-primary'}`}>{display}</div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PreviousGamesTable({ position, weeks, currentWeek }) {
+  // Show all weeks that have stats, excluding the current week (which is shown above)
+  const previous = (weeks || []).filter((w) => !currentWeek || w.week !== currentWeek.week)
+  if (!previous.length) {
+    return <p className="text-xs text-text-muted text-center py-3">No previous games.</p>
+  }
+  const columns = columnsFor(position)
+  return (
+    <div className="overflow-x-auto -mx-2 px-2">
+      <table className="min-w-full text-xs">
+        <thead>
+          <tr className="text-[10px] uppercase text-text-muted">
+            <th className="text-left font-semibold px-2 py-2 sticky left-0 bg-bg-secondary">Wk</th>
+            {columns.map((c) => (
+              <th key={c.key} className="text-right font-semibold px-2 py-2 whitespace-nowrap">{c.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {previous.map((w) => (
+            <tr key={w.week} className="border-t border-text-primary/10">
+              <td className="px-2 py-2 font-semibold sticky left-0 bg-bg-secondary">{w.week}</td>
+              {columns.map((c) => {
+                const val = w[c.key]
+                const display = val == null ? '—' : c.key === 'pts' ? Number(val).toFixed(1) : val
+                return (
+                  <td
+                    key={c.key}
+                    className={`px-2 py-2 text-right whitespace-nowrap ${c.key === 'pts' ? 'text-accent font-semibold' : 'text-text-primary'}`}
+                  >
+                    {display}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+export function PlayerNoteIcon({ onClick, className = '' }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick?.(e) }}
+      className={`shrink-0 text-text-muted hover:text-accent transition-colors p-1 ${className}`}
+      aria-label="View player details"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="9" y1="13" x2="15" y2="13" />
+        <line x1="9" y1="17" x2="13" y2="17" />
+      </svg>
+    </button>
+  )
+}
+
+export default function PlayerDetailModal({ leagueId, playerId, onClose }) {
+  const { data, isLoading } = usePlayerDetail(leagueId, playerId)
+
+  useEffect(() => {
+    lockScroll()
+    return () => unlockScroll()
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div
+        className="bg-bg-secondary w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close */}
+        <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 flex items-center justify-end z-10">
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {isLoading || !data ? (
+          <div className="p-10 flex items-center justify-center"><LoadingSpinner /></div>
+        ) : (
+          <div className="p-5 space-y-5">
+            {/* Headshot + name top center */}
+            <div className="flex flex-col items-center text-center">
+              {data.player.headshot_url && (
+                <img
+                  src={data.player.headshot_url}
+                  alt={data.player.full_name}
+                  className="w-32 h-32 rounded-full object-cover bg-bg-card border-2 border-text-primary/20 mb-3"
+                  onError={(e) => { e.target.style.display = 'none' }}
+                />
+              )}
+              <h2 className="font-display text-2xl text-text-primary">{data.player.full_name}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-text-muted">{data.player.position} · {data.player.team || 'FA'}</span>
+                <InjuryBadge status={data.player.injury_status} />
+              </div>
+              {data.season_summary && data.season_summary.games_played > 0 && (
+                <div className="mt-2 text-xs text-text-muted">
+                  Season: <span className="text-text-primary font-semibold">{data.season_summary.total_pts} pts</span>
+                  {' · '}
+                  <span className="text-text-primary font-semibold">{data.season_summary.avg_pts} avg</span>
+                  {' · '}
+                  <span className="text-text-primary font-semibold">{data.season_summary.games_played} GP</span>
+                </div>
+              )}
+            </div>
+
+            {/* Current week stat line */}
+            <div>
+              <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">
+                {data.current_week ? `Week ${data.current_week.week}` : 'Latest Week'}
+              </h3>
+              <CurrentWeekStatLine position={data.player.position} week={data.current_week} />
+            </div>
+
+            {/* Previous games table */}
+            <div>
+              <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">Previous Games</h3>
+              <PreviousGamesTable
+                position={data.player.position}
+                weeks={data.weekly_stats}
+                currentWeek={data.current_week}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

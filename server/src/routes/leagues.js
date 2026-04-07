@@ -854,6 +854,7 @@ import {
   getWaiverState,
   getWaiverStateForLeague,
   processLeagueWaivers,
+  getPlayerDetail,
 } from '../services/fantasyService.js'
 
 // Get fantasy settings
@@ -904,6 +905,16 @@ router.get('/:id/fantasy/roster', requireAuth, async (req, res) => {
 router.get('/:id/fantasy/roster/:userId', requireAuth, async (req, res) => {
   const data = await getRoster(req.params.id, req.params.userId)
   res.json(data)
+})
+
+// Player detail (for the player modal — works for any NFL player)
+router.get('/:id/fantasy/players/:playerId/detail', requireAuth, async (req, res) => {
+  try {
+    const data = await getPlayerDetail(req.params.id, req.params.playerId)
+    res.json(data)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
 })
 
 // Search available players

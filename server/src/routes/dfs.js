@@ -386,6 +386,7 @@ router.get('/matchup-live', async (req, res) => {
 
     userRosters[r.user_id].push({
       slot: r.slot,
+      player_id: r.player_id,
       player_name: player.full_name || '?',
       position: player.position || '?',
       team,

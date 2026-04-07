@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { SkeletonCard } from '../ui/Skeleton'
+import PlayerDetailModal, { PlayerNoteIcon } from './PlayerDetailModal'
 import LeagueReport from './LeagueReport'
 
 const SLOT_LABELS = { QB: 'QB', RB1: 'RB', RB2: 'RB', WR1: 'WR', WR2: 'WR', WR3: 'WR', TE: 'TE', FLEX: 'FLX', DEF: 'DEF' }
@@ -64,6 +65,7 @@ function SalaryCapLive({ league, week, season }) {
   const { data: liveData, isLoading } = useNflDfsLive(league.id, week, season)
   const [expandedUserId, setExpandedUserId] = useState(null)
   const [showReport, setShowReport] = useState(false)
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
 
   if (isLoading) return (
     <div className="space-y-3">
@@ -198,6 +200,9 @@ function SalaryCapLive({ league, week, season }) {
                               )}
                             </div>
                           )}
+                          {slot.player_id && (
+                            <PlayerNoteIcon onClick={() => setDetailPlayerId(slot.player_id)} />
+                          )}
                         </>
                       )}
                     </div>
@@ -208,6 +213,9 @@ function SalaryCapLive({ league, week, season }) {
           </div>
         )
       })}
+      {detailPlayerId && (
+        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+      )}
     </div>
   )
 }
@@ -217,6 +225,7 @@ function MatchupLive({ league, week, season }) {
   const { profile } = useAuth()
   const { data, isLoading } = useFantasyMatchupLive(league.id, week, season)
   const [expandedMatchup, setExpandedMatchup] = useState(null)
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
 
   if (isLoading) return (
     <div className="space-y-3">
@@ -358,6 +367,9 @@ function MatchupLive({ league, week, season }) {
                               <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
                             )}
                           </div>
+                          {slot.player_id && (
+                            <PlayerNoteIcon onClick={() => setDetailPlayerId(slot.player_id)} />
+                          )}
                         </div>
                       )
                     })}
@@ -404,6 +416,9 @@ function MatchupLive({ league, week, season }) {
                               <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
                             )}
                           </div>
+                          {slot.player_id && (
+                            <PlayerNoteIcon onClick={() => setDetailPlayerId(slot.player_id)} />
+                          )}
                         </div>
                       )
                     })}
@@ -414,6 +429,9 @@ function MatchupLive({ league, week, season }) {
           </div>
         )
       })}
+      {detailPlayerId && (
+        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+      )}
     </div>
   )
 }

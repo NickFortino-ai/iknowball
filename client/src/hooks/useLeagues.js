@@ -670,6 +670,15 @@ export function useCancelWaiverClaim(leagueId) {
   })
 }
 
+export function usePlayerDetail(leagueId, playerId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'player-detail', playerId],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/players/${playerId}/detail`),
+    enabled: !!leagueId && !!playerId,
+    refetchInterval: 15000,
+  })
+}
+
 export function useAvailablePlayers(leagueId, query, position) {
   const params = new URLSearchParams()
   if (query) params.set('q', query)

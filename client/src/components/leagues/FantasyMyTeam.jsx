@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useFantasyRoster, useSetFantasyLineup } from '../../hooks/useLeagues'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
+import PlayerDetailModal, { PlayerNoteIcon } from './PlayerDetailModal'
 
 const INJURY_COLORS = {
   Out: 'bg-incorrect/20 text-incorrect',
@@ -35,7 +36,7 @@ function InjuryBadge({ status }) {
   )
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR }) {
+function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail }) {
   const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
   const isInIR = row?.slot === 'ir'
   return (
@@ -62,6 +63,9 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR }
           </div>
           <div className="text-xs text-text-muted">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
+        {row?.player_id && onViewDetail && (
+          <PlayerNoteIcon onClick={() => onViewDetail(row.player_id)} />
+        )}
         {(canIR && !isInIR && onMoveToIR) && (
           <span
             role="button"
@@ -105,6 +109,7 @@ export default function FantasyMyTeam({ league }) {
   const setLineup = useSetFantasyLineup(league.id)
   const [draftSlots, setDraftSlots] = useState(null) // { [player_id]: slot }
   const [selected, setSelected] = useState(null) // { type: 'slot'|'player', key: string }
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
 
   // Build a working slot-by-player map (server slot or draftSlots override)
   const slotByPlayer = useMemo(() => {
@@ -302,6 +307,7 @@ export default function FantasyMyTeam({ league }) {
                       row={occupant}
                       isSelected={selected?.type === 'player' && selected.key === occupant.player_id}
                       onTap={() => handlePlayerTap(occupant.player_id)}
+                      onViewDetail={setDetailPlayerId}
                     />
                   ) : (
                     <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} />
@@ -327,6 +333,7 @@ export default function FantasyMyTeam({ league }) {
                 row={r}
                 isSelected={selected?.type === 'player' && selected.key === r.player_id}
                 onTap={() => handlePlayerTap(r.player_id)}
+                onViewDetail={setDetailPlayerId}
                 onMoveToIR={handleMoveToIR}
               />
             ))
@@ -346,6 +353,7 @@ export default function FantasyMyTeam({ league }) {
                 row={r}
                 isSelected={selected?.type === 'player' && selected.key === r.player_id}
                 onTap={() => handlePlayerTap(r.player_id)}
+                onViewDetail={setDetailPlayerId}
                 onMoveOutOfIR={handleMoveOutOfIR}
               />
             ))}
@@ -371,6 +379,10 @@ export default function FantasyMyTeam({ league }) {
             {setLineup.isPending ? 'Saving…' : 'Save Lineup'}
           </button>
         </div>
+      )}
+
+      {detailPlayerId && (
+        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
       )}
     </div>
   )

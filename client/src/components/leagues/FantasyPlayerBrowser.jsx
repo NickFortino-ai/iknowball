@@ -4,6 +4,7 @@ import {
   useFantasySettings, useWaiverState, useMyWaiverClaims, useSubmitWaiverClaim, useCancelWaiverClaim,
 } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
+import PlayerDetailModal, { PlayerNoteIcon } from './PlayerDetailModal'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 
@@ -30,6 +31,7 @@ export default function FantasyPlayerBrowser({ league }) {
   const [addingPlayer, setAddingPlayer] = useState(null) // player being added
   const [dropPlayerId, setDropPlayerId] = useState('') // chosen drop
   const [bidAmount, setBidAmount] = useState(0)
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
 
   const { data: players, isLoading } = useAvailablePlayers(
     league.id,
@@ -179,6 +181,7 @@ export default function FantasyPlayerBrowser({ league }) {
               </div>
               <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
             </div>
+            <PlayerNoteIcon onClick={() => setDetailPlayerId(player.id)} />
             {!isDraftPhase && roster?.length > 0 && (
               <button
                 onClick={() => setAddingPlayer(player)}
@@ -250,6 +253,10 @@ export default function FantasyPlayerBrowser({ league }) {
             </div>
           </div>
         </div>
+      )}
+
+      {detailPlayerId && (
+        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
       )}
     </div>
   )
