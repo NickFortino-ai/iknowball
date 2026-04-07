@@ -197,7 +197,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
           })()
         }</div>
         <h3 className="font-display text-lg text-text-primary mb-2">
-          Welcome to the {templateName || 'Tournament'} Challenge!
+          Welcome to {league.name || templateName || 'the Tournament'}!
         </h3>
         <p className="text-sm text-text-secondary mb-3">
           The tournament bracket hasn't been set yet.
