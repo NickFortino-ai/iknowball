@@ -465,7 +465,6 @@ function DraftScreen({ config, onExit, onComplete }) {
   const [activeTab, setActiveTab] = useState('Players')
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
-  const [fastForward, setFastForward] = useState(false)
   const [detailPlayer, setDetailPlayer] = useState(null)
 
   // Bot personalities — stable for the duration of the mock
@@ -511,7 +510,7 @@ function DraftScreen({ config, onExit, onComplete }) {
   useEffect(() => {
     if (isComplete || !allPlayers?.length) return
     if (currentPick.teamSlot === config.userSlot) return
-    const delay = fastForward ? 30 : 220
+    const delay = 220
     const t = setTimeout(() => {
       const botSlot = currentPick.teamSlot
       const botRoster = picks.filter((p) => p.teamSlot === botSlot).map((p) => p.player)
@@ -535,7 +534,7 @@ function DraftScreen({ config, onExit, onComplete }) {
       }])
     }, delay)
     return () => clearTimeout(t)
-  }, [currentPickIdx, isComplete, allPlayers, fastForward])
+  }, [currentPickIdx, isComplete, allPlayers])
 
   // When draft completes, build the result
   useEffect(() => {
@@ -608,15 +607,7 @@ function DraftScreen({ config, onExit, onComplete }) {
               {isUserTurn ? "You're on the clock!" : `${teamNames[currentPick?.teamSlot]} picking...`}
             </div>
           </div>
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <button
-              onClick={() => setFastForward((v) => !v)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                fastForward ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-bg-card border-text-primary/20 text-text-secondary'
-              }`}
-            >
-              {fastForward ? '⏩ Fast Forward ON' : '⏩ Fast Forward'}
-            </button>
+          <div className="mt-2 flex items-center justify-center">
             <button
               onClick={onExit}
               className="px-3 py-1 rounded-lg text-xs font-semibold bg-bg-card border border-text-primary/20 text-text-muted hover:text-incorrect"
