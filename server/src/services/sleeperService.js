@@ -251,21 +251,34 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
     }
   } catch { /* non-fatal */ }
 
-  // Batch upsert
+  // Batch upsert with per-row fallback. If a chunk fails (likely an FK
+  // violation from a player_id we don't have in nfl_players), retry each
+  // row individually so one bad apple doesn't kill the whole chunk.
   const CHUNK = 500
   let upserted = 0
+  let skipped = 0
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK)
     const { error } = await supabase
       .from('nfl_player_stats')
       .upsert(chunk, { onConflict: 'player_id,season,week' })
 
-    if (error) {
-      logger.error({ error, offset: i }, 'Failed to upsert stats chunk')
-    } else {
+    if (!error) {
       upserted += chunk.length
+      continue
+    }
+
+    // Fallback: try each row one at a time so we don't lose good rows
+    logger.warn({ error: error.message, offset: i }, 'Stats chunk failed, falling back to per-row')
+    for (const row of chunk) {
+      const { error: rowErr } = await supabase
+        .from('nfl_player_stats')
+        .upsert(row, { onConflict: 'player_id,season,week' })
+      if (rowErr) skipped++
+      else upserted++
     }
   }
+  if (skipped > 0) logger.warn({ skipped, season, week }, 'Skipped stat rows')
 
   // Stat correction detection — fire notifications for corrected players
   if (oldStatsByPlayer) {

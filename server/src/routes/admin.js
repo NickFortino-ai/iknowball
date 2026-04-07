@@ -127,12 +127,17 @@ router.post('/sync-odds', async (req, res) => {
   res.json({ message: 'Odds sync complete', results })
 })
 
-// Backfill an entire NFL regular season of weekly stats
+// Backfill an entire NFL regular season of weekly stats. Also syncs players
+// first so the FK from nfl_player_stats → nfl_players is satisfied for the
+// full roster — otherwise upsert chunks fail silently.
 router.post('/backfill-nfl-season', async (req, res) => {
   const season = parseInt(req.body?.season || req.query?.season || '2025', 10)
-  const { backfillSeasonStats } = await import('../services/sleeperService.js')
+  const { backfillSeasonStats, syncPlayers } = await import('../services/sleeperService.js')
+  logger.info({ season }, 'Backfill: syncing players first')
+  const playersResult = await syncPlayers()
+  logger.info({ playersResult }, 'Backfill: now syncing stats')
   const result = await backfillSeasonStats(season)
-  res.json(result)
+  res.json({ players: playersResult, ...result })
 })
 
 router.post('/sync-injuries', async (req, res) => {
