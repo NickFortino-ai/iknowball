@@ -748,6 +748,15 @@ export function useResumeDraft() {
   })
 }
 
+export function useFantasyStandings(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'standings'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/standings`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
 export function useDraftPlayerDetail(leagueId, playerId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'draft-player-detail', playerId],

@@ -1,27 +1,36 @@
 import { useState } from 'react'
 import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
+import { useFantasyStandings } from '../../hooks/useLeagues'
 
 export default function FantasyStandings({ league }) {
-  const members = league.members || []
   const [selectedUserId, setSelectedUserId] = useState(null)
+  const { data: serverStandings } = useFantasyStandings(league.id)
 
-  // TODO: Once matchups are played, compute W-L-T, PF, PA, streak, waiver, moves from API
-  // For now, show members with placeholder stats
-  const standings = members
-    .map((m, i) => ({
-      rank: i + 1,
-      user: m.users,
-      userId: m.user_id,
-      wins: 0,
-      losses: 0,
-      ties: 0,
-      pointsFor: 0,
-      pointsAgainst: 0,
-      streak: '--',
-      waiver: i + 1,
-      moves: 0,
-    }))
+  // Server returns ordered list with computed W-L-T, PF, PA, streak.
+  // Falls back to a flat member list (preseason / no matchups yet).
+  const standings = (serverStandings && serverStandings.length)
+    ? serverStandings.map((s) => ({
+        rank: s.rank,
+        user: s.user,
+        userId: s.user_id,
+        wins: s.wins,
+        losses: s.losses,
+        ties: s.ties,
+        pointsFor: s.pf,
+        pointsAgainst: s.pa,
+        streak: s.streak || '--',
+        gamesPlayed: s.games_played,
+      }))
+    : (league.members || []).map((m, i) => ({
+        rank: i + 1,
+        user: m.users,
+        userId: m.user_id,
+        wins: 0, losses: 0, ties: 0,
+        pointsFor: 0, pointsAgainst: 0,
+        streak: '--',
+        gamesPlayed: 0,
+      }))
 
   return (
     <div>

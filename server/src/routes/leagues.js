@@ -848,6 +848,7 @@ import {
   resetMyRankings,
   getGlobalRank,
   getDraftPlayerDetail,
+  getFantasyStandings,
   getRoster,
   searchAvailablePlayers,
   generateMatchups,
@@ -930,6 +931,12 @@ router.post('/:id/fantasy/draft/offline-pick', requireAuth, async (req, res) => 
 // Get draft board
 router.get('/:id/fantasy/draft', requireAuth, async (req, res) => {
   const data = await getDraftBoard(req.params.id)
+  res.json(data)
+})
+
+// Fantasy traditional standings (W-L-T, PF, PA, streak)
+router.get('/:id/fantasy/standings', requireAuth, async (req, res) => {
+  const data = await getFantasyStandings(req.params.id)
   res.json(data)
 })
 

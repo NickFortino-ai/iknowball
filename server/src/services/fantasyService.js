@@ -873,6 +873,104 @@ export async function setDraftQueue(leagueId, userId, playerIds) {
 }
 
 /**
+ * Compute traditional fantasy league standings from fantasy_matchups.
+ *
+ * Wins/losses/ties are counted only from `status='completed'` matchups
+ * (which means scoreFantasyMatchupsWeek has flipped them to completed
+ * after the late Monday Night Football tick). PF/PA accumulate across
+ * all scored matchups regardless of status, so users see live totals
+ * during the week, but W/L only updates once Monday night is over.
+ *
+ * Sorted by wins DESC, then PF DESC as the tiebreaker.
+ */
+export async function getFantasyStandings(leagueId) {
+  // Pull league members for the base list (so 0-game teams still show up)
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', leagueId)
+
+  if (!members?.length) return []
+
+  // All matchups for this league, ordered so we can compute streaks chronologically
+  const { data: matchups } = await supabase
+    .from('fantasy_matchups')
+    .select('week, home_user_id, away_user_id, home_points, away_points, status')
+    .eq('league_id', leagueId)
+    .order('week', { ascending: true })
+
+  // Initialize per-user buckets
+  const tally = {}
+  for (const m of members) {
+    tally[m.user_id] = {
+      user_id: m.user_id,
+      user: m.users,
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      pf: 0,
+      pa: 0,
+      results: [], // chronological 'W'|'L'|'T' for streak calc
+    }
+  }
+
+  for (const m of (matchups || [])) {
+    const home = tally[m.home_user_id]
+    const away = tally[m.away_user_id]
+    if (!home || !away) continue
+    const hp = Number(m.home_points) || 0
+    const ap = Number(m.away_points) || 0
+    // PF/PA always accumulate (live during the week)
+    home.pf += hp; home.pa += ap
+    away.pf += ap; away.pa += hp
+    // W/L/T only count once the matchup is completed (post-MNF tick)
+    if (m.status !== 'completed') continue
+    if (hp > ap) {
+      home.wins++; away.losses++
+      home.results.push('W'); away.results.push('L')
+    } else if (ap > hp) {
+      away.wins++; home.losses++
+      away.results.push('W'); home.results.push('L')
+    } else {
+      home.ties++; away.ties++
+      home.results.push('T'); away.results.push('T')
+    }
+  }
+
+  // Compute streak from the tail of results
+  function computeStreak(results) {
+    if (!results.length) return null
+    const last = results[results.length - 1]
+    let n = 0
+    for (let i = results.length - 1; i >= 0; i--) {
+      if (results[i] === last) n++
+      else break
+    }
+    return `${last}${n}`
+  }
+
+  const standings = Object.values(tally).map((t) => ({
+    user: t.user,
+    user_id: t.user_id,
+    wins: t.wins,
+    losses: t.losses,
+    ties: t.ties,
+    pf: Number(t.pf.toFixed(1)),
+    pa: Number(t.pa.toFixed(1)),
+    streak: computeStreak(t.results),
+    games_played: t.wins + t.losses + t.ties,
+  }))
+
+  // Sort: wins DESC, then PF DESC as tiebreaker
+  standings.sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins
+    return b.pf - a.pf
+  })
+
+  return standings.map((s, i) => ({ ...s, rank: i + 1 }))
+}
+
+/**
  * Build the draft-context view of a player. Returns prior-season totals,
  * per-week log, ADP rank, projection, injury info, and recent news.
  *
