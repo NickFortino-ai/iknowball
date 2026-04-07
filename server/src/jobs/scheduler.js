@@ -148,6 +148,12 @@ export function startScheduler() {
     startNflStatsTickLoop()
     logger.info('NFL stats tick loop started: 15s during game windows, 5m otherwise')
 
+    // Fantasy draft autopick — checks every 10s for expired pick clocks
+    import('../services/fantasyService.js').then(({ startDraftAutopickLoop }) => {
+      startDraftAutopickLoop()
+      logger.info('Fantasy draft autopick loop started: every 10s')
+    })
+
     // NFL injury warnings — once an hour, sends notifications when an Out/IR
     // player is on someone's traditional starting lineup or salary cap roster.
     cron.schedule('30 * * * *', async () => {

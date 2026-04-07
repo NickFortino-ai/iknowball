@@ -545,11 +545,99 @@ export async function startDraft(leagueId) {
 
   await supabase
     .from('fantasy_settings')
-    .update({ draft_status: 'in_progress' })
+    .update({ draft_status: 'in_progress', draft_started_at: new Date().toISOString() })
     .eq('league_id', leagueId)
 
   logger.info({ leagueId }, 'Draft started')
   return { status: 'in_progress' }
+}
+
+/**
+ * Tick-loop helper: scan every in-progress draft, find the on-the-clock pick,
+ * and if its deadline has passed, auto-pick for that user.
+ *
+ * Deadline = (last completed pick's picked_at OR draft_started_at) + draft_pick_timer.
+ * Returns the number of autopicks made.
+ */
+export async function processDraftAutopicks() {
+  const { data: liveDrafts } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, draft_pick_timer, draft_started_at')
+    .eq('draft_status', 'in_progress')
+
+  if (!liveDrafts?.length) return 0
+
+  let autopicks = 0
+  for (const d of liveDrafts) {
+    const timerSec = d.draft_pick_timer || 90
+    try {
+      // Next on-the-clock pick (earliest unfilled)
+      const { data: nextPick } = await supabase
+        .from('fantasy_draft_picks')
+        .select('id, user_id, pick_number')
+        .eq('league_id', d.league_id)
+        .is('player_id', null)
+        .order('pick_number', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+
+      if (!nextPick) continue
+
+      // Most recent completed pick (for the deadline baseline)
+      const { data: lastPick } = await supabase
+        .from('fantasy_draft_picks')
+        .select('picked_at')
+        .eq('league_id', d.league_id)
+        .not('player_id', 'is', null)
+        .order('pick_number', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const baselineMs = lastPick?.picked_at
+        ? new Date(lastPick.picked_at).getTime()
+        : d.draft_started_at
+          ? new Date(d.draft_started_at).getTime()
+          : null
+
+      if (baselineMs == null) continue
+      const elapsedSec = (Date.now() - baselineMs) / 1000
+      if (elapsedSec < timerSec) continue
+
+      // Time's up — autopick for the on-the-clock user
+      logger.info({ leagueId: d.league_id, userId: nextPick.user_id, pickNumber: nextPick.pick_number, elapsedSec }, 'Draft pick timer expired — auto-picking')
+      await autoDraftPick(d.league_id, nextPick.user_id)
+      autopicks++
+    } catch (err) {
+      logger.error({ err, leagueId: d.league_id }, 'Draft autopick tick failed for league')
+    }
+  }
+  return autopicks
+}
+
+/**
+ * Self-rescheduling tick loop. Runs every 10 seconds — well below the
+ * minimum 30-second pick timer we'd realistically allow, so users always
+ * get auto-picked within a few seconds of their clock hitting zero.
+ */
+let _draftTickTimer = null
+const DRAFT_TICK_MS = 10 * 1000
+export function startDraftAutopickLoop() {
+  async function tick() {
+    try {
+      await processDraftAutopicks()
+    } catch (err) {
+      logger.error({ err }, 'Draft autopick loop tick error')
+    }
+    _draftTickTimer = setTimeout(tick, DRAFT_TICK_MS)
+  }
+  _draftTickTimer = setTimeout(tick, 5000)
+}
+
+export function stopDraftAutopickLoop() {
+  if (_draftTickTimer) {
+    clearTimeout(_draftTickTimer)
+    _draftTickTimer = null
+  }
 }
 
 /**
