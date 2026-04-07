@@ -1069,37 +1069,48 @@ export default function LeagueDetailPage() {
           : mc >= 9 ? `/trophies/medium-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
           : mc >= 5 ? `/trophies/small-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
           : `/trophies/medal-${(Math.abs([...lid].reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0)) % 3) + 1}.webp`
+        // Match TrophyCase proportions so trophies feel consistent across the app
+        const trophySizeClass = mc >= 14 ? 'w-36 h-44 md:w-56 md:h-64'
+          : mc >= 9 ? 'w-32 h-40 md:w-48 md:h-56'
+          : mc >= 5 ? 'w-28 h-32 md:w-40 md:h-48'
+          : 'w-20 h-20 md:w-32 md:h-32'
         const outlasted = mc > 1 ? mc - 1 : 0
         return (
-        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-8 px-6 relative overflow-hidden">
+        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-6 md:py-8 px-4 md:px-8 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
-          <div className="relative flex flex-col items-center text-center">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <img src={trophySrc} alt="Trophy" className="w-20 h-24 object-contain shrink-0 animate-trophy-float drop-shadow-[0_0_12px_rgba(234,179,8,0.3)]" />
-              <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer shrink-0">
+          <div className="relative flex items-center justify-center md:justify-start gap-4 md:gap-8">
+            {/* Trophy — large, off to the side */}
+            <img
+              src={trophySrc}
+              alt="Trophy"
+              className={`${trophySizeClass} object-contain shrink-0 animate-trophy-float drop-shadow-[0_0_16px_rgba(234,179,8,0.4)]`}
+            />
+            {/* Avatar + text */}
+            <div className="flex flex-col items-center md:items-start text-center md:text-left flex-1 min-w-0">
+              <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer mb-3">
                 {league.champion.user.avatar_url ? (
                   <img
                     src={league.champion.user.avatar_url}
                     alt={league.champion.user.display_name}
-                    className="w-24 h-24 rounded-full object-cover ring-3 ring-yellow-500"
+                    className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover ring-4 ring-yellow-500"
                   />
                 ) : (
-                  <Avatar user={league.champion.user} size="2xl" className="!w-24 !h-24 !text-4xl" />
+                  <Avatar user={league.champion.user} size="2xl" className="!w-20 !h-20 md:!w-28 md:!h-28 !text-4xl" />
                 )}
               </button>
-            </div>
-            <div className="font-display text-2xl text-white">
-              {league.champion.user.display_name || league.champion.user.username}
-            </div>
-            <div className="text-sm text-text-secondary mt-0.5">won this league!</div>
-            <div className="text-base text-yellow-400 font-semibold mt-2">
-              +{league.champion.points} pts earned
-            </div>
-            {outlasted > 0 && (
-              <div className="text-sm text-text-muted mt-1">
-                Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
+              <div className="font-display text-2xl md:text-4xl text-white truncate max-w-full">
+                {league.champion.user.display_name || league.champion.user.username}
               </div>
-            )}
+              <div className="text-sm md:text-base text-text-secondary mt-1">won this league!</div>
+              <div className="text-base md:text-xl text-yellow-400 font-semibold mt-2">
+                +{league.champion.points} pts earned
+              </div>
+              {outlasted > 0 && (
+                <div className="text-sm md:text-base text-text-muted mt-1">
+                  Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         )
