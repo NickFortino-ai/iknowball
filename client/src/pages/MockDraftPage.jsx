@@ -13,6 +13,15 @@ import { toast } from '../components/ui/Toast'
 
 const PERSONALITIES = ['Best Available', 'Zero RB', 'RB Heavy', 'Early QB', 'Reacher']
 
+// Compare two players by ADP (lower search_rank = earlier ADP = better).
+// Falls back to scoring projection if search_rank is missing.
+function adpCompare(a, b, scoringKey) {
+  const ar = a.search_rank ?? 9999
+  const br = b.search_rank ?? 9999
+  if (ar !== br) return ar - br
+  return (b[scoringKey] || 0) - (a[scoringKey] || 0)
+}
+
 function projOf(player, scoringKey) {
   return player[scoringKey] || 0
 }
@@ -74,14 +83,14 @@ function weightedTopPick(candidates, n = 5) {
 
 function pickBestAvailable(ctx) {
   const pool = eligiblePool(ctx.available, ctx.botRoster, ctx.rosterSlots, ctx.round)
-  pool.sort((a, b) => projOf(b, ctx.scoringKey) - projOf(a, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
   return weightedTopPick(pool, 5)
 }
 
 function pickZeroRB(ctx) {
   let pool = eligiblePool(ctx.available, ctx.botRoster, ctx.rosterSlots, ctx.round)
   if (ctx.round <= 4) pool = pool.filter((p) => p.position !== 'RB')
-  pool.sort((a, b) => projOf(b, ctx.scoringKey) - projOf(a, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
   return weightedTopPick(pool, 5) || pickBestAvailable(ctx)
 }
 
@@ -90,11 +99,11 @@ function pickRBHeavy(ctx) {
   if (ctx.round <= 3) {
     const rbs = pool.filter((p) => p.position === 'RB')
     if (rbs.length) {
-      rbs.sort((a, b) => projOf(b, ctx.scoringKey) - projOf(a, ctx.scoringKey))
+      rbs.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
       return weightedTopPick(rbs, 4)
     }
   }
-  pool.sort((a, b) => projOf(b, ctx.scoringKey) - projOf(a, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
   return weightedTopPick(pool, 5)
 }
 
@@ -104,17 +113,17 @@ function pickEarlyQB(ctx) {
   if (!hasQB && ctx.round >= 4 && ctx.round <= 6) {
     const qbs = pool.filter((p) => p.position === 'QB')
     if (qbs.length) {
-      qbs.sort((a, b) => projOf(b, ctx.scoringKey) - projOf(a, ctx.scoringKey))
+      qbs.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
       return weightedTopPick(qbs, 3)
     }
   }
-  pool.sort((a, b) => projOf(b, ctx.scoringKey) - projOf(a, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
   return weightedTopPick(pool, 5)
 }
 
 function pickReacher(ctx) {
   const pool = eligiblePool(ctx.available, ctx.botRoster, ctx.rosterSlots, ctx.round)
-  pool.sort((a, b) => projOf(b, ctx.scoringKey) - projOf(a, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
   // 30% chance to reach: pick from rank 6-12 instead of 1-5
   if (Math.random() < 0.3 && pool.length > 12) {
     return pool[5 + Math.floor(Math.random() * 7)]
@@ -128,6 +137,26 @@ const PERSONALITY_FNS = {
   'RB Heavy': pickRBHeavy,
   'Early QB': pickEarlyQB,
   'Reacher': pickReacher,
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Bot team names — randomized at mock start
+
+const TEAM_NAME_ADJECTIVES = [
+  'Crushing', 'Roaring', 'Lethal', 'Iron', 'Savage', 'Rampaging', 'Electric', 'Frozen',
+  'Shadow', 'Thunder', 'Phantom', 'Rogue', 'Wild', 'Brutal', 'Vicious', 'Mighty',
+  'Stormy', 'Fearless', 'Cosmic', 'Blazing',
+]
+const TEAM_NAME_NOUNS = [
+  'Dynasty', 'Goliaths', 'Titans', 'Reckoning', 'Empire', 'Legion', 'Outlaws', 'Kings',
+  'Wrecking Crew', 'Bandits', 'Maulers', 'Renegades', 'Wolves', 'Mavericks', 'Rebels',
+  'Bandits', 'Sharks', 'Hammers', 'Vipers', 'Bulldogs',
+]
+
+function randomTeamName() {
+  const adj = TEAM_NAME_ADJECTIVES[Math.floor(Math.random() * TEAM_NAME_ADJECTIVES.length)]
+  const noun = TEAM_NAME_NOUNS[Math.floor(Math.random() * TEAM_NAME_NOUNS.length)]
+  return `${adj} ${noun}`
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -445,6 +474,24 @@ function DraftScreen({ config, onExit, onComplete }) {
     return arr
   }, [config.numTeams, config.userSlot])
 
+  // Random team names (unique per mock); user's team is always "Your Team"
+  const teamNames = useMemo(() => {
+    const used = new Set()
+    const arr = []
+    for (let i = 0; i < config.numTeams; i++) {
+      if (i === config.userSlot) {
+        arr.push('Your Team')
+      } else {
+        let name
+        let attempts = 0
+        do { name = randomTeamName(); attempts++ } while (used.has(name) && attempts < 20)
+        used.add(name)
+        arr.push(name)
+      }
+    }
+    return arr
+  }, [config.numTeams, config.userSlot])
+
   const order = useMemo(() => snakeOrder(config.numTeams, config.rounds), [config.numTeams, config.rounds])
   const scoringKey = SCORING_KEY_MAP[config.scoring]
 
@@ -494,6 +541,7 @@ function DraftScreen({ config, onExit, onComplete }) {
       completedAt: new Date().toISOString(),
       config,
       personalities,
+      teamNames,
       picks: picks.map((p) => ({
         overall: p.overall,
         round: p.round,
@@ -553,7 +601,7 @@ function DraftScreen({ config, onExit, onComplete }) {
           <div className="flex items-center justify-center gap-2">
             <div className="text-[10px] text-text-muted uppercase tracking-wider">R{currentPick?.round} · Pick {currentPick?.overall}</div>
             <div className="font-display text-sm text-text-primary">
-              {isUserTurn ? "You're on the clock!" : `${personalities[currentPick?.teamSlot]} bot picking...`}
+              {isUserTurn ? "You're on the clock!" : `${teamNames[currentPick?.teamSlot]} picking...`}
             </div>
           </div>
           <div className="mt-2 flex items-center justify-center gap-2">
@@ -651,7 +699,7 @@ function DraftScreen({ config, onExit, onComplete }) {
 
       {activeTab === 'Board' && (
         <div className="rounded-xl border border-text-primary/20 p-2 overflow-hidden">
-          <MockDraftBoard picks={picks} numTeams={config.numTeams} userSlot={config.userSlot} personalities={personalities} />
+          <MockDraftBoard picks={picks} numTeams={config.numTeams} userSlot={config.userSlot} teamNames={teamNames} />
         </div>
       )}
 
@@ -666,7 +714,7 @@ function DraftScreen({ config, onExit, onComplete }) {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-text-primary truncate">{p.player.full_name}</div>
-                  <div className="text-xs text-text-muted">{p.player.position} · {p.player.team} — {p.personality === 'You' ? 'You' : `Bot ${p.teamSlot + 1} (${p.personality})`}</div>
+                  <div className="text-xs text-text-muted">{p.player.position} · {p.player.team} — {teamNames[p.teamSlot]}</div>
                 </div>
               </div>
             ))}
@@ -760,7 +808,7 @@ const POS_BG = {
   DEF: 'bg-purple-500/25 text-purple-200 border-purple-500/40',
 }
 
-function MockDraftBoard({ picks, numTeams, userSlot, personalities }) {
+function MockDraftBoard({ picks, numTeams, userSlot, teamNames }) {
   const totalRounds = Math.ceil(picks.length / numTeams) || 1
   const grid = []
   for (let r = 0; r < totalRounds; r++) {
@@ -774,16 +822,17 @@ function MockDraftBoard({ picks, numTeams, userSlot, personalities }) {
     }
     grid.push(row)
   }
+  // On desktop fit full width; on mobile allow horizontal scroll
   return (
-    <div className="overflow-x-auto">
-      <table className="text-xs border-collapse min-w-full">
+    <div className="overflow-x-auto md:overflow-x-visible">
+      <table className="text-[10px] md:text-xs border-collapse w-full table-fixed">
         <thead>
           <tr>
             <th className="px-1 py-2 text-text-muted font-semibold text-center w-8 border border-text-primary/15">Rd</th>
             {Array.from({ length: numTeams }, (_, i) => (
-              <th key={i} className={`px-2 py-2 font-semibold text-center border border-text-primary/15 whitespace-nowrap ${i === userSlot ? 'text-accent' : 'text-text-secondary'}`}>
-                <div className="text-text-muted text-[10px]">{i + 1}</div>
-                {i === userSlot ? 'You' : `Bot`}
+              <th key={i} className={`px-1 py-2 font-semibold text-center border border-text-primary/15 ${i === userSlot ? 'text-accent' : 'text-text-secondary'}`}>
+                <div className="text-text-muted text-[9px]">{i + 1}</div>
+                <div className="truncate">{teamNames?.[i] || (i === userSlot ? 'You' : `T${i + 1}`)}</div>
               </th>
             ))}
           </tr>
@@ -801,14 +850,14 @@ function MockDraftBoard({ picks, numTeams, userSlot, personalities }) {
                 const pos = pick?.player?.position
                 const cls = pos ? POS_BG[pos] || '' : ''
                 return (
-                  <td key={ci} className={`px-1.5 py-1.5 border border-text-primary/15 ${cls}`}>
+                  <td key={ci} className={`px-1 py-1 border border-text-primary/15 ${cls}`}>
                     {pick?.player ? (
-                      <div className="min-w-[80px]">
+                      <div className="min-w-0">
                         <div className="font-semibold truncate">{pick.player.full_name}</div>
-                        <div className="text-[10px] opacity-70">{pos} ({pick.player.team})</div>
+                        <div className="text-[9px] opacity-70 truncate">{pos} {pick.player.team}</div>
                       </div>
                     ) : (
-                      <div className="min-w-[80px] text-text-muted text-center">—</div>
+                      <div className="text-text-muted text-center">—</div>
                     )}
                   </td>
                 )
@@ -846,9 +895,14 @@ function SlotRow({ label, player }) {
 function ReviewScreen({ mock, onBack, onNew }) {
   const [openTeam, setOpenTeam] = useState(mock.config.userSlot)
   const teams = []
+  const names = mock.teamNames || []
   for (let i = 0; i < mock.config.numTeams; i++) {
     const teamPicks = mock.picks.filter((p) => p.teamSlot === i)
-    teams.push({ slot: i, personality: mock.personalities[i], picks: teamPicks })
+    teams.push({
+      slot: i,
+      name: names[i] || (i === mock.config.userSlot ? 'Your Team' : `Team ${i + 1}`),
+      picks: teamPicks,
+    })
   }
   return (
     <div className="space-y-4">
@@ -871,10 +925,9 @@ function ReviewScreen({ mock, onBack, onNew }) {
               >
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-text-muted">#{team.slot + 1}</span>
-                  <span className="text-sm font-semibold text-text-primary">
-                    {isUser ? 'You' : `Bot ${team.slot + 1}`}
+                  <span className={`text-sm font-semibold ${isUser ? 'text-accent' : 'text-text-primary'}`}>
+                    {team.name}
                   </span>
-                  <span className="text-[10px] uppercase text-text-muted">{team.personality}</span>
                 </div>
                 <span className="text-text-muted">{isOpen ? '▾' : '▸'}</span>
               </button>

@@ -18,7 +18,9 @@ router.get('/players', requireAuth, async (req, res) => {
     .eq('status', 'Active')
     .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
     .not('team', 'is', null)
-    .order('projected_pts_half_ppr', { ascending: false, nullsFirst: false })
+    // Sleeper's search_rank IS the ADP-equivalent — order primarily by it.
+    // Projection columns can be sparse pre-season; ADP rank is always populated.
+    .order('search_rank', { ascending: true, nullsFirst: false })
     .limit(300)
 
   if (error) return res.status(500).json({ error: error.message })
