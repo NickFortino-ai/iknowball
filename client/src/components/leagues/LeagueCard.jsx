@@ -69,7 +69,7 @@ export default function LeagueCard({ league, noLink }) {
             {league.status}
           </span>
         </div>
-        <div className="flex items-center gap-3 text-xs text-text-muted">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-text-muted min-h-[3.25rem] sm:min-h-0 content-start">
           <span className="font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
             {FORMAT_LABELS[league.format]}
           </span>
