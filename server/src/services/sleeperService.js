@@ -189,44 +189,49 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
     return { synced: 0 }
   }
 
+  // Sleeper response shape: { player_id, stats: { pass_yd, gms_active, ... } }
+  // Stats are nested under `stats`, NOT at the top level.
   const rows = data
-    .filter((s) => s.player_id && s.gms_active > 0)
-    .map((s) => ({
-      player_id: String(s.player_id),
-      season,
-      week,
-      pass_att: s.pass_att || 0,
-      pass_cmp: s.pass_cmp || 0,
-      pass_yd: s.pass_yd || 0,
-      pass_td: s.pass_td || 0,
-      pass_int: s.pass_int || 0,
-      rush_att: s.rush_att || 0,
-      rush_yd: s.rush_yd || 0,
-      rush_td: s.rush_td || 0,
-      rec_tgt: s.rec_tgt || 0,
-      rec: s.rec || 0,
-      rec_yd: s.rec_yd || 0,
-      rec_td: s.rec_td || 0,
-      fum_lost: s.fum_lost || 0,
-      two_pt: s.pass_2pt || 0 + s.rush_2pt || 0 + s.rec_2pt || 0,
-      fgm: s.fgm || 0,
-      fga: s.fga || 0,
-      fgm_0_39: (s.fgm_0_19 || 0) + (s.fgm_20_29 || 0) + (s.fgm_30_39 || 0),
-      fgm_40_49: s.fgm_40_49 || 0,
-      fgm_50_plus: s.fgm_50_plus || 0,
-      xpm: s.xpm || 0,
-      xpa: s.xpa || 0,
-      def_td: s.def_td || 0,
-      def_int: s.int || 0,
-      def_sack: s.sack || 0,
-      def_fum_rec: s.fum_rec || 0,
-      def_safety: s.safe || 0,
-      def_pts_allowed: s.pts_allow != null ? s.pts_allow : null,
-      pts_ppr: s.pts_ppr || null,
-      pts_half_ppr: s.pts_half_ppr || null,
-      pts_std: s.pts_std || null,
-      updated_at: new Date().toISOString(),
-    }))
+    .filter((row) => row.player_id && (row.stats?.gms_active > 0 || row.stats?.gp > 0))
+    .map((row) => {
+      const s = row.stats || {}
+      return {
+        player_id: String(row.player_id),
+        season,
+        week,
+        pass_att: s.pass_att || 0,
+        pass_cmp: s.pass_cmp || 0,
+        pass_yd: s.pass_yd || 0,
+        pass_td: s.pass_td || 0,
+        pass_int: s.pass_int || 0,
+        rush_att: s.rush_att || 0,
+        rush_yd: s.rush_yd || 0,
+        rush_td: s.rush_td || 0,
+        rec_tgt: s.rec_tgt || 0,
+        rec: s.rec || 0,
+        rec_yd: s.rec_yd || 0,
+        rec_td: s.rec_td || 0,
+        fum_lost: s.fum_lost || 0,
+        two_pt: (s.pass_2pt || 0) + (s.rush_2pt || 0) + (s.rec_2pt || 0),
+        fgm: s.fgm || 0,
+        fga: s.fga || 0,
+        fgm_0_39: (s.fgm_0_19 || 0) + (s.fgm_20_29 || 0) + (s.fgm_30_39 || 0),
+        fgm_40_49: s.fgm_40_49 || 0,
+        fgm_50_plus: s.fgm_50_plus || 0,
+        xpm: s.xpm || 0,
+        xpa: s.xpa || 0,
+        def_td: s.def_td || 0,
+        def_int: s.int || 0,
+        def_sack: s.sack || 0,
+        def_fum_rec: s.fum_rec || 0,
+        def_safety: s.safe || 0,
+        def_pts_allowed: s.pts_allow != null ? s.pts_allow : null,
+        pts_ppr: s.pts_ppr || null,
+        pts_half_ppr: s.pts_half_ppr || null,
+        pts_std: s.pts_std || null,
+        updated_at: new Date().toISOString(),
+      }
+    })
 
   // Snapshot pre-existing stats so we can detect corrections after the upsert
   // (only meaningful outside live game windows — during games, point changes
