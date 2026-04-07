@@ -889,7 +889,10 @@ export default function LeagueDetailPage() {
     new Date(bracketTournament.locks_at) <= new Date()
   const tabs = getLeagueTabs(league, isBracketLocked)
   const isCommissioner = league.commissioner_id === profile?.id
-  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy', 'bracket'].includes(league.format)
+  // Bracket leagues don't auto-fallback to a default arena — they should be black
+  // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
+  // image lives on the bracket itself, not as a page-wide backdrop.
+  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format)
 
   function startBackdropDrag(e) {
     e.preventDefault()

@@ -184,18 +184,18 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
       : null
 
     return (
-      <div className="bg-bg-card rounded-xl border border-border p-6 text-center">
+      <div className="relative bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 p-6 text-center">
         <div className="text-4xl mb-3">&#x1F3C0;</div>
         <h3 className="font-display text-lg text-text-primary mb-2">
           Welcome to the {templateName || 'Tournament'} Challenge!
         </h3>
-        <p className="text-sm text-text-muted mb-3">
+        <p className="text-sm text-text-secondary mb-3">
           The tournament bracket hasn't been set yet.
         </p>
         {picksAvailableAt && (
-          <p className="text-sm text-text-muted mb-1">
+          <p className="text-sm text-text-secondary mb-1">
             Your bracket will be available to fill out starting{' '}
-            <span className="text-text-secondary font-semibold">
+            <span className="text-text-primary font-semibold">
               {new Date(picksAvailableAt).toLocaleString('en-US', {
                 weekday: 'long', month: 'long', day: 'numeric',
                 hour: 'numeric', minute: '2-digit',
@@ -204,9 +204,9 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
           </p>
         )}
         {locksAtDate && (
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-text-secondary">
             Brackets must be completed by{' '}
-            <span className="text-text-secondary font-semibold">{locksAtDate}</span>
+            <span className="text-text-primary font-semibold">{locksAtDate}</span>
           </p>
         )}
       </div>
