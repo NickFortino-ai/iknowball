@@ -573,6 +573,45 @@ export async function startDraft(leagueId) {
 }
 
 /**
+ * Pause an in-progress draft (commissioner only — caller must enforce).
+ * Autopick loop will skip paused drafts entirely.
+ */
+export async function pauseDraft(leagueId) {
+  const settings = await getFantasySettings(leagueId)
+  if (settings.draft_status !== 'in_progress') {
+    const err = new Error('Only an in-progress draft can be paused')
+    err.status = 400
+    throw err
+  }
+  await supabase
+    .from('fantasy_settings')
+    .update({ draft_status: 'paused' })
+    .eq('league_id', leagueId)
+  logger.info({ leagueId }, 'Draft paused')
+  return { status: 'paused' }
+}
+
+/**
+ * Resume a paused draft. Stamps draft_resumed_at so the autopick clock
+ * baseline starts fresh — users don't get insta-picked because their clock
+ * "ran out" while paused.
+ */
+export async function resumeDraft(leagueId) {
+  const settings = await getFantasySettings(leagueId)
+  if (settings.draft_status !== 'paused') {
+    const err = new Error('Only a paused draft can be resumed')
+    err.status = 400
+    throw err
+  }
+  await supabase
+    .from('fantasy_settings')
+    .update({ draft_status: 'in_progress', draft_resumed_at: new Date().toISOString() })
+    .eq('league_id', leagueId)
+  logger.info({ leagueId }, 'Draft resumed')
+  return { status: 'in_progress' }
+}
+
+/**
  * Get a user's pre-rank draft queue (ordered).
  */
 export async function getDraftQueue(leagueId, userId) {
@@ -688,7 +727,7 @@ export async function processScheduledDraftStarts() {
 export async function processDraftAutopicks() {
   const { data: liveDrafts } = await supabase
     .from('fantasy_settings')
-    .select('league_id, draft_pick_timer, draft_started_at')
+    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at')
     .eq('draft_status', 'in_progress')
 
   if (!liveDrafts?.length) return 0
@@ -719,12 +758,12 @@ export async function processDraftAutopicks() {
         .limit(1)
         .maybeSingle()
 
-      const baselineMs = lastPick?.picked_at
-        ? new Date(lastPick.picked_at).getTime()
-        : d.draft_started_at
-          ? new Date(d.draft_started_at).getTime()
-          : null
-
+      // Baseline = max(last pick, draft start, draft resume)
+      const candidates = []
+      if (lastPick?.picked_at) candidates.push(new Date(lastPick.picked_at).getTime())
+      if (d.draft_started_at) candidates.push(new Date(d.draft_started_at).getTime())
+      if (d.draft_resumed_at) candidates.push(new Date(d.draft_resumed_at).getTime())
+      const baselineMs = candidates.length ? Math.max(...candidates) : null
       if (baselineMs == null) continue
       const elapsedSec = (Date.now() - baselineMs) / 1000
       if (elapsedSec < timerSec) continue

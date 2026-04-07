@@ -840,6 +840,8 @@ import {
   getDraftBoard,
   getDraftQueue,
   setDraftQueue,
+  pauseDraft,
+  resumeDraft,
   getRoster,
   searchAvailablePlayers,
   generateMatchups,
@@ -880,6 +882,26 @@ router.post('/:id/fantasy/draft/init', requireAuth, async (req, res) => {
 // Start the draft
 router.post('/:id/fantasy/draft/start', requireAuth, async (req, res) => {
   const result = await startDraft(req.params.id)
+  res.json(result)
+})
+
+// Pause the draft (commissioner only)
+router.post('/:id/fantasy/draft/pause', requireAuth, async (req, res) => {
+  const { data: league } = await supabase.from('leagues').select('commissioner_id').eq('id', req.params.id).single()
+  if (!league || league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can pause the draft' })
+  }
+  const result = await pauseDraft(req.params.id)
+  res.json(result)
+})
+
+// Resume the draft (commissioner only)
+router.post('/:id/fantasy/draft/resume', requireAuth, async (req, res) => {
+  const { data: league } = await supabase.from('leagues').select('commissioner_id').eq('id', req.params.id).single()
+  if (!league || league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can resume the draft' })
+  }
+  const result = await resumeDraft(req.params.id)
   res.json(result)
 })
 

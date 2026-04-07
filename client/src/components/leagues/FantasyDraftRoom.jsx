@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue } from '../../hooks/useLeagues'
+import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -32,6 +32,8 @@ export default function FantasyDraftRoom({ league }) {
   const startDraft = useStartDraft()
   const { data: queue } = useDraftQueue(league.id)
   const setQueue = useSetDraftQueue()
+  const pauseDraftMut = usePauseDraft()
+  const resumeDraftMut = useResumeDraft()
   useRealtimeDraft(league.id)
 
   const queuedIds = useMemo(() => new Set((queue || []).map((q) => q.player_id)), [queue])
@@ -197,6 +199,29 @@ export default function FantasyDraftRoom({ league }) {
     )
   }
 
+  // Paused state
+  if (draftStatus === 'paused') {
+    return (
+      <div className="text-center py-8 space-y-4">
+        <div className="text-4xl">⏸</div>
+        <h3 className="font-display text-lg text-text-primary">Draft Paused</h3>
+        <p className="text-sm text-text-secondary">The commissioner has paused this draft. The pick clock is frozen.</p>
+        {isCommissioner && (
+          <button
+            onClick={async () => {
+              try { await resumeDraftMut.mutateAsync(league.id); toast('Draft resumed', 'success') }
+              catch (err) { toast(err.message || 'Failed to resume', 'error') }
+            }}
+            disabled={resumeDraftMut.isPending}
+            className="px-6 py-2 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
+          >
+            {resumeDraftMut.isPending ? 'Resuming...' : 'Resume Draft'}
+          </button>
+        )}
+      </div>
+    )
+  }
+
   // Draft completed state
   if (draftStatus === 'completed') {
     return (
@@ -225,6 +250,18 @@ export default function FantasyDraftRoom({ league }) {
           <div className={`font-display text-2xl mt-1 ${timerSeconds <= 10 ? 'text-incorrect' : 'text-text-primary'}`}>
             {Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')}
           </div>
+        )}
+        {isCommissioner && (
+          <button
+            onClick={async () => {
+              try { await pauseDraftMut.mutateAsync(league.id); toast('Draft paused', 'success') }
+              catch (err) { toast(err.message || 'Failed to pause', 'error') }
+            }}
+            disabled={pauseDraftMut.isPending}
+            className="mt-2 px-3 py-1 rounded-lg text-xs font-semibold bg-bg-card hover:bg-bg-secondary text-text-secondary border border-text-primary/20 transition-colors disabled:opacity-50"
+          >
+            {pauseDraftMut.isPending ? 'Pausing...' : 'Pause draft'}
+          </button>
         )}
       </div>
 

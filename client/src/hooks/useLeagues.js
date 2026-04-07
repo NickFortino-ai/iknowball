@@ -722,6 +722,22 @@ export function useMakeDraftPick() {
   })
 }
 
+export function usePauseDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/fantasy/draft/pause`),
+    onSuccess: (_d, leagueId) => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] }),
+  })
+}
+
+export function useResumeDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/fantasy/draft/resume`),
+    onSuccess: (_d, leagueId) => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] }),
+  })
+}
+
 export function useDraftQueue(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'draftQueue'],
