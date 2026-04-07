@@ -843,6 +843,11 @@ import {
   generateMatchups,
   setFantasyLineup,
   addDropPlayer,
+  proposeTrade,
+  acceptTrade,
+  declineTrade,
+  cancelTrade,
+  getTradesForLeague,
 } from '../services/fantasyService.js'
 
 // Get fantasy settings
@@ -921,6 +926,56 @@ router.post('/:id/fantasy/add-drop', requireAuth, async (req, res) => {
   try {
     const { add_player_id, drop_player_id } = req.body
     const result = await addDropPlayer(req.params.id, req.user.id, add_player_id, drop_player_id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// === Trades ===
+router.get('/:id/fantasy/trades', requireAuth, async (req, res) => {
+  const data = await getTradesForLeague(req.params.id)
+  res.json(data)
+})
+
+router.post('/:id/fantasy/trades', requireAuth, async (req, res) => {
+  try {
+    const { receiver_user_id, proposer_player_ids, receiver_player_ids, message } = req.body
+    const result = await proposeTrade(
+      req.params.id,
+      req.user.id,
+      receiver_user_id,
+      proposer_player_ids || [],
+      receiver_player_ids || [],
+      message,
+    )
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.post('/:id/fantasy/trades/:tradeId/accept', requireAuth, async (req, res) => {
+  try {
+    const result = await acceptTrade(req.params.tradeId, req.user.id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.post('/:id/fantasy/trades/:tradeId/decline', requireAuth, async (req, res) => {
+  try {
+    const result = await declineTrade(req.params.tradeId, req.user.id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.post('/:id/fantasy/trades/:tradeId/cancel', requireAuth, async (req, res) => {
+  try {
+    const result = await cancelTrade(req.params.tradeId, req.user.id)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

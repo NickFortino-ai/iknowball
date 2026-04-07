@@ -606,6 +606,34 @@ export function useAddDropPlayer(leagueId) {
   })
 }
 
+export function useFantasyTrades(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'trades'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/trades`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
+export function useProposeTrade(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload) => api.post(`/leagues/${leagueId}/fantasy/trades`, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'trades'] }),
+  })
+}
+
+export function useRespondToTrade(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ tradeId, action }) => api.post(`/leagues/${leagueId}/fantasy/trades/${tradeId}/${action}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'trades'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster'] })
+    },
+  })
+}
+
 export function useAvailablePlayers(leagueId, query, position) {
   const params = new URLSearchParams()
   if (query) params.set('q', query)

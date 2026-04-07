@@ -235,9 +235,89 @@ export async function makeDraftPick(leagueId, userId, playerId) {
       .update({ draft_status: 'completed' })
       .eq('league_id', leagueId)
     logger.info({ leagueId }, 'Draft completed')
+    // Auto-fill every user's starting lineup with their best players
+    try {
+      await autoFillLineupsForLeague(leagueId)
+    } catch (err) {
+      logger.error({ err, leagueId }, 'Failed to auto-fill lineups post-draft')
+    }
   }
 
   return { pick, remaining }
+}
+
+/**
+ * After the draft completes, fill every user's starting lineup with their
+ * best available players (highest projected_pts_half_ppr per position),
+ * with FLEX getting the best remaining RB/WR/TE.
+ */
+export async function autoFillLineupsForLeague(leagueId) {
+  const { data: rosters } = await supabase
+    .from('fantasy_rosters')
+    .select('id, user_id, player_id, slot, nfl_players(id, position, projected_pts_half_ppr)')
+    .eq('league_id', leagueId)
+
+  if (!rosters?.length) return
+
+  // Group by user
+  const byUser = {}
+  for (const r of rosters) {
+    if (!byUser[r.user_id]) byUser[r.user_id] = []
+    byUser[r.user_id].push(r)
+  }
+
+  for (const [userId, userRows] of Object.entries(byUser)) {
+    // Sort each player's row by projected points desc
+    const byPos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] }
+    for (const r of userRows) {
+      const pos = r.nfl_players?.position
+      if (byPos[pos]) byPos[pos].push(r)
+    }
+    for (const arr of Object.values(byPos)) {
+      arr.sort((a, b) => (b.nfl_players?.projected_pts_half_ppr || 0) - (a.nfl_players?.projected_pts_half_ppr || 0))
+    }
+
+    const assignments = {} // player_id → slot
+    const used = new Set()
+
+    function take(pos, slot) {
+      const next = byPos[pos]?.find((r) => !used.has(r.player_id))
+      if (next) {
+        assignments[next.player_id] = slot
+        used.add(next.player_id)
+      }
+    }
+
+    take('QB', 'qb')
+    take('RB', 'rb1')
+    take('RB', 'rb2')
+    take('WR', 'wr1')
+    take('WR', 'wr2')
+    take('WR', 'wr3')
+    take('TE', 'te')
+    // FLEX: best remaining RB, WR, or TE
+    const flexCandidates = ['RB', 'WR', 'TE']
+      .flatMap((p) => byPos[p].filter((r) => !used.has(r.player_id)))
+      .sort((a, b) => (b.nfl_players?.projected_pts_half_ppr || 0) - (a.nfl_players?.projected_pts_half_ppr || 0))
+    if (flexCandidates[0]) {
+      assignments[flexCandidates[0].player_id] = 'flex'
+      used.add(flexCandidates[0].player_id)
+    }
+    take('K', 'k')
+    take('DEF', 'def')
+
+    // Anything else → bench
+    for (const r of userRows) {
+      const newSlot = assignments[r.player_id] || 'bench'
+      if (newSlot !== r.slot) {
+        await supabase
+          .from('fantasy_rosters')
+          .update({ slot: newSlot })
+          .eq('id', r.id)
+      }
+    }
+  }
+  logger.info({ leagueId, users: Object.keys(byUser).length }, 'Auto-filled post-draft lineups')
 }
 
 /**
@@ -724,6 +804,365 @@ export async function generateMatchups(leagueId) {
   return { matchups: matchups.length, weeks: regularSeasonWeeks }
 }
 
+// =====================================================================
+// TRADES
+// =====================================================================
+
+/**
+ * Propose a trade. proposerItems = array of player_ids the proposer is sending,
+ * receiverItems = array of player_ids the receiver is sending back.
+ */
+export async function proposeTrade(leagueId, proposerUserId, receiverUserId, proposerPlayerIds, receiverPlayerIds, message) {
+  if (proposerUserId === receiverUserId) {
+    const err = new Error("Can't trade with yourself")
+    err.status = 400
+    throw err
+  }
+  if (!proposerPlayerIds?.length && !receiverPlayerIds?.length) {
+    const err = new Error('Trade must include at least one player')
+    err.status = 400
+    throw err
+  }
+
+  // Verify all players belong to the right rosters
+  const allPlayerIds = [...(proposerPlayerIds || []), ...(receiverPlayerIds || [])]
+  const { data: rosters } = await supabase
+    .from('fantasy_rosters')
+    .select('user_id, player_id')
+    .eq('league_id', leagueId)
+    .in('player_id', allPlayerIds)
+
+  const ownerByPlayer = {}
+  for (const r of rosters || []) ownerByPlayer[r.player_id] = r.user_id
+
+  for (const pid of proposerPlayerIds || []) {
+    if (ownerByPlayer[pid] !== proposerUserId) {
+      const err = new Error("You don't own all the players you're sending")
+      err.status = 400
+      throw err
+    }
+  }
+  for (const pid of receiverPlayerIds || []) {
+    if (ownerByPlayer[pid] !== receiverUserId) {
+      const err = new Error("Receiver doesn't own one of the requested players")
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Insert trade
+  const { data: trade, error: tradeErr } = await supabase
+    .from('fantasy_trades')
+    .insert({
+      league_id: leagueId,
+      proposer_user_id: proposerUserId,
+      receiver_user_id: receiverUserId,
+      message: message || null,
+    })
+    .select()
+    .single()
+  if (tradeErr) throw tradeErr
+
+  // Insert items
+  const items = [
+    ...(proposerPlayerIds || []).map((pid) => ({
+      trade_id: trade.id,
+      from_user_id: proposerUserId,
+      to_user_id: receiverUserId,
+      player_id: pid,
+    })),
+    ...(receiverPlayerIds || []).map((pid) => ({
+      trade_id: trade.id,
+      from_user_id: receiverUserId,
+      to_user_id: proposerUserId,
+      player_id: pid,
+    })),
+  ]
+  if (items.length) {
+    const { error: itemsErr } = await supabase.from('fantasy_trade_items').insert(items)
+    if (itemsErr) throw itemsErr
+  }
+
+  // Notify the receiver
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    const { data: league } = await supabase.from('leagues').select('name').eq('id', leagueId).single()
+    await createNotification(
+      receiverUserId,
+      'fantasy_trade_proposed',
+      `You have a new trade proposal in ${league?.name || 'your league'}`,
+      { leagueId, tradeId: trade.id, actorId: proposerUserId },
+    )
+  } catch (err) {
+    logger.error({ err, tradeId: trade.id }, 'Failed to send trade notification')
+  }
+
+  return trade
+}
+
+/**
+ * Accept a pending trade. Atomically swaps player ownership.
+ */
+export async function acceptTrade(tradeId, userId) {
+  const { data: trade } = await supabase
+    .from('fantasy_trades')
+    .select('*, fantasy_trade_items(*)')
+    .eq('id', tradeId)
+    .single()
+  if (!trade) {
+    const err = new Error('Trade not found')
+    err.status = 404
+    throw err
+  }
+  if (trade.status !== 'pending') {
+    const err = new Error(`Trade is already ${trade.status}`)
+    err.status = 400
+    throw err
+  }
+  if (trade.receiver_user_id !== userId) {
+    const err = new Error('Only the receiver can accept this trade')
+    err.status = 403
+    throw err
+  }
+
+  // Apply the swap: update fantasy_rosters.user_id for each item
+  for (const item of trade.fantasy_trade_items || []) {
+    const { error } = await supabase
+      .from('fantasy_rosters')
+      .update({ user_id: item.to_user_id, slot: 'bench' })
+      .eq('league_id', trade.league_id)
+      .eq('player_id', item.player_id)
+    if (error) {
+      logger.error({ error, tradeId, playerId: item.player_id }, 'Failed to apply trade item')
+      throw error
+    }
+  }
+
+  await supabase
+    .from('fantasy_trades')
+    .update({ status: 'accepted', responded_at: new Date().toISOString() })
+    .eq('id', tradeId)
+
+  // Notify the proposer
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    const { data: league } = await supabase.from('leagues').select('name').eq('id', trade.league_id).single()
+    await createNotification(
+      trade.proposer_user_id,
+      'fantasy_trade_accepted',
+      `Your trade in ${league?.name || 'your league'} was accepted`,
+      { leagueId: trade.league_id, tradeId, actorId: userId },
+    )
+  } catch (err) {
+    logger.error({ err }, 'Failed to send trade-accepted notification')
+  }
+
+  return { accepted: true }
+}
+
+export async function declineTrade(tradeId, userId) {
+  const { data: trade } = await supabase
+    .from('fantasy_trades')
+    .select('*')
+    .eq('id', tradeId)
+    .single()
+  if (!trade) {
+    const err = new Error('Trade not found')
+    err.status = 404
+    throw err
+  }
+  if (trade.status !== 'pending') {
+    const err = new Error(`Trade is already ${trade.status}`)
+    err.status = 400
+    throw err
+  }
+  if (trade.receiver_user_id !== userId) {
+    const err = new Error('Only the receiver can decline this trade')
+    err.status = 403
+    throw err
+  }
+
+  await supabase
+    .from('fantasy_trades')
+    .update({ status: 'declined', responded_at: new Date().toISOString() })
+    .eq('id', tradeId)
+
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    const { data: league } = await supabase.from('leagues').select('name').eq('id', trade.league_id).single()
+    await createNotification(
+      trade.proposer_user_id,
+      'fantasy_trade_declined',
+      `Your trade in ${league?.name || 'your league'} was declined`,
+      { leagueId: trade.league_id, tradeId, actorId: userId },
+    )
+  } catch (err) {
+    logger.error({ err }, 'Failed to send trade-declined notification')
+  }
+
+  return { declined: true }
+}
+
+export async function cancelTrade(tradeId, userId) {
+  const { data: trade } = await supabase.from('fantasy_trades').select('*').eq('id', tradeId).single()
+  if (!trade) {
+    const err = new Error('Trade not found')
+    err.status = 404
+    throw err
+  }
+  if (trade.proposer_user_id !== userId) {
+    const err = new Error('Only the proposer can cancel this trade')
+    err.status = 403
+    throw err
+  }
+  if (trade.status !== 'pending') {
+    const err = new Error(`Trade is already ${trade.status}`)
+    err.status = 400
+    throw err
+  }
+  await supabase
+    .from('fantasy_trades')
+    .update({ status: 'cancelled', responded_at: new Date().toISOString() })
+    .eq('id', tradeId)
+  return { cancelled: true }
+}
+
+export async function getTradesForLeague(leagueId) {
+  const { data, error } = await supabase
+    .from('fantasy_trades')
+    .select(`
+      *,
+      proposer:users!fantasy_trades_proposer_user_id_fkey(id, username, display_name, avatar_url, avatar_emoji),
+      receiver:users!fantasy_trades_receiver_user_id_fkey(id, username, display_name, avatar_url, avatar_emoji),
+      fantasy_trade_items(*, nfl_players(id, full_name, position, team, headshot_url))
+    `)
+    .eq('league_id', leagueId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Generate playoff bracket matchups for a traditional fantasy league.
+ *
+ * Called once when the regular season ends. Reads playoff_teams,
+ * playoff_start_week, and championship_week from settings, then seeds
+ * the bracket based on regular-season standings (using the same
+ * tiebreakers as final standings).
+ *
+ * Single-elimination. With N playoff teams:
+ *   - 4 teams: 2 rounds (semis + champ)   → start week + 1 wk
+ *   - 6 teams: 3 rounds (top 2 byes + QF + SF + champ) → start week + 2 wks
+ *   - 8 teams: 3 rounds (QF + SF + champ) → start week + 2 wks
+ *
+ * Inserts new fantasy_matchups for each round. Round 1 (start_week)
+ * matchups have known users seeded by rank. Later rounds are placeholders
+ * — the user-id columns get filled when the prior round completes.
+ */
+export async function generatePlayoffBracket(leagueId) {
+  const settings = await getFantasySettings(leagueId)
+  if (!settings || settings.format === 'salary_cap') return null
+
+  const playoffTeams = settings.playoff_teams || 4
+  const startWeek = settings.playoff_start_week || 15
+  const championshipWeek = settings.championship_week || 17
+
+  // Avoid double-generating
+  const { data: existing } = await supabase
+    .from('fantasy_matchups')
+    .select('id')
+    .eq('league_id', leagueId)
+    .gte('week', startWeek)
+    .limit(1)
+  if (existing?.length) {
+    logger.info({ leagueId }, 'Playoff matchups already exist, skipping')
+    return null
+  }
+
+  // Compute standings using the same logic as completeLeagues
+  const { data: regSeasonMatchups } = await supabase
+    .from('fantasy_matchups')
+    .select('home_user_id, away_user_id, home_points, away_points, status')
+    .eq('league_id', leagueId)
+    .lt('week', startWeek)
+    .eq('status', 'completed')
+
+  if (!regSeasonMatchups?.length) {
+    logger.warn({ leagueId }, 'Cannot generate playoff bracket — no completed regular-season matchups')
+    return null
+  }
+
+  const userStats = {}
+  const h2hWins = {}
+  for (const m of regSeasonMatchups) {
+    if (!userStats[m.home_user_id]) userStats[m.home_user_id] = { user_id: m.home_user_id, wins: 0, losses: 0, pf: 0, pa: 0 }
+    if (!userStats[m.away_user_id]) userStats[m.away_user_id] = { user_id: m.away_user_id, wins: 0, losses: 0, pf: 0, pa: 0 }
+    if (!h2hWins[m.home_user_id]) h2hWins[m.home_user_id] = {}
+    if (!h2hWins[m.away_user_id]) h2hWins[m.away_user_id] = {}
+
+    userStats[m.home_user_id].pf += Number(m.home_points)
+    userStats[m.away_user_id].pf += Number(m.away_points)
+    userStats[m.home_user_id].pa += Number(m.away_points)
+    userStats[m.away_user_id].pa += Number(m.home_points)
+
+    if (m.home_points > m.away_points) {
+      userStats[m.home_user_id].wins++
+      userStats[m.away_user_id].losses++
+      h2hWins[m.home_user_id][m.away_user_id] = (h2hWins[m.home_user_id][m.away_user_id] || 0) + 1
+    } else if (m.away_points > m.home_points) {
+      userStats[m.away_user_id].wins++
+      userStats[m.home_user_id].losses++
+      h2hWins[m.away_user_id][m.home_user_id] = (h2hWins[m.away_user_id][m.home_user_id] || 0) + 1
+    }
+  }
+
+  const sorted = Object.values(userStats).sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins
+    const aBeatB = h2hWins[a.user_id]?.[b.user_id] || 0
+    const bBeatA = h2hWins[b.user_id]?.[a.user_id] || 0
+    if (aBeatB !== bBeatA) return bBeatA - aBeatB
+    if (b.pf !== a.pf) return b.pf - a.pf
+    return a.pa - b.pa
+  })
+
+  const seeds = sorted.slice(0, playoffTeams)
+  if (seeds.length < playoffTeams) {
+    logger.warn({ leagueId, have: seeds.length, want: playoffTeams }, 'Not enough teams for full playoff bracket')
+  }
+
+  const inserts = []
+
+  // Pair seeds in standard bracket order based on bracket size
+  if (playoffTeams === 4) {
+    // Semis: 1v4, 2v3 → champ
+    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[0]?.user_id, away_user_id: seeds[3]?.user_id })
+    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[1]?.user_id, away_user_id: seeds[2]?.user_id })
+  } else if (playoffTeams === 6) {
+    // Round 1: 3v6, 4v5 (top 2 have byes) → semis next week
+    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[2]?.user_id, away_user_id: seeds[5]?.user_id })
+    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[3]?.user_id, away_user_id: seeds[4]?.user_id })
+  } else if (playoffTeams === 8) {
+    // QF: 1v8, 2v7, 3v6, 4v5
+    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[0]?.user_id, away_user_id: seeds[7]?.user_id })
+    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[1]?.user_id, away_user_id: seeds[6]?.user_id })
+    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[2]?.user_id, away_user_id: seeds[5]?.user_id })
+    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[3]?.user_id, away_user_id: seeds[4]?.user_id })
+  }
+
+  // Filter incomplete pairs
+  const valid = inserts.filter((m) => m.home_user_id && m.away_user_id)
+
+  if (!valid.length) return null
+  const { error } = await supabase.from('fantasy_matchups').insert(valid)
+  if (error) {
+    logger.error({ error, leagueId }, 'Failed to insert playoff matchups')
+    return null
+  }
+
+  logger.info({ leagueId, playoffTeams, startWeek, championshipWeek, generated: valid.length }, 'Playoff bracket generated')
+  return { generated: valid.length, seeds: seeds.map((s) => ({ user_id: s.user_id, wins: s.wins, losses: s.losses })) }
+}
+
 /**
  * Score every traditional H2H fantasy matchup for a given week+season.
  *
@@ -832,5 +1271,24 @@ export async function scoreFantasyMatchupsWeek(week, season) {
   }
 
   logger.info({ week, season, scored, leagues: leagueIds.length }, 'Fantasy H2H matchup scoring complete')
+
+  // After scoring, see if any league just finished its regular season — if so,
+  // generate the playoff bracket. We check leagues whose playoff_start_week
+  // equals next week (so the week we just scored was the last regular week).
+  if (weekIsFinal) {
+    for (const leagueId of leagueIds) {
+      const settings = await getFantasySettings(leagueId)
+      if (!settings || settings.format === 'salary_cap') continue
+      const startWeek = settings.playoff_start_week || 15
+      if (week === startWeek - 1) {
+        try {
+          await generatePlayoffBracket(leagueId)
+        } catch (err) {
+          logger.error({ err, leagueId }, 'Failed to generate playoff bracket')
+        }
+      }
+    }
+  }
+
   return { scored }
 }

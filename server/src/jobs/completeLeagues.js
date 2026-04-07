@@ -229,24 +229,47 @@ async function getFantasyLeagueStandings(league) {
   if (!matchups?.length) return []
 
   const userMap = {}
+  // Head-to-head matrix: h2hWins[a][b] = number of times a beat b
+  const h2hWins = {}
+  function ensureUser(uid) {
+    if (!userMap[uid]) userMap[uid] = { user_id: uid, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }
+    if (!h2hWins[uid]) h2hWins[uid] = {}
+  }
+
   for (const m of matchups) {
-    if (!userMap[m.home_user_id]) userMap[m.home_user_id] = { user_id: m.home_user_id, wins: 0, losses: 0, pointsFor: 0 }
-    if (!userMap[m.away_user_id]) userMap[m.away_user_id] = { user_id: m.away_user_id, wins: 0, losses: 0, pointsFor: 0 }
+    ensureUser(m.home_user_id)
+    ensureUser(m.away_user_id)
 
     userMap[m.home_user_id].pointsFor += Number(m.home_points)
     userMap[m.away_user_id].pointsFor += Number(m.away_points)
+    userMap[m.home_user_id].pointsAgainst += Number(m.away_points)
+    userMap[m.away_user_id].pointsAgainst += Number(m.home_points)
 
     if (m.home_points > m.away_points) {
       userMap[m.home_user_id].wins++
       userMap[m.away_user_id].losses++
+      h2hWins[m.home_user_id][m.away_user_id] = (h2hWins[m.home_user_id][m.away_user_id] || 0) + 1
     } else if (m.away_points > m.home_points) {
       userMap[m.away_user_id].wins++
       userMap[m.home_user_id].losses++
+      h2hWins[m.away_user_id][m.home_user_id] = (h2hWins[m.away_user_id][m.home_user_id] || 0) + 1
     }
   }
 
   const standings = Object.values(userMap)
-  standings.sort((a, b) => b.wins - a.wins || b.pointsFor - a.pointsFor)
+  // Tiebreakers in order:
+  //   1. Wins (desc)
+  //   2. Head-to-head record between tied teams (desc)
+  //   3. Points-for (desc)
+  //   4. Points-against (asc)
+  standings.sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins
+    const aBeatB = h2hWins[a.user_id]?.[b.user_id] || 0
+    const bBeatA = h2hWins[b.user_id]?.[a.user_id] || 0
+    if (aBeatB !== bBeatA) return bBeatA - aBeatB
+    if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor
+    return a.pointsAgainst - b.pointsAgainst
+  })
   return standings.map((s, i) => ({ user_id: s.user_id, rank: i + 1 }))
 }
 
