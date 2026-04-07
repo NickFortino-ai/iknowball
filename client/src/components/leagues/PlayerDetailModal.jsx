@@ -57,15 +57,28 @@ function columnsFor(position) {
       { key: 'def_pts_allowed', label: 'PA' },
     ]
   }
-  // RB / WR / TE
+  if (position === 'RB') {
+    // Rushing first for RBs, then receiving since modern RBs catch a lot too
+    return [
+      { key: 'pts', label: 'Pts' },
+      { key: 'rush_yd', label: 'RuYD' },
+      { key: 'rush_td', label: 'RuTD' },
+      { key: 'rec_tgt', label: 'TGT' },
+      { key: 'rec', label: 'REC' },
+      { key: 'rec_yd', label: 'ReYD' },
+      { key: 'rec_td', label: 'ReTD' },
+      { key: 'fum_lost', label: 'FUM' },
+    ]
+  }
+  // WR / TE — receiving first, rushing trailing
   return [
     { key: 'pts', label: 'Pts' },
-    { key: 'rush_yd', label: 'RuYD' },
-    { key: 'rush_td', label: 'RuTD' },
     { key: 'rec_tgt', label: 'TGT' },
     { key: 'rec', label: 'REC' },
     { key: 'rec_yd', label: 'ReYD' },
     { key: 'rec_td', label: 'ReTD' },
+    { key: 'rush_yd', label: 'RuYD' },
+    { key: 'rush_td', label: 'RuTD' },
     { key: 'fum_lost', label: 'FUM' },
   ]
 }
