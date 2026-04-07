@@ -722,6 +722,24 @@ export function useMakeDraftPick() {
   })
 }
 
+export function useDraftQueue(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'draftQueue'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/draft/queue`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useSetDraftQueue() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, playerIds }) => api.put(`/leagues/${leagueId}/fantasy/draft/queue`, { playerIds }),
+    onSuccess: (_data, { leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'draftQueue'] })
+    },
+  })
+}
+
 export function useRealtimeDraft(leagueId) {
   const queryClient = useQueryClient()
   useEffect(() => {

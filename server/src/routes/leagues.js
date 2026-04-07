@@ -838,6 +838,8 @@ import {
   startDraft,
   makeDraftPick,
   getDraftBoard,
+  getDraftQueue,
+  setDraftQueue,
   getRoster,
   searchAvailablePlayers,
   generateMatchups,
@@ -893,6 +895,19 @@ router.post('/:id/fantasy/draft/pick', requireAuth, async (req, res) => {
 router.get('/:id/fantasy/draft', requireAuth, async (req, res) => {
   const data = await getDraftBoard(req.params.id)
   res.json(data)
+})
+
+// Get my pre-rank draft queue
+router.get('/:id/fantasy/draft/queue', requireAuth, async (req, res) => {
+  const data = await getDraftQueue(req.params.id, req.user.id)
+  res.json(data)
+})
+
+// Replace my pre-rank draft queue
+router.put('/:id/fantasy/draft/queue', requireAuth, async (req, res) => {
+  const { playerIds } = req.body
+  const result = await setDraftQueue(req.params.id, req.user.id, playerIds || [])
+  res.json(result)
 })
 
 // Get user's roster

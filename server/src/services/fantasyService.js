@@ -481,10 +481,12 @@ export async function autoFillLineupsForLeague(leagueId) {
 }
 
 /**
- * Auto-pick for a user who missed their timer.
+ * Auto-pick for a user who missed their timer. First drains the user's
+ * pre-rank queue (skipping any already-drafted), then falls back to the
+ * best available player by Sleeper search_rank.
  */
 export async function autoDraftPick(leagueId, userId) {
-  // Get best available player by search_rank
+  // Get drafted set
   const { data: draftedIds } = await supabase
     .from('fantasy_draft_picks')
     .select('player_id')
@@ -493,16 +495,34 @@ export async function autoDraftPick(leagueId, userId) {
 
   const drafted = new Set((draftedIds || []).map((d) => d.player_id))
 
-  const { data: bestAvailable } = await supabase
-    .from('nfl_players')
-    .select('id')
-    .eq('status', 'Active')
-    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-    .not('team', 'is', null)
-    .order('search_rank', { ascending: true })
-    .limit(50)
+  // 1. Try the user's pre-rank queue first
+  const { data: queueRows } = await supabase
+    .from('fantasy_draft_queues')
+    .select('player_id')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .order('rank', { ascending: true })
 
-  const pick = (bestAvailable || []).find((p) => !drafted.has(p.id))
+  let pick = null
+  for (const q of queueRows || []) {
+    if (!drafted.has(q.player_id)) {
+      pick = { id: q.player_id }
+      break
+    }
+  }
+
+  // 2. Fallback: best available by Sleeper search_rank
+  if (!pick) {
+    const { data: bestAvailable } = await supabase
+      .from('nfl_players')
+      .select('id')
+      .eq('status', 'Active')
+      .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+      .not('team', 'is', null)
+      .order('search_rank', { ascending: true })
+      .limit(50)
+    pick = (bestAvailable || []).find((p) => !drafted.has(p.id))
+  }
   if (!pick) {
     logger.warn({ leagueId, userId }, 'No available players for auto-pick')
     return null
@@ -550,6 +570,50 @@ export async function startDraft(leagueId) {
 
   logger.info({ leagueId }, 'Draft started')
   return { status: 'in_progress' }
+}
+
+/**
+ * Get a user's pre-rank draft queue (ordered).
+ */
+export async function getDraftQueue(leagueId, userId) {
+  const { data, error } = await supabase
+    .from('fantasy_draft_queues')
+    .select('player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, search_rank)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .order('rank', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Replace a user's draft queue with the given ordered list of player IDs.
+ * The order of the array is the rank (index 0 = top).
+ */
+export async function setDraftQueue(leagueId, userId, playerIds) {
+  if (!Array.isArray(playerIds)) {
+    const err = new Error('playerIds must be an array')
+    err.status = 400
+    throw err
+  }
+  // Wipe existing
+  await supabase
+    .from('fantasy_draft_queues')
+    .delete()
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+
+  if (!playerIds.length) return { count: 0 }
+
+  const rows = playerIds.map((pid, i) => ({
+    league_id: leagueId,
+    user_id: userId,
+    player_id: pid,
+    rank: i,
+  }))
+  const { error } = await supabase.from('fantasy_draft_queues').insert(rows)
+  if (error) throw error
+  return { count: rows.length }
 }
 
 /**
