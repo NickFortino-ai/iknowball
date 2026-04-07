@@ -1101,37 +1101,41 @@ export default function LeagueDetailPage() {
         return (
         <div className="mb-6 rounded-xl border-2 border-yellow-500 py-6 md:py-8 px-4 md:px-8 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
-          <div className="relative flex items-center justify-center md:justify-start gap-4 md:gap-8">
-            {/* Trophy — large, off to the side */}
+          {/* Trophy — absolutely positioned on the left so the content stays card-centered */}
+          <img
+            src={trophySrc}
+            alt="Trophy"
+            className={`${trophySizeClass} hidden md:block object-contain absolute left-6 top-1/2 -translate-y-1/2 animate-trophy-float drop-shadow-[0_0_16px_rgba(234,179,8,0.4)] z-10`}
+          />
+          {/* Mobile: trophy stacks above the centered content */}
+          <div className="relative flex flex-col items-center text-center">
             <img
               src={trophySrc}
               alt="Trophy"
-              className={`${trophySizeClass} object-contain shrink-0 animate-trophy-float drop-shadow-[0_0_16px_rgba(234,179,8,0.4)]`}
+              className={`${trophySizeClass} md:hidden object-contain mb-3 animate-trophy-float drop-shadow-[0_0_16px_rgba(234,179,8,0.4)]`}
             />
-            {/* Avatar + text */}
-            <div className="flex flex-col items-center md:items-start text-center md:text-left flex-1 min-w-0">
-              <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer mb-3">
-                {league.champion.user.avatar_url ? (
-                  <img
-                    src={league.champion.user.avatar_url}
-                    alt={league.champion.user.display_name}
-                    className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover ring-4 ring-yellow-500"
-                  />
-                ) : (
-                  <Avatar user={league.champion.user} size="2xl" className="!w-20 !h-20 md:!w-28 md:!h-28 !text-4xl" />
-                )}
-              </button>
-              <div className="font-display text-2xl md:text-4xl text-white truncate max-w-full">
-                {league.champion.user.display_name || league.champion.user.username}
+            <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer mb-3">
+              {league.champion.user.avatar_url ? (
+                <img
+                  src={league.champion.user.avatar_url}
+                  alt={league.champion.user.display_name}
+                  className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover ring-4 ring-yellow-500"
+                />
+              ) : (
+                <Avatar user={league.champion.user} size="2xl" className="!w-20 !h-20 md:!w-28 md:!h-28 !text-4xl" />
+              )}
+            </button>
+            <div className="font-display text-2xl md:text-4xl text-white truncate max-w-full">
+              {league.champion.user.display_name || league.champion.user.username}
+            </div>
+            <div className="text-sm md:text-base text-text-secondary mt-1">won this league!</div>
+            <div className="text-base md:text-xl text-yellow-400 font-semibold mt-2">
+              +{league.champion.points} pts earned
+            </div>
+            {outlasted > 0 && (
+              <div className="text-sm md:text-base text-text-muted mt-1">
+                Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
               </div>
-              <div className="text-sm md:text-base text-text-secondary mt-1">won this league!</div>
-              <div className="text-base md:text-xl text-yellow-400 font-semibold mt-2">
-                +{league.champion.points} pts earned
-              </div>
-              {outlasted > 0 && (
-                <div className="text-sm md:text-base text-text-muted mt-1">
-                  Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
-                </div>
               )}
             </div>
           </div>
