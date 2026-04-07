@@ -552,7 +552,6 @@ export async function autoDraftPick(leagueId, userId) {
     const { data: bestAvailable } = await supabase
       .from('nfl_players')
       .select('id')
-      .eq('status', 'Active')
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
       .not('team', 'is', null)
       .order('search_rank', { ascending: true })
@@ -707,7 +706,6 @@ async function seedUserRankings(leagueId, userId) {
   const { data: top } = await supabase
     .from('nfl_players')
     .select(`id, ${projCol}`)
-    .eq('status', 'Active')
     .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
     .not('team', 'is', null)
     .order(projCol, { ascending: false, nullsFirst: false })
@@ -1347,7 +1345,6 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
   let dbQuery = supabase
     .from('nfl_players')
     .select('id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week')
-    .eq('status', 'Active')
     .not('team', 'is', null)
     .order('projected_pts_half_ppr', { ascending: false, nullsFirst: false })
     .limit(400)
@@ -1373,7 +1370,6 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
     const { data: allPos } = await supabase
       .from('nfl_players')
       .select('id, position, projected_pts_half_ppr, search_rank')
-      .eq('status', 'Active')
       .eq('position', position)
       .not('team', 'is', null)
       .order('projected_pts_half_ppr', { ascending: false, nullsFirst: false })

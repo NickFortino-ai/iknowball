@@ -15,10 +15,12 @@ const router = Router()
 router.get('/players', requireAuth, async (req, res) => {
   // Pull a wide pool, then sort client-side by best-available signal:
   // adp_half_ppr (most accurate) → adp_ppr → search_rank fallback.
+  // Note: don't filter by status='Active' — Sleeper's DEF "players" don't
+  // carry that field, so the filter would silently drop every defense.
+  // The team-IS-NOT-NULL + position filter is enough to exclude retired/FA.
   const { data, error } = await supabase
     .from('nfl_players')
     .select('id, full_name, position, team, headshot_url, search_rank, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, adp_ppr, adp_half_ppr')
-    .eq('status', 'Active')
     .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
     .not('team', 'is', null)
     .order('search_rank', { ascending: true, nullsFirst: false })
