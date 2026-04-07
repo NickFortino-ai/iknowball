@@ -173,8 +173,10 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
   const picksAvailableAt = tournament.bracket_templates?.picks_available_at
   const picksAvailableNow = !picksAvailableAt || new Date(picksAvailableAt) <= new Date()
 
-  // State A: Bracket not populated yet
-  if (!isBracketPopulated) {
+  // State A: Bracket not populated yet — only show for leagues that haven't
+  // started yet. Once a league is active/locked, suppress the welcome card
+  // even if matchup teams have been cleared/moved as the bracket advanced.
+  if (!isBracketPopulated && league.status === 'open') {
     const templateName = tournament.bracket_templates?.name
     const locksAtDate = tournament.locks_at
       ? new Date(tournament.locks_at).toLocaleString('en-US', {
