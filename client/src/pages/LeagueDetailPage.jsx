@@ -207,7 +207,12 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     }
 
     if (league.format === 'fantasy') {
-      return `Draft your team, set your lineup each week, and compete head-to-head. Top finishers earn bonus points on the global leaderboard.`
+      const isSalaryCap = fantasySettings?.format === 'salary_cap'
+      if (isSalaryCap) {
+        const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
+        return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest ESPN news and analysis. Top finishers earn bonus points on the global leaderboard.`
+      }
+      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster with free-agent pickups (waivers process Wednesday 3 AM ET), trades, and IR moves. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest ESPN news and analysis. Top finishers earn bonus points on the global leaderboard.`
     }
 
     if (league.format === 'squares') {
@@ -226,7 +231,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         return `Build a 9-player NBA lineup under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. The player with the most fantasy points at the end of the night wins.`
       }
       const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
-      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. The champion is determined by ${metric} over the season.`
+      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. Tap a headshot to view player stats and injury info. The champion is determined by ${metric} over the season.`
     }
 
     if (league.format === 'mlb_dfs') {
