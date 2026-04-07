@@ -463,6 +463,7 @@ function DraftScreen({ config, onExit, onComplete }) {
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [fastForward, setFastForward] = useState(false)
+  const [detailPlayer, setDetailPlayer] = useState(null)
 
   // Bot personalities — stable for the duration of the mock
   const personalities = useMemo(() => {
@@ -661,34 +662,43 @@ function DraftScreen({ config, onExit, onComplete }) {
           </div>
           <div className="max-h-[55vh] md:max-h-[60vh] overflow-y-auto">
             {filtered.map((player) => (
-              <button
+              <div
                 key={player.id}
-                onClick={() => handleUserPick(player)}
-                disabled={!isUserTurn}
-                className={`w-full flex items-center gap-3 px-3 py-3 md:py-2 text-left border-b border-text-primary/10 last:border-0 transition-colors ${
-                  isUserTurn ? 'hover:bg-accent/10 cursor-pointer' : 'opacity-60 cursor-not-allowed'
-                }`}
+                className="w-full flex items-center gap-3 px-3 py-3 md:py-2 border-b border-text-primary/10 last:border-0"
               >
-                <img
-                  src={player.headshot_url}
-                  alt={player.full_name}
-                  className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                  onError={(e) => { e.target.style.display = 'none' }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
-                  <div className="text-xs text-text-muted">
-                    {player.position} · {player.team || 'FA'}
-                    {player.bye_week && <span> · Bye {player.bye_week}</span>}
+                <button
+                  onClick={() => setDetailPlayer(player)}
+                  className="flex-1 flex items-center gap-3 text-left cursor-pointer"
+                >
+                  <img
+                    src={player.headshot_url}
+                    alt={player.full_name}
+                    className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                    onError={(e) => { e.target.style.display = 'none' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
+                    <div className="text-xs text-text-muted">
+                      {player.position} · {player.team || 'FA'}
+                      {player.bye_week && <span> · Bye {player.bye_week}</span>}
+                    </div>
                   </div>
-                </div>
-                <div className="text-right shrink-0">
-                  {player[scoringKey] != null && (
-                    <div className="text-sm font-display text-accent">{Number(player[scoringKey]).toFixed(1)}</div>
-                  )}
-                  <div className="text-[10px] text-text-muted">proj</div>
-                </div>
-              </button>
+                  <div className="text-right shrink-0">
+                    {player[scoringKey] != null && (
+                      <div className="text-sm font-display text-accent">{Number(player[scoringKey]).toFixed(1)}</div>
+                    )}
+                    <div className="text-[10px] text-text-muted">proj</div>
+                  </div>
+                </button>
+                {isUserTurn && (
+                  <button
+                    onClick={() => handleUserPick(player)}
+                    className="shrink-0 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-95 transition"
+                  >
+                    Draft
+                  </button>
+                )}
+              </div>
             ))}
             {filtered.length === 0 && <div className="text-center text-sm text-text-muted py-8">No players found</div>}
           </div>
@@ -722,6 +732,69 @@ function DraftScreen({ config, onExit, onComplete }) {
           </div>
         </div>
       )}
+
+      {detailPlayer && (
+        <MockPlayerDetailModal
+          player={detailPlayer}
+          scoringKey={scoringKey}
+          onClose={() => setDetailPlayer(null)}
+          onDraft={isUserTurn ? () => { handleUserPick(detailPlayer); setDetailPlayer(null) } : null}
+        />
+      )}
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Mock-only player detail modal — simple, no API call (data is in memory).
+
+function MockPlayerDetailModal({ player, scoringKey, onClose, onDraft }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div
+        className="bg-bg-secondary w-full md:max-w-md rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 flex items-center justify-end z-10">
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-5 text-center">
+          {player.headshot_url && (
+            <img
+              src={player.headshot_url}
+              alt={player.full_name}
+              className="w-28 h-28 rounded-full object-cover bg-bg-card border-2 border-text-primary/20 mb-3 mx-auto"
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+          )}
+          <h2 className="font-display text-2xl text-text-primary">{player.full_name}</h2>
+          <div className="text-xs text-text-muted mt-1">{player.position} · {player.team || 'FA'}{player.bye_week ? ` · Bye ${player.bye_week}` : ''}</div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-text-primary/15 bg-bg-card p-3">
+              <div className="text-[10px] uppercase text-text-muted tracking-wider">Projected</div>
+              <div className="font-display text-xl text-accent">{player[scoringKey] != null ? Number(player[scoringKey]).toFixed(1) : '—'}</div>
+            </div>
+            <div className="rounded-xl border border-text-primary/15 bg-bg-card p-3">
+              <div className="text-[10px] uppercase text-text-muted tracking-wider">ADP Rank</div>
+              <div className="font-display text-xl text-text-primary">#{player.search_rank || '—'}</div>
+            </div>
+          </div>
+
+          {onDraft && (
+            <button
+              onClick={onDraft}
+              className="mt-5 w-full px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-[0.98] transition"
+            >
+              Draft {player.full_name}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

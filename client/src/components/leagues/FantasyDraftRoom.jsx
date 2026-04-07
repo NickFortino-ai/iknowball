@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useMyRankings } from '../../hooks/useLeagues'
+import PlayerDetailModal from './PlayerDetailModal'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -71,6 +72,7 @@ export default function FantasyDraftRoom({ league }) {
   const [timerSeconds, setTimerSeconds] = useState(null)
   const [activeTab, setActiveTab] = useState('Players')
   const [playerView, setPlayerView] = useState('ADP') // 'ADP' or 'My Rankings'
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
   const { data: myRankings } = useMyRankings(league.id)
   const pickListRef = useRef(null)
 
@@ -438,9 +440,8 @@ export default function FantasyDraftRoom({ league }) {
                     </svg>
                   </button>
                   <button
-                    onClick={() => handlePick(player.id)}
-                    disabled={(!isMyTurn && !offlineMode) || makePick.isPending || makeOfflinePick.isPending}
-                    className={`flex-1 flex items-center gap-3 text-left ${(isMyTurn || offlineMode) ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                    onClick={() => setDetailPlayerId(player.id)}
+                    className="flex-1 flex items-center gap-3 text-left cursor-pointer"
                   >
                     <img
                       src={player.headshot_url}
@@ -468,6 +469,15 @@ export default function FantasyDraftRoom({ league }) {
                       <div className="text-[10px] text-text-muted">proj</div>
                     </div>
                   </button>
+                  {(isMyTurn || offlineMode) && (
+                    <button
+                      onClick={() => handlePick(player.id)}
+                      disabled={makePick.isPending || makeOfflinePick.isPending}
+                      className="shrink-0 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-95 transition disabled:opacity-50"
+                    >
+                      Draft
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -534,6 +544,10 @@ export default function FantasyDraftRoom({ league }) {
           </div>
           <DraftLogList completedPicks={completedPicks} numTeams={settings?.num_teams || 10} profileId={profile?.id} listRef={pickListRef} />
         </div>
+      )}
+
+      {detailPlayerId && (
+        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
       )}
     </div>
   )
