@@ -1340,64 +1340,46 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
   const draftedIds = (drafted || []).map((d) => d.player_id)
   const excludeIds = [...new Set([...rosteredIds, ...draftedIds])]
 
-  // Pull a wider set so we can compute positional ranks across all
-  // available players (not just the top 50 by raw search_rank).
-  let dbQuery = supabase
+  // Pull the full draftable pool — we need to compute overall + positional
+  // ranks across the entire available list, NOT just the post-filter slice.
+  // (Drops status='Active' filter so DEFs are included.)
+  const { data: allPlayers, error } = await supabase
     .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week')
+    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week, adp_ppr, adp_half_ppr')
+    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
     .not('team', 'is', null)
-    .order('projected_pts_half_ppr', { ascending: false, nullsFirst: false })
-    .limit(400)
-
-  if (query) {
-    dbQuery = dbQuery.ilike('full_name', `%${query}%`)
-  }
-  if (position) {
-    dbQuery = dbQuery.eq('position', position)
-  }
-
-  const { data, error } = await dbQuery
+    .limit(500)
   if (error) throw error
 
+  // Sort by composite ADP (best first) and trim to 300 — that's well past
+  // the deepest reasonable draft. Then assign overall_rank from the sort.
   const excludeSet = new Set(excludeIds)
-  const available = (data || []).filter((p) => !excludeSet.has(p.id))
+  const ranked = (allPlayers || [])
+    .filter((p) => !excludeSet.has(p.id))
+    .map((p) => ({ ...p, _adp: p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999 }))
+    .sort((a, b) => a._adp - b._adp)
+    .slice(0, 300)
+    .map((p, i) => ({ ...p, overall_rank: i + 1 }))
 
-  // Compute positional rank among ALL still-available players (regardless
-  // of the current position filter) so the badge stays meaningful.
-  // For that we need a second pass without the position filter.
-  let posRanks = null
-  if (position) {
-    const { data: allPos } = await supabase
-      .from('nfl_players')
-      .select('id, position, projected_pts_half_ppr, search_rank')
-      .eq('position', position)
-      .not('team', 'is', null)
-      .order('projected_pts_half_ppr', { ascending: false, nullsFirst: false })
-      .limit(400)
-    posRanks = {}
-    let r = 0
-    for (const p of allPos || []) {
-      if (excludeSet.has(p.id)) continue
-      r++
-      posRanks[p.id] = r
-    }
-  } else {
-    // Compute per-position ranks across the unfiltered pull
-    const byPos = {}
-    for (const p of available) {
-      if (!byPos[p.position]) byPos[p.position] = []
-      byPos[p.position].push(p)
-    }
-    posRanks = {}
-    for (const arr of Object.values(byPos)) {
-      arr.sort((a, b) => (b.projected_pts_half_ppr || 0) - (a.projected_pts_half_ppr || 0))
-      arr.forEach((p, i) => { posRanks[p.id] = i + 1 })
-    }
+  // Per-position rank from the same sort
+  const posRanks = {}
+  const posCounters = {}
+  for (const p of ranked) {
+    posCounters[p.position] = (posCounters[p.position] || 0) + 1
+    posRanks[p.id] = posCounters[p.position]
   }
 
-  return available.slice(0, 50).map((p) => ({
+  // Apply user filters AFTER ranks are assigned, so the numbers stay stable
+  let filtered = ranked
+  if (position) filtered = filtered.filter((p) => p.position === position)
+  if (query) {
+    const q = query.toLowerCase()
+    filtered = filtered.filter((p) => p.full_name?.toLowerCase().includes(q))
+  }
+
+  return filtered.slice(0, 60).map((p) => ({
     ...p,
-    pos_rank: posRanks?.[p.id] || null,
+    pos_rank: posRanks[p.id] || null,
   }))
 }
 

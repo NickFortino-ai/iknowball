@@ -412,21 +412,35 @@ export default function FantasyDraftRoom({ league }) {
           </div>
           <div className="max-h-[55vh] md:max-h-96 overflow-y-auto">
             {(() => {
-              // When My Rankings view is active, reorder the available list by user's ranking
-              let displayList = availablePlayers || []
+              // Default = ADP view: use the overall_rank from the API.
+              let displayList = (availablePlayers || []).map((p) => ({ ...p, _displayRank: p.overall_rank || null }))
+
               if (playerView === 'My Rankings' && myRankings?.length) {
                 const draftedSet = new Set(picks.filter((p) => p.player_id).map((p) => p.player_id))
+                // Build user-rank lookup (filtering out drafted entries first)
+                const userRankIdx = {} // player_id → 1-based rank
+                let i = 0
+                for (const r of myRankings) {
+                  if (draftedSet.has(r.player_id)) continue
+                  i++
+                  userRankIdx[r.player_id] = i
+                }
                 const inLeague = new Set(displayList.map((p) => p.id))
                 const ranked = []
                 const seenIds = new Set()
+                // Walk myRankings in order, picking out the ones currently available
                 for (const r of myRankings) {
                   if (draftedSet.has(r.player_id)) continue
                   if (!inLeague.has(r.player_id)) continue
                   const p = displayList.find((x) => x.id === r.player_id)
-                  if (p) { ranked.push(p); seenIds.add(p.id) }
+                  if (p) {
+                    ranked.push({ ...p, _displayRank: userRankIdx[r.player_id] })
+                    seenIds.add(p.id)
+                  }
                 }
-                // Append any available players not in user's rankings at the end
-                const tail = displayList.filter((p) => !seenIds.has(p.id))
+                const tail = displayList
+                  .filter((p) => !seenIds.has(p.id))
+                  .map((p) => ({ ...p, _displayRank: null }))
                 displayList = [...ranked, ...tail]
               }
               return displayList
@@ -439,6 +453,9 @@ export default function FantasyDraftRoom({ league }) {
                     (isMyTurn || offlineMode) ? 'hover:bg-accent/10' : 'opacity-60'
                   }`}
                 >
+                  <span className="w-8 text-center text-xs font-bold text-text-muted shrink-0">
+                    {player._displayRank || '—'}
+                  </span>
                   <button
                     onClick={() => toggleQueue(player.id)}
                     className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary transition-colors ${isQueued ? 'text-yellow-400' : 'text-text-muted hover:text-yellow-400'}`}

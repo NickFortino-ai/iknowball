@@ -29,7 +29,9 @@ router.get('/players', requireAuth, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message })
 
   // Composite ADP score: prefer adp_half_ppr → adp_ppr → search_rank
-  // (lower is better in all three). Truncate to top 300.
+  // (lower is better in all three). Truncate to top 300, then attach an
+  // overall_rank (1-based) so the frontend can show the same rank
+  // regardless of position filter.
   const sorted = (data || [])
     .map((p) => ({
       ...p,
@@ -37,6 +39,7 @@ router.get('/players', requireAuth, async (req, res) => {
     }))
     .sort((a, b) => a._adp - b._adp)
     .slice(0, 300)
+    .map((p, i) => ({ ...p, overall_rank: i + 1 }))
 
   res.json(sorted)
 })
