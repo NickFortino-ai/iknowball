@@ -286,22 +286,23 @@ const DEFAULT_ROSTER = { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, benc
 function SetupScreen({ onCancel, onStart }) {
   const [numTeams, setNumTeams] = useState(12)
   const [userSlot, setUserSlot] = useState('random') // 'random' or 0-based int
-  const [scoring, setScoring] = useState('half_ppr')
+  const [scoring, setScoring] = useState('ppr')
   const [rounds, setRounds] = useState(15)
-  const [roster, setRoster] = useState(DEFAULT_ROSTER)
-  const [superflex, setSuperflex] = useState(false)
+  const [roster, setRoster] = useState({ ...DEFAULT_ROSTER, superflex: 0 })
 
   function handleStart() {
     const slot = userSlot === 'random' ? Math.floor(Math.random() * numTeams) : Number(userSlot)
-    const finalRoster = { ...roster }
-    if (superflex) finalRoster.superflex = 1
-    onStart({ numTeams, userSlot: slot, scoring, rounds, rosterSlots: finalRoster })
+    onStart({ numTeams, userSlot: slot, scoring, rounds, rosterSlots: roster })
+  }
+
+  function bumpSlot(key, delta) {
+    setRoster((r) => ({ ...r, [key]: Math.max(0, (r[key] || 0) + delta) }))
   }
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-text-primary/20 bg-bg-card p-5 space-y-4">
-        <h2 className="font-display text-lg">Setup</h2>
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-5 space-y-4">
+        <h2 className="font-display text-lg text-text-primary">Setup</h2>
 
         <div>
           <label className="text-xs uppercase text-text-muted tracking-wider block mb-1.5">Number of teams</label>
@@ -371,10 +372,35 @@ function SetupScreen({ onCancel, onStart }) {
         </div>
 
         <div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={superflex} onChange={(e) => setSuperflex(e.target.checked)} />
-            <span className="text-sm text-text-secondary">SuperFlex (adds a QB-eligible flex slot)</span>
-          </label>
+          <label className="text-xs uppercase text-text-muted tracking-wider block mb-1.5">Roster positions</label>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: 'qb', label: 'QB' },
+              { key: 'rb', label: 'RB' },
+              { key: 'wr', label: 'WR' },
+              { key: 'te', label: 'TE' },
+              { key: 'flex', label: 'FLEX' },
+              { key: 'superflex', label: 'SUPER FLEX' },
+              { key: 'k', label: 'K' },
+              { key: 'def', label: 'D/ST' },
+              { key: 'bench', label: 'BENCH' },
+            ].map((s) => (
+              <div key={s.key} className="flex items-center bg-bg-secondary border border-text-primary/20 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => bumpSlot(s.key, -1)}
+                  className="w-7 h-9 text-text-muted hover:text-text-primary active:bg-bg-card text-lg leading-none"
+                >−</button>
+                <div className="px-2 text-center min-w-[58px]">
+                  <div className="text-[9px] uppercase text-text-muted tracking-wider leading-none">{s.label}</div>
+                  <div className="text-sm font-display text-text-primary leading-tight">{roster[s.key] || 0}</div>
+                </div>
+                <button
+                  onClick={() => bumpSlot(s.key, 1)}
+                  className="w-7 h-9 text-text-muted hover:text-text-primary active:bg-bg-card text-lg leading-none"
+                >+</button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
