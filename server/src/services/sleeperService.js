@@ -24,31 +24,57 @@ export async function syncPlayers() {
     throw err
   }
 
+  // ESPN team-logo URLs use lowercase abbreviations and a few special-cases
+  // (Washington = wsh, Jacksonville = jax). Sleeper uses NFL standard abbrevs.
+  const ESPN_NFL_ABBR = {
+    ARI: 'ari', ATL: 'atl', BAL: 'bal', BUF: 'buf', CAR: 'car', CHI: 'chi',
+    CIN: 'cin', CLE: 'cle', DAL: 'dal', DEN: 'den', DET: 'det', GB: 'gb',
+    HOU: 'hou', IND: 'ind', JAX: 'jax', KC: 'kc', LAC: 'lac', LAR: 'lar',
+    LV: 'lv', MIA: 'mia', MIN: 'min', NE: 'ne', NO: 'no', NYG: 'nyg',
+    NYJ: 'nyj', PHI: 'phi', PIT: 'pit', SEA: 'sea', SF: 'sf', TB: 'tb',
+    TEN: 'ten', WAS: 'wsh',
+  }
+  function teamLogoUrl(teamAbbr) {
+    const slug = ESPN_NFL_ABBR[teamAbbr]
+    return slug ? `https://a.espncdn.com/i/teamlogos/nfl/500/${slug}.png` : null
+  }
+
   const players = Object.entries(data)
     .filter(([_, p]) => p.active && FANTASY_POSITIONS.has(p.position))
-    .map(([id, p]) => ({
-      id,
-      full_name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
-      first_name: p.first_name || null,
-      last_name: p.last_name || null,
-      position: p.position,
-      team: p.team || null,
-      number: p.number || null,
-      status: p.status || null,
-      age: p.age || null,
-      years_exp: p.years_exp ?? null,
-      college: p.college || null,
-      height: p.height || null,
-      weight: p.weight || null,
-      injury_status: p.injury_status || null,
-      injury_body_part: p.injury_body_part || null,
-      depth_chart_position: p.depth_chart_position || null,
-      depth_chart_order: p.depth_chart_order || null,
-      espn_id: p.espn_id ? String(p.espn_id) : null,
-      search_rank: p.search_rank || 9999,
-      headshot_url: `${SLEEPER_CDN}/${id}.jpg`,
-      last_synced_at: new Date().toISOString(),
-    }))
+    .map(([id, p]) => {
+      // For team defenses, use the team logo as the headshot — Sleeper doesn't
+      // host real images for DEF "players", and the team abbrev IS the player_id.
+      const isDef = p.position === 'DEF'
+      const fullName = isDef
+        ? `${p.team || id} D/ST`
+        : (p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim())
+      const headshotUrl = isDef
+        ? teamLogoUrl(p.team || id)
+        : `${SLEEPER_CDN}/${id}.jpg`
+      return {
+        id,
+        full_name: fullName,
+        first_name: p.first_name || null,
+        last_name: p.last_name || null,
+        position: p.position,
+        team: p.team || null,
+        number: p.number || null,
+        status: p.status || null,
+        age: p.age || null,
+        years_exp: p.years_exp ?? null,
+        college: p.college || null,
+        height: p.height || null,
+        weight: p.weight || null,
+        injury_status: p.injury_status || null,
+        injury_body_part: p.injury_body_part || null,
+        depth_chart_position: p.depth_chart_position || null,
+        depth_chart_order: p.depth_chart_order || null,
+        espn_id: p.espn_id ? String(p.espn_id) : null,
+        search_rank: p.search_rank || 9999,
+        headshot_url: headshotUrl,
+        last_synced_at: new Date().toISOString(),
+      }
+    })
 
   logger.info({ count: players.length }, 'Parsed players from Sleeper')
 
