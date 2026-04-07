@@ -307,7 +307,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
           {/* Status banner */}
           {!isLocked && !picksBlocked && (
-            <div className={`${showCourtBg ? '' : 'bg-bg-card rounded-xl border border-border'} p-4 text-center`}>
+            <div className={`${showCourtBg ? '' : 'bg-bg-primary/20 backdrop-blur-sm rounded-xl border border-text-primary/20'} p-4 text-center`}>
               <div className="text-sm text-text-secondary mb-2">
                 {hasSubmitted
                   ? 'Your bracket has been submitted!'

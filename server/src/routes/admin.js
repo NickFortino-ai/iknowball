@@ -421,6 +421,16 @@ router.post('/bracket-templates/:id/championship-score', async (req, res) => {
     return res.status(400).json({ error: 'total_score must be a non-negative integer' })
   }
   const result = await setTemplateChampionshipScore(req.params.id, total_score)
+  // Trigger league completion immediately so commissioners don't have to wait
+  // up to 15 minutes for the cron — fire and forget, don't block the response.
+  ;(async () => {
+    try {
+      const { completeLeagues } = await import('../jobs/completeLeagues.js')
+      await completeLeagues()
+    } catch (err) {
+      logger.error({ err }, 'Failed to trigger league completion after championship score')
+    }
+  })()
   res.json(result)
 })
 
