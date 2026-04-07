@@ -697,7 +697,7 @@ const RANKINGS_SEED_SIZE = 200
 const SCORING_PROJ_COL = {
   ppr: 'projected_pts_ppr',
   half_ppr: 'projected_pts_half_ppr',
-  standard: 'projected_pts_standard',
+  standard: 'projected_pts_std',
 }
 
 async function seedUserRankings(leagueId, userId) {
@@ -739,7 +739,7 @@ export async function getMyRankings(leagueId, userId) {
 
   const { data, error } = await supabase
     .from('fantasy_user_rankings')
-    .select('player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_standard, search_rank)')
+    .select('player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank)')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .order('rank', { ascending: true })

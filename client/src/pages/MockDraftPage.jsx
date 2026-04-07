@@ -418,7 +418,7 @@ function SetupScreen({ onCancel, onStart }) {
 const SCORING_KEY_MAP = {
   ppr: 'projected_pts_ppr',
   half_ppr: 'projected_pts_half_ppr',
-  standard: 'projected_pts_standard',
+  standard: 'projected_pts_std',
 }
 
 function DraftScreen({ config, onExit, onComplete }) {

@@ -14,7 +14,7 @@ const router = Router()
 router.get('/players', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_standard')
+    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std')
     .eq('status', 'Active')
     .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
     .not('team', 'is', null)
