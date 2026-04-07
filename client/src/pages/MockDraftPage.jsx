@@ -598,20 +598,14 @@ function DraftScreen({ config, onExit, onComplete }) {
 
   return (
     <div className="space-y-3">
-      {/* Sticky banner */}
+      {/* Sticky banner — glass edge */}
       <div className="sticky top-0 z-20 -mx-2 px-2 pt-1">
-        <div className={`rounded-xl p-3 text-center ${isUserTurn ? 'bg-accent/20 border border-accent' : 'bg-bg-card border border-text-primary/20'}`}>
-          <div className="flex items-center justify-center gap-2">
-            <div className="text-[10px] text-text-muted uppercase tracking-wider">R{currentPick?.round} · Pick {currentPick?.overall}</div>
-            <div className="font-display text-sm text-text-primary">
-              {isUserTurn ? "You're on the clock!" : `${teamNames[currentPick?.teamSlot]} picking...`}
-            </div>
+        <div className={`rounded-xl px-4 py-2.5 flex items-center justify-center gap-3 bg-bg-primary border ${isUserTurn ? 'border-accent' : 'border-text-primary/20'}`}>
+          <div className="font-display text-base md:text-lg text-white">
+            R{currentPick?.round} · PICK {currentPick?.overall}
           </div>
-          <div className="mt-2 flex items-center justify-center">
-            <button
-              onClick={onExit}
-              className="px-3 py-1 rounded-lg text-xs font-semibold bg-bg-card border border-text-primary/20 text-text-muted hover:text-incorrect"
-            >Exit</button>
+          <div className="font-display text-sm md:text-base text-text-secondary">
+            {isUserTurn ? "You're on the clock!" : `${teamNames[currentPick?.teamSlot]} picking...`}
           </div>
         </div>
       </div>

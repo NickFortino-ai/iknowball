@@ -127,6 +127,14 @@ router.post('/sync-odds', async (req, res) => {
   res.json({ message: 'Odds sync complete', results })
 })
 
+// Backfill an entire NFL regular season of weekly stats
+router.post('/backfill-nfl-season', async (req, res) => {
+  const season = parseInt(req.body?.season || req.query?.season || '2025', 10)
+  const { backfillSeasonStats } = await import('../services/sleeperService.js')
+  const result = await backfillSeasonStats(season)
+  res.json(result)
+})
+
 router.post('/sync-injuries', async (req, res) => {
   const result = await syncInjuries()
   res.json({ message: 'Injury sync complete', ...result })

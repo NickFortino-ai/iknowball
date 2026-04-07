@@ -144,6 +144,30 @@ export async function syncSchedule(season = 2026) {
 /**
  * Sync weekly player stats from Sleeper.
  */
+/**
+ * Backfill an entire NFL regular season's weekly stats. Loops weeks 1..18
+ * and calls syncWeeklyStats for each, with a small delay between calls
+ * to be polite to Sleeper. Used to seed the DraftPlayerPreview's "last
+ * season" data when we're in the offseason and don't have prior-year stats.
+ */
+export async function backfillSeasonStats(season) {
+  const results = []
+  for (let week = 1; week <= 18; week++) {
+    try {
+      const r = await syncWeeklyStats(season, week)
+      results.push({ week, ...r })
+    } catch (err) {
+      logger.error({ err, season, week }, 'Backfill week failed')
+      results.push({ week, error: err.message })
+    }
+    // 500ms between weeks
+    await new Promise((res) => setTimeout(res, 500))
+  }
+  const totalSynced = results.reduce((sum, r) => sum + (r.synced || 0), 0)
+  logger.info({ season, totalSynced, weeks: results.length }, 'Season backfill complete')
+  return { season, totalSynced, weeks: results }
+}
+
 export async function syncWeeklyStats(season = 2026, week = 1) {
   logger.info({ season, week }, 'Syncing weekly player stats from Sleeper')
 

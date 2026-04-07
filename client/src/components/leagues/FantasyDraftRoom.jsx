@@ -293,22 +293,20 @@ export default function FantasyDraftRoom({ league }) {
   // Live draft
   return (
     <div className="space-y-3 md:space-y-4">
-      {/* Sticky pick banner — keeps timer + on-the-clock status visible while scrolling on mobile */}
-      <div className={`sticky top-0 z-20 -mx-2 px-2 pt-1 md:static md:mx-0 md:px-0 md:pt-0`}>
-      <div className={`rounded-xl p-3 md:p-4 text-center ${isMyTurn ? 'bg-accent/20 border border-accent' : 'bg-bg-card border border-border'}`}>
-        <div className="flex items-center justify-center gap-2 md:block">
-          <div className="text-[10px] md:text-xs text-text-muted uppercase tracking-wider md:mb-1">
-            R{currentPick?.round} · Pick {currentPick?.pick_number}
-          </div>
-          <div className="font-display text-sm md:text-lg text-text-primary md:mt-0">
-            {isMyTurn ? "You're on the clock!" : `${currentPick?.users?.display_name || 'Someone'} is picking...`}
-          </div>
-          {timerSeconds != null && (
-            <div className={`font-display text-lg md:text-2xl md:mt-1 ${timerSeconds <= 10 ? 'text-incorrect' : 'text-text-primary'}`}>
-              {Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')}
-            </div>
-          )}
+      {/* Sticky pick banner — glass edge */}
+      <div className="sticky top-0 z-20 -mx-2 px-2 pt-1 md:static md:mx-0 md:px-0 md:pt-0">
+      <div className={`rounded-xl px-4 py-2.5 flex items-center justify-center gap-3 flex-wrap bg-bg-primary border ${isMyTurn ? 'border-accent' : 'border-text-primary/20'}`}>
+        <div className="font-display text-base md:text-lg text-white">
+          R{currentPick?.round} · PICK {currentPick?.pick_number}
         </div>
+        <div className="font-display text-sm md:text-base text-text-secondary">
+          {isMyTurn ? "You're on the clock!" : `${currentPick?.users?.display_name || 'Someone'} is picking...`}
+        </div>
+        {timerSeconds != null && (
+          <div className={`font-display text-base md:text-lg ${timerSeconds <= 10 ? 'text-incorrect' : 'text-text-primary'}`}>
+            {Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')}
+          </div>
+        )}
         {isCommissioner && (
           <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
             <button
@@ -520,17 +518,21 @@ export default function FantasyDraftRoom({ league }) {
         </div>
       )}
 
-      {activeTab === 'Queue' && (
+      {activeTab === 'Queue' && (() => {
+        // Hide queue entries for players already drafted
+        const draftedSet = new Set(picks.filter((p) => p.player_id).map((p) => p.player_id))
+        const visibleQueue = (queue || []).filter((q) => !draftedSet.has(q.player_id))
+        return (
         <div className="rounded-xl border border-text-primary/20 p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-text-primary">My Queue</h3>
             <span className="text-[10px] text-text-muted italic">Auto-picks from here when your clock runs out</span>
           </div>
-          {(queue || []).length === 0 ? (
+          {visibleQueue.length === 0 ? (
             <p className="text-xs text-text-muted">Star players in the Players tab to queue them up.</p>
           ) : (
             <div className="space-y-1">
-              {queue.map((q, i) => (
+              {visibleQueue.map((q, i) => (
                 <div key={q.player_id} className="flex items-center gap-2 bg-bg-card rounded-lg px-2 py-1.5">
                   <span className="text-xs text-text-muted w-5 text-center shrink-0">{i + 1}</span>
                   {q.nfl_players?.headshot_url && (
@@ -548,7 +550,8 @@ export default function FantasyDraftRoom({ league }) {
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {activeTab === 'Log' && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
