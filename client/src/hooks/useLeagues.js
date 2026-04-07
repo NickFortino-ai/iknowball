@@ -566,6 +566,16 @@ export function useFantasySettings(leagueId) {
   })
 }
 
+export function useUpdateFantasySettings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, ...patch }) => api.patch(`/leagues/${leagueId}/fantasy/settings`, patch),
+    onSuccess: (_d, { leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'settings'] })
+    },
+  })
+}
+
 export function useDraftBoard(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'draft'],

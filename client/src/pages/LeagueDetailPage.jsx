@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -390,6 +390,18 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
   const isDaily = league.settings?.pick_frequency === 'daily'
   const { data: tournament } = useBracketTournament(league.format === 'bracket' ? league.id : null)
   const updateTournament = useUpdateBracketTournament()
+  const { data: fantasySettings } = useFantasySettings(league.format === 'fantasy' ? league.id : null)
+  const updateFantasySettings = useUpdateFantasySettings()
+
+  async function saveIrSpots(n) {
+    try {
+      const newRoster = { ...(fantasySettings?.roster_slots || {}), ir: n }
+      await updateFantasySettings.mutateAsync({ leagueId: league.id, roster_slots: newRoster })
+      toast('IR spots saved', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to save', 'error')
+    }
+  }
   const backdropSport = league.sport === 'all' ? undefined : league.sport
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
@@ -520,6 +532,31 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
         </div>
       )}
       </>)}
+
+      {league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && fantasySettings?.draft_status !== 'completed' && (
+        <div>
+          <label className="block text-xs text-text-muted mb-2">IR Spots</label>
+          <div className="flex gap-2">
+            {[0, 1, 2, 3].map((n) => (
+              <button
+                key={n}
+                onClick={() => saveIrSpots(n)}
+                disabled={updateFantasySettings.isPending}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  (fantasySettings?.roster_slots?.ir ?? 1) === n
+                    ? 'bg-accent text-white border border-accent'
+                    : 'bg-bg-primary text-text-secondary border border-text-primary/20'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-text-muted mt-1">
+            Locked once the draft is completed.
+          </p>
+        </div>
+      )}
 
       {league.format === 'pickem' && (
         <>
