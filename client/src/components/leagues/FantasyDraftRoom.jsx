@@ -501,7 +501,9 @@ export default function FantasyDraftRoom({ league }) {
       )}
 
       {activeTab === 'Board' && (
-        <div className="rounded-xl border border-text-primary/20 p-2 overflow-hidden">
+        <div
+          className="rounded-xl border border-text-primary/20 p-2 overflow-hidden md:relative md:left-1/2 md:-translate-x-1/2 md:w-[95vw] md:max-w-[1600px]"
+        >
           <DraftBoard picks={picks} settings={settings} profileId={profile?.id} />
         </div>
       )}

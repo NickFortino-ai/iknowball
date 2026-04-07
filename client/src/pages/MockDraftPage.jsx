@@ -217,7 +217,7 @@ export default function MockDraftPage() {
   }
 
   return (
-    <div className="max-w-4xl xl:max-w-[1400px] mx-auto px-4 py-6 pb-32">
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-32">
       <div className="flex items-center gap-3 mb-6">
         <Link to="/leagues" className="text-text-muted hover:text-text-primary">←</Link>
         <h1 className="font-display text-3xl">Mock Draft</h1>
@@ -702,7 +702,9 @@ function DraftScreen({ config, onExit, onComplete }) {
       {activeTab === 'My Roster' && <RosterNeedsView slotPlan={slotPlan} />}
 
       {activeTab === 'Board' && (
-        <div className="rounded-xl border border-text-primary/20 p-2 overflow-hidden">
+        <div
+          className="rounded-xl border border-text-primary/20 p-2 overflow-hidden md:relative md:left-1/2 md:-translate-x-1/2 md:w-[95vw] md:max-w-[1600px]"
+        >
           <MockDraftBoard picks={picks} numTeams={config.numTeams} userSlot={config.userSlot} teamNames={teamNames} />
         </div>
       )}
