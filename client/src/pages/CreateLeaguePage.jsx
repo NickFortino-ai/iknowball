@@ -28,7 +28,17 @@ const SPORT_OPTIONS = [
   { value: 'all', label: 'All Sports' },
 ]
 
-const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wncaab', 'basketball_wnba', 'baseball_mlb', 'all'])
+// Sports where daily picks make sense (games happen most days during season)
+const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wncaab', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl', 'all'])
+// Sports where weekly picks make sense (NFL is the obvious one — games only on weekends)
+const WEEKLY_ELIGIBLE_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf', 'all'])
+
+function allowedFrequencies(sport) {
+  const allowed = []
+  if (WEEKLY_ELIGIBLE_SPORTS.has(sport)) allowed.push('weekly')
+  if (DAILY_ELIGIBLE_SPORTS.has(sport)) allowed.push('daily')
+  return allowed
+}
 
 const DURATION_OPTIONS = [
   { value: 'this_week', label: 'This Week Only' },
@@ -298,7 +308,15 @@ export default function CreateLeaguePage() {
                 disabled={isFantasyLocked}
                 onClick={() => {
                   setSport(opt.value)
-                  if (!DAILY_ELIGIBLE_SPORTS.has(opt.value)) setPickFrequency('weekly')
+                  // Snap pick_frequency to whatever this sport actually allows
+                  const allowed = allowedFrequencies(opt.value)
+                  if (allowed.length === 1) {
+                    setPickFrequency(allowed[0])
+                  } else if (allowed.length === 0) {
+                    setPickFrequency('weekly')
+                  } else if (!allowed.includes(pickFrequency)) {
+                    setPickFrequency(allowed[0])
+                  }
                 }}
                 className={`flex-shrink-0 px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
                   sport === opt.value
@@ -403,23 +421,20 @@ export default function CreateLeaguePage() {
         {format === 'pickem' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">Pick'em Settings</h3>
-            {DAILY_ELIGIBLE_SPORTS.has(sport) && (
+            {allowedFrequencies(sport).length > 1 && (
               <div>
                 <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
                 <div className="flex gap-2">
-                  {[
-                    { value: 'weekly', label: 'Weekly' },
-                    { value: 'daily', label: 'Daily' },
-                  ].map((opt) => (
+                  {allowedFrequencies(sport).map((value) => (
                     <button
-                      key={opt.value}
+                      key={value}
                       type="button"
-                      onClick={() => setPickFrequency(opt.value)}
+                      onClick={() => setPickFrequency(value)}
                       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        pickFrequency === opt.value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
+                        pickFrequency === value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
                       }`}
                     >
-                      {opt.label}
+                      {value === 'weekly' ? 'Weekly' : 'Daily'}
                     </button>
                   ))}
                 </div>
@@ -964,23 +979,20 @@ export default function CreateLeaguePage() {
                 ))}
               </div>
             </div>
-            {DAILY_ELIGIBLE_SPORTS.has(sport) && (
+            {allowedFrequencies(sport).length > 1 && (
               <div>
                 <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
                 <div className="flex gap-2">
-                  {[
-                    { value: 'weekly', label: 'Weekly' },
-                    { value: 'daily', label: 'Daily' },
-                  ].map((opt) => (
+                  {allowedFrequencies(sport).map((value) => (
                     <button
-                      key={opt.value}
+                      key={value}
                       type="button"
-                      onClick={() => setPickFrequency(opt.value)}
+                      onClick={() => setPickFrequency(value)}
                       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        pickFrequency === opt.value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
+                        pickFrequency === value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
                       }`}
                     >
-                      {opt.label}
+                      {value === 'weekly' ? 'Weekly' : 'Daily'}
                     </button>
                   ))}
                 </div>
