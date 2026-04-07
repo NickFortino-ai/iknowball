@@ -735,16 +735,17 @@ function DraftBoard({ picks, settings, profileId }) {
     if (pick.users) userNames[pick.user_id] = pick.users.display_name || pick.users.username
   }
 
+  // Mobile: scroll both ways, larger cells. Desktop: fit container.
   return (
-    <div className="overflow-x-auto">
-      <table className="text-xs border-collapse min-w-full">
+    <div className="overflow-auto max-h-[70vh] md:max-h-none md:overflow-visible">
+      <table className="text-xs border-collapse md:w-full md:table-fixed">
         <thead>
           <tr>
-            <th className="px-1 py-2 text-text-muted font-semibold text-center w-8 border border-border">Rd.</th>
+            <th className="px-1 py-2 text-text-muted font-semibold text-center w-10 border border-border bg-bg-secondary sticky left-0 z-10">Rd</th>
             {draftOrder.map((userId, i) => (
-              <th key={userId} className={`px-2 py-2 font-semibold text-center border border-border whitespace-nowrap ${userId === profileId ? 'text-accent' : 'text-text-secondary'}`}>
+              <th key={userId} className={`px-2 py-2 font-semibold text-center border border-border min-w-[120px] md:min-w-0 ${userId === profileId ? 'text-accent' : 'text-text-secondary'}`}>
                 <div className="text-text-muted text-[10px]">{i + 1}</div>
-                {userNames[userId] || 'Team'}
+                <div className="truncate">{userNames[userId] || 'Team'}</div>
               </th>
             ))}
           </tr>
@@ -752,7 +753,7 @@ function DraftBoard({ picks, settings, profileId }) {
         <tbody>
           {grid.map((row, roundIdx) => (
             <tr key={roundIdx}>
-              <td className="px-1 py-1 text-center text-text-muted font-semibold border border-border">
+              <td className="px-1 py-1 text-center text-text-muted font-semibold border border-border bg-bg-secondary sticky left-0 z-10">
                 <div className="flex items-center gap-0.5 justify-center">
                   {roundIdx + 1}
                   <span className="text-[8px]">{roundIdx % 2 === 0 ? '→' : '←'}</span>
@@ -762,14 +763,14 @@ function DraftBoard({ picks, settings, profileId }) {
                 const pos = pick?.nfl_players?.position
                 const colorClass = pos ? POS_COLORS[pos] || '' : ''
                 return (
-                  <td key={colIdx} className={`px-1.5 py-1.5 border border-border ${pick ? colorClass : ''}`}>
+                  <td key={colIdx} className={`px-2 py-2 border border-border min-w-[120px] md:min-w-0 ${pick ? colorClass : ''}`}>
                     {pick?.nfl_players ? (
-                      <div className="min-w-[80px]">
-                        <div className="font-semibold truncate">{pick.nfl_players.full_name}</div>
-                        <div className="text-[10px] opacity-70">{pos} ({pick.nfl_players.team})</div>
+                      <div className="min-w-0">
+                        <div className="font-semibold truncate text-[11px] md:text-xs">{pick.nfl_players.full_name}</div>
+                        <div className="text-[10px] opacity-70 truncate">{pos} {pick.nfl_players.team}</div>
                       </div>
                     ) : (
-                      <div className="min-w-[80px] text-text-muted text-center">—</div>
+                      <div className="text-text-muted text-center">—</div>
                     )}
                   </td>
                 )

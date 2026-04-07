@@ -822,15 +822,15 @@ function MockDraftBoard({ picks, numTeams, userSlot, teamNames }) {
     }
     grid.push(row)
   }
-  // On desktop fit full width; on mobile allow horizontal scroll
+  // Mobile: scroll both ways with bigger cells. Desktop: fit container width.
   return (
-    <div className="overflow-x-auto md:overflow-x-visible">
-      <table className="text-[10px] md:text-xs border-collapse w-full table-fixed">
+    <div className="overflow-auto max-h-[70vh] md:max-h-none md:overflow-visible">
+      <table className="text-[11px] md:text-xs border-collapse md:w-full md:table-fixed">
         <thead>
           <tr>
-            <th className="px-1 py-2 text-text-muted font-semibold text-center w-8 border border-text-primary/15">Rd</th>
+            <th className="px-1 py-2 text-text-muted font-semibold text-center w-10 border border-text-primary/15 bg-bg-secondary sticky left-0 z-10">Rd</th>
             {Array.from({ length: numTeams }, (_, i) => (
-              <th key={i} className={`px-1 py-2 font-semibold text-center border border-text-primary/15 ${i === userSlot ? 'text-accent' : 'text-text-secondary'}`}>
+              <th key={i} className={`px-2 py-2 font-semibold text-center border border-text-primary/15 min-w-[120px] md:min-w-0 ${i === userSlot ? 'text-accent' : 'text-text-secondary'}`}>
                 <div className="text-text-muted text-[9px]">{i + 1}</div>
                 <div className="truncate">{teamNames?.[i] || (i === userSlot ? 'You' : `T${i + 1}`)}</div>
               </th>
@@ -840,7 +840,7 @@ function MockDraftBoard({ picks, numTeams, userSlot, teamNames }) {
         <tbody>
           {grid.map((row, ri) => (
             <tr key={ri}>
-              <td className="px-1 py-1 text-center text-text-muted font-semibold border border-text-primary/15">
+              <td className="px-1 py-1 text-center text-text-muted font-semibold border border-text-primary/15 bg-bg-secondary sticky left-0 z-10">
                 <div className="flex items-center gap-0.5 justify-center">
                   {ri + 1}
                   <span className="text-[8px]">{ri % 2 === 0 ? '→' : '←'}</span>
@@ -850,11 +850,11 @@ function MockDraftBoard({ picks, numTeams, userSlot, teamNames }) {
                 const pos = pick?.player?.position
                 const cls = pos ? POS_BG[pos] || '' : ''
                 return (
-                  <td key={ci} className={`px-1 py-1 border border-text-primary/15 ${cls}`}>
+                  <td key={ci} className={`px-2 py-2 border border-text-primary/15 min-w-[120px] md:min-w-0 ${cls}`}>
                     {pick?.player ? (
                       <div className="min-w-0">
                         <div className="font-semibold truncate">{pick.player.full_name}</div>
-                        <div className="text-[9px] opacity-70 truncate">{pos} {pick.player.team}</div>
+                        <div className="text-[10px] opacity-70 truncate">{pos} {pick.player.team}</div>
                       </div>
                     ) : (
                       <div className="text-text-muted text-center">—</div>
