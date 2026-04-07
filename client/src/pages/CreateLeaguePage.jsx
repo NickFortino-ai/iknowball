@@ -129,6 +129,8 @@ export default function CreateLeaguePage() {
   const [waiverType, setWaiverType] = useState('priority')
   const [tradeReview, setTradeReview] = useState('commissioner')
   const [playoffTeams, setPlayoffTeams] = useState(4)
+  const [playoffStartWeek, setPlayoffStartWeek] = useState(16)
+  const [championshipWeek, setChampionshipWeek] = useState(17)
   const [salaryCap, setSalaryCap] = useState(60000)
   const [seasonType, setSeasonType] = useState('full_season')
   const [championMetric, setChampionMetric] = useState('total_points')
@@ -197,6 +199,8 @@ export default function CreateLeaguePage() {
       waiver_type: format === 'fantasy' && fantasyFormat === 'traditional' ? waiverType : undefined,
       trade_review: format === 'fantasy' && fantasyFormat === 'traditional' ? tradeReview : undefined,
       playoff_teams: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffTeams : undefined,
+      playoff_start_week: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffStartWeek : undefined,
+      championship_week: format === 'fantasy' && fantasyFormat === 'traditional' ? championshipWeek : undefined,
       salary_cap: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
       season_type: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
       champion_metric: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'full_season' ? championMetric : undefined,
@@ -716,7 +720,13 @@ export default function CreateLeaguePage() {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setPlayoffTeams(n)}
+                    onClick={() => {
+                      setPlayoffTeams(n)
+                      // Smart default: 4 teams → start week 16 (3 rounds incl. champ)
+                      // 6 teams → start week 15 (top 2 byes, then QF/SF/Champ over 3 weeks)
+                      // 8 teams → start week 15 (3 rounds: QF/SF/Champ)
+                      setPlayoffStartWeek(n === 4 ? 16 : 15)
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       playoffTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
                     }`}
@@ -725,6 +735,41 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Playoffs Start Week</label>
+              <div className="flex gap-2">
+                {[14, 15, 16, 17].map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => setPlayoffStartWeek(w)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      playoffStartWeek === w ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    Wk {w}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Championship Week</label>
+              <div className="flex gap-2">
+                {[17, 18].map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => setChampionshipWeek(w)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      championshipWeek === w ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    Wk {w}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-text-muted mt-1">NFL season is 18 weeks. Most leagues use Week 17 to avoid playoff resters in Week 18.</p>
             </div>
             </>}
           </div>
