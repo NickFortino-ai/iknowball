@@ -202,9 +202,7 @@ function MlbLiveView({ league, date: leagueDate }) {
                                 {statLine && (
                                   <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
                                 )}
-                                {statLine && (
-                                  <span className="text-sm text-text-secondary hidden lg:block lg:flex-1">{statLine}</span>
-                                )}
+                                <span className="text-sm text-text-secondary hidden lg:block lg:flex-1">{statLine || ''}</span>
                                 {(slot.game_status === 'live' || slot.game_status === 'final') && slot.away_team && (
                                   <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-xs lg:w-44 lg:shrink-0 lg:text-right">
                                     {slot.away_team} {slot.away_score ?? ''} @ {slot.home_team} {slot.home_score ?? ''}
