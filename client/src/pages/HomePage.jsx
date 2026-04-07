@@ -186,7 +186,7 @@ export default function HomePage() {
       )}
 
       {/* Tier Breakdown — always shown */}
-      <div className="lg:-mx-24">
+      <div className="xl:-mx-24">
         <h2 className="font-display text-2xl text-center mb-8">
           Status Tiers
           <InfoTooltip text="Your status is based on your lifetime point total across all picks and all sports. Every correct pick earns points. Every wrong pick costs points. Climb from Rookie to GOAT." />

@@ -555,9 +555,11 @@ export default function HubPage() {
 
       {/* Desktop news sidebar */}
       <div className="hidden lg:block">
-        <div className="sticky top-4">
-          <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">News</h2>
-          <NewsFeed compact />
+        <div className="sticky top-4 max-h-[calc(100vh-2rem)] flex flex-col">
+          <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3 flex-shrink-0">News</h2>
+          <div className="flex-1 overflow-y-auto overscroll-contain pr-1">
+            <NewsFeed compact />
+          </div>
         </div>
       </div>
       </div>
