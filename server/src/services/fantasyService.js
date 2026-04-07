@@ -392,6 +392,262 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
   return (data || []).filter((p) => !excludeSet.has(p.id))
 }
 
+/**
+ * Set a user's lineup for the current week.
+ *
+ * Accepts a flat array of { player_id, slot } and updates fantasy_rosters
+ * accordingly. Validates that:
+ *  - Every player belongs to the user's roster
+ *  - Each starter slot is allowed for the player's position
+ *  - Locked players (game already started or finished) keep their existing slot
+ *  - All required starter slots are filled
+ *
+ * Bench / IR are catch-alls — anything not explicitly assigned to a starter
+ * slot or IR ends up in bench.
+ */
+const STARTER_SLOTS_TRAD = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
+const SLOT_POSITIONS = {
+  qb: ['QB'],
+  rb1: ['RB'],
+  rb2: ['RB'],
+  wr1: ['WR'],
+  wr2: ['WR'],
+  wr3: ['WR'],
+  te: ['TE'],
+  flex: ['RB', 'WR', 'TE'],
+  k: ['K'],
+  def: ['DEF'],
+  bench: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
+  ir: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
+}
+
+export async function setFantasyLineup(leagueId, userId, slotAssignments) {
+  // slotAssignments: array of { player_id, slot }
+  if (!Array.isArray(slotAssignments) || !slotAssignments.length) {
+    const err = new Error('slotAssignments required')
+    err.status = 400
+    throw err
+  }
+
+  // 1. Get the user's current roster joined to nfl_players for position
+  const { data: roster } = await supabase
+    .from('fantasy_rosters')
+    .select('id, player_id, slot, nfl_players(id, position, team)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+
+  if (!roster?.length) {
+    const err = new Error('You do not have a roster in this league')
+    err.status = 404
+    throw err
+  }
+
+  const rosterByPlayerId = {}
+  for (const r of roster) rosterByPlayerId[r.player_id] = r
+
+  // 2. Validate each assignment
+  for (const a of slotAssignments) {
+    const r = rosterByPlayerId[a.player_id]
+    if (!r) {
+      const err = new Error(`Player ${a.player_id} is not on your roster`)
+      err.status = 400
+      throw err
+    }
+    const allowed = SLOT_POSITIONS[a.slot]
+    if (!allowed) {
+      const err = new Error(`Invalid slot: ${a.slot}`)
+      err.status = 400
+      throw err
+    }
+    if (!allowed.includes(r.nfl_players?.position)) {
+      const err = new Error(`Player ${r.nfl_players?.position} cannot fill slot ${a.slot}`)
+      err.status = 400
+      throw err
+    }
+  }
+
+  // 3. Lock check — for any player whose team has already started a game this week,
+  // skip the assignment if it would change their existing slot.
+  // We use the most recent unfinished week from nfl_schedule.
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('season')
+    .eq('league_id', leagueId)
+    .single()
+  const season = settings?.season || new Date().getUTCFullYear()
+  const today = new Date().toISOString().split('T')[0]
+  const { data: playedToday } = await supabase
+    .from('nfl_schedule')
+    .select('home_team, away_team, status')
+    .eq('season', season)
+    .lte('game_date', today)
+    .neq('status', 'scheduled')
+
+  const lockedTeams = new Set()
+  for (const g of playedToday || []) {
+    if (g.status === 'in_progress' || g.status === 'complete') {
+      lockedTeams.add(g.home_team)
+      lockedTeams.add(g.away_team)
+    }
+  }
+
+  // 4. Build the final slot map (default everything to bench, then apply assignments)
+  const newSlotByPlayer = {}
+  for (const r of roster) {
+    // If player is on a locked team, preserve current slot
+    if (lockedTeams.has(r.nfl_players?.team)) {
+      newSlotByPlayer[r.player_id] = r.slot
+    } else {
+      newSlotByPlayer[r.player_id] = 'bench'
+    }
+  }
+  for (const a of slotAssignments) {
+    const r = rosterByPlayerId[a.player_id]
+    // Don't change locked players via assignment either
+    if (lockedTeams.has(r.nfl_players?.team)) continue
+    newSlotByPlayer[a.player_id] = a.slot
+  }
+
+  // 5. Validate every starter slot is filled exactly once (skip if user is mid-flow)
+  const starterCounts = {}
+  for (const slot of STARTER_SLOTS_TRAD) starterCounts[slot] = 0
+  for (const playerId of Object.keys(newSlotByPlayer)) {
+    const slot = newSlotByPlayer[playerId]
+    if (STARTER_SLOTS_TRAD.includes(slot)) starterCounts[slot]++
+  }
+  for (const [slot, count] of Object.entries(starterCounts)) {
+    if (count > 1) {
+      const err = new Error(`Multiple players assigned to ${slot}`)
+      err.status = 400
+      throw err
+    }
+  }
+
+  // 6. Persist — one update per row that changed
+  let updated = 0
+  for (const r of roster) {
+    const newSlot = newSlotByPlayer[r.player_id]
+    if (newSlot !== r.slot) {
+      const { error } = await supabase
+        .from('fantasy_rosters')
+        .update({ slot: newSlot })
+        .eq('id', r.id)
+      if (error) {
+        logger.error({ error, rosterId: r.id }, 'Failed to update lineup slot')
+      } else {
+        updated++
+      }
+    }
+  }
+
+  return { updated, locked_teams: [...lockedTeams] }
+}
+
+/**
+ * Add a free-agent player to a user's roster, optionally swapping out a player.
+ *
+ * Validates:
+ *  - The added player isn't already on someone's roster in this league
+ *  - The dropped player IS on the user's roster
+ *  - The dropped player's team isn't currently locked (game in progress / done)
+ *
+ * The added player goes to the bench by default — user can move to a starter
+ * slot via setFantasyLineup afterward.
+ */
+export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId) {
+  if (!addPlayerId) {
+    const err = new Error('add_player_id required')
+    err.status = 400
+    throw err
+  }
+
+  // Verify the added player exists and is a valid NFL player
+  const { data: addPlayer } = await supabase
+    .from('nfl_players')
+    .select('id, full_name, position, team, status')
+    .eq('id', addPlayerId)
+    .single()
+  if (!addPlayer) {
+    const err = new Error('Player not found')
+    err.status = 404
+    throw err
+  }
+
+  // Verify the player isn't already rostered in this league
+  const { data: existing } = await supabase
+    .from('fantasy_rosters')
+    .select('id, user_id')
+    .eq('league_id', leagueId)
+    .eq('player_id', addPlayerId)
+    .maybeSingle()
+  if (existing) {
+    const err = new Error('Player is already rostered in this league')
+    err.status = 409
+    throw err
+  }
+
+  // If dropping, verify ownership and lock state
+  let dropRow = null
+  if (dropPlayerId) {
+    const { data: dropRoster } = await supabase
+      .from('fantasy_rosters')
+      .select('id, user_id, slot, nfl_players(team)')
+      .eq('league_id', leagueId)
+      .eq('player_id', dropPlayerId)
+      .single()
+    if (!dropRoster || dropRoster.user_id !== userId) {
+      const err = new Error('You can only drop a player from your own roster')
+      err.status = 403
+      throw err
+    }
+    dropRow = dropRoster
+
+    // Lock check: if dropped player's team has already started this week, block
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('season')
+      .eq('league_id', leagueId)
+      .single()
+    const season = settings?.season || new Date().getUTCFullYear()
+    const today = new Date().toISOString().split('T')[0]
+    const { data: lockedGames } = await supabase
+      .from('nfl_schedule')
+      .select('home_team, away_team, status')
+      .eq('season', season)
+      .lte('game_date', today)
+      .neq('status', 'scheduled')
+    const lockedTeams = new Set()
+    for (const g of lockedGames || []) {
+      lockedTeams.add(g.home_team)
+      lockedTeams.add(g.away_team)
+    }
+    if (lockedTeams.has(dropRow.nfl_players?.team)) {
+      const err = new Error("Can't drop a player whose game has already started")
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Drop first (if applicable), then add to bench
+  if (dropRow) {
+    await supabase.from('fantasy_rosters').delete().eq('id', dropRow.id)
+  }
+  const { error: insertErr } = await supabase
+    .from('fantasy_rosters')
+    .insert({
+      league_id: leagueId,
+      user_id: userId,
+      player_id: addPlayerId,
+      slot: 'bench',
+    })
+  if (insertErr) {
+    logger.error({ insertErr, addPlayerId }, 'Failed to add player to roster')
+    throw insertErr
+  }
+
+  return { added: addPlayer.full_name, dropped: dropPlayerId || null }
+}
+
 function getDefaultSlot(position) {
   switch (position) {
     case 'QB': return 'qb'

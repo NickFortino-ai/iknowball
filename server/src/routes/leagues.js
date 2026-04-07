@@ -841,6 +841,8 @@ import {
   getRoster,
   searchAvailablePlayers,
   generateMatchups,
+  setFantasyLineup,
+  addDropPlayer,
 } from '../services/fantasyService.js'
 
 // Get fantasy settings
@@ -898,6 +900,31 @@ router.get('/:id/fantasy/players', requireAuth, async (req, res) => {
   const { q, position } = req.query
   const data = await searchAvailablePlayers(req.params.id, q, position)
   res.json(data)
+})
+
+// Set starting lineup
+router.post('/:id/fantasy/lineup', requireAuth, async (req, res) => {
+  try {
+    const { slots } = req.body
+    if (!Array.isArray(slots)) {
+      return res.status(400).json({ error: 'slots array required: [{ player_id, slot }, ...]' })
+    }
+    const result = await setFantasyLineup(req.params.id, req.user.id, slots)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Add a free agent (optionally dropping a player to make room)
+router.post('/:id/fantasy/add-drop', requireAuth, async (req, res) => {
+  try {
+    const { add_player_id, drop_player_id } = req.body
+    const result = await addDropPlayer(req.params.id, req.user.id, add_player_id, drop_player_id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
 })
 
 // Generate matchups (commissioner, after draft)

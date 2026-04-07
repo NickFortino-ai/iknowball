@@ -584,6 +584,28 @@ export function useFantasyRoster(leagueId) {
   })
 }
 
+export function useSetFantasyLineup(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (slots) => api.post(`/leagues/${leagueId}/fantasy/lineup`, { slots }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster'] })
+    },
+  })
+}
+
+export function useAddDropPlayer(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ addPlayerId, dropPlayerId }) =>
+      api.post(`/leagues/${leagueId}/fantasy/add-drop`, { add_player_id: addPlayerId, drop_player_id: dropPlayerId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'players'] })
+    },
+  })
+}
+
 export function useAvailablePlayers(leagueId, query, position) {
   const params = new URLSearchParams()
   if (query) params.set('q', query)

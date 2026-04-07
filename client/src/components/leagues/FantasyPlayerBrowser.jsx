@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useAvailablePlayers } from '../../hooks/useLeagues'
+import { useAvailablePlayers, useFantasyRoster, useAddDropPlayer } from '../../hooks/useLeagues'
+import { toast } from '../ui/Toast'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 
@@ -23,12 +24,36 @@ function InjuryBadge({ status }) {
 export default function FantasyPlayerBrowser({ league }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [posFilter, setPosFilter] = useState('All')
+  const [addingPlayer, setAddingPlayer] = useState(null) // player being added
+  const [dropPlayerId, setDropPlayerId] = useState('') // chosen drop
 
   const { data: players, isLoading } = useAvailablePlayers(
     league.id,
     searchQuery || undefined,
     posFilter !== 'All' ? posFilter : undefined
   )
+  const { data: roster } = useFantasyRoster(league.id)
+  const addDrop = useAddDropPlayer(league.id)
+  const isDraftPhase = league.status === 'open' || league.status === 'active' && !roster?.length
+
+  async function handleConfirmAdd() {
+    if (!addingPlayer) return
+    if ((roster?.length || 0) >= 16 && !dropPlayerId) {
+      toast('Pick a player to drop', 'error')
+      return
+    }
+    try {
+      await addDrop.mutateAsync({
+        addPlayerId: addingPlayer.id,
+        dropPlayerId: dropPlayerId || null,
+      })
+      toast(`${addingPlayer.full_name} added`, 'success')
+      setAddingPlayer(null)
+      setDropPlayerId('')
+    } catch (err) {
+      toast(err.message || 'Failed to add player', 'error')
+    }
+  }
 
   return (
     <div className="rounded-xl border border-text-primary/20 overflow-hidden">
@@ -73,13 +98,63 @@ export default function FantasyPlayerBrowser({ league }) {
               </div>
               <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
             </div>
-            <span className="text-xs text-text-muted shrink-0">#{player.search_rank}</span>
+            {!isDraftPhase && roster?.length > 0 && (
+              <button
+                onClick={() => setAddingPlayer(player)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent/15 text-accent hover:bg-accent/25 transition-colors shrink-0"
+              >
+                + Add
+              </button>
+            )}
           </div>
         ))}
         {!isLoading && players?.length === 0 && (
           <div className="text-center text-sm text-text-muted py-8">No players found</div>
         )}
       </div>
+
+      {/* Add/drop confirm modal */}
+      {addingPlayer && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={() => setAddingPlayer(null)}>
+          <div className="bg-bg-secondary w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg mb-4">Add {addingPlayer.full_name}</h3>
+            {(roster?.length || 0) >= 16 && (
+              <>
+                <p className="text-sm text-text-secondary mb-3">Roster is full. Pick a player to drop:</p>
+                <div className="space-y-1 mb-4 max-h-60 overflow-y-auto">
+                  {(roster || []).map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => setDropPlayerId(r.player_id)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-colors ${
+                        dropPlayerId === r.player_id ? 'border-accent bg-accent/10' : 'border-border bg-bg-primary hover:bg-bg-card-hover'
+                      }`}
+                    >
+                      {r.nfl_players?.headshot_url && (
+                        <img src={r.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold truncate">{r.nfl_players?.full_name}</div>
+                        <div className="text-[10px] text-text-muted">{r.nfl_players?.position} · {r.slot.toUpperCase()}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => { setAddingPlayer(null); setDropPlayerId('') }} className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-border hover:bg-bg-card-hover transition-colors">Cancel</button>
+              <button
+                onClick={handleConfirmAdd}
+                disabled={addDrop.isPending}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                {addDrop.isPending ? 'Adding…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
