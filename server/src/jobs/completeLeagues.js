@@ -407,11 +407,11 @@ export async function completeLeagues() {
     logger.info({ count: openLeagues.length }, 'Activated open leagues past start date')
   }
 
-  // Find leagues past their end date that haven't been completed
-  const { data: leagues, error } = await supabase
+  // Find non-bracket leagues past their end date that haven't been completed
+  const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
-    .in('format', ['pickem', 'bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby'])
+    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
     .lte('ends_at', now)
@@ -421,7 +421,21 @@ export async function completeLeagues() {
     return
   }
 
-  if (!leagues?.length) return
+  // Bracket leagues complete on championship-score signal, not on ends_at,
+  // so fetch them all regardless of ends_at and rely on the per-league check below.
+  const { data: bracketLeagues, error: bracketErr } = await supabase
+    .from('leagues')
+    .select('*')
+    .eq('format', 'bracket')
+    .neq('status', 'completed')
+
+  if (bracketErr) {
+    logger.error({ error: bracketErr }, 'Failed to fetch bracket leagues for completion')
+  }
+
+  const leagues = [...(nonBracketLeagues || []), ...(bracketLeagues || [])]
+
+  if (!leagues.length) return
 
   for (const league of leagues) {
     try {
