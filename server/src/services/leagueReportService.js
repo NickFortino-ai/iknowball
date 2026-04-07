@@ -2,10 +2,11 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 
 const MIN_CONTEST_DAYS = 10
+const MIN_NFL_WEEKS = 6
 
 /**
  * Generate a League Activity Report for a completed DFS league.
- * Returns null if the league doesn't qualify (< 10 contest days).
+ * Returns null if the league doesn't qualify.
  */
 export async function generateLeagueReport(league) {
   const format = league.format
@@ -16,8 +17,16 @@ export async function generateLeagueReport(league) {
   try {
     if (format === 'nba_dfs') return await generateNbaReport(leagueId)
     if (format === 'mlb_dfs') return await generateMlbReport(leagueId)
-    // NFL DFS is format='fantasy' with fantasy_settings.format='salary_cap'
-    // Skip for now — NFL season hasn't started
+    if (format === 'fantasy') {
+      // NFL salary cap (DFS-style weekly contest)
+      const { data: fs } = await supabase
+        .from('fantasy_settings')
+        .select('format')
+        .eq('league_id', leagueId)
+        .single()
+      if (fs?.format === 'salary_cap') return await generateNflSalaryCapReport(leagueId)
+      return null
+    }
     return null
   } catch (err) {
     logger.error({ err, leagueId }, 'Failed to generate league report')
@@ -183,7 +192,11 @@ function buildReport(rosters, headshotMap, nightlyResults, userMap, contestDays,
       .slice(0, 5)
 
     // Pick of the year (single best value play)
-    const pickOfTheYear = valuePlays[0] || null
+    const pickOfTheYearRaw = valuePlays[0] || null
+    const pickOfTheYear = pickOfTheYearRaw ? {
+      ...pickOfTheYearRaw,
+      context: `${pickOfTheYearRaw.points} pts on a $${pickOfTheYearRaw.salary.toLocaleString()} salary — best value play of the season.`,
+    } : null
 
     // Worst investments (high salary, low points)
     const busts = userSlots
@@ -255,11 +268,205 @@ function buildReport(rosters, headshotMap, nightlyResults, userMap, contestDays,
     }
   }
 
+  // === League-wide awards ===
+  // Top scorer overall: user with highest total points across the entire league
+  const userTotals = userIds.map((uid) => ({
+    userId: uid,
+    user: userReports[uid].user,
+    totalPoints: userReports[uid].seasonStats.totalPointsScored,
+  })).sort((a, b) => b.totalPoints - a.totalPoints)
+  const topScorerEntry = userTotals[0] || null
+  const topScorer = topScorerEntry ? {
+    user: topScorerEntry.user,
+    totalPoints: topScorerEntry.totalPoints,
+    context: `Posted ${topScorerEntry.totalPoints} points across the season.`,
+  } : null
+
+  // Most Rostered Player: the player who appeared on the most rosters across all users (cumulative)
+  const playerRosterCounts = {}
+  for (const s of allSlots) {
+    const key = s.espnId || s.playerName
+    if (!playerRosterCounts[key]) {
+      playerRosterCounts[key] = {
+        playerName: s.playerName,
+        espnId: s.espnId,
+        timesRostered: 0,
+        totalPoints: 0,
+      }
+    }
+    playerRosterCounts[key].timesRostered++
+    playerRosterCounts[key].totalPoints += s.points
+  }
+  const mostRosteredEntry = Object.values(playerRosterCounts)
+    .sort((a, b) => b.timesRostered - a.timesRostered)[0]
+  const mostRosteredPlayer = mostRosteredEntry ? {
+    playerName: mostRosteredEntry.playerName,
+    headshot: headshotMap[mostRosteredEntry.espnId] || null,
+    timesRostered: mostRosteredEntry.timesRostered,
+    totalPoints: Math.round(mostRosteredEntry.totalPoints * 10) / 10,
+    context: `Showed up on ${mostRosteredEntry.timesRostered} rosters across the season.`,
+  } : null
+
+  // Most Contrarian Pick: highest-scoring single play where exactly ONE user had that
+  // player on a given contest day. The lone wolf moment.
+  // Group slots by (date, playerKey) → list of userIds
+  const dayPlayerMap = {}
+  for (const s of allSlots) {
+    const playerKey = s.espnId || s.playerName
+    const key = `${s.date}|${playerKey}`
+    if (!dayPlayerMap[key]) {
+      dayPlayerMap[key] = { playerName: s.playerName, espnId: s.espnId, date: s.date, points: s.points, userIds: new Set() }
+    }
+    dayPlayerMap[key].userIds.add(s.userId)
+  }
+  const contrarianCandidates = Object.values(dayPlayerMap)
+    .filter((entry) => entry.userIds.size === 1 && entry.points > 0)
+    .sort((a, b) => b.points - a.points)
+  const contrarianTop = contrarianCandidates[0]
+  const mostContrarianPick = contrarianTop ? (() => {
+    const onlyUserId = [...contrarianTop.userIds][0]
+    const onlyUser = userMap[onlyUserId]
+    return {
+      playerName: contrarianTop.playerName,
+      headshot: headshotMap[contrarianTop.espnId] || null,
+      date: contrarianTop.date,
+      points: Math.round(contrarianTop.points * 10) / 10,
+      user: onlyUser ? {
+        id: onlyUserId,
+        username: onlyUser.username,
+        displayName: onlyUser.display_name || onlyUser.username,
+        avatarUrl: onlyUser.avatar_url,
+        avatarEmoji: onlyUser.avatar_emoji,
+      } : null,
+      context: `Only ${onlyUser?.display_name || onlyUser?.username || 'this manager'} had them — paid off with ${Math.round(contrarianTop.points * 10) / 10} points.`,
+    }
+  })() : null
+
   return {
     contestDays: contestDays.length,
     generatedAt: new Date().toISOString(),
+    leagueAwards: {
+      topScorer,
+      mostRosteredPlayer,
+      mostContrarianPick,
+    },
     users: userReports,
   }
+}
+
+async function generateNflSalaryCapReport(leagueId) {
+  // Fetch all rosters with slots and player info (joined for headshots)
+  const { data: rosters } = await supabase
+    .from('dfs_rosters')
+    .select(`
+      id, user_id, nfl_week, season, total_points,
+      dfs_roster_slots(player_id, salary, points_earned, roster_slot,
+        nfl_players(id, full_name, headshot_url, espn_id))
+    `)
+    .eq('league_id', leagueId)
+
+  if (!rosters?.length) return null
+
+  const contestWeeks = [...new Set(rosters.map((r) => r.nfl_week))]
+  if (contestWeeks.length < MIN_NFL_WEEKS) {
+    logger.info({ leagueId, weeks: contestWeeks.length }, 'Not enough weeks for NFL salary cap report')
+    return null
+  }
+
+  // Build per-roster point totals from nfl_player_stats so the report respects
+  // the league's actual scoring format (PPR / Half PPR / Standard).
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('scoring_format')
+    .eq('league_id', leagueId)
+    .single()
+  const scoringKey = settings?.scoring_format === 'ppr' ? 'pts_ppr'
+    : settings?.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+
+  const allPlayerIds = [...new Set(rosters.flatMap((r) => (r.dfs_roster_slots || []).map((s) => s.player_id)).filter(Boolean))]
+  const allWeeks = contestWeeks
+  const seasonsArr = [...new Set(rosters.map((r) => r.season))]
+
+  let statsRows = []
+  if (allPlayerIds.length) {
+    const { data } = await supabase
+      .from('nfl_player_stats')
+      .select(`player_id, week, season, ${scoringKey}`)
+      .in('player_id', allPlayerIds)
+      .in('week', allWeeks)
+      .in('season', seasonsArr)
+    statsRows = data || []
+  }
+  const statsMap = {}
+  for (const st of statsRows) {
+    statsMap[`${st.player_id}|${st.week}|${st.season}`] = Number(st[scoringKey]) || 0
+  }
+
+  // Headshot map (player_id → url)
+  const headshotMap = {}
+  for (const r of rosters) {
+    for (const slot of r.dfs_roster_slots || []) {
+      if (slot.nfl_players?.headshot_url && !headshotMap[slot.player_id]) {
+        headshotMap[slot.player_id] = slot.nfl_players.headshot_url
+      }
+    }
+  }
+
+  // Weekly results for win tracking
+  const { data: weeklyResults } = await supabase
+    .from('dfs_weekly_results')
+    .select('user_id, nfl_week, total_points, week_rank, is_week_winner')
+    .eq('league_id', leagueId)
+
+  // Members
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', leagueId)
+  const userMap = {}
+  for (const m of members || []) userMap[m.user_id] = m.users
+
+  // Normalize rosters to the buildReport shape (date = week, espnId = player_id, playerName from nfl_players)
+  const normalizedRosters = rosters.map((r) => ({
+    id: r.id,
+    user_id: r.user_id,
+    game_date: r.nfl_week, // reuse field as 'period key'
+    total_points: r.total_points,
+    nba_dfs_roster_slots: (r.dfs_roster_slots || []).map((slot) => ({
+      player_name: slot.nfl_players?.full_name || 'Unknown',
+      espn_player_id: slot.player_id, // use player_id as canonical key
+      salary: slot.salary,
+      points_earned: statsMap[`${slot.player_id}|${r.nfl_week}|${r.season}`] || Number(slot.points_earned) || 0,
+      roster_slot: slot.roster_slot,
+    })),
+  }))
+
+  // Normalize weekly results to the same shape buildReport expects (game_date instead of nfl_week)
+  const normalizedNightlyResults = (weeklyResults || []).map((wr) => ({
+    user_id: wr.user_id,
+    game_date: wr.nfl_week,
+    total_points: wr.total_points,
+    night_rank: wr.week_rank,
+    is_night_winner: wr.is_week_winner,
+  }))
+
+  const report = buildReport(normalizedRosters, headshotMap, normalizedNightlyResults, userMap, contestWeeks)
+  // Replace contestDays with contestWeeks for clarity in the payload
+  report.contestWeeks = report.contestDays
+  delete report.contestDays
+  report.format = 'nfl_salary_cap'
+
+  const { error } = await supabase
+    .from('dfs_league_reports')
+    .upsert({ league_id: leagueId, report_data: report, generated_at: new Date().toISOString() }, { onConflict: 'league_id' })
+
+  if (error) {
+    logger.error({ error, leagueId }, 'Failed to store NFL salary cap report')
+    return null
+  }
+
+  logger.info({ leagueId, weeks: contestWeeks.length }, 'NFL salary cap report generated')
+  return report
 }
 
 async function fetchNbaHeadshots(espnIds, dates) {

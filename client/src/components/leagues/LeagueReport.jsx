@@ -170,6 +170,42 @@ function UserReport({ report, isMe }) {
   )
 }
 
+function AwardCard({ title, user, rightValue, context }) {
+  return (
+    <div className="bg-bg-card rounded-xl border border-text-primary/20 p-3">
+      <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">{title}</div>
+      <div className="flex items-center gap-3">
+        {user && <Avatar user={user} size="sm" />}
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-bold text-text-primary truncate">{user?.displayName || user?.username || 'Unknown'}</div>
+        </div>
+        {rightValue && <div className="font-display text-lg text-accent">{rightValue}</div>}
+      </div>
+      {context && <div className="text-[11px] text-text-muted mt-2">{context}</div>}
+    </div>
+  )
+}
+
+function PlayerAwardCard({ title, playerName, headshot, rightValue, context }) {
+  return (
+    <div className="bg-bg-card rounded-xl border border-text-primary/20 p-3">
+      <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">{title}</div>
+      <div className="flex items-center gap-3">
+        {headshot ? (
+          <img src={headshot} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0" />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0" />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-bold text-text-primary truncate">{playerName}</div>
+        </div>
+        {rightValue && <div className="font-display text-lg text-accent">{rightValue}</div>}
+      </div>
+      {context && <div className="text-[11px] text-text-muted mt-2">{context}</div>}
+    </div>
+  )
+}
+
 export default function LeagueReport({ leagueId, onClose }) {
   const { profile } = useAuth()
   const { data, isLoading, error } = useLeagueReport(leagueId)
@@ -185,7 +221,7 @@ export default function LeagueReport({ leagueId, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={onClose}>
       <div className="bg-bg-secondary rounded-2xl p-6 text-center max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
         <p className="text-text-primary font-semibold mb-2">No Report Available</p>
-        <p className="text-text-muted text-sm">Reports are generated when a league completes with 10+ contest days.</p>
+        <p className="text-text-muted text-sm">Reports are generated when a league completes with enough contest days (10+ for NBA/MLB, 6+ weeks for NFL).</p>
         <button onClick={onClose} className="mt-4 text-accent text-sm font-semibold">Close</button>
       </div>
     </div>
@@ -237,7 +273,43 @@ export default function LeagueReport({ leagueId, onClose }) {
 
         {/* Report content */}
         <div className="p-4">
-          <div className="text-xs text-text-muted text-center mb-4">{report.contestDays} contest days</div>
+          <div className="text-xs text-text-muted text-center mb-4">
+            {report.contestWeeks ? `${report.contestWeeks} weeks` : `${report.contestDays} contest days`}
+          </div>
+
+          {/* League-wide awards */}
+          {report.leagueAwards && (
+            <div className="mb-6 space-y-3">
+              <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">League Awards</h4>
+              {report.leagueAwards.topScorer && (
+                <AwardCard
+                  title="Top Scorer Overall"
+                  user={report.leagueAwards.topScorer.user}
+                  rightValue={`${report.leagueAwards.topScorer.totalPoints} pts`}
+                  context={report.leagueAwards.topScorer.context}
+                />
+              )}
+              {report.leagueAwards.mostRosteredPlayer && (
+                <PlayerAwardCard
+                  title="Most Rostered Player"
+                  playerName={report.leagueAwards.mostRosteredPlayer.playerName}
+                  headshot={report.leagueAwards.mostRosteredPlayer.headshot}
+                  rightValue={`${report.leagueAwards.mostRosteredPlayer.timesRostered}x`}
+                  context={report.leagueAwards.mostRosteredPlayer.context}
+                />
+              )}
+              {report.leagueAwards.mostContrarianPick && (
+                <PlayerAwardCard
+                  title="Most Contrarian Pick"
+                  playerName={report.leagueAwards.mostContrarianPick.playerName}
+                  headshot={report.leagueAwards.mostContrarianPick.headshot}
+                  rightValue={`${report.leagueAwards.mostContrarianPick.points} pts`}
+                  context={report.leagueAwards.mostContrarianPick.context}
+                />
+              )}
+            </div>
+          )}
+
           {currentReport ? (
             <UserReport report={currentReport} isMe={currentUserId === profile?.id} />
           ) : (
