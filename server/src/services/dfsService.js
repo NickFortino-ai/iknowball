@@ -215,6 +215,98 @@ export async function getWeeklyResults(leagueId, week) {
 }
 
 /**
+ * Score every NFL salary cap (DFS) league for a given week+season.
+ * Builds dfs_weekly_results rows with total_points, week_rank, is_week_winner.
+ *
+ * Should be called after nfl_player_stats is up to date for the week
+ * (e.g. immediately after syncWeeklyStats). Uses the league's
+ * fantasy_settings.scoring_format for the points field.
+ */
+export async function scoreNflDfsWeek(week, season) {
+  // 1. All rosters for this week+season across every league
+  const { data: rosters } = await supabase
+    .from('dfs_rosters')
+    .select('id, league_id, user_id, dfs_roster_slots(player_id)')
+    .eq('nfl_week', week)
+    .eq('season', season)
+
+  if (!rosters?.length) {
+    logger.info({ week, season }, 'NFL DFS scoring: no rosters for week')
+    return { scored: 0 }
+  }
+
+  // 2. Per-league scoring format (default half_ppr)
+  const leagueIds = [...new Set(rosters.map((r) => r.league_id))]
+  const { data: settingsRows } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, scoring_format')
+    .in('league_id', leagueIds)
+
+  const scoringByLeague = {}
+  for (const s of settingsRows || []) {
+    scoringByLeague[s.league_id] = s.scoring_format === 'ppr' ? 'pts_ppr'
+      : s.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+  }
+
+  // 3. All player stats for the rostered player ids this week
+  const allPlayerIds = [...new Set(
+    rosters.flatMap((r) => (r.dfs_roster_slots || []).map((s) => s.player_id)).filter(Boolean)
+  )]
+
+  let statsMap = {}
+  if (allPlayerIds.length) {
+    const { data: stats } = await supabase
+      .from('nfl_player_stats')
+      .select('player_id, pts_ppr, pts_half_ppr, pts_std')
+      .eq('week', week)
+      .eq('season', season)
+      .in('player_id', allPlayerIds)
+
+    for (const st of stats || []) statsMap[st.player_id] = st
+  }
+
+  // 4. Aggregate per league
+  const leagueRosters = {}
+  for (const r of rosters) {
+    if (!leagueRosters[r.league_id]) leagueRosters[r.league_id] = []
+    const scoringKey = scoringByLeague[r.league_id] || 'pts_half_ppr'
+    const total = (r.dfs_roster_slots || []).reduce((sum, slot) => {
+      const st = statsMap[slot.player_id]
+      return sum + (st ? Number(st[scoringKey]) || 0 : 0)
+    }, 0)
+    leagueRosters[r.league_id].push({ userId: r.user_id, totalPoints: total })
+  }
+
+  // 5. Upsert dfs_weekly_results rows per league
+  let scored = 0
+  for (const [leagueId, entries] of Object.entries(leagueRosters)) {
+    entries.sort((a, b) => b.totalPoints - a.totalPoints)
+    const results = entries.map((e, i) => ({
+      league_id: leagueId,
+      user_id: e.userId,
+      nfl_week: week,
+      season,
+      total_points: e.totalPoints,
+      week_rank: i + 1,
+      is_week_winner: i === 0,
+    }))
+
+    const { error } = await supabase
+      .from('dfs_weekly_results')
+      .upsert(results, { onConflict: 'league_id,user_id,nfl_week,season' })
+
+    if (error) {
+      logger.error({ error, leagueId, week, season }, 'Failed to upsert NFL DFS weekly results')
+    } else {
+      scored += results.length
+    }
+  }
+
+  logger.info({ week, season, scored, leagues: leagueIds.length }, 'NFL DFS week scoring complete')
+  return { scored }
+}
+
+/**
  * Auto-generate salaries from player projections/rankings.
  */
 /**

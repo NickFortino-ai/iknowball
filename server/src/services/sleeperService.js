@@ -195,6 +195,16 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
   }
 
   logger.info({ upserted, total: rows.length, season, week }, 'Weekly stats sync complete')
+
+  // After stats are upserted, score every NFL salary cap (DFS) league for this week
+  // so dfs_weekly_results / wins / standings stay current.
+  try {
+    const { scoreNflDfsWeek } = await import('./dfsService.js')
+    await scoreNflDfsWeek(week, season)
+  } catch (err) {
+    logger.error({ err, season, week }, 'NFL DFS weekly scoring failed after stats sync')
+  }
+
   return { upserted, total: rows.length }
 }
 

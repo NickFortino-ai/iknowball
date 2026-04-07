@@ -641,6 +641,14 @@ router.post('/fantasy/sync-stats', async (req, res) => {
   res.json(result)
 })
 
+router.post('/fantasy/score-nfl-dfs-week', async (req, res) => {
+  const { season = 2026, week } = req.body
+  if (!week) return res.status(400).json({ error: 'week required' })
+  const { scoreNflDfsWeek } = await import('../services/dfsService.js')
+  const result = await scoreNflDfsWeek(week, season)
+  res.json(result)
+})
+
 router.post('/fantasy/sync-projections', async (req, res) => {
   const season = req.body.season || 2026
   const result = await syncProjections(season)
