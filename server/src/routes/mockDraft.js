@@ -13,19 +13,30 @@ const router = Router()
  * (bots + UI) without further API calls.
  */
 router.get('/players', requireAuth, async (req, res) => {
+  // Pull a wide pool, then sort client-side by best-available signal:
+  // adp_half_ppr (most accurate) → adp_ppr → search_rank fallback.
   const { data, error } = await supabase
     .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std')
+    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, adp_ppr, adp_half_ppr')
     .eq('status', 'Active')
     .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
     .not('team', 'is', null)
-    // Sleeper's search_rank IS the ADP-equivalent — order primarily by it.
-    // Projection columns can be sparse pre-season; ADP rank is always populated.
     .order('search_rank', { ascending: true, nullsFirst: false })
-    .limit(300)
+    .limit(500)
 
   if (error) return res.status(500).json({ error: error.message })
-  res.json(data || [])
+
+  // Composite ADP score: prefer adp_half_ppr → adp_ppr → search_rank
+  // (lower is better in all three). Truncate to top 300.
+  const sorted = (data || [])
+    .map((p) => ({
+      ...p,
+      _adp: p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999,
+    }))
+    .sort((a, b) => a._adp - b._adp)
+    .slice(0, 300)
+
+  res.json(sorted)
 })
 
 // Mock draft player detail — same shape as the league endpoint, no league context

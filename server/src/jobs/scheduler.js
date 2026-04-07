@@ -23,6 +23,7 @@ import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
 import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.js'
+import { syncPlayers, syncProjections } from '../services/sleeperService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
 import { computeFantasyGlobalRankings } from './computeFantasyGlobalRankings.js'
 
@@ -148,6 +149,16 @@ export function startScheduler() {
     // Auto backs off if Sleeper ever returns 429.
     startNflStatsTickLoop()
     logger.info('NFL stats tick loop started: 15s during game windows, 5m otherwise')
+
+    // NFL player roster + ADP / projection sync — daily at 3 AM ET. Keeps
+    // search_rank, adp_ppr, adp_half_ppr, projected_pts_* fresh so the
+    // mock + real draft browser reflects current ADP as we approach the
+    // season and through the actual draft window.
+    cron.schedule('0 3 * * *', async () => {
+      try { await syncPlayers() } catch (err) { logger.error({ err }, 'NFL syncPlayers job failed') }
+      try { await syncProjections() } catch (err) { logger.error({ err }, 'NFL syncProjections job failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('NFL player + projection sync scheduled: nightly 3:00 AM ET')
 
     // Fantasy draft autopick — checks every 10s for expired pick clocks
     import('../services/fantasyService.js').then(({ startDraftAutopickLoop }) => {

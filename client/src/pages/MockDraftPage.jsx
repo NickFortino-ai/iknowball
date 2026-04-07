@@ -14,12 +14,14 @@ import DraftPlayerDetailModal from '../components/leagues/DraftPlayerDetailModal
 
 const PERSONALITIES = ['Best Available', 'Zero RB', 'RB Heavy', 'Early QB', 'Reacher']
 
-// Compare two players by ADP (lower search_rank = earlier ADP = better).
-// Falls back to scoring projection if search_rank is missing.
+// Compare two players by ADP (lower = earlier draft = better).
+// Prefers real adp_half_ppr → adp_ppr → search_rank, then projection as final tiebreaker.
+function adpScore(p) {
+  return p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999
+}
 function adpCompare(a, b, scoringKey) {
-  const ar = a.search_rank ?? 9999
-  const br = b.search_rank ?? 9999
-  if (ar !== br) return ar - br
+  const diff = adpScore(a) - adpScore(b)
+  if (diff !== 0) return diff
   return (b[scoringKey] || 0) - (a[scoringKey] || 0)
 }
 
