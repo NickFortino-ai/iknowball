@@ -221,6 +221,36 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose }) {
                 currentWeek={data.current_week}
               />
             </div>
+
+            {/* News & Updates */}
+            {data.news && data.news.length > 0 && (
+              <div>
+                <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">News & Updates</h3>
+                <div className="space-y-2">
+                  {data.news.map((article, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-xl border border-text-primary/10 bg-bg-card p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h4 className="text-sm font-bold text-text-primary leading-snug">{article.headline}</h4>
+                        {article.type && (
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-accent/20 text-accent shrink-0">{article.type}</span>
+                        )}
+                      </div>
+                      {article.description && (
+                        <p className="text-xs text-text-secondary leading-relaxed">{article.description}</p>
+                      )}
+                      {article.published && (
+                        <div className="text-[10px] text-text-muted mt-1.5">
+                          {new Date(article.published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

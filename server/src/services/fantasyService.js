@@ -814,6 +814,41 @@ export async function generateMatchups(leagueId) {
 // PLAYER DETAIL
 // =====================================================================
 
+// In-memory cache for ESPN player news (espn_id → { fetchedAt, items })
+const PLAYER_NEWS_CACHE = new Map()
+const PLAYER_NEWS_TTL_MS = 30 * 60 * 1000 // 30 minutes
+
+async function fetchEspnPlayerNews(espnId) {
+  if (!espnId) return []
+  const cached = PLAYER_NEWS_CACHE.get(espnId)
+  if (cached && Date.now() - cached.fetchedAt < PLAYER_NEWS_TTL_MS) {
+    return cached.items
+  }
+  try {
+    const res = await fetch(`https://site.api.espn.com/apis/common/v3/sports/football/nfl/athletes/${espnId}/news`)
+    if (!res.ok) {
+      logger.warn({ espnId, status: res.status }, 'ESPN player news fetch failed')
+      return []
+    }
+    const data = await res.json()
+    const items = (data.articles || []).slice(0, 15).map((a) => ({
+      headline: a.headline || a.shortHeadline || null,
+      description: a.description || null,
+      type: a.type || null,
+      published: a.published || null,
+      images: (a.images || [])
+        .filter((img) => img.url)
+        .slice(0, 1)
+        .map((img) => ({ url: img.url, alt: img.alt || null })),
+    })).filter((a) => a.headline)
+    PLAYER_NEWS_CACHE.set(espnId, { fetchedAt: Date.now(), items })
+    return items
+  } catch (err) {
+    logger.error({ err, espnId }, 'Failed to fetch ESPN player news')
+    return []
+  }
+}
+
 /**
  * Get a player's full detail for a fantasy league context:
  *   - profile (name, position, team, headshot, injury_status)
@@ -910,6 +945,9 @@ export async function getPlayerDetail(leagueId, playerId) {
     }
   }
 
+  // ESPN player news (commentary, recaps, analysis, fantasy notes)
+  const news = await fetchEspnPlayerNews(player.espn_id)
+
   return {
     player: {
       id: player.id,
@@ -936,6 +974,7 @@ export async function getPlayerDetail(leagueId, playerId) {
     current_week: currentWeek,
     weekly_stats: weeklyStats,
     injury_detail: injuryDetail,
+    news,
   }
 }
 
