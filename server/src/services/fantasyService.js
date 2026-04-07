@@ -873,6 +873,116 @@ export async function setDraftQueue(leagueId, userId, playerIds) {
 }
 
 /**
+ * Build the draft-context view of a player. Returns prior-season totals,
+ * per-week log, ADP rank, projection, injury info, and recent news.
+ *
+ * Used by the new DraftPlayerDetailModal during the draft. The existing
+ * in-season getPlayerDetail / PlayerDetailModal is intentionally untouched
+ * so the in-season experience can never be broken by changes here.
+ *
+ * If `leagueId` is provided we use that league's scoring rules; otherwise
+ * (mock draft) we fall back to the requested scoring_format.
+ */
+export async function getDraftPlayerDetail(playerId, { leagueId = null, scoringFormat = 'ppr' } = {}) {
+  // Player core
+  const { data: player } = await supabase
+    .from('nfl_players')
+    .select('id, full_name, position, team, headshot_url, injury_status, injury_body_part, bye_week, search_rank, projected_pts_ppr, projected_pts_half_ppr, projected_pts_std, age, years_exp, college, height, weight, espn_id')
+    .eq('id', playerId)
+    .single()
+
+  if (!player) {
+    const err = new Error('Player not found')
+    err.status = 404
+    throw err
+  }
+
+  // Resolve scoring rules — league overrides take precedence
+  let rules = null
+  let resolvedScoring = scoringFormat
+  if (leagueId) {
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('scoring_format, scoring_rules')
+      .eq('league_id', leagueId)
+      .single()
+    if (settings) {
+      resolvedScoring = settings.scoring_format
+      rules = settings.scoring_rules
+    }
+  }
+  if (!rules) {
+    rules = buildScoringRulesFromPreset(resolvedScoring)
+  }
+
+  // Find the most recent season for which we have stats for this player
+  const { data: latestRow } = await supabase
+    .from('nfl_player_stats')
+    .select('season')
+    .eq('player_id', playerId)
+    .order('season', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  let priorSeason = null
+  let weeklyStats = []
+  let priorTotals = null
+  if (latestRow?.season) {
+    priorSeason = latestRow.season
+    const { data: rows } = await supabase
+      .from('nfl_player_stats')
+      .select('*')
+      .eq('player_id', playerId)
+      .eq('season', priorSeason)
+      .order('week', { ascending: true })
+
+    weeklyStats = (rows || []).map((w) => ({
+      ...w,
+      pts: Number(applyScoringRules(w, rules).toFixed(2)),
+    }))
+
+    if (weeklyStats.length) {
+      const totals = {}
+      const numericKeys = [
+        'pass_att','pass_cmp','pass_yd','pass_td','pass_int',
+        'rush_att','rush_yd','rush_td',
+        'rec_tgt','rec','rec_yd','rec_td',
+        'fum_lost','two_pt',
+        'fgm','fga','fgm_0_39','fgm_40_49','fgm_50_plus','xpm','xpa',
+        'def_td','def_int','def_sack','def_fum_rec','def_safety',
+      ]
+      for (const k of numericKeys) totals[k] = 0
+      let totalPts = 0
+      for (const w of weeklyStats) {
+        for (const k of numericKeys) totals[k] += Number(w[k]) || 0
+        totalPts += w.pts || 0
+      }
+      priorTotals = {
+        season: priorSeason,
+        games_played: weeklyStats.length,
+        total_pts: Number(totalPts.toFixed(1)),
+        avg_pts: Number((totalPts / weeklyStats.length).toFixed(1)),
+        ...totals,
+      }
+    }
+  }
+
+  // News (reuse the helper used by the in-season modal)
+  let news = []
+  try {
+    news = await fetchEspnPlayerNews(player.espn_id, player.position)
+  } catch {}
+
+  return {
+    player,
+    scoring: { format: resolvedScoring, rules },
+    prior: priorTotals,
+    weekly_stats: weeklyStats,
+    news,
+  }
+}
+
+/**
  * Pre-start heads-up: 10 minutes before a draft is scheduled to start, send
  * every league member a notification. Deduped via draft_pre_start_notified_at.
  */

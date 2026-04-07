@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
+import { getDraftPlayerDetail } from '../services/fantasyService.js'
 
 const router = Router()
 
@@ -25,6 +26,17 @@ router.get('/players', requireAuth, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message })
   res.json(data || [])
+})
+
+// Mock draft player detail — same shape as the league endpoint, no league context
+router.get('/players/:playerId/detail', requireAuth, async (req, res) => {
+  const scoring = req.query.scoring || 'ppr'
+  try {
+    const data = await getDraftPlayerDetail(req.params.playerId, { scoringFormat: scoring })
+    res.json(data)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
 })
 
 export default router

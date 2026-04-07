@@ -748,6 +748,22 @@ export function useResumeDraft() {
   })
 }
 
+export function useDraftPlayerDetail(leagueId, playerId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'draft-player-detail', playerId],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/draft-player-detail/${playerId}`),
+    enabled: !!leagueId && !!playerId,
+  })
+}
+
+export function useMockDraftPlayerDetail(playerId, scoring) {
+  return useQuery({
+    queryKey: ['mock-draft', 'player-detail', playerId, scoring],
+    queryFn: () => api.get(`/mock-draft/players/${playerId}/detail?scoring=${encodeURIComponent(scoring || 'ppr')}`),
+    enabled: !!playerId,
+  })
+}
+
 export function useGlobalRank(leagueId, enabled = true) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'globalRank'],

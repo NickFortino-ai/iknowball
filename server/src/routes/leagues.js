@@ -847,6 +847,7 @@ import {
   setMyRankings,
   resetMyRankings,
   getGlobalRank,
+  getDraftPlayerDetail,
   getRoster,
   searchAvailablePlayers,
   generateMatchups,
@@ -929,6 +930,12 @@ router.post('/:id/fantasy/draft/offline-pick', requireAuth, async (req, res) => 
 // Get draft board
 router.get('/:id/fantasy/draft', requireAuth, async (req, res) => {
   const data = await getDraftBoard(req.params.id)
+  res.json(data)
+})
+
+// Draft-context player detail (separate from in-season player detail)
+router.get('/:id/fantasy/draft-player-detail/:playerId', requireAuth, async (req, res) => {
+  const data = await getDraftPlayerDetail(req.params.playerId, { leagueId: req.params.id })
   res.json(data)
 })
 

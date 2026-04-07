@@ -59,6 +59,12 @@ const CHECKS = [
       .limit(0),
   },
   {
+    name: 'nfl_player_stats (draft modal source)',
+    fn: () => supabase.from('nfl_player_stats')
+      .select('player_id, season, week, pass_yd, pass_td, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, fgm, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, pts_ppr, pts_half_ppr, pts_std')
+      .limit(0),
+  },
+  {
     name: 'fantasy_global_rankings',
     fn: () => supabase.from('fantasy_global_rankings')
       .select('id, format_hash, league_id, user_id, total_points, games_played, rank_in_group')
