@@ -115,6 +115,25 @@ router.get('/live', async (req, res) => {
     for (const st of stats || []) statsMap[st.player_id] = st
   }
 
+  // Season averages for per-player projection
+  const seasonAvgMap = {}
+  if (allPlayerIds.length) {
+    const { data: seasonStats } = await supabase
+      .from('nfl_player_stats')
+      .select('player_id, pts_half_ppr')
+      .eq('season', s)
+      .in('player_id', [...new Set(allPlayerIds)])
+    const totals = {}
+    for (const st of seasonStats || []) {
+      if (!totals[st.player_id]) totals[st.player_id] = { total: 0, games: 0 }
+      totals[st.player_id].total += Number(st.pts_half_ppr) || 0
+      totals[st.player_id].games++
+    }
+    for (const [pid, t] of Object.entries(totals)) {
+      seasonAvgMap[pid] = t.games > 0 ? t.total / t.games : 0
+    }
+  }
+
   // Fetch NFL game statuses for this week from ESPN
   let gameStatuses = {} // team abbreviation → 'pre' | 'in' | 'post'
   let gameScores = {} // team abbreviation → { homeAbbrev, awayAbbrev, homeScore, awayScore, period, clock }
@@ -175,6 +194,16 @@ router.get('/live', async (req, res) => {
         injury_status: visible ? (player.injury_status || null) : null,
         salary: visible ? slot.salary : null,
         points_earned: status === 'live' || status === 'final' ? Number(slot.points_earned) || (stat ? Number(stat.pts_half_ppr) : 0) : 0,
+        projected: (() => {
+          const seasonAvg = seasonAvgMap[slot.player_id] || 0
+          const currentPts = status === 'live' || status === 'final'
+            ? (Number(slot.points_earned) || (stat ? Number(stat.pts_half_ppr) : 0) || 0)
+            : 0
+          if (status === 'final') return Math.round(currentPts * 10) / 10
+          const period = gs.period ? Math.min(parseInt(gs.period, 10), 4) : 0
+          const progress = status === 'live' ? Math.min(0.25 * period + 0.05, 1) : 0
+          return Math.round((currentPts + seasonAvg * (1 - progress)) * 10) / 10
+        })(),
         game_status: status,
         game_period: gs.period || null,
         game_clock: gs.clock || null,
@@ -206,6 +235,7 @@ router.get('/live', async (req, res) => {
     })
 
     const totalPoints = slots.reduce((sum, s) => sum + (s.points_earned || 0), 0)
+    const totalProjected = slots.reduce((sum, s) => sum + (s.projected || 0), 0)
     const hasLive = slots.some((s) => s.game_status === 'live')
     const allDone = slots.length > 0 && slots.every((s) => s.game_status === 'final')
 
@@ -213,6 +243,7 @@ router.get('/live', async (req, res) => {
       user: m.users,
       user_id: m.user_id,
       total_points: totalPoints,
+      projected_points: Math.round(totalProjected * 10) / 10,
       status: allDone ? 'final' : hasLive ? 'live' : 'upcoming',
       has_roster: !!roster,
       slots,

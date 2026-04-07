@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import { SkeletonCard } from '../ui/Skeleton'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 
@@ -255,7 +256,12 @@ export default function FantasyTrades({ league }) {
   const respond = useRespondToTrade(league.id)
   const [showProposeModal, setShowProposeModal] = useState(false)
 
-  if (isLoading) return <LoadingSpinner />
+  if (isLoading) return (
+    <div className="space-y-3">
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  )
 
   const pending = (trades || []).filter((t) => t.status === 'pending')
   const completed = (trades || []).filter((t) => t.status !== 'pending')

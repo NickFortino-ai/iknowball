@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useFantasyRoster, useSetFantasyLineup } from '../../hooks/useLeagues'
-import LoadingSpinner from '../ui/LoadingSpinner'
+import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
 
 const INJURY_COLORS = {
@@ -116,7 +116,26 @@ export default function FantasyMyTeam({ league }) {
     return map
   }, [roster, draftSlots])
 
-  if (isLoading) return <LoadingSpinner />
+  if (isLoading) return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <SkeletonBlock className="h-4 w-32" />
+        </div>
+        <div className="p-3">
+          <SkeletonRows count={10} imgSize="w-9 h-9" />
+        </div>
+      </div>
+      <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border">
+          <SkeletonBlock className="h-4 w-24" />
+        </div>
+        <div className="p-3">
+          <SkeletonRows count={5} imgSize="w-9 h-9" />
+        </div>
+      </div>
+    </div>
+  )
 
   const hasRoster = roster && roster.length > 0
   if (!hasRoster) {

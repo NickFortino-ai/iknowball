@@ -3,6 +3,7 @@ import { useNflDfsLive, useFantasyMatchupLive } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import { SkeletonCard } from '../ui/Skeleton'
 import LeagueReport from './LeagueReport'
 
 const SLOT_LABELS = { QB: 'QB', RB1: 'RB', RB2: 'RB', WR1: 'WR', WR2: 'WR', WR3: 'WR', TE: 'TE', FLEX: 'FLX', DEF: 'DEF' }
@@ -64,7 +65,13 @@ function SalaryCapLive({ league, week, season }) {
   const [expandedUserId, setExpandedUserId] = useState(null)
   const [showReport, setShowReport] = useState(false)
 
-  if (isLoading) return <LoadingSpinner />
+  if (isLoading) return (
+    <div className="space-y-3">
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  )
 
   const { members, all_final } = liveData || {}
 
@@ -121,6 +128,9 @@ function SalaryCapLive({ league, week, season }) {
                   )}
                   {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
                 </div>
+                {m.projected_points != null && m.status !== 'final' && (
+                  <span className="text-[10px] text-text-muted shrink-0">Proj {m.projected_points.toFixed(1)}</span>
+                )}
                 <span className={`font-display ${all_final && idx === 0 ? 'text-2xl' : 'text-xl'} text-white`}>
                   {Math.round(m.total_points * 10) / 10}
                 </span>
@@ -179,9 +189,14 @@ function SalaryCapLive({ league, week, season }) {
                             )}
                           </div>
                           {(slot.game_status === 'live' || slot.game_status === 'final') && (
-                            <span className="text-base lg:text-lg font-display shrink-0 lg:ml-6 lg:w-12 lg:text-right text-white">
-                              {Math.round((slot.points_earned || 0) * 10) / 10}
-                            </span>
+                            <div className="flex flex-col items-end shrink-0 lg:ml-6 lg:w-16 lg:text-right">
+                              <span className="text-base lg:text-lg font-display text-white">
+                                {Math.round((slot.points_earned || 0) * 10) / 10}
+                              </span>
+                              {slot.projected != null && slot.game_status !== 'final' && (
+                                <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
+                              )}
+                            </div>
                           )}
                         </>
                       )}
@@ -203,7 +218,13 @@ function MatchupLive({ league, week, season }) {
   const { data, isLoading } = useFantasyMatchupLive(league.id, week, season)
   const [expandedMatchup, setExpandedMatchup] = useState(null)
 
-  if (isLoading) return <LoadingSpinner />
+  if (isLoading) return (
+    <div className="space-y-3">
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  )
 
   const matchups = data?.matchups || []
 
@@ -329,9 +350,14 @@ function MatchupLive({ league, week, season }) {
                               )}
                             </div>
                           </div>
-                          <span className={`text-xs font-display shrink-0 ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
-                            {slot.points > 0 ? slot.points.toFixed(1) : '—'}
-                          </span>
+                          <div className="flex flex-col items-end shrink-0">
+                            <span className={`text-xs font-display ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
+                              {slot.points > 0 ? slot.points.toFixed(1) : '—'}
+                            </span>
+                            {slot.projected != null && slot.game_status !== 'final' && (
+                              <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -370,9 +396,14 @@ function MatchupLive({ league, week, season }) {
                               )}
                             </div>
                           </div>
-                          <span className={`text-xs font-display shrink-0 ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
-                            {slot.points > 0 ? slot.points.toFixed(1) : '—'}
-                          </span>
+                          <div className="flex flex-col items-end shrink-0">
+                            <span className={`text-xs font-display ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
+                              {slot.points > 0 ? slot.points.toFixed(1) : '—'}
+                            </span>
+                            {slot.projected != null && slot.game_status !== 'final' && (
+                              <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
