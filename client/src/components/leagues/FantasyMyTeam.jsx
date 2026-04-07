@@ -3,6 +3,7 @@ import { useFantasyRoster, useSetFantasyLineup } from '../../hooks/useLeagues'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
 import PlayerDetailModal from './PlayerDetailModal'
+import FantasyGlobalRankModal from './FantasyGlobalRankModal'
 
 const INJURY_COLORS = {
   Out: 'bg-incorrect/20 text-incorrect',
@@ -108,6 +109,7 @@ export default function FantasyMyTeam({ league }) {
   const [draftSlots, setDraftSlots] = useState(null) // { [player_id]: slot }
   const [selected, setSelected] = useState(null) // { type: 'slot'|'player', key: string }
   const [detailPlayerId, setDetailPlayerId] = useState(null)
+  const [showGlobalRank, setShowGlobalRank] = useState(false)
 
   // Build a working slot-by-player map (server slot or draftSlots override)
   const slotByPlayer = useMemo(() => {
@@ -287,6 +289,24 @@ export default function FantasyMyTeam({ league }) {
 
   return (
     <div className="space-y-4">
+      <button
+        onClick={() => setShowGlobalRank(true)}
+        className="w-full rounded-xl border border-text-primary/20 bg-bg-primary p-3 flex items-center justify-between hover:bg-bg-secondary transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🏆</span>
+          <div className="text-left">
+            <div className="text-sm font-semibold text-text-primary">Global Rank</div>
+            <div className="text-[11px] text-text-muted">See how your team stacks up across IKB</div>
+          </div>
+        </div>
+        <span className="text-text-muted">→</span>
+      </button>
+
+      {showGlobalRank && (
+        <FantasyGlobalRankModal leagueId={league.id} onClose={() => setShowGlobalRank(false)} />
+      )}
+
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-text-primary">Starting Lineup</h3>

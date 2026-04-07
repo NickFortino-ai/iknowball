@@ -609,6 +609,62 @@ export async function startDraft(leagueId) {
 }
 
 /**
+ * Look up the global rank of a user's team in this league. Returns the
+ * format group definition, the user's row, and the top 10 + 2 above/below
+ * the user (sandwich) for context. Null if no group exists yet.
+ */
+export async function getGlobalRank(leagueId, userId) {
+  // First find the user's row
+  const { data: mine } = await supabase
+    .from('fantasy_global_rankings')
+    .select('format_hash, total_points, games_played, rank_in_group')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!mine) return null
+
+  // Format group details
+  const { data: group } = await supabase
+    .from('fantasy_format_groups')
+    .select('*')
+    .eq('format_hash', mine.format_hash)
+    .single()
+
+  if (!group) return null
+
+  // Top 10
+  const { data: top10 } = await supabase
+    .from('fantasy_global_rankings')
+    .select('rank_in_group, total_points, games_played, league_id, user_id, leagues(name), users(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('format_hash', mine.format_hash)
+    .order('rank_in_group', { ascending: true })
+    .limit(10)
+
+  // Sandwich (2 above, user, 2 below) — only if user is outside top 10
+  let sandwich = null
+  if (mine.rank_in_group > 10) {
+    const lo = Math.max(1, mine.rank_in_group - 2)
+    const hi = mine.rank_in_group + 2
+    const { data: surround } = await supabase
+      .from('fantasy_global_rankings')
+      .select('rank_in_group, total_points, games_played, league_id, user_id, leagues(name), users(id, username, display_name, avatar_url, avatar_emoji)')
+      .eq('format_hash', mine.format_hash)
+      .gte('rank_in_group', lo)
+      .lte('rank_in_group', hi)
+      .order('rank_in_group', { ascending: true })
+    sandwich = surround || []
+  }
+
+  return {
+    format: group,
+    me: mine,
+    top10: top10 || [],
+    sandwich,
+  }
+}
+
+/**
  * Get a user's per-league custom rankings. If empty, lazily seeds with the
  * top 200 active players ordered by the league's scoring projection.
  * Returns a flat ordered list with full player data joined.

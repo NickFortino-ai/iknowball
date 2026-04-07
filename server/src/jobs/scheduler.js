@@ -24,6 +24,7 @@ import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
 import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
+import { computeFantasyGlobalRankings } from './computeFantasyGlobalRankings.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -160,6 +161,14 @@ export function startScheduler() {
       try { await sendNflInjuryWarnings() } catch (err) { logger.error({ err }, 'NFL injury warnings job failed') }
     })
     logger.info('NFL injury warnings scheduled: every hour')
+
+    // Fantasy global rankings — recompute every night at 4:00 AM ET so users
+    // can see how their team ranks against every other team across IKB with
+    // the same exact format (roster + scoring + member count).
+    cron.schedule('0 4 * * *', async () => {
+      try { await computeFantasyGlobalRankings() } catch (err) { logger.error({ err }, 'Fantasy global rankings job failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('Fantasy global rankings scheduled: nightly 4:00 AM ET')
 
     // Fantasy waivers — process all pending claims at 3:00 AM ET Wednesdays
     cron.schedule('0 3 * * 3', async () => {

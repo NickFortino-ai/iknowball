@@ -748,6 +748,14 @@ export function useResumeDraft() {
   })
 }
 
+export function useGlobalRank(leagueId, enabled = true) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'globalRank'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/global-rank`),
+    enabled: !!leagueId && enabled,
+  })
+}
+
 export function useMyRankings(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'myRankings'],

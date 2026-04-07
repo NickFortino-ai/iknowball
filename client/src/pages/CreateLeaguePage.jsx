@@ -124,7 +124,7 @@ export default function CreateLeaguePage() {
     if (format === 'fantasy' && fantasyFormat === 'traditional') setSport('americanfootball_nfl')
     if (format === 'mlb_dfs' || format === 'hr_derby') setSport('baseball_mlb')
   }, [format, fantasyFormat])
-  const [scoringFormat, setScoringFormat] = useState('half_ppr')
+  const [scoringFormat, setScoringFormat] = useState('ppr')
   const [scoringRules, setScoringRules] = useState(null) // null = use preset
   const [numTeams, setNumTeams] = useState(10)
   const [draftPickTimer, setDraftPickTimer] = useState(90)

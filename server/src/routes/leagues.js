@@ -846,6 +846,7 @@ import {
   getMyRankings,
   setMyRankings,
   resetMyRankings,
+  getGlobalRank,
   getRoster,
   searchAvailablePlayers,
   generateMatchups,
@@ -928,6 +929,12 @@ router.post('/:id/fantasy/draft/offline-pick', requireAuth, async (req, res) => 
 // Get draft board
 router.get('/:id/fantasy/draft', requireAuth, async (req, res) => {
   const data = await getDraftBoard(req.params.id)
+  res.json(data)
+})
+
+// Get my global rank against all teams across IKB with the same format
+router.get('/:id/fantasy/global-rank', requireAuth, async (req, res) => {
+  const data = await getGlobalRank(req.params.id, req.user.id)
   res.json(data)
 })
 
