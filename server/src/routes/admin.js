@@ -127,17 +127,38 @@ router.post('/sync-odds', async (req, res) => {
   res.json({ message: 'Odds sync complete', results })
 })
 
-// Backfill an entire NFL regular season of weekly stats. Also syncs players
-// first so the FK from nfl_player_stats → nfl_players is satisfied for the
-// full roster — otherwise upsert chunks fail silently.
+// Backfill an entire NFL regular season of weekly stats. Fire-and-forget —
+// returns immediately so the gateway doesn't timeout. Watch Render logs
+// for progress and completion lines.
 router.post('/backfill-nfl-season', async (req, res) => {
   const season = parseInt(req.body?.season || req.query?.season || '2025', 10)
-  const { backfillSeasonStats, syncPlayers } = await import('../services/sleeperService.js')
-  logger.info({ season }, 'Backfill: syncing players first')
-  const playersResult = await syncPlayers()
-  logger.info({ playersResult }, 'Backfill: now syncing stats')
-  const result = await backfillSeasonStats(season)
-  res.json({ players: playersResult, ...result })
+  res.json({ status: 'started', season, note: 'Running in background. Check Render logs for completion.' })
+  // Run after responding
+  ;(async () => {
+    try {
+      const { backfillSeasonStats, syncPlayers } = await import('../services/sleeperService.js')
+      logger.info({ season }, '[backfill] step 1/2: syncing players')
+      const playersResult = await syncPlayers()
+      logger.info({ playersResult }, '[backfill] step 1/2 complete')
+      logger.info({ season }, '[backfill] step 2/2: syncing weekly stats')
+      const result = await backfillSeasonStats(season)
+      const totalUpserted = (result.weeks || []).reduce((s, w) => s + (w.upserted || 0), 0)
+      logger.info({ season, totalUpserted, weeks: result.weeks?.length }, '[backfill] DONE')
+    } catch (err) {
+      logger.error({ err, season }, '[backfill] FAILED')
+    }
+  })().catch(() => {})
+})
+
+// Quick check: how many stat rows exist for a given season
+router.get('/nfl-season-stats-count', async (req, res) => {
+  const season = parseInt(req.query?.season || '2025', 10)
+  const { count, error } = await supabase
+    .from('nfl_player_stats')
+    .select('id', { count: 'exact', head: true })
+    .eq('season', season)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ season, count: count || 0 })
 })
 
 router.post('/sync-injuries', async (req, res) => {
