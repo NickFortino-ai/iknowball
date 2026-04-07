@@ -80,6 +80,15 @@ router.get('/live', async (req, res) => {
     .eq('nfl_week', w)
     .eq('season', s)
 
+  // Load this league's scoring rules
+  const { data: leagueSettings } = await supabase
+    .from('fantasy_settings')
+    .select('scoring_format, scoring_rules')
+    .eq('league_id', league_id)
+    .single()
+  const { applyScoringRules, buildScoringRulesFromPreset } = await import('../services/fantasyService.js')
+  const leagueRules = leagueSettings?.scoring_rules || buildScoringRulesFromPreset(leagueSettings?.scoring_format)
+
   const rosterMap = {}
   for (const r of rosters || []) rosterMap[r.user_id] = r
 
@@ -193,12 +202,10 @@ router.get('/live', async (req, res) => {
         position: visible ? (player.position || null) : null,
         injury_status: visible ? (player.injury_status || null) : null,
         salary: visible ? slot.salary : null,
-        points_earned: status === 'live' || status === 'final' ? Number(slot.points_earned) || (stat ? Number(stat.pts_half_ppr) : 0) : 0,
+        points_earned: status === 'live' || status === 'final' ? applyScoringRules(stat, leagueRules) : 0,
         projected: (() => {
           const seasonAvg = seasonAvgMap[slot.player_id] || 0
-          const currentPts = status === 'live' || status === 'final'
-            ? (Number(slot.points_earned) || (stat ? Number(stat.pts_half_ppr) : 0) || 0)
-            : 0
+          const currentPts = status === 'live' || status === 'final' ? applyScoringRules(stat, leagueRules) : 0
           if (status === 'final') return Math.round(currentPts * 10) / 10
           const period = gs.period ? Math.min(parseInt(gs.period, 10), 4) : 0
           const progress = status === 'live' ? Math.min(0.25 * period + 0.05, 1) : 0
@@ -323,28 +330,29 @@ router.get('/matchup-live', async (req, res) => {
     }
   } catch { /* ignore */ }
 
-  // Get scoring format
+  // Get scoring rules (custom JSONB takes priority over preset)
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('scoring_format')
+    .select('scoring_format, scoring_rules')
     .eq('league_id', league_id)
     .single()
-  const scoringKey = settings?.scoring_format === 'ppr' ? 'pts_ppr' : settings?.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+  const { applyScoringRules: applyRulesH2H, buildScoringRulesFromPreset: buildRulesH2H } = await import('../services/fantasyService.js')
+  const leagueRules = settings?.scoring_rules || buildRulesH2H(settings?.scoring_format)
 
-  // Fetch season averages for projections (avg pts per game this season)
+  // Fetch season averages for projections — pull every raw stat column so we
+  // can apply the league's custom rules to each historical week, then average
   const seasonAvgMap = {}
   if (allPlayerIds.length) {
     const { data: seasonStats } = await supabase
       .from('nfl_player_stats')
-      .select(`player_id, ${scoringKey}`)
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .eq('season', s)
       .in('player_id', [...new Set(allPlayerIds)])
 
-    // Compute average per player
     const playerTotals = {}
     for (const st of seasonStats || []) {
       if (!playerTotals[st.player_id]) playerTotals[st.player_id] = { total: 0, games: 0 }
-      playerTotals[st.player_id].total += Number(st[scoringKey]) || 0
+      playerTotals[st.player_id].total += applyRulesH2H(st, leagueRules)
       playerTotals[st.player_id].games++
     }
     for (const [pid, t] of Object.entries(playerTotals)) {
@@ -377,7 +385,7 @@ router.get('/matchup-live', async (req, res) => {
     const teamState = gameStatuses[team] || 'pre'
     const status = teamState === 'in' ? 'live' : teamState === 'post' ? 'final' : 'upcoming'
     const stat = statsMap[r.player_id] || null
-    const pts = stat ? Number(stat[scoringKey]) || 0 : 0
+    const pts = applyRulesH2H(stat, leagueRules)
     const seasonAvg = seasonAvgMap[r.player_id] || 0
 
     // Projected points: actual so far + remaining fraction * season avg

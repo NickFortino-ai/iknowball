@@ -4,6 +4,7 @@ import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops } from '
 import { api } from '../lib/api'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
+import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
 
 const FORMAT_OPTIONS = [
   { value: 'fantasy', label: 'Fantasy Football', description: 'Traditional draft leagues or weekly salary cap — set lineups and compete head-to-head' },
@@ -124,6 +125,7 @@ export default function CreateLeaguePage() {
     if (format === 'mlb_dfs' || format === 'hr_derby') setSport('baseball_mlb')
   }, [format, fantasyFormat])
   const [scoringFormat, setScoringFormat] = useState('half_ppr')
+  const [scoringRules, setScoringRules] = useState(null) // null = use preset
   const [numTeams, setNumTeams] = useState(10)
   const [draftPickTimer, setDraftPickTimer] = useState(90)
   const [waiverType, setWaiverType] = useState('priority')
@@ -201,6 +203,7 @@ export default function CreateLeaguePage() {
       playoff_teams: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffTeams : undefined,
       playoff_start_week: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffStartWeek : undefined,
       championship_week: format === 'fantasy' && fantasyFormat === 'traditional' ? championshipWeek : undefined,
+      scoring_rules: format === 'fantasy' && fantasyFormat === 'traditional' && scoringRules ? scoringRules : undefined,
       salary_cap: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
       season_type: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
       champion_metric: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'full_season' ? championMetric : undefined,
@@ -622,7 +625,7 @@ export default function CreateLeaguePage() {
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => setScoringFormat(opt.value)}
+                    onClick={() => { setScoringFormat(opt.value); setScoringRules(null) }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       scoringFormat === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
                     }`}
@@ -631,6 +634,11 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
+              {format === 'fantasy' && fantasyFormat === 'traditional' && (
+                <div className="mt-3">
+                  <ScoringRulesEditor value={scoringRules} onChange={setScoringRules} />
+                </div>
+              )}
             </div>
             {/* Traditional-only settings */}
             {fantasyFormat === 'traditional' && <>

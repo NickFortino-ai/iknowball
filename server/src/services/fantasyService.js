@@ -1,6 +1,158 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 
+// =====================================================================
+// SCORING RULES
+// =====================================================================
+
+/**
+ * Default NFL fantasy scoring rules. Commissioners can override any field
+ * via fantasy_settings.scoring_rules. The "rec" field is set to 1 by default
+ * (PPR); set it to 0.5 for Half PPR or 0 for Standard.
+ *
+ * Bonuses are off by default. When enabled, each tier in the bonus arrays
+ * fires independently — so a 220-yard rusher with the default ladder gets
+ * +5 (100) +5 (150) +5 (200) = +15 bonus pts on top of regular yardage.
+ */
+export const DEFAULT_SCORING_RULES = {
+  // Passing
+  pass_yd: 0.04,        // 1 pt per 25 yards
+  pass_td: 4,
+  pass_int: -2,
+  pass_2pt: 2,
+  // Rushing
+  rush_yd: 0.1,         // 1 pt per 10 yards
+  rush_td: 6,
+  rush_2pt: 2,
+  // Receiving
+  rec: 1,               // PPR default
+  rec_yd: 0.1,
+  rec_td: 6,
+  rec_2pt: 2,
+  // Misc
+  fum_lost: -2,
+  // Kicker
+  fgm_0_39: 3,
+  fgm_40_49: 4,
+  fgm_50_plus: 5,
+  xpm: 1,
+  // Team defense
+  def_sack: 1,
+  def_int: 2,
+  def_fum_rec: 2,
+  def_td: 6,
+  def_safety: 2,
+  // Points allowed brackets (max points first)
+  def_pa_brackets: [
+    { max: 0,  pts: 10 },
+    { max: 6,  pts: 7 },
+    { max: 13, pts: 4 },
+    { max: 20, pts: 1 },
+    { max: 27, pts: 0 },
+    { max: 34, pts: -1 },
+    { max: 999, pts: -4 },
+  ],
+  // Yardage bonuses
+  bonuses_enabled: false,
+  pass_yd_bonuses: [
+    { threshold: 300, points: 5 },
+    { threshold: 350, points: 5 },
+    { threshold: 400, points: 5 },
+    { threshold: 450, points: 5 },
+  ],
+  rush_yd_bonuses: [
+    { threshold: 100, points: 5 },
+    { threshold: 150, points: 5 },
+    { threshold: 200, points: 5 },
+    { threshold: 250, points: 5 },
+    { threshold: 300, points: 5 },
+  ],
+  rec_yd_bonuses: [
+    { threshold: 100, points: 5 },
+    { threshold: 150, points: 5 },
+    { threshold: 200, points: 5 },
+    { threshold: 250, points: 5 },
+    { threshold: 300, points: 5 },
+  ],
+}
+
+/** Build a starter rule set from a preset (ppr / half_ppr / standard) */
+export function buildScoringRulesFromPreset(preset = 'half_ppr') {
+  const base = { ...DEFAULT_SCORING_RULES }
+  if (preset === 'standard') base.rec = 0
+  else if (preset === 'half_ppr') base.rec = 0.5
+  else base.rec = 1 // ppr
+  return base
+}
+
+/**
+ * Apply a league's scoring_rules to a single nfl_player_stats row and
+ * return the total fantasy points.
+ */
+export function applyScoringRules(stat, rules) {
+  if (!stat) return 0
+  const r = { ...DEFAULT_SCORING_RULES, ...(rules || {}) }
+  let pts = 0
+
+  // Passing
+  pts += (Number(stat.pass_yd) || 0) * (r.pass_yd || 0)
+  pts += (stat.pass_td || 0) * (r.pass_td || 0)
+  pts += (stat.pass_int || 0) * (r.pass_int || 0)
+
+  // Rushing
+  pts += (Number(stat.rush_yd) || 0) * (r.rush_yd || 0)
+  pts += (stat.rush_td || 0) * (r.rush_td || 0)
+
+  // Receiving
+  pts += (stat.rec || 0) * (r.rec || 0)
+  pts += (Number(stat.rec_yd) || 0) * (r.rec_yd || 0)
+  pts += (stat.rec_td || 0) * (r.rec_td || 0)
+
+  // Misc
+  pts += (stat.fum_lost || 0) * (r.fum_lost || 0)
+  pts += (stat.two_pt || 0) * (r.pass_2pt || 0) // approximate — Sleeper rolls 2pts together
+
+  // Kicker
+  pts += (stat.fgm_0_39 || 0) * (r.fgm_0_39 || 0)
+  pts += (stat.fgm_40_49 || 0) * (r.fgm_40_49 || 0)
+  pts += (stat.fgm_50_plus || 0) * (r.fgm_50_plus || 0)
+  pts += (stat.xpm || 0) * (r.xpm || 0)
+
+  // Team defense
+  pts += (Number(stat.def_sack) || 0) * (r.def_sack || 0)
+  pts += (stat.def_int || 0) * (r.def_int || 0)
+  pts += (stat.def_fum_rec || 0) * (r.def_fum_rec || 0)
+  pts += (stat.def_td || 0) * (r.def_td || 0)
+  pts += (stat.def_safety || 0) * (r.def_safety || 0)
+  if (stat.def_pts_allowed != null && Array.isArray(r.def_pa_brackets)) {
+    const pa = stat.def_pts_allowed
+    for (const b of r.def_pa_brackets) {
+      if (pa <= (b.max ?? 999)) {
+        pts += (b.pts || 0)
+        break
+      }
+    }
+  }
+
+  // Yardage bonuses
+  if (r.bonuses_enabled) {
+    const passYd = Number(stat.pass_yd) || 0
+    for (const tier of r.pass_yd_bonuses || []) {
+      if (passYd >= (tier.threshold || 0)) pts += (tier.points || 0)
+    }
+    const rushYd = Number(stat.rush_yd) || 0
+    for (const tier of r.rush_yd_bonuses || []) {
+      if (rushYd >= (tier.threshold || 0)) pts += (tier.points || 0)
+    }
+    const recYd = Number(stat.rec_yd) || 0
+    for (const tier of r.rec_yd_bonuses || []) {
+      if (recYd >= (tier.threshold || 0)) pts += (tier.points || 0)
+    }
+  }
+
+  return Math.round(pts * 100) / 100
+}
+
 /**
  * Create fantasy league settings after the league is created.
  */
@@ -22,6 +174,7 @@ export async function createFantasySettings(leagueId, settings = {}) {
     season_type,
     champion_metric,
     single_week,
+    scoring_rules,
   } = settings
 
   const { data, error } = await supabase
@@ -39,6 +192,7 @@ export async function createFantasySettings(leagueId, settings = {}) {
       playoff_start_week,
       championship_week,
       season,
+      scoring_rules: scoring_rules || buildScoringRulesFromPreset(scoring_format),
       ...(dfsFormat && { format: dfsFormat }),
       ...(salary_cap && { salary_cap }),
       ...(season_type && { season_type }),
@@ -1901,16 +2055,15 @@ export async function scoreFantasyMatchupsWeek(week, season) {
 
   const leagueIds = [...new Set(matchups.map((m) => m.league_id))]
 
-  // 2. Per-league scoring format
+  // 2. Per-league scoring rules
   const { data: settingsRows } = await supabase
     .from('fantasy_settings')
-    .select('league_id, scoring_format, format')
+    .select('league_id, scoring_format, scoring_rules, format')
     .in('league_id', leagueIds)
-  const scoringByLeague = {}
+  const rulesByLeague = {}
   const isTraditional = {}
   for (const s of settingsRows || []) {
-    scoringByLeague[s.league_id] = s.scoring_format === 'ppr' ? 'pts_ppr'
-      : s.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+    rulesByLeague[s.league_id] = s.scoring_rules || buildScoringRulesFromPreset(s.scoring_format)
     isTraditional[s.league_id] = s.format !== 'salary_cap'
   }
 
@@ -1931,21 +2084,21 @@ export async function scoreFantasyMatchupsWeek(week, season) {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pts_ppr, pts_half_ppr, pts_std')
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .eq('week', week)
       .eq('season', season)
       .in('player_id', allPlayerIds)
     for (const st of stats || []) statsMap[st.player_id] = st
   }
 
-  // 5. Sum starter points per (league, user)
+  // 5. Sum starter points per (league, user) using each league's own rules
   const userPointsMap = {} // `${leagueId}|${userId}` → sum
   for (const r of rosterRows || []) {
     if (!STARTER_SLOT_KEYS.has((r.slot || '').toLowerCase())) continue
     if (!isTraditional[r.league_id]) continue
-    const scoringKey = scoringByLeague[r.league_id] || 'pts_half_ppr'
+    const rules = rulesByLeague[r.league_id]
     const st = statsMap[r.player_id]
-    const pts = st ? Number(st[scoringKey]) || 0 : 0
+    const pts = applyScoringRules(st, rules)
     const key = `${r.league_id}|${r.user_id}`
     userPointsMap[key] = (userPointsMap[key] || 0) + pts
   }

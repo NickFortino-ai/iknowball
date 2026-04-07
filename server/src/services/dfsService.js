@@ -235,20 +235,21 @@ export async function scoreNflDfsWeek(week, season) {
     return { scored: 0 }
   }
 
-  // 2. Per-league scoring format (default half_ppr)
+  // 2. Per-league scoring rules (custom JSONB takes priority over preset)
   const leagueIds = [...new Set(rosters.map((r) => r.league_id))]
   const { data: settingsRows } = await supabase
     .from('fantasy_settings')
-    .select('league_id, scoring_format')
+    .select('league_id, scoring_format, scoring_rules')
     .in('league_id', leagueIds)
 
-  const scoringByLeague = {}
+  const { applyScoringRules, buildScoringRulesFromPreset } = await import('./fantasyService.js')
+  const rulesByLeague = {}
   for (const s of settingsRows || []) {
-    scoringByLeague[s.league_id] = s.scoring_format === 'ppr' ? 'pts_ppr'
-      : s.scoring_format === 'standard' ? 'pts_std' : 'pts_half_ppr'
+    rulesByLeague[s.league_id] = s.scoring_rules || buildScoringRulesFromPreset(s.scoring_format)
   }
 
-  // 3. All player stats for the rostered player ids this week
+  // 3. All player stats for the rostered player ids this week — pull every
+  // raw stat column so we can apply custom rules per league
   const allPlayerIds = [...new Set(
     rosters.flatMap((r) => (r.dfs_roster_slots || []).map((s) => s.player_id)).filter(Boolean)
   )]
@@ -257,7 +258,7 @@ export async function scoreNflDfsWeek(week, season) {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pts_ppr, pts_half_ppr, pts_std')
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .eq('week', week)
       .eq('season', season)
       .in('player_id', allPlayerIds)
@@ -265,14 +266,14 @@ export async function scoreNflDfsWeek(week, season) {
     for (const st of stats || []) statsMap[st.player_id] = st
   }
 
-  // 4. Aggregate per league
+  // 4. Aggregate per league using each league's own rules
   const leagueRosters = {}
   for (const r of rosters) {
     if (!leagueRosters[r.league_id]) leagueRosters[r.league_id] = []
-    const scoringKey = scoringByLeague[r.league_id] || 'pts_half_ppr'
+    const rules = rulesByLeague[r.league_id]
     const total = (r.dfs_roster_slots || []).reduce((sum, slot) => {
       const st = statsMap[slot.player_id]
-      return sum + (st ? Number(st[scoringKey]) || 0 : 0)
+      return sum + applyScoringRules(st, rules)
     }, 0)
     leagueRosters[r.league_id].push({ userId: r.user_id, totalPoints: total })
   }
