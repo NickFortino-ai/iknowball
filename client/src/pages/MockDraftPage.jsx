@@ -929,7 +929,7 @@ function ReviewScreen({ mock, onBack, onNew }) {
   }
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-yellow-500/40 bg-yellow-500/5 p-4 text-center">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 text-center">
         <div className="text-xs uppercase text-text-muted tracking-wider mb-1">Mock Complete</div>
         <div className="font-display text-lg text-text-primary">
           {mock.config.numTeams}-team {mock.config.scoring.toUpperCase()} · You picked at #{mock.config.userSlot + 1}
@@ -941,7 +941,7 @@ function ReviewScreen({ mock, onBack, onNew }) {
           const isUser = team.slot === mock.config.userSlot
           const isOpen = openTeam === team.slot
           return (
-            <div key={team.slot} className={`rounded-xl border ${isUser ? 'border-accent/40' : 'border-text-primary/15'} bg-bg-card overflow-hidden`}>
+            <div key={team.slot} className={`rounded-xl border ${isUser ? 'border-accent/40' : 'border-text-primary/20'} bg-bg-primary overflow-hidden`}>
               <button
                 onClick={() => setOpenTeam(isOpen ? -1 : team.slot)}
                 className="w-full flex items-center justify-between px-4 py-3 hover:bg-bg-secondary"

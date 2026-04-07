@@ -273,16 +273,15 @@ export default function FantasyDraftRoom({ league }) {
     )
   }
 
-  // Draft completed state
+  // Draft completed state — review screen with team accordion + board
   if (draftStatus === 'completed') {
     return (
-      <div>
-        <div className="text-center py-4 mb-4">
-          <div className="text-2xl mb-1">{'\u2705'}</div>
-          <h3 className="font-display text-lg text-text-primary">Draft Complete</h3>
-        </div>
-        <DraftBoard picks={picks} settings={settings} profileId={profile?.id} />
-      </div>
+      <CompletedDraftReview
+        league={league}
+        picks={picks}
+        settings={settings}
+        profileId={profile?.id}
+      />
     )
   }
 
@@ -718,6 +717,91 @@ function DraftLogList({ completedPicks, numTeams, profileId, listRef }) {
       {completedPicks.length === 0 && (
         <div className="text-center text-sm text-text-muted py-8">Waiting for first pick...</div>
       )}
+    </div>
+  )
+}
+
+function CompletedDraftReview({ league, picks, settings, profileId }) {
+  const [openTeam, setOpenTeam] = useState(profileId)
+  const numTeams = settings?.num_teams || 10
+  const scoringFormat = settings?.scoring_format === 'half_ppr' ? 'Half-PPR' : settings?.scoring_format === 'standard' ? 'Standard' : 'PPR'
+
+  // Group picks by user_id
+  const teamMap = new Map()
+  for (const pick of picks) {
+    if (!teamMap.has(pick.user_id)) {
+      teamMap.set(pick.user_id, {
+        userId: pick.user_id,
+        user: pick.users,
+        picks: [],
+      })
+    }
+    teamMap.get(pick.user_id).picks.push(pick)
+  }
+  // Order teams by draft order
+  const draftOrder = settings?.draft_order || []
+  const teams = draftOrder
+    .map((uid, i) => {
+      const t = teamMap.get(uid)
+      return t ? { ...t, slot: i } : null
+    })
+    .filter(Boolean)
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 text-center">
+        <div className="text-xs uppercase text-text-muted tracking-wider mb-1">Draft Complete</div>
+        <div className="font-display text-lg text-text-primary">
+          {numTeams}-team {scoringFormat}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {teams.map((team) => {
+          const isUser = team.userId === profileId
+          const isOpen = openTeam === team.userId
+          return (
+            <div
+              key={team.userId}
+              className={`rounded-xl border ${isUser ? 'border-accent/40' : 'border-text-primary/20'} bg-bg-primary overflow-hidden`}
+            >
+              <button
+                onClick={() => setOpenTeam(isOpen ? null : team.userId)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-bg-secondary"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-muted">#{team.slot + 1}</span>
+                  <span className={`text-sm font-semibold ${isUser ? 'text-accent' : 'text-text-primary'}`}>
+                    {isUser ? 'Your Team' : (team.user?.display_name || team.user?.username || 'Unknown')}
+                  </span>
+                </div>
+                <span className="text-text-muted">{isOpen ? '▾' : '▸'}</span>
+              </button>
+              {isOpen && (
+                <div className="border-t border-text-primary/10 divide-y divide-text-primary/10">
+                  {team.picks.sort((a, b) => a.pick_number - b.pick_number).map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 px-4 py-2">
+                      <span className="text-[10px] text-text-muted w-10 shrink-0">{p.round}.{((p.pick_number - 1) % numTeams) + 1}</span>
+                      {p.nfl_players?.headshot_url && (
+                        <img src={p.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-text-primary truncate">{p.nfl_players?.full_name}</div>
+                        <div className="text-[10px] text-text-muted">{p.nfl_players?.position} · {p.nfl_players?.team}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Full board for reference */}
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-2 overflow-hidden">
+        <DraftBoard picks={picks} settings={settings} profileId={profileId} />
+      </div>
     </div>
   )
 }
