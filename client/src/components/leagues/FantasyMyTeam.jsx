@@ -35,31 +35,53 @@ function InjuryBadge({ status }) {
   )
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed }) {
+function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR }) {
+  const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
+  const isInIR = row?.slot === 'ir'
   return (
-    <button
-      type="button"
-      onClick={onTap}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors text-left ${
-        isSelected ? 'border-accent bg-accent/10' : 'border-text-primary/10 bg-bg-primary hover:bg-bg-card-hover'
-      } ${dimmed ? 'opacity-40' : ''}`}
-    >
-      {row?.nfl_players?.headshot_url && (
-        <img
-          src={row.nfl_players.headshot_url}
-          alt=""
-          className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0"
-          onError={(e) => { e.target.style.display = 'none' }}
-        />
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold text-text-primary truncate">{row?.nfl_players?.full_name || 'Empty'}</span>
-          <InjuryBadge status={row?.nfl_players?.injury_status} />
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onTap}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors text-left ${
+          isSelected ? 'border-accent bg-accent/10' : 'border-text-primary/10 bg-bg-primary hover:bg-bg-card-hover'
+        } ${dimmed ? 'opacity-40' : ''}`}
+      >
+        {row?.nfl_players?.headshot_url && (
+          <img
+            src={row.nfl_players.headshot_url}
+            alt=""
+            className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-text-primary truncate">{row?.nfl_players?.full_name || 'Empty'}</span>
+            <InjuryBadge status={row?.nfl_players?.injury_status} />
+          </div>
+          <div className="text-xs text-text-muted">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
-        <div className="text-xs text-text-muted">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
-      </div>
-    </button>
+        {(canIR && !isInIR && onMoveToIR) && (
+          <span
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onMoveToIR(row.player_id) }}
+            className="text-[10px] font-bold px-2 py-1 rounded bg-incorrect/20 text-incorrect hover:bg-incorrect/30 transition-colors shrink-0 cursor-pointer"
+          >
+            → IR
+          </span>
+        )}
+        {isInIR && onMoveOutOfIR && (
+          <span
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onMoveOutOfIR(row.player_id) }}
+            className="text-[10px] font-bold px-2 py-1 rounded bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors shrink-0 cursor-pointer"
+          >
+            ← Bench
+          </span>
+        )}
+      </button>
+    </div>
   )
 }
 
@@ -225,6 +247,20 @@ export default function FantasyMyTeam({ league }) {
     setSelected(null)
   }
 
+  function handleMoveToIR(playerId) {
+    const next = { ...ensureDraft() }
+    next[playerId] = 'ir'
+    setDraftSlots(next)
+    setSelected(null)
+  }
+
+  function handleMoveOutOfIR(playerId) {
+    const next = { ...ensureDraft() }
+    next[playerId] = 'bench'
+    setDraftSlots(next)
+    setSelected(null)
+  }
+
   const isDirty = !!draftSlots && roster.some((r) => draftSlots[r.player_id] !== r.slot)
 
   return (
@@ -272,6 +308,7 @@ export default function FantasyMyTeam({ league }) {
                 row={r}
                 isSelected={selected?.type === 'player' && selected.key === r.player_id}
                 onTap={() => handlePlayerTap(r.player_id)}
+                onMoveToIR={handleMoveToIR}
               />
             ))
           )}
@@ -290,6 +327,7 @@ export default function FantasyMyTeam({ league }) {
                 row={r}
                 isSelected={selected?.type === 'player' && selected.key === r.player_id}
                 onTap={() => handlePlayerTap(r.player_id)}
+                onMoveOutOfIR={handleMoveOutOfIR}
               />
             ))}
           </div>
