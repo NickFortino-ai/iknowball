@@ -347,7 +347,7 @@ export default function FantasyDraftRoom({ league }) {
         {['Players', 'My Roster', 'Board', 'Queue', 'Log'].map((t) => {
           const isActive = activeTab === t
           const filledCount = slotPlan.filled
-          const totalCount = slotPlan.totalStarters
+          const totalCount = slotPlan.totalRoster
           const badge = t === 'My Roster' ? `${filledCount}/${totalCount}` : t === 'Queue' ? (queue?.length || 0) : null
           return (
             <button
@@ -609,11 +609,15 @@ function buildSlotPlan(rosterSlots, myPicks) {
   }
 
   const benchCount = rosterSlots.bench || 0
-  const bench = remaining.slice(0, benchCount)
-  const overflow = remaining.slice(benchCount) // shouldn't happen normally
-
-  const filled = slots.filter((s) => s.player).length
-  return { slots, bench, overflow, filled, totalStarters: slots.length, benchCount }
+  // Bench accepts ALL non-starter players, even beyond benchCount, so users
+  // can punt K/DEF and the extras spill over into bench. Configured benchCount
+  // is just the minimum slots to display — actual bench can grow.
+  const bench = remaining
+  const startersFilled = slots.filter((s) => s.player).length
+  const totalStarters = slots.length
+  const totalRoster = totalStarters + benchCount
+  const filledTotal = startersFilled + bench.length
+  return { slots, bench, overflow: [], filled: filledTotal, totalStarters, totalRoster, benchCount }
 }
 
 function RosterNeedsView({ slotPlan }) {
@@ -651,10 +655,15 @@ function RosterNeedsView({ slotPlan }) {
           <span className="text-[10px] text-text-muted">{slotPlan.bench.length} / {slotPlan.benchCount}</span>
         </div>
         <div className="divide-y divide-border">
-          {slotPlan.bench.length === 0 && (
-            <div className="px-3 py-4 text-xs text-text-muted text-center">Empty</div>
-          )}
-          {slotPlan.bench.map((p) => <SlotRow key={p.id} label="BN" player={p} />)}
+          {(() => {
+            const rows = []
+            slotPlan.bench.forEach((p) => rows.push(<SlotRow key={`b-${p.id}`} label="BN" player={p} />))
+            const emptyToShow = Math.max(0, slotPlan.benchCount - slotPlan.bench.length)
+            for (let i = 0; i < emptyToShow; i++) {
+              rows.push(<SlotRow key={`e-${i}`} label="BN" player={null} />)
+            }
+            return rows
+          })()}
         </div>
       </div>
     </div>

@@ -629,7 +629,7 @@ function DraftScreen({ config, onExit, onComplete }) {
       <div className="flex gap-1 overflow-x-auto border-b border-text-primary/10">
         {['Players', 'My Roster', 'Board', 'Log'].map((t) => {
           const isActive = activeTab === t
-          const badge = t === 'My Roster' ? `${slotPlan.filled}/${slotPlan.totalStarters}` : null
+          const badge = t === 'My Roster' ? `${slotPlan.filled}/${slotPlan.totalRoster}` : null
           return (
             <button
               key={t}
@@ -781,9 +781,15 @@ function buildSlotPlan(rosterSlots, players) {
     }
   }
   const benchCount = rosterSlots.bench || 0
-  const bench = remaining.slice(0, benchCount)
-  const filled = slots.filter((s) => s.player).length
-  return { slots, bench, filled, totalStarters: slots.length, benchCount }
+  // Bench accepts ALL non-starter players, even beyond benchCount, so users
+  // can punt K/DEF and the extras spill over into bench. The configured
+  // benchCount is just a "minimum slots to display" — actual size can grow.
+  const bench = remaining
+  const startersFilled = slots.filter((s) => s.player).length
+  const totalStarters = slots.length
+  const totalRoster = totalStarters + benchCount
+  const filledTotal = startersFilled + bench.length
+  return { slots, bench, filled: filledTotal, totalStarters, totalRoster, benchCount }
 }
 
 function RosterNeedsView({ slotPlan }) {
@@ -814,8 +820,17 @@ function RosterNeedsView({ slotPlan }) {
           <span className="text-[10px] text-text-muted">{slotPlan.bench.length} / {slotPlan.benchCount}</span>
         </div>
         <div className="divide-y divide-text-primary/10">
-          {slotPlan.bench.length === 0 && <div className="px-3 py-4 text-xs text-text-muted text-center">Empty</div>}
-          {slotPlan.bench.map((p) => <SlotRow key={p.id} label="BN" player={p} />)}
+          {(() => {
+            // Show every drafted bench player, then pad with empty rows
+            // until the configured benchCount is reached.
+            const rows = []
+            slotPlan.bench.forEach((p, i) => rows.push(<SlotRow key={`b-${p.id}`} label="BN" player={p} />))
+            const emptyToShow = Math.max(0, slotPlan.benchCount - slotPlan.bench.length)
+            for (let i = 0; i < emptyToShow; i++) {
+              rows.push(<SlotRow key={`e-${i}`} label="BN" player={null} />)
+            }
+            return rows
+          })()}
         </div>
       </div>
     </div>
