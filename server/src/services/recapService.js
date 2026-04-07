@@ -13,10 +13,10 @@ export async function collectWeeklyData(weekStart, weekEnd) {
   const startISO = weekStart.toISOString()
   const endISO = weekEnd.toISOString()
 
-  // 1. Settled picks in the date range
+  // 1. Settled picks in the date range (with timestamp + sport for daily breakdown)
   const { data: picks } = await supabase
     .from('picks')
-    .select('user_id, points_earned, is_correct, odds_at_pick, reward_points, risk_points, picked_team, games(home_team, away_team, home_score, away_score, sports(name))')
+    .select('user_id, points_earned, is_correct, odds_at_pick, reward_points, risk_points, picked_team, updated_at, games(home_team, away_team, home_score, away_score, sports(name))')
     .eq('status', 'settled')
     .not('points_earned', 'is', null)
     .gte('updated_at', startISO)
@@ -25,16 +25,16 @@ export async function collectWeeklyData(weekStart, weekEnd) {
   // 2. Settled parlays
   const { data: parlays } = await supabase
     .from('parlays')
-    .select('user_id, points_earned, is_correct, leg_count, risk_points, reward_points, combined_multiplier')
+    .select('user_id, points_earned, is_correct, leg_count, risk_points, reward_points, combined_multiplier, updated_at')
     .eq('status', 'settled')
     .not('points_earned', 'is', null)
     .gte('updated_at', startISO)
     .lte('updated_at', endISO)
 
-  // 3. Settled prop picks
+  // 3. Settled prop picks (with details for highlights)
   const { data: propPicks } = await supabase
     .from('prop_picks')
-    .select('user_id, points_earned, is_correct')
+    .select('user_id, points_earned, is_correct, picked_side, odds_at_pick, updated_at, player_props(player_name, market_label, line, actual_value, sport_id, sports(name))')
     .eq('status', 'settled')
     .not('points_earned', 'is', null)
     .gte('updated_at', startISO)
@@ -85,10 +85,22 @@ export async function collectWeeklyData(weekStart, weekEnd) {
         biggest_underdog_picked: null,
         pick_details: [],
         parlay_details: [],
+        prop_details: [],
+        daily: {}, // 'Mon' → { wins, losses, points }
         total_picks: 0,
       }
     }
     return userMap[userId]
+  }
+
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  function dayBucket(u, ts) {
+    const d = new Date(ts)
+    // Use Pacific time so the day boundary feels natural to users
+    const pacificDate = new Date(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+    const key = DAY_NAMES[pacificDate.getDay()]
+    if (!u.daily[key]) u.daily[key] = { wins: 0, losses: 0, points: 0 }
+    return u.daily[key]
   }
 
   // Aggregate picks
@@ -125,6 +137,13 @@ export async function collectWeeklyData(weekStart, weekEnd) {
     } else {
       u.picks_pushes++
     }
+    // Daily breakdown
+    if (p.updated_at) {
+      const bucket = dayBucket(u, p.updated_at)
+      bucket.points += p.points_earned
+      if (p.is_correct === true) bucket.wins++
+      else if (p.is_correct === false) bucket.losses++
+    }
   }
 
   // Aggregate parlays
@@ -142,6 +161,12 @@ export async function collectWeeklyData(weekStart, weekEnd) {
       points_earned: p.points_earned,
       is_correct: p.is_correct,
     })
+    if (p.updated_at) {
+      const bucket = dayBucket(u, p.updated_at)
+      bucket.points += p.points_earned
+      if (p.is_correct === true) bucket.wins++
+      else if (p.is_correct === false) bucket.losses++
+    }
   }
 
   // Aggregate prop picks
@@ -151,6 +176,23 @@ export async function collectWeeklyData(weekStart, weekEnd) {
     u.props_points += p.points_earned
     if (p.is_correct === true) u.props_wins++
     else if (p.is_correct === false) u.props_losses++
+    u.prop_details.push({
+      player: p.player_props?.player_name || null,
+      market: p.player_props?.market_label || null,
+      line: p.player_props?.line ?? null,
+      side: p.picked_side,
+      actual: p.player_props?.actual_value ?? null,
+      sport: p.player_props?.sports?.name || null,
+      odds: p.odds_at_pick,
+      points_earned: p.points_earned,
+      is_correct: p.is_correct,
+    })
+    if (p.updated_at) {
+      const bucket = dayBucket(u, p.updated_at)
+      bucket.points += p.points_earned
+      if (p.is_correct === true) bucket.wins++
+      else if (p.is_correct === false) bucket.losses++
+    }
   }
 
   // Aggregate futures picks
@@ -232,6 +274,22 @@ export async function collectWeeklyData(weekStart, weekEnd) {
     const wonParlays = u.parlay_details.filter((p) => p.is_correct).sort((a, b) => b.points_earned - a.points_earned)
     const notableParlay = wonParlays[0] || null
 
+    // Big parlay milestone: any winning parlay with 4+ legs
+    const bigParlays = u.parlay_details.filter((p) => p.is_correct && p.leg_count >= 4)
+
+    // Notable props: best prop hit + worst prop miss
+    const sortedProps = [...u.prop_details].sort((a, b) => b.points_earned - a.points_earned)
+    const bestProp = sortedProps[0] && sortedProps[0].points_earned > 0 ? sortedProps[0] : null
+    const worstProp = sortedProps.length && sortedProps[sortedProps.length - 1].points_earned < 0
+      ? sortedProps[sortedProps.length - 1] : null
+    const notableProps = [bestProp, worstProp].filter(Boolean)
+
+    // Daily breakdown — chronological Mon→Sun
+    const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const dailyArray = DAY_ORDER
+      .filter((d) => u.daily[d] && (u.daily[d].wins + u.daily[d].losses > 0))
+      .map((d) => ({ day: d, wins: u.daily[d].wins, losses: u.daily[d].losses, points: u.daily[d].points }))
+
     return {
       user_id: u.user_id,
       username: info.username || 'Unknown',
@@ -250,6 +308,10 @@ export async function collectWeeklyData(weekStart, weekEnd) {
       total_picks: u.total_picks,
       notable_picks: dedupedPicks,
       notable_parlay: notableParlay,
+      big_parlays: bigParlays,
+      notable_props: notableProps,
+      daily_breakdown: dailyArray,
+      props_record: { wins: u.props_wins, losses: u.props_losses, points: u.props_points },
     }
   })
 
@@ -441,14 +503,134 @@ export async function collectWeeklyData(weekStart, weekEnd) {
     })
   }
 
-  return { top5, allUsers: enriched, pickOfWeekUser, biggestFallUser, longestStreakUser, recordsBroken, crownChanges, currentCrownHolders, bigLeagueWinners }
+  // --- Survivor advancements: who survived a round this week ---
+  const { data: survivorWins } = await supabase
+    .from('survivor_picks')
+    .select('user_id, team_name, league_id, leagues(name)')
+    .eq('status', 'survived')
+    .gte('updated_at', startISO)
+    .lte('updated_at', endISO)
+
+  const survivorAdvancementsMap = {}
+  for (const sp of survivorWins || []) {
+    if (!sp.user_id) continue
+    if (!survivorAdvancementsMap[sp.user_id]) survivorAdvancementsMap[sp.user_id] = []
+    survivorAdvancementsMap[sp.user_id].push({
+      league: sp.leagues?.name || 'Unknown League',
+      team: sp.team_name,
+    })
+  }
+  const survivorAdvancements = Object.entries(survivorAdvancementsMap).map(([userId, picks]) => {
+    const info = userInfoMap[userId] || {}
+    return {
+      name: info.display_name || info.username || 'Unknown',
+      username: info.username || 'Unknown',
+      survived_count: picks.length,
+      picks,
+    }
+  }).slice(0, 20)
+
+  // --- All league wins this week (not just 10+ member ones) ---
+  const allLeagueWins = []
+  const seenAllLeagueIds = new Set()
+  for (const n of winNotifs || []) {
+    const md = n.metadata || {}
+    if (md.isWinner !== true) continue
+    if (seenAllLeagueIds.has(md.leagueId)) continue
+    seenAllLeagueIds.add(md.leagueId)
+    const info = userInfoMap[n.user_id] || {}
+    allLeagueWins.push({
+      name: info.display_name || info.username || 'Unknown',
+      username: info.username || 'Unknown',
+      league_name: md.leagueName || 'Unknown League',
+      league_format: md.format || null,
+      member_count: md.memberCount || null,
+      points_awarded: md.points ?? null,
+    })
+  }
+
+  // --- Big parlay milestones (4+ leg winning parlays from any user) ---
+  const bigParlayMilestones = []
+  for (const u of enriched) {
+    if (u.big_parlays?.length) {
+      for (const bp of u.big_parlays) {
+        bigParlayMilestones.push({
+          name: u.display_name,
+          username: u.username,
+          leg_count: bp.leg_count,
+          multiplier: bp.multiplier,
+          risk: bp.risk,
+          reward: bp.reward,
+        })
+      }
+    }
+  }
+  bigParlayMilestones.sort((a, b) => (b.reward || 0) - (a.reward || 0))
+
+  // --- Squares wins this week ---
+  const { data: squaresWins } = await supabase
+    .from('bonus_points')
+    .select('user_id, points, label, leagues(name)')
+    .eq('type', 'squares_quarter_win')
+    .gte('created_at', startISO)
+    .lte('created_at', endISO)
+
+  const squaresWinsList = (squaresWins || []).map((sw) => {
+    const info = userInfoMap[sw.user_id] || {}
+    return {
+      name: info.display_name || info.username || 'Unknown',
+      username: info.username || 'Unknown',
+      league: sw.leagues?.name || 'Unknown League',
+      label: sw.label,
+      points: sw.points,
+    }
+  })
+
+  // --- Streak changes: users whose best_streak was updated this week (extended OR broken) ---
+  const { data: streakChanges } = await supabase
+    .from('user_sport_stats')
+    .select('user_id, current_streak, best_streak, sports(name), users(display_name, username)')
+    .gte('updated_at', startISO)
+    .lte('updated_at', endISO)
+    .gte('best_streak', 5)
+    .order('best_streak', { ascending: false })
+    .limit(20)
+
+  const streakHighlights = (streakChanges || []).map((s) => ({
+    name: s.users?.display_name || s.users?.username || 'Unknown',
+    username: s.users?.username || 'Unknown',
+    sport: s.sports?.name || 'Unknown',
+    current_streak: s.current_streak,
+    best_streak: s.best_streak,
+  }))
+
+  return {
+    top5,
+    allUsers: enriched,
+    pickOfWeekUser,
+    biggestFallUser,
+    longestStreakUser,
+    recordsBroken,
+    crownChanges,
+    currentCrownHolders,
+    bigLeagueWinners,
+    allLeagueWins,
+    survivorAdvancements,
+    bigParlayMilestones,
+    squaresWinsList,
+    streakHighlights,
+  }
 }
 
 /**
  * Call Claude API to generate the weekly headlines narrative.
  */
 export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
-  const { top5, allUsers, pickOfWeekUser, biggestFallUser, longestStreakUser, recordsBroken, crownChanges, bigLeagueWinners } = weeklyData
+  const {
+    top5, allUsers, pickOfWeekUser, biggestFallUser, longestStreakUser,
+    recordsBroken, crownChanges, bigLeagueWinners, allLeagueWins,
+    survivorAdvancements, bigParlayMilestones, squaresWinsList, streakHighlights,
+  } = weeklyData
   const top5Ids = new Set(top5.map((u) => u.user_id))
 
   const dataPayload = {
@@ -467,10 +649,13 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
         tier_change: u.tier_change,
         biggest_underdog: u.biggest_underdog,
         parlays: u.parlays,
+        props_record: u.props_record,
         current_streak: u.current_streak,
         total_picks: u.total_picks,
         notable_picks: u.notable_picks,
         notable_parlay: u.notable_parlay,
+        notable_props: u.notable_props,
+        daily_breakdown: u.daily_breakdown,
       }
     }),
     pickOfWeek: pickOfWeekUser ? {
@@ -518,11 +703,18 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
           current_streak: u.current_streak,
           notable_picks: u.notable_picks,
           notable_parlay: u.notable_parlay,
+          notable_props: u.notable_props,
+          daily_breakdown: u.daily_breakdown,
         }
       }),
     recordsBroken: recordsBroken || [],
     crownChanges: crownChanges || [],
     bigLeagueWinners: bigLeagueWinners || [],
+    allLeagueWins: allLeagueWins || [],
+    survivorAdvancements: survivorAdvancements || [],
+    bigParlayMilestones: bigParlayMilestones || [],
+    squaresWins: squaresWinsList || [],
+    streakHighlights: streakHighlights || [],
   }
 
   const prompt = `You are the voice of I KNOW BALL, a sports prediction app. Write a weekly headlines recap for the top 5 users this week. For each user, write a 1-2 sentence narrative that's fun, competitive, and conversational with a little trash talk energy. Also include: Pick of the Week (biggest underdog hit), Biggest Fall (user who lost the most points), and Longest Active Streak.
@@ -555,7 +747,17 @@ Use this exact format:
 **Biggest Fall**: {user} — {description}
 **Longest Active Streak**: {user} — {description}
 
-The "honorableMentions" array contains users who made 10+ picks this week but didn't crack the top 5. You don't need to write a full section for them, but if any of them had a particularly noteworthy notable_pick or notable_parlay, you may weave a brief mention into the AWARDS section or a short "HONORABLE MENTIONS" section (optional). Same accuracy rules apply.
+The "honorableMentions" array contains users who made 10+ picks this week but didn't crack the top 5. You don't need to write a full section for them, but if any of them had a particularly noteworthy notable_pick, notable_parlay, or notable_prop, you may weave a brief mention into the AWARDS section or a short "HONORABLE MENTIONS" section (optional). Same accuracy rules apply.
+
+Additional data fields you may use (only when non-empty, only verbatim):
+- "daily_breakdown" on top5 users — chronological day-by-day record + points (Mon/Tue/.../Sun). Great for "she went 8-1 Tuesday but cratered Sunday" narratives.
+- "notable_props" on each user — best prop hit and worst prop miss, with player_name, market_label, line, side, actual value, and points_earned.
+- "props_record" — overall props W/L for the week.
+- "survivorAdvancements" — users who survived a survivor round this week (with team picked + league name).
+- "bigParlayMilestones" — winning parlays with 4+ legs from any user.
+- "squaresWins" — squares quarter wins this week.
+- "allLeagueWins" — every league win this week (not just 10+ member ones). Use these if you want to spotlight smaller league victories briefly.
+- "streakHighlights" — users with current_streak >= 5 or whose best_streak was updated this week.
 
 If the "bigLeagueWinners" array is non-empty, add a "## BIG LEAGUE WINNERS" section. For each entry, write 1-2 sentences highlighting the user, the league they won (use "league_name" verbatim), the member count, and how they won it — you may cite their notable_picks / notable_parlay / weekly_record / weekly_points to add color. Same accuracy rules apply: only cite fields present in the entry.
 
