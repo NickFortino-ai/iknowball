@@ -1136,8 +1136,7 @@ export default function LeagueDetailPage() {
               <div className="text-sm md:text-base text-text-muted mt-1">
                 Outlasted {outlasted} competitor{outlasted !== 1 ? 's' : ''}
               </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
         )
