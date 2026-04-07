@@ -96,7 +96,7 @@ router.get('/live', async (req, res) => {
   if (allPlayerIds.length) {
     const { data: players } = await supabase
       .from('nfl_players')
-      .select('id, full_name, position, team, headshot_url, espn_id')
+      .select('id, full_name, position, team, headshot_url, espn_id, injury_status')
       .in('id', [...new Set(allPlayerIds)])
 
     for (const p of players || []) playerMap[p.id] = p
@@ -172,6 +172,7 @@ router.get('/live', async (req, res) => {
         player_id: visible ? slot.player_id : null,
         headshot_url: visible ? (player.headshot_url || null) : null,
         position: visible ? (player.position || null) : null,
+        injury_status: visible ? (player.injury_status || null) : null,
         salary: visible ? slot.salary : null,
         points_earned: status === 'live' || status === 'final' ? Number(slot.points_earned) || (stat ? Number(stat.pts_half_ppr) : 0) : 0,
         game_status: status,
@@ -234,7 +235,7 @@ router.get('/matchup-live', async (req, res) => {
   const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
   const { data: rosters } = await supabase
     .from('fantasy_rosters')
-    .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url)')
+    .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, injury_status)')
     .eq('league_id', league_id)
     .in('user_id', userIds)
 
@@ -349,6 +350,7 @@ router.get('/matchup-live', async (req, res) => {
       position: player.position || '?',
       team,
       headshot_url: player.headshot_url || null,
+      injury_status: player.injury_status || null,
       game_status: status,
       game_period: gameScores[team]?.period || null,
       game_clock: gameScores[team]?.clock || null,
