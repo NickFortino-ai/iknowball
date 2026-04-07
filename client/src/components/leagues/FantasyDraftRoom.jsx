@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft } from '../../hooks/useLeagues'
+import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -28,6 +28,8 @@ export default function FantasyDraftRoom({ league }) {
   const { profile } = useAuth()
   const { data: draftData, isLoading } = useDraftBoard(league.id)
   const makePick = useMakeDraftPick()
+  const makeOfflinePick = useMakeOfflineDraftPick()
+  const [offlineMode, setOfflineMode] = useState(false)
   const initDraft = useInitDraft()
   const startDraft = useStartDraft()
   const { data: queue } = useDraftQueue(league.id)
@@ -154,6 +156,16 @@ export default function FantasyDraftRoom({ league }) {
   }, [completedPicks.length])
 
   async function handlePick(playerId) {
+    if (offlineMode) {
+      if (makeOfflinePick.isPending) return
+      try {
+        await makeOfflinePick.mutateAsync({ leagueId: league.id, playerId })
+        setSearchQuery('')
+      } catch (err) {
+        toast(err.message || 'Failed to record offline pick', 'error')
+      }
+      return
+    }
     if (!isMyTurn || makePick.isPending) return
     try {
       await makePick.mutateAsync({ leagueId: league.id, playerId })
@@ -292,16 +304,34 @@ export default function FantasyDraftRoom({ league }) {
           </div>
         )}
         {isCommissioner && (
-          <button
-            onClick={async () => {
-              try { await pauseDraftMut.mutateAsync(league.id); toast('Draft paused', 'success') }
-              catch (err) { toast(err.message || 'Failed to pause', 'error') }
-            }}
-            disabled={pauseDraftMut.isPending}
-            className="mt-2 px-3 py-1 rounded-lg text-xs font-semibold bg-bg-card hover:bg-bg-secondary text-text-secondary border border-text-primary/20 transition-colors disabled:opacity-50"
-          >
-            {pauseDraftMut.isPending ? 'Pausing...' : 'Pause draft'}
-          </button>
+          <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
+            <button
+              onClick={async () => {
+                try { await pauseDraftMut.mutateAsync(league.id); toast('Draft paused', 'success') }
+                catch (err) { toast(err.message || 'Failed to pause', 'error') }
+              }}
+              disabled={pauseDraftMut.isPending}
+              className="px-3 py-1 rounded-lg text-xs font-semibold bg-bg-card hover:bg-bg-secondary text-text-secondary border border-text-primary/20 transition-colors disabled:opacity-50"
+            >
+              {pauseDraftMut.isPending ? 'Pausing...' : 'Pause draft'}
+            </button>
+            <button
+              onClick={() => setOfflineMode((v) => !v)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                offlineMode
+                  ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
+                  : 'bg-bg-card hover:bg-bg-secondary border-text-primary/20 text-text-secondary'
+              }`}
+              title="Record picks for whoever's on the clock — for in-person drafts"
+            >
+              {offlineMode ? '● Offline mode ON' : 'Offline mode'}
+            </button>
+          </div>
+        )}
+        {offlineMode && (
+          <div className="mt-2 text-[11px] text-yellow-400">
+            Recording for {currentPick?.users?.display_name || 'on-the-clock user'} · turn check disabled
+          </div>
         )}
       </div>
 
@@ -359,7 +389,7 @@ export default function FantasyDraftRoom({ league }) {
                 <div
                   key={player.id}
                   className={`w-full flex items-center gap-3 px-3 py-2 border-b border-border last:border-0 transition-colors ${
-                    isMyTurn ? 'hover:bg-accent/10' : 'opacity-60'
+                    (isMyTurn || offlineMode) ? 'hover:bg-accent/10' : 'opacity-60'
                   }`}
                 >
                   <button
@@ -373,8 +403,8 @@ export default function FantasyDraftRoom({ league }) {
                   </button>
                   <button
                     onClick={() => handlePick(player.id)}
-                    disabled={!isMyTurn || makePick.isPending}
-                    className={`flex-1 flex items-center gap-3 text-left ${isMyTurn ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                    disabled={(!isMyTurn && !offlineMode) || makePick.isPending || makeOfflinePick.isPending}
+                    className={`flex-1 flex items-center gap-3 text-left ${(isMyTurn || offlineMode) ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                   >
                     <img
                       src={player.headshot_url}

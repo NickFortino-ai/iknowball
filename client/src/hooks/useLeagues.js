@@ -722,6 +722,16 @@ export function useMakeDraftPick() {
   })
 }
 
+export function useMakeOfflineDraftPick() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, playerId }) => api.post(`/leagues/${leagueId}/fantasy/draft/offline-pick`, { playerId }),
+    onSuccess: (_data, { leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}
+
 export function usePauseDraft() {
   const queryClient = useQueryClient()
   return useMutation({

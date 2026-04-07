@@ -837,6 +837,7 @@ import {
   initializeDraft,
   startDraft,
   makeDraftPick,
+  makeOfflineDraftPick,
   getDraftBoard,
   getDraftQueue,
   setDraftQueue,
@@ -910,6 +911,14 @@ router.post('/:id/fantasy/draft/pick', requireAuth, async (req, res) => {
   const { playerId } = req.body
   if (!playerId) return res.status(400).json({ error: 'playerId is required' })
   const result = await makeDraftPick(req.params.id, req.user.id, playerId)
+  res.json(result)
+})
+
+// Commissioner offline pick (records on behalf of whoever is on the clock)
+router.post('/:id/fantasy/draft/offline-pick', requireAuth, async (req, res) => {
+  const { playerId } = req.body
+  if (!playerId) return res.status(400).json({ error: 'playerId is required' })
+  const result = await makeOfflineDraftPick(req.params.id, req.user.id, playerId)
   res.json(result)
 })
 

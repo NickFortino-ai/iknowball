@@ -407,6 +407,42 @@ export async function makeDraftPick(leagueId, userId, playerId) {
 }
 
 /**
+ * Commissioner-only: record a pick for whoever is currently on the clock.
+ * Used for in-person / offline drafts where the commish enters every pick
+ * manually. Skips the "it is your turn" check that makeDraftPick enforces.
+ */
+export async function makeOfflineDraftPick(leagueId, commissionerId, playerId) {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id')
+    .eq('id', leagueId)
+    .single()
+  if (!league || league.commissioner_id !== commissionerId) {
+    const err = new Error('Only the commissioner can record offline picks')
+    err.status = 403
+    throw err
+  }
+
+  const { data: nextPick } = await supabase
+    .from('fantasy_draft_picks')
+    .select('user_id')
+    .eq('league_id', leagueId)
+    .is('player_id', null)
+    .order('pick_number', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (!nextPick) {
+    const err = new Error('No picks remaining')
+    err.status = 400
+    throw err
+  }
+
+  // Delegate to makeDraftPick using the on-the-clock user's ID
+  return makeDraftPick(leagueId, nextPick.user_id, playerId)
+}
+
+/**
  * After the draft completes, fill every user's starting lineup with their
  * best available players (highest projected_pts_half_ppr per position),
  * with FLEX getting the best remaining RB/WR/TE.
