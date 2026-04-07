@@ -1099,21 +1099,17 @@ export default function LeagueDetailPage() {
           : 'w-20 h-20 md:w-32 md:h-32'
         const outlasted = mc > 1 ? mc - 1 : 0
         return (
-        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-6 md:py-8 px-4 md:px-8 relative overflow-hidden">
+        <div className="mb-6 rounded-xl border-2 border-yellow-500 py-6 md:py-8 px-4 md:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
-          {/* Trophy — absolutely positioned on the left so the content stays card-centered */}
-          <img
-            src={trophySrc}
-            alt="Trophy"
-            className={`${trophySizeClass} hidden md:block object-contain absolute left-6 top-1/2 -translate-y-1/2 animate-trophy-float drop-shadow-[0_0_16px_rgba(234,179,8,0.4)] z-10`}
-          />
-          {/* Mobile: trophy stacks above the centered content */}
-          <div className="relative flex flex-col items-center text-center">
+          <div className="relative flex items-center gap-4 md:gap-8">
+            {/* Trophy — left side, both mobile and desktop */}
             <img
               src={trophySrc}
               alt="Trophy"
-              className={`${trophySizeClass} md:hidden object-contain mb-3 animate-trophy-float drop-shadow-[0_0_16px_rgba(234,179,8,0.4)]`}
+              className={`${trophySizeClass} object-contain shrink-0 animate-trophy-float drop-shadow-[0_0_16px_rgba(234,179,8,0.4)]`}
             />
+            {/* Content — fills remaining space, centered within itself */}
+            <div className="flex-1 min-w-0 flex flex-col items-center text-center">
             <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer mb-3">
               {league.champion.user.avatar_url ? (
                 <img
