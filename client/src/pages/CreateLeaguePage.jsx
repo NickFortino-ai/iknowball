@@ -128,6 +128,7 @@ export default function CreateLeaguePage() {
   const [scoringRules, setScoringRules] = useState(null) // null = use preset
   const [numTeams, setNumTeams] = useState(10)
   const [draftPickTimer, setDraftPickTimer] = useState(90)
+  const [irSpots, setIrSpots] = useState(1)
   const [waiverType, setWaiverType] = useState('priority')
   const [tradeReview, setTradeReview] = useState('commissioner')
   const [playoffTeams, setPlayoffTeams] = useState(4)
@@ -198,6 +199,9 @@ export default function CreateLeaguePage() {
       scoring_format: (format === 'nba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? 'ppr' : scoringFormat,
       num_teams: numTeams,
       draft_pick_timer: format === 'fantasy' && fantasyFormat === 'traditional' ? draftPickTimer : undefined,
+      roster_slots: format === 'fantasy' && fantasyFormat === 'traditional'
+        ? { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6, ir: irSpots }
+        : undefined,
       waiver_type: format === 'fantasy' && fantasyFormat === 'traditional' ? waiverType : undefined,
       trade_review: format === 'fantasy' && fantasyFormat === 'traditional' ? tradeReview : undefined,
       playoff_teams: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffTeams : undefined,
@@ -679,6 +683,24 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">IR Spots</label>
+              <div className="flex gap-2">
+                {[0, 1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setIrSpots(n)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      irSpots === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-text-muted mt-1">Injured-reserve spots per team. Players parked here don't count toward your bench.</p>
             </div>
             <div>
               <label className="text-xs text-text-muted block mb-1">Waiver System</label>
