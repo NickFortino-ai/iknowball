@@ -28,7 +28,6 @@ export default function FantasyMyTeam({ league }) {
   if (!hasRoster) {
     return (
       <div className="text-center py-6">
-        <div className="text-2xl mb-2">{'\uD83C\uDFC8'}</div>
         <p className="text-sm text-text-secondary">No players on your roster yet. Complete the draft to build your team.</p>
       </div>
     )
