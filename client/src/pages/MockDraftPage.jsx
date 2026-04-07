@@ -214,7 +214,7 @@ export default function MockDraftPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-32">
+    <div className="max-w-4xl xl:max-w-[1400px] mx-auto px-4 py-6 pb-32">
       <div className="flex items-center gap-3 mb-6">
         <Link to="/leagues" className="text-text-muted hover:text-text-primary">←</Link>
         <h1 className="font-display text-3xl">Mock Draft</h1>
