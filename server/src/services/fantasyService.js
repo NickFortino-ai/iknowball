@@ -1165,7 +1165,7 @@ export async function getPlayerDetail(leagueId, playerId) {
 
   const { data: weeks } = await supabase
     .from('nfl_player_stats')
-    .select('week, season, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+    .select('week, season, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
     .eq('player_id', playerId)
     .eq('season', season)
     .order('week', { ascending: true })
@@ -1175,11 +1175,14 @@ export async function getPlayerDetail(leagueId, playerId) {
   const weeklyStats = (weeks || []).map((w) => ({
     week: w.week,
     pts: applyScoringRules(w, leagueRules),
+    pass_att: w.pass_att || 0,
+    pass_cmp: w.pass_cmp || 0,
     pass_yd: Number(w.pass_yd) || 0,
     pass_td: w.pass_td || 0,
     pass_int: w.pass_int || 0,
     rush_yd: Number(w.rush_yd) || 0,
     rush_td: w.rush_td || 0,
+    rec_tgt: w.rec_tgt || 0,
     rec: w.rec || 0,
     rec_yd: Number(w.rec_yd) || 0,
     rec_td: w.rec_td || 0,

@@ -29,6 +29,8 @@ function columnsFor(position) {
   if (position === 'QB') {
     return [
       { key: 'pts', label: 'Pts' },
+      { key: 'pass_cmp', label: 'CMP' },
+      { key: 'pass_att', label: 'ATT' },
       { key: 'pass_yd', label: 'PaYD' },
       { key: 'pass_td', label: 'PaTD' },
       { key: 'pass_int', label: 'INT' },
@@ -60,6 +62,7 @@ function columnsFor(position) {
     { key: 'pts', label: 'Pts' },
     { key: 'rush_yd', label: 'RuYD' },
     { key: 'rush_td', label: 'RuTD' },
+    { key: 'rec_tgt', label: 'TGT' },
     { key: 'rec', label: 'REC' },
     { key: 'rec_yd', label: 'ReYD' },
     { key: 'rec_td', label: 'ReTD' },
