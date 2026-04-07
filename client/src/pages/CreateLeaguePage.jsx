@@ -204,6 +204,7 @@ export default function CreateLeaguePage() {
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format) ? getDfsStartDate()
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
+          : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
           : startsAt || undefined,
         ends_at: format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport)
