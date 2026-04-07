@@ -204,7 +204,7 @@ export default function LeagueReport({ leagueId, onClose }) {
       >
         {/* Header */}
         <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
-          <h3 className="font-display text-lg">Season Report</h3>
+          <h3 className="font-display text-lg">League Report</h3>
           <button onClick={onClose} className="text-text-muted p-1">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

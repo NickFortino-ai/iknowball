@@ -538,7 +538,7 @@ export async function completeLeagues() {
               .eq('league_id', league.id)
             for (const m of reportMembers || []) {
               await createNotification(m.user_id, 'league_report',
-                `Your season report for ${league.name} is ready!`,
+                `Your league report for ${league.name} is ready!`,
                 { leagueId: league.id })
             }
             logger.info({ leagueId: league.id }, 'League activity report generated')
