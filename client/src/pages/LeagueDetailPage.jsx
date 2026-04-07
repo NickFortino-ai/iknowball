@@ -292,7 +292,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                   onClick={(e) => { e.stopPropagation(); setNarrativeText(narrative); setEditingNarrative(true) }}
                   className="shrink-0 text-text-muted hover:text-accent transition-colors mt-0.5"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </button>
@@ -1115,9 +1115,9 @@ export default function LeagueDetailPage() {
               await navigator.clipboard.writeText(url)
               toast('Invite link copied!', 'success')
             }}
-            className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
+            className="flex items-center gap-1.5 text-sm font-semibold text-text-primary hover:text-white transition-colors"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
             </svg>
@@ -1131,9 +1131,9 @@ export default function LeagueDetailPage() {
                   await navigator.share({ title: `Join ${league.name}`, url })
                 } catch {}
               }}
-              className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
+              className="flex items-center gap-1.5 text-sm font-semibold text-text-primary hover:text-white transition-colors"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <circle cx="18" cy="5" r="3" />
                 <circle cx="6" cy="12" r="3" />
                 <circle cx="18" cy="19" r="3" />
@@ -1146,9 +1146,9 @@ export default function LeagueDetailPage() {
           {isCommissioner && (
             <button
               onClick={() => setShowInviteModal(true)}
-              className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
+              className="flex items-center gap-1.5 text-sm font-semibold text-accent hover:text-accent-hover transition-colors"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
               Invite
