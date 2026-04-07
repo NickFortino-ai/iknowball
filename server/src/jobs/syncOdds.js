@@ -77,7 +77,49 @@ async function syncSport(sportKey, { force = false } = {}) {
       continue
     }
 
-    // Check if game already exists and has started — don't overwrite pre-game odds
+    // Dedupe by team+date BEFORE upserting by external_id. The Odds API
+    // sometimes returns two different events for the same matchup with
+    // different commence_times (data corruption upstream). If we already
+    // have a game between the same teams within ±20h, treat them as the
+    // same game and reuse that row's external_id — never create a parallel
+    // row that would later show up as a duplicate on the picks board.
+    const startMs = new Date(event.commence_time).getTime()
+    const lo = new Date(startMs - 20 * 60 * 60 * 1000).toISOString()
+    const hi = new Date(startMs + 20 * 60 * 60 * 1000).toISOString()
+    const { data: siblingMatches } = await supabase
+      .from('games')
+      .select('id, external_id, status, starts_at')
+      .eq('sport_id', sport.id)
+      .eq('home_team', event.home_team)
+      .eq('away_team', event.away_team)
+      .gte('starts_at', lo)
+      .lte('starts_at', hi)
+    const sibling = (siblingMatches || []).find((s) => s.external_id !== event.id)
+    if (sibling) {
+      // A row already exists for this matchup under a different external_id.
+      // If that sibling is non-upcoming, the game has been settled — drop
+      // this duplicate event entirely.
+      if (sibling.status !== 'upcoming') {
+        logger.warn({ eventId: event.id, siblingId: sibling.id, status: sibling.status }, 'Skipping duplicate event for already-settled game')
+        continue
+      }
+      // Sibling is also upcoming — keep the older row, update its odds &
+      // start time, and skip creating a new one.
+      await supabase
+        .from('games')
+        .update({
+          starts_at: event.commence_time,
+          home_odds: homeOutcome?.price || null,
+          away_odds: awayOutcome?.price || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sibling.id)
+      upserted++
+      continue
+    }
+
+    // No sibling — proceed with normal upsert by external_id.
+    // Check if game already exists and has started — don't overwrite pre-game odds.
     const { data: existing } = await supabase
       .from('games')
       .select('id, status')
