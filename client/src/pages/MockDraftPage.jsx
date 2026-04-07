@@ -225,8 +225,8 @@ export default function MockDraftPage() {
 function HomeScreen({ history, onStartNew, onReview, onClearHistory }) {
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-text-primary/20 bg-bg-card p-5">
-        <h2 className="font-display text-lg mb-1">Practice your draft</h2>
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-5">
+        <h2 className="font-display text-lg text-text-primary mb-1">Practice your draft</h2>
         <p className="text-sm text-text-secondary mb-4">
           Run a full NFL fantasy draft against bots with different personalities. Test strategies,
           try different draft slots, and see what your team could look like — no league required.
