@@ -394,22 +394,49 @@ export async function recalculateAllUserPoints() {
     }
   }
 
-  // Recalculate user_sport_stats totals
+  // Recalculate user_sport_stats totals — covers BOTH picks AND league bonuses
+  // (e.g. bracket / fantasy / dfs finishes), grouped by the league's sport.
+  // Without including bonus_points here, league finishes drift away from
+  // sport totals over time and produce ghost numbers like the +3 NCAAB bug.
+  const sportStats = {}
+  function ensure(userId, sportId) {
+    const key = `${userId}:${sportId}`
+    if (!sportStats[key]) {
+      sportStats[key] = { user_id: userId, sport_id: sportId, total_picks: 0, correct_picks: 0, total_points: 0 }
+    }
+    return sportStats[key]
+  }
+
   const { data: sportPicks } = await supabase
     .from('picks')
     .select('user_id, points_earned, is_correct, games!inner(sport_id)')
     .eq('status', 'settled')
     .not('is_correct', 'is', null)
 
-  const sportStats = {}
   for (const pick of (sportPicks || [])) {
-    const key = `${pick.user_id}:${pick.games.sport_id}`
-    if (!sportStats[key]) {
-      sportStats[key] = { user_id: pick.user_id, sport_id: pick.games.sport_id, total_picks: 0, correct_picks: 0, total_points: 0 }
-    }
-    sportStats[key].total_picks++
-    if (pick.is_correct) sportStats[key].correct_picks++
-    sportStats[key].total_points += pick.points_earned || 0
+    const row = ensure(pick.user_id, pick.games.sport_id)
+    row.total_picks++
+    if (pick.is_correct) row.correct_picks++
+    row.total_points += pick.points_earned || 0
+  }
+
+  // Pull bonus_points and bucket them into the league's sport. Bonus points
+  // do NOT increment pick W/L counts — they only contribute to total_points.
+  const { data: bonusRows } = await supabase
+    .from('bonus_points')
+    .select('user_id, points, leagues!inner(sport)')
+
+  // Cache sport key → id once
+  const { data: allSports } = await supabase.from('sports').select('id, key')
+  const sportIdByKey = Object.fromEntries((allSports || []).map((s) => [s.key, s.id]))
+
+  for (const b of (bonusRows || [])) {
+    const sportKey = b.leagues?.sport
+    if (!sportKey || sportKey === 'all') continue // multi-sport league bonuses don't map to one sport
+    const sportId = sportIdByKey[sportKey]
+    if (!sportId) continue
+    const row = ensure(b.user_id, sportId)
+    row.total_points += Number(b.points) || 0
   }
 
   for (const stat of Object.values(sportStats)) {
