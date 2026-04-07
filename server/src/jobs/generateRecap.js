@@ -9,17 +9,26 @@ function formatLocalDate(d) {
 export async function generateWeeklyRecap() {
   logger.info('Starting weekly recap generation')
 
-  // Calculate last Monday–Sunday
+  // Calculate last week's window: last Monday 10:00 UTC → this Monday 09:59 UTC.
+  // 10:00 UTC = 6 AM ET, so the window covers Mon 6 AM ET → next Mon 5:59 AM ET.
+  // This fully captures Sunday evening / Sunday Night Football / late games that
+  // settle after Sunday midnight UTC, which were previously excluded.
   const now = new Date()
-  const dayOfWeek = now.getDay() // 0=Sun, 1=Mon...
-  const daysBack = dayOfWeek === 0 ? 7 : dayOfWeek + 6 // last Monday
-  const lastMonday = new Date(now)
-  lastMonday.setDate(now.getDate() - daysBack)
-  lastMonday.setHours(0, 0, 0, 0)
+  const dayOfWeekUTC = now.getUTCDay() // 0=Sun, 1=Mon
+  // Days back to the most recent Monday (today if Monday)
+  const daysBackToThisMonday = dayOfWeekUTC === 0 ? 6 : dayOfWeekUTC - 1
+  // This Monday at 10:00 UTC (end of last week's window)
+  const thisMonday10 = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysBackToThisMonday,
+    10, 0, 0, 0,
+  ))
+  // Last Monday at 10:00 UTC (start of last week's window)
+  const lastMonday10 = new Date(thisMonday10.getTime() - 7 * 24 * 60 * 60 * 1000)
+  // Window end is one millisecond before this Monday 10:00 UTC
+  const lastWindowEnd = new Date(thisMonday10.getTime() - 1)
 
-  const lastSunday = new Date(lastMonday)
-  lastSunday.setDate(lastMonday.getDate() + 6)
-  lastSunday.setHours(23, 59, 59, 999)
+  const lastMonday = lastMonday10
+  const lastSunday = lastWindowEnd
 
   const weekStartStr = formatLocalDate(lastMonday)
   const weekEndStr = formatLocalDate(lastSunday)
