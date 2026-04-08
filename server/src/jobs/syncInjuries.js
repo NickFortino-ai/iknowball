@@ -19,6 +19,39 @@ async function fetchDepthChart(sportPath, espnTeamId) {
   return res.json()
 }
 
+// NHL doesn't populate `.injuries` on its depth-chart athletes the way NFL/MLB
+// do, so the depthchart-based extractor returns zero. ESPN exposes a per-team
+// injuries endpoint that works directly — use that instead.
+async function fetchNhlTeamInjuries(espnTeamId) {
+  const url = `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${espnTeamId}/injuries`
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error(`ESPN NHL injuries ${res.status} for team ${espnTeamId}`)
+  }
+  return res.json()
+}
+
+function extractNhlInjuries(data) {
+  const injuredMap = new Map()
+  for (const inj of data.injuries || []) {
+    const ath = inj.athlete || {}
+    const id = ath.id || ath.displayName
+    if (!id || injuredMap.has(id)) continue
+    const posAbbr = ath.position?.abbreviation || ''
+    injuredMap.set(id, {
+      name: ath.displayName,
+      shortName: ath.shortName,
+      position: posAbbr.toUpperCase(),
+      status: inj.status || 'Unknown',
+      detail: inj.details?.type || inj.shortComment || inj.longComment || '',
+    })
+  }
+  const injuries = [...injuredMap.values()].sort(
+    (a, b) => (SEVERITY_ORDER[a.status] ?? 99) - (SEVERITY_ORDER[b.status] ?? 99)
+  )
+  return { starters: [], injuries }
+}
+
 function extractBasketballData(data) {
   const chart = data.depthchart?.[0]
   if (!chart?.positions) return { starters: [], injuries: [] }
@@ -154,6 +187,7 @@ export async function syncInjuries() {
     }
 
     const isBasketball = BASKETBALL_SPORTS.has(sportKey)
+    const isHockey = sportKey === 'icehockey_nhl'
     const sportMap = ODDS_TO_ESPN[sportKey] || {}
     let synced = 0
 
@@ -165,10 +199,16 @@ export async function syncInjuries() {
       }
 
       try {
-        const data = await fetchDepthChart(sportPath, espnId)
-        const { starters, injuries } = isBasketball
-          ? extractBasketballData(data)
-          : extractFootballInjuries(data)
+        let starters, injuries
+        if (isHockey) {
+          const data = await fetchNhlTeamInjuries(espnId)
+          ;({ starters, injuries } = extractNhlInjuries(data))
+        } else {
+          const data = await fetchDepthChart(sportPath, espnId)
+          ;({ starters, injuries } = isBasketball
+            ? extractBasketballData(data)
+            : extractFootballInjuries(data))
+        }
 
         const notableCount = injuries.filter((i) => NOTABLE_STATUSES.has(i.status)).length
 
