@@ -92,20 +92,40 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
   const isRookie = !prior
 
   return (
-    <div className="rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden">
-      {/* Compact row */}
-      <div className="flex items-center gap-3 md:gap-4 px-3 md:px-5 py-4">
+    <div className="relative rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden">
+      {/* × top-right corner */}
+      <button
+        onClick={onClose}
+        className="absolute top-1.5 right-2 z-10 w-9 h-9 flex items-center justify-center text-text-muted hover:text-incorrect text-2xl leading-none"
+        title="Close"
+      >
+        ×
+      </button>
+      {/* ▾ bottom-right corner */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="absolute bottom-1.5 right-2 z-10 w-9 h-9 flex items-center justify-center text-text-muted hover:text-text-primary text-lg leading-none"
+        title={expanded ? 'Collapse' : 'Expand details'}
+      >
+        {expanded ? '▴' : '▾'}
+      </button>
+
+      {/* Compact row — pr-10 reserves space for the corner buttons */}
+      <div className="flex items-center gap-3 md:gap-4 pl-3 md:pl-5 pr-10 md:pr-12 py-4">
         {player.headshot_url && (
           <img
             src={player.headshot_url}
             alt={player.full_name}
-            className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover bg-bg-card border border-text-primary/20 shrink-0"
-            onError={(e) => { e.target.style.display = 'none' }}
+            width="80"
+            height="80"
+            decoding="async"
+            className="w-20 h-20 md:w-20 md:h-20 rounded-full object-cover bg-bg-card border border-text-primary/20 shrink-0"
+            onError={(e) => { e.target.style.visibility = 'hidden' }}
           />
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-display text-lg md:text-2xl text-text-primary truncate">{player.full_name}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-display text-xl md:text-2xl text-text-primary break-words leading-tight">{player.full_name}</span>
             {player.injury_status && (
               <span className={`text-[10px] md:text-xs font-bold px-2 py-0.5 rounded ${INJURY_COLORS[player.injury_status] || 'bg-text-primary/10 text-text-muted'}`}>
                 {player.injury_status}
@@ -121,29 +141,15 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
             <span>· ADP #{player.search_rank || '—'}</span>
             {proj != null && <span>· {Number(proj).toFixed(1)} proj</span>}
           </div>
+          {onDraft && (
+            <button
+              onClick={onDraft}
+              className="mt-2 px-4 md:px-5 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-95 transition"
+            >
+              Draft
+            </button>
+          )}
         </div>
-        {onDraft && (
-          <button
-            onClick={onDraft}
-            className="shrink-0 px-4 md:px-5 py-2.5 md:py-3 rounded-lg text-sm md:text-base font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-95 transition"
-          >
-            Draft
-          </button>
-        )}
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="shrink-0 w-10 h-10 flex items-center justify-center text-text-muted hover:text-text-primary text-lg"
-          title={expanded ? 'Collapse' : 'Expand details'}
-        >
-          {expanded ? '▴' : '▾'}
-        </button>
-        <button
-          onClick={onClose}
-          className="shrink-0 w-10 h-10 flex items-center justify-center text-text-muted hover:text-incorrect text-2xl"
-          title="Close"
-        >
-          ×
-        </button>
       </div>
 
       {/* Expanded section */}
