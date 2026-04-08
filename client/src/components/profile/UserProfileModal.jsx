@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { api } from '../../lib/api'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useUserProfile, useUserPickHistory, useUserParlayHistory, useUserPropPickHistory, useUserBonusHistory, useHeadToHead } from '../../hooks/useUserProfile'
 import { useAuth } from '../../hooks/useAuth'
@@ -276,6 +278,66 @@ export default function UserProfileModal({ userId, onClose }) {
   const { data: bonuses, isLoading: bonusesLoading } = useUserBonusHistory(userId)
   const [showH2HDetail, setShowH2HDetail] = useState(false)
   const isViewingOther = userId && session?.user?.id !== userId
+  const isOwnProfile = !isViewingOther
+  const queryClient = useQueryClient()
+
+  // Backdrop drag-to-position (own profile only)
+  const [draggingBackdrop, setDraggingBackdrop] = useState(false)
+  const [previewBackdropY, setPreviewBackdropY] = useState(null) // displayed value while dragging
+  const longPressTimer = useRef(null)
+  const dragStart = useRef({ y: 0, baseY: 50 })
+
+  function clearLongPressTimer() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  function handleBackdropPointerDown(e) {
+    if (!isOwnProfile || !user?.backdrop_image) return
+    const startY = e.clientY
+    const baseY = user.backdrop_y ?? 50
+    longPressTimer.current = setTimeout(() => {
+      setDraggingBackdrop(true)
+      setPreviewBackdropY(baseY)
+      dragStart.current = { y: startY, baseY }
+      // Light haptic on devices that support it
+      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20)
+    }, 350)
+  }
+
+  function handleBackdropPointerMove(e) {
+    if (!draggingBackdrop) {
+      // If user moved more than 8px before long-press fired, treat as scroll → cancel
+      if (longPressTimer.current && Math.abs(e.clientY - dragStart.current.y) > 8) {
+        clearLongPressTimer()
+      }
+      return
+    }
+    e.preventDefault()
+    const delta = e.clientY - dragStart.current.y
+    // Sensitivity: 4px of finger movement → 1% shift (gentle)
+    const next = Math.max(0, Math.min(100, dragStart.current.baseY + delta * 0.25))
+    setPreviewBackdropY(next)
+  }
+
+  async function handleBackdropPointerUp() {
+    clearLongPressTimer()
+    if (!draggingBackdrop) return
+    const finalY = Math.round(previewBackdropY)
+    setDraggingBackdrop(false)
+    setPreviewBackdropY(null)
+    if (finalY === (user.backdrop_y ?? 50)) return // no change
+    try {
+      await api.patch('/users/me', { backdrop_y: finalY })
+      queryClient.invalidateQueries({ queryKey: ['userProfile', userId] })
+      queryClient.invalidateQueries({ queryKey: ['profile'] })
+      toast('Backdrop position saved', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to save', 'error')
+    }
+  }
   const { data: h2h } = useHeadToHead(isViewingOther ? userId : null)
   const { data: connectionStatus } = useConnectionStatus(isViewingOther ? userId : null)
   const sendRequest = useSendConnectionRequest()
@@ -375,10 +437,32 @@ export default function UserProfileModal({ userId, onClose }) {
                 <img
                   src={getBackdropUrl(user.backdrop_image)}
                   alt=""
-                  className="w-full h-full object-cover"
-                  style={{ objectPosition: `center ${user.backdrop_y ?? 50}%` }}
+                  className="w-full h-full object-cover select-none"
+                  style={{ objectPosition: `center ${(draggingBackdrop ? previewBackdropY : (user.backdrop_y ?? 50))}%` }}
+                  draggable={false}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-bg-primary from-5% via-bg-primary/50 via-50% to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-bg-primary from-5% via-bg-primary/50 via-50% to-transparent pointer-events-none" />
+
+                {/* Drag-to-position handle (own profile only) — covers the upper
+                    65% of the backdrop, leaving the bottom for the avatar tap area */}
+                {isOwnProfile && (
+                  <div
+                    className="absolute top-0 left-0 right-0 z-10 cursor-grab active:cursor-grabbing"
+                    style={{ height: '65%', touchAction: 'none' }}
+                    onPointerDown={handleBackdropPointerDown}
+                    onPointerMove={handleBackdropPointerMove}
+                    onPointerUp={handleBackdropPointerUp}
+                    onPointerCancel={handleBackdropPointerUp}
+                    onPointerLeave={handleBackdropPointerUp}
+                  />
+                )}
+
+                {/* Hint that appears while dragging */}
+                {draggingBackdrop && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-bg-primary/90 backdrop-blur border border-accent/40 rounded-full px-3 py-1 text-[10px] uppercase tracking-wider text-accent font-bold pointer-events-none">
+                    Drag to position · {Math.round(previewBackdropY)}%
+                  </div>
+                )}
               </div>
             )}
 
