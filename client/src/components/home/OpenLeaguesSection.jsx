@@ -120,66 +120,82 @@ export default function OpenLeaguesSection() {
                 )}
 
                 <div className="relative z-10 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-display text-xl text-white truncate">{league.name}</h3>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setInfoLeagueId(infoLeagueId === league.id ? null : league.id) }}
-                          className="text-text-muted hover:text-text-secondary transition-colors p-1 shrink-0"
-                          title="League Details"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="16" x2="12" y2="12" />
-                            <line x1="12" y1="8" x2="12.01" y2="8" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
-                          {FORMAT_LABELS[league.format] || league.format}
-                        </span>
-                        <span className="text-xs text-text-secondary">{SPORT_LABELS[league.sport] || league.sport}</span>
-                        <span className="text-xs text-text-secondary">
-                          {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1.5 text-text-muted">
-                        <span className="text-xs">by {league.commissioner}</span>
-                        {league.starts_at && (
-                          <span className="text-sm text-yellow-500 font-semibold">
-                            {formatStartDate(league.starts_at)} – {formatRunsUntil(league) || 'TBD'}
-                          </span>
-                        )}
-                      </div>
-                      <LeagueSettingsPreview league={league} />
-                      {infoLeagueId === league.id && (
-                        <div className="mt-3 bg-bg-primary border border-text-primary/20 rounded-lg p-3 text-xs text-text-secondary space-y-1.5">
-                          <div><span className="text-text-muted">Format:</span> <span className="text-text-primary font-semibold">{FORMAT_LABELS[league.format] || league.format}</span></div>
-                          <div><span className="text-text-muted">Sport:</span> {SPORT_LABELS[league.sport] || league.sport}</div>
-                          {league.starts_at && <div><span className="text-text-muted">Starts:</span> {formatStartDate(league.starts_at)}</div>}
-                          {formatRunsUntil(league) && <div><span className="text-text-muted">Runs until:</span> {formatRunsUntil(league)}</div>}
-                          {league.max_members && <div><span className="text-text-muted">Max members:</span> {league.max_members}</div>}
-                          {league.settings?.pick_frequency && <div><span className="text-text-muted">Picks:</span> {league.settings.pick_frequency === 'daily' ? 'Daily' : 'Weekly'}</div>}
-                          {league.settings?.lives && <div><span className="text-text-muted">Lives:</span> {league.settings.lives}</div>}
-                          {league.format === 'survivor' && <div className="text-text-muted italic">Pick one team per period. If they lose, you lose a life. Can't reuse teams.</div>}
-                          {league.format === 'pickem' && <div className="text-text-muted italic">Pick game winners scored by odds. Top of the standings at the end wins.</div>}
-                          {league.format === 'hr_derby' && <div className="text-text-muted italic">Pick 3 hitters per day. Each player usable once per week. Most HRs wins.</div>}
-                          {(league.format === 'nba_dfs' || league.format === 'mlb_dfs') && <div className="text-text-muted italic">Build a daily lineup under a salary cap. Highest fantasy points wins.</div>}
-                        </div>
-                      )}
-                    </div>
+                  {/* Title row — full width, info icon inline at end. League name wraps so it's always visible. */}
+                  <div className="flex items-start gap-2">
+                    <h3 className="font-display text-xl text-white flex-1 leading-tight break-words">
+                      {league.name}
+                    </h3>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setInfoLeagueId(infoLeagueId === league.id ? null : league.id) }}
+                      className="text-text-muted hover:text-text-secondary transition-colors p-1 shrink-0 mt-0.5"
+                      title="League Details"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                    </button>
+                  </div>
 
-                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => handleJoin(league.id)}
-                        disabled={joiningId === league.id}
-                        className="px-6 py-2.5 rounded-xl font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer"
-                      >
-                        {joiningId === league.id ? '...' : 'Join'}
-                      </button>
+                  {/* Meta row */}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
+                      {FORMAT_LABELS[league.format] || league.format}
+                    </span>
+                    <span className="text-xs text-text-secondary">{SPORT_LABELS[league.sport] || league.sport}</span>
+                    <span className="text-xs text-text-secondary">
+                      {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-1.5 text-text-muted">
+                    <span className="text-xs">by {league.commissioner}</span>
+                    {league.starts_at && (
+                      <span className="text-sm text-yellow-500 font-semibold">
+                        {formatStartDate(league.starts_at)} – {formatRunsUntil(league) || 'TBD'}
+                      </span>
+                    )}
+                  </div>
+                  <LeagueSettingsPreview league={league} />
+
+                  {/* Expanded info card */}
+                  {infoLeagueId === league.id && (
+                    <div className="mt-3 bg-bg-primary border border-text-primary/20 rounded-lg p-3 text-xs text-text-secondary space-y-2">
+                      {/* Format description (the enticing pitch) */}
+                      <p className="text-sm text-text-primary leading-relaxed">
+                        {league.format === 'survivor' && "Pick one team to win each period. If they lose, you lose a life. You can't reuse a team. The last manager standing takes the league."}
+                        {league.format === 'pickem' && "Pick the winner of every game. Underdogs are worth more — points are scaled by real odds. Climb the standings to win."}
+                        {league.format === 'bracket' && "Fill out a postseason bracket and ride your picks all the way through. Most points across all rounds wins."}
+                        {league.format === 'fantasy' && "Draft a team, set your lineup each week, work the waiver wire, and battle your league mates. Standard NFL fantasy with custom scoring."}
+                        {league.format === 'nba_dfs' && "Build a fresh roster every night under a salary cap. No draft, no commitment — just pick the best lineup of the day."}
+                        {league.format === 'mlb_dfs' && "Build a fresh lineup every game day under a salary cap. No long-term commitment — just nightly rosters."}
+                        {league.format === 'hr_derby' && "Pick 3 MLB hitters per day. Each player usable only once per week. Most home runs across the season wins."}
+                        {league.format === 'squares' && "Pick a square on the grid. When the score lands on your row + column at the end of any quarter, you win that quarter."}
+                      </p>
+
+                      <div className="border-t border-text-primary/10 pt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div><span className="text-text-muted">Format:</span> <span className="text-text-primary font-semibold">{FORMAT_LABELS[league.format] || league.format}</span></div>
+                        <div><span className="text-text-muted">Sport:</span> <span className="text-text-primary">{SPORT_LABELS[league.sport] || league.sport}</span></div>
+                        {league.starts_at && <div><span className="text-text-muted">Starts:</span> <span className="text-text-primary">{formatStartDate(league.starts_at)}</span></div>}
+                        {formatRunsUntil(league) && <div><span className="text-text-muted">Runs until:</span> <span className="text-text-primary">{formatRunsUntil(league)}</span></div>}
+                        <div><span className="text-text-muted">Members:</span> <span className="text-text-primary">{league.member_count}{league.max_members ? ` of ${league.max_members}` : ''}</span></div>
+                        <div><span className="text-text-muted">Commissioner:</span> <span className="text-text-primary">{league.commissioner}</span></div>
+                        {league.settings?.pick_frequency && <div><span className="text-text-muted">Picks:</span> <span className="text-text-primary">{league.settings.pick_frequency === 'daily' ? 'Daily' : 'Weekly'}</span></div>}
+                        {league.settings?.lives && <div><span className="text-text-muted">Lives:</span> <span className="text-text-primary">{league.settings.lives}</span></div>}
+                      </div>
                     </div>
+                  )}
+
+                  {/* Join button — bottom right */}
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={() => handleJoin(league.id)}
+                      disabled={joiningId === league.id}
+                      className="px-6 py-2.5 rounded-xl font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {joiningId === league.id ? '...' : 'Join'}
+                    </button>
                   </div>
                 </div>
               </div>
