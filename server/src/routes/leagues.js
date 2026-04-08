@@ -1010,8 +1010,8 @@ router.get('/:id/fantasy/players/:playerId/detail', requireAuth, async (req, res
 
 // Search available players
 router.get('/:id/fantasy/players', requireAuth, async (req, res) => {
-  const { q, position } = req.query
-  const data = await searchAvailablePlayers(req.params.id, q, position)
+  const { q, position, sort } = req.query
+  const data = await searchAvailablePlayers(req.params.id, q, position, sort)
   res.json(data)
 })
 

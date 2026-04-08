@@ -8,6 +8,25 @@ import PlayerDetailModal from './PlayerDetailModal'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 
+// Sortable stat columns shown in the strip on the right of each row.
+// `key` matches the server-side sort param + the row.stats[key] field.
+const STAT_COLUMNS = [
+  { key: 'pts', label: 'PTS' },
+  { key: 'pass_yd', label: 'PA YD' },
+  { key: 'pass_td', label: 'PA TD' },
+  { key: 'pass_int', label: 'INT' },
+  { key: 'rush_att', label: 'CAR' },
+  { key: 'rush_yd', label: 'RU YD' },
+  { key: 'rush_td', label: 'RU TD' },
+  { key: 'rec_tgt', label: 'TGT' },
+  { key: 'rec', label: 'REC' },
+  { key: 'rec_yd', label: 'RE YD' },
+  { key: 'rec_td', label: 'RE TD' },
+  { key: 'fum_lost', label: 'FUM' },
+  { key: 'fgm', label: 'FGM' },
+  { key: 'xpm', label: 'XPM' },
+]
+
 const INJURY_COLORS = {
   Out: 'bg-incorrect/20 text-incorrect',
   Questionable: 'bg-yellow-500/20 text-yellow-500',
@@ -28,6 +47,7 @@ function InjuryBadge({ status }) {
 export default function FantasyPlayerBrowser({ league }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [posFilter, setPosFilter] = useState('All')
+  const [sortKey, setSortKey] = useState('pts')
   const [addingPlayer, setAddingPlayer] = useState(null) // player being added
   const [dropPlayerId, setDropPlayerId] = useState('') // chosen drop
   const [bidAmount, setBidAmount] = useState(0)
@@ -36,7 +56,8 @@ export default function FantasyPlayerBrowser({ league }) {
   const { data: players, isLoading } = useAvailablePlayers(
     league.id,
     searchQuery || undefined,
-    posFilter !== 'All' ? posFilter : undefined
+    posFilter !== 'All' ? posFilter : undefined,
+    sortKey
   )
   const { data: roster } = useFantasyRoster(league.id)
   const { data: settings } = useFantasySettings(league.id)
@@ -181,56 +202,93 @@ export default function FantasyPlayerBrowser({ league }) {
           ))}
         </div>
       </div>
+      {/* Stat-column header (sortable) — synced with the per-row strip */}
+      <div className="border-b border-border bg-bg-primary/40">
+        <div className="flex items-center px-4 py-1.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+          <div className="w-[180px] shrink-0">Player</div>
+          <div className="flex-1 overflow-x-auto">
+            <div className="flex gap-1 min-w-max">
+              {STAT_COLUMNS.map((col) => (
+                <button
+                  key={col.key}
+                  type="button"
+                  onClick={() => setSortKey(col.key)}
+                  className={`w-12 text-center px-1 py-0.5 rounded transition-colors ${
+                    sortKey === col.key ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
+                  }`}
+                >
+                  {col.label}{sortKey === col.key ? ' ↓' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="w-[64px] shrink-0" />
+        </div>
+      </div>
       <div className="max-h-[60vh] overflow-y-auto">
         {isLoading ? (
           <div className="text-center text-sm text-text-muted py-8">Loading...</div>
         ) : (players || []).map((player) => {
           const isClaimed = claimedPlayerIds.has(player.id)
           const onWaivers = !!player.on_waivers
+          const stats = player.stats || {}
           return (
-          <div key={player.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
-            {player.headshot_url && (
-              <img
-                src={player.headshot_url}
-                alt=""
-                className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => setDetailPlayerId(player.id)}
-                onError={(e) => { e.target.style.display = 'none' }}
-              />
-            )}
-            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailPlayerId(player.id)}>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
-                <InjuryBadge status={player.injury_status} />
-                {onWaivers && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers — must submit a claim">W</span>
-                )}
-                {isClaimed && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="You have a pending claim on this player">CLAIMED</span>
-                )}
-              </div>
-              <div className="text-xs text-text-muted flex items-center gap-1.5">
-                <span>{player.position} · {player.team || 'FA'}</span>
-                {player.season_points != null && player.season_points > 0 && (
-                  <span className="text-text-secondary font-semibold">· {player.season_points} pts</span>
-                )}
+          <div key={player.id} className="flex items-center px-4 py-2.5 border-b border-border last:border-0">
+            <div className="w-[180px] shrink-0 flex items-center gap-2">
+              {player.headshot_url && (
+                <img
+                  src={player.headshot_url}
+                  alt=""
+                  className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => setDetailPlayerId(player.id)}
+                  onError={(e) => { e.target.style.display = 'none' }}
+                />
+              )}
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailPlayerId(player.id)}>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
+                  <InjuryBadge status={player.injury_status} />
+                  {onWaivers && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers — must submit a claim">W</span>
+                  )}
+                  {isClaimed && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="You have a pending claim on this player">C</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
               </div>
             </div>
-            {!isDraftPhase && roster?.length > 0 && !isClaimed && (
-              <button
-                onClick={() => setAddingPlayer(player)}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
-                  onWaivers
-                    ? 'bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25'
-                    : 'bg-accent/15 text-accent hover:bg-accent/25'
-                }`}
-              >
-                {onWaivers ? '+ Claim' : '+ Add'}
-              </button>
-            )}
-            {!isDraftPhase && isClaimed && (
-              <span className="text-[10px] font-semibold text-text-muted shrink-0">Pending</span>
-            )}
+            <div className="flex-1 overflow-x-auto">
+              <div className="flex gap-1 min-w-max">
+                {STAT_COLUMNS.map((col) => (
+                  <div
+                    key={col.key}
+                    className={`w-12 text-center text-xs tabular-nums py-1 rounded ${
+                      sortKey === col.key ? 'bg-accent/10 text-accent font-bold' : 'text-text-secondary'
+                    }`}
+                  >
+                    {stats[col.key] ?? 0}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="w-[64px] shrink-0 flex justify-end">
+              {!isDraftPhase && roster?.length > 0 && !isClaimed && (
+                <button
+                  onClick={() => setAddingPlayer(player)}
+                  className={`text-xs font-semibold px-2 py-1.5 rounded-lg transition-colors ${
+                    onWaivers
+                      ? 'bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25'
+                      : 'bg-accent/15 text-accent hover:bg-accent/25'
+                  }`}
+                >
+                  {onWaivers ? '+ Claim' : '+ Add'}
+                </button>
+              )}
+              {!isDraftPhase && isClaimed && (
+                <span className="text-[10px] font-semibold text-text-muted">Pending</span>
+              )}
+            </div>
           </div>
           )
         })}

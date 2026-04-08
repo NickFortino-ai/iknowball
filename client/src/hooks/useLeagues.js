@@ -700,12 +700,13 @@ export function usePlayerDetail(leagueId, playerId) {
   })
 }
 
-export function useAvailablePlayers(leagueId, query, position) {
+export function useAvailablePlayers(leagueId, query, position, sort) {
   const params = new URLSearchParams()
   if (query) params.set('q', query)
   if (position) params.set('position', position)
+  if (sort) params.set('sort', sort)
   return useQuery({
-    queryKey: ['leagues', leagueId, 'fantasy', 'players', query, position],
+    queryKey: ['leagues', leagueId, 'fantasy', 'players', query, position, sort],
     queryFn: () => api.get(`/leagues/${leagueId}/fantasy/players?${params}`),
     enabled: !!leagueId,
     staleTime: 10_000,

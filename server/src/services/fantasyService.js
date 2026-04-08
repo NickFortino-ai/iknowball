@@ -1342,7 +1342,13 @@ export async function getRoster(leagueId, userId) {
 /**
  * Search available players (not on any roster in this league).
  */
-export async function searchAvailablePlayers(leagueId, query, position = null) {
+// Stat columns we expose for sorting in the available-players browse
+const STAT_COLUMNS = [
+  'pts', 'pass_yd', 'pass_td', 'pass_int', 'rush_att', 'rush_yd', 'rush_td',
+  'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'fum_lost', 'fgm', 'xpm',
+]
+
+export async function searchAvailablePlayers(leagueId, query, position = null, sort = null) {
   // Get all rostered player IDs
   const { data: rostered } = await supabase
     .from('fantasy_rosters')
@@ -1382,17 +1388,37 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
     .limit(500)
   if (error) throw error
 
-  // YTD fantasy points (current season) for sorting post-draft browse
+  // YTD aggregate stats (current season) for browse + sorting
   const season = settings?.season || new Date().getUTCFullYear()
   const pointsCol = scoringFormat === 'ppr' ? 'pts_ppr' : scoringFormat === 'standard' ? 'pts_std' : 'pts_half_ppr'
   const { data: statRows } = await supabase
     .from('nfl_player_stats')
-    .select(`player_id, ${pointsCol}`)
+    .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm`)
     .eq('season', season)
-  const ytdByPlayer = {}
+  // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
+  const statsByPlayer = {}
   for (const r of statRows || []) {
-    ytdByPlayer[r.player_id] = (ytdByPlayer[r.player_id] || 0) + (Number(r[pointsCol]) || 0)
+    const acc = statsByPlayer[r.player_id] || {
+      pts: 0, pass_yd: 0, pass_td: 0, pass_int: 0, rush_att: 0, rush_yd: 0, rush_td: 0,
+      rec_tgt: 0, rec: 0, rec_yd: 0, rec_td: 0, fum_lost: 0, fgm: 0, xpm: 0,
+    }
+    acc.pts += Number(r[pointsCol]) || 0
+    acc.pass_yd += Number(r.pass_yd) || 0
+    acc.pass_td += Number(r.pass_td) || 0
+    acc.pass_int += Number(r.pass_int) || 0
+    acc.rush_att += Number(r.rush_att) || 0
+    acc.rush_yd += Number(r.rush_yd) || 0
+    acc.rush_td += Number(r.rush_td) || 0
+    acc.rec_tgt += Number(r.rec_tgt) || 0
+    acc.rec += Number(r.rec) || 0
+    acc.rec_yd += Number(r.rec_yd) || 0
+    acc.rec_td += Number(r.rec_td) || 0
+    acc.fum_lost += Number(r.fum_lost) || 0
+    acc.fgm += Number(r.fgm) || 0
+    acc.xpm += Number(r.xpm) || 0
+    statsByPlayer[r.player_id] = acc
   }
+  function ytd(id) { return statsByPlayer[id] || {} }
 
   // Players currently on waivers in this league
   const waiverLockedSet = await getWaiverLockedPlayerIds(leagueId)
@@ -1413,18 +1439,21 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
   // fixed even as players above them get drafted.
   const excludeSet = new Set(excludeIds)
   const rankedAll = (allPlayers || [])
-    .map((p) => ({ ...p, _adp: effectiveAdp(p), _ytd: ytdByPlayer[p.id] || 0 }))
+    .map((p) => ({ ...p, _adp: effectiveAdp(p), _stats: ytd(p.id) }))
     .sort((a, b) => a._adp - b._adp)
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
 
-  // Once the season has started (any YTD points exist), the available-player
-  // browse is sorted by season-to-date fantasy points desc instead of ADP.
+  // Sort key: explicit ?sort=column wins; otherwise default to season points
+  // once stats exist, falling back to ADP preseason.
   const seasonStarted = (statRows || []).length > 0
+  const sortKey = sort && STAT_COLUMNS.includes(sort) ? sort : (seasonStarted ? 'pts' : null)
   const ranked = rankedAll
     .filter((p) => !excludeSet.has(p.id))
     .sort((a, b) => {
-      if (seasonStarted) {
-        if (b._ytd !== a._ytd) return b._ytd - a._ytd
+      if (sortKey) {
+        const av = a._stats[sortKey] || 0
+        const bv = b._stats[sortKey] || 0
+        if (bv !== av) return bv - av
       }
       return a._adp - b._adp
     })
@@ -1446,12 +1475,31 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
     filtered = filtered.filter((p) => p.full_name?.toLowerCase().includes(q))
   }
 
-  return filtered.slice(0, 60).map((p) => ({
-    ...p,
-    pos_rank: posRanks[p.id] || null,
-    season_points: Math.round((p._ytd || 0) * 10) / 10,
-    on_waivers: waiverLockedSet.has(p.id),
-  }))
+  return filtered.slice(0, 60).map((p) => {
+    const s = p._stats || {}
+    return {
+      ...p,
+      pos_rank: posRanks[p.id] || null,
+      season_points: Math.round((s.pts || 0) * 10) / 10,
+      stats: {
+        pts: Math.round((s.pts || 0) * 10) / 10,
+        pass_yd: Math.round(s.pass_yd || 0),
+        pass_td: s.pass_td || 0,
+        pass_int: s.pass_int || 0,
+        rush_att: s.rush_att || 0,
+        rush_yd: Math.round(s.rush_yd || 0),
+        rush_td: s.rush_td || 0,
+        rec_tgt: s.rec_tgt || 0,
+        rec: s.rec || 0,
+        rec_yd: Math.round(s.rec_yd || 0),
+        rec_td: s.rec_td || 0,
+        fum_lost: s.fum_lost || 0,
+        fgm: s.fgm || 0,
+        xpm: s.xpm || 0,
+      },
+      on_waivers: waiverLockedSet.has(p.id),
+    }
+  })
 }
 
 /**
