@@ -1382,6 +1382,21 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
     .limit(500)
   if (error) throw error
 
+  // YTD fantasy points (current season) for sorting post-draft browse
+  const season = settings?.season || new Date().getUTCFullYear()
+  const pointsCol = scoringFormat === 'ppr' ? 'pts_ppr' : scoringFormat === 'standard' ? 'pts_std' : 'pts_half_ppr'
+  const { data: statRows } = await supabase
+    .from('nfl_player_stats')
+    .select(`player_id, ${pointsCol}`)
+    .eq('season', season)
+  const ytdByPlayer = {}
+  for (const r of statRows || []) {
+    ytdByPlayer[r.player_id] = (ytdByPlayer[r.player_id] || 0) + (Number(r[pointsCol]) || 0)
+  }
+
+  // Players currently on waivers in this league
+  const waiverLockedSet = await getWaiverLockedPlayerIds(leagueId)
+
   // Effective ADP — pick the column matching league scoring + boost QBs
   // 30 spots in SuperFlex / 2QB leagues so they match real-draft expectations.
   function effectiveAdp(p) {
@@ -1394,16 +1409,25 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
     return raw
   }
 
-  // Rank the FULL pool (rostered + drafted + free) so each player's
-  // overall_rank stays fixed even as players above them get drafted.
-  // Then filter out unavailable players for display.
+  // Rank the FULL pool by ADP (preseason) so each player's overall_rank stays
+  // fixed even as players above them get drafted.
   const excludeSet = new Set(excludeIds)
   const rankedAll = (allPlayers || [])
-    .map((p) => ({ ...p, _adp: effectiveAdp(p) }))
+    .map((p) => ({ ...p, _adp: effectiveAdp(p), _ytd: ytdByPlayer[p.id] || 0 }))
     .sort((a, b) => a._adp - b._adp)
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
+
+  // Once the season has started (any YTD points exist), the available-player
+  // browse is sorted by season-to-date fantasy points desc instead of ADP.
+  const seasonStarted = (statRows || []).length > 0
   const ranked = rankedAll
     .filter((p) => !excludeSet.has(p.id))
+    .sort((a, b) => {
+      if (seasonStarted) {
+        if (b._ytd !== a._ytd) return b._ytd - a._ytd
+      }
+      return a._adp - b._adp
+    })
     .slice(0, 300)
 
   // Per-position rank from the same sort
@@ -1425,6 +1449,8 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
   return filtered.slice(0, 60).map((p) => ({
     ...p,
     pos_rank: posRanks[p.id] || null,
+    season_points: Math.round((p._ytd || 0) * 10) / 10,
+    on_waivers: waiverLockedSet.has(p.id),
   }))
 }
 
@@ -1664,9 +1690,20 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
     }
   }
 
+  // Free-agent guard: the added player must NOT be on waivers. If they are,
+  // the user must go through the waiver claim flow instead.
+  const lockedSet = await getWaiverLockedPlayerIds(leagueId)
+  if (lockedSet.has(addPlayerId)) {
+    const err = new Error('This player is on waivers — submit a waiver claim instead')
+    err.status = 400
+    throw err
+  }
+
   // Drop first (if applicable), then add to bench
   if (dropRow) {
     await supabase.from('fantasy_rosters').delete().eq('id', dropRow.id)
+    // Dropped player goes onto waivers until next clearing
+    await addToWaiverPool(leagueId, [dropPlayerId], 'dropped')
   }
   const { error: insertErr } = await supabase
     .from('fantasy_rosters')
@@ -1675,6 +1712,7 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
       user_id: userId,
       player_id: addPlayerId,
       slot: 'bench',
+      acquired_via: 'free_agent',
     })
   if (insertErr) {
     logger.error({ insertErr, addPlayerId }, 'Failed to add player to roster')
@@ -2072,6 +2110,95 @@ export async function getPlayerDetail(leagueId, playerId) {
 // =====================================================================
 
 /**
+ * Compute the next waiver clearing time: the upcoming Wednesday at 3:00 AM ET.
+ * (Matches the scheduler.js cron.) Returns a Date.
+ */
+export function nextWaiverClearTime(from = new Date()) {
+  // ET offset: assume EDT/EST handled by US/Eastern - we approximate by using
+  // a fixed UTC hour. Wed 3:00 AM ET == 07:00 UTC (EST) / 08:00 UTC (EDT).
+  // To be safe, target 08:00 UTC which is at-or-after 3:00 AM ET in both.
+  const target = new Date(from)
+  target.setUTCHours(8, 0, 0, 0)
+  // Day of week: 0=Sun .. 3=Wed
+  const day = target.getUTCDay()
+  let daysUntilWed = (3 - day + 7) % 7
+  if (daysUntilWed === 0 && from.getTime() >= target.getTime()) daysUntilWed = 7
+  target.setUTCDate(target.getUTCDate() + daysUntilWed)
+  return target
+}
+
+/**
+ * Set of NFL team abbreviations whose current-week game has already started.
+ * Players on these teams are waiver-locked until the next waiver run.
+ */
+export async function getLockedTeamsForLeague(leagueId) {
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('season')
+    .eq('league_id', leagueId)
+    .single()
+  const season = settings?.season || new Date().getUTCFullYear()
+  const today = new Date().toISOString().split('T')[0]
+  const { data: lockedGames } = await supabase
+    .from('nfl_schedule')
+    .select('home_team, away_team, status')
+    .eq('season', season)
+    .lte('game_date', today)
+    .neq('status', 'scheduled')
+  const locked = new Set()
+  for (const g of lockedGames || []) {
+    if (g.home_team) locked.add(g.home_team)
+    if (g.away_team) locked.add(g.away_team)
+  }
+  return locked
+}
+
+/**
+ * Returns the set of player_ids currently waiver-locked for the league.
+ * A player is waiver-locked if either (a) they sit in fantasy_waiver_pool with
+ * clears_at in the future, or (b) their NFL team's current-week game has
+ * already started.
+ */
+export async function getWaiverLockedPlayerIds(leagueId) {
+  const nowIso = new Date().toISOString()
+  const { data: pool } = await supabase
+    .from('fantasy_waiver_pool')
+    .select('player_id')
+    .eq('league_id', leagueId)
+    .gt('clears_at', nowIso)
+  const locked = new Set((pool || []).map((r) => r.player_id))
+
+  const lockedTeams = await getLockedTeamsForLeague(leagueId)
+  if (lockedTeams.size > 0) {
+    const { data: teamPlayers } = await supabase
+      .from('nfl_players')
+      .select('id, team')
+      .in('team', Array.from(lockedTeams))
+    for (const p of teamPlayers || []) locked.add(p.id)
+  }
+  return locked
+}
+
+/**
+ * Place one or more players into the league's waiver pool. Called from drop
+ * and trade flows. Idempotent — upserts so re-dropping refreshes clears_at.
+ */
+export async function addToWaiverPool(leagueId, playerIds, reason = 'dropped') {
+  if (!playerIds?.length) return
+  const clearsAt = nextWaiverClearTime().toISOString()
+  const rows = playerIds.map((pid) => ({
+    league_id: leagueId,
+    player_id: pid,
+    clears_at: clearsAt,
+    reason,
+  }))
+  const { error } = await supabase
+    .from('fantasy_waiver_pool')
+    .upsert(rows, { onConflict: 'league_id,player_id' })
+  if (error) logger.error({ error, leagueId, playerIds }, 'Failed to push players to waiver pool')
+}
+
+/**
  * Initialize per-user waiver state for a league. Called once after the draft
  * completes — sets each member's starting priority (reverse draft order if
  * available, else random) and FAAB budget.
@@ -2161,6 +2288,14 @@ export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlaye
   if (existing) {
     const err = new Error('Player is already rostered')
     err.status = 409
+    throw err
+  }
+
+  // The player must currently be on waivers — free agents are added directly
+  const lockedSet = await getWaiverLockedPlayerIds(leagueId)
+  if (!lockedSet.has(addPlayerId)) {
+    const err = new Error('This player is a free agent — add them directly')
+    err.status = 400
     throw err
   }
 
@@ -2385,6 +2520,8 @@ export async function processLeagueWaivers(leagueId) {
           .eq('league_id', leagueId)
           .eq('player_id', winner.drop_player_id)
           .eq('user_id', winner.user_id)
+        // Dropped player goes on waivers until next clearing
+        await addToWaiverPool(leagueId, [winner.drop_player_id], 'dropped')
       }
       const { error: insertErr } = await supabase
         .from('fantasy_rosters')
@@ -2472,6 +2609,16 @@ export async function processLeagueWaivers(leagueId) {
       } catch (err) { logger.error({ err }, 'Failed to send failed notification') }
     }
   }
+
+  // Anything left in the waiver pool whose clears_at has passed becomes a
+  // free agent. Also remove the players who were just awarded — those are
+  // off waivers regardless of their original clears_at.
+  const nowIso = new Date().toISOString()
+  await supabase
+    .from('fantasy_waiver_pool')
+    .delete()
+    .eq('league_id', leagueId)
+    .lte('clears_at', nowIso)
 
   logger.info({ leagueId, processed }, 'Waivers processed for league')
   return { processed }

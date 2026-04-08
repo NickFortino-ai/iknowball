@@ -50,6 +50,7 @@ export default function FantasyPlayerBrowser({ league }) {
   const isWaiver = settings?.waiver_type === 'priority' || settings?.waiver_type === 'rolling' || isFaab
   const myWaiverState = waiverData?.me
   const pendingClaims = (myClaims || []).filter((c) => c.status === 'pending')
+  const claimedPlayerIds = new Set(pendingClaims.map((c) => c.add_player_id))
 
   // Total roster capacity from settings (starters + bench, IR slots are excluded
   // because IR'd players don't count toward the active roster)
@@ -72,8 +73,12 @@ export default function FantasyPlayerBrowser({ league }) {
       toast('Pick a player to drop', 'error')
       return
     }
+    // Per-player waiver lock takes priority over the league-level waiver setting:
+    // if a player is on waivers, the user must submit a claim, regardless of
+    // whether the league uses waivers or instant adds.
+    const playerOnWaivers = !!addingPlayer.on_waivers
     try {
-      if (isWaiver) {
+      if (playerOnWaivers || isWaiver) {
         await submitClaim.mutateAsync({
           add_player_id: addingPlayer.id,
           drop_player_id: dropPlayerId || null,
@@ -179,7 +184,10 @@ export default function FantasyPlayerBrowser({ league }) {
       <div className="max-h-[60vh] overflow-y-auto">
         {isLoading ? (
           <div className="text-center text-sm text-text-muted py-8">Loading...</div>
-        ) : (players || []).map((player) => (
+        ) : (players || []).map((player) => {
+          const isClaimed = claimedPlayerIds.has(player.id)
+          const onWaivers = !!player.on_waivers
+          return (
           <div key={player.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-0">
             {player.headshot_url && (
               <img
@@ -194,19 +202,38 @@ export default function FantasyPlayerBrowser({ league }) {
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
                 <InjuryBadge status={player.injury_status} />
+                {onWaivers && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers — must submit a claim">W</span>
+                )}
+                {isClaimed && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="You have a pending claim on this player">CLAIMED</span>
+                )}
               </div>
-              <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
+              <div className="text-xs text-text-muted flex items-center gap-1.5">
+                <span>{player.position} · {player.team || 'FA'}</span>
+                {player.season_points != null && player.season_points > 0 && (
+                  <span className="text-text-secondary font-semibold">· {player.season_points} pts</span>
+                )}
+              </div>
             </div>
-            {!isDraftPhase && roster?.length > 0 && (
+            {!isDraftPhase && roster?.length > 0 && !isClaimed && (
               <button
                 onClick={() => setAddingPlayer(player)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent/15 text-accent hover:bg-accent/25 transition-colors shrink-0"
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
+                  onWaivers
+                    ? 'bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25'
+                    : 'bg-accent/15 text-accent hover:bg-accent/25'
+                }`}
               >
-                {isWaiver ? '+ Claim' : '+ Add'}
+                {onWaivers ? '+ Claim' : '+ Add'}
               </button>
             )}
+            {!isDraftPhase && isClaimed && (
+              <span className="text-[10px] font-semibold text-text-muted shrink-0">Pending</span>
+            )}
           </div>
-        ))}
+          )
+        })}
         {!isLoading && players?.length === 0 && (
           <div className="text-center text-sm text-text-muted py-8">No players found</div>
         )}
@@ -218,7 +245,7 @@ export default function FantasyPlayerBrowser({ league }) {
       {addingPlayer && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={() => { setAddingPlayer(null); setBidAmount(0) }}>
           <div className="bg-bg-secondary w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg mb-4">{isWaiver ? 'Claim' : 'Add'} {addingPlayer.full_name}</h3>
+            <h3 className="font-display text-lg mb-4">{(addingPlayer?.on_waivers || isWaiver) ? 'Claim' : 'Add'} {addingPlayer.full_name}</h3>
             {isFaab && (
               <div className="mb-4">
                 <label className="block text-xs uppercase text-text-muted mb-1.5">FAAB Bid (you have ${myWaiverState?.faab_remaining ?? 0})</label>
@@ -263,7 +290,7 @@ export default function FantasyPlayerBrowser({ league }) {
                 disabled={addDrop.isPending || submitClaim.isPending}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
-                {(addDrop.isPending || submitClaim.isPending) ? 'Submitting…' : isWaiver ? 'Submit Claim' : 'Confirm'}
+                {(addDrop.isPending || submitClaim.isPending) ? 'Submitting…' : (addingPlayer?.on_waivers || isWaiver) ? 'Submit Claim' : 'Confirm'}
               </button>
             </div>
           </div>
