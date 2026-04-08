@@ -130,10 +130,12 @@ export default function FantasyMyRankings({ league }) {
 
   if (isLoading) return <LoadingSpinner />
 
-  // Filter out drafted players, then apply user filters
+  // Compute rank from the FULL working list (drafted + undrafted) so each
+  // player's rank stays fixed as players above them get drafted. Then
+  // filter for display.
   const visible = working
-    .filter((r) => !draftedSet.has(r.player_id))
     .map((r, i) => ({ ...r, currentRank: i + 1 }))
+    .filter((r) => !draftedSet.has(r.player_id))
     .filter((r) => posFilter === 'All' || r.nfl_players?.position === posFilter)
     .filter((r) => !searchQuery || r.nfl_players?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
 
