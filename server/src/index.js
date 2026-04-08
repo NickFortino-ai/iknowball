@@ -6,7 +6,10 @@ import { validateSchema } from './jobs/validateSchema.js'
 import { validateUpstream } from './jobs/validateUpstream.js'
 import cron from 'node-cron'
 
-app.listen(env.PORT, () => {
+// Bind to 0.0.0.0 explicitly so Render's port scanner can detect us.
+// Without this, Node's default host binding can leave the public-facing
+// port unreachable on some platforms.
+app.listen(env.PORT, '0.0.0.0', () => {
   logger.info(`Server running on port ${env.PORT} in ${env.NODE_ENV} mode`)
   startScheduler()
   // Boot-time schema smoke check — surfaces column typos in deploy logs

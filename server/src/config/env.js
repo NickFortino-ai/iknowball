@@ -1,7 +1,7 @@
 import 'dotenv/config'
 
 export const env = {
-  PORT: process.env.PORT || 3001,
+  PORT: parseInt(process.env.PORT || '3001', 10),
   NODE_ENV: process.env.NODE_ENV || 'development',
   SUPABASE_URL: process.env.SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
