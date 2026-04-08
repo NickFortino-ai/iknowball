@@ -44,6 +44,52 @@ router.get('/players', requireAuth, async (req, res) => {
   res.json(sorted)
 })
 
+// List the user's saved mocks
+router.get('/saved', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('mock_draft_saves')
+    .select('id, client_id, payload, created_at')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || [])
+})
+
+// Save a mock (bookmark). Body: { client_id, payload }
+router.post('/saved', requireAuth, async (req, res) => {
+  const { client_id, payload } = req.body || {}
+  if (!payload) return res.status(400).json({ error: 'payload required' })
+  // Dedupe: if same client_id already exists for this user, skip
+  if (client_id) {
+    const { data: existing } = await supabase
+      .from('mock_draft_saves')
+      .select('id')
+      .eq('user_id', req.user.id)
+      .eq('client_id', client_id)
+      .maybeSingle()
+    if (existing) return res.json(existing)
+  }
+  const { data, error } = await supabase
+    .from('mock_draft_saves')
+    .insert({ user_id: req.user.id, client_id: client_id || null, payload })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
+// Delete a saved mock by row id
+router.delete('/saved/:id', requireAuth, async (req, res) => {
+  const { error } = await supabase
+    .from('mock_draft_saves')
+    .delete()
+    .eq('user_id', req.user.id)
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ deleted: true })
+})
+
 // Mock draft player detail — same shape as the league endpoint, no league context
 router.get('/players/:playerId/detail', requireAuth, async (req, res) => {
   const scoring = req.query.scoring || 'ppr'

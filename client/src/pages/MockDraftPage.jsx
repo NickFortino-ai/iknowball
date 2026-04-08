@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
@@ -194,28 +194,29 @@ function snakeOrder(numTeams, totalRounds) {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// LocalStorage: two lists — recent (capped) + saved (uncapped, bookmarked)
+// Storage: recent mocks live in localStorage (per device, throwaway).
+// Saved mocks live on the server so they're accessible from any device.
 
-const RECENT_KEY = 'mockDraftHistory'  // legacy key, kept for back-compat
-const SAVED_KEY = 'mockDraftSaved'
+const RECENT_KEY = 'mockDraftHistory'
+const LEGACY_SAVED_KEY = 'mockDraftSaved' // pre-server saves; one-time migration
 const MAX_RECENT = 5
 
 function loadRecent() {
   try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch { return [] }
 }
-function loadSaved() {
-  try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') } catch { return [] }
-}
 function persistRecent(list) {
   localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)))
-}
-function persistSaved(list) {
-  localStorage.setItem(SAVED_KEY, JSON.stringify(list))
 }
 function addRecent(mock) {
   const list = loadRecent()
   list.unshift(mock)
   persistRecent(list)
+}
+function loadLegacySaved() {
+  try { return JSON.parse(localStorage.getItem(LEGACY_SAVED_KEY) || '[]') } catch { return [] }
+}
+function clearLegacySaved() {
+  localStorage.removeItem(LEGACY_SAVED_KEY)
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -225,8 +226,45 @@ export default function MockDraftPage() {
   const [screen, setScreen] = useState('home') // home | setup | draft | review
   const [config, setConfig] = useState(null)
   const [recent, setRecent] = useState(loadRecent())
-  const [saved, setSaved] = useState(loadSaved())
   const [reviewMock, setReviewMock] = useState(null)
+  const queryClient = useQueryClient()
+
+  // Saved mocks live on the server now — cross-device access
+  const { data: savedRows } = useQuery({
+    queryKey: ['mockDrafts', 'saved'],
+    queryFn: () => api.get('/mock-draft/saved'),
+  })
+  // Normalize: each row is { id (server uuid), client_id, payload, created_at }.
+  // We surface the payload (the mock data) merged with server id so
+  // delete uses the row id and the rest of the UI is unchanged.
+  const saved = useMemo(
+    () => (savedRows || []).map((row) => ({
+      ...row.payload,
+      _serverId: row.id,
+      // payload.id is the original client mock_xxx; keep both for dedupe
+    })),
+    [savedRows]
+  )
+
+  // One-time migration: any localStorage saved mocks get pushed to the server
+  // on first load, then the legacy key is cleared.
+  useEffect(() => {
+    const legacy = loadLegacySaved()
+    if (!legacy.length) return
+    ;(async () => {
+      try {
+        for (const m of legacy) {
+          await api.post('/mock-draft/saved', { client_id: m.id, payload: m })
+        }
+        clearLegacySaved()
+        queryClient.invalidateQueries({ queryKey: ['mockDrafts', 'saved'] })
+        toast(`Synced ${legacy.length} saved mock${legacy.length === 1 ? '' : 's'} to your account`, 'success')
+      } catch (err) {
+        // best effort; we'll try again next mount
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function startMock(cfg) {
     setConfig(cfg)
@@ -240,24 +278,36 @@ export default function MockDraftPage() {
     setScreen('review')
   }
 
-  // Bookmark a mock — moves it from recent to saved
-  function bookmarkMock(mock) {
-    const nextSaved = [mock, ...loadSaved().filter((m) => m.id !== mock.id)]
-    persistSaved(nextSaved)
-    setSaved(nextSaved)
-    const nextRecent = loadRecent().filter((m) => m.id !== mock.id)
-    persistRecent(nextRecent)
-    setRecent(nextRecent)
+  // Bookmark a mock — saves to the server, removes from local recent
+  async function bookmarkMock(mock) {
+    try {
+      await api.post('/mock-draft/saved', { client_id: mock.id, payload: mock })
+      queryClient.invalidateQueries({ queryKey: ['mockDrafts', 'saved'] })
+      const nextRecent = loadRecent().filter((m) => m.id !== mock.id)
+      persistRecent(nextRecent)
+      setRecent(nextRecent)
+      toast('Saved to your account', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to save', 'error')
+    }
   }
 
-  // Delete from either list permanently
-  function deleteMock(mockId) {
-    const nextRecent = loadRecent().filter((m) => m.id !== mockId)
-    persistRecent(nextRecent)
-    setRecent(nextRecent)
-    const nextSaved = loadSaved().filter((m) => m.id !== mockId)
-    persistSaved(nextSaved)
-    setSaved(nextSaved)
+  // Delete a mock — handles both recent (local) and saved (server)
+  async function deleteMock(mock) {
+    // Mock can be either recent (id only) or saved (has _serverId)
+    if (mock._serverId) {
+      try {
+        await api.delete(`/mock-draft/saved/${mock._serverId}`)
+        queryClient.invalidateQueries({ queryKey: ['mockDrafts', 'saved'] })
+      } catch (err) {
+        toast(err.message || 'Failed to delete', 'error')
+        return
+      }
+    } else {
+      const nextRecent = loadRecent().filter((m) => m.id !== mock.id)
+      persistRecent(nextRecent)
+      setRecent(nextRecent)
+    }
   }
 
   return (
@@ -376,7 +426,7 @@ function MockList({ title, emptyText, list, onReview, onBookmark, onDelete, show
               )}
               <button
                 onClick={() => {
-                  if (confirm('Delete this mock forever?')) onDelete(m.id)
+                  if (confirm('Delete this mock forever?')) onDelete(m)
                 }}
                 title="Delete forever"
                 className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-text-muted hover:text-incorrect active:bg-bg-secondary text-lg transition-colors"
