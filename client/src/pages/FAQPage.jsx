@@ -104,9 +104,11 @@ The multiplier is only available on straight picks in the global competition. It
 
 \u2022 <strong class="text-white">Pick\u2019em:</strong> Pick games within the league each day or week. Your picks are scored using the same odds-based system as regular picks but tracked on a separate standings board.
 \u2022 <strong class="text-white">Survivor:</strong> Pick one team to win each period. If your team loses, you lose a life. Use all your lives and you\u2019re eliminated. You can only pick each team once. Last one standing wins.
+\u2022 <strong class="text-white">Touchdown Survivor Pool:</strong> NFL-only survivor variant. Each week, pick one player you think will score a touchdown. If they score, you survive; if not, you lose a life. Each player can only be used once all season.
 \u2022 <strong class="text-white">Brackets:</strong> Tournament-style bracket competitions where you fill out a bracket and earn points for each correct pick. Finishing position determines your global score impact.
 \u2022 <strong class="text-white">Squares:</strong> Classic grid game for a specific matchup. Random numbers assigned, winners based on score at the end of each quarter.
-\u2022 <strong class="text-white">Fantasy Football:</strong> Traditional draft-based fantasy football with head-to-head matchups, waivers, and trades.
+\u2022 <strong class="text-white">Fantasy Football:</strong> Two flavors \u2014 Traditional season-long with a snake draft, head-to-head matchups, waivers, and trades; or Weekly Salary Cap where you build a fresh lineup each week under a budget and compete for the best total.
+\u2022 <strong class="text-white">TD Pass Competition:</strong> Season-long NFL league where you pick one QB per week. You can never re-pick the same QB. Standings rank by total accumulated passing TDs across all your picks \u2014 most TDs by season\u2019s end wins.
 \u2022 <strong class="text-white">NBA Daily Fantasy:</strong> Build a nightly NBA lineup under a salary cap (9 positions) and compete for the highest score.
 \u2022 <strong class="text-white">MLB Daily Fantasy:</strong> Build a daily MLB lineup under a salary cap (C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) scored on hits, HRs, RBIs, runs, stolen bases, and more.
 \u2022 <strong class="text-white">Home Run Derby:</strong> Pick 3 hitters per day who you think will hit a home run. Each player can only be used once per week. Total home runs determine standings with HR distance as tiebreaker.`,
