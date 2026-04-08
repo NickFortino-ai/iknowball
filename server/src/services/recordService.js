@@ -200,7 +200,7 @@ async function calcLongestWinStreak(sportKey) {
   }
 
   if (!bestUserId || bestStreak === 0) return null
-  return { holderId: bestUserId, value: bestStreak, metadata: { pickIds: bestPickIds.slice(-20) } }
+  return { holderId: bestUserId, value: bestStreak, metadata: { pickIds: bestPickIds } }
 }
 
 async function calcLongestParlayStreak() {
@@ -252,7 +252,7 @@ async function calcLongestParlayStreak() {
   }
 
   if (!bestUserId || bestStreak === 0) return null
-  return { holderId: bestUserId, value: bestStreak, metadata: { parlayIds: bestIds.slice(-20) } }
+  return { holderId: bestUserId, value: bestStreak, metadata: { parlayIds: bestIds } }
 }
 
 async function calcLongestPropStreak() {
@@ -306,7 +306,7 @@ async function calcLongestPropStreak() {
   }
 
   if (!bestUserId || bestStreak === 0) return null
-  return { holderId: bestUserId, value: bestStreak, metadata: { propPickIds: bestIds.slice(-20) } }
+  return { holderId: bestUserId, value: bestStreak, metadata: { propPickIds: bestIds } }
 }
 
 async function calcHighestPropPct() {
