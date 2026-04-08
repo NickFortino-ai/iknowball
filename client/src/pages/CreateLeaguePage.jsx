@@ -132,6 +132,7 @@ export default function CreateLeaguePage() {
   const [draftPickTimer, setDraftPickTimer] = useState(90)
   const [irSpots, setIrSpots] = useState(1)
   const [waiverType, setWaiverType] = useState('priority')
+  const [faabStartingBudget, setFaabStartingBudget] = useState(100)
   const [tradeReview, setTradeReview] = useState('commissioner')
   const [playoffTeams, setPlayoffTeams] = useState(4)
   const [playoffStartWeek, setPlayoffStartWeek] = useState(16)
@@ -205,6 +206,7 @@ export default function CreateLeaguePage() {
         ? { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6, ir: irSpots }
         : undefined,
       waiver_type: format === 'fantasy' && fantasyFormat === 'traditional' ? waiverType : undefined,
+      faab_starting_budget: format === 'fantasy' && fantasyFormat === 'traditional' && waiverType === 'faab' ? faabStartingBudget : undefined,
       trade_review: format === 'fantasy' && fantasyFormat === 'traditional' ? tradeReview : undefined,
       playoff_teams: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffTeams : undefined,
       playoff_start_week: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffStartWeek : undefined,
@@ -718,6 +720,7 @@ export default function CreateLeaguePage() {
                 {[
                   { value: 'priority', label: 'Priority' },
                   { value: 'rolling', label: 'Rolling' },
+                  { value: 'faab', label: 'FAAB' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -731,6 +734,19 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
+              {waiverType === 'faab' && (
+                <div className="mt-2">
+                  <label className="text-[10px] text-text-muted block mb-1">Starting FAAB Budget</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10000}
+                    value={faabStartingBudget}
+                    onChange={(e) => setFaabStartingBudget(parseInt(e.target.value, 10) || 100)}
+                    className="w-32 bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+              )}
             </div>
             <div>
               <label className="text-xs text-text-muted block mb-1">Trade Review</label>

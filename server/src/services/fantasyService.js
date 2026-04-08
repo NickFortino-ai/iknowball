@@ -2179,8 +2179,33 @@ export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlaye
     }
   }
 
-  // FAAB budget check
   const settings = await getFantasySettings(leagueId)
+
+  // Roster capacity guard. If the user has no drop player and their non-IR
+  // roster is already at the league's capacity, the claim cannot succeed.
+  if (!dropPlayerId) {
+    const slots = settings?.roster_slots || {}
+    let cap = 0
+    for (const [k, v] of Object.entries(slots)) {
+      if (k === 'ir') continue
+      cap += Number(v) || 0
+    }
+    if (cap > 0) {
+      const { data: rosterRows } = await supabase
+        .from('fantasy_rosters')
+        .select('id, slot')
+        .eq('league_id', leagueId)
+        .eq('user_id', userId)
+      const active = (rosterRows || []).filter((r) => r.slot !== 'ir').length
+      if (active >= cap) {
+        const err = new Error('Your roster is full — pick a player to drop')
+        err.status = 400
+        throw err
+      }
+    }
+  }
+
+  // FAAB budget check
   if (settings?.waiver_type === 'faab') {
     if (bidAmount < 0) {
       const err = new Error('Bid must be non-negative')
@@ -2459,7 +2484,8 @@ export async function processLeagueWaivers(leagueId) {
 export async function processAllPendingWaivers() {
   const { data: leagues } = await supabase
     .from('fantasy_settings')
-    .select('league_id')
+    .select('league_id, leagues!inner(status)')
+    .eq('leagues.status', 'active')
   if (!leagues?.length) return
   for (const l of leagues) {
     try {

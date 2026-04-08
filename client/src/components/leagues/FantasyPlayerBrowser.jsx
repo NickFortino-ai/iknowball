@@ -51,9 +51,24 @@ export default function FantasyPlayerBrowser({ league }) {
   const myWaiverState = waiverData?.me
   const pendingClaims = (myClaims || []).filter((c) => c.status === 'pending')
 
+  // Total roster capacity from settings (starters + bench, IR slots are excluded
+  // because IR'd players don't count toward the active roster)
+  const rosterCap = (() => {
+    const slots = settings?.roster_slots
+    if (!slots) return 16
+    let n = 0
+    for (const [k, v] of Object.entries(slots)) {
+      if (k === 'ir') continue
+      n += Number(v) || 0
+    }
+    return n || 16
+  })()
+  // Active (non-IR) rostered count
+  const activeRosterCount = (roster || []).filter((r) => r.slot !== 'ir').length
+
   async function handleConfirmAdd() {
     if (!addingPlayer) return
-    if ((roster?.length || 0) >= 16 && !dropPlayerId) {
+    if (activeRosterCount >= rosterCap && !dropPlayerId) {
       toast('Pick a player to drop', 'error')
       return
     }
@@ -217,7 +232,7 @@ export default function FantasyPlayerBrowser({ league }) {
                 />
               </div>
             )}
-            {(roster?.length || 0) >= 16 && (
+            {activeRosterCount >= rosterCap && (
               <>
                 <p className="text-sm text-text-secondary mb-3">Roster is full. Pick a player to drop:</p>
                 <div className="space-y-1 mb-4 max-h-60 overflow-y-auto">
