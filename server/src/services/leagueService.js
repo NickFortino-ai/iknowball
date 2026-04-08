@@ -172,6 +172,25 @@ export async function createLeague(userId, data) {
     await createFantasySettings(league.id, data.fantasy_settings || {})
   }
 
+  // TD Pass: lock joins at the start of the very last NFL game of the
+  // current week, so users can join right up until the final kickoff
+  // (typically MNF, or the MNF doubleheader nightcap).
+  if (league.format === 'td_pass') {
+    try {
+      const { getCurrentWeekLastKickoff } = await import('./tdPassService.js')
+      const lastKickoff = await getCurrentWeekLastKickoff()
+      if (lastKickoff) {
+        await supabase
+          .from('leagues')
+          .update({ joins_locked_at: lastKickoff })
+          .eq('id', league.id)
+        league.joins_locked_at = lastKickoff
+      }
+    } catch (err) {
+      logger.error({ err, leagueId: league.id }, 'Failed to set td_pass joins_locked_at')
+    }
+  }
+
   return league
 }
 

@@ -228,7 +228,19 @@ export default function TdPassView({ league, tab = 'picks' }) {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-text-primary truncate">{qb.full_name}</div>
-                  <div className="text-xs text-text-muted">{qb.team}{qb.injury_status ? ` · ${qb.injury_status}` : ''}</div>
+                  <div className="text-xs text-text-muted truncate">
+                    {qb.team}{qb.injury_status ? ` · ${qb.injury_status}` : ''}
+                    {qb.matchup && (
+                      <span className="ml-1">
+                        · {qb.matchup.home_away === 'home' ? 'vs' : '@'} {qb.matchup.opponent}
+                        {qb.matchup.starts_at && (
+                          <span className="ml-1 text-text-secondary">
+                            {new Date(qb.matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => handlePick(qb)}

@@ -31,6 +31,44 @@ export async function getCurrentNflWeek() {
 }
 
 /**
+ * Latest kickoff time of the current NFL week. Used as the joins_locked_at
+ * for a TD Pass league created mid-week — users can join up until the start
+ * of the very last game (e.g. MNF nightcap on a doubleheader week).
+ *
+ * Returns an ISO timestamp string, or null if no games are loaded.
+ */
+export async function getCurrentWeekLastKickoff() {
+  const { week, season } = await getCurrentNflWeek()
+  // Look up the date range for that week
+  const { data: weekRows } = await supabase
+    .from('nfl_schedule')
+    .select('game_date')
+    .eq('season', season)
+    .eq('week', week)
+  if (!weekRows?.length) return null
+  const dates = weekRows.map((r) => r.game_date).sort()
+  const minDate = dates[0]
+  const maxDate = dates[dates.length - 1]
+
+  // Find the latest NFL kickoff in that range from the games table (real ts)
+  const { data: sport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', 'americanfootball_nfl')
+    .single()
+  if (!sport?.id) return null
+  const { data: games } = await supabase
+    .from('games')
+    .select('starts_at')
+    .eq('sport_id', sport.id)
+    .gte('starts_at', `${minDate}T00:00:00Z`)
+    .lt('starts_at', `${maxDate}T23:59:59Z`)
+    .order('starts_at', { ascending: false })
+    .limit(1)
+  return games?.[0]?.starts_at || null
+}
+
+/**
  * Set of QB player_ids whose game has already started for the current week.
  * We use the same Eastern-day rule as the fantasy waiver lock.
  */
@@ -70,16 +108,66 @@ export async function getAvailableQBs(leagueId, userId) {
     .not('team', 'is', null)
     .order('full_name', { ascending: true })
 
+  // Pull current-week NFL games so we can attach matchup info to each QB
+  const matchupByTeam = await getCurrentWeekMatchups()
+
   return (qbs || [])
     .filter((q) => !usedSet.has(q.id))
     .filter((q) => !lockedTeams.has(q.team))
-    .map((q) => ({
-      id: q.id,
-      full_name: q.full_name,
-      team: q.team,
-      headshot_url: q.headshot_url,
-      injury_status: q.injury_status,
-    }))
+    .map((q) => {
+      const m = matchupByTeam[q.team] || null
+      return {
+        id: q.id,
+        full_name: q.full_name,
+        team: q.team,
+        headshot_url: q.headshot_url,
+        injury_status: q.injury_status,
+        matchup: m, // { opponent, home_away, starts_at } | null
+      }
+    })
+}
+
+/**
+ * Build a map: team_abbr → { opponent, home_away, starts_at } for the
+ * current NFL week. Pulls from the live `games` table (which is what the
+ * picks UI uses elsewhere) so abbreviations match.
+ */
+async function getCurrentWeekMatchups() {
+  const { week, season } = await getCurrentNflWeek()
+  const { data: weekRows } = await supabase
+    .from('nfl_schedule')
+    .select('game_date')
+    .eq('season', season)
+    .eq('week', week)
+  if (!weekRows?.length) return {}
+  const dates = weekRows.map((r) => r.game_date).sort()
+  const minDate = dates[0]
+  const maxDate = dates[dates.length - 1]
+
+  const { data: sport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', 'americanfootball_nfl')
+    .single()
+  if (!sport?.id) return {}
+
+  const { data: games } = await supabase
+    .from('games')
+    .select('home_team, away_team, starts_at')
+    .eq('sport_id', sport.id)
+    .gte('starts_at', `${minDate}T00:00:00Z`)
+    .lt('starts_at', `${maxDate}T23:59:59Z`)
+
+  const byTeam = {}
+  for (const g of games || []) {
+    if (g.home_team) {
+      byTeam[g.home_team] = { opponent: g.away_team, home_away: 'home', starts_at: g.starts_at }
+    }
+    if (g.away_team) {
+      byTeam[g.away_team] = { opponent: g.home_team, home_away: 'away', starts_at: g.starts_at }
+    }
+  }
+  return byTeam
 }
 
 export async function getMyPicks(leagueId, userId) {

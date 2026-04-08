@@ -369,6 +369,37 @@ async function getMLBDFSStandings(league) {
   return ranked
 }
 
+async function getTdPassStandings(league) {
+  const { data: picks } = await supabase
+    .from('td_pass_picks')
+    .select('user_id, td_count')
+    .eq('league_id', league.id)
+  if (!picks?.length) return []
+
+  const userMap = {}
+  for (const p of picks) {
+    if (!userMap[p.user_id]) userMap[p.user_id] = { user_id: p.user_id, totalTds: 0 }
+    userMap[p.user_id].totalTds += p.td_count || 0
+  }
+  const standings = Object.values(userMap)
+  standings.sort((a, b) => b.totalTds - a.totalTds)
+
+  // Group ties (same totalTds → shared rank). awardPositionBasedPoints
+  // already splits the champion bonus among tied users.
+  const ranked = []
+  let i = 0
+  while (i < standings.length) {
+    let j = i
+    while (j < standings.length && standings[j].totalTds === standings[i].totalTds) j++
+    const sharedRank = i + 1
+    for (let k = i; k < j; k++) {
+      ranked.push({ user_id: standings[k].user_id, rank: sharedRank })
+    }
+    i = j
+  }
+  return ranked
+}
+
 async function getHRDerbyStandings(league) {
   const { data: picks } = await supabase
     .from('hr_derby_picks')
@@ -435,7 +466,7 @@ export async function completeLeagues() {
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
-    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby'])
+    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'td_pass'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
     .lte('ends_at', now)
@@ -529,6 +560,11 @@ export async function completeLeagues() {
         const standings = await getHRDerbyStandings(league)
         if (standings?.length > 0) {
           await awardPositionBasedPoints(league, standings, 'HR Derby')
+        }
+      } else if (league.format === 'td_pass') {
+        const standings = await getTdPassStandings(league)
+        if (standings?.length > 0) {
+          await awardPositionBasedPoints(league, standings, 'TD Pass')
         }
       }
 
