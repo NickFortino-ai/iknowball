@@ -23,9 +23,9 @@ function classifyFetchError(err) {
   return new Error(err.message || 'Unexpected network error. Try again.')
 }
 
-async function rawFetch(path, options, authHeaders) {
+async function rawFetch(path, options, authHeaders, timeoutMs = 25000) {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
   try {
     return await fetch(`${BASE_URL}${path}`, {
       ...options,
@@ -45,11 +45,19 @@ async function request(path, options = {}) {
   let authHeaders = await getAuthHeaders()
   let res
 
-  // Try once, then retry once on transient TypeError (network blip, network transition).
+  // Up to 3 attempts. Backoff sequence: immediate, 600ms, 1.5s, 3s.
+  // This gives Render's free-tier cold-start (~15-25s) enough room to
+  // complete instead of failing on a single transient TypeError.
+  const backoffs = [0, 600, 1500, 3000]
   let lastErr
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < backoffs.length; attempt++) {
+    if (backoffs[attempt] > 0) {
+      await new Promise((r) => setTimeout(r, backoffs[attempt]))
+    }
     try {
-      res = await rawFetch(path, options, authHeaders)
+      // First attempt uses a longer timeout in case the server is cold-starting.
+      const timeoutMs = attempt === 0 ? 30000 : 15000
+      res = await rawFetch(path, options, authHeaders, timeoutMs)
       lastErr = null
       break
     } catch (err) {
@@ -57,11 +65,8 @@ async function request(path, options = {}) {
       // Don't retry on AbortError (timeout) or genuine offline
       if (err.name === 'AbortError') break
       if (typeof navigator !== 'undefined' && navigator.onLine === false) break
-      if (attempt === 0 && err.name === 'TypeError') {
-        // Brief backoff before second try — catches Wi-Fi → cell transitions
-        await new Promise((r) => setTimeout(r, 600))
-        continue
-      }
+      // Retry only on TypeError (network errors)
+      if (err.name === 'TypeError') continue
       break
     }
   }
