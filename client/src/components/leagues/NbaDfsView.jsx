@@ -426,8 +426,11 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     const startX = e.clientX
     dragStartY.current = startY
 
-    // Pre-drag: cancel if user starts scrolling before long-press fires
-    const onPredrag = (moveE) => {
+    // Pre-drag: cancel if the user starts scrolling OR releases before the
+    // long-press timer fires. A quick tap (release before 400ms) must NOT
+    // engage the drag — the row needs to behave like a normal button so the
+    // user can open the modal or × the player off the roster.
+    const onPredragMove = (moveE) => {
       const dx = Math.abs(moveE.clientX - startX)
       const dy = Math.abs(moveE.clientY - startY)
       if (dx > 8 || dy > 8) {
@@ -435,11 +438,18 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
         detachDocListeners()
       }
     }
-    docCancelOnPredragRef.current = onPredrag
-    window.addEventListener('pointermove', onPredrag, { passive: true })
-    window.addEventListener('pointerup', onPredrag, { once: true, passive: true })
+    const onPredragEnd = () => {
+      clearTimeout(longPressTimer.current)
+      detachDocListeners()
+    }
+    docCancelOnPredragRef.current = onPredragMove
+    window.addEventListener('pointermove', onPredragMove, { passive: true })
+    window.addEventListener('pointerup', onPredragEnd, { once: true, passive: true })
+    window.addEventListener('pointercancel', onPredragEnd, { once: true, passive: true })
 
     longPressTimer.current = setTimeout(() => {
+      // 350ms long-press required so a quick tap (open modal / × off roster)
+      // doesn't accidentally engage the drag.
       // Detach pre-drag cancel; we're committed to the drag
       if (docCancelOnPredragRef.current) {
         window.removeEventListener('pointermove', docCancelOnPredragRef.current)
@@ -522,7 +532,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
       window.addEventListener('pointermove', onMove, { passive: false })
       window.addEventListener('pointerup', onEnd, { passive: true })
       window.addEventListener('pointercancel', onEnd, { passive: true })
-    }, 300)
+    }, 400)
   }
 
   // Stub — kept so the row's onPointerMove/onPointerUp props don't error.
