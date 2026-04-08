@@ -290,6 +290,7 @@ router.get('/backdrops', requireAuth, async (req, res) => {
         if (!b.formats?.length) return true
         if (b.formats.includes(sport)) return true
         if (sport === 'touchdown_survivor' && b.formats.includes('americanfootball_nfl')) return true
+        if (sport === 'td_pass_competition' && b.formats.includes('americanfootball_nfl')) return true
         return false
       })
     : backdrops

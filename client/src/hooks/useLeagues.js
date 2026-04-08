@@ -1061,3 +1061,59 @@ export function useHrDerbyStandings(leagueId) {
     refetchInterval: 60000,
   })
 }
+
+// === TD Pass Competition ===
+export function useTdPassQbs(leagueId) {
+  return useQuery({
+    queryKey: ['td-pass', leagueId, 'qbs'],
+    queryFn: () => api.get(`/td-pass/qbs?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    staleTime: 30_000,
+  })
+}
+
+export function useTdPassMyPicks(leagueId) {
+  return useQuery({
+    queryKey: ['td-pass', leagueId, 'my-picks'],
+    queryFn: () => api.get(`/td-pass/my-picks?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
+export function useTdPassLeaguePicks(leagueId) {
+  return useQuery({
+    queryKey: ['td-pass', leagueId, 'league-picks'],
+    queryFn: () => api.get(`/td-pass/league-picks?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
+export function useTdPassStandings(leagueId) {
+  return useQuery({
+    queryKey: ['td-pass', leagueId, 'standings'],
+    queryFn: () => api.get(`/td-pass/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
+export function useTdPassCurrentWeek() {
+  return useQuery({
+    queryKey: ['td-pass', 'current-week'],
+    queryFn: () => api.get('/td-pass/current-week'),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useSubmitTdPassPick() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, qbPlayerId }) =>
+      api.post('/td-pass/picks', { league_id: leagueId, qb_player_id: qbPlayerId }),
+    onSuccess: (_, { leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['td-pass', leagueId] })
+    },
+  })
+}

@@ -21,6 +21,7 @@ import FantasyLiveView from '../components/leagues/FantasyLiveView'
 import NbaDfsView from '../components/leagues/NbaDfsView'
 import MlbDfsView from '../components/leagues/MlbDfsView'
 import HrDerbyView from '../components/leagues/HrDerbyView'
+import TdPassView from '../components/leagues/TdPassView'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -53,6 +54,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
     nba_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
     mlb_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
     hr_derby: ['Picks', memberOrStandings, 'Thread'],
+    td_pass: ['Picks', 'History', memberOrStandings, 'Thread'],
   }
   return TABS[league.format] || [memberOrStandings, 'Thread']
 }
@@ -66,6 +68,7 @@ const FORMAT_LABELS = {
   nba_dfs: 'NBA Daily Fantasy',
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
+  td_pass: 'TD Pass Competition',
 }
 
 const SPORT_LABELS = {
@@ -1546,6 +1549,15 @@ export default function LeagueDetailPage() {
       {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'hr_derby' && (
         <div className="relative z-10">
           <HrDerbyView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
+        </div>
+      )}
+
+      {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'History' || tabs[activeTab] === 'Standings') && league.format === 'td_pass' && (
+        <div className="relative z-10">
+          <TdPassView
+            league={league}
+            tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'History' ? 'history' : 'picks'}
+          />
         </div>
       )}
 

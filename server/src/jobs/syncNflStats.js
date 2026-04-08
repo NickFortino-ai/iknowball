@@ -101,6 +101,13 @@ export async function syncNflStatsCurrentWeek() {
     const result = await syncWeeklyStats(season, week)
     onSuccess()
     logger.info({ season, week, ...result }, 'NFL stats auto-sync complete')
+    // Score TD Pass competition picks against the freshly-synced stats
+    try {
+      const { scoreAllTdPassPicks } = await import('../services/tdPassService.js')
+      await scoreAllTdPassPicks()
+    } catch (e) {
+      logger.error({ err: e }, 'TD Pass scoring failed')
+    }
     return result
   } catch (err) {
     if (err?.message?.includes('429')) {
