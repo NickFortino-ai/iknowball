@@ -255,9 +255,8 @@ export default function PicksPage() {
       )}
 
       <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide -mx-4 px-4">
-        {sortedTabs.map((tab) => {
+        {sortedTabs.filter((t) => activeKeys.has(t.key)).map((tab) => {
           const isActive = activeSport === tab.key && !isFuturesMode
-          const hasGames = activeKeys.has(tab.key)
           return (
             <button
               key={tab.key}
@@ -266,12 +265,13 @@ export default function PicksPage() {
                 isActive
                   ? 'bg-accent text-white'
                   : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-              }${!hasGames && !isActive ? ' opacity-50' : ''}`}
+              }`}
             >
               {tab.label}
             </button>
           )
         })}
+        {/* Futures sits at the right edge of the live tabs, always */}
         <button
           onClick={() => setIsFuturesMode(true)}
           className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
@@ -282,6 +282,23 @@ export default function PicksPage() {
         >
           Futures
         </button>
+        {/* Inactive (out-of-season) sports follow, grayed out */}
+        {sortedTabs.filter((t) => !activeKeys.has(t.key)).map((tab) => {
+          const isActive = activeSport === tab.key && !isFuturesMode
+          return (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveSport(tab.key); setIsFuturesMode(false) }}
+              className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                isActive
+                  ? 'bg-accent text-white'
+                  : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              } opacity-50`}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
       </div>
 
       {isFuturesMode ? (
