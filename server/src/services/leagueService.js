@@ -3,16 +3,13 @@ import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
 import { getLeaguePickStandings } from './leaguePickService.js'
 
-// REGULAR-season end dates by sport. Full-season leagues end on the
-// last day of the regular season (NO playoffs). Returns a Date object
-// for the next-occurring end date relative to the given startsAt.
+// REGULAR-season end dates by sport. Full-season leagues end AFTER the
+// last day of the regular season's games (NO playoffs). Returns a Date
+// at 10 AM UTC the day AFTER the last game day, so all West Coast night
+// games on the final day finish before the league closes.
 function regularSeasonEnd(sportKey, startsAt) {
   if (!sportKey) return null
-  const startMd = (() => {
-    const d = startsAt ? new Date(startsAt) : new Date()
-    return { month: d.getMonth(), day: d.getDate(), year: d.getFullYear() }
-  })()
-  // [month0, day]
+  // [month0, day] of the last regular-season game day
   const endMd = {
     basketball_nba: [3, 12],         // Apr 12
     americanfootball_nfl: [0, 5],    // Jan 5
@@ -25,11 +22,12 @@ function regularSeasonEnd(sportKey, startsAt) {
     soccer_usa_mls: [9, 18],         // Oct 18
   }[sportKey]
   if (!endMd) return null
-  // Pick the next occurrence of [month, day] >= startsAt
-  let year = startMd.year
-  let candidate = new Date(year, endMd[0], endMd[1], 12, 0, 0)
-  if (candidate < new Date(startMd.year, startMd.month, startMd.day)) {
-    candidate = new Date(year + 1, endMd[0], endMd[1], 12, 0, 0)
+  const start = startsAt ? new Date(startsAt) : new Date()
+  let year = start.getUTCFullYear()
+  // Build end-of-last-day-plus-one in UTC, matching parseEndDate convention
+  let candidate = new Date(Date.UTC(year, endMd[0], endMd[1] + 1, 10, 0, 0))
+  if (candidate < start) {
+    candidate = new Date(Date.UTC(year + 1, endMd[0], endMd[1] + 1, 10, 0, 0))
   }
   return candidate
 }
