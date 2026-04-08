@@ -254,5 +254,76 @@ export async function syncInjuries() {
     logger.error({ err }, 'Failed to update DFS salary injury statuses')
   }
 
+  // Patch nfl_players.injury_status from team_intel so the fantasy UI
+  // gets 10-minute injury freshness on game days. Without this loop the
+  // fantasy display would only refresh once a day via syncPlayers.
+  try {
+    const { data: nflIntel } = await supabase
+      .from('team_intel')
+      .select('injuries')
+      .eq('sport_key', 'americanfootball_nfl')
+
+    // Build normalized-name → { status, body_part } map
+    function normalizeName(name) {
+      if (!name) return ''
+      return String(name)
+        .replace(/\.\s*$/, '')
+        .replace(/\s+(jr|sr|ii|iii|iv)\.?\s*$/i, ' $1')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase()
+    }
+
+    const espnByName = {}
+    for (const row of nflIntel || []) {
+      for (const inj of row.injuries || []) {
+        if (inj.name && inj.status) {
+          espnByName[normalizeName(inj.name)] = {
+            status: inj.status,
+            body_part: inj.detail || null,
+          }
+        }
+      }
+    }
+
+    if (Object.keys(espnByName).length) {
+      // Pull all NFL players (only ones still on a team) so we can
+      // null-out injuries for players who no longer appear in ESPN's
+      // active injury list and bump status for those who do.
+      const { data: nflPlayers } = await supabase
+        .from('nfl_players')
+        .select('id, full_name, injury_status, injury_body_part')
+        .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+        .not('team', 'is', null)
+
+      let updated = 0
+      let cleared = 0
+      for (const p of nflPlayers || []) {
+        const norm = normalizeName(p.full_name)
+        const espn = espnByName[norm]
+        if (espn) {
+          // ESPN reports an active injury — patch if different
+          if (espn.status !== p.injury_status || espn.body_part !== p.injury_body_part) {
+            await supabase
+              .from('nfl_players')
+              .update({ injury_status: espn.status, injury_body_part: espn.body_part })
+              .eq('id', p.id)
+            updated++
+          }
+        }
+        // We DO NOT auto-clear stale injury statuses here. ESPN's depth
+        // chart only includes players currently flagged; if a player
+        // recovers, their entry disappears from the chart, but Sleeper
+        // (the nightly source-of-truth) will clear it the next morning.
+        // Auto-clearing here would risk false negatives — we'd rather
+        // wait one day to clear than risk flipping a 'Q' to clear and
+        // back to 'Q' as ESPN momentarily drops the entry.
+      }
+      logger.info({ updated, cleared, espnCount: Object.keys(espnByName).length, nflPlayersCount: nflPlayers?.length || 0 }, 'NFL injury statuses patched from ESPN')
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to patch nfl_players injury statuses')
+  }
+
   logger.info({ totalSynced }, 'Injury sync complete')
 }
