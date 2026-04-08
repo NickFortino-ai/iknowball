@@ -718,18 +718,20 @@ function DraftScreen({ config, onExit, onComplete }) {
   if (isLoading) return <LoadingSpinner />
   if (!allPlayers?.length) return <div className="text-center text-text-muted py-12">Couldn't load players.</div>
 
-  // Re-rank the available list client-side using the league's scoring +
-  // SuperFlex flag, so what's shown matches what bots will draft.
+  // Rank the FULL pool (drafted + undrafted) so each player's overall_rank
+  // stays fixed for the duration of the mock — even as players above them
+  // get drafted. Then filter out drafted players for display.
   const adpCtx = {
     scoring: config.scoring,
     superflex: (config.rosterSlots?.superflex || 0) > 0,
     qbCount: config.rosterSlots?.qb || 1,
   }
-  const ranked = [...available]
+  const rankedAll = [...(allPlayers || [])]
     .sort((a, b) => adpScore(a, adpCtx) - adpScore(b, adpCtx))
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
 
-  const filtered = ranked
+  const filtered = rankedAll
+    .filter((p) => !draftedIds.has(p.id))
     .filter((p) => posFilter === 'All' || p.position === posFilter)
     .filter((p) => !searchQuery || p.full_name.toLowerCase().includes(searchQuery.toLowerCase()))
     .slice(0, 60)

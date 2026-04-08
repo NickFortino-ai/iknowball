@@ -1394,13 +1394,17 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
     return raw
   }
 
+  // Rank the FULL pool (rostered + drafted + free) so each player's
+  // overall_rank stays fixed even as players above them get drafted.
+  // Then filter out unavailable players for display.
   const excludeSet = new Set(excludeIds)
-  const ranked = (allPlayers || [])
-    .filter((p) => !excludeSet.has(p.id))
+  const rankedAll = (allPlayers || [])
     .map((p) => ({ ...p, _adp: effectiveAdp(p) }))
     .sort((a, b) => a._adp - b._adp)
-    .slice(0, 300)
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
+  const ranked = rankedAll
+    .filter((p) => !excludeSet.has(p.id))
+    .slice(0, 300)
 
   // Per-position rank from the same sort
   const posRanks = {}
