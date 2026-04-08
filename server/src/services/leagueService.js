@@ -488,6 +488,17 @@ export async function getMyLeagues(userId) {
     display_order: orderMap[league.id] ?? null,
   }))
 
+  // Compute per-league readiness (green/yellow/red corner clip)
+  try {
+    const { computeLeagueReadiness } = await import('./readinessService.js')
+    const readinessMap = await computeLeagueReadiness(userId, result)
+    for (const l of result) {
+      l.readiness = readinessMap.get(l.id) || null
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to attach league readiness')
+  }
+
   // Sort by display_order (nulls last), then created_at desc
   result.sort((a, b) => {
     if (a.display_order != null && b.display_order != null) return a.display_order - b.display_order

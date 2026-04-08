@@ -51,6 +51,25 @@ export default function LeagueCard({ league, noLink }) {
       {...wrapperProps}
       className="block relative bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden hover:bg-text-primary/5 transition-colors"
     >
+      {/* Readiness corner clip — tiny color flag in the top-right */}
+      {league.readiness && (
+        <span
+          className={`absolute top-0 right-0 w-3 h-3 rounded-bl-md z-20 pointer-events-none ${
+            league.readiness === 'ready'
+              ? 'bg-correct'
+              : league.readiness === 'attention'
+              ? 'bg-yellow-500'
+              : 'bg-incorrect'
+          }`}
+          title={
+            league.readiness === 'ready'
+              ? 'Ready for the next contest'
+              : league.readiness === 'attention'
+              ? 'Lineup needs attention'
+              : 'Action needed before the next contest'
+          }
+        />
+      )}
       {hasBackdrop && (
         <>
           <img
