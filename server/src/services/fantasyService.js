@@ -701,18 +701,39 @@ const SCORING_PROJ_COL = {
 
 async function seedUserRankings(leagueId, userId) {
   const settings = await getFantasySettings(leagueId)
-  const projCol = SCORING_PROJ_COL[settings?.scoring_format] || 'projected_pts_half_ppr'
+  const scoringFormat = settings?.scoring_format || 'half_ppr'
+  const rosterSlots = settings?.roster_slots || {}
+  const isSuperflex = (rosterSlots.superflex || 0) > 0 || (rosterSlots.qb || 0) >= 2
 
-  const { data: top } = await supabase
+  // Pull every draftable player so we can rank them ourselves with the
+  // same effective-ADP function the draft player browser uses. This
+  // means new league copies seed in the EXACT order the user will see
+  // on the draft board (scoring-aware + SuperFlex-aware).
+  const { data: pool } = await supabase
     .from('nfl_players')
-    .select(`id, ${projCol}`)
+    .select('id, position, search_rank, adp_ppr, adp_half_ppr')
     .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
     .not('team', 'is', null)
-    .order(projCol, { ascending: false, nullsFirst: false })
-    .limit(RANKINGS_SEED_SIZE)
+    .limit(500)
 
-  if (!top?.length) return
-  const rows = top.map((p, i) => ({
+  if (!pool?.length) return
+
+  function effectiveAdp(p) {
+    let raw
+    if (scoringFormat === 'ppr') raw = p.adp_ppr ?? p.adp_half_ppr ?? p.search_rank
+    else if (scoringFormat === 'standard') raw = p.search_rank ?? p.adp_half_ppr ?? p.adp_ppr
+    else raw = p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank
+    raw = raw ?? 9999
+    if (p.position === 'QB' && isSuperflex) raw -= 30
+    return raw
+  }
+
+  const ranked = pool
+    .map((p) => ({ ...p, _adp: effectiveAdp(p) }))
+    .sort((a, b) => a._adp - b._adp)
+    .slice(0, RANKINGS_SEED_SIZE)
+
+  const rows = ranked.map((p, i) => ({
     league_id: leagueId,
     user_id: userId,
     player_id: p.id,

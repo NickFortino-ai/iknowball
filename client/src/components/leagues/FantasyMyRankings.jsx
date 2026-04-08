@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react'
-import { useMyRankings, useSetMyRankings, useResetMyRankings } from '../../hooks/useLeagues'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useMyRankings, useSetMyRankings, useResetMyRankings, useDraftBoard } from '../../hooks/useLeagues'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 
@@ -13,21 +13,32 @@ const POS_COLORS = {
   DEF: 'bg-purple-500/20 text-purple-300',
 }
 
+const ROW_HEIGHT = 56 // px — used to compute drag drop targets
+
 export default function FantasyMyRankings({ league }) {
   const { data, isLoading } = useMyRankings(league.id)
+  const { data: draftData } = useDraftBoard(league.id)
   const setRankings = useSetMyRankings()
   const resetRankings = useResetMyRankings()
 
-  // Local working copy — applied via Save button
   const [working, setWorking] = useState([])
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
-  const [jumpTarget, setJumpTarget] = useState({}) // playerId → input value
+  const [editMode, setEditMode] = useState(false)
 
-  // Sync server data into working copy on first load and after refetches
+  // Sync server data into working copy
   useEffect(() => {
     if (data) setWorking(data.map((r) => ({ ...r })))
   }, [data])
+
+  // Drafted players are filtered out of the display
+  const draftedSet = useMemo(() => {
+    const ids = new Set()
+    for (const p of (draftData?.picks || [])) {
+      if (p.player_id) ids.add(p.player_id)
+    }
+    return ids
+  }, [draftData])
 
   const dirty = useMemo(() => {
     if (!data || !working.length) return false
@@ -38,35 +49,10 @@ export default function FantasyMyRankings({ league }) {
     return false
   }, [working, data])
 
-  function move(playerId, direction) {
-    const idx = working.findIndex((r) => r.player_id === playerId)
-    if (idx < 0) return
-    const swap = direction === 'up' ? idx - 1 : idx + 1
-    if (swap < 0 || swap >= working.length) return
-    const next = [...working]
-    ;[next[idx], next[swap]] = [next[swap], next[idx]]
-    setWorking(next)
-  }
-
-  function jumpTo(playerId, targetRank) {
-    const idx = working.findIndex((r) => r.player_id === playerId)
-    if (idx < 0) return
-    const target = Math.max(0, Math.min(working.length - 1, targetRank - 1))
-    if (target === idx) return
-    const next = [...working]
-    const [item] = next.splice(idx, 1)
-    next.splice(target, 0, item)
-    setWorking(next)
-    setJumpTarget((prev) => ({ ...prev, [playerId]: '' }))
-  }
-
-  function remove(playerId) {
-    setWorking(working.filter((r) => r.player_id !== playerId))
-  }
-
   async function handleSave() {
     try {
       await setRankings.mutateAsync({ leagueId: league.id, playerIds: working.map((r) => r.player_id) })
+      setEditMode(false)
       toast('Rankings saved', 'success')
     } catch (err) {
       toast(err.message || 'Failed to save', 'error')
@@ -74,7 +60,7 @@ export default function FantasyMyRankings({ league }) {
   }
 
   async function handleReset() {
-    if (!confirm('Reset to current ADP? Your edits will be lost.')) return
+    if (!confirm('Reset to current ADP for this league? Your edits will be lost.')) return
     try {
       await resetRankings.mutateAsync(league.id)
       toast('Reset to ADP', 'success')
@@ -83,9 +69,70 @@ export default function FantasyMyRankings({ league }) {
     }
   }
 
+  // ── Drag-to-reorder (edit mode only) ─────────────────────────────
+  // Operates on the *full* working array index, not the filtered list,
+  // so position/search filters can stay applied while dragging.
+  const dragIdx = useRef(null)
+  const dragStartY = useRef(0)
+  const [draggingPlayerId, setDraggingPlayerId] = useState(null)
+  const docHandlersRef = useRef(null)
+
+  function detachDocHandlers() {
+    if (docHandlersRef.current) {
+      window.removeEventListener('pointermove', docHandlersRef.current.move)
+      window.removeEventListener('pointerup', docHandlersRef.current.up)
+      window.removeEventListener('pointercancel', docHandlersRef.current.up)
+      docHandlersRef.current = null
+    }
+  }
+
+  function startDrag(playerId, e) {
+    if (!editMode) return
+    e.preventDefault()
+    e.stopPropagation()
+    const idx = working.findIndex((r) => r.player_id === playerId)
+    if (idx < 0) return
+    dragIdx.current = idx
+    dragStartY.current = e.clientY
+    setDraggingPlayerId(playerId)
+
+    const onMove = (moveE) => {
+      if (dragIdx.current == null) return
+      moveE.preventDefault?.()
+      const delta = moveE.clientY - dragStartY.current
+      // Move in row-height steps
+      const stepDelta = Math.round(delta / ROW_HEIGHT)
+      if (stepDelta === 0) return
+      const newIdx = Math.max(0, Math.min(working.length - 1, dragIdx.current + stepDelta))
+      if (newIdx === dragIdx.current) return
+      setWorking((prev) => {
+        const next = [...prev]
+        const [item] = next.splice(dragIdx.current, 1)
+        next.splice(newIdx, 0, item)
+        return next
+      })
+      dragIdx.current = newIdx
+      dragStartY.current = moveE.clientY
+    }
+    const onUp = () => {
+      dragIdx.current = null
+      setDraggingPlayerId(null)
+      detachDocHandlers()
+    }
+    docHandlersRef.current = { move: onMove, up: onUp }
+    window.addEventListener('pointermove', onMove, { passive: false })
+    window.addEventListener('pointerup', onUp, { passive: true })
+    window.addEventListener('pointercancel', onUp, { passive: true })
+  }
+
+  // Cleanup on unmount
+  useEffect(() => () => detachDocHandlers(), [])
+
   if (isLoading) return <LoadingSpinner />
 
-  const filtered = working
+  // Filter out drafted players, then apply user filters
+  const visible = working
+    .filter((r) => !draftedSet.has(r.player_id))
     .map((r, i) => ({ ...r, currentRank: i + 1 }))
     .filter((r) => posFilter === 'All' || r.nfl_players?.position === posFilter)
     .filter((r) => !searchQuery || r.nfl_players?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -93,19 +140,43 @@ export default function FantasyMyRankings({ league }) {
   return (
     <div className="space-y-3">
       {/* Header / actions */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-card p-3">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-3">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div>
             <h3 className="font-display text-base text-text-primary">My Rankings</h3>
-            <p className="text-[11px] text-text-muted">Edit your personal big board. Used in the draft room as an alternate view.</p>
+            <p className="text-[11px] text-text-muted">
+              {editMode
+                ? 'Tap and drag the ⋮⋮ handle to reorder. Tap Save when done.'
+                : 'Your personal big board. Tap Edit to drag-reorder.'}
+            </p>
           </div>
-          <button
-            onClick={handleReset}
-            disabled={resetRankings.isPending}
-            className="text-[11px] text-text-muted hover:text-incorrect underline disabled:opacity-50 shrink-0"
-          >
-            Reset to ADP
-          </button>
+          <div className="flex gap-2 shrink-0">
+            {!editMode && (
+              <button
+                onClick={handleReset}
+                disabled={resetRankings.isPending}
+                className="text-[11px] text-text-muted hover:text-incorrect underline disabled:opacity-50"
+              >
+                Reset to ADP
+              </button>
+            )}
+            {!editMode ? (
+              <button
+                onClick={() => setEditMode(true)}
+                className="px-3 py-1 rounded-lg text-xs font-semibold bg-bg-secondary border border-text-primary/20 text-text-primary"
+              >
+                Edit
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={setRankings.isPending}
+                className="px-4 py-1 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                {setRankings.isPending ? 'Saving...' : 'Save'}
+              </button>
+            )}
+          </div>
         </div>
 
         <input
@@ -127,39 +198,58 @@ export default function FantasyMyRankings({ league }) {
         </div>
       </div>
 
-      {/* Sticky save bar */}
-      {dirty && (
+      {/* Sticky discard prompt while editing */}
+      {editMode && dirty && (
         <div className="sticky top-0 z-10 rounded-xl border border-accent bg-accent/15 p-2 flex items-center justify-between gap-2">
           <span className="text-xs text-accent font-semibold">Unsaved changes</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setWorking(data.map((r) => ({ ...r })))}
-              className="px-3 py-1 rounded-lg text-xs font-semibold bg-bg-card border border-text-primary/20 text-text-secondary"
-            >Discard</button>
-            <button
-              onClick={handleSave}
-              disabled={setRankings.isPending}
-              className="px-4 py-1 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
-            >{setRankings.isPending ? 'Saving...' : 'Save'}</button>
-          </div>
+          <button
+            onClick={() => { setWorking(data.map((r) => ({ ...r }))); setEditMode(false) }}
+            className="px-3 py-1 rounded-lg text-xs font-semibold bg-bg-card border border-text-primary/20 text-text-secondary"
+          >Discard</button>
         </div>
       )}
 
       {/* Ranked list */}
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="max-h-[65vh] overflow-y-auto divide-y divide-text-primary/10">
-          {filtered.map((r) => {
+          {visible.map((r) => {
             const p = r.nfl_players
             if (!p) return null
+            const isDragging = draggingPlayerId === r.player_id
             return (
-              <div key={r.player_id} className="flex items-center gap-2 px-2 py-2 md:py-2">
+              <div
+                key={r.player_id}
+                className={`flex items-center gap-2 px-2 py-2.5 transition-colors ${isDragging ? 'bg-accent/20 ring-1 ring-accent shadow-lg z-20 relative' : ''}`}
+                style={{ touchAction: editMode ? 'none' : undefined }}
+              >
+                {/* Drag handle (edit mode only) */}
+                {editMode && (
+                  <button
+                    onPointerDown={(e) => startDrag(r.player_id, e)}
+                    className="shrink-0 w-8 h-10 flex items-center justify-center text-text-muted active:text-text-primary cursor-grab active:cursor-grabbing"
+                    title="Drag to reorder"
+                  >
+                    <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor">
+                      <circle cx="4" cy="4" r="1.5" />
+                      <circle cx="10" cy="4" r="1.5" />
+                      <circle cx="4" cy="10" r="1.5" />
+                      <circle cx="10" cy="10" r="1.5" />
+                      <circle cx="4" cy="16" r="1.5" />
+                      <circle cx="10" cy="16" r="1.5" />
+                    </svg>
+                  </button>
+                )}
                 <span className="text-xs font-bold text-text-muted w-8 text-center shrink-0">{r.currentRank}</span>
                 {p.headshot_url && (
                   <img
                     src={p.headshot_url}
                     alt={p.full_name}
+                    width="36"
+                    height="36"
+                    loading="lazy"
+                    decoding="async"
                     className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0"
-                    onError={(e) => { e.target.style.display = 'none' }}
+                    onError={(e) => { e.target.style.visibility = 'hidden' }}
                   />
                 )}
                 <div className="flex-1 min-w-0">
@@ -170,33 +260,10 @@ export default function FantasyMyRankings({ league }) {
                     {p.bye_week && <span>· Bye {p.bye_week}</span>}
                   </div>
                 </div>
-                {/* Jump-to */}
-                <input
-                  type="number"
-                  min={1}
-                  max={working.length}
-                  placeholder="#"
-                  value={jumpTarget[r.player_id] || ''}
-                  onChange={(e) => setJumpTarget((prev) => ({ ...prev, [r.player_id]: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const v = Number(jumpTarget[r.player_id])
-                      if (v > 0) jumpTo(r.player_id, v)
-                    }
-                  }}
-                  onBlur={() => {
-                    const v = Number(jumpTarget[r.player_id])
-                    if (v > 0) jumpTo(r.player_id, v)
-                  }}
-                  className="w-12 text-center bg-bg-secondary border border-text-primary/20 rounded-md text-xs text-text-primary px-1 py-1 shrink-0"
-                />
-                <button onClick={() => move(r.player_id, 'up')} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary shrink-0">▲</button>
-                <button onClick={() => move(r.player_id, 'down')} className="text-text-muted hover:text-text-primary w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary shrink-0">▼</button>
-                <button onClick={() => remove(r.player_id)} className="text-text-muted hover:text-incorrect w-9 h-9 flex items-center justify-center rounded-lg active:bg-bg-secondary text-lg shrink-0">×</button>
               </div>
             )
           })}
-          {filtered.length === 0 && (
+          {visible.length === 0 && (
             <div className="text-center text-sm text-text-muted py-8">No players match your filters.</div>
           )}
         </div>
