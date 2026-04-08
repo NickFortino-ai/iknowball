@@ -12,6 +12,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 import UserProfileModal from '../profile/UserProfileModal'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
 
 export default function TdPassView({ league, tab = 'picks' }) {
   const { profile } = useAuth()
@@ -27,6 +28,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
 
   const [search, setSearch] = useState('')
   const [profileUserId, setProfileUserId] = useState(null)
+  const [confirmQb, setConfirmQb] = useState(null)
 
   const myCurrentPick = useMemo(() => {
     if (!currentWeek) return null
@@ -56,6 +58,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
     try {
       await submit.mutateAsync({ leagueId: league.id, qbPlayerId: qb.id })
       toast(`Picked ${qb.full_name} for week ${currentWeek}`, 'success')
+      setConfirmQb(null)
     } catch (err) {
       toast(err.message || 'Failed to submit pick', 'error')
     }
@@ -218,42 +221,93 @@ export default function TdPassView({ league, tab = 'picks' }) {
             {!qbs?.length ? 'No QBs available — you may have used them all.' : 'No QBs match your search.'}
           </div>
         ) : (
-          <div className="max-h-[60vh] overflow-y-auto">
-            {filteredQbs.map((qb) => (
-              <div key={qb.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0">
-                {qb.headshot_url ? (
-                  <img src={qb.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[10px] text-text-muted font-bold">QB</div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-text-primary truncate">{qb.full_name}</div>
-                  <div className="text-xs text-text-muted truncate">
-                    {qb.team}{qb.injury_status ? ` · ${qb.injury_status}` : ''}
-                    {qb.matchup && (
-                      <span className="ml-1">
-                        · {qb.matchup.home_away === 'home' ? 'vs' : '@'} {qb.matchup.opponent}
-                        {qb.matchup.starts_at && (
-                          <span className="ml-1 text-text-secondary">
-                            {new Date(qb.matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                </div>
+          <div className="max-h-[70vh] overflow-y-auto p-3 space-y-3">
+            {filteredQbs.map((qb) => {
+              const teamLogo = getTeamLogoUrl(qb.team, 'americanfootball_nfl')
+              const oppLogo = qb.matchup?.opponent ? getTeamLogoUrl(qb.matchup.opponent, 'americanfootball_nfl') : null
+              return (
                 <button
-                  onClick={() => handlePick(qb)}
+                  key={qb.id}
+                  type="button"
+                  onClick={() => setConfirmQb(qb)}
                   disabled={submit.isPending}
-                  className="px-3 py-1.5 rounded-lg bg-accent/15 text-accent hover:bg-accent/25 transition-colors text-xs font-semibold shrink-0 disabled:opacity-50"
+                  className="w-full flex flex-col items-center text-center gap-2 px-4 py-5 rounded-2xl border border-text-primary/20 bg-bg-primary hover:border-accent hover:bg-accent/5 active:scale-[0.98] transition-all disabled:opacity-50"
                 >
-                  Pick
+                  {qb.headshot_url ? (
+                    <img
+                      src={qb.headshot_url}
+                      alt={qb.full_name}
+                      className="w-24 h-24 rounded-full object-cover bg-bg-secondary"
+                      onError={(e) => { e.target.style.display = 'none' }}
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-bg-secondary flex items-center justify-center text-sm text-text-muted font-bold">QB</div>
+                  )}
+                  <div className="text-base font-display text-text-primary">{qb.full_name}</div>
+                  {qb.matchup ? (
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                      {teamLogo && <img src={teamLogo} alt={qb.team} className="w-5 h-5 object-contain" onError={(e) => { e.target.style.display = 'none' }} />}
+                      <span className="font-semibold">{qb.team}</span>
+                      <span className="text-text-muted">{qb.matchup.home_away === 'home' ? 'vs' : '@'}</span>
+                      {oppLogo && <img src={oppLogo} alt={qb.matchup.opponent} className="w-5 h-5 object-contain" onError={(e) => { e.target.style.display = 'none' }} />}
+                      <span className="font-semibold">{qb.matchup.opponent}</span>
+                      {qb.matchup.starts_at && (
+                        <span className="text-text-muted">
+                          · {new Date(qb.matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-text-muted">{qb.team}{qb.injury_status ? ` · ${qb.injury_status}` : ''}</div>
+                  )}
+                  {qb.injury_status && qb.matchup && (
+                    <div className="text-[10px] font-bold text-yellow-500">{qb.injury_status}</div>
+                  )}
                 </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
+
+      {/* Confirmation modal */}
+      {confirmQb && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={() => setConfirmQb(null)}>
+          <div className="bg-bg-secondary w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col items-center text-center gap-3 mb-5">
+              {confirmQb.headshot_url && (
+                <img src={confirmQb.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-secondary" onError={(e) => { e.target.style.display = 'none' }} />
+              )}
+              <h3 className="font-display text-xl text-text-primary">Pick {confirmQb.full_name}?</h3>
+              <p className="text-sm text-text-secondary">
+                Locks in for week {currentWeek}. You can swap until kickoff but you'll never be able to pick {confirmQb.full_name} again this season.
+              </p>
+              {confirmQb.matchup && (
+                <div className="flex items-center gap-2 text-xs text-text-secondary">
+                  <span className="font-semibold">{confirmQb.team}</span>
+                  <span className="text-text-muted">{confirmQb.matchup.home_away === 'home' ? 'vs' : '@'}</span>
+                  <span className="font-semibold">{confirmQb.matchup.opponent}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmQb(null)}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold bg-bg-card text-text-secondary border border-border hover:bg-bg-card-hover transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handlePick(confirmQb)}
+                disabled={submit.isPending}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                {submit.isPending ? 'Submitting…' : 'Confirm Pick'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
