@@ -3,6 +3,37 @@ import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
 import { getLeaguePickStandings } from './leaguePickService.js'
 
+// REGULAR-season end dates by sport. Full-season leagues end on the
+// last day of the regular season (NO playoffs). Returns a Date object
+// for the next-occurring end date relative to the given startsAt.
+function regularSeasonEnd(sportKey, startsAt) {
+  if (!sportKey) return null
+  const startMd = (() => {
+    const d = startsAt ? new Date(startsAt) : new Date()
+    return { month: d.getMonth(), day: d.getDate(), year: d.getFullYear() }
+  })()
+  // [month0, day]
+  const endMd = {
+    basketball_nba: [3, 12],         // Apr 12
+    americanfootball_nfl: [0, 5],    // Jan 5
+    baseball_mlb: [8, 29],           // Sep 29
+    basketball_ncaab: [2, 8],        // Mar 8
+    basketball_wncaab: [2, 8],
+    americanfootball_ncaaf: [11, 7], // Dec 7
+    basketball_wnba: [8, 14],        // Sep 14
+    icehockey_nhl: [3, 18],          // Apr 18
+    soccer_usa_mls: [9, 18],         // Oct 18
+  }[sportKey]
+  if (!endMd) return null
+  // Pick the next occurrence of [month, day] >= startsAt
+  let year = startMd.year
+  let candidate = new Date(year, endMd[0], endMd[1], 12, 0, 0)
+  if (candidate < new Date(startMd.year, startMd.month, startMd.day)) {
+    candidate = new Date(year + 1, endMd[0], endMd[1], 12, 0, 0)
+  }
+  return candidate
+}
+
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
@@ -66,8 +97,12 @@ export async function createLeague(userId, data) {
     // starts_at stays as now (not Monday), so league stays open for invites
     endsAt = bounds.end
   } else if (data.duration === 'full_season') {
-    endsAt = new Date(startsAt)
-    endsAt.setMonth(endsAt.getMonth() + 6)
+    // Sport-aware regular-season end. Falls back to +6mo for unknown sports.
+    endsAt = endsAt || regularSeasonEnd(data.sport, startsAt) || (() => {
+      const d = new Date(startsAt)
+      d.setMonth(d.getMonth() + 6)
+      return d
+    })()
   } else if (data.duration === 'playoffs_only') {
     endsAt = new Date(startsAt)
     endsAt.setMonth(endsAt.getMonth() + 3)
@@ -684,8 +719,11 @@ export async function updateLeague(leagueId, userId, data) {
       if (!hasLockedPicks) startsAt = bounds.start
       endsAt = bounds.end
     } else if (data.duration === 'full_season') {
-      endsAt = new Date(startsAt)
-      endsAt.setMonth(endsAt.getMonth() + 6)
+      endsAt = regularSeasonEnd(league.sport, startsAt) || (() => {
+        const d = new Date(startsAt)
+        d.setMonth(d.getMonth() + 6)
+        return d
+      })()
     } else if (data.duration === 'playoffs_only') {
       endsAt = new Date(startsAt)
       endsAt.setMonth(endsAt.getMonth() + 3)

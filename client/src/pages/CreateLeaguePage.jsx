@@ -49,23 +49,25 @@ const DURATION_OPTIONS = [
 ]
 
 // Sport-specific season end dates (approximate, updated yearly)
+// REGULAR-season end dates (NOT playoff finales). Full-season leagues
+// run through the regular season only. Playoff games don't count toward
+// these leagues — they end naturally on the last day of the regular season.
 function getSeasonEndDate(sportKey) {
   const year = new Date().getFullYear()
   const dates = {
-    basketball_nba: `${year}-06-20`,       // NBA Finals ~mid June
-    americanfootball_nfl: `${year + 1}-02-10`, // Super Bowl ~early Feb next year
-    baseball_mlb: `${year}-10-31`,          // World Series ~late October
-    basketball_ncaab: `${year}-04-10`,      // Final Four ~early April
-    basketball_wncaab: `${year}-04-10`,
-    americanfootball_ncaaf: `${year + 1}-01-15`, // CFP Championship ~mid Jan
-    basketball_wnba: `${year}-10-20`,       // WNBA Finals ~mid October
-    icehockey_nhl: `${year}-06-25`,         // Stanley Cup ~late June
-    soccer_usa_mls: `${year}-12-15`,        // MLS Cup ~mid December
+    basketball_nba: `${year}-04-12`,        // NBA reg season ends ~April 12 (before play-in)
+    americanfootball_nfl: `${year + 1}-01-05`, // NFL Week 18 ends ~Jan 5
+    baseball_mlb: `${year}-09-29`,          // MLB reg season ends ~Sept 29
+    basketball_ncaab: `${year}-03-08`,      // NCAAB reg season ends ~early March (before conf tourneys)
+    basketball_wncaab: `${year}-03-08`,
+    americanfootball_ncaaf: `${year}-12-07`, // NCAAF reg season ends ~Dec 7
+    basketball_wnba: `${year}-09-14`,       // WNBA reg season ends ~mid Sept
+    icehockey_nhl: `${year}-04-18`,         // NHL reg season ends ~April 18
+    soccer_usa_mls: `${year}-10-18`,        // MLS reg season ends ~mid October
   }
   // If we're past the end date for this sport, push to next year
   const endDate = dates[sportKey] || `${year}-12-31`
   if (new Date(endDate) < new Date()) {
-    // Next season — add a year to the month-day
     const d = new Date(endDate)
     d.setFullYear(d.getFullYear() + 1)
     return d.toISOString().split('T')[0]
@@ -229,6 +231,14 @@ export default function CreateLeaguePage() {
           : startsAt || undefined,
         ends_at: format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport)
+          // DFS and fantasy salary-cap leagues with full_season run through
+          // the regular season only — auto-set ends_at to the regular-season end
+          : (isFantasyFormat && seasonType === 'full_season')
+            ? getSeasonEndDate(
+                format === 'nba_dfs' ? 'basketball_nba'
+                : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb'
+                : 'americanfootball_nfl'
+              )
           : endsAt || undefined,
         settings,
         fantasy_settings: fantasySettings,
