@@ -1665,24 +1665,7 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
     dropRow = dropRoster
 
     // Lock check: if dropped player's team has already started this week, block
-    const { data: settings } = await supabase
-      .from('fantasy_settings')
-      .select('season')
-      .eq('league_id', leagueId)
-      .single()
-    const season = settings?.season || new Date().getUTCFullYear()
-    const today = new Date().toISOString().split('T')[0]
-    const { data: lockedGames } = await supabase
-      .from('nfl_schedule')
-      .select('home_team, away_team, status')
-      .eq('season', season)
-      .lte('game_date', today)
-      .neq('status', 'scheduled')
-    const lockedTeams = new Set()
-    for (const g of lockedGames || []) {
-      lockedTeams.add(g.home_team)
-      lockedTeams.add(g.away_team)
-    }
+    const lockedTeams = await getLockedTeamsForLeague(leagueId)
     if (lockedTeams.has(dropRow.nfl_players?.team)) {
       const err = new Error("Can't drop a player whose game has already started")
       err.status = 400
@@ -1720,6 +1703,40 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
   }
 
   return { added: addPlayer.full_name, dropped: dropPlayerId || null }
+}
+
+/**
+ * Drop a player from a user's roster without adding anyone in return.
+ * Verifies ownership and game-start lock, deletes the roster row, and pushes
+ * the player onto waivers until the next clearing.
+ */
+export async function dropRosterPlayer(leagueId, userId, playerId) {
+  if (!playerId) {
+    const err = new Error('player_id required')
+    err.status = 400
+    throw err
+  }
+  const { data: row } = await supabase
+    .from('fantasy_rosters')
+    .select('id, user_id, nfl_players(full_name, team)')
+    .eq('league_id', leagueId)
+    .eq('player_id', playerId)
+    .maybeSingle()
+  if (!row || row.user_id !== userId) {
+    const err = new Error('You can only drop a player from your own roster')
+    err.status = 403
+    throw err
+  }
+  const lockedTeams = await getLockedTeamsForLeague(leagueId)
+  if (lockedTeams.has(row.nfl_players?.team)) {
+    const err = new Error("Can't drop a player whose game has already started")
+    err.status = 400
+    throw err
+  }
+  const { error: delErr } = await supabase.from('fantasy_rosters').delete().eq('id', row.id)
+  if (delErr) throw delErr
+  await addToWaiverPool(leagueId, [playerId], 'dropped')
+  return { dropped: row.nfl_players?.full_name || playerId }
 }
 
 function getDefaultSlot(position) {
@@ -2138,13 +2155,15 @@ export async function getLockedTeamsForLeague(leagueId) {
     .eq('league_id', leagueId)
     .single()
   const season = settings?.season || new Date().getUTCFullYear()
-  const today = new Date().toISOString().split('T')[0]
+  // Use Eastern-time "today" so the lock flips at midnight ET, never lagging
+  // behind a status sync. Any game whose game_date is on or before today
+  // (Eastern) is considered locked for the rest of the day.
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
   const { data: lockedGames } = await supabase
     .from('nfl_schedule')
-    .select('home_team, away_team, status')
+    .select('home_team, away_team')
     .eq('season', season)
     .lte('game_date', today)
-    .neq('status', 'scheduled')
   const locked = new Set()
   for (const g of lockedGames || []) {
     if (g.home_team) locked.add(g.home_team)

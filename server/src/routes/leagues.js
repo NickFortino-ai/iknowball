@@ -855,6 +855,7 @@ import {
   generateMatchups,
   setFantasyLineup,
   addDropPlayer,
+  dropRosterPlayer,
   proposeTrade,
   acceptTrade,
   declineTrade,
@@ -1033,6 +1034,16 @@ router.post('/:id/fantasy/add-drop', requireAuth, async (req, res) => {
   try {
     const { add_player_id, drop_player_id } = req.body
     const result = await addDropPlayer(req.params.id, req.user.id, add_player_id, drop_player_id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Standalone drop — remove a player from your roster, leave the slot empty
+router.delete('/:id/fantasy/roster/:playerId', requireAuth, async (req, res) => {
+  try {
+    const result = await dropRosterPlayer(req.params.id, req.user.id, req.params.playerId)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

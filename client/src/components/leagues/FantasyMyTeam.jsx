@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useFantasyRoster, useSetFantasyLineup } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer } from '../../hooks/useLeagues'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
 import PlayerDetailModal from './PlayerDetailModal'
@@ -37,7 +37,7 @@ function InjuryBadge({ status }) {
   )
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail }) {
+function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, onDrop }) {
   const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
   const isInIR = row?.slot === 'ir'
   return (
@@ -83,6 +83,16 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             ← Bench
           </span>
         )}
+        {onDrop && (
+          <span
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onDrop(row) }}
+            className="text-[10px] font-bold px-2 py-1 rounded bg-incorrect/15 text-incorrect hover:bg-incorrect/25 transition-colors shrink-0 cursor-pointer"
+            title="Drop player"
+          >
+            Drop
+          </span>
+        )}
       </button>
     </div>
   )
@@ -106,6 +116,8 @@ function EmptySlot({ slotLabel, onTap, isSelected }) {
 export default function FantasyMyTeam({ league }) {
   const { data: roster, isLoading } = useFantasyRoster(league.id)
   const setLineup = useSetFantasyLineup(league.id)
+  const dropPlayer = useDropRosterPlayer(league.id)
+  const [confirmDrop, setConfirmDrop] = useState(null) // roster row being dropped
   const [draftSlots, setDraftSlots] = useState(null) // { [player_id]: slot }
   const [selected, setSelected] = useState(null) // { type: 'slot'|'player', key: string }
   const [detailPlayerId, setDetailPlayerId] = useState(null)
@@ -326,6 +338,7 @@ export default function FantasyMyTeam({ league }) {
                       isSelected={selected?.type === 'player' && selected.key === occupant.player_id}
                       onTap={() => handlePlayerTap(occupant.player_id)}
                       onViewDetail={setDetailPlayerId}
+                      onDrop={setConfirmDrop}
                     />
                   ) : (
                     <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} />
@@ -353,6 +366,7 @@ export default function FantasyMyTeam({ league }) {
                 onTap={() => handlePlayerTap(r.player_id)}
                 onViewDetail={setDetailPlayerId}
                 onMoveToIR={handleMoveToIR}
+                onDrop={setConfirmDrop}
               />
             ))
           )}
@@ -373,6 +387,7 @@ export default function FantasyMyTeam({ league }) {
                 onTap={() => handlePlayerTap(r.player_id)}
                 onViewDetail={setDetailPlayerId}
                 onMoveOutOfIR={handleMoveOutOfIR}
+                onDrop={setConfirmDrop}
               />
             ))}
           </div>
@@ -401,6 +416,40 @@ export default function FantasyMyTeam({ league }) {
 
       {detailPlayerId && (
         <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+      )}
+
+      {confirmDrop && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={() => setConfirmDrop(null)}>
+          <div className="bg-bg-secondary w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg mb-2">Drop {confirmDrop.nfl_players?.full_name}?</h3>
+            <p className="text-sm text-text-secondary mb-4">
+              They'll be placed on waivers until the next clearing (Wednesday 3:00 AM ET). Your roster slot will be left empty.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDrop(null)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-border hover:bg-bg-card-hover transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await dropPlayer.mutateAsync(confirmDrop.player_id)
+                    toast(`${confirmDrop.nfl_players?.full_name || 'Player'} dropped`, 'success')
+                    setConfirmDrop(null)
+                  } catch (err) {
+                    toast(err.message || 'Failed to drop', 'error')
+                  }
+                }}
+                disabled={dropPlayer.isPending}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-incorrect text-white hover:bg-incorrect/80 transition-colors disabled:opacity-50"
+              >
+                {dropPlayer.isPending ? 'Dropping…' : 'Drop'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

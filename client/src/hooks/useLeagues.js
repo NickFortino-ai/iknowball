@@ -604,6 +604,17 @@ export function useSetFantasyLineup(leagueId) {
   })
 }
 
+export function useDropRosterPlayer(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (playerId) => api.delete(`/leagues/${leagueId}/fantasy/roster/${playerId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster'] })
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'players'] })
+    },
+  })
+}
+
 export function useAddDropPlayer(leagueId) {
   const queryClient = useQueryClient()
   return useMutation({
