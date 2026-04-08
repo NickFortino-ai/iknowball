@@ -92,10 +92,10 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
     // streak grows to 22.
     const { data: liveRecord } = await supabase
       .from('records')
-      .select('current_holder_id, record_metadata')
+      .select('record_holder_id, record_metadata')
       .eq('record_key', key)
       .maybeSingle()
-    if (liveRecord && liveRecord.current_holder_id === entry.new_holder_id && liveRecord.record_metadata) {
+    if (liveRecord && liveRecord.record_holder_id === entry.new_holder_id && liveRecord.record_metadata) {
       meta = liveRecord.record_metadata
     }
 
