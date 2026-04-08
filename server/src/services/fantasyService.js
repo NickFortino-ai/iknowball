@@ -1340,6 +1340,16 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
   const draftedIds = (drafted || []).map((d) => d.player_id)
   const excludeIds = [...new Set([...rosteredIds, ...draftedIds])]
 
+  // Read league settings so the ranking adapts to scoring + SuperFlex
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('scoring_format, roster_slots')
+    .eq('league_id', leagueId)
+    .single()
+  const scoringFormat = settings?.scoring_format || 'half_ppr'
+  const rosterSlots = settings?.roster_slots || {}
+  const isSuperflex = (rosterSlots.superflex || 0) > 0 || (rosterSlots.qb || 0) >= 2
+
   // Pull the full draftable pool — we need to compute overall + positional
   // ranks across the entire available list, NOT just the post-filter slice.
   // (Drops status='Active' filter so DEFs are included.)
@@ -1351,12 +1361,22 @@ export async function searchAvailablePlayers(leagueId, query, position = null) {
     .limit(500)
   if (error) throw error
 
-  // Sort by composite ADP (best first) and trim to 300 — that's well past
-  // the deepest reasonable draft. Then assign overall_rank from the sort.
+  // Effective ADP — pick the column matching league scoring + boost QBs
+  // 30 spots in SuperFlex / 2QB leagues so they match real-draft expectations.
+  function effectiveAdp(p) {
+    let raw
+    if (scoringFormat === 'ppr') raw = p.adp_ppr ?? p.adp_half_ppr ?? p.search_rank
+    else if (scoringFormat === 'standard') raw = p.search_rank ?? p.adp_half_ppr ?? p.adp_ppr
+    else raw = p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank
+    raw = raw ?? 9999
+    if (p.position === 'QB' && isSuperflex) raw -= 30
+    return raw
+  }
+
   const excludeSet = new Set(excludeIds)
   const ranked = (allPlayers || [])
     .filter((p) => !excludeSet.has(p.id))
-    .map((p) => ({ ...p, _adp: p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999 }))
+    .map((p) => ({ ...p, _adp: effectiveAdp(p) }))
     .sort((a, b) => a._adp - b._adp)
     .slice(0, 300)
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))

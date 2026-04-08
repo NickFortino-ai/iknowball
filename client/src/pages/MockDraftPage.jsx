@@ -14,13 +14,29 @@ import DraftPlayerPreview from '../components/leagues/DraftPlayerPreview'
 
 const PERSONALITIES = ['Best Available', 'Zero RB', 'RB Heavy', 'Early QB', 'Reacher']
 
-// Compare two players by ADP (lower = earlier draft = better).
-// Prefers real adp_half_ppr → adp_ppr → search_rank, then projection as final tiebreaker.
-function adpScore(p) {
-  return p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999
+// Score a player by effective ADP, adapted to:
+//   1. Scoring format — use the matching ADP column when available
+//   2. SuperFlex / 2QB — boost QBs by ~30 spots so they're valued correctly
+//
+// Lower score = better (earlier draft target).
+function adpScore(p, ctx = {}) {
+  const scoring = ctx.scoring || 'half_ppr'
+  // Pick the ADP column that matches league scoring
+  let raw
+  if (scoring === 'ppr') raw = p.adp_ppr ?? p.adp_half_ppr ?? p.search_rank
+  else if (scoring === 'standard') raw = p.search_rank ?? p.adp_half_ppr ?? p.adp_ppr
+  else raw = p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank
+  raw = raw ?? 9999
+
+  // SuperFlex / 2QB boost — shift QB ADP up by 30 spots
+  if (p.position === 'QB' && (ctx.superflex || ctx.qbCount >= 2)) {
+    raw = raw - 30
+  }
+  return raw
 }
-function adpCompare(a, b, scoringKey) {
-  const diff = adpScore(a) - adpScore(b)
+
+function adpCompare(a, b, scoringKey, ctx) {
+  const diff = adpScore(a, ctx) - adpScore(b, ctx)
   if (diff !== 0) return diff
   return (b[scoringKey] || 0) - (a[scoringKey] || 0)
 }
@@ -86,14 +102,14 @@ function weightedTopPick(candidates, n = 5) {
 
 function pickBestAvailable(ctx) {
   const pool = eligiblePool(ctx.available, ctx.botRoster, ctx.rosterSlots, ctx.round)
-  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey, ctx.adpCtx))
   return weightedTopPick(pool, 5)
 }
 
 function pickZeroRB(ctx) {
   let pool = eligiblePool(ctx.available, ctx.botRoster, ctx.rosterSlots, ctx.round)
   if (ctx.round <= 4) pool = pool.filter((p) => p.position !== 'RB')
-  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey, ctx.adpCtx))
   return weightedTopPick(pool, 5) || pickBestAvailable(ctx)
 }
 
@@ -102,11 +118,11 @@ function pickRBHeavy(ctx) {
   if (ctx.round <= 3) {
     const rbs = pool.filter((p) => p.position === 'RB')
     if (rbs.length) {
-      rbs.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
+      rbs.sort((a, b) => adpCompare(a, b, ctx.scoringKey, ctx.adpCtx))
       return weightedTopPick(rbs, 4)
     }
   }
-  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey, ctx.adpCtx))
   return weightedTopPick(pool, 5)
 }
 
@@ -116,17 +132,17 @@ function pickEarlyQB(ctx) {
   if (!hasQB && ctx.round >= 4 && ctx.round <= 6) {
     const qbs = pool.filter((p) => p.position === 'QB')
     if (qbs.length) {
-      qbs.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
+      qbs.sort((a, b) => adpCompare(a, b, ctx.scoringKey, ctx.adpCtx))
       return weightedTopPick(qbs, 3)
     }
   }
-  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey, ctx.adpCtx))
   return weightedTopPick(pool, 5)
 }
 
 function pickReacher(ctx) {
   const pool = eligiblePool(ctx.available, ctx.botRoster, ctx.rosterSlots, ctx.round)
-  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey))
+  pool.sort((a, b) => adpCompare(a, b, ctx.scoringKey, ctx.adpCtx))
   // 30% chance to reach: pick from rank 6-12 instead of 1-5
   if (Math.random() < 0.3 && pool.length > 12) {
     return pool[5 + Math.floor(Math.random() * 7)]
@@ -581,12 +597,18 @@ function DraftScreen({ config, onExit, onComplete }) {
       const botRoster = picks.filter((p) => p.teamSlot === botSlot).map((p) => p.player)
       const personality = personalities[botSlot]
       const fn = PERSONALITY_FNS[personality] || pickBestAvailable
+      const adpCtx = {
+        scoring: config.scoring,
+        superflex: (config.rosterSlots?.superflex || 0) > 0,
+        qbCount: config.rosterSlots?.qb || 1,
+      }
       const player = fn({
         round: currentPick.round,
         available,
         botRoster,
         rosterSlots: config.rosterSlots,
         scoringKey,
+        adpCtx,
       })
       if (!player) return
       setPicks((p) => [...p, {
@@ -646,8 +668,18 @@ function DraftScreen({ config, onExit, onComplete }) {
   if (isLoading) return <LoadingSpinner />
   if (!allPlayers?.length) return <div className="text-center text-text-muted py-12">Couldn't load players.</div>
 
-  // Filter the available list for the Players tab
-  const filtered = available
+  // Re-rank the available list client-side using the league's scoring +
+  // SuperFlex flag, so what's shown matches what bots will draft.
+  const adpCtx = {
+    scoring: config.scoring,
+    superflex: (config.rosterSlots?.superflex || 0) > 0,
+    qbCount: config.rosterSlots?.qb || 1,
+  }
+  const ranked = [...available]
+    .sort((a, b) => adpScore(a, adpCtx) - adpScore(b, adpCtx))
+    .map((p, i) => ({ ...p, overall_rank: i + 1 }))
+
+  const filtered = ranked
     .filter((p) => posFilter === 'All' || p.position === posFilter)
     .filter((p) => !searchQuery || p.full_name.toLowerCase().includes(searchQuery.toLowerCase()))
     .slice(0, 60)
