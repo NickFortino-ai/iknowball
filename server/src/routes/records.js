@@ -82,8 +82,23 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
 
     if (error || !entry) return res.status(404).json({ error: 'Record not found' })
 
-    const meta = entry.metadata || {}
+    let meta = entry.metadata || {}
     const key = entry.record_key
+
+    // If this history row is for the CURRENT holder of the record, prefer the
+    // live metadata from `records` (which is always up-to-date) over the frozen
+    // historical snapshot. Older snapshot rows can lag behind after a streak
+    // extends — e.g. a "broken at 20" row keeps 20 pickIds even after the
+    // streak grows to 22.
+    const { data: liveRecord } = await supabase
+      .from('records')
+      .select('current_holder_id, record_metadata')
+      .eq('record_key', key)
+      .maybeSingle()
+    if (liveRecord && liveRecord.current_holder_id === entry.new_holder_id && liveRecord.record_metadata) {
+      meta = liveRecord.record_metadata
+    }
+
     const result = { record: entry, type: 'stats', detail: null }
 
     // Streak records: fetch the constituent picks
@@ -92,7 +107,6 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
         .from('picks')
         .select('id, user_id, picked_team, is_correct, points_earned, odds_at_pick, games(home_team, away_team, starts_at, sports(key, name))')
         .in('id', meta.pickIds)
-        .order('games(starts_at)', { ascending: true })
 
       // Check if streak is still active: any loss after the last pick in the streak?
       let isActive = false
@@ -112,8 +126,15 @@ router.get('/history/:id/detail', requireAuth, async (req, res, next) => {
         }
       }
 
+      // Sort client-side since nested foreign-table .order can silently misbehave
+      const sortedPicks = (picks || []).slice().sort((a, b) => {
+        const ta = a.games?.starts_at ? new Date(a.games.starts_at).getTime() : 0
+        const tb = b.games?.starts_at ? new Date(b.games.starts_at).getTime() : 0
+        return ta - tb
+      })
+
       result.type = 'streak'
-      result.detail = { picks: picks || [], isActive }
+      result.detail = { picks: sortedPicks, isActive }
     }
     // Parlay streak: fetch the constituent parlays
     else if (meta.parlayIds?.length) {
