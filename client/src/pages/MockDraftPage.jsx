@@ -739,8 +739,12 @@ function DraftScreen({ config, onExit, onComplete }) {
                   <img
                     src={player.headshot_url}
                     alt={player.full_name}
+                    width="40"
+                    height="40"
+                    loading="lazy"
+                    decoding="async"
                     className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                    onError={(e) => { e.target.style.display = 'none' }}
+                    onError={(e) => { e.target.style.visibility = 'hidden' }}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
