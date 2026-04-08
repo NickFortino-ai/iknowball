@@ -746,6 +746,23 @@ export async function recalculateAllRecords() {
             updated_at: new Date().toISOString(),
           })
           .eq('record_key', key)
+        // Also refresh metadata on the most recent record_history row for
+        // this same key + holder. Otherwise the modal (which reads from
+        // record_history) will keep showing stale data even after recalc.
+        const { data: latestHistory } = await supabase
+          .from('record_history')
+          .select('id')
+          .eq('record_key', key)
+          .eq('new_holder_id', result.holderId)
+          .order('broken_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (latestHistory?.id) {
+          await supabase
+            .from('record_history')
+            .update({ metadata: result.metadata })
+            .eq('id', latestHistory.id)
+        }
         updated++
       } else {
         // Clear records that no longer have a valid result
