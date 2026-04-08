@@ -66,6 +66,7 @@ function columnsFor(position) {
     // Rushing first for RBs, then receiving since modern RBs catch a lot too
     return [
       { key: 'pts', label: 'Pts' },
+      { key: 'rush_att', label: 'ATT' },
       { key: 'rush_yd', label: 'RuYD' },
       { key: 'rush_td', label: 'RuTD' },
       { key: 'rec_tgt', label: 'TGT' },
