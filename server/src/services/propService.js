@@ -464,6 +464,19 @@ function mapMlbStatToMarket(stats, marketKey) {
 async function enrichLockedPicksWithLiveStats(lockedPicks) {
   if (!lockedPicks.length) return
 
+  // Normalize names so "Jaime Jaquez Jr" matches "Jaime Jaquez Jr." etc.
+  // Strips trailing periods on suffixes (Jr/Sr/II/III/IV) and collapses
+  // whitespace. Also lowercases for case-insensitive joins.
+  function normalizeName(name) {
+    if (!name) return ''
+    return String(name)
+      .replace(/\.\s*$/, '')              // trailing period (e.g. "Jr.")
+      .replace(/\s+(jr|sr|ii|iii|iv)\.?\s*$/i, ' $1') // strip period after suffix
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase()
+  }
+
   try {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
     const playerNames = [...new Set(lockedPicks.map((p) => p.player_props?.player_name).filter(Boolean))]
@@ -504,8 +517,10 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       espnIds.length
         ? supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').in('espn_player_id', espnIds).eq('game_date', today)
         : { data: [], error: null },
-      supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('player_name', playerNames).eq('game_date', today),
-      supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').in('player_name', playerNames).eq('game_date', today),
+      // Pull ALL stats for today for in-memory normalized matching
+      // (handles "Jaime Jaquez Jr" vs "Jaime Jaquez Jr." and similar drift).
+      supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').eq('game_date', today),
+      supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').eq('game_date', today),
     ])
 
     const nbaStats = queries[0].data || []
@@ -519,26 +534,28 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
 
     logger.info({ nbaById: nbaStats.length, mlbById: mlbStats.length, nbaByName: nbaStatsByName.length, mlbByName: mlbStatsByName.length }, 'Live stat enrichment: stats lookup done')
 
-    // Build lookup maps
+    // Build lookup maps — name maps are keyed on the NORMALIZED name so
+    // "Jaime Jaquez Jr" and "Jaime Jaquez Jr." match each other.
     const nbaById = {}
     const nbaByName = {}
     for (const s of nbaStats) nbaById[s.espn_player_id] = s
-    for (const s of nbaStatsByName) nbaByName[s.player_name] = s
+    for (const s of nbaStatsByName) nbaByName[normalizeName(s.player_name)] = s
 
     const mlbById = {}
     const mlbByName = {}
     for (const s of mlbStats) mlbById[s.espn_player_id] = s
-    for (const s of mlbStatsByName) mlbByName[s.player_name] = s
+    for (const s of mlbStatsByName) mlbByName[normalizeName(s.player_name)] = s
 
     // Attach live stats to each locked pick
     for (const pick of lockedPicks) {
       const playerName = pick.player_props?.player_name
+      const normName = normalizeName(playerName)
       const espnId = idMap[playerName]
       const marketKey = pick.player_props?.market_key
       const gameStatus = pick.player_props?.games?.status
 
-      const nba = (espnId && nbaById[espnId]) || nbaByName[playerName]
-      const mlb = (espnId && mlbById[espnId]) || mlbByName[playerName]
+      const nba = (espnId && nbaById[espnId]) || nbaByName[normName]
+      const mlb = (espnId && mlbById[espnId]) || mlbByName[normName]
 
       if (nba) {
         const mapped = mapNbaStatToMarket(nba, marketKey)
