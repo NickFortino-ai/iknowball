@@ -378,6 +378,44 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const dragSourceRef = useRef(null)
   const hoverSlotRef = useRef(null)
 
+  // ── Drag-and-drop with hard cleanup guarantees ──────────────────────────
+  // Move/up/cancel listeners are attached to the WINDOW (not the row) so the
+  // drag continues no matter where the pointer ends up. A try/finally on the
+  // up handler guarantees body styles + transform reset even if any drop
+  // logic throws. Without this, dragging would occasionally leave the row
+  // invisible while still blocking touches.
+  const docMoveRef = useRef(null)
+  const docUpRef = useRef(null)
+  const docCancelOnPredragRef = useRef(null)
+
+  function resetDragVisuals() {
+    if (dragEl.current) {
+      dragEl.current.style.transform = ''
+      dragEl.current.style.zIndex = ''
+      dragEl.current.style.position = ''
+      dragEl.current.style.pointerEvents = ''
+    }
+    document.body.style.overflow = ''
+    document.body.style.touchAction = ''
+  }
+
+  function detachDocListeners() {
+    if (docMoveRef.current) {
+      window.removeEventListener('pointermove', docMoveRef.current)
+      docMoveRef.current = null
+    }
+    if (docUpRef.current) {
+      window.removeEventListener('pointerup', docUpRef.current)
+      window.removeEventListener('pointercancel', docUpRef.current)
+      docUpRef.current = null
+    }
+    if (docCancelOnPredragRef.current) {
+      window.removeEventListener('pointermove', docCancelOnPredragRef.current)
+      window.removeEventListener('pointerup', docCancelOnPredragRef.current)
+      docCancelOnPredragRef.current = null
+    }
+  }
+
   function handleDragStart(slotKey, e) {
     const player = roster[slotKey]
     if (!player) return
@@ -388,101 +426,118 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
     const startX = e.clientX
     dragStartY.current = startY
 
+    // Pre-drag: cancel if user starts scrolling before long-press fires
+    const onPredrag = (moveE) => {
+      const dx = Math.abs(moveE.clientX - startX)
+      const dy = Math.abs(moveE.clientY - startY)
+      if (dx > 8 || dy > 8) {
+        clearTimeout(longPressTimer.current)
+        detachDocListeners()
+      }
+    }
+    docCancelOnPredragRef.current = onPredrag
+    window.addEventListener('pointermove', onPredrag, { passive: true })
+    window.addEventListener('pointerup', onPredrag, { once: true, passive: true })
+
     longPressTimer.current = setTimeout(() => {
+      // Detach pre-drag cancel; we're committed to the drag
+      if (docCancelOnPredragRef.current) {
+        window.removeEventListener('pointermove', docCancelOnPredragRef.current)
+        window.removeEventListener('pointerup', docCancelOnPredragRef.current)
+        docCancelOnPredragRef.current = null
+      }
+
       setDragSource(slotKey)
       dragSourceRef.current = slotKey
       dragEl.current = slotRefs.current[slotKey]
       document.body.style.overflow = 'hidden'
       document.body.style.touchAction = 'none'
-      if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId)
-    }, 300)
 
-    const cancelOnScroll = (moveE) => {
-      const dx = Math.abs(moveE.clientX - startX)
-      const dy = Math.abs(moveE.clientY - startY)
-      if (dx > 8 || dy > 8) {
-        clearTimeout(longPressTimer.current)
-        document.removeEventListener('pointermove', cancelOnScroll)
+      // Window-level move handler — works regardless of pointer position
+      const onMove = (moveE) => {
+        if (!dragSourceRef.current) return
+        moveE.preventDefault?.()
+        const el = dragEl.current
+        if (el) {
+          const offset = moveE.clientY - dragStartY.current
+          el.style.transform = `translateY(${offset}px) scale(1.03)`
+          el.style.zIndex = '50'
+          el.style.position = 'relative'
+        }
+        // Find slot under pointer
+        if (el) el.style.pointerEvents = 'none'
+        const target = document.elementFromPoint(moveE.clientX, moveE.clientY)
+        if (el) el.style.pointerEvents = ''
+        const slotEl = target?.closest?.('[data-slot-key]')
+        const newHover = slotEl?.dataset?.slotKey || null
+        hoverSlotRef.current = newHover
+        setHoverSlot(newHover)
       }
-    }
-    document.addEventListener('pointermove', cancelOnScroll, { passive: true })
-    const cleanup = () => {
-      document.removeEventListener('pointermove', cancelOnScroll)
-      document.removeEventListener('pointerup', cleanup)
-    }
-    document.addEventListener('pointerup', cleanup, { once: true })
-  }
 
-  function handleDragMove(e) {
-    if (!dragSourceRef.current) return
-    e.preventDefault()
-
-    const el = dragEl.current
-    if (el) {
-      const offset = e.clientY - dragStartY.current
-      el.style.transform = `translateY(${offset}px) scale(1.03)`
-      el.style.zIndex = '50'
-      el.style.position = 'relative'
-    }
-
-    // Find slot under pointer
-    if (el) el.style.pointerEvents = 'none'
-    const target = document.elementFromPoint(e.clientX, e.clientY)
-    if (el) el.style.pointerEvents = ''
-    const slotEl = target?.closest?.('[data-slot-key]')
-    const newHover = slotEl?.dataset?.slotKey || null
-    hoverSlotRef.current = newHover
-    setHoverSlot(newHover)
-  }
-
-  function handleDragEnd() {
-    clearTimeout(longPressTimer.current)
-    document.body.style.overflow = ''
-    document.body.style.touchAction = ''
-
-    if (dragEl.current) {
-      dragEl.current.style.transform = ''
-      dragEl.current.style.zIndex = ''
-      dragEl.current.style.position = ''
-    }
-
-    const src = dragSourceRef.current
-    const tgt = hoverSlotRef.current
-
-    if (src && tgt && tgt !== src) {
-      const sourceSlotDef = SLOTS.find((s) => s.key === src)
-      const targetSlotDef = SLOTS.find((s) => s.key === tgt)
-      const draggedPlayer = roster[src]
-      const targetPlayer = roster[tgt]
-
-      if (draggedPlayer && targetSlotDef && isPlayerEligibleForSlot(draggedPlayer, targetSlotDef)) {
-        if (!targetPlayer) {
-          setRoster((prev) => {
-            const next = { ...prev }
-            next[tgt] = draggedPlayer
-            delete next[src]
-            return next
-          })
-        } else if (
-          sourceSlotDef &&
-          isPlayerEligibleForSlot(targetPlayer, sourceSlotDef) &&
-          getPlayerGameState(targetPlayer) === 'upcoming'
-        ) {
-          setRoster((prev) => ({
-            ...prev,
-            [src]: targetPlayer,
-            [tgt]: draggedPlayer,
-          }))
+      // Window-level end handler — fires no matter where the user releases
+      const onEnd = () => {
+        try {
+          const src = dragSourceRef.current
+          const tgt = hoverSlotRef.current
+          if (src && tgt && tgt !== src) {
+            const sourceSlotDef = SLOTS.find((s) => s.key === src)
+            const targetSlotDef = SLOTS.find((s) => s.key === tgt)
+            const draggedPlayer = roster[src]
+            const targetPlayer = roster[tgt]
+            if (draggedPlayer && targetSlotDef && isPlayerEligibleForSlot(draggedPlayer, targetSlotDef)) {
+              if (!targetPlayer) {
+                setRoster((prev) => {
+                  const next = { ...prev }
+                  next[tgt] = draggedPlayer
+                  delete next[src]
+                  return next
+                })
+              } else if (
+                sourceSlotDef &&
+                isPlayerEligibleForSlot(targetPlayer, sourceSlotDef) &&
+                getPlayerGameState(targetPlayer) === 'upcoming'
+              ) {
+                setRoster((prev) => ({
+                  ...prev,
+                  [src]: targetPlayer,
+                  [tgt]: draggedPlayer,
+                }))
+              }
+            }
+          }
+        } finally {
+          // ALWAYS clean up — even if the drop logic threw
+          resetDragVisuals()
+          dragSourceRef.current = null
+          hoverSlotRef.current = null
+          setDragSource(null)
+          setHoverSlot(null)
+          dragEl.current = null
+          detachDocListeners()
         }
       }
-    }
 
-    dragSourceRef.current = null
-    hoverSlotRef.current = null
-    setDragSource(null)
-    setHoverSlot(null)
-    dragEl.current = null
+      docMoveRef.current = onMove
+      docUpRef.current = onEnd
+      window.addEventListener('pointermove', onMove, { passive: false })
+      window.addEventListener('pointerup', onEnd, { passive: true })
+      window.addEventListener('pointercancel', onEnd, { passive: true })
+    }, 300)
   }
+
+  // Stub — kept so the row's onPointerMove/onPointerUp props don't error.
+  // Real handlers are now on the window.
+  function handleDragMove() {}
+  function handleDragEnd() {}
+
+  // Safety net: if the component unmounts mid-drag, clean up everything
+  useEffect(() => {
+    return () => {
+      clearTimeout(longPressTimer.current)
+      resetDragVisuals()
+      detachDocListeners()
+    }
+  }, [])
 
   // Reset roster state when date changes
   if (initDate !== date) {
