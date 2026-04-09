@@ -11,7 +11,8 @@ const NHL_ABBRS = {
   'New York Islanders': 'nyi', 'New York Rangers': 'nyr', 'Ottawa Senators': 'ott',
   'Philadelphia Flyers': 'phi', 'Pittsburgh Penguins': 'pit', 'San Jose Sharks': 'sj',
   'Seattle Kraken': 'sea', 'St. Louis Blues': 'stl', 'St Louis Blues': 'stl',
-  'Tampa Bay Lightning': 'tb', 'Toronto Maple Leafs': 'tor', 'Utah Hockey Club': 'uta',
+  'Tampa Bay Lightning': 'tb', 'Toronto Maple Leafs': 'tor',
+  'Utah Hockey Club': 'uta', 'Utah Mammoth': 'uta',
   'Vancouver Canucks': 'van', 'Vegas Golden Knights': 'vgk', 'Washington Capitals': 'wsh',
   'Winnipeg Jets': 'wpg',
 }
