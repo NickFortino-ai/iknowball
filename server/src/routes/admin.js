@@ -683,6 +683,35 @@ router.post('/fantasy/score-nfl-dfs-week', async (req, res) => {
   res.json(result)
 })
 
+// Recovery: nuke and recompute a single fantasy week from raw stats.
+// One-click reset if anything ever drifts during a real game day. Re-runs
+// stat sync, then re-scores both salary cap (dfs_weekly_results) and
+// traditional H2H (fantasy_matchups) for the given week.
+router.post('/fantasy/recompute-week', async (req, res) => {
+  const { season = 2026, week } = req.body
+  if (!week) return res.status(400).json({ error: 'week required' })
+  try {
+    const { syncWeeklyStats } = await import('../services/sleeperService.js')
+    const { scoreNflDfsWeek } = await import('../services/dfsService.js')
+    const { scoreFantasyMatchupsWeek } = await import('../services/fantasyService.js')
+
+    const statsResult = await syncWeeklyStats(season, week)
+    const dfsResult = await scoreNflDfsWeek(week, season)
+    const traditionalResult = await scoreFantasyMatchupsWeek(week, season)
+
+    res.json({
+      ok: true,
+      season,
+      week,
+      stats: statsResult,
+      salary_cap: dfsResult,
+      traditional: traditionalResult,
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 router.post('/fantasy/sync-projections', async (req, res) => {
   const season = req.body.season || 2026
   const result = await syncProjections(season)

@@ -595,7 +595,7 @@ export function useFantasyRoster(leagueId) {
     queryKey: ['leagues', leagueId, 'fantasy', 'roster'],
     queryFn: () => api.get(`/leagues/${leagueId}/fantasy/roster`),
     enabled: !!leagueId,
-    refetchInterval: 60000,
+    refetchInterval: 30000,
   })
 }
 
@@ -892,7 +892,12 @@ export function useNbaDfsRoster(leagueId, date, season = 2026) {
     queryKey: ['nba-dfs', leagueId, 'roster', date],
     queryFn: () => api.get(`/nba-dfs/roster?league_id=${leagueId}&date=${date}&season=${season}`),
     enabled: !!leagueId && !!date,
-    refetchInterval: 60000, // refresh every 60s for live point updates
+    // Smart polling: tight when any rostered player is live, slow otherwise
+    refetchInterval: (query) => {
+      const slots = query.state.data?.nba_dfs_roster_slots || query.state.data?.dfs_roster_slots || []
+      const anyLive = Array.isArray(slots) && slots.some((s) => s.game_status === 'live')
+      return anyLive ? 10000 : 60000
+    },
   })
 }
 
@@ -911,7 +916,14 @@ export function useNbaDfsLive(leagueId, date, season = 2026) {
     queryKey: ['nba-dfs', leagueId, 'live', date],
     queryFn: () => api.get(`/nba-dfs/live?league_id=${leagueId}&date=${date}&season=${season}`),
     enabled: !!leagueId && !!date,
-    refetchInterval: 30000, // 30 seconds
+    // Smart polling: 5s during live action, 30s when nothing's running
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const anyLive = data?.rosters?.some?.((r) =>
+        r.slots?.some?.((s) => s.game_status === 'live')
+      )
+      return anyLive ? 5000 : 30000
+    },
   })
 }
 
