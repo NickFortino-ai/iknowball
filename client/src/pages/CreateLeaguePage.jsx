@@ -7,15 +7,104 @@ import { toast } from '../components/ui/Toast'
 import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
 
 const FORMAT_OPTIONS = [
-  { value: 'fantasy', label: 'Fantasy Football', description: 'Traditional draft leagues or weekly salary cap — set lineups and compete head-to-head' },
-  { value: 'nba_dfs', label: 'NBA Daily Fantasy', description: 'Build a nightly NBA lineup under a salary cap and compete for the highest score' },
-  { value: 'mlb_dfs', label: 'MLB Daily Fantasy', description: 'Build a daily MLB lineup under a salary cap — scored on hits, HRs, RBIs, runs, and more' },
-  { value: 'hr_derby', label: 'Home Run Derby', description: 'Pick 3 hitters per day — score points for every HR they hit, with distance as tiebreaker' },
-  { value: 'td_pass', label: 'TD Pass Competition', description: 'Pick one QB per week — never repeat a QB. Most passing TDs across the season wins' },
-  { value: 'pickem', label: "Pick'em", description: 'Pick game winners with odds-based scoring — your points reflect the real odds' },
-  { value: 'survivor', label: 'Survivor', description: 'Pick one team per period — if they lose, you lose a life. Last one standing wins' },
-  { value: 'bracket', label: 'Bracket', description: 'Fill out a tournament bracket with escalating points per round' },
-  { value: 'squares', label: 'Squares', description: '10x10 grid tied to a single game with quarter-by-quarter scoring' },
+  {
+    value: 'fantasy',
+    label: 'Fantasy Football',
+    description: 'Traditional draft leagues or weekly salary cap — set lineups and compete head-to-head',
+    details: `Two flavors: Traditional season-long with a snake draft, head-to-head matchups, waivers, trades, and an end-of-season playoff bracket — or Weekly Salary Cap, where you build a fresh lineup every week under a budget with no draft and no roster carryover. There's also a single-week mode for one-and-done contests.
+
+When the season ends, your final position converts to global IKB points using the position formula — top half positive, bottom half negative, with a +10 bonus for the champion. Ties split the bonus.
+
+Salary cap leagues generate a League Report at the end with most played player, pick of the year, best value plays, worst investments, and league-wide awards.
+
+Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom per-stat), roster configuration (or salary cap amount), team count, draft date and pick timer, waiver system (priority, rolling, or FAAB with starting budget), trade review method, playoff team count, playoff start week, and championship week. Custom backdrop from a curated library or upload your own.`,
+  },
+  {
+    value: 'nba_dfs',
+    label: 'NBA Daily Fantasy',
+    description: 'Build a nightly NBA lineup under a salary cap and compete for the highest score',
+    details: `Build a nightly 9-man NBA lineup (PG, PG, SG, SG, SF, SF, PF, PF, C) under a salary cap. Players are priced using a weighted algorithm that factors in recent performance and opponent defensive strength — so salaries shift nightly based on matchups and form. Scoring follows DraftKings-style NBA rules. Your league tracks wins across every night of the duration.
+
+When the league ends, your final position converts to global IKB points using the position formula — top half positive, bottom half negative, with a +10 bonus for the winner.
+
+At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
+
+Commissioner controls: salary cap, team count, league duration, and lineup lock time. Custom backdrop from a curated library or upload your own.`,
+  },
+  {
+    value: 'mlb_dfs',
+    label: 'MLB Daily Fantasy',
+    description: 'Build a daily MLB lineup under a salary cap — scored on hits, HRs, RBIs, runs, and more',
+    details: `Build a daily 10-man MLB lineup (SP, C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) under a salary cap. Scored on hits, home runs, RBIs, runs, stolen bases, and walks. Player pricing uses recent game logs and opponent pitching and defensive strength. Compete each night with your league across the full slate.
+
+When the league ends, your final position converts to global IKB points using the position formula — top half positive, bottom half negative, with a +10 bonus for the winner.
+
+At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
+
+Commissioner controls: salary cap, team count, league duration, lineup lock time. Custom backdrop from a curated library or upload your own.`,
+  },
+  {
+    value: 'hr_derby',
+    label: 'Home Run Derby',
+    description: 'Pick 3 hitters per day — score points for every HR they hit, with distance as tiebreaker',
+    details: `Pick up to 3 hitters per day who you think will go yard. Each player can only be used once per week. Total home runs determine standings — HR distance is the tiebreaker. No salaries, no lineups, no optimization required. Just: will this guy hit one tonight?
+
+When the league ends, your final position converts to global IKB points using the position formula — top half positive, bottom half negative, with a +10 bonus for the winner.
+
+Commissioner controls: league length, team count. Custom backdrop from a curated library or upload your own.`,
+  },
+  {
+    value: 'td_pass',
+    label: 'TD Pass Competition',
+    description: 'Pick one QB per week — never repeat a QB. Most passing TDs across the season wins',
+    details: `Season-long NFL league where you pick one quarterback per week — and you can never pick the same QB twice all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by season's end wins. Rushing TDs don't count. Ties split the bonus.
+
+When the season ends, your final position converts to global IKB points using the position formula — top half positive, bottom half negative, with a +10 bonus for the winner.
+
+Commissioner controls: league length (defaults to full NFL season), team count. Custom backdrop from a curated library or upload your own.`,
+  },
+  {
+    value: 'pickem',
+    label: "Pick'em",
+    description: 'Pick game winners with odds-based scoring — your points reflect the real odds',
+    details: `A picks league where everyone chooses winners from the same slate of games. The twist: IKB scores on odds, not just right or wrong. A chalk pick on the favorite pays less; nailing an underdog pays big. That means one gutsy upset call can leapfrog you over someone who played it safe all week. League picks live on their own leaderboard throughout the duration.
+
+When the league ends, points you earned during play transfer to your global IKB score, plus the winner gets a bonus equal to the number of members in the league.
+
+Commissioner controls: sport (single or all), duration (this week, custom range, or full season), pick frequency (daily or weekly), games per period, lock time (game start or submission), and open vs invite-only. Custom backdrop from a curated library or upload your own.`,
+  },
+  {
+    value: 'survivor',
+    label: 'Survivor',
+    description: 'Pick one team per period — if they lose, you lose a life. Last one standing wins',
+    details: `Pick one team to win each period. Win and you survive. Lose and you burn a life. The catch: you can never pick the same team twice. Use all your lives and you're out. Last one standing wins.
+
+When the league ends, only survivors earn global IKB points — scaled by league size from 10 points for small leagues up to 100 for 41+ members. If multiple players survive, the points split evenly.
+
+NFL leagues can also be set up as a Touchdown Survivor Pool — instead of picking a team, pick one player you think will score a non-passing TD (rush, reception, return, or fumble recovery). Same survivor engine, same global scoring. Comes with the TD Legends backdrop set (Jerry, Emmitt, LaDainian — first names only, IYKYK).
+
+Commissioner controls: sport, period frequency (daily or weekly), lives per player, what happens if everyone gets eliminated in the same period (all-survive or reset), and league length. Custom backdrop from a curated library or upload your own.`,
+  },
+  {
+    value: 'bracket',
+    label: 'Bracket',
+    description: 'Fill out a tournament bracket with escalating points per round',
+    details: `Tournament-style competition. The commissioner selects a template — NCAA Tournament, NBA Playoffs, NHL Playoffs, NFL Playoffs, and more — members fill out their bracket before the lock, and points scale dramatically by round. A correct championship pick is worth multiples of a first-round call. NBA and NHL playoff brackets include a series length prediction for each matchup — nail the exact number of games for bonus points.
+
+When the bracket completes, your finishing position determines your global IKB points using the position formula — top half earns positive points, bottom half negative, with a +10 bonus for the winner. Ties split the champion bonus.
+
+Commissioner controls: bracket template, lock time, and visibility. Custom backdrop or upload your own, plus a centerpiece image behind the bracket.`,
+  },
+  {
+    value: 'squares',
+    label: 'Squares',
+    description: '10x10 grid tied to a single game with quarter-by-quarter scoring',
+    details: `The classic 10×10 grid game tied to a real game. Claim your squares, numbers get randomly assigned to the axes, and every quarter the owner of the square matching the last digit of each team's score wins points. Squares transforms any watch party into a shared experience — suddenly everyone in the room has a stake in every score, every quarter, every last-second field goal. No sports knowledge required.
+
+Squares is pure side action — it does not affect your global IKB score. What happens in the grid stays in the grid.
+
+Commissioner controls: which game, max squares per user, points per quarter, and whether numbers are auto-assigned when the board fills or commissioner-triggered. Custom backdrop from a curated library or upload your own.`,
+  },
 ]
 
 const SPORT_OPTIONS = [
@@ -82,6 +171,7 @@ export default function CreateLeaguePage() {
 
   const [name, setName] = useState('')
   const [format, setFormat] = useState('')
+  const [expandedFormat, setExpandedFormat] = useState(null)
   const [sport, setSport] = useState('')
   const [duration, setDuration] = useState('')
   const [maxMembers, setMaxMembers] = useState('')
@@ -303,21 +393,58 @@ export default function CreateLeaguePage() {
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Format</label>
           <div className="space-y-2">
-            {FORMAT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setFormat(opt.value)}
-                className={`w-full text-left p-4 rounded-xl border transition-colors ${
-                  format === opt.value
-                    ? 'border-accent bg-accent/10'
-                    : 'border-text-primary/20 hover:border-text-primary/40'
-                }`}
-              >
-                <div className="font-semibold text-sm text-text-primary">{opt.label}</div>
-                <div className="text-xs text-text-secondary mt-1">{opt.description}</div>
-              </button>
-            ))}
+            {FORMAT_OPTIONS.map((opt) => {
+              const isExpanded = expandedFormat === opt.value
+              const isSelected = format === opt.value
+              return (
+                <div
+                  key={opt.value}
+                  className={`rounded-xl border transition-colors ${
+                    isSelected
+                      ? 'border-accent bg-accent/10'
+                      : 'border-text-primary/20 hover:border-text-primary/40'
+                  }`}
+                >
+                  <div className="flex items-stretch">
+                    {/* Left side: tap to select */}
+                    <button
+                      type="button"
+                      onClick={() => setFormat(opt.value)}
+                      className="flex-1 text-left p-4 min-w-0"
+                    >
+                      <div className="font-semibold text-sm text-text-primary">{opt.label}</div>
+                      <div className="text-xs text-text-secondary mt-1">{opt.description}</div>
+                    </button>
+                    {/* Right side: tap to toggle the description dropdown */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setExpandedFormat(isExpanded ? null : opt.value)
+                      }}
+                      className="px-4 flex items-center text-text-muted hover:text-text-primary border-l border-text-primary/10 transition-colors"
+                      aria-label={isExpanded ? 'Hide details' : 'Show details'}
+                      aria-expanded={isExpanded}
+                    >
+                      <svg
+                        className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+                  {isExpanded && (
+                    <div className="px-4 pb-4 pt-1 text-xs text-text-secondary whitespace-pre-line border-t border-text-primary/10 mt-0">
+                      {opt.details}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
 
