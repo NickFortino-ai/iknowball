@@ -709,7 +709,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                 <img
                   src={allImages[carouselIndex]}
                   alt=""
-                  className="max-w-full mx-auto rounded-lg"
+                  className="w-full rounded-lg"
                 />
               </button>
               {allImages.length > 1 && (
