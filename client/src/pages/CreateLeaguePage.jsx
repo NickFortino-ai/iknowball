@@ -13,11 +13,20 @@ const FORMAT_OPTIONS = [
     description: 'Traditional draft leagues or weekly salary cap — set lineups and compete head-to-head',
     details: `Two flavors: Traditional season-long with a snake draft, head-to-head matchups, waivers, trades, and an end-of-season playoff bracket — or Weekly Salary Cap, where you build a fresh lineup every week under a budget with no draft and no roster carryover. There's also a single-week mode for one-and-done contests.
 
-When the season ends, your final position converts to global IKB points using the position formula — top half positive, bottom half negative, with a +10 bonus for the champion. Ties split the bonus.
+When the season ends, your final position converts to global IKB points using the position formula on top of a top-3 bonus structure. Winning a deep traditional league against serious managers is a real test of strategy, prep, and weekly attention — the global payout reflects that.
 
 Salary cap leagues generate a League Report at the end with most played player, pick of the year, best value plays, worst investments, and league-wide awards.
 
 Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom per-stat), roster configuration (or salary cap amount), team count, draft date and pick timer, waiver system (priority, rolling, or FAAB with starting budget), trade review method, playoff team count, playoff start week, and championship week. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'Traditional Fantasy Bonus Structure',
+      rows: [
+        { size: '8 teams', first: '+50', second: '+20', third: '+10' },
+        { size: '10 teams', first: '+75', second: '+30', third: '+15' },
+        { size: '12 teams', first: '+100', second: '+40', third: '+20' },
+        { size: '14 teams', first: '+150', second: '+60', third: '+30' },
+      ],
+    },
   },
   {
     value: 'nba_dfs',
@@ -438,8 +447,32 @@ export default function CreateLeaguePage() {
                     </button>
                   </div>
                   {isExpanded && (
-                    <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-[15px] leading-relaxed text-text-secondary whitespace-pre-line border-t border-text-primary/10">
-                      {opt.details}
+                    <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-[15px] leading-relaxed text-text-secondary border-t border-text-primary/10">
+                      <div className="whitespace-pre-line">{opt.details}</div>
+                      {opt.bonusTable && (
+                        <div className="mt-4 rounded-xl border border-text-primary/20 overflow-hidden">
+                          <div className="px-4 py-2 bg-bg-card border-b border-text-primary/10 text-xs md:text-sm font-display text-text-primary">
+                            {opt.bonusTable.title}
+                          </div>
+                          <div className="grid grid-cols-4 text-xs md:text-sm">
+                            <div className="px-4 py-2 font-semibold text-text-muted">League Size</div>
+                            <div className="px-2 py-2 font-semibold text-text-muted text-center">1st</div>
+                            <div className="px-2 py-2 font-semibold text-text-muted text-center">2nd</div>
+                            <div className="px-2 py-2 font-semibold text-text-muted text-center">3rd</div>
+                            {opt.bonusTable.rows.map((r, i) => (
+                              <div key={r.size} className={`contents ${i % 2 ? '' : ''}`}>
+                                <div className="px-4 py-2 border-t border-text-primary/10 text-text-secondary">{r.size}</div>
+                                <div className="px-2 py-2 border-t border-text-primary/10 text-center text-correct font-semibold tabular-nums">{r.first}</div>
+                                <div className="px-2 py-2 border-t border-text-primary/10 text-center text-text-primary font-semibold tabular-nums">{r.second}</div>
+                                <div className="px-2 py-2 border-t border-text-primary/10 text-center text-text-primary font-semibold tabular-nums">{r.third}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="px-4 py-2 text-[11px] md:text-xs text-text-muted border-t border-text-primary/10">
+                            Position points (n+1−2×rank) are still applied on top of these bonuses. Non-standard team counts use the closest configured size.
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
