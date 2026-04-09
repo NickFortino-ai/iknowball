@@ -372,7 +372,7 @@ export default function CreateLeaguePage() {
     && (format !== 'squares' || gameId)
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-2xl md:max-w-3xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-6">Create a League</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -410,10 +410,10 @@ export default function CreateLeaguePage() {
                     <button
                       type="button"
                       onClick={() => setFormat(opt.value)}
-                      className="flex-1 text-left p-4 min-w-0"
+                      className="flex-1 text-left p-4 md:p-5 min-w-0"
                     >
-                      <div className="font-semibold text-sm text-text-primary">{opt.label}</div>
-                      <div className="text-xs text-text-secondary mt-1">{opt.description}</div>
+                      <div className="font-semibold text-base md:text-lg text-text-primary">{opt.label}</div>
+                      <div className="text-sm md:text-base text-text-secondary mt-1">{opt.description}</div>
                     </button>
                     {/* Right side: tap to toggle the description dropdown */}
                     <button
@@ -427,7 +427,7 @@ export default function CreateLeaguePage() {
                       aria-expanded={isExpanded}
                     >
                       <svg
-                        className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        className={`w-6 h-6 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -438,7 +438,7 @@ export default function CreateLeaguePage() {
                     </button>
                   </div>
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 text-xs text-text-secondary whitespace-pre-line border-t border-text-primary/10 mt-0">
+                    <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-[15px] leading-relaxed text-text-secondary whitespace-pre-line border-t border-text-primary/10">
                       {opt.details}
                     </div>
                   )}
