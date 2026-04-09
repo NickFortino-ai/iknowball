@@ -30,6 +30,18 @@ Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom 
         { size: '20 teams', first: '+200', second: '+80', third: '+40' },
       ],
     },
+    bonusTable2: {
+      title: 'Salary Cap Bonus Structure (Full Season, Week 1 Start)',
+      rows: [
+        { size: '6 members', first: '+30', second: '+12', third: '+6' },
+        { size: '8 members', first: '+40', second: '+16', third: '+8' },
+        { size: '10 members', first: '+50', second: '+20', third: '+10' },
+        { size: '12 members', first: '+60', second: '+24', third: '+12' },
+        { size: '16 members', first: '+80', second: '+32', third: '+16' },
+        { size: '20 members', first: '+100', second: '+40', third: '+20' },
+      ],
+      footnote: 'Salary cap leagues that start mid-season use the same shape but prorated by weeks played. Single-week leagues (one-and-done) award members / members÷2 / members÷4 to 1st / 2nd / 3rd.',
+    },
   },
   {
     value: 'nba_dfs',
@@ -452,18 +464,18 @@ export default function CreateLeaguePage() {
                   {isExpanded && (
                     <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-[15px] leading-relaxed text-text-secondary border-t border-text-primary/10">
                       <div className="whitespace-pre-line">{opt.details}</div>
-                      {opt.bonusTable && (
-                        <div className="mt-4 rounded-xl border border-text-primary/20 overflow-hidden">
+                      {[opt.bonusTable, opt.bonusTable2].filter(Boolean).map((tbl) => (
+                        <div key={tbl.title} className="mt-4 rounded-xl border border-text-primary/20 overflow-hidden">
                           <div className="px-4 py-2 bg-bg-card border-b border-text-primary/10 text-xs md:text-sm font-display text-text-primary">
-                            {opt.bonusTable.title}
+                            {tbl.title}
                           </div>
                           <div className="grid grid-cols-4 text-xs md:text-sm">
                             <div className="px-4 py-2 font-semibold text-text-muted">League Size</div>
                             <div className="px-2 py-2 font-semibold text-text-muted text-center">1st</div>
                             <div className="px-2 py-2 font-semibold text-text-muted text-center">2nd</div>
                             <div className="px-2 py-2 font-semibold text-text-muted text-center">3rd</div>
-                            {opt.bonusTable.rows.map((r, i) => (
-                              <div key={r.size} className={`contents ${i % 2 ? '' : ''}`}>
+                            {tbl.rows.map((r) => (
+                              <div key={r.size} className="contents">
                                 <div className="px-4 py-2 border-t border-text-primary/10 text-text-secondary">{r.size}</div>
                                 <div className="px-2 py-2 border-t border-text-primary/10 text-center text-correct font-semibold tabular-nums">{r.first}</div>
                                 <div className="px-2 py-2 border-t border-text-primary/10 text-center text-text-primary font-semibold tabular-nums">{r.second}</div>
@@ -472,10 +484,10 @@ export default function CreateLeaguePage() {
                             ))}
                           </div>
                           <div className="px-4 py-2 text-[11px] md:text-xs text-text-muted border-t border-text-primary/10">
-                            Position points (n+1−2×rank) are still applied on top of these bonuses. Non-standard team counts use the closest configured size.
+                            {tbl.footnote || 'Position points (n+1−2×rank) are still applied on top of these bonuses. Non-standard team counts use the closest configured size.'}
                           </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>

@@ -199,6 +199,31 @@ function getTraditionalFantasyBonus(rank, n) {
   return TRADITIONAL_FANTASY_BONUSES[closest][rank]
 }
 
+// Salary cap fantasy bonus — formula-based since member counts are
+// unbounded and start weeks vary. Three modes:
+//
+//   single_week:    1st = members,        2nd = members/2,  3rd = members/4
+//   full_season:    1st = members × 5,    2nd = members × 2, 3rd = members × 1
+//                   (started week 1, ran the whole regular season — toned-
+//                   down version of the traditional bonus shape)
+//   mid_season:     same multipliers as full_season, prorated by
+//                   weeksPlayed / 18 to reflect a shorter run.
+const SALARY_CAP_MULTIPLIERS = { 1: 5, 2: 2, 3: 1 }
+function getSalaryCapBonus(rank, n, ctx) {
+  if (rank > 3) return 0
+  const { isSingleWeek, isFullSeasonRun, weeksPlayed } = ctx
+  if (isSingleWeek) {
+    const fractions = { 1: 1, 2: 0.5, 3: 0.25 }
+    return Math.round(n * fractions[rank])
+  }
+  if (isFullSeasonRun) {
+    return Math.round(n * SALARY_CAP_MULTIPLIERS[rank])
+  }
+  // Mid-season league — prorate by how much of the regular season they ran
+  const weeks = Math.max(1, weeksPlayed || 1)
+  return Math.round(n * SALARY_CAP_MULTIPLIERS[rank] * (weeks / 18))
+}
+
 // Get fantasy league standings for completion (works for both traditional and salary cap)
 async function getFantasyLeagueStandings(league) {
   const { data: settings } = await supabase
@@ -584,15 +609,29 @@ export async function completeLeagues() {
         if (standings?.length > 0) {
           const { data: settings } = await supabase
             .from('fantasy_settings')
-            .select('format')
+            .select('format, season_type')
             .eq('league_id', league.id)
             .single()
           const isTraditional = league.format === 'fantasy' && settings?.format !== 'salary_cap'
+          const isSalaryCap = league.format === 'fantasy' && settings?.format === 'salary_cap'
           const label = league.format === 'nba_dfs' ? 'NBA DFS'
             : settings?.format === 'salary_cap' ? 'Salary Cap' : 'Fantasy'
-          // Traditional fantasy uses scaled top-3 bonuses; everything else
-          // uses the default flat champion bonus.
-          const bonusFn = isTraditional ? getTraditionalFantasyBonus : undefined
+
+          let bonusFn = isTraditional ? getTraditionalFantasyBonus : undefined
+          if (isSalaryCap) {
+            // Look at completed weekly results to figure out which mode
+            // applies (single-week / full-season run / mid-season run).
+            const { data: weekRows } = await supabase
+              .from('dfs_weekly_results')
+              .select('nfl_week')
+              .eq('league_id', league.id)
+            const weekSet = new Set((weekRows || []).map((w) => w.nfl_week))
+            const weeksPlayed = weekSet.size
+            const minWeek = weekSet.size ? Math.min(...weekSet) : null
+            const isSingleWeek = settings?.season_type === 'single_week'
+            const isFullSeasonRun = !isSingleWeek && minWeek === 1 && weeksPlayed >= 17
+            bonusFn = (rank, n) => getSalaryCapBonus(rank, n, { isSingleWeek, isFullSeasonRun, weeksPlayed })
+          }
           await awardPositionBasedPoints(league, standings, label, bonusFn)
         }
       } else if (league.format === 'mlb_dfs') {
