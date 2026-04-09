@@ -136,7 +136,7 @@ router.post('/', requireAuth, validate(createLeagueSchema), async (req, res) => 
 })
 
 router.get('/', requireAuth, async (req, res) => {
-  const leagues = await getMyLeagues(req.user.id)
+  const leagues = await getMyLeagues(req.user.id, req.query.tz)
   res.json(leagues)
 })
 

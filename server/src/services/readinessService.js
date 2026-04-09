@@ -29,19 +29,27 @@ function set(result, leagueId, state, detail) {
  * readiness check returns null (no clip) until the natural day rollover at
  * midnight ET, when a new game day begins.
  */
-async function getDoneSportsForToday(sportKeys) {
+async function getDoneSportsForToday(sportKeys, userTz) {
   const done = new Set()
   if (!sportKeys?.length) return done
-  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  // Build the ET day window in a DST-safe way: ask Intl what UTC offset
-  // applies to today in America/New_York instead of hardcoding -05:00.
-  const offsetMatch = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
-    timeZoneName: 'longOffset',
-  }).formatToParts(new Date()).find((p) => p.type === 'timeZoneName')?.value || 'GMT-05:00'
-  const offset = offsetMatch.replace('GMT', '') // e.g. "-05:00" or "-04:00"
-  const startOfDay = new Date(`${todayET}T00:00:00${offset}`)
-  const endOfDay = new Date(`${todayET}T23:59:59${offset}`)
+  const tz = userTz || 'America/New_York'
+  // Today in the user's local timezone (so the day rollover happens at the
+  // user's local midnight, not server time).
+  const todayLocal = new Date().toLocaleDateString('en-CA', { timeZone: tz })
+  // Day window for that local date — use the active offset for the user's
+  // timezone (DST-safe).
+  let offset
+  try {
+    const offsetMatch = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'longOffset',
+    }).formatToParts(new Date()).find((p) => p.type === 'timeZoneName')?.value
+    offset = offsetMatch?.replace('GMT', '') || '+00:00'
+  } catch {
+    offset = '-05:00'
+  }
+  const startOfDay = new Date(`${todayLocal}T00:00:00${offset}`)
+  const endOfDay = new Date(`${todayLocal}T23:59:59${offset}`)
 
   const { data: sportRows } = await supabase
     .from('sports')
@@ -76,7 +84,7 @@ async function getDoneSportsForToday(sportKeys) {
   }
   return done
 }
-export async function computeLeagueReadiness(userId, leagues) {
+export async function computeLeagueReadiness(userId, leagues, userTz) {
   const result = new Map()
   if (!leagues?.length) return result
 
@@ -106,7 +114,7 @@ export async function computeLeagueReadiness(userId, leagues) {
       if (l.sport && l.settings?.pick_frequency === 'daily') relevantSportKeys.add(l.sport)
     }
   }
-  const doneSports = await getDoneSportsForToday([...relevantSportKeys])
+  const doneSports = await getDoneSportsForToday([...relevantSportKeys], userTz)
 
   try {
     if (byFormat.nba_dfs?.length) {

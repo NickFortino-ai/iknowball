@@ -3,10 +3,15 @@ import { useEffect } from 'react'
 import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 
+function getUserTz() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York' }
+  catch { return 'America/New_York' }
+}
+
 export function useMyLeagues() {
   return useQuery({
     queryKey: ['leagues'],
-    queryFn: () => api.get('/leagues'),
+    queryFn: () => api.get(`/leagues?tz=${encodeURIComponent(getUserTz())}`),
   })
 }
 

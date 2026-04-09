@@ -444,7 +444,7 @@ export async function joinLeague(userId, inviteCode) {
   return league
 }
 
-export async function getMyLeagues(userId) {
+export async function getMyLeagues(userId, userTz) {
   const { data: memberships, error } = await supabase
     .from('league_members')
     .select('league_id, role, display_order')
@@ -491,7 +491,7 @@ export async function getMyLeagues(userId) {
   // Compute per-league readiness (green/yellow/red corner clip)
   try {
     const { computeLeagueReadiness } = await import('./readinessService.js')
-    const readinessMap = await computeLeagueReadiness(userId, result)
+    const readinessMap = await computeLeagueReadiness(userId, result, userTz)
     for (const l of result) {
       const r = readinessMap.get(l.id)
       l.readiness = r?.state || null
