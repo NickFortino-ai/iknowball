@@ -1142,6 +1142,47 @@ export function useTdPassCurrentWeek() {
   })
 }
 
+export function useFantasyUnderfillState(leagueId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'underfill'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/underfill-state`),
+    enabled: !!leagueId,
+    staleTime: 30_000,
+  })
+}
+
+export function useResizeFantasyLeague(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post(`/leagues/${leagueId}/fantasy/resize`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId] })
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+    },
+  })
+}
+
+export function useCancelFantasyLeague(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post(`/leagues/${leagueId}/fantasy/cancel`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+    },
+  })
+}
+
+export function usePostponeFantasyDraft(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (newDate) => api.post(`/leagues/${leagueId}/fantasy/postpone-draft`, { draft_date: newDate }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId] })
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+    },
+  })
+}
+
 export function useNflSeasonOpener() {
   return useQuery({
     queryKey: ['td-pass', 'season-opener'],

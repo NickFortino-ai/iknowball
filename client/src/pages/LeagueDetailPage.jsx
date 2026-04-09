@@ -22,6 +22,7 @@ import NbaDfsView from '../components/leagues/NbaDfsView'
 import MlbDfsView from '../components/leagues/MlbDfsView'
 import HrDerbyView from '../components/leagues/HrDerbyView'
 import TdPassView from '../components/leagues/TdPassView'
+import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -1151,6 +1152,14 @@ export default function LeagueDetailPage() {
         )}
         </div>
       </div>
+
+      {/* Underfill banner — commish-only, only for traditional fantasy
+          leagues that haven't drafted yet */}
+      {isCommissioner && league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && fantasySettings?.draft_status !== 'completed' && fantasySettings?.draft_status !== 'in_progress' && (
+        <div className="mt-4">
+          <FantasyUnderfillBanner league={league} />
+        </div>
+      )}
 
       {/* Champion Card */}
       {league.champion && (() => {
