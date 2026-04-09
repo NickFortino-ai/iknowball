@@ -723,7 +723,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
 
           <div>
             <label className="block text-sm font-semibold text-text-secondary mb-2">
-              Regions <span className="text-text-muted font-normal">(optional)</span>
+              Conferences/Regions <span className="text-text-muted font-normal">(optional)</span>
             </label>
             <div className="flex gap-2 mb-2">
               <input
