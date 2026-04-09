@@ -140,42 +140,56 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
  */
 async function computeSurvivorReadiness(leagues, userId, result) {
   const leagueIds = leagues.map((l) => l.id)
-  const nowIso = new Date().toISOString()
+  const now = new Date().toISOString()
 
-  // Find each league's current week (the active one, or the next upcoming)
+  // Pull every period for these leagues so we can pick whichever one
+  // matches the survivor service's "current period" rule:
+  // (a) the period whose starts_at <= now <= ends_at, or
+  // (b) if none match (between periods), the next upcoming period.
   const { data: weeks } = await supabase
     .from('league_weeks')
-    .select('id, league_id, status, starts_at, ends_at')
+    .select('id, league_id, starts_at, ends_at')
     .in('league_id', leagueIds)
-    .neq('status', 'completed')
     .order('starts_at', { ascending: true })
 
-  // First non-completed week per league (earliest)
-  const currentWeekByLeague = {}
+  const weeksByLeague = {}
   for (const w of weeks || []) {
-    if (!currentWeekByLeague[w.league_id]) currentWeekByLeague[w.league_id] = w
+    if (!weeksByLeague[w.league_id]) weeksByLeague[w.league_id] = []
+    weeksByLeague[w.league_id].push(w)
+  }
+  const currentWeekByLeague = {}
+  for (const [lid, wks] of Object.entries(weeksByLeague)) {
+    const active = wks.find((w) => w.starts_at <= now && w.ends_at >= now)
+    if (active) {
+      currentWeekByLeague[lid] = active
+    } else {
+      const upcoming = wks.find((w) => w.starts_at > now)
+      if (upcoming) currentWeekByLeague[lid] = upcoming
+    }
   }
 
-  // Pull picks for those week ids
-  const weekIds = Object.values(currentWeekByLeague).map((w) => w.id)
-  const { data: picks } = weekIds.length
-    ? await supabase
-        .from('survivor_picks')
-        .select('league_id, league_week_id, status')
-        .in('league_week_id', weekIds)
-        .eq('user_id', userId)
-    : { data: [] }
-  const pickByLeague = {}
-  for (const p of picks || []) pickByLeague[p.league_id] = p
+  // Pull this user's picks for ALL of these leagues — match by league_id
+  // rather than by week_id so a pick made for an adjacent period (e.g.
+  // user picked early for the next week) still counts as "ready".
+  const { data: picks } = await supabase
+    .from('survivor_picks')
+    .select('league_id, league_week_id, status')
+    .in('league_id', leagueIds)
+    .eq('user_id', userId)
+  const picksByLeague = {}
+  for (const p of picks || []) {
+    if (!picksByLeague[p.league_id]) picksByLeague[p.league_id] = []
+    picksByLeague[p.league_id].push(p)
+  }
 
-  // Also check eliminated members — if user is eliminated, no action needed
-  const { data: eliminations } = await supabase
+  // Eliminated users don't need to do anything
+  const { data: members } = await supabase
     .from('league_members')
     .select('league_id, lives_remaining')
     .in('league_id', leagueIds)
     .eq('user_id', userId)
   const eliminatedSet = new Set(
-    (eliminations || []).filter((m) => m.lives_remaining === 0).map((m) => m.league_id)
+    (members || []).filter((m) => m.lives_remaining === 0).map((m) => m.league_id)
   )
 
   for (const l of leagues) {
@@ -185,12 +199,17 @@ async function computeSurvivorReadiness(leagues, userId, result) {
     }
     const week = currentWeekByLeague[l.id]
     if (!week) {
+      // No current/upcoming period found — nothing to do
       set(result, l.id, 'ready', 'No active period')
       continue
     }
-    const pick = pickByLeague[l.id]
-    if (pick) set(result, l.id, 'ready', 'Survivor pick submitted')
-    else set(result, l.id, 'action', "You haven't made this period's pick")
+    const userPicks = picksByLeague[l.id] || []
+    const hasPickForCurrent = userPicks.some((p) => p.league_week_id === week.id)
+    if (hasPickForCurrent) {
+      set(result, l.id, 'ready', 'Survivor pick submitted')
+    } else {
+      set(result, l.id, 'action', "You haven't made this period's pick")
+    }
   }
 }
 
