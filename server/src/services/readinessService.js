@@ -33,8 +33,15 @@ async function getDoneSportsForToday(sportKeys) {
   const done = new Set()
   if (!sportKeys?.length) return done
   const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  const startOfDay = new Date(`${todayET}T00:00:00-05:00`)
-  const endOfDay = new Date(`${todayET}T23:59:59-05:00`)
+  // Build the ET day window in a DST-safe way: ask Intl what UTC offset
+  // applies to today in America/New_York instead of hardcoding -05:00.
+  const offsetMatch = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    timeZoneName: 'longOffset',
+  }).formatToParts(new Date()).find((p) => p.type === 'timeZoneName')?.value || 'GMT-05:00'
+  const offset = offsetMatch.replace('GMT', '') // e.g. "-05:00" or "-04:00"
+  const startOfDay = new Date(`${todayET}T00:00:00${offset}`)
+  const endOfDay = new Date(`${todayET}T23:59:59${offset}`)
 
   const { data: sportRows } = await supabase
     .from('sports')
