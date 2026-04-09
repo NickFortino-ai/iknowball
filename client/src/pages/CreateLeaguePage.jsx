@@ -13,7 +13,7 @@ const FORMAT_OPTIONS = [
     description: 'Traditional draft leagues or weekly salary cap — set lineups and compete head-to-head',
     details: `Two flavors: Traditional season-long with a snake draft, head-to-head matchups, waivers, trades, and an end-of-season playoff bracket — or Weekly Salary Cap, where you build a fresh lineup every week under a budget with no draft and no roster carryover. There's also a single-week mode for one-and-done contests.
 
-When the season ends, your final position converts to global IKB points using the position formula on top of a top-3 bonus structure. Winning a deep traditional league against serious managers is a real test of strategy, prep, and weekly attention — the global payout reflects that.
+When the season ends, your final position converts to global IKB points using the position formula on top of a top-3 bonus structure.
 
 Salary cap leagues generate a League Report at the end with most played player, pick of the year, best value plays, worst investments, and league-wide awards.
 
