@@ -7,6 +7,7 @@ import {
   submitPick,
   getStandings,
   getCurrentNflWeek,
+  getSeasonOpenerKickoff,
 } from '../services/tdPassService.js'
 
 const router = Router()
@@ -16,6 +17,15 @@ router.get('/current-week', async (req, res, next) => {
   try {
     const data = await getCurrentNflWeek()
     res.json(data)
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.get('/season-opener', async (req, res, next) => {
+  try {
+    const opener = await getSeasonOpenerKickoff()
+    res.json({ opener })
   } catch (err) {
     next(err)
   }

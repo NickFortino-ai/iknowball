@@ -1112,6 +1112,14 @@ export function useTdPassCurrentWeek() {
   })
 }
 
+export function useNflSeasonOpener() {
+  return useQuery({
+    queryKey: ['td-pass', 'season-opener'],
+    queryFn: () => api.get('/td-pass/season-opener'),
+    staleTime: 60 * 60 * 1000,
+  })
+}
+
 export function useSubmitTdPassPick() {
   const queryClient = useQueryClient()
   return useMutation({

@@ -52,6 +52,57 @@ export async function getCurrentNflWeek() {
 }
 
 /**
+ * Kickoff timestamp of the first NFL Week 1 game of the most recent season
+ * loaded into nfl_schedule. Used to lock features that should only be
+ * available before the regular season has actually started — e.g.
+ * traditional fantasy league creation.
+ *
+ * Returns an ISO timestamp string, or null if no Week 1 schedule exists.
+ */
+export async function getSeasonOpenerKickoff() {
+  // Latest season we know about in the schedule
+  const { data: latestRow } = await supabase
+    .from('nfl_schedule')
+    .select('season')
+    .order('season', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!latestRow?.season) return null
+  const season = latestRow.season
+
+  // Week 1 game dates for that season
+  const { data: w1Rows } = await supabase
+    .from('nfl_schedule')
+    .select('game_date, home_team, away_team')
+    .eq('season', season)
+    .eq('week', 1)
+  if (!w1Rows?.length) return null
+
+  // The actual kickoff timestamps live on the games table. Find NFL games
+  // matching those Week 1 dates and grab the earliest starts_at.
+  const { data: sport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', 'americanfootball_nfl')
+    .single()
+  if (!sport?.id) return null
+
+  const dates = [...new Set(w1Rows.map((r) => r.game_date))].sort()
+  if (!dates.length) return null
+  const minDate = dates[0]
+  const maxDate = dates[dates.length - 1]
+  const { data: games } = await supabase
+    .from('games')
+    .select('starts_at')
+    .eq('sport_id', sport.id)
+    .gte('starts_at', `${minDate}T00:00:00Z`)
+    .lt('starts_at', `${maxDate}T23:59:59Z`)
+    .order('starts_at', { ascending: true })
+    .limit(1)
+  return games?.[0]?.starts_at || null
+}
+
+/**
  * Latest kickoff time of the current NFL week. Used as the joins_locked_at
  * for a TD Pass league created mid-week — users can join up until the start
  * of the very last game (e.g. MNF nightcap on a doubleheader week).

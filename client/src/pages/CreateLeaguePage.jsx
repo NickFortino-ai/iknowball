@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useTdPassCurrentWeek } from '../hooks/useLeagues'
+import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useNflSeasonOpener } from '../hooks/useLeagues'
 import { api } from '../lib/api'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
@@ -235,13 +235,13 @@ export default function CreateLeaguePage() {
 
   // Fantasy settings
   const [fantasyFormat, setFantasyFormat] = useState('traditional')
-  // Traditional fantasy can only be created during the preseason / Week 1.
-  // After that the season's already underway and a draft-based league
-  // doesn't make sense — users should join Salary Cap instead.
-  const { data: nflWeekInfo } = useTdPassCurrentWeek()
-  // Locked only after the regular season has actually started AND we're
-  // past Week 1. Preseason / offseason is wide open.
-  const traditionalLocked = !!(nflWeekInfo && nflWeekInfo.isPreSeason === false && nflWeekInfo.week && nflWeekInfo.week > 1)
+  // Traditional fantasy can only be created BEFORE the NFL season opener
+  // kicks off. Once the first Week 1 game starts, only Salary Cap is
+  // available.
+  const { data: openerData } = useNflSeasonOpener()
+  const traditionalLocked = !!(
+    openerData?.opener && new Date(openerData.opener).getTime() <= Date.now()
+  )
   // Auto-flip the toggle to salary cap once we know the season has started
   useEffect(() => {
     if (traditionalLocked && fantasyFormat === 'traditional') {
@@ -746,7 +746,7 @@ export default function CreateLeaguePage() {
               </div>
               {traditionalLocked && (
                 <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
-                  Traditional fantasy can only be created before the regular season or during Week 1. The NFL season is already in week {nflWeekInfo?.week} — for a fresh league this late, use Salary Cap.
+                  Traditional fantasy can only be created before the NFL season opens. The season is already underway — for a fresh league this late, use Salary Cap.
                 </p>
               )}
             </div>

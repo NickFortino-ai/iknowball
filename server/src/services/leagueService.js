@@ -172,25 +172,23 @@ export async function createLeague(userId, data) {
     await createFantasySettings(league.id, data.fantasy_settings || {})
   }
 
-  // Guard: traditional fantasy is only creatable before regular-season
-  // kickoff or during Week 1. After that the draft is moot — users should
-  // join Salary Cap instead. The preseason / offseason window is treated
-  // as wide open.
+  // Guard: traditional fantasy is only creatable BEFORE the season opener
+  // kicks off. Once the first Week 1 game has started, only Salary Cap is
+  // available — late-start traditional leagues are weird and the draft
+  // can't really happen anyway.
   if (league.format === 'fantasy' && data.fantasy_settings?.format !== 'salary_cap') {
     try {
-      const { getCurrentNflWeek } = await import('./tdPassService.js')
-      const { week, isPreSeason } = await getCurrentNflWeek()
-      // Locked only when the regular season has actually started AND we're
-      // past Week 1.
-      if (!isPreSeason && week && week > 1) {
+      const { getSeasonOpenerKickoff } = await import('./tdPassService.js')
+      const opener = await getSeasonOpenerKickoff()
+      if (opener && new Date(opener).getTime() <= Date.now()) {
         await supabase.from('leagues').delete().eq('id', league.id)
-        const err = new Error(`Traditional fantasy can only be created before the regular season or during Week 1. The NFL season is already in week ${week} — use Salary Cap instead.`)
+        const err = new Error('Traditional fantasy can only be created before the NFL season opens. Use Salary Cap instead.')
         err.status = 400
         throw err
       }
     } catch (err) {
       if (err.status) throw err
-      logger.warn({ err }, 'Could not verify NFL week for traditional fantasy lock')
+      logger.warn({ err }, 'Could not verify season opener for traditional fantasy lock')
     }
   }
 
