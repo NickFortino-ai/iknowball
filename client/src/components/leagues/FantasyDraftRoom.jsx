@@ -162,6 +162,40 @@ export default function FantasyDraftRoom({ league }) {
     return () => clearInterval(interval)
   }, [draftStatus, currentPick?.pick_number, settings?.draft_pick_timer])
 
+  // Tick beeps during the final countdown of YOUR pick. Fires once at
+  // 10s remaining (gentle warning), then short blips at 5/4/3/2/1 with
+  // rising pitch so the urgency escalates audibly.
+  const lastBeepedSecondRef = useRef(null)
+  useEffect(() => {
+    if (!isMyTurn || draftStatus !== 'in_progress' || timerSeconds == null) {
+      lastBeepedSecondRef.current = null
+      return
+    }
+    const triggers = { 10: { freq: 660, dur: 0.25, gain: 0.1 },
+                       5:  { freq: 880, dur: 0.18, gain: 0.13 },
+                       4:  { freq: 880, dur: 0.18, gain: 0.13 },
+                       3:  { freq: 1100, dur: 0.18, gain: 0.15 },
+                       2:  { freq: 1100, dur: 0.18, gain: 0.15 },
+                       1:  { freq: 1320, dur: 0.25, gain: 0.18 } }
+    const trig = triggers[timerSeconds]
+    if (!trig) return
+    if (lastBeepedSecondRef.current === timerSeconds) return
+    lastBeepedSecondRef.current = timerSeconds
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return
+      const ctx = new Ctx()
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.connect(g); g.connect(ctx.destination)
+      o.frequency.value = trig.freq
+      g.gain.setValueAtTime(trig.gain, ctx.currentTime)
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + trig.dur)
+      o.start()
+      o.stop(ctx.currentTime + trig.dur)
+    } catch {}
+  }, [isMyTurn, timerSeconds, draftStatus])
+
   // "You're on the clock" in-room alert — fires only when isMyTurn flips
   // false → true. Plays a beep, toasts, and flashes the document title so
   // users with the tab in the background notice.
