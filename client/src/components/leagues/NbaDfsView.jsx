@@ -272,7 +272,7 @@ function LiveView({ league, date: leagueDate }) {
                             )}
                             {(slot.game_status === 'live' || slot.game_status === 'final') && !slot.away_team && (
                               <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-xs lg:w-44 lg:shrink-0 lg:text-right">
-                                {slot.team}{slot.opponent ? ` · ${slot.opponent}` : ''}
+                                {slot.team} {slot.opponent}
                                 {slot.game_status === 'live' && slot.game_period && (
                                   <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
                                 )}
@@ -822,7 +822,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                         )}
                       </div>
                       <div className="text-xs text-text-muted">
-                        {player.position} · {player.team}{player.opponent ? ` · ${player.opponent}` : ''}
+                        {player.position} · {player.team} {player.opponent}
                         {player.game_status === 'live' && player.game_period && (
                           <span className="text-text-primary ml-1.5">Q{player.game_period} {player.game_clock}</span>
                         )}
@@ -942,7 +942,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                       <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
                       <InjuryBadge status={player.injury_status} />
                     </div>
-                    <div className="text-xs text-text-muted">{player.position} · {player.team}{player.opponent ? ` · ${player.opponent}` : ''}</div>
+                    <div className="text-xs text-text-muted">{player.position} · {player.team} {player.opponent}</div>
                   </div>
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${player.salary.toLocaleString()}</span>
                 </button>
