@@ -43,19 +43,28 @@ router.get('/players', requireAuth, async (req, res) => {
   if (offensiveResult.error) return res.status(500).json({ error: offensiveResult.error.message })
   if (defResult.error) return res.status(500).json({ error: defResult.error.message })
 
-  const merged = [...(offensiveResult.data || []), ...(defResult.data || [])]
-
   // Composite ADP score: prefer adp_half_ppr → adp_ppr → search_rank
-  // (lower is better in all three). Truncate to top 300, then attach an
-  // overall_rank (1-based) so the frontend can show the same rank
-  // regardless of position filter.
-  const sorted = merged
+  // (lower is better in all three). Sort offensive players by ADP and take
+  // top 268, then ALWAYS append all 32 DEFs regardless of their ADP.
+  // Without this guarantee, DEFs (which all default to _adp=9999) sink to
+  // the bottom of the sort and the slice cuts them out.
+  const offensiveSorted = (offensiveResult.data || [])
     .map((p) => ({
       ...p,
       _adp: p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999,
     }))
     .sort((a, b) => a._adp - b._adp)
-    .slice(0, 300)
+    .slice(0, 268)
+
+  const defs = (defResult.data || [])
+    .map((p) => ({
+      ...p,
+      _adp: p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999,
+    }))
+    .sort((a, b) => a._adp - b._adp)
+
+  // Concat: offense first (ADP-ordered), then all defenses
+  const sorted = [...offensiveSorted, ...defs]
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
 
   res.json(sorted)
