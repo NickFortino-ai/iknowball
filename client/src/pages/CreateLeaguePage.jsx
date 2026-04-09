@@ -81,7 +81,7 @@ Commissioner controls: sport (single or all), duration (this week, custom range,
 
 When the league ends, only survivors earn global IKB points — scaled by league size from 10 points for small leagues up to 100 for 41+ members. If multiple players survive, the points split evenly.
 
-NFL leagues can also be set up as a Touchdown Survivor Pool — instead of picking a team, pick one player you think will score a non-passing TD (rush, reception, return, or fumble recovery). Same survivor engine, same global scoring. Comes with the TD Legends backdrop set (Jerry, Emmitt, LaDainian — first names only, IYKYK).
+NFL leagues can also be set up as a Touchdown Survivor Pool — instead of picking a team, pick one player you think will score a non-passing TD (rush, reception, return, or fumble recovery). Same survivor engine, same global scoring. Comes with the TD Legends backdrop set (Jerry, Emmitt, LaDainian).
 
 Commissioner controls: sport, period frequency (daily or weekly), lives per player, what happens if everyone gets eliminated in the same period (all-survive or reset), and league length. Custom backdrop from a curated library or upload your own.`,
   },
