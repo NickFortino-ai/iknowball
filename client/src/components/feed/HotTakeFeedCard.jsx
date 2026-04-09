@@ -312,9 +312,14 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     if (!trimmed || trimmed.length > MAX_CHARS) return
 
     let imageUrl = existingImageUrl
+    let imageUrls
     if (hasImage) {
-      imageUrl = await uploadImage()
-      if (!imageUrl && hasImage) return // upload failed
+      const urls = await uploadImage()
+      if (!urls && hasImage) return // upload failed
+      // uploadImage returns an array — flatten to the singular field for the
+      // server while also keeping the multi-image array.
+      imageUrls = urls
+      imageUrl = urls?.[0]
     }
 
     let videoUrl = existingVideoUrl
@@ -324,7 +329,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     }
 
     updateHotTake.mutate(
-      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined, video_url: videoUrl || undefined, user_tags: editUserTags.length ? editUserTags.map((u) => u.id) : undefined },
+      { id: hot_take.id, content: trimmed, team_tags: editTeamTags.length ? editTeamTags : undefined, image_url: imageUrl || undefined, image_urls: imageUrls, video_url: videoUrl || undefined, user_tags: editUserTags.length ? editUserTags.map((u) => u.id) : undefined },
       {
         onSuccess: () => {
           cancelEditing()
