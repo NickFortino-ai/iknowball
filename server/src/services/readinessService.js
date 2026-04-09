@@ -245,9 +245,17 @@ async function computeFantasyReadiness(leagues, userId, result) {
 
   const { data: rosters } = await supabase
     .from('fantasy_rosters')
-    .select('league_id, player_id, slot, nfl_players(full_name, injury_status)')
+    .select('league_id, player_id, slot, nfl_players(full_name, injury_status, bye_week)')
     .in('league_id', leagueIds)
     .eq('user_id', userId)
+
+  // Current NFL week — used to flag bye-week starters
+  let currentNflWeek = null
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const w = await getCurrentNflWeek()
+    currentNflWeek = w?.week || null
+  } catch {}
   const rosterByLeague = {}
   for (const r of rosters || []) {
     if (!rosterByLeague[r.league_id]) rosterByLeague[r.league_id] = []
@@ -274,6 +282,18 @@ async function computeFantasyReadiness(leagues, userId, result) {
     const starters = myRoster.filter((r) => r.slot && r.slot !== 'bench' && r.slot !== 'ir')
     if (requiredStarterCount > 0 && starters.length < requiredStarterCount) {
       set(result, l.id, 'action', `${starters.length}/${requiredStarterCount} starting slots filled`)
+      continue
+    }
+    // Bye-week starters take priority — if any starter is on bye this week,
+    // that's an action item, not just an attention flag.
+    const onBye = currentNflWeek
+      ? starters.filter((r) => r.nfl_players?.bye_week === currentNflWeek)
+      : []
+    if (onBye.length > 0) {
+      const summary = onBye.length === 1
+        ? `${onBye[0].nfl_players?.full_name || 'A starter'} is on bye`
+        : `${onBye.length} starters on bye this week`
+      set(result, l.id, 'action', summary)
       continue
     }
     const flagged = starters.filter((r) => {
