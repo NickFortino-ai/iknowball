@@ -387,6 +387,10 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
   const docMoveRef = useRef(null)
   const docUpRef = useRef(null)
   const docCancelOnPredragRef = useRef(null)
+  // Timestamp of when the most recent drag ended. Used to suppress the
+  // trailing click event the browser fires after pointerup, which would
+  // otherwise re-open the player modal right after a successful swap.
+  const dragJustEndedAt = useRef(0)
 
   function resetDragVisuals() {
     if (dragEl.current) {
@@ -424,39 +428,60 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
 
     const startY = e.clientY
     const startX = e.clientX
+    const isMouse = e.pointerType === 'mouse'
     dragStartY.current = startY
 
-    // Pre-drag: cancel if the user starts scrolling OR releases before the
-    // long-press timer fires. A quick tap (release before 400ms) must NOT
-    // engage the drag — the row needs to behave like a normal button so the
-    // user can open the modal or × the player off the roster.
-    const onPredragMove = (moveE) => {
-      const dx = Math.abs(moveE.clientX - startX)
-      const dy = Math.abs(moveE.clientY - startY)
-      if (dx > 8 || dy > 8) {
-        clearTimeout(longPressTimer.current)
-        detachDocListeners()
+    // Disambiguation strategy differs by input device:
+    //   - Mouse: enter drag mode the moment the pointer moves > 8px. No
+    //     long-press, because desktop users click-and-drag in one motion.
+    //   - Touch/pen: require a 400ms long-press before drag mode engages,
+    //     so a quick tap stays a tap (open modal / X off roster) and doesn't
+    //     get hijacked by an accidental drag during scrolling.
+    let beganDrag = false
+
+    function beginActualDrag() {
+      if (beganDrag) return
+      beganDrag = true
+      // Detach predrag listeners — we're committed
+      if (docCancelOnPredragRef.current) {
+        window.removeEventListener('pointermove', docCancelOnPredragRef.current)
+        docCancelOnPredragRef.current = null
       }
+      window.removeEventListener('pointerup', cleanupPredrag)
+      window.removeEventListener('pointercancel', cleanupPredrag)
+      clearTimeout(longPressTimer.current)
+      attachDragHandlers()
     }
-    const onPredragEnd = () => {
+
+    function cleanupPredrag() {
       clearTimeout(longPressTimer.current)
       detachDocListeners()
     }
+
+    const onPredragMove = (moveE) => {
+      const dx = Math.abs(moveE.clientX - startX)
+      const dy = Math.abs(moveE.clientY - startY)
+      if (isMouse && (dx > 8 || dy > 8)) {
+        // Mouse: any meaningful movement = drag
+        beginActualDrag()
+        return
+      }
+      if (!isMouse && (dx > 8 || dy > 8)) {
+        // Touch: scrolling cancels the long-press
+        cleanupPredrag()
+      }
+    }
     docCancelOnPredragRef.current = onPredragMove
     window.addEventListener('pointermove', onPredragMove, { passive: true })
-    window.addEventListener('pointerup', onPredragEnd, { once: true, passive: true })
-    window.addEventListener('pointercancel', onPredragEnd, { once: true, passive: true })
+    window.addEventListener('pointerup', cleanupPredrag, { once: true, passive: true })
+    window.addEventListener('pointercancel', cleanupPredrag, { once: true, passive: true })
 
-    longPressTimer.current = setTimeout(() => {
-      // 350ms long-press required so a quick tap (open modal / × off roster)
-      // doesn't accidentally engage the drag.
-      // Detach pre-drag cancel; we're committed to the drag
-      if (docCancelOnPredragRef.current) {
-        window.removeEventListener('pointermove', docCancelOnPredragRef.current)
-        window.removeEventListener('pointerup', docCancelOnPredragRef.current)
-        docCancelOnPredragRef.current = null
-      }
+    // Touch only: long-press fallback if user holds without moving
+    if (!isMouse) {
+      longPressTimer.current = setTimeout(beginActualDrag, 400)
+    }
 
+    function attachDragHandlers() {
       setDragSource(slotKey)
       dragSourceRef.current = slotKey
       dragEl.current = slotRefs.current[slotKey]
@@ -524,6 +549,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
           setHoverSlot(null)
           dragEl.current = null
           detachDocListeners()
+          dragJustEndedAt.current = Date.now()
         }
       }
 
@@ -532,7 +558,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
       window.addEventListener('pointermove', onMove, { passive: false })
       window.addEventListener('pointerup', onEnd, { passive: true })
       window.addEventListener('pointercancel', onEnd, { passive: true })
-    }, 400)
+    }
   }
 
   // Stub — kept so the row's onPointerMove/onPointerUp props don't error.
@@ -800,7 +826,13 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
               {player ? (
                 <>
                   <button
-                    onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // Suppress the trailing click that fires immediately
+                      // after a successful drag completes
+                      if (Date.now() - dragJustEndedAt.current < 300) return
+                      setSelectedPlayer(player)
+                    }}
                     className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
                   >
                     {player.headshot_url && (
