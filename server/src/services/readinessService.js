@@ -303,7 +303,8 @@ async function computeFantasyReadiness(leagues, userId, result) {
   }
 
   // Salary cap fantasy uses dfs_rosters keyed by nfl_week. Pre-fetch for all
-  // salary cap leagues in one shot using the current NFL week.
+  // salary cap leagues in one shot using the current NFL week, and join the
+  // slot rows so we can apply the same injury/bye check as traditional.
   const salaryCapLeagueIds = (leagues || [])
     .filter((l) => settingsByLeague[l.id]?.format === 'salary_cap')
     .map((l) => l.id)
@@ -311,7 +312,7 @@ async function computeFantasyReadiness(leagues, userId, result) {
   if (salaryCapLeagueIds.length && currentNflWeek) {
     const { data: dfsRosters } = await supabase
       .from('dfs_rosters')
-      .select('league_id, id')
+      .select('league_id, id, dfs_roster_slots(player_id, nfl_players(full_name, injury_status, bye_week))')
       .in('league_id', salaryCapLeagueIds)
       .eq('user_id', userId)
       .eq('nfl_week', currentNflWeek)
@@ -322,13 +323,44 @@ async function computeFantasyReadiness(leagues, userId, result) {
     const s = settingsByLeague[l.id]
     // No settings row at all → can't verify, leave null
     if (!s) continue
-    // Salary cap fantasy: green if a lineup is set for the current NFL week
+    // Salary cap fantasy: red if no lineup OR any Out player; yellow if any
+    // Questionable/Doubtful; green otherwise. Bye-week players in the lineup
+    // are also red since the slot is effectively wasted.
     if (s.format === 'salary_cap') {
       if (!currentNflWeek) continue // can't verify
-      if (salaryCapRosterByLeague[l.id]) {
-        set(result, l.id, 'ready', `Lineup set for week ${currentNflWeek}`)
-      } else {
+      const r = salaryCapRosterByLeague[l.id]
+      if (!r) {
         set(result, l.id, 'action', `No lineup set for week ${currentNflWeek}`)
+        continue
+      }
+      const slots = r.dfs_roster_slots || []
+      const onBye = slots.filter((sl) => sl.nfl_players?.bye_week === currentNflWeek)
+      if (onBye.length > 0) {
+        const summary = onBye.length === 1
+          ? `${onBye[0].nfl_players?.full_name || 'A player'} is on bye`
+          : `${onBye.length} players on bye this week`
+        set(result, l.id, 'action', summary)
+        continue
+      }
+      const outPlayers = slots.filter((sl) => sl.nfl_players?.injury_status === 'Out')
+      if (outPlayers.length > 0) {
+        const summary = outPlayers.length === 1
+          ? `${outPlayers[0].nfl_players?.full_name || 'A player'} is Out`
+          : `${outPlayers.length} Out players in your lineup`
+        set(result, l.id, 'action', summary)
+        continue
+      }
+      const flagged = slots.filter((sl) => {
+        const inj = sl.nfl_players?.injury_status
+        return inj && inj !== 'Probable' && inj !== 'Out'
+      })
+      if (flagged.length > 0) {
+        const summary = flagged.length === 1
+          ? `${flagged[0].nfl_players?.full_name || 'A player'} is ${flagged[0].nfl_players?.injury_status}`
+          : `${flagged.length} flagged players in your lineup`
+        set(result, l.id, 'attention', summary)
+      } else {
+        set(result, l.id, 'ready', `Lineup set for week ${currentNflWeek}`)
       }
       continue
     }
