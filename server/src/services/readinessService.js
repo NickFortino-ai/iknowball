@@ -59,6 +59,14 @@ export async function computeLeagueReadiness(userId, leagues) {
     if (byFormat.pickem?.length) {
       await computePickemReadiness(byFormat.pickem, userId, result)
     }
+    if (byFormat.squares?.length) {
+      await computeSquaresReadiness(byFormat.squares, userId, result)
+    }
+    if (byFormat.bracket?.length) {
+      await computeBracketReadiness(byFormat.bracket, userId, result)
+    }
+    // Salary cap fantasy is the same league.format='fantasy' bucket — handled
+    // inside computeFantasyReadiness now.
   } catch (err) {
     logger.error({ err }, 'Failed to compute league readiness')
   }
@@ -294,13 +302,36 @@ async function computeFantasyReadiness(leagues, userId, result) {
     rosterByLeague[r.league_id].push(r)
   }
 
+  // Salary cap fantasy uses dfs_rosters keyed by nfl_week. Pre-fetch for all
+  // salary cap leagues in one shot using the current NFL week.
+  const salaryCapLeagueIds = (leagues || [])
+    .filter((l) => settingsByLeague[l.id]?.format === 'salary_cap')
+    .map((l) => l.id)
+  let salaryCapRosterByLeague = {}
+  if (salaryCapLeagueIds.length && currentNflWeek) {
+    const { data: dfsRosters } = await supabase
+      .from('dfs_rosters')
+      .select('league_id, id')
+      .in('league_id', salaryCapLeagueIds)
+      .eq('user_id', userId)
+      .eq('nfl_week', currentNflWeek)
+    for (const r of dfsRosters || []) salaryCapRosterByLeague[r.league_id] = r
+  }
+
   for (const l of leagues) {
     const s = settingsByLeague[l.id]
     // No settings row at all → can't verify, leave null
     if (!s) continue
-    // Salary-cap fantasy uses a different lineup model — leave null until
-    // we wire it up properly
-    if (s.format === 'salary_cap') continue
+    // Salary cap fantasy: green if a lineup is set for the current NFL week
+    if (s.format === 'salary_cap') {
+      if (!currentNflWeek) continue // can't verify
+      if (salaryCapRosterByLeague[l.id]) {
+        set(result, l.id, 'ready', `Lineup set for week ${currentNflWeek}`)
+      } else {
+        set(result, l.id, 'action', `No lineup set for week ${currentNflWeek}`)
+      }
+      continue
+    }
     const slots = s.roster_slots || {}
     const requiredStarterCount =
       (slots.qb || 0) + (slots.rb || 0) + (slots.wr || 0) + (slots.te || 0) +
@@ -399,6 +430,129 @@ async function computePickemReadiness(leagues, userId, result) {
       set(result, l.id, 'attention', `${n}/${required} picks in for week ${week.week_number}`)
     } else {
       set(result, l.id, 'action', `0/${required} picks for week ${week.week_number}`)
+    }
+  }
+}
+
+/**
+ * Squares: yellow once the user has claimed at least one square; green once
+ * every square on the board (10x10 = 100 total) has been claimed by anyone.
+ * Action (red) only when the user has claimed nothing yet.
+ */
+async function computeSquaresReadiness(leagues, userId, result) {
+  const leagueIds = leagues.map((l) => l.id)
+  const { data: boards } = await supabase
+    .from('squares_boards')
+    .select('id, league_id, total_squares')
+    .in('league_id', leagueIds)
+  const boardByLeague = {}
+  for (const b of boards || []) boardByLeague[b.league_id] = b
+
+  const boardIds = (boards || []).map((b) => b.id)
+  const { data: claims } = boardIds.length
+    ? await supabase
+        .from('squares_claims')
+        .select('board_id, user_id')
+        .in('board_id', boardIds)
+    : { data: [] }
+
+  const totalByBoard = {}
+  const myCountByBoard = {}
+  for (const c of claims || []) {
+    totalByBoard[c.board_id] = (totalByBoard[c.board_id] || 0) + 1
+    if (c.user_id === userId) {
+      myCountByBoard[c.board_id] = (myCountByBoard[c.board_id] || 0) + 1
+    }
+  }
+
+  for (const l of leagues) {
+    const board = boardByLeague[l.id]
+    if (!board) continue // no board yet — leave null
+    const expected = Number(board.total_squares) || 100
+    const myClaims = myCountByBoard[board.id] || 0
+    const totalClaims = totalByBoard[board.id] || 0
+    if (myClaims === 0) {
+      set(result, l.id, 'action', "You haven't claimed any squares")
+    } else if (totalClaims < expected) {
+      set(result, l.id, 'attention', `${myClaims} claimed · ${totalClaims}/${expected} board filled`)
+    } else {
+      set(result, l.id, 'ready', `Board full · you have ${myClaims}`)
+    }
+  }
+}
+
+/**
+ * Bracket: yellow if the user is in the league but the bracket isn't filled
+ * out yet (or hasn't been generated). Green once their entry has picks for
+ * every matchup. Null if there's no tournament for the league.
+ */
+async function computeBracketReadiness(leagues, userId, result) {
+  const leagueIds = leagues.map((l) => l.id)
+  const { data: tournaments } = await supabase
+    .from('bracket_tournaments')
+    .select('id, league_id, locks_at, status')
+    .in('league_id', leagueIds)
+  const tournamentByLeague = {}
+  for (const t of tournaments || []) tournamentByLeague[t.league_id] = t
+
+  const tournamentIds = (tournaments || []).map((t) => t.id)
+
+  // Total matchups per tournament (the target pick count)
+  const { data: matchups } = tournamentIds.length
+    ? await supabase
+        .from('bracket_matchups')
+        .select('tournament_id')
+        .in('tournament_id', tournamentIds)
+    : { data: [] }
+  const matchupCountByTournament = {}
+  for (const m of matchups || []) {
+    matchupCountByTournament[m.tournament_id] =
+      (matchupCountByTournament[m.tournament_id] || 0) + 1
+  }
+
+  // User entries
+  const { data: entries } = tournamentIds.length
+    ? await supabase
+        .from('bracket_entries')
+        .select('id, tournament_id')
+        .in('tournament_id', tournamentIds)
+        .eq('user_id', userId)
+    : { data: [] }
+  const entryByTournament = {}
+  for (const e of entries || []) entryByTournament[e.tournament_id] = e
+
+  // Pick count per entry
+  const entryIds = (entries || []).map((e) => e.id)
+  const { data: picks } = entryIds.length
+    ? await supabase
+        .from('bracket_picks')
+        .select('entry_id')
+        .in('entry_id', entryIds)
+    : { data: [] }
+  const pickCountByEntry = {}
+  for (const p of picks || []) {
+    pickCountByEntry[p.entry_id] = (pickCountByEntry[p.entry_id] || 0) + 1
+  }
+
+  for (const l of leagues) {
+    const t = tournamentByLeague[l.id]
+    if (!t) continue // no tournament yet
+    const totalMatchups = matchupCountByTournament[t.id] || 0
+    if (totalMatchups === 0) {
+      // Tournament exists but bracket isn't published yet
+      set(result, l.id, 'attention', "Bracket isn't available yet")
+      continue
+    }
+    const entry = entryByTournament[t.id]
+    if (!entry) {
+      set(result, l.id, 'action', "You haven't filled out the bracket")
+      continue
+    }
+    const filledPicks = pickCountByEntry[entry.id] || 0
+    if (filledPicks >= totalMatchups) {
+      set(result, l.id, 'ready', 'Bracket filled out')
+    } else {
+      set(result, l.id, 'action', `${filledPicks}/${totalMatchups} picks made`)
     }
   }
 }
