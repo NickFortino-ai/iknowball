@@ -94,16 +94,19 @@ export default function LeagueCard({ league, noLink }) {
         </>
       )}
       <div className="relative z-10 p-5">
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <h3 className="font-display text-lg truncate text-white flex-1 min-w-0">{league.name}</h3>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
-              {league.status}
-            </span>
-            {league.format === 'fantasy' && league.draft_date && league.draft_status !== 'completed' && (
-              <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} />
-            )}
+        {/* Draft countdown — center-right of the card body, vertically
+            centered. Doesn't affect layout flow because it's absolutely
+            positioned. */}
+        {league.format === 'fantasy' && league.draft_date && league.draft_status !== 'completed' && (
+          <div className="hidden sm:block absolute right-5 top-1/2 -translate-y-1/2 text-right pointer-events-none">
+            <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} compact={false} />
           </div>
+        )}
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-display text-lg truncate text-white">{league.name}</h3>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
+            {league.status}
+          </span>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-text-muted min-h-[3.25rem] sm:min-h-0 content-start">
           <span className="font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
@@ -124,6 +127,13 @@ export default function LeagueCard({ league, noLink }) {
             Runs until <span className="text-text-secondary font-medium">{formatRunsUntil(league)}</span>
           </div>
         ) : null}
+        {/* Mobile: countdown on its own line at the bottom since horizontal
+            space is tight */}
+        {league.format === 'fantasy' && league.draft_date && league.draft_status !== 'completed' && (
+          <div className="sm:hidden mt-2">
+            <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} />
+          </div>
+        )}
       </div>
     </Wrapper>
   )

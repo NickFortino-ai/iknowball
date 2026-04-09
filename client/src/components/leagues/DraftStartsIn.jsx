@@ -60,9 +60,20 @@ export default function DraftStartsIn({ draftDate, draftStatus, compact = true }
     label = `Draft starts in ${dayDiff} days`
   }
 
+  if (compact) {
+    return (
+      <div className="text-[11px] font-semibold text-accent uppercase tracking-wider">
+        {label}
+      </div>
+    )
+  }
+  // Prominent display: bigger, with a subtle background pill
   return (
-    <div className={`text-[11px] font-semibold text-accent uppercase tracking-wider ${compact ? '' : 'text-sm'}`}>
-      {label}
+    <div className="inline-flex flex-col items-end">
+      <div className="text-[10px] uppercase tracking-wider text-text-muted">Draft</div>
+      <div className="text-base md:text-lg font-display text-accent leading-tight">
+        {label.replace(/^Draft (is |starts )/, '')}
+      </div>
     </div>
   )
 }
