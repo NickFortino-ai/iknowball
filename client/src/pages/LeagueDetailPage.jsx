@@ -1150,15 +1150,18 @@ export default function LeagueDetailPage() {
         return (
         <div className="mb-6 rounded-xl border-2 border-yellow-500 py-6 md:py-8 px-4 md:px-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none" />
-          <div className="relative flex items-center gap-4 md:gap-8">
-            {/* Trophy — left side, both mobile and desktop */}
+          {/* On mobile keep the existing trophy-left, content-fills layout.
+              On desktop center trophy + content as a single tight cluster
+              so the trophy doesn't drift to the far left edge. */}
+          <div className="relative flex items-center gap-4 md:gap-12 md:justify-center">
+            {/* Trophy — left of the content, sized to format */}
             <img
               src={trophySrc}
               alt="Trophy"
               className={`${trophySizeClass} object-contain shrink-0 animate-trophy-float drop-shadow-[0_0_16px_rgba(234,179,8,0.4)]`}
             />
-            {/* Content — fills remaining space, centered within itself */}
-            <div className="flex-1 min-w-0 flex flex-col items-center text-center">
+            {/* Content — fills remaining space on mobile, fixed-width on desktop */}
+            <div className="flex-1 md:flex-none md:w-80 min-w-0 flex flex-col items-center text-center">
             <button onClick={() => setSelectedUserId(league.champion.user.id)} className="cursor-pointer mb-3">
               {league.champion.user.avatar_url ? (
                 <img
