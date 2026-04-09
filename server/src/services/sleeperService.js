@@ -39,8 +39,12 @@ export async function syncPlayers() {
     return slug ? `https://a.espncdn.com/i/teamlogos/nfl/500/${slug}.png` : null
   }
 
+  // Sleeper marks team defenses as active=false because they aren't real
+  // player records. We need them anyway — without DEF rows, weekly defense
+  // stats fail the foreign key check on nfl_player_stats.player_id and get
+  // silently dropped. Allow DEF through regardless of the active flag.
   const players = Object.entries(data)
-    .filter(([_, p]) => p.active && FANTASY_POSITIONS.has(p.position))
+    .filter(([_, p]) => FANTASY_POSITIONS.has(p.position) && (p.position === 'DEF' || p.active))
     .map(([id, p]) => {
       // For team defenses, use the team logo as the headshot — Sleeper doesn't
       // host real images for DEF "players", and the team abbrev IS the player_id.
