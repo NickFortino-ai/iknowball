@@ -172,6 +172,25 @@ export async function createLeague(userId, data) {
     await createFantasySettings(league.id, data.fantasy_settings || {})
   }
 
+  // Guard: traditional fantasy is only creatable through Week 1. After
+  // that the draft is moot — users should join Salary Cap instead.
+  if (league.format === 'fantasy' && data.fantasy_settings?.format !== 'salary_cap') {
+    try {
+      const { getCurrentNflWeek } = await import('./tdPassService.js')
+      const { week } = await getCurrentNflWeek()
+      if (week && week > 1) {
+        // Roll back the league we just created
+        await supabase.from('leagues').delete().eq('id', league.id)
+        const err = new Error(`Traditional fantasy can only be created during the preseason or Week 1. The NFL season is already in week ${week} — use Salary Cap instead.`)
+        err.status = 400
+        throw err
+      }
+    } catch (err) {
+      if (err.status) throw err
+      logger.warn({ err }, 'Could not verify NFL week for traditional fantasy lock')
+    }
+  }
+
   // TD Pass: lock joins at the start of the very last NFL game of the
   // current week, so users can join right up until the final kickoff
   // (typically MNF, or the MNF doubleheader nightcap).

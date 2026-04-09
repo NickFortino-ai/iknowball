@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops } from '../hooks/useLeagues'
+import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useTdPassCurrentWeek } from '../hooks/useLeagues'
 import { api } from '../lib/api'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
@@ -235,6 +235,17 @@ export default function CreateLeaguePage() {
 
   // Fantasy settings
   const [fantasyFormat, setFantasyFormat] = useState('traditional')
+  // Traditional fantasy can only be created during the preseason / Week 1.
+  // After that the season's already underway and a draft-based league
+  // doesn't make sense — users should join Salary Cap instead.
+  const { data: nflWeekInfo } = useTdPassCurrentWeek()
+  const traditionalLocked = !!(nflWeekInfo?.week && nflWeekInfo.week > 1)
+  // Auto-flip the toggle to salary cap once we know the season has started
+  useEffect(() => {
+    if (traditionalLocked && fantasyFormat === 'traditional') {
+      setFantasyFormat('salary_cap')
+    }
+  }, [traditionalLocked, fantasyFormat])
 
   // Auto-select sport for specific formats
   useEffect(() => {
@@ -708,20 +719,34 @@ export default function CreateLeaguePage() {
                 {[
                   { value: 'traditional', label: 'Traditional', desc: 'Draft players and manage your roster all season. Make trades, work the waiver wire, and set your lineup each week.' },
                   { value: 'salary_cap', label: 'Salary Cap', desc: 'Build a new roster every week under a salary budget. No draft, no trades. Fresh start every week.' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setFantasyFormat(opt.value)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      fantasyFormat === opt.value ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-text-primary/40'
-                    }`}
-                  >
-                    <div className="font-semibold text-sm text-text-primary">{opt.label}</div>
-                    <div className="text-xs text-text-secondary mt-0.5">{opt.desc}</div>
-                  </button>
-                ))}
+                ].map((opt) => {
+                  const isDisabled = opt.value === 'traditional' && traditionalLocked
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={isDisabled}
+                      onClick={() => !isDisabled && setFantasyFormat(opt.value)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        fantasyFormat === opt.value ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-text-primary/40'
+                      } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold text-sm text-text-primary">{opt.label}</div>
+                        {isDisabled && (
+                          <span className="text-[10px] font-semibold text-yellow-500 bg-yellow-500/10 border border-yellow-500/30 rounded px-1.5 py-0.5">UNAVAILABLE</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-text-secondary mt-0.5">{opt.desc}</div>
+                    </button>
+                  )
+                })}
               </div>
+              {traditionalLocked && (
+                <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
+                  Traditional fantasy can only be created during the preseason or Week 1. The NFL season is already in week {nflWeekInfo?.week} — for a fresh league this late, use Salary Cap.
+                </p>
+              )}
             </div>
 
             {/* Salary Cap specific settings */}
