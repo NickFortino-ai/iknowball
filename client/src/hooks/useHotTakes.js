@@ -163,11 +163,14 @@ export function useBookmarkedHotTakes() {
   })
 }
 
-function resizeImage(file, maxWidth = 1200) {
+function resizeImage(file, maxWidth = 2400) {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
       let { width, height } = img
+      // Only downscale if the source is actually wider than the cap. A
+      // smaller source is uploaded at native resolution to avoid the
+      // double-blur of upscaling-then-resampling.
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width)
         width = maxWidth
@@ -176,11 +179,13 @@ function resizeImage(file, maxWidth = 1200) {
       canvas.width = width
       canvas.height = height
       const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(img, 0, 0, width, height)
       canvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error('Failed to compress image'))),
         'image/webp',
-        0.85
+        0.92
       )
     }
     img.onerror = () => reject(new Error('Failed to load image'))
