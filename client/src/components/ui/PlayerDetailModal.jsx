@@ -239,7 +239,8 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
               </div>
               {(player.position || player.team) && (
                 <div className="text-sm text-text-muted">
-                  {[player.position, player.team, player.opponent].filter(Boolean).join(' · ')}
+                  {[player.position, player.team].filter(Boolean).join(' · ')}
+                  {player.opponent ? ` ${player.opponent}` : ''}
                 </div>
               )}
               {player.salary && (
