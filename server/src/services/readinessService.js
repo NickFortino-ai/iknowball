@@ -63,10 +63,8 @@ export async function computeLeagueReadiness(userId, leagues) {
     logger.error({ err }, 'Failed to compute league readiness')
   }
 
-  // Default everything else to 'ready' (no per-contest action expected)
-  for (const l of activeLeagues) {
-    if (!result.has(l.id)) set(result, l.id, 'ready', 'Ready for the next contest')
-  }
+  // Anything we don't have a definite signal for stays null (no clip).
+  // Showing nothing is strictly better than lying with a green dot.
   return result
 }
 
@@ -96,7 +94,12 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
       if (slot.espn_player_id) allPlayerIds.add(slot.espn_player_id)
     }
   }
-  let injuryByPlayer = {}
+  // Pull EVERY salary row for tonight that touches one of our roster players,
+  // including null injury_status, so we can distinguish "healthy" from
+  // "we have no record of this player". A missing row means we can't verify
+  // injuries — better to leave the clip off than show a false green.
+  const knownPlayer = new Set()
+  const injuryByPlayer = {}
   if (allPlayerIds.size > 0) {
     const { data: salaries } = await supabase
       .from(salaryTable)
@@ -104,6 +107,7 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
       .eq('game_date', todayET)
       .in('espn_player_id', [...allPlayerIds])
     for (const s of salaries || []) {
+      knownPlayer.add(s.espn_player_id)
       if (s.injury_status) injuryByPlayer[s.espn_player_id] = s.injury_status
     }
   }
@@ -114,15 +118,24 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
       set(result, l.id, 'action', "You haven't set tonight's lineup")
       continue
     }
+    const slots = r[slotTable] || []
+    // Every roster player must have a known salary row for us to trust the
+    // injury check. If any player is missing from the salaries table for
+    // tonight, leave readiness null rather than green-lying.
+    const allKnown = slots.every((s) => knownPlayer.has(s.espn_player_id))
+    if (!allKnown) {
+      // Don't set anything — readiness stays null and the card shows no clip
+      continue
+    }
     const flagged = []
-    for (const slot of r[slotTable] || []) {
+    for (const slot of slots) {
       const status = injuryByPlayer[slot.espn_player_id]
       if (status === 'Out' || (status && status !== 'Probable')) {
         flagged.push(status)
       }
     }
     if (flagged.length === 0) {
-      set(result, l.id, 'ready', 'Lineup set')
+      set(result, l.id, 'ready', 'Lineup set, no injuries')
     } else {
       const hasOut = flagged.includes('Out')
       const summary = flagged.length === 1
@@ -283,21 +296,19 @@ async function computeFantasyReadiness(leagues, userId, result) {
 
   for (const l of leagues) {
     const s = settingsByLeague[l.id]
-    // Salary-cap fantasy uses a different lineup model — defer to ready for now
-    if (s?.format === 'salary_cap') {
-      set(result, l.id, 'ready', 'Salary cap fantasy')
-      continue
-    }
-    const slots = s?.roster_slots || {}
+    // No settings row at all → can't verify, leave null
+    if (!s) continue
+    // Salary-cap fantasy uses a different lineup model — leave null until
+    // we wire it up properly
+    if (s.format === 'salary_cap') continue
+    const slots = s.roster_slots || {}
     const requiredStarterCount =
       (slots.qb || 0) + (slots.rb || 0) + (slots.wr || 0) + (slots.te || 0) +
       (slots.flex || 0) + (slots.superflex || 0) + (slots.k || 0) + (slots.def || 0)
+    if (requiredStarterCount === 0) continue // unknown roster shape, don't guess
 
     const myRoster = rosterByLeague[l.id] || []
-    if (!myRoster.length) {
-      set(result, l.id, 'ready', 'Draft not complete')
-      continue
-    }
+    if (!myRoster.length) continue // draft not complete or empty roster — null
     const starters = myRoster.filter((r) => r.slot && r.slot !== 'bench' && r.slot !== 'ir')
     if (requiredStarterCount > 0 && starters.length < requiredStarterCount) {
       set(result, l.id, 'action', `${starters.length}/${requiredStarterCount} starting slots filled`)
@@ -332,27 +343,35 @@ async function computeFantasyReadiness(leagues, userId, result) {
 }
 
 /**
- * Pickem: ready if user has submitted at least one league_pick for the
- * current league_week. (We don't enforce a games_per_week minimum here —
- * picking ANYTHING for the period clears the indicator.)
+ * Pickem: ready only if the user has submitted ALL required picks for the
+ * current period. The required count comes from leagues.settings.games_per_week.
+ * If that setting is missing we conservatively leave readiness null rather
+ * than guessing.
  */
 async function computePickemReadiness(leagues, userId, result) {
   const leagueIds = leagues.map((l) => l.id)
+  const now = new Date().toISOString()
 
-  // Find current week per league (earliest non-completed)
+  // Pull all periods so we can match the active one by [starts_at, ends_at]
+  // (mirrors the survivor approach — status can lag).
   const { data: weeks } = await supabase
     .from('league_weeks')
-    .select('id, league_id, week_number, status, starts_at')
+    .select('id, league_id, week_number, starts_at, ends_at')
     .in('league_id', leagueIds)
-    .neq('status', 'completed')
     .order('starts_at', { ascending: true })
 
-  const currentWeekByLeague = {}
+  const weeksByLeague = {}
   for (const w of weeks || []) {
-    if (!currentWeekByLeague[w.league_id]) currentWeekByLeague[w.league_id] = w
+    if (!weeksByLeague[w.league_id]) weeksByLeague[w.league_id] = []
+    weeksByLeague[w.league_id].push(w)
+  }
+  const currentWeekByLeague = {}
+  for (const [lid, wks] of Object.entries(weeksByLeague)) {
+    const active = wks.find((w) => w.starts_at <= now && w.ends_at >= now)
+    currentWeekByLeague[lid] = active || wks.find((w) => w.starts_at > now) || null
   }
 
-  const weekIds = Object.values(currentWeekByLeague).map((w) => w.id)
+  const weekIds = Object.values(currentWeekByLeague).filter(Boolean).map((w) => w.id)
   const { data: picks } = weekIds.length
     ? await supabase
         .from('league_picks')
@@ -367,15 +386,19 @@ async function computePickemReadiness(leagues, userId, result) {
 
   for (const l of leagues) {
     const week = currentWeekByLeague[l.id]
-    if (!week) {
-      set(result, l.id, 'ready', 'No active period')
+    if (!week) continue // no active period — leave null
+    const required = Number(l.settings?.games_per_week) || null
+    const n = countByLeague[l.id] || 0
+    if (!required) {
+      // Can't verify the threshold — leave the clip off rather than guess
       continue
     }
-    const n = countByLeague[l.id] || 0
-    if (n > 0) {
-      set(result, l.id, 'ready', `${n} pick${n === 1 ? '' : 's'} in for week ${week.week_number}`)
+    if (n >= required) {
+      set(result, l.id, 'ready', `${n}/${required} picks in for week ${week.week_number}`)
+    } else if (n > 0) {
+      set(result, l.id, 'attention', `${n}/${required} picks in for week ${week.week_number}`)
     } else {
-      set(result, l.id, 'action', `No picks yet for week ${week.week_number}`)
+      set(result, l.id, 'action', `0/${required} picks for week ${week.week_number}`)
     }
   }
 }
