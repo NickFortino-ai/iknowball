@@ -79,13 +79,20 @@ async function syncSport(sportKey, { force = false } = {}) {
 
     // Dedupe by team+date BEFORE upserting by external_id. The Odds API
     // sometimes returns two different events for the same matchup with
-    // different commence_times (data corruption upstream). If we already
-    // have a game between the same teams within ±20h, treat them as the
-    // same game and reuse that row's external_id — never create a parallel
-    // row that would later show up as a duplicate on the picks board.
+    // slightly-different commence_times (data corruption upstream). If we
+    // already have a game between the same teams within ±2h, treat them
+    // as the same game and reuse that row's external_id — never create a
+    // parallel row that would later show up as a duplicate on the picks
+    // board.
+    //
+    // Window is intentionally tight (±2h, NOT ±20h) so MLB doubleheaders
+    // — two games same day, typically 3-5h apart — stay as separate rows.
+    // A wider window collapsed game 2 of a doubleheader into game 1's row,
+    // and when game 1 finished the row got finalized with game 1's score,
+    // settling parlay legs the user had placed on game 2.
     const startMs = new Date(event.commence_time).getTime()
-    const lo = new Date(startMs - 20 * 60 * 60 * 1000).toISOString()
-    const hi = new Date(startMs + 20 * 60 * 60 * 1000).toISOString()
+    const lo = new Date(startMs - 2 * 60 * 60 * 1000).toISOString()
+    const hi = new Date(startMs + 2 * 60 * 60 * 1000).toISOString()
     const { data: siblingMatches } = await supabase
       .from('games')
       .select('id, external_id, status, starts_at')
