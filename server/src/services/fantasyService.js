@@ -1748,13 +1748,27 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // Pull the full draftable pool — we need to compute overall + positional
   // ranks across the entire available list, NOT just the post-filter slice.
   // (Drops status='Active' filter so DEFs are included.)
-  const { data: allPlayers, error } = await supabase
-    .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week, adp_ppr, adp_half_ppr')
-    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-    .not('team', 'is', null)
-    .limit(500)
-  if (error) throw error
+  // Two parallel queries so all 32 defenses are guaranteed in the pool —
+  // a unified query with limit 500 + ADP sort would sink DEFs (which all
+  // default to _adp=9999) below the slice cutoff and leave them out.
+  const PLAYER_SELECT = 'id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week, adp_ppr, adp_half_ppr'
+  const [offensiveRes, defRes] = await Promise.all([
+    supabase
+      .from('nfl_players')
+      .select(PLAYER_SELECT)
+      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+      .not('team', 'is', null)
+      .limit(500),
+    supabase
+      .from('nfl_players')
+      .select(PLAYER_SELECT)
+      .eq('position', 'DEF')
+      .not('team', 'is', null),
+  ])
+  if (offensiveRes.error) throw offensiveRes.error
+  if (defRes.error) throw defRes.error
+  const allPlayers = [...(offensiveRes.data || []), ...(defRes.data || [])]
+  const error = null
 
   // YTD aggregate stats (current season) for browse + sorting
   const season = settings?.season || new Date().getUTCFullYear()
@@ -1815,17 +1829,22 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // once stats exist, falling back to ADP preseason.
   const seasonStarted = (statRows || []).length > 0
   const sortKey = sort && STAT_COLUMNS.includes(sort) ? sort : (seasonStarted ? 'pts' : null)
-  const ranked = rankedAll
-    .filter((p) => !excludeSet.has(p.id))
-    .sort((a, b) => {
-      if (sortKey) {
-        const av = a._stats[sortKey] || 0
-        const bv = b._stats[sortKey] || 0
-        if (bv !== av) return bv - av
-      }
-      return a._adp - b._adp
-    })
-    .slice(0, 300)
+
+  // Slice offense and defense separately so DEFs are guaranteed in the pool
+  // (otherwise their _adp=9999 sinks them past the 300-row cutoff). Top 268
+  // non-DEFs by sort key + every available DEF.
+  const sortFn = (a, b) => {
+    if (sortKey) {
+      const av = a._stats[sortKey] || 0
+      const bv = b._stats[sortKey] || 0
+      if (bv !== av) return bv - av
+    }
+    return a._adp - b._adp
+  }
+  const availableAll = rankedAll.filter((p) => !excludeSet.has(p.id))
+  const offenseSlice = availableAll.filter((p) => p.position !== 'DEF').sort(sortFn).slice(0, 268)
+  const defSlice = availableAll.filter((p) => p.position === 'DEF').sort(sortFn)
+  const ranked = [...offenseSlice, ...defSlice]
 
   // Per-position rank from the same sort
   const posRanks = {}
