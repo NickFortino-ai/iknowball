@@ -91,14 +91,31 @@ export async function fetchESPNScoreboard(sportKey, date = null) {
       period,
       clock,
       state,
+      // ISO start time so we can disambiguate doubleheaders. Falls back to
+      // date if the API doesn't include time (rare).
+      startsAt: event.date || competition.date || null,
     }
   }).filter(Boolean)
 }
 
+/**
+ * Match an ESPN event to one of our game rows. Team names must match AND
+ * — for sports that play doubleheaders or back-to-back same-day games —
+ * the start times must be within ±4 hours. Without the time check we'd
+ * non-deterministically match an MLB doubleheader's first game to game 2's
+ * row (or vice-versa) when both events were returned by the same scoreboard
+ * fetch, finalizing parlay legs based on the wrong result.
+ */
 export function matchESPNToGame(espnEvent, game) {
-  return (
-    (teamsMatch(espnEvent.homeTeam, game.home_team) && teamsMatch(espnEvent.awayTeam, game.away_team))
-  )
+  const teamsOk = teamsMatch(espnEvent.homeTeam, game.home_team) && teamsMatch(espnEvent.awayTeam, game.away_team)
+  if (!teamsOk) return false
+  // If either side lacks a start time, fall back to team-only match.
+  if (!espnEvent.startsAt || !game.starts_at) return true
+  const diffMs = Math.abs(new Date(espnEvent.startsAt).getTime() - new Date(game.starts_at).getTime())
+  // ±4 hours covers normal start-time slop (rain delays, schedule shifts)
+  // while excluding the second game of a doubleheader, which is typically
+  // 5+ hours after the first.
+  return diffMs < 4 * 60 * 60 * 1000
 }
 
 // Team abbreviations for ESPN roster API
