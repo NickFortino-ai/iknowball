@@ -890,6 +890,9 @@ import {
   getWaiverStateForLeague,
   processLeagueWaivers,
   getPlayerDetail,
+  resizeFantasyLeague,
+  cancelFantasyLeague,
+  computeFantasyUnderfillState,
 } from '../services/fantasyService.js'
 
 // Get fantasy settings
@@ -908,6 +911,87 @@ router.patch('/:id/fantasy/settings', requireAuth, async (req, res) => {
 router.post('/:id/fantasy/draft/init', requireAuth, async (req, res) => {
   const result = await initializeDraft(req.params.id)
   res.json(result)
+})
+
+// Underfill state for the commissioner banner / modal
+router.get('/:id/fantasy/underfill-state', requireAuth, async (req, res) => {
+  try {
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('league_id, num_teams, format')
+      .eq('league_id', req.params.id)
+      .single()
+    if (!settings || settings.format !== 'traditional') {
+      return res.json({ state: 'ok', currentCount: 0, targetEven: null, willDrop: 0 })
+    }
+    const { count } = await supabase
+      .from('league_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', req.params.id)
+    res.json(computeFantasyUnderfillState(count || 0, settings.num_teams))
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Resize an underfilled league down to the closest valid even count.
+// Drops the most recent N signups. Commissioner only.
+router.post('/:id/fantasy/resize', requireAuth, async (req, res) => {
+  try {
+    const { data: league } = await supabase.from('leagues').select('commissioner_id').eq('id', req.params.id).single()
+    if (!league || league.commissioner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the commissioner can resize the league' })
+    }
+    const result = await resizeFantasyLeague(req.params.id, { reason: 'commissioner' })
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Cancel a fantasy league. Commissioner only.
+router.post('/:id/fantasy/cancel', requireAuth, async (req, res) => {
+  try {
+    const { data: league } = await supabase.from('leagues').select('commissioner_id').eq('id', req.params.id).single()
+    if (!league || league.commissioner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the commissioner can cancel the league' })
+    }
+    const result = await cancelFantasyLeague(req.params.id, { reason: 'commissioner' })
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Postpone the draft. Commissioner only. Resets the underfill notification
+// dedup flags so the commish gets fresh alerts based on the new date.
+router.post('/:id/fantasy/postpone-draft', requireAuth, async (req, res) => {
+  try {
+    const { data: league } = await supabase.from('leagues').select('commissioner_id').eq('id', req.params.id).single()
+    if (!league || league.commissioner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the commissioner can postpone the draft' })
+    }
+    const { draft_date } = req.body
+    if (!draft_date) return res.status(400).json({ error: 'draft_date required' })
+    const newDate = new Date(draft_date)
+    if (isNaN(newDate.getTime())) return res.status(400).json({ error: 'Invalid draft_date' })
+    if (newDate.getTime() <= Date.now()) {
+      return res.status(400).json({ error: 'New draft date must be in the future' })
+    }
+    await supabase
+      .from('fantasy_settings')
+      .update({
+        draft_date: newDate.toISOString(),
+        underfill_notified_3d_at: null,
+        underfill_notified_1d_at: null,
+        underfill_notified_10m_at: null,
+        draft_pre_start_notified_at: null,
+      })
+      .eq('league_id', req.params.id)
+    res.json({ ok: true, draft_date: newDate.toISOString() })
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
 })
 
 // Start the draft

@@ -1167,6 +1167,35 @@ export async function processScheduledDraftStarts() {
   for (const row of pending) {
     try {
       // Make sure pick slots exist; if not, randomize first
+      // Underfill check before starting. Traditional fantasy only — pull
+      // the league's settings + member count to decide whether to proceed.
+      const { data: settings } = await supabase
+        .from('fantasy_settings')
+        .select('format, num_teams')
+        .eq('league_id', row.league_id)
+        .single()
+      if (settings?.format === 'traditional') {
+        const { count: memberCount } = await supabase
+          .from('league_members')
+          .select('id', { count: 'exact', head: true })
+          .eq('league_id', row.league_id)
+        const underfill = computeFantasyUnderfillState(memberCount || 0, settings.num_teams)
+        if (underfill.state === 'below_threshold') {
+          logger.warn({ leagueId: row.league_id, memberCount }, 'Scheduled draft: below threshold, auto-canceling league')
+          try { await cancelFantasyLeague(row.league_id, { reason: 'underfilled' }) }
+          catch (err) { logger.error({ err, leagueId: row.league_id }, 'Auto-cancel failed') }
+          continue
+        }
+        if (underfill.state === 'resizable') {
+          logger.warn({ leagueId: row.league_id, memberCount, willResizeTo: underfill.targetEven }, 'Scheduled draft: auto-resizing league')
+          try { await resizeFantasyLeague(row.league_id, { reason: 'underfilled' }) }
+          catch (err) {
+            logger.error({ err, leagueId: row.league_id }, 'Auto-resize failed — skipping draft start')
+            continue
+          }
+        }
+      }
+
       const { count } = await supabase
         .from('fantasy_draft_picks')
         .select('id', { count: 'exact', head: true })
@@ -1396,6 +1425,150 @@ export async function processFantasyUnderfillNotifications() {
     }
   }
   return sent
+}
+
+/**
+ * Drop the most recent signups from a fantasy league until the member count
+ * matches the closest valid even number (>= 6). Updates fantasy_settings.
+ * num_teams to match. Sends `fantasy_league_member_dropped` notifications to
+ * removed users and `fantasy_league_resized` notifications to survivors.
+ *
+ * No-ops if the league is already valid. Returns { dropped, newSize, dropped_user_ids }.
+ */
+export async function resizeFantasyLeague(leagueId, options = {}) {
+  const { reason = 'underfilled' } = options
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, num_teams, format')
+    .eq('league_id', leagueId)
+    .single()
+  if (!settings || settings.format !== 'traditional') {
+    const err = new Error('Only traditional fantasy leagues can be resized')
+    err.status = 400
+    throw err
+  }
+
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, role, joined_at, created_at')
+    .eq('league_id', leagueId)
+    .order('joined_at', { ascending: true, nullsFirst: true })
+    .order('created_at', { ascending: true })
+  const list = members || []
+  const state = computeFantasyUnderfillState(list.length, settings.num_teams)
+  if (state.state === 'ok') return { dropped: 0, newSize: list.length, dropped_user_ids: [] }
+  if (state.state === 'below_threshold') {
+    const err = new Error('Cannot resize a league with fewer than 6 members — cancel instead')
+    err.status = 400
+    throw err
+  }
+
+  // Drop the LAST N members (most recent signups). Never drop the
+  // commissioner — protect them at index 0.
+  const willDrop = state.willDrop
+  const sortedByRecency = [...list].reverse() // most recent first
+  const dropTargets = []
+  for (const m of sortedByRecency) {
+    if (dropTargets.length >= willDrop) break
+    if (m.role === 'commissioner') continue
+    dropTargets.push(m.user_id)
+  }
+  if (!dropTargets.length) {
+    return { dropped: 0, newSize: list.length, dropped_user_ids: [] }
+  }
+
+  // Get league name for notification text
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('name')
+    .eq('id', leagueId)
+    .single()
+  const leagueName = league?.name || 'your league'
+
+  // Remove the dropped members
+  await supabase
+    .from('league_members')
+    .delete()
+    .in('user_id', dropTargets)
+    .eq('league_id', leagueId)
+
+  // Update num_teams + max_members to the new size
+  const newSize = state.targetEven
+  await supabase
+    .from('fantasy_settings')
+    .update({ num_teams: newSize })
+    .eq('league_id', leagueId)
+  await supabase
+    .from('leagues')
+    .update({ max_members: newSize })
+    .eq('id', leagueId)
+
+  // Notify dropped users — deep link to /leagues so they can join another
+  const { createNotification } = await import('./notificationService.js')
+  for (const uid of dropTargets) {
+    try {
+      await createNotification(
+        uid,
+        'fantasy_league_member_dropped',
+        `${leagueName} didn't get enough sign-ups and had to shrink. Because you were the most recent to join, you were removed. Try joining another open fantasy league!`,
+        { leagueId, leagueName, reason },
+      )
+    } catch (err) { logger.error({ err, uid }, 'dropped notification failed') }
+  }
+
+  // Notify surviving members of the resize
+  const survivors = list.filter((m) => !dropTargets.includes(m.user_id))
+  for (const m of survivors) {
+    try {
+      await createNotification(
+        m.user_id,
+        'fantasy_league_resized',
+        `${leagueName} was resized to ${newSize} teams because not enough people joined.`,
+        { leagueId, newSize },
+      )
+    } catch (err) { logger.error({ err, uid: m.user_id }, 'resize notification failed') }
+  }
+
+  logger.info({ leagueId, dropped: dropTargets.length, newSize }, 'Fantasy league resized')
+  return { dropped: dropTargets.length, newSize, dropped_user_ids: dropTargets }
+}
+
+/**
+ * Cancel a fantasy league. Notifies every member with the cancel reason
+ * and a nudge to join a salary cap league instead. Then deletes the league
+ * (cascade removes settings, rosters, draft picks, etc.).
+ *
+ * No commissioner check — caller is responsible for authorization.
+ */
+export async function cancelFantasyLeague(leagueId, options = {}) {
+  const { reason = 'underfilled' } = options
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('id, name, format')
+    .eq('id', leagueId)
+    .single()
+  if (!league) return { canceled: false }
+
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+  const memberIds = (members || []).map((m) => m.user_id)
+
+  const { createNotification } = await import('./notificationService.js')
+  const message = reason === 'underfilled'
+    ? `${league.name} was canceled because fewer than 6 people joined. IKB doesn't run traditional fantasy leagues that small. Try a Weekly Salary Cap fantasy league instead — fresh lineup every week, no roster commitment.`
+    : `${league.name} was canceled by the commissioner.`
+  for (const uid of memberIds) {
+    try {
+      await createNotification(uid, 'fantasy_league_canceled', message, { leagueName: league.name, reason })
+    } catch (err) { logger.error({ err, uid }, 'cancel notification failed') }
+  }
+
+  // Delete the league (cascades to fantasy_settings, rosters, picks, etc.)
+  await supabase.from('leagues').delete().eq('id', leagueId)
+  logger.info({ leagueId, reason, members: memberIds.length }, 'Fantasy league canceled')
+  return { canceled: true, notified: memberIds.length }
 }
 
 /**
