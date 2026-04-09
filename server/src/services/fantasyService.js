@@ -1270,6 +1270,135 @@ export async function processDraftAutopicks() {
 }
 
 /**
+ * Valid traditional fantasy team counts. Anything else is "underfilled" and
+ * the commish gets pinged. The auto-action will resize down to the closest
+ * valid count >= 6 by dropping the most recent signups.
+ */
+export const VALID_FANTASY_TEAM_COUNTS = [6, 8, 10, 12, 14, 16, 20]
+export const MIN_FANTASY_TEAMS = 6
+
+/**
+ * Computes the underfill state for a traditional fantasy league:
+ *   - 'ok'              → member count is in VALID_FANTASY_TEAM_COUNTS and matches num_teams
+ *   - 'resizable'       → member count >= 6 but doesn't match num_teams or is odd; auto-resizable
+ *   - 'below_threshold' → member count < 6; can only be cancelled or wait
+ *
+ * Returns { state, currentCount, targetEven, willDrop }
+ *   targetEven  = the closest valid even count <= currentCount (snapped down)
+ *   willDrop    = how many recent members the auto-action would drop
+ */
+export function computeFantasyUnderfillState(currentCount, numTeams) {
+  if (currentCount < MIN_FANTASY_TEAMS) {
+    return { state: 'below_threshold', currentCount, targetEven: null, willDrop: 0 }
+  }
+  // Snap down to the largest valid count that is <= currentCount
+  const targetEven = [...VALID_FANTASY_TEAM_COUNTS]
+    .filter((n) => n <= currentCount)
+    .pop() ?? MIN_FANTASY_TEAMS
+  if (currentCount === targetEven && currentCount === numTeams) {
+    return { state: 'ok', currentCount, targetEven, willDrop: 0 }
+  }
+  return {
+    state: 'resizable',
+    currentCount,
+    targetEven,
+    willDrop: currentCount - targetEven,
+  }
+}
+
+/**
+ * Underfill notification cron. Runs every tick, finds traditional fantasy
+ * leagues with a draft_date in the next 3 days that don't have a valid
+ * member count, and sends the commish an alert at three windows:
+ *
+ *   T-3 days (and any time before that within the 3-day window)
+ *   T-1 day  (only if not yet resolved)
+ *   T-10 min (last warning)
+ *
+ * Each window is gated by a timestamp on fantasy_settings so the commish
+ * doesn't get spammed. If the league is resolved (member count valid),
+ * we leave the timestamps alone in case it goes underfilled again.
+ */
+export async function processFantasyUnderfillNotifications() {
+  const now = Date.now()
+  const threeDaysOut = new Date(now + 3 * 86400000).toISOString()
+
+  const { data: candidates } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, draft_date, num_teams, format, underfill_notified_3d_at, underfill_notified_1d_at, underfill_notified_10m_at, leagues!inner(name, visibility, commissioner_id, status)')
+    .eq('format', 'traditional')
+    .eq('draft_status', 'pending')
+    .not('draft_date', 'is', null)
+    .lte('draft_date', threeDaysOut)
+  if (!candidates?.length) return 0
+
+  let sent = 0
+  for (const row of candidates) {
+    try {
+      const draftAt = new Date(row.draft_date).getTime()
+      const msUntil = draftAt - now
+      // Skip leagues whose draft already passed (handled by scheduled-start)
+      if (msUntil < -60 * 1000) continue
+      // Skip cancelled / completed leagues
+      if (row.leagues?.status && !['open', 'active'].includes(row.leagues.status)) continue
+
+      const { count: memberCount } = await supabase
+        .from('league_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('league_id', row.league_id)
+      const state = computeFantasyUnderfillState(memberCount || 0, row.num_teams)
+      if (state.state === 'ok') continue
+
+      const commishId = row.leagues?.commissioner_id
+      const leagueName = row.leagues?.name || 'your league'
+      if (!commishId) continue
+
+      // Decide which window we're in and whether we've already sent it
+      let window = null
+      let columnToStamp = null
+      const ONE_DAY = 86400000
+      const TEN_MIN = 10 * 60 * 1000
+      if (msUntil > ONE_DAY && !row.underfill_notified_3d_at) {
+        window = '3d'; columnToStamp = 'underfill_notified_3d_at'
+      } else if (msUntil > TEN_MIN && msUntil <= ONE_DAY && !row.underfill_notified_1d_at) {
+        window = '1d'; columnToStamp = 'underfill_notified_1d_at'
+      } else if (msUntil <= TEN_MIN && !row.underfill_notified_10m_at) {
+        window = '10m'; columnToStamp = 'underfill_notified_10m_at'
+      }
+      if (!window) continue
+
+      const { createNotification } = await import('./notificationService.js')
+      const headline =
+        window === '10m' ? `URGENT: ${leagueName} draft starts in ~10 min and isn't full`
+        : window === '1d' ? `${leagueName} draft is tomorrow and the league isn't full`
+        : `${leagueName} is underfilled — your draft is in 3 days`
+
+      const body = state.state === 'below_threshold'
+        ? `Only ${memberCount} of ${row.num_teams} have joined. IKB doesn't run traditional fantasy leagues with fewer than 6 members. Postpone the draft to give people more time to join, or cancel.`
+        : `Only ${memberCount} of ${row.num_teams} have joined. You can resize the league down to ${state.targetEven} (drops the ${state.willDrop} most recent signup${state.willDrop === 1 ? '' : 's'}), postpone the draft, or cancel.`
+
+      await createNotification(commishId, 'fantasy_league_underfilled', `${headline}. ${body}`, {
+        leagueId: row.league_id,
+        currentCount: memberCount,
+        targetCount: row.num_teams,
+        state: state.state,
+        willResizeTo: state.targetEven,
+      })
+
+      await supabase
+        .from('fantasy_settings')
+        .update({ [columnToStamp]: new Date().toISOString() })
+        .eq('league_id', row.league_id)
+
+      sent++
+    } catch (err) {
+      logger.error({ err, leagueId: row.league_id }, 'Underfill notification failed')
+    }
+  }
+  return sent
+}
+
+/**
  * Self-rescheduling tick loop. Runs every 10 seconds — well below the
  * minimum 30-second pick timer we'd realistically allow, so users always
  * get auto-picked within a few seconds of their clock hitting zero.
@@ -1282,6 +1411,11 @@ export function startDraftAutopickLoop() {
       await processDraftPreStartNotifications()
     } catch (err) {
       logger.error({ err }, 'Draft pre-start notification tick error')
+    }
+    try {
+      await processFantasyUnderfillNotifications()
+    } catch (err) {
+      logger.error({ err }, 'Fantasy underfill notification tick error')
     }
     try {
       await processScheduledDraftStarts()
