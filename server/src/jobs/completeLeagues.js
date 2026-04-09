@@ -87,12 +87,18 @@ async function notifyLeagueMembers(league, winnerId, winnerName, format) {
   }
 }
 
-// Position-based points: N + 1 - 2 * rank (plus +10 bonus for 1st place)
+// Position-based points: N + 1 - 2 * rank (plus a bonus for top finishers)
 // Used by bracket, fantasy football, NBA DFS, MLB DFS, and HR Derby leagues
 // Handles ties: users sharing a rank split the points for the positions they span
-async function awardPositionBasedPoints(league, standings, formatLabel) {
+//
+// `bonusForRank` is an optional fn (rank, n) → bonus pts; defaults to
+// CHAMPION_BONUS for 1st only. Traditional fantasy passes a custom function
+// that scales 1st/2nd/3rd bonuses with league size.
+async function awardPositionBasedPoints(league, standings, formatLabel, bonusForRank) {
   const n = standings.length
   if (n === 0) return
+
+  const computeBonus = bonusForRank || ((rank) => (rank === 1 ? CHAMPION_BONUS : 0))
 
   // Group by shared rank to handle ties
   const rankGroups = {}
@@ -113,19 +119,28 @@ async function awardPositionBasedPoints(league, standings, formatLabel) {
     }
     const avgPositionPoints = Math.round(sumPositionPoints / groupSize)
 
+    // Sum the per-position bonuses across the tied span and split among the
+    // tied users — same averaging approach as the position points themselves
+    // so a 3-way tie for 1st in a fantasy league correctly splits the
+    // 1st/2nd/3rd bonuses three ways.
+    let sumBonus = 0
+    for (let offset = 0; offset < groupSize; offset++) {
+      sumBonus += computeBonus(rank + offset, n)
+    }
+    const finishBonus = Math.round(sumBonus / groupSize)
     const isWinner = rank === 1
-    // Split champion bonus among tied winners
-    const championBonus = isWinner ? Math.round(CHAMPION_BONUS / groupSize) : 0
-    const totalPoints = avgPositionPoints + championBonus
+    const totalPoints = avgPositionPoints + finishBonus
 
     for (const entry of group) {
       const tiedLabel = groupSize > 1 ? `T-${rank}${ordinal(rank)}` : `${rank}${ordinal(rank)}`
 
       let label
       if (isWinner && groupSize === 1) {
-        label = `${formatLabel} 1st of ${n} (+${avgPositionPoints} +${CHAMPION_BONUS} bonus = +${totalPoints})`
+        label = `${formatLabel} 1st of ${n} (+${avgPositionPoints} +${finishBonus} bonus = +${totalPoints})`
       } else if (isWinner) {
-        label = `${formatLabel} ${tiedLabel} of ${n} (+${avgPositionPoints} +${championBonus} bonus = +${totalPoints})`
+        label = `${formatLabel} ${tiedLabel} of ${n} (+${avgPositionPoints} +${finishBonus} bonus = +${totalPoints})`
+      } else if (finishBonus > 0) {
+        label = `${formatLabel} ${tiedLabel} of ${n} (+${avgPositionPoints} +${finishBonus} bonus = +${totalPoints})`
       } else if (totalPoints >= 0) {
         label = `${formatLabel} ${tiedLabel} of ${n} +${totalPoints} pts`
       } else {
@@ -157,6 +172,26 @@ async function awardPositionBasedPoints(league, standings, formatLabel) {
 
 async function awardBracketStandings(league, standings) {
   await awardPositionBasedPoints(league, standings, 'Bracket')
+}
+
+// Traditional fantasy football scales the top-3 bonus by league size — winning
+// a deep league against serious managers is a real achievement and the global
+// payout reflects that. Position points (n+1-2*rank) are still applied on top
+// of these.
+const TRADITIONAL_FANTASY_BONUSES = {
+  8: { 1: 50, 2: 20, 3: 10 },
+  10: { 1: 75, 2: 30, 3: 15 },
+  12: { 1: 100, 2: 40, 3: 20 },
+  14: { 1: 150, 2: 60, 3: 30 },
+}
+function getTraditionalFantasyBonus(rank, n) {
+  if (rank > 3) return 0
+  // Exact match for the standard sizes
+  if (TRADITIONAL_FANTASY_BONUSES[n]) return TRADITIONAL_FANTASY_BONUSES[n][rank]
+  // For non-standard team counts, snap to the closest configured size
+  const sizes = [8, 10, 12, 14]
+  const closest = sizes.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a))
+  return TRADITIONAL_FANTASY_BONUSES[closest][rank]
 }
 
 // Get fantasy league standings for completion (works for both traditional and salary cap)
@@ -547,9 +582,13 @@ export async function completeLeagues() {
             .select('format')
             .eq('league_id', league.id)
             .single()
+          const isTraditional = league.format === 'fantasy' && settings?.format !== 'salary_cap'
           const label = league.format === 'nba_dfs' ? 'NBA DFS'
             : settings?.format === 'salary_cap' ? 'Salary Cap' : 'Fantasy'
-          await awardPositionBasedPoints(league, standings, label)
+          // Traditional fantasy uses scaled top-3 bonuses; everything else
+          // uses the default flat champion bonus.
+          const bonusFn = isTraditional ? getTraditionalFantasyBonus : undefined
+          await awardPositionBasedPoints(league, standings, label, bonusFn)
         }
       } else if (league.format === 'mlb_dfs') {
         const standings = await getMLBDFSStandings(league)
