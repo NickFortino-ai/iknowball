@@ -483,6 +483,20 @@ const MLB_GAME_COLS = (statMap) => ({
   avg: statMap.AVG || '.000',
 })
 
+// Separate parser for MLB pitcher game logs — ESPN returns different
+// columns (IP, ER, K, etc.) for pitchers than for hitters.
+const MLB_PITCHER_GAME_COLS = (statMap) => ({
+  result: statMap['W-L'] || '',  // sometimes encoded
+  ip: statMap.IP || '0.0',
+  h: parseInt(statMap.H) || 0,
+  r: parseInt(statMap.R) || 0,
+  er: parseInt(statMap.ER) || 0,
+  bb: parseInt(statMap.BB) || 0,
+  k: parseInt(statMap.K || statMap.SO) || 0,
+  hr: parseInt(statMap.HR) || 0,
+  era: statMap.ERA || '0.00',
+})
+
 // NFL stat columns for game log
 const NFL_GAME_COLS = (statMap) => ({
   pass_yds: parseInt(statMap['PYDS'] || statMap['Pass YDS']) || 0,
@@ -520,7 +534,15 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
 
     const isMLB = sport === 'baseball_mlb'
     const isNFL = sport === 'americanfootball_nfl'
-    const colParser = isMLB ? MLB_GAME_COLS : isNFL ? NFL_GAME_COLS : NBA_GAME_COLS
+    // Detect MLB pitchers by the presence of IP (innings pitched) in the
+    // gamelog labels — ESPN uses pitching columns for pitchers, batting for
+    // everyone else.
+    const isPitcher = isMLB && labels.includes('IP')
+    const colParser = isPitcher
+      ? MLB_PITCHER_GAME_COLS
+      : isMLB ? MLB_GAME_COLS
+      : isNFL ? NFL_GAME_COLS
+      : NBA_GAME_COLS
 
     // Sort by date descending so traded players show most recent games first
     allGames.sort((a, b) => {
@@ -554,7 +576,16 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
         const vals = latest.stats || []
         const get = (label) => { const idx = sLabels.indexOf(label); return idx >= 0 ? vals[idx] : '0' }
 
-        if (isMLB) {
+        if (isPitcher) {
+          // Pull pitcher-specific season averages
+          averages = {
+            era: get('ERA'), whip: get('WHIP'),
+            k: get('K') || get('SO'),
+            ip: get('IP'),
+            w: get('W'), l: get('L'),
+            gs: get('GS') || get('GP'),
+          }
+        } else if (isMLB) {
           averages = {
             avg: get('AVG'), hr: get('HR'), rbi: get('RBI'),
             r: get('R'), sb: get('SB'), obp: get('OBP'),
@@ -577,7 +608,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       }
     }
 
-    res.json({ games, averages, sport })
+    res.json({ games, averages, sport, isPitcher })
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch game log' })
   }

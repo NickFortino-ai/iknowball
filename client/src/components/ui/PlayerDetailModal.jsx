@@ -73,6 +73,49 @@ function MLBaverages({ averages }) {
   )
 }
 
+function MLBPitcherAverages({ averages }) {
+  return (
+    <div className="grid grid-cols-4 gap-3 text-center">
+      {[
+        { label: 'ERA', value: averages.era },
+        { label: 'K', value: averages.k },
+        { label: 'IP', value: averages.ip },
+        { label: 'WHIP', value: averages.whip },
+        { label: 'W', value: averages.w },
+        { label: 'L', value: averages.l },
+        { label: 'GS', value: averages.gs },
+      ].map((s) => (
+        <div key={s.label}>
+          <div className="text-lg font-display text-text-primary">{s.value}</div>
+          <div className="text-[10px] text-text-muted uppercase">{s.label}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function MLBPitcherGameLog({ games }) {
+  return (
+    <div className="space-y-0">
+      <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+        <span></span><span>OPP</span><span className="text-right">IP</span><span className="text-right">H</span><span className="text-right">R</span><span className="text-right">ER</span><span className="text-right">BB</span><span className="text-right">K</span>
+      </div>
+      {games.map((g, i) => (
+        <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+          <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'}`}>{g.result}</span>
+          <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-primary text-right font-semibold">{g.ip}</span>
+          <span className="text-xs text-text-secondary text-right">{g.h}</span>
+          <span className="text-xs text-text-secondary text-right">{g.r}</span>
+          <span className="text-xs text-text-secondary text-right">{g.er}</span>
+          <span className="text-xs text-text-secondary text-right">{g.bb}</span>
+          <span className="text-xs text-text-primary text-right font-semibold">{g.k}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function NBAGameLog({ games }) {
   return (
     <div className="space-y-0">
@@ -213,6 +256,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
   const detectedSport = data?.sport || sport
   const isMLB = detectedSport === 'baseball_mlb'
   const isNFL = detectedSport === 'americanfootball_nfl'
+  const isPitcher = !!data?.isPitcher
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
@@ -262,7 +306,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
         {data?.averages && (
           <div className="px-5 py-4 border-b border-text-primary/10">
             <h3 className="text-xs text-text-muted uppercase tracking-wider mb-3 font-semibold">Season Averages</h3>
-            {isMLB ? <MLBaverages averages={data.averages} /> : isNFL ? <NFLaverages averages={data.averages} position={player.position} /> : <NBAaverages averages={data.averages} />}
+            {isPitcher ? <MLBPitcherAverages averages={data.averages} /> : isMLB ? <MLBaverages averages={data.averages} /> : isNFL ? <NFLaverages averages={data.averages} position={player.position} /> : <NBAaverages averages={data.averages} />}
           </div>
         )}
 
@@ -273,6 +317,8 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
             <LoadingSpinner />
           ) : !data?.games?.length ? (
             <p className="text-sm text-text-muted text-center py-4">No recent games found.</p>
+          ) : isPitcher ? (
+            <MLBPitcherGameLog games={data.games} />
           ) : isMLB ? (
             <MLBGameLog games={data.games} />
           ) : isNFL ? (
