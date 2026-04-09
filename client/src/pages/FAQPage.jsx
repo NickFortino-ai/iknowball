@@ -119,7 +119,8 @@ The multiplier is only available on straight picks in the global competition. It
 
 \u2022 <strong class="text-white">Pick\u2019em:</strong> Your league pick points are added to your global score when the league ends, plus the winner earns a bonus equal to the number of members.
 \u2022 <strong class="text-white">Survivor:</strong> Winners earn bonus points scaled by league size (10 pts for small leagues up to 100 pts for 41+ member leagues).
-\u2022 <strong class="text-white">Bracket, Fantasy, NBA DFS, MLB DFS, HR Derby:</strong> All use position-based scoring when the league ends. Top half earns positive points, bottom half loses points. Formula: N+1\u22122\u00d7rank, plus a +10 champion bonus for 1st place. Ties split the points for the positions they span.
+\u2022 <strong class="text-white">Bracket, Salary Cap Fantasy, NBA DFS, MLB DFS, HR Derby, TD Pass:</strong> All use position-based scoring when the league ends. Top half earns positive points, bottom half loses points. Formula: N+1\u22122\u00d7rank, plus a +10 champion bonus for 1st place. Ties split the points for the positions they span.
+\u2022 <strong class="text-white">Traditional Fantasy Football:</strong> Same N+1\u22122\u00d7rank position points, but with a much bigger top-3 bonus that scales with league size — winning a deep traditional league is a real test of strategy and prep. 8 teams: +50/+20/+10. 10 teams: +75/+30/+15. 12 teams: +100/+40/+20. 14 teams: +150/+60/+30. 16 teams: +175/+70/+35. 20 teams: +200/+80/+40. 6-team leagues get +30/+12/+6.
 \u2022 <strong class="text-white">Squares:</strong> Does not affect global score.`,
       },
       {
