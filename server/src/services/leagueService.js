@@ -172,16 +172,19 @@ export async function createLeague(userId, data) {
     await createFantasySettings(league.id, data.fantasy_settings || {})
   }
 
-  // Guard: traditional fantasy is only creatable through Week 1. After
-  // that the draft is moot — users should join Salary Cap instead.
+  // Guard: traditional fantasy is only creatable before regular-season
+  // kickoff or during Week 1. After that the draft is moot — users should
+  // join Salary Cap instead. The preseason / offseason window is treated
+  // as wide open.
   if (league.format === 'fantasy' && data.fantasy_settings?.format !== 'salary_cap') {
     try {
       const { getCurrentNflWeek } = await import('./tdPassService.js')
-      const { week } = await getCurrentNflWeek()
-      if (week && week > 1) {
-        // Roll back the league we just created
+      const { week, isPreSeason } = await getCurrentNflWeek()
+      // Locked only when the regular season has actually started AND we're
+      // past Week 1.
+      if (!isPreSeason && week && week > 1) {
         await supabase.from('leagues').delete().eq('id', league.id)
-        const err = new Error(`Traditional fantasy can only be created during the preseason or Week 1. The NFL season is already in week ${week} — use Salary Cap instead.`)
+        const err = new Error(`Traditional fantasy can only be created before the regular season or during Week 1. The NFL season is already in week ${week} — use Salary Cap instead.`)
         err.status = 400
         throw err
       }

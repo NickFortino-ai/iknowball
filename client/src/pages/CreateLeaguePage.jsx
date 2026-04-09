@@ -239,7 +239,9 @@ export default function CreateLeaguePage() {
   // After that the season's already underway and a draft-based league
   // doesn't make sense — users should join Salary Cap instead.
   const { data: nflWeekInfo } = useTdPassCurrentWeek()
-  const traditionalLocked = !!(nflWeekInfo?.week && nflWeekInfo.week > 1)
+  // Locked only after the regular season has actually started AND we're
+  // past Week 1. Preseason / offseason is wide open.
+  const traditionalLocked = !!(nflWeekInfo && nflWeekInfo.isPreSeason === false && nflWeekInfo.week && nflWeekInfo.week > 1)
   // Auto-flip the toggle to salary cap once we know the season has started
   useEffect(() => {
     if (traditionalLocked && fantasyFormat === 'traditional') {
@@ -744,7 +746,7 @@ export default function CreateLeaguePage() {
               </div>
               {traditionalLocked && (
                 <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
-                  Traditional fantasy can only be created during the preseason or Week 1. The NFL season is already in week {nflWeekInfo?.week} — for a fresh league this late, use Salary Cap.
+                  Traditional fantasy can only be created before the regular season or during Week 1. The NFL season is already in week {nflWeekInfo?.week} — for a fresh league this late, use Salary Cap.
                 </p>
               )}
             </div>

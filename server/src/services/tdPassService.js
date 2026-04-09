@@ -5,6 +5,12 @@ import { logger } from '../utils/logger.js'
  * Determine the current NFL week + season for the TD Pass competition.
  * Uses nfl_schedule directly so the result reflects what's actually loaded
  * in the DB (no Sleeper roundtrip required).
+ *
+ * Adds an `isPreSeason` flag: true when no Week 1 game has happened yet for
+ * the current/upcoming season — i.e. we're in the offseason or preseason
+ * window, before regular-season kickoff. Used to gate features that should
+ * only be available before the season starts (e.g. traditional fantasy
+ * league creation).
  */
 export async function getCurrentNflWeek() {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
@@ -17,17 +23,32 @@ export async function getCurrentNflWeek() {
     .order('game_date', { ascending: true })
     .limit(1)
   if (rows?.length) {
-    return { season: rows[0].season, week: rows[0].week }
+    const season = rows[0].season
+    const week = rows[0].week
+    // If the only upcoming games we know about are Week 1 or later AND no
+    // Week 1 game has actually started yet, we're still pre-season for this
+    // year's schedule.
+    const { data: w1Past } = await supabase
+      .from('nfl_schedule')
+      .select('id')
+      .eq('season', season)
+      .eq('week', 1)
+      .lt('game_date', today)
+      .limit(1)
+    const isPreSeason = !w1Past?.length
+    return { season, week, isPreSeason }
   }
-  // Fallback: highest known week (offseason / postseason)
+  // Fallback: highest known week (offseason after a season ends, before
+  // next year's schedule is loaded). Treat as pre-season so creation
+  // gates open up.
   const { data: latest } = await supabase
     .from('nfl_schedule')
     .select('season, week')
     .order('season', { ascending: false })
     .order('week', { ascending: false })
     .limit(1)
-  if (latest?.length) return { season: latest[0].season, week: latest[0].week }
-  return { season: new Date().getUTCFullYear(), week: 1 }
+  if (latest?.length) return { season: latest[0].season, week: latest[0].week, isPreSeason: true }
+  return { season: new Date().getUTCFullYear(), week: 1, isPreSeason: true }
 }
 
 /**
