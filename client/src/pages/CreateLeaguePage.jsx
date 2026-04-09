@@ -259,6 +259,7 @@ export default function CreateLeaguePage() {
   const [scoringRules, setScoringRules] = useState(null) // null = use preset
   const [numTeams, setNumTeams] = useState(10)
   const [draftPickTimer, setDraftPickTimer] = useState(90)
+  const [draftDate, setDraftDate] = useState('') // datetime-local string in user's local TZ
   const [irSpots, setIrSpots] = useState(1)
   const [waiverType, setWaiverType] = useState('priority')
   const [faabStartingBudget, setFaabStartingBudget] = useState(100)
@@ -331,6 +332,13 @@ export default function CreateLeaguePage() {
       scoring_format: (format === 'nba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? 'ppr' : scoringFormat,
       num_teams: numTeams,
       draft_pick_timer: format === 'fantasy' && fantasyFormat === 'traditional' ? draftPickTimer : undefined,
+      // datetime-local returns a naive string in the user's local timezone.
+      // new Date() interprets it as local time and .toISOString() converts to
+      // UTC for storage. Every other member's browser converts it back to
+      // their own local timezone on display.
+      draft_date: format === 'fantasy' && fantasyFormat === 'traditional' && draftDate
+        ? new Date(draftDate).toISOString()
+        : undefined,
       roster_slots: format === 'fantasy' && fantasyFormat === 'traditional'
         ? { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6, ir: irSpots }
         : undefined,
@@ -901,6 +909,16 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Draft Date & Time</label>
+              <input
+                type="datetime-local"
+                value={draftDate}
+                onChange={(e) => setDraftDate(e.target.value)}
+                className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <p className="text-[10px] text-text-muted mt-1">Pick the moment you want the draft to start. Every member sees this in their own local timezone. Leave blank to start the draft manually.</p>
             </div>
             <div>
               <label className="text-xs text-text-muted block mb-1">IR Spots</label>

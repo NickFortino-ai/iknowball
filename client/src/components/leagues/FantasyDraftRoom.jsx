@@ -25,6 +25,50 @@ function InjuryBadge({ status }) {
   )
 }
 
+// Live countdown to a scheduled draft. Renders the absolute date in the
+// user's local timezone plus a ticking d/h/m/s countdown.
+function DraftCountdown({ date }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const remaining = Math.max(0, date.getTime() - now)
+  const days = Math.floor(remaining / 86400000)
+  const hours = Math.floor((remaining % 86400000) / 3600000)
+  const mins = Math.floor((remaining % 3600000) / 60000)
+  const secs = Math.floor((remaining % 60000) / 1000)
+  const localDate = date.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  })
+  if (remaining === 0) {
+    return (
+      <div className="mb-4 px-4 py-3 rounded-xl border border-correct/40 bg-correct/10 text-correct text-sm font-semibold">
+        Draft is starting any moment…
+      </div>
+    )
+  }
+  return (
+    <div className="mb-4 px-4 py-3 rounded-xl border border-accent/40 bg-accent/10 inline-block">
+      <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Draft scheduled</div>
+      <div className="text-sm text-text-primary font-semibold mb-2">{localDate}</div>
+      <div className="flex items-center justify-center gap-3 font-display text-text-primary">
+        {days > 0 && (
+          <div className="text-center"><div className="text-xl tabular-nums">{days}</div><div className="text-[9px] uppercase text-text-muted">days</div></div>
+        )}
+        <div className="text-center"><div className="text-xl tabular-nums">{String(hours).padStart(2, '0')}</div><div className="text-[9px] uppercase text-text-muted">hr</div></div>
+        <div className="text-center"><div className="text-xl tabular-nums">{String(mins).padStart(2, '0')}</div><div className="text-[9px] uppercase text-text-muted">min</div></div>
+        <div className="text-center"><div className="text-xl tabular-nums">{String(secs).padStart(2, '0')}</div><div className="text-[9px] uppercase text-text-muted">sec</div></div>
+      </div>
+    </div>
+  )
+}
+
 export default function FantasyDraftRoom({ league }) {
   const { profile } = useAuth()
   const { data: draftData, isLoading } = useDraftBoard(league.id)
@@ -204,6 +248,8 @@ export default function FantasyDraftRoom({ league }) {
   // Pre-draft state
   if (draftStatus === 'pending') {
     const hasPickSlots = picks.length > 0
+    const draftDate = settings?.draft_date ? new Date(settings.draft_date) : null
+    const draftDateValid = draftDate && !isNaN(draftDate.getTime())
     return (
       <div className="text-center py-8">
         <div className="text-4xl mb-3">{'\uD83C\uDFC8'}</div>
@@ -213,6 +259,9 @@ export default function FantasyDraftRoom({ league }) {
             ? `Draft order is set. ${league.members?.length || 0} teams, ${picks.length} total picks.`
             : `${league.members?.length || 0} teams joined. The commissioner needs to set the draft order.`}
         </p>
+        {draftDateValid && (
+          <DraftCountdown date={draftDate} />
+        )}
         {isCommissioner && !hasPickSlots && (
           <button
             onClick={handleInitDraft}

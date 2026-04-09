@@ -537,28 +537,49 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
       </>)}
 
       {league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && fantasySettings?.draft_status !== 'completed' && (
-        <div>
-          <label className="block text-xs text-text-muted mb-2">IR Spots</label>
-          <div className="flex gap-2">
-            {[0, 1, 2, 3].map((n) => (
-              <button
-                key={n}
-                onClick={() => saveIrSpots(n)}
-                disabled={updateFantasySettings.isPending}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  (fantasySettings?.roster_slots?.ir ?? 1) === n
-                    ? 'bg-accent text-white border border-accent'
-                    : 'bg-bg-primary text-text-secondary border border-text-primary/20'
-                }`}
-              >
-                {n}
-              </button>
-            ))}
+        <>
+          <div>
+            <label className="block text-xs text-text-muted mb-2">IR Spots</label>
+            <div className="flex gap-2">
+              {[0, 1, 2, 3].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => saveIrSpots(n)}
+                  disabled={updateFantasySettings.isPending}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    (fantasySettings?.roster_slots?.ir ?? 1) === n
+                      ? 'bg-accent text-white border border-accent'
+                      : 'bg-bg-primary text-text-secondary border border-text-primary/20'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-text-muted mt-1">
+              Locked once the draft is completed.
+            </p>
           </div>
-          <p className="text-[10px] text-text-muted mt-1">
-            Locked once the draft is completed.
-          </p>
-        </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-2">Draft Date & Time</label>
+            <input
+              type="datetime-local"
+              defaultValue={toDateTimeLocalValue(fantasySettings?.draft_date)}
+              onBlur={(e) => {
+                const v = e.target.value
+                updateFantasySettings.mutateAsync({
+                  leagueId: league.id,
+                  draft_date: v ? new Date(v).toISOString() : null,
+                }).then(() => toast('Draft time updated', 'success'))
+                  .catch((err) => toast(err.message || 'Failed to update', 'error'))
+              }}
+              className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            <p className="text-[10px] text-text-muted mt-1">
+              Shown in your local time. Every member sees this in their own timezone. Leave blank to start the draft manually.
+            </p>
+          </div>
+        </>
       )}
 
       {league.format === 'pickem' && (
