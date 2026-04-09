@@ -65,6 +65,26 @@ async function scoreSport(sportKey) {
 
     if (!game || game.status === 'final') continue
 
+    // SANITY GUARD: never finalize a row whose start time is still in the
+    // future. If we're seeing 'completed' from Odds API for a game whose
+    // first pitch hasn't happened yet, the row's external_id is wrong
+    // (almost always: a doubleheader collapse where the row's external_id
+    // points at game 1 of the slate but the row now represents game 2).
+    // Without this guard, parlay legs settle on the wrong score.
+    if (game.starts_at && new Date(game.starts_at).getTime() > Date.now()) {
+      logger.warn({ gameId: game.id, startsAt: game.starts_at, externalId: game.external_id }, 'scoreGames: refusing to finalize a row whose start_time is in the future')
+      continue
+    }
+    // Also: if the API event's commence_time is more than 6 hours away
+    // from our row's start_time, the external_id is mismatched. Skip.
+    if (game.starts_at && event.commence_time) {
+      const diffMs = Math.abs(new Date(event.commence_time).getTime() - new Date(game.starts_at).getTime())
+      if (diffMs > 6 * 60 * 60 * 1000) {
+        logger.warn({ gameId: game.id, rowStart: game.starts_at, eventStart: event.commence_time }, 'scoreGames: row start_time is way off from event commence_time, skipping')
+        continue
+      }
+    }
+
     const homeScore = event.scores?.find((s) => s.name === event.home_team)
     const awayScore = event.scores?.find((s) => s.name === event.away_team)
 
