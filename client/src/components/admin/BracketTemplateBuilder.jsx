@@ -533,11 +533,12 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
       return
     }
 
-    let id = savedTemplateId
-    if (!id) {
-      id = await handleSaveTemplate()
-      if (!id) return
-    }
+    // Always save template metadata first so any in-flight Details edits
+    // (e.g. a renamed template) get persisted alongside the matchup save.
+    // Without this, edit-mode users would have to use a separate button to
+    // save the name and could lose changes when navigating away.
+    const id = await handleSaveTemplate()
+    if (!id) return
 
     // Build final matchups array, injecting Round 0 play-in matchups
     let allMatchups = [...matchups]
