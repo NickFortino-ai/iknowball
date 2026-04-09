@@ -141,8 +141,9 @@ function getNotificationRoute(notification) {
       // All members → land on home so they can find a replacement league
       return '/'
     case 'fantasy_draft_postponed':
-      // All members → open the league so they see the new countdown + share button
-      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+      // All members → open the Draft tab so they see the new countdown +
+      // can share/invite without a second tap
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Draft` : null
 
     default:
       return null
