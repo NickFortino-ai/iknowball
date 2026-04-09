@@ -21,10 +21,13 @@ Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom 
     bonusTable: {
       title: 'Traditional Fantasy Bonus Structure',
       rows: [
+        { size: '6 teams', first: '+30', second: '+12', third: '+6' },
         { size: '8 teams', first: '+50', second: '+20', third: '+10' },
         { size: '10 teams', first: '+75', second: '+30', third: '+15' },
         { size: '12 teams', first: '+100', second: '+40', third: '+20' },
         { size: '14 teams', first: '+150', second: '+60', third: '+30' },
+        { size: '16 teams', first: '+175', second: '+70', third: '+35' },
+        { size: '20 teams', first: '+200', second: '+80', third: '+40' },
       ],
     },
   },

@@ -178,18 +178,23 @@ async function awardBracketStandings(league, standings) {
 // a deep league against serious managers is a real achievement and the global
 // payout reflects that. Position points (n+1-2*rank) are still applied on top
 // of these.
+// 2nd place is always 40% of 1st, 3rd is always 20% of 1st — keeps the
+// payout shape consistent across league sizes.
 const TRADITIONAL_FANTASY_BONUSES = {
-  8: { 1: 50, 2: 20, 3: 10 },
-  10: { 1: 75, 2: 30, 3: 15 },
+  6:  { 1: 30,  2: 12, 3: 6 },
+  8:  { 1: 50,  2: 20, 3: 10 },
+  10: { 1: 75,  2: 30, 3: 15 },
   12: { 1: 100, 2: 40, 3: 20 },
   14: { 1: 150, 2: 60, 3: 30 },
+  16: { 1: 175, 2: 70, 3: 35 },
+  20: { 1: 200, 2: 80, 3: 40 },
 }
 function getTraditionalFantasyBonus(rank, n) {
   if (rank > 3) return 0
   // Exact match for the standard sizes
   if (TRADITIONAL_FANTASY_BONUSES[n]) return TRADITIONAL_FANTASY_BONUSES[n][rank]
   // For non-standard team counts, snap to the closest configured size
-  const sizes = [8, 10, 12, 14]
+  const sizes = Object.keys(TRADITIONAL_FANTASY_BONUSES).map(Number)
   const closest = sizes.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a))
   return TRADITIONAL_FANTASY_BONUSES[closest][rank]
 }
