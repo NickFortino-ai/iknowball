@@ -63,8 +63,12 @@ const DEFAULT_MARKETS = {
 
 export async function fetchPlayerProps(sportKey, eventId, markets) {
   const marketKeys = markets?.length ? markets.join(',') : (DEFAULT_MARKETS[sportKey] || 'player_points')
+  // The Odds API serves several MLB batter prop markets only on the `us2`
+  // region — querying just `us` returns zero bookmakers for things like
+  // batter_total_bases, batter_rbis, batter_walks, etc. Including both
+  // regions is harmless for other sports and unblocks MLB props.
   return fetchFromOddsApi(`/sports/${sportKey}/events/${eventId}/odds`, {
-    regions: 'us',
+    regions: 'us,us2',
     markets: marketKeys,
     oddsFormat: 'american',
   })
