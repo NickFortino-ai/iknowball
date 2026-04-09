@@ -33,11 +33,7 @@ async function getDoneSportsForToday(sportKeys, userTz) {
   const done = new Set()
   if (!sportKeys?.length) return done
   const tz = userTz || 'America/New_York'
-  // Today in the user's local timezone (so the day rollover happens at the
-  // user's local midnight, not server time).
   const todayLocal = new Date().toLocaleDateString('en-CA', { timeZone: tz })
-  // Day window for that local date — use the active offset for the user's
-  // timezone (DST-safe).
   let offset
   try {
     const offsetMatch = new Intl.DateTimeFormat('en-US', {
@@ -61,26 +57,32 @@ async function getDoneSportsForToday(sportKeys, userTz) {
   const sportIds = Object.values(idByKey)
   if (!sportIds.length) return done
 
+  // Pull every game today for these sports along with its status. We'll
+  // mark a sport as "done" when it has at least one game today AND none of
+  // those games are still upcoming or live. Postponed counts as "not
+  // contributing", so a fully postponed slate also counts as done.
   const { data: games } = await supabase
     .from('games')
-    .select('sport_id, starts_at')
+    .select('sport_id, status')
     .in('sport_id', sportIds)
     .gte('starts_at', startOfDay.toISOString())
     .lte('starts_at', endOfDay.toISOString())
-    .order('starts_at', { ascending: false })
 
-  // Build sport_id → latest starts_at
-  const latestBySport = {}
+  const stateBySport = {}
   for (const g of games || []) {
-    if (!latestBySport[g.sport_id]) latestBySport[g.sport_id] = g.starts_at
+    if (!stateBySport[g.sport_id]) {
+      stateBySport[g.sport_id] = { total: 0, openish: 0 }
+    }
+    stateBySport[g.sport_id].total++
+    if (g.status === 'upcoming' || g.status === 'live') {
+      stateBySport[g.sport_id].openish++
+    }
   }
 
-  const now = Date.now()
-  const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
   for (const [key, sportId] of Object.entries(idByKey)) {
-    const latest = latestBySport[sportId]
-    if (!latest) continue // no games today — don't mark "done" so DFS still says "no roster"
-    if (now - new Date(latest).getTime() > FOUR_HOURS_MS) done.add(key)
+    const s = stateBySport[sportId]
+    if (!s || s.total === 0) continue // no games today — don't suppress
+    if (s.openish === 0) done.add(key) // every game is final/postponed
   }
   return done
 }
