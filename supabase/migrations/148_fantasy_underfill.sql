@@ -19,5 +19,6 @@ ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN
   'fantasy_waiver_awarded','fantasy_waiver_failed',
   'fantasy_stat_correction','fantasy_draft_started','fantasy_draft_starting_soon',
   'fantasy_league_underfilled','fantasy_league_canceled',
-  'fantasy_league_member_dropped','fantasy_league_resized'
+  'fantasy_league_member_dropped','fantasy_league_resized',
+  'fantasy_draft_postponed'
 )) NOT VALID;

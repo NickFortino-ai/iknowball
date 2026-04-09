@@ -988,6 +988,35 @@ router.post('/:id/fantasy/postpone-draft', requireAuth, async (req, res) => {
         draft_pre_start_notified_at: null,
       })
       .eq('league_id', req.params.id)
+
+    // Notify every league member that the draft has moved + nudge them
+    // to invite friends so the league actually fills up before the new
+    // draft date
+    try {
+      const { data: leagueRow } = await supabase
+        .from('leagues')
+        .select('name, invite_code')
+        .eq('id', req.params.id)
+        .single()
+      const { data: members } = await supabase
+        .from('league_members')
+        .select('user_id')
+        .eq('league_id', req.params.id)
+      const { createNotification } = await import('../services/notificationService.js')
+      const leagueName = leagueRow?.name || 'your league'
+      for (const m of members || []) {
+        if (m.user_id === req.user.id) continue // skip the commish themselves
+        await createNotification(
+          m.user_id,
+          'fantasy_draft_postponed',
+          `${leagueName} draft has been postponed. Help fill the league — invite friends to join before the new draft time!`,
+          { leagueId: req.params.id, draft_date: newDate.toISOString(), inviteCode: leagueRow?.invite_code }
+        )
+      }
+    } catch (err) {
+      // Don't fail the whole request if notifications fail
+    }
+
     res.json({ ok: true, draft_date: newDate.toISOString() })
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

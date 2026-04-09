@@ -127,6 +127,23 @@ function getNotificationRoute(notification) {
     case 'league_report':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
 
+    // Underfill flow notifications
+    case 'fantasy_league_underfilled':
+      // Commish notification → open the league so the banner / modal is visible
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+    case 'fantasy_league_resized':
+      // Surviving member → take them to the league page so they see the new size
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+    case 'fantasy_league_member_dropped':
+      // Dropped user → land on home where OpenLeaguesSection shows joinable leagues
+      return '/'
+    case 'fantasy_league_canceled':
+      // All members → land on home so they can find a replacement league
+      return '/'
+    case 'fantasy_draft_postponed':
+      // All members → open the league so they see the new countdown + share button
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+
     default:
       return null
   }
