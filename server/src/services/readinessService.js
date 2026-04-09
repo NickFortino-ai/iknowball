@@ -19,6 +19,56 @@ import { logger } from '../utils/logger.js'
 function set(result, leagueId, state, detail) {
   result.set(leagueId, { state, detail })
 }
+
+/**
+ * For each sport key that's relevant today, decide whether the contest day
+ * is "done" — i.e. the latest game for that sport has been over long enough
+ * that there's nothing the user can do about today. Returns Set<sportKey>.
+ *
+ * Heuristic: latest game's starts_at + 4 hours < now. Once true, the
+ * readiness check returns null (no clip) until the natural day rollover at
+ * midnight ET, when a new game day begins.
+ */
+async function getDoneSportsForToday(sportKeys) {
+  const done = new Set()
+  if (!sportKeys?.length) return done
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const startOfDay = new Date(`${todayET}T00:00:00-05:00`)
+  const endOfDay = new Date(`${todayET}T23:59:59-05:00`)
+
+  const { data: sportRows } = await supabase
+    .from('sports')
+    .select('id, key')
+    .in('key', sportKeys)
+  const idByKey = {}
+  for (const s of sportRows || []) idByKey[s.key] = s.id
+
+  const sportIds = Object.values(idByKey)
+  if (!sportIds.length) return done
+
+  const { data: games } = await supabase
+    .from('games')
+    .select('sport_id, starts_at')
+    .in('sport_id', sportIds)
+    .gte('starts_at', startOfDay.toISOString())
+    .lte('starts_at', endOfDay.toISOString())
+    .order('starts_at', { ascending: false })
+
+  // Build sport_id → latest starts_at
+  const latestBySport = {}
+  for (const g of games || []) {
+    if (!latestBySport[g.sport_id]) latestBySport[g.sport_id] = g.starts_at
+  }
+
+  const now = Date.now()
+  const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
+  for (const [key, sportId] of Object.entries(idByKey)) {
+    const latest = latestBySport[sportId]
+    if (!latest) continue // no games today — don't mark "done" so DFS still says "no roster"
+    if (now - new Date(latest).getTime() > FOUR_HOURS_MS) done.add(key)
+  }
+  return done
+}
 export async function computeLeagueReadiness(userId, leagues) {
   const result = new Map()
   if (!leagues?.length) return result
@@ -37,18 +87,43 @@ export async function computeLeagueReadiness(userId, leagues) {
   // Today (Eastern) — used for DFS / hr_derby
   const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 
+  // Pre-compute which sports are "done" for today (last game ended 4h ago).
+  // Daily formats whose sport is done will return null (no clip) until the
+  // ET day rollover, so the indicator doesn't flip to red the moment the
+  // last game ends.
+  const relevantSportKeys = new Set()
+  if (byFormat.nba_dfs?.length) relevantSportKeys.add('basketball_nba')
+  if (byFormat.mlb_dfs?.length || byFormat.hr_derby?.length) relevantSportKeys.add('baseball_mlb')
+  if (byFormat.survivor?.length) {
+    for (const l of byFormat.survivor) {
+      if (l.sport && l.settings?.pick_frequency === 'daily') relevantSportKeys.add(l.sport)
+    }
+  }
+  const doneSports = await getDoneSportsForToday([...relevantSportKeys])
+
   try {
     if (byFormat.nba_dfs?.length) {
-      await computeDfsReadiness(byFormat.nba_dfs, userId, todayET, 'nba_dfs_rosters', 'nba_dfs_roster_slots', 'nba_dfs_salaries', result)
+      if (!doneSports.has('basketball_nba')) {
+        await computeDfsReadiness(byFormat.nba_dfs, userId, todayET, 'nba_dfs_rosters', 'nba_dfs_roster_slots', 'nba_dfs_salaries', result)
+      }
     }
     if (byFormat.mlb_dfs?.length) {
-      await computeDfsReadiness(byFormat.mlb_dfs, userId, todayET, 'mlb_dfs_rosters', 'mlb_dfs_roster_slots', 'mlb_dfs_salaries', result)
+      if (!doneSports.has('baseball_mlb')) {
+        await computeDfsReadiness(byFormat.mlb_dfs, userId, todayET, 'mlb_dfs_rosters', 'mlb_dfs_roster_slots', 'mlb_dfs_salaries', result)
+      }
     }
     if (byFormat.survivor?.length) {
-      await computeSurvivorReadiness(byFormat.survivor, userId, result)
+      // Filter out daily survivor leagues whose sport day is done
+      const eligible = byFormat.survivor.filter((l) => {
+        const isDaily = l.settings?.pick_frequency === 'daily'
+        return !(isDaily && doneSports.has(l.sport))
+      })
+      if (eligible.length) await computeSurvivorReadiness(eligible, userId, result)
     }
     if (byFormat.hr_derby?.length) {
-      await computeHrDerbyReadiness(byFormat.hr_derby, userId, todayET, result)
+      if (!doneSports.has('baseball_mlb')) {
+        await computeHrDerbyReadiness(byFormat.hr_derby, userId, todayET, result)
+      }
     }
     if (byFormat.td_pass?.length) {
       await computeTdPassReadiness(byFormat.td_pass, userId, result)
