@@ -501,11 +501,30 @@ export async function getMyLeagues(userId, userTz) {
     orderMap[m.league_id] = m.display_order
   }
 
+  // Pull draft_date + draft_status for fantasy leagues so the My Leagues
+  // cards can show a live "Draft starts in N days" countdown until the
+  // draft completes.
+  const fantasyLeagueIds = (leagues || [])
+    .filter((l) => l.format === 'fantasy')
+    .map((l) => l.id)
+  const fantasyMeta = {}
+  if (fantasyLeagueIds.length) {
+    const { data: fs } = await supabase
+      .from('fantasy_settings')
+      .select('league_id, draft_date, draft_status')
+      .in('league_id', fantasyLeagueIds)
+    for (const row of fs || []) {
+      fantasyMeta[row.league_id] = { draft_date: row.draft_date, draft_status: row.draft_status }
+    }
+  }
+
   const result = leagues.map((league) => ({
     ...league,
     member_count: countMap[league.id] || 0,
     my_role: roleMap[league.id],
     display_order: orderMap[league.id] ?? null,
+    draft_date: fantasyMeta[league.id]?.draft_date || null,
+    draft_status: fantasyMeta[league.id]?.draft_status || null,
   }))
 
   // Compute per-league readiness (green/yellow/red corner clip)

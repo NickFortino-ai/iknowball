@@ -248,6 +248,25 @@ router.get('/open', requireAuth, async (req, res) => {
     if (m.user_id === req.user.id) userLeagues.add(m.league_id)
   }
 
+  // Pull fantasy_settings.draft_date for any fantasy leagues in this batch
+  // so the open league cards can show a live "Draft starts in N days"
+  // countdown.
+  const fantasyLeagueIds = (leagues || [])
+    .filter((l) => l.format === 'fantasy')
+    .map((l) => l.id)
+  const draftDateByLeague = {}
+  const draftStatusByLeague = {}
+  if (fantasyLeagueIds.length) {
+    const { data: fs } = await supabase
+      .from('fantasy_settings')
+      .select('league_id, draft_date, draft_status')
+      .in('league_id', fantasyLeagueIds)
+    for (const row of fs || []) {
+      draftDateByLeague[row.league_id] = row.draft_date
+      draftStatusByLeague[row.league_id] = row.draft_status
+    }
+  }
+
   const result = (leagues || [])
     .filter((l) => !userLeagues.has(l.id)) // exclude leagues user already joined
     .filter((l) => !l.max_members || (countMap[l.id] || 0) < l.max_members) // exclude full leagues
@@ -267,6 +286,8 @@ router.get('/open', requireAuth, async (req, res) => {
       joins_locked_at: l.joins_locked_at,
       backdrop_image: l.backdrop_image,
       backdrop_y: l.backdrop_y ?? 50,
+      draft_date: draftDateByLeague[l.id] || null,
+      draft_status: draftStatusByLeague[l.id] || null,
     }))
 
   res.json(result)

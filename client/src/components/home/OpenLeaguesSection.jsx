@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOpenLeagues, useJoinOpenLeague } from '../../hooks/useLeagues'
+import DraftStartsIn from '../leagues/DraftStartsIn'
 import { toast } from '../ui/Toast'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 
@@ -125,17 +126,22 @@ export default function OpenLeaguesSection() {
                     <h3 className="font-display text-xl text-white flex-1 leading-tight break-words">
                       {league.name}
                     </h3>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setInfoLeagueId(infoLeagueId === league.id ? null : league.id) }}
-                      className="text-text-muted hover:text-text-secondary transition-colors p-1 shrink-0 mt-0.5"
-                      title="League Details"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="16" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12.01" y2="8" />
-                      </svg>
-                    </button>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {league.format === 'fantasy' && league.draft_date && league.draft_status !== 'completed' && (
+                        <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} />
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setInfoLeagueId(infoLeagueId === league.id ? null : league.id) }}
+                        className="text-text-muted hover:text-text-secondary transition-colors p-1"
+                        title="League Details"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="16" x2="12" y2="12" />
+                          <line x1="12" y1="8" x2="12.01" y2="8" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Meta row */}

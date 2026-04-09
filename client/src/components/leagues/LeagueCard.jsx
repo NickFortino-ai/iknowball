@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { getBackdropUrl } from '../../lib/backdropUrl'
+import DraftStartsIn from './DraftStartsIn'
 
 const FORMAT_LABELS = {
   pickem: "Pick'em",
@@ -93,11 +94,16 @@ export default function LeagueCard({ league, noLink }) {
         </>
       )}
       <div className="relative z-10 p-5">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-display text-lg truncate text-white">{league.name}</h3>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
-            {league.status}
-          </span>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h3 className="font-display text-lg truncate text-white flex-1 min-w-0">{league.name}</h3>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
+              {league.status}
+            </span>
+            {league.format === 'fantasy' && league.draft_date && league.draft_status !== 'completed' && (
+              <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} />
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-text-muted min-h-[3.25rem] sm:min-h-0 content-start">
           <span className="font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
