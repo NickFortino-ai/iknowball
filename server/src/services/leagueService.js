@@ -493,7 +493,9 @@ export async function getMyLeagues(userId) {
     const { computeLeagueReadiness } = await import('./readinessService.js')
     const readinessMap = await computeLeagueReadiness(userId, result)
     for (const l of result) {
-      l.readiness = readinessMap.get(l.id) || null
+      const r = readinessMap.get(l.id)
+      l.readiness = r?.state || null
+      l.readiness_detail = r?.detail || null
     }
   } catch (err) {
     logger.error({ err }, 'Failed to attach league readiness')

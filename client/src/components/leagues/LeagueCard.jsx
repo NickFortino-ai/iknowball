@@ -51,24 +51,35 @@ export default function LeagueCard({ league, noLink }) {
       {...wrapperProps}
       className="block relative bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden hover:bg-text-primary/5 transition-colors"
     >
-      {/* Readiness corner clip — tiny color flag in the top-right */}
+      {/* Readiness corner clip — tiny color flag with hover popover */}
       {league.readiness && (
-        <span
-          className={`absolute top-0 right-0 w-3 h-3 rounded-bl-md z-20 pointer-events-none ${
-            league.readiness === 'ready'
-              ? 'bg-correct'
-              : league.readiness === 'attention'
-              ? 'bg-yellow-500'
-              : 'bg-incorrect'
-          }`}
-          title={
-            league.readiness === 'ready'
-              ? 'Ready for the next contest'
-              : league.readiness === 'attention'
-              ? 'Lineup needs attention'
-              : 'Action needed before the next contest'
-          }
-        />
+        <div className="absolute top-0 right-0 z-20 group">
+          <span
+            className={`block w-3 h-3 rounded-bl-md ${
+              league.readiness === 'ready'
+                ? 'bg-correct'
+                : league.readiness === 'attention'
+                ? 'bg-yellow-500'
+                : 'bg-incorrect'
+            }`}
+          />
+          {/* Hover/touch popover */}
+          <div className="hidden group-hover:block group-active:block absolute top-4 right-1 z-30 pointer-events-none">
+            <div className={`whitespace-nowrap text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-lg border ${
+              league.readiness === 'ready'
+                ? 'bg-correct/15 border-correct/40 text-correct'
+                : league.readiness === 'attention'
+                ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-500'
+                : 'bg-incorrect/15 border-incorrect/40 text-incorrect'
+            }`}>
+              {league.readiness_detail || (
+                league.readiness === 'ready' ? 'Ready for the next contest'
+                : league.readiness === 'attention' ? 'Needs attention'
+                : 'Action needed'
+              )}
+            </div>
+          </div>
+        </div>
       )}
       {hasBackdrop && (
         <>

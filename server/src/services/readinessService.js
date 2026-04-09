@@ -5,22 +5,20 @@ import { logger } from '../utils/logger.js'
  * Compute a per-league readiness state for a user, used by the My Leagues
  * card list to show a tiny green/yellow/red corner indicator at-a-glance.
  *
- * Possible values:
- *   - 'ready'     → user has done what's needed for the next contest in this
- *                   league. Green clip.
- *   - 'attention' → user has set their lineup/picks but something needs eyes
- *                   (e.g. an injured starter). Yellow clip.
- *   - 'action'    → user has not yet completed their pick/lineup for the
- *                   upcoming contest. Red clip.
+ * Each entry is { state, detail } where state is one of:
+ *   - 'ready'     → user has done what's needed. Green clip.
+ *   - 'attention' → set but something needs eyes (e.g. injured starter).
+ *                   Yellow clip.
+ *   - 'action'    → user has not yet completed their pick/lineup. Red clip.
  *   - null        → no per-contest action applies (squares, bracket, etc).
+ * `detail` is a short human-readable message used as a hover popover on
+ * the card.
  *
- * Implementation philosophy: ship a useful MVP. Formats with the highest
- * action-frequency (DFS, daily survivor, hr_derby, td_pass) get full
- * computation. Lower-frequency formats default to 'ready' so the indicator
- * never lies (it would be worse to show green when an action is needed).
- *
- * Returns a Map<leagueId, state>.
+ * Returns a Map<leagueId, { state, detail }>.
  */
+function set(result, leagueId, state, detail) {
+  result.set(leagueId, { state, detail })
+}
 export async function computeLeagueReadiness(userId, leagues) {
   const result = new Map()
   if (!leagues?.length) return result
@@ -55,13 +53,19 @@ export async function computeLeagueReadiness(userId, leagues) {
     if (byFormat.td_pass?.length) {
       await computeTdPassReadiness(byFormat.td_pass, userId, result)
     }
+    if (byFormat.fantasy?.length) {
+      await computeFantasyReadiness(byFormat.fantasy, userId, result)
+    }
+    if (byFormat.pickem?.length) {
+      await computePickemReadiness(byFormat.pickem, userId, result)
+    }
   } catch (err) {
     logger.error({ err }, 'Failed to compute league readiness')
   }
 
   // Default everything else to 'ready' (no per-contest action expected)
   for (const l of activeLeagues) {
-    if (!result.has(l.id)) result.set(l.id, 'ready')
+    if (!result.has(l.id)) set(result, l.id, 'ready', 'Ready for the next contest')
   }
   return result
 }
@@ -107,17 +111,25 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
   for (const l of leagues) {
     const r = rosterByLeague[l.id]
     if (!r) {
-      result.set(l.id, 'action')
+      set(result, l.id, 'action', "You haven't set tonight's lineup")
       continue
     }
-    let hasOut = false
-    let hasFlag = false
+    const flagged = []
     for (const slot of r[slotTable] || []) {
       const status = injuryByPlayer[slot.espn_player_id]
-      if (status === 'Out') hasOut = true
-      else if (status && status !== 'Probable') hasFlag = true
+      if (status === 'Out' || (status && status !== 'Probable')) {
+        flagged.push(status)
+      }
     }
-    result.set(l.id, hasOut || hasFlag ? 'attention' : 'ready')
+    if (flagged.length === 0) {
+      set(result, l.id, 'ready', 'Lineup set')
+    } else {
+      const hasOut = flagged.includes('Out')
+      const summary = flagged.length === 1
+        ? `1 ${hasOut ? 'Out' : flagged[0]} player on your lineup`
+        : `${flagged.length} flagged players on your lineup`
+      set(result, l.id, 'attention', summary)
+    }
   }
 }
 
@@ -168,16 +180,17 @@ async function computeSurvivorReadiness(leagues, userId, result) {
 
   for (const l of leagues) {
     if (eliminatedSet.has(l.id)) {
-      result.set(l.id, 'ready')
+      set(result, l.id, 'ready', "You're eliminated — no action needed")
       continue
     }
     const week = currentWeekByLeague[l.id]
     if (!week) {
-      result.set(l.id, 'ready') // no current week — nothing to do
+      set(result, l.id, 'ready', 'No active period')
       continue
     }
     const pick = pickByLeague[l.id]
-    result.set(l.id, pick ? 'ready' : 'action')
+    if (pick) set(result, l.id, 'ready', 'Survivor pick submitted')
+    else set(result, l.id, 'action', "You haven't made this period's pick")
   }
 }
 
@@ -194,8 +207,9 @@ async function computeHrDerbyReadiness(leagues, userId, todayET, result) {
     countByLeague[p.league_id] = (countByLeague[p.league_id] || 0) + 1
   }
   for (const l of leagues) {
-    // HR Derby allows up to 3 picks per day. Any pick at all = ready.
-    result.set(l.id, (countByLeague[l.id] || 0) > 0 ? 'ready' : 'action')
+    const n = countByLeague[l.id] || 0
+    if (n > 0) set(result, l.id, 'ready', `${n}/3 hitter${n === 1 ? '' : 's'} picked for today`)
+    else set(result, l.id, 'action', "You haven't picked today's hitters")
   }
 }
 
@@ -211,6 +225,118 @@ async function computeTdPassReadiness(leagues, userId, result) {
     .eq('week', week)
   const has = new Set((picks || []).map((p) => p.league_id))
   for (const l of leagues) {
-    result.set(l.id, has.has(l.id) ? 'ready' : 'action')
+    if (has.has(l.id)) set(result, l.id, 'ready', `Week ${week} QB picked`)
+    else set(result, l.id, 'action', `Week ${week} QB not picked yet`)
+  }
+}
+
+/**
+ * Fantasy traditional: ready if every required starter slot is filled AND no
+ * starter is currently 'Out'. Questionable starters → attention.
+ */
+async function computeFantasyReadiness(leagues, userId, result) {
+  const leagueIds = leagues.map((l) => l.id)
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, format, roster_slots')
+    .in('league_id', leagueIds)
+  const settingsByLeague = {}
+  for (const s of settings || []) settingsByLeague[s.league_id] = s
+
+  const { data: rosters } = await supabase
+    .from('fantasy_rosters')
+    .select('league_id, player_id, slot, nfl_players(full_name, injury_status)')
+    .in('league_id', leagueIds)
+    .eq('user_id', userId)
+  const rosterByLeague = {}
+  for (const r of rosters || []) {
+    if (!rosterByLeague[r.league_id]) rosterByLeague[r.league_id] = []
+    rosterByLeague[r.league_id].push(r)
+  }
+
+  for (const l of leagues) {
+    const s = settingsByLeague[l.id]
+    // Salary-cap fantasy uses a different lineup model — defer to ready for now
+    if (s?.format === 'salary_cap') {
+      set(result, l.id, 'ready', 'Salary cap fantasy')
+      continue
+    }
+    const slots = s?.roster_slots || {}
+    const requiredStarterCount =
+      (slots.qb || 0) + (slots.rb || 0) + (slots.wr || 0) + (slots.te || 0) +
+      (slots.flex || 0) + (slots.superflex || 0) + (slots.k || 0) + (slots.def || 0)
+
+    const myRoster = rosterByLeague[l.id] || []
+    if (!myRoster.length) {
+      set(result, l.id, 'ready', 'Draft not complete')
+      continue
+    }
+    const starters = myRoster.filter((r) => r.slot && r.slot !== 'bench' && r.slot !== 'ir')
+    if (requiredStarterCount > 0 && starters.length < requiredStarterCount) {
+      set(result, l.id, 'action', `${starters.length}/${requiredStarterCount} starting slots filled`)
+      continue
+    }
+    const flagged = starters.filter((r) => {
+      const inj = r.nfl_players?.injury_status
+      return inj === 'Out' || (inj && inj !== 'Probable')
+    })
+    if (flagged.length === 0) {
+      set(result, l.id, 'ready', 'Lineup set')
+    } else {
+      const hasOut = flagged.some((r) => r.nfl_players?.injury_status === 'Out')
+      const summary = flagged.length === 1
+        ? `${flagged[0].nfl_players?.full_name || 'A starter'} is ${flagged[0].nfl_players?.injury_status}`
+        : `${flagged.length} ${hasOut ? 'injured' : 'flagged'} starters`
+      set(result, l.id, 'attention', summary)
+    }
+  }
+}
+
+/**
+ * Pickem: ready if user has submitted at least one league_pick for the
+ * current league_week. (We don't enforce a games_per_week minimum here —
+ * picking ANYTHING for the period clears the indicator.)
+ */
+async function computePickemReadiness(leagues, userId, result) {
+  const leagueIds = leagues.map((l) => l.id)
+
+  // Find current week per league (earliest non-completed)
+  const { data: weeks } = await supabase
+    .from('league_weeks')
+    .select('id, league_id, week_number, status, starts_at')
+    .in('league_id', leagueIds)
+    .neq('status', 'completed')
+    .order('starts_at', { ascending: true })
+
+  const currentWeekByLeague = {}
+  for (const w of weeks || []) {
+    if (!currentWeekByLeague[w.league_id]) currentWeekByLeague[w.league_id] = w
+  }
+
+  const weekIds = Object.values(currentWeekByLeague).map((w) => w.id)
+  const { data: picks } = weekIds.length
+    ? await supabase
+        .from('league_picks')
+        .select('league_id, league_week_id')
+        .in('league_week_id', weekIds)
+        .eq('user_id', userId)
+    : { data: [] }
+  const countByLeague = {}
+  for (const p of picks || []) {
+    countByLeague[p.league_id] = (countByLeague[p.league_id] || 0) + 1
+  }
+
+  for (const l of leagues) {
+    const week = currentWeekByLeague[l.id]
+    if (!week) {
+      set(result, l.id, 'ready', 'No active period')
+      continue
+    }
+    const n = countByLeague[l.id] || 0
+    if (n > 0) {
+      set(result, l.id, 'ready', `${n} pick${n === 1 ? '' : 's'} in for week ${week.week_number}`)
+    } else {
+      set(result, l.id, 'action', `No picks yet for week ${week.week_number}`)
+    }
   }
 }
