@@ -2563,20 +2563,52 @@ export async function getPlayerDetail(leagueId, playerId) {
 
 /**
  * Compute the next waiver clearing time: the upcoming Wednesday at 3:00 AM ET.
- * (Matches the scheduler.js cron.) Returns a Date.
+ * (Matches the scheduler.js cron, which runs in America/New_York.) Returns a Date.
+ *
+ * Must be DST-aware: 3:00 AM ET = 07:00 UTC during EST, 08:00 UTC during EDT.
+ * Most of the NFL season runs in EDT, so a fixed 08:00 UTC was an hour late
+ * during EDT — players stayed waiver-locked for an hour after the cron had
+ * already cleared their claims.
  */
 export function nextWaiverClearTime(from = new Date()) {
-  // ET offset: assume EDT/EST handled by US/Eastern - we approximate by using
-  // a fixed UTC hour. Wed 3:00 AM ET == 07:00 UTC (EST) / 08:00 UTC (EDT).
-  // To be safe, target 08:00 UTC which is at-or-after 3:00 AM ET in both.
-  const target = new Date(from)
-  target.setUTCHours(8, 0, 0, 0)
-  // Day of week: 0=Sun .. 3=Wed
-  const day = target.getUTCDay()
-  let daysUntilWed = (3 - day + 7) % 7
-  if (daysUntilWed === 0 && from.getTime() >= target.getTime()) daysUntilWed = 7
-  target.setUTCDate(target.getUTCDate() + daysUntilWed)
-  return target
+  // Build a "next Wednesday 03:00 in NY" by walking days in NY local time and
+  // converting back to UTC via the timezone offset Intl reports for that day.
+  const tzOffsetMinutesAt = (utcDate) => {
+    // Returns the offset (minutes) to ADD to UTC to get NY local time.
+    // e.g. EDT = -240, EST = -300.
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).formatToParts(utcDate)
+    const get = (t) => Number(parts.find((p) => p.type === t).value)
+    const local = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') === 24 ? 0 : get('hour'), get('minute'), get('second'))
+    return (local - utcDate.getTime()) / 60000
+  }
+
+  // Find the next Wednesday (in NY time) at 03:00.
+  for (let i = 0; i < 8; i++) {
+    const probe = new Date(from.getTime() + i * 24 * 60 * 60 * 1000)
+    const nyParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(probe)
+    const weekday = nyParts.find((p) => p.type === 'weekday').value
+    if (weekday !== 'Wed') continue
+    const y = Number(nyParts.find((p) => p.type === 'year').value)
+    const m = Number(nyParts.find((p) => p.type === 'month').value)
+    const d = Number(nyParts.find((p) => p.type === 'day').value)
+    // Construct that NY-local Wed 03:00 as UTC, then correct by NY offset.
+    const guessUtc = new Date(Date.UTC(y, m - 1, d, 3, 0, 0))
+    const offsetMin = tzOffsetMinutesAt(guessUtc)
+    const target = new Date(guessUtc.getTime() - offsetMin * 60000)
+    if (target.getTime() > from.getTime()) return target
+  }
+  // Fallback (shouldn't happen): one week out at 08:00 UTC
+  const fallback = new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000)
+  fallback.setUTCHours(8, 0, 0, 0)
+  return fallback
 }
 
 /**
@@ -3085,8 +3117,9 @@ export async function processLeagueWaivers(leagueId) {
 export async function processAllPendingWaivers() {
   const { data: leagues } = await supabase
     .from('fantasy_settings')
-    .select('league_id, leagues!inner(status)')
+    .select('league_id, format, leagues!inner(status)')
     .eq('leagues.status', 'active')
+    .neq('format', 'salary_cap')
   if (!leagues?.length) return
   for (const l of leagues) {
     try {
