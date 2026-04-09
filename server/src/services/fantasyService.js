@@ -294,6 +294,30 @@ export async function initializeDraft(leagueId) {
     .update({ draft_order: shuffled, num_teams: numTeams })
     .eq('league_id', leagueId)
 
+  // Notify every member that the order has been set, with their slot.
+  // Lets people anticipate and look forward to their pick number.
+  try {
+    const { data: leagueRow } = await supabase
+      .from('leagues')
+      .select('name')
+      .eq('id', leagueId)
+      .single()
+    const leagueName = leagueRow?.name || 'your league'
+    const { createNotification } = await import('./notificationService.js')
+    for (let i = 0; i < shuffled.length; i++) {
+      const userId = shuffled[i]
+      const slot = i + 1
+      await createNotification(
+        userId,
+        'fantasy_draft_order_set',
+        `${leagueName} draft order is set — you're picking #${slot} of ${numTeams}.`,
+        { leagueId, slot, total: numTeams },
+      )
+    }
+  } catch (err) {
+    logger.error({ err, leagueId }, 'Failed to send draft order notifications')
+  }
+
   logger.info({ leagueId, numTeams, totalPicks: picks.length }, 'Draft initialized')
   return { numTeams, totalPicks: picks.length, draftOrder: shuffled }
 }

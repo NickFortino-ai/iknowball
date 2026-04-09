@@ -111,6 +111,7 @@ function getNotificationRoute(notification) {
 
     case 'fantasy_draft_started':
     case 'fantasy_draft_starting_soon':
+    case 'fantasy_draft_order_set':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Draft` : null
 
     case 'fantasy_waiver_awarded':
