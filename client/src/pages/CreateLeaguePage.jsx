@@ -20,6 +20,7 @@ Salary cap leagues generate a League Report at the end with most played player, 
 Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom per-stat), roster configuration (or salary cap amount), team count, draft date and pick timer, waiver system (priority, rolling, or FAAB with starting budget), trade review method, playoff team count, playoff start week, and championship week. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
       title: 'Traditional Fantasy Bonus Structure',
+      intro: `Traditional fantasy leagues require effort and intelligence to win. We honor that with an appropriate point-bonus structure for winning leagues. Traditional fantasy football with people who pay attention, try, and have a deep understanding of the sport, is a serious competition of strategy and knowledge. Winning a league is genuinely respectable as a life achievement — I know that may sound silly... but only to people who have never won a serious league. It's a legitimate brain test, doused in dramatic unpredictability and luck of course. But to be in the mix year in and year out, and to win championships against serious fantasy football players bestows major credibility upon a person. I can only win a serious league if and only if I KNOW BALL. To honor the feat of winning a fantasy football league, we offer the following bonus structure.`,
       rows: [
         { size: '6 teams', first: '+30', second: '+12', third: '+6' },
         { size: '8 teams', first: '+50', second: '+20', third: '+10' },
@@ -490,6 +491,11 @@ export default function CreateLeaguePage() {
                           <div className="px-4 py-2 bg-bg-card border-b border-text-primary/10 text-xs md:text-sm font-display text-text-primary">
                             {tbl.title}
                           </div>
+                          {tbl.intro && (
+                            <div className="px-4 py-3 text-xs md:text-sm leading-relaxed text-text-secondary border-b border-text-primary/10">
+                              {tbl.intro}
+                            </div>
+                          )}
                           <div className="grid grid-cols-4 text-xs md:text-sm">
                             <div className="px-4 py-2 font-semibold text-text-muted">League Size</div>
                             <div className="px-2 py-2 font-semibold text-text-muted text-center">1st</div>
