@@ -108,6 +108,22 @@ export async function syncNflStatsCurrentWeek() {
     } catch (e) {
       logger.error({ err: e }, 'TD Pass scoring failed')
     }
+    // Score traditional fantasy H2H matchups for this week (auto keeps
+    // fantasy_matchups totals fresh — no admin button required for the
+    // common drift case)
+    try {
+      const { scoreFantasyMatchupsWeek } = await import('../services/fantasyService.js')
+      await scoreFantasyMatchupsWeek(week, season)
+    } catch (e) {
+      logger.error({ err: e }, 'Fantasy H2H matchup scoring failed')
+    }
+    // Score salary cap fantasy weekly results
+    try {
+      const { scoreNflDfsWeek } = await import('../services/dfsService.js')
+      await scoreNflDfsWeek(week, season)
+    } catch (e) {
+      logger.error({ err: e }, 'NFL Salary Cap weekly scoring failed')
+    }
     return result
   } catch (err) {
     if (err?.message?.includes('429')) {

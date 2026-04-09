@@ -65,6 +65,12 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           </div>
           <div className="text-xs text-text-muted">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
+        {row?.live_points != null && row?.nfl_players && (
+          <div className="text-right shrink-0 mr-1">
+            <div className="text-base font-display tabular-nums text-text-primary leading-none">{row.live_points.toFixed(2)}</div>
+            <div className="text-[9px] uppercase text-text-muted">pts</div>
+          </div>
+        )}
         {(canIR && !isInIR && onMoveToIR) && (
           <span
             role="button"

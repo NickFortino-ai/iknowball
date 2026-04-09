@@ -683,6 +683,33 @@ router.post('/fantasy/score-nfl-dfs-week', async (req, res) => {
   res.json(result)
 })
 
+// Recovery: merge two NFL player IDs into one. Used when Sleeper renumbers
+// a player and our nfl_players table ends up with both rows. The Postgres
+// function migrates every FK reference inside a single transaction, so a
+// partial failure rolls everything back.
+router.post('/players/merge-nfl-id', async (req, res) => {
+  const { old_id, new_id } = req.body
+  if (!old_id || !new_id) {
+    return res.status(400).json({ error: 'old_id and new_id are required' })
+  }
+  if (old_id === new_id) {
+    return res.status(400).json({ error: 'old_id and new_id are the same' })
+  }
+  try {
+    const { data, error } = await supabase.rpc('merge_nfl_player_id', {
+      p_old_id: old_id,
+      p_new_id: new_id,
+    })
+    if (error) {
+      logger.error({ error, old_id, new_id }, 'merge_nfl_player_id RPC failed')
+      return res.status(500).json({ error: error.message || 'Merge failed' })
+    }
+    res.json(data)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Recovery: nuke and recompute a single fantasy week from raw stats.
 // One-click reset if anything ever drifts during a real game day. Re-runs
 // stat sync, then re-scores both salary cap (dfs_weekly_results) and

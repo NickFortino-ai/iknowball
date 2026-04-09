@@ -595,7 +595,10 @@ export function useFantasyRoster(leagueId) {
     queryKey: ['leagues', leagueId, 'fantasy', 'roster'],
     queryFn: () => api.get(`/leagues/${leagueId}/fantasy/roster`),
     enabled: !!leagueId,
-    refetchInterval: 30000,
+    // 20s on the My Team page so live point totals on each player feel
+    // current during games. React Query stops polling when the tab is
+    // hidden so this isn't wasteful in the background.
+    refetchInterval: 20000,
   })
 }
 
@@ -611,10 +614,25 @@ export function useSetFantasyLineup(leagueId) {
 
 export function useDropRosterPlayer(leagueId) {
   const queryClient = useQueryClient()
+  const rosterKey = ['leagues', leagueId, 'fantasy', 'roster']
   return useMutation({
     mutationFn: (playerId) => api.delete(`/leagues/${leagueId}/fantasy/roster/${playerId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster'] })
+    // Optimistic: remove the dropped row from the cached roster immediately
+    // so the UI updates the moment the user confirms.
+    onMutate: async (playerId) => {
+      await queryClient.cancelQueries({ queryKey: rosterKey })
+      const previous = queryClient.getQueryData(rosterKey)
+      if (Array.isArray(previous)) {
+        queryClient.setQueryData(rosterKey, previous.filter((r) => r.player_id !== playerId))
+      }
+      return { previous }
+    },
+    onError: (_err, _playerId, ctx) => {
+      // Roll back if the server rejected the drop
+      if (ctx?.previous) queryClient.setQueryData(rosterKey, ctx.previous)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rosterKey })
       queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'players'] })
     },
   })

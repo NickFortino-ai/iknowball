@@ -1336,7 +1336,44 @@ export async function getRoster(leagueId, userId) {
     .eq('user_id', userId)
 
   if (error) throw error
-  return data || []
+  const rows = data || []
+  if (!rows.length) return rows
+
+  // Enrich with live current-week fantasy points so the My Team view can
+  // show running totals during games. We compute using the league's own
+  // scoring rules (or preset) so the points match what the user will see
+  // on the live matchup page.
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const { season, week } = await getCurrentNflWeek()
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('scoring_format, scoring_rules')
+      .eq('league_id', leagueId)
+      .single()
+    const rules = settings?.scoring_rules || buildScoringRulesFromPreset(settings?.scoring_format)
+    const playerIds = rows.map((r) => r.player_id).filter(Boolean)
+    if (playerIds.length) {
+      const { data: stats } = await supabase
+        .from('nfl_player_stats')
+        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+        .eq('week', week)
+        .eq('season', season)
+        .in('player_id', playerIds)
+      const ptsByPlayer = {}
+      for (const st of stats || []) {
+        ptsByPlayer[st.player_id] = Math.round(applyScoringRules(st, rules) * 100) / 100
+      }
+      for (const r of rows) {
+        r.live_points = ptsByPlayer[r.player_id] ?? 0
+        r.live_week = week
+      }
+    }
+  } catch (err) {
+    logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with live points')
+  }
+
+  return rows
 }
 
 /**
