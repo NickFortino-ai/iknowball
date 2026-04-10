@@ -494,14 +494,6 @@ function TraditionalLeagueAwards({ awards, champion }) {
           user={awards.bestWaiverPickup.user}
         />
       )}
-      {awards.leagueMvp && (
-        <PlayerAwardCard
-          title="League MVP"
-          playerName={awards.leagueMvp.player.name}
-          headshot={awards.leagueMvp.player.headshot}
-          rightValue={`${awards.leagueMvp.totalPoints} pts`}
-        />
-      )}
     </div>
   )
 }
