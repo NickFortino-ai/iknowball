@@ -46,13 +46,12 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
     const isSalaryCap = fantasySettings?.format === 'salary_cap'
     let tabs
     if (isSalaryCap) {
-      tabs = ['My Team', 'Players', 'Live', 'Matchups', 'Trades', memberOrStandings, 'Draft']
+      tabs = ['My Team', 'Players', 'Live', 'Matchups', 'Trades', memberOrStandings, 'Thread', 'Draft']
     } else {
       // Traditional: Matchups absorbs Live, no separate Live tab
-      tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Draft']
+      tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Thread', 'Draft']
     }
     if (!draftDone) tabs.splice(tabs.indexOf('Draft') + 1, 0, 'My Rankings')
-    tabs.push('Thread')
     return tabs
   }
 
