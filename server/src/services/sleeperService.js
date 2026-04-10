@@ -104,11 +104,21 @@ export async function syncPlayers() {
   // rows for them with their old team — which is why someone like Ben
   // Roethlisberger was leaking into the player list years after retiring.
   const activeIds = new Set(players.map((p) => p.id))
-  const { data: existingActive } = await supabase
-    .from('nfl_players')
-    .select('id')
-    .not('team', 'is', null)
-  const stale = (existingActive || []).filter((r) => !activeIds.has(r.id)).map((r) => r.id)
+  // Fetch ALL nfl_players with a team — table has >1000 rows, so we must
+  // paginate to avoid Supabase's silent 1000-row cap.
+  let existingActive = []
+  const PAGE = 1000
+  for (let offset = 0; ; offset += PAGE) {
+    const { data: page } = await supabase
+      .from('nfl_players')
+      .select('id')
+      .not('team', 'is', null)
+      .range(offset, offset + PAGE - 1)
+    if (!page?.length) break
+    existingActive = existingActive.concat(page)
+    if (page.length < PAGE) break
+  }
+  const stale = existingActive.filter((r) => !activeIds.has(r.id)).map((r) => r.id)
   if (stale.length) {
     // Process in chunks to avoid IN-list payload limits
     const RETIRE_CHUNK = 200
