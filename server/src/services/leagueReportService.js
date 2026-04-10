@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const MIN_CONTEST_DAYS = 10
 const MIN_NFL_WEEKS = 6
@@ -25,7 +26,7 @@ export async function generateLeagueReport(league) {
         .eq('league_id', leagueId)
         .single()
       if (fs?.format === 'salary_cap') return await generateNflSalaryCapReport(leagueId)
-      return null
+      return await generateTraditionalFantasyReport(leagueId)
     }
     return null
   } catch (err) {
@@ -532,4 +533,359 @@ async function fetchMlbHeadshots(espnIds, dates) {
   }
 
   return map
+}
+
+// =====================================================================
+// TRADITIONAL FANTASY FOOTBALL REPORT
+// =====================================================================
+
+async function generateTraditionalFantasyReport(leagueId) {
+  const { applyScoringRules, buildScoringRulesFromPreset } = await import('./fantasyService.js')
+
+  // --- Fetch all data in parallel ---
+  const [
+    settingsRes,
+    membersRes,
+    matchups,
+    draftPicks,
+    tradesRes,
+    waiverClaims,
+  ] = await Promise.all([
+    supabase.from('fantasy_settings').select('scoring_format, scoring_rules, season, championship_week, num_teams, draft_order').eq('league_id', leagueId).single(),
+    supabase.from('league_members').select('user_id, users(id, username, display_name, avatar_url, avatar_emoji)').eq('league_id', leagueId),
+    fetchAll(supabase.from('fantasy_matchups').select('*').eq('league_id', leagueId).eq('status', 'completed').order('week', { ascending: true })),
+    fetchAll(supabase.from('fantasy_draft_picks').select('round, pick_number, user_id, player_id, is_auto_pick, nfl_players(id, full_name, position, headshot_url)').eq('league_id', leagueId).order('pick_number', { ascending: true })),
+    supabase.from('fantasy_trades').select('id, proposer_user_id, receiver_user_id, status, responded_at, fantasy_trade_items(from_user_id, to_user_id, player_id, nfl_players(id, full_name, position, headshot_url))').eq('league_id', leagueId).eq('status', 'accepted'),
+    fetchAll(supabase.from('fantasy_waiver_claims').select('id, user_id, add_player_id, drop_player_id, bid_amount, status, created_at, processed_at, nfl_players:nfl_players!fantasy_waiver_claims_add_player_id_fkey(id, full_name, position, headshot_url)').eq('league_id', leagueId).eq('status', 'awarded')),
+  ])
+
+  const settings = settingsRes.data
+  if (!settings) return null
+
+  const members = membersRes.data || []
+  const trades = tradesRes.data || []
+
+  if (matchups.length < MIN_NFL_WEEKS) {
+    logger.info({ leagueId, weeks: new Set(matchups.map((m) => m.week)).size }, 'Not enough weeks for traditional fantasy report')
+    return null
+  }
+
+  const season = settings.season
+  const leagueRules = settings.scoring_rules || buildScoringRulesFromPreset(settings.scoring_format)
+  const allWeeks = [...new Set(matchups.map((m) => m.week))].sort((a, b) => a - b)
+
+  // User info map
+  const userMap = {}
+  for (const m of members) userMap[m.user_id] = m.users
+
+  function formatUser(userId) {
+    const u = userMap[userId]
+    return u ? { id: userId, username: u.username, displayName: u.display_name || u.username, avatarUrl: u.avatar_url, avatarEmoji: u.avatar_emoji } : { id: userId }
+  }
+
+  // --- Collect all player IDs we need stats for ---
+  const allPlayerIds = new Set()
+  for (const p of draftPicks) if (p.player_id) allPlayerIds.add(p.player_id)
+  for (const t of trades) for (const item of t.fantasy_trade_items || []) if (item.player_id) allPlayerIds.add(item.player_id)
+  for (const w of waiverClaims) if (w.add_player_id) allPlayerIds.add(w.add_player_id)
+
+  // --- Fetch player stats and compute per-player-per-week points ---
+  const STAT_COLS = 'player_id, week, season, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed'
+  let statsRows = []
+  const playerIdArr = [...allPlayerIds]
+  const STAT_CHUNK = 100
+  for (let i = 0; i < playerIdArr.length; i += STAT_CHUNK) {
+    const chunk = playerIdArr.slice(i, i + STAT_CHUNK)
+    const { data } = await supabase
+      .from('nfl_player_stats')
+      .select(STAT_COLS)
+      .in('player_id', chunk)
+      .eq('season', season)
+      .in('week', allWeeks)
+    statsRows = statsRows.concat(data || [])
+  }
+
+  // playerPoints[playerId][week] = points, playerSeasonTotals[playerId] = total
+  const playerPoints = {}
+  const playerSeasonTotals = {}
+  for (const st of statsRows) {
+    const pts = applyScoringRules(st, leagueRules)
+    if (!playerPoints[st.player_id]) playerPoints[st.player_id] = {}
+    playerPoints[st.player_id][st.week] = pts
+    playerSeasonTotals[st.player_id] = (playerSeasonTotals[st.player_id] || 0) + pts
+  }
+
+  // Player info map from draft picks, trades, waivers
+  const playerInfoMap = {}
+  for (const p of draftPicks) {
+    if (p.nfl_players) playerInfoMap[p.player_id] = p.nfl_players
+  }
+  for (const t of trades) {
+    for (const item of t.fantasy_trade_items || []) {
+      if (item.nfl_players) playerInfoMap[item.player_id] = item.nfl_players
+    }
+  }
+  for (const w of waiverClaims) {
+    if (w.nfl_players) playerInfoMap[w.add_player_id] = w.nfl_players
+  }
+
+  function formatPlayer(playerId) {
+    const p = playerInfoMap[playerId]
+    return p ? { playerId: p.id, name: p.full_name, position: p.position, headshot: p.headshot_url } : { playerId }
+  }
+
+  // --- Position rankings: rank all drafted players by season total at their position ---
+  const positionGroups = {}
+  for (const p of draftPicks) {
+    const pos = p.nfl_players?.position
+    if (!pos) continue
+    if (!positionGroups[pos]) positionGroups[pos] = []
+    if (!positionGroups[pos].find((x) => x.playerId === p.player_id)) {
+      positionGroups[pos].push({ playerId: p.player_id, total: playerSeasonTotals[p.player_id] || 0 })
+    }
+  }
+  const positionRanks = {}
+  for (const group of Object.values(positionGroups)) {
+    group.sort((a, b) => b.total - a.total)
+    for (let i = 0; i < group.length; i++) {
+      positionRanks[group[i].playerId] = { rank: i + 1, total: group.length }
+    }
+  }
+
+  // Draft position rank within position: what pick # was this player among their position?
+  const draftPositionOrder = {}
+  const posDraftCounts = {}
+  for (const p of draftPicks) {
+    const pos = p.nfl_players?.position
+    if (!pos) continue
+    posDraftCounts[pos] = (posDraftCounts[pos] || 0) + 1
+    draftPositionOrder[p.player_id] = posDraftCounts[pos]
+  }
+
+  // ===================================================================
+  // PER-USER REPORTS
+  // ===================================================================
+  const userReports = {}
+
+  for (const member of members) {
+    const userId = member.user_id
+
+    // --- Season record ---
+    let wins = 0, losses = 0, ties = 0, pointsFor = 0, pointsAgainst = 0
+    let currentWinStreak = 0, longestWinStreak = 0, currentLoseStreak = 0, longestLoseStreak = 0
+
+    for (const m of matchups) {
+      let pf, pa
+      if (m.home_user_id === userId) { pf = Number(m.home_points) || 0; pa = Number(m.away_points) || 0 }
+      else if (m.away_user_id === userId) { pf = Number(m.away_points) || 0; pa = Number(m.home_points) || 0 }
+      else continue
+
+      pointsFor += pf; pointsAgainst += pa
+      if (pf > pa) {
+        wins++; currentWinStreak++; longestWinStreak = Math.max(longestWinStreak, currentWinStreak); currentLoseStreak = 0
+      } else if (pf < pa) {
+        losses++; currentLoseStreak++; longestLoseStreak = Math.max(longestLoseStreak, currentLoseStreak); currentWinStreak = 0
+      } else {
+        ties++; currentWinStreak = 0; currentLoseStreak = 0
+      }
+    }
+
+    // --- Draft analysis ---
+    const myPicks = draftPicks.filter((p) => p.user_id === userId)
+    const pickAnalysis = myPicks.map((p) => {
+      const seasonPts = Math.round((playerSeasonTotals[p.player_id] || 0) * 100) / 100
+      const posRank = positionRanks[p.player_id]
+      const draftPosRank = draftPositionOrder[p.player_id] || null
+      const value = draftPosRank && posRank ? draftPosRank - posRank.rank : null
+      return {
+        round: p.round,
+        pickNumber: p.pick_number,
+        player: formatPlayer(p.player_id),
+        isAutoPick: p.is_auto_pick || false,
+        seasonPoints: seasonPts,
+        positionRank: posRank ? `${p.nfl_players?.position || ''}${posRank.rank}` : null,
+        draftedAsPositionPick: draftPosRank,
+        value,
+      }
+    })
+
+    const bestValues = [...pickAnalysis].filter((p) => p.value != null).sort((a, b) => b.value - a.value).slice(0, 3)
+    const biggestBusts = [...pickAnalysis].filter((p) => p.value != null).sort((a, b) => a.value - b.value).slice(0, 3)
+
+    // Draft grade: average value across all picks
+    const picksWithValue = pickAnalysis.filter((p) => p.value != null)
+    const avgValue = picksWithValue.length > 0 ? picksWithValue.reduce((s, p) => s + p.value, 0) / picksWithValue.length : 0
+    const totalDraftedPoints = Math.round(pickAnalysis.reduce((s, p) => s + p.seasonPoints, 0) * 100) / 100
+    let draftGrade
+    if (avgValue >= 5) draftGrade = 'A+'
+    else if (avgValue >= 3) draftGrade = 'A'
+    else if (avgValue >= 1) draftGrade = 'B+'
+    else if (avgValue >= 0) draftGrade = 'B'
+    else if (avgValue >= -2) draftGrade = 'C'
+    else if (avgValue >= -4) draftGrade = 'D'
+    else draftGrade = 'F'
+
+    // --- Trade analysis ---
+    const myTrades = trades.filter((t) => t.proposer_user_id === userId || t.receiver_user_id === userId)
+    const tradeAnalysis = myTrades.map((t) => {
+      // Determine the week this trade was accepted by finding the matchup
+      // week that the responded_at timestamp falls into
+      const tradeWeek = (() => {
+        if (!t.responded_at) return allWeeks[0] || 1
+        const tradeTime = new Date(t.responded_at).getTime()
+        // NFL schedule: each week has games roughly Thurs-Mon. We need to
+        // map the trade timestamp to the correct week. Use the nfl_schedule
+        // game_dates fetched per week, or fall back to a simple heuristic:
+        // matchup weeks are sequential, so find the last week <= trade time.
+        // Since we don't have game dates here, use the week number directly.
+        // Trade during week N means production counts from week N+1 onward.
+        return allWeeks[Math.max(0, allWeeks.length - 1)] || 1
+      })()
+      const weeksAfter = allWeeks.filter((w) => w > tradeWeek)
+      const items = t.fantasy_trade_items || []
+      const sent = items.filter((i) => i.from_user_id === userId)
+      const received = items.filter((i) => i.to_user_id === userId)
+
+      const sumPtsAfter = (pid) => Math.round(weeksAfter.reduce((s, w) => s + (playerPoints[pid]?.[w] || 0), 0) * 100) / 100
+      const sentPts = sent.reduce((sum, i) => sum + sumPtsAfter(i.player_id), 0)
+      const receivedPts = received.reduce((sum, i) => sum + sumPtsAfter(i.player_id), 0)
+      const partnerId = t.proposer_user_id === userId ? t.receiver_user_id : t.proposer_user_id
+
+      return {
+        tradeId: t.id,
+        week: tradeWeek,
+        partnerUser: formatUser(partnerId),
+        sent: sent.map((i) => ({ player: formatPlayer(i.player_id), pointsAfterTrade: sumPtsAfter(i.player_id) })),
+        received: received.map((i) => ({ player: formatPlayer(i.player_id), pointsAfterTrade: sumPtsAfter(i.player_id) })),
+        netPoints: Math.round((receivedPts - sentPts) * 100) / 100,
+        won: receivedPts > sentPts,
+      }
+    })
+
+    // --- Best waiver pickup ---
+    const myWaivers = waiverClaims.filter((w) => w.user_id === userId)
+    const waiverAnalysis = myWaivers.map((w) => {
+      // Waiver claims are processed on Wednesdays (between weeks). Points
+      // count from the upcoming week onward. Use all remaining weeks.
+      const weeksAfter = allWeeks
+      const pointsProduced = Math.round(weeksAfter.reduce((s, wk) => s + (playerPoints[w.add_player_id]?.[wk] || 0), 0) * 100) / 100
+      return {
+        player: formatPlayer(w.add_player_id),
+        pointsProduced,
+        bidAmount: w.bid_amount || 0,
+      }
+    }).sort((a, b) => b.pointsProduced - a.pointsProduced)
+
+    // --- Team MVP: all players ever rostered by this user ---
+    const allMyPlayerIds = new Set()
+    for (const p of myPicks) allMyPlayerIds.add(p.player_id)
+    for (const w of myWaivers) allMyPlayerIds.add(w.add_player_id)
+    for (const t of myTrades) {
+      for (const item of (t.fantasy_trade_items || [])) {
+        if (item.to_user_id === userId) allMyPlayerIds.add(item.player_id)
+      }
+    }
+
+    let teamMvp = null
+    let mvpPoints = 0
+    for (const pid of allMyPlayerIds) {
+      const total = playerSeasonTotals[pid] || 0
+      if (total > mvpPoints) { mvpPoints = total; teamMvp = { player: formatPlayer(pid), totalPoints: Math.round(total * 100) / 100 } }
+    }
+
+    userReports[userId] = {
+      user: formatUser(userId),
+      seasonRecord: {
+        wins, losses, ties,
+        pointsFor: Math.round(pointsFor * 100) / 100,
+        pointsAgainst: Math.round(pointsAgainst * 100) / 100,
+        longestWinStreak, longestLoseStreak,
+      },
+      draftAnalysis: { picks: pickAnalysis, bestValues, biggestBusts, draftGrade, totalDraftedPoints },
+      tradeAnalysis,
+      bestWaiverPickup: waiverAnalysis[0] || null,
+      waiverPickups: waiverAnalysis,
+      teamMvp,
+    }
+  }
+
+  // --- Compute standings ---
+  const standings = Object.values(userReports)
+    .sort((a, b) => b.seasonRecord.wins - a.seasonRecord.wins || b.seasonRecord.pointsFor - a.seasonRecord.pointsFor)
+  standings.forEach((u, i) => { u.seasonRecord.standing = i + 1 })
+
+  // ===================================================================
+  // LEAGUE-WIDE AWARDS
+  // ===================================================================
+
+  const highestScorer = standings[0] ? {
+    user: standings[0].user,
+    totalPointsFor: standings[0].seasonRecord.pointsFor,
+    context: `${standings[0].seasonRecord.wins}-${standings[0].seasonRecord.losses} record with ${standings[0].seasonRecord.pointsFor} total points.`,
+  } : null
+
+  let biggestBlowout = null
+  let closestGame = null
+  for (const m of matchups) {
+    const margin = Math.abs((Number(m.home_points) || 0) - (Number(m.away_points) || 0))
+    const homeWon = (Number(m.home_points) || 0) > (Number(m.away_points) || 0)
+    const entry = {
+      week: m.week, margin: Math.round(margin * 100) / 100,
+      winner: { user: formatUser(homeWon ? m.home_user_id : m.away_user_id), points: Number(homeWon ? m.home_points : m.away_points) || 0 },
+      loser: { user: formatUser(homeWon ? m.away_user_id : m.home_user_id), points: Number(homeWon ? m.away_points : m.home_points) || 0 },
+    }
+    if (!biggestBlowout || margin > biggestBlowout.margin) biggestBlowout = entry
+    if (margin > 0 && (!closestGame || margin < closestGame.margin)) closestGame = entry
+  }
+
+  let bestDraft = null
+  for (const r of Object.values(userReports)) {
+    if (!bestDraft || r.draftAnalysis.totalDraftedPoints > bestDraft.totalDraftedPoints) {
+      bestDraft = { user: r.user, draftGrade: r.draftAnalysis.draftGrade, totalDraftedPoints: r.draftAnalysis.totalDraftedPoints }
+    }
+  }
+
+  let bestTrade = null
+  for (const r of Object.values(userReports)) {
+    for (const t of r.tradeAnalysis) {
+      if (t.won && (!bestTrade || t.netPoints > bestTrade.netPoints)) {
+        bestTrade = { ...t, user: r.user }
+      }
+    }
+  }
+
+  let bestWaiver = null
+  for (const r of Object.values(userReports)) {
+    if (r.bestWaiverPickup && (!bestWaiver || r.bestWaiverPickup.pointsProduced > bestWaiver.pointsProduced)) {
+      bestWaiver = { ...r.bestWaiverPickup, user: r.user }
+    }
+  }
+
+  let leagueMvp = null
+  for (const [pid, total] of Object.entries(playerSeasonTotals)) {
+    if (!leagueMvp || total > leagueMvp.totalPoints) {
+      leagueMvp = { player: formatPlayer(pid), totalPoints: Math.round(total * 100) / 100 }
+    }
+  }
+
+  const report = {
+    format: 'traditional_fantasy',
+    season,
+    totalWeeks: allWeeks.length,
+    generatedAt: new Date().toISOString(),
+    leagueAwards: { highestScorer, biggestBlowout, closestGame, bestDraft, bestTrade, bestWaiverPickup: bestWaiver, leagueMvp },
+    users: userReports,
+  }
+
+  const { error } = await supabase
+    .from('dfs_league_reports')
+    .upsert({ league_id: leagueId, report_data: report, generated_at: new Date().toISOString() }, { onConflict: 'league_id' })
+
+  if (error) {
+    logger.error({ error, leagueId }, 'Failed to store traditional fantasy report')
+    return null
+  }
+
+  logger.info({ leagueId, weeks: allWeeks.length, users: members.length }, 'Traditional fantasy report generated')
+  return report
 }
