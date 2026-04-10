@@ -1044,6 +1044,15 @@ export function useFantasyMatchupLive(leagueId, week, season) {
   })
 }
 
+export function useBlurbPlayerIds(leagueId) {
+  return useQuery({
+    queryKey: ['fantasy', leagueId, 'blurb-ids'],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/blurb-ids`),
+    enabled: !!leagueId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
 export function useFantasyTransactions(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'transactions'],

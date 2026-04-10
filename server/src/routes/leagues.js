@@ -1161,6 +1161,15 @@ router.get('/:id/fantasy/players', requireAuth, async (req, res) => {
   res.json(data)
 })
 
+// Get player IDs that have published blurbs (lightweight check for indicators)
+router.get('/:id/fantasy/blurb-ids', requireAuth, async (req, res) => {
+  const { data } = await supabase
+    .from('player_blurbs')
+    .select('player_id')
+    .eq('status', 'published')
+  res.json((data || []).map((r) => r.player_id))
+})
+
 // Set fantasy team name
 router.patch('/:id/fantasy/team-name', requireAuth, async (req, res) => {
   const { team_name } = req.body

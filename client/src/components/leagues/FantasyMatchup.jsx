@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { useFantasyMatchupLive, useFantasyMatchupWeek } from '../../hooks/useLeagues'
+import { useFantasyMatchupLive, useFantasyMatchupWeek, useBlurbPlayerIds } from '../../hooks/useLeagues'
 import Avatar from '../ui/Avatar'
 import { SkeletonCard } from '../ui/Skeleton'
 import PlayerDetailModal from './PlayerDetailModal'
 import LeagueReport from './LeagueReport'
+import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
 const SLOT_LABELS = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLX', k: 'K', def: 'DEF' }
 
@@ -20,7 +21,7 @@ function InjuryBadge({ status }) {
   return <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${colors[status] || 'bg-yellow-500/20 text-yellow-500'}`}>{status[0]}</span>
 }
 
-function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick }) {
+function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds }) {
   const isMyMatchup = matchup.home_user?.id === myId || matchup.away_user?.id === myId
   const isCompleted = matchup.status === 'completed' || weekStatus === 'past'
   const homeWinning = (matchup.home_points || 0) >= (matchup.away_points || 0)
@@ -121,6 +122,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
                     <span className="truncate text-text-primary">{hp?.player_name || '--'}</span>
                     {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
+                    {hp?.player_id && <BlurbDot playerId={hp.player_id} blurbIds={blurbIds} />}
                     {hp?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
                   </div>
                   <div className={`w-10 text-right font-semibold shrink-0 ${
@@ -146,6 +148,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     className="flex-1 flex items-center gap-1.5 justify-end min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
                     onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
                   >
+                    {ap?.player_id && <BlurbDot playerId={ap.player_id} blurbIds={blurbIds} />}
                     {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
                     {ap?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
                     <span className="truncate text-text-primary text-right">{ap?.player_name || '--'}</span>
@@ -184,6 +187,13 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const [viewWeek, setViewWeek] = useState(currentWeek)
   const [collapsedMatchup, setCollapsedMatchup] = useState(null)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
+  const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
+  const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
+
+  function openPlayerDetail(id) {
+    if (id) markBlurbSeen(id)
+    setDetailPlayerId(id)
+  }
   const [showReport, setShowReport] = useState(false)
 
   const isCurrent = viewWeek === currentWeek
@@ -315,7 +325,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
             weekStatus={weekStatus}
             isExpanded={collapsedMatchup !== matchup.id}
             onToggle={() => setCollapsedMatchup(collapsedMatchup === matchup.id ? null : matchup.id)}
-            onPlayerClick={setDetailPlayerId}
+            onPlayerClick={openPlayerDetail} blurbIds={blurbIds}
           />
         ))
       )}

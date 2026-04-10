@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   useAvailablePlayers, useFantasyRoster, useAddDropPlayer,
   useFantasySettings, useWaiverState, useMyWaiverClaims, useSubmitWaiverClaim, useCancelWaiverClaim,
+  useBlurbPlayerIds,
 } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import PlayerDetailModal from './PlayerDetailModal'
+import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 
@@ -52,6 +54,13 @@ export default function FantasyPlayerBrowser({ league }) {
   const [dropPlayerId, setDropPlayerId] = useState('') // chosen drop
   const [bidAmount, setBidAmount] = useState(0)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
+  const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
+  const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
+
+  function openPlayerDetail(id) {
+    if (id) markBlurbSeen(id)
+    setDetailPlayerId(id)
+  }
 
   const { data: players, isLoading } = useAvailablePlayers(
     league.id,
@@ -240,14 +249,15 @@ export default function FantasyPlayerBrowser({ league }) {
                   src={player.headshot_url}
                   alt=""
                   className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => setDetailPlayerId(player.id)}
+                  onClick={() => openPlayerDetail(player.id)}
                   onError={(e) => { e.target.style.display = 'none' }}
                 />
               )}
-              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailPlayerId(player.id)}>
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openPlayerDetail(player.id)}>
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
                   <InjuryBadge status={player.injury_status} />
+                  <BlurbDot playerId={player.id} blurbIds={blurbIds} />
                   {onWaivers && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers — must submit a claim">W</span>
                   )}

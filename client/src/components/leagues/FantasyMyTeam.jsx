@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
 import Avatar from '../ui/Avatar'
 import PlayerDetailModal from './PlayerDetailModal'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
+import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
 const INJURY_COLORS = {
   Out: 'bg-incorrect/20 text-incorrect',
@@ -39,7 +40,7 @@ function InjuryBadge({ status }) {
   )
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, onDrop }) {
+function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, onDrop, blurbIds }) {
   const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
   const isInIR = row?.slot === 'ir'
   return (
@@ -64,6 +65,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-semibold text-text-primary truncate">{row?.nfl_players?.full_name || 'Empty'}</span>
             <InjuryBadge status={row?.nfl_players?.injury_status} />
+            {blurbIds && <BlurbDot playerId={row?.player_id} blurbIds={blurbIds} />}
           </div>
           <div className="text-xs text-text-muted">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
@@ -125,6 +127,8 @@ export default function FantasyMyTeam({ league }) {
   const { profile } = useAuth()
   const { data: roster, isLoading } = useFantasyRoster(league.id)
   const { data: trades } = useFantasyTrades(league.id)
+  const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
+  const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
   const respond = useRespondToTrade(league.id)
   const setLineup = useSetFantasyLineup(league.id)
   const dropPlayer = useDropRosterPlayer(league.id)
@@ -134,6 +138,11 @@ export default function FantasyMyTeam({ league }) {
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
   const [expandedTradeId, setExpandedTradeId] = useState(null)
+
+  function openPlayerDetail(playerId) {
+    if (playerId) markBlurbSeen(playerId)
+    setDetailPlayerId(playerId)
+  }
 
   // Pending trades where I'm the receiver
   const incomingTrades = (trades || []).filter((t) => t.status === 'pending' && t.receiver_user_id === profile?.id)
@@ -431,8 +440,9 @@ export default function FantasyMyTeam({ league }) {
                       row={occupant}
                       isSelected={selected?.type === 'player' && selected.key === occupant.player_id}
                       onTap={() => handlePlayerTap(occupant.player_id)}
-                      onViewDetail={setDetailPlayerId}
+                      onViewDetail={openPlayerDetail}
                       onDrop={setConfirmDrop}
+                      blurbIds={blurbIds}
                     />
                   ) : (
                     <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} />
@@ -458,9 +468,10 @@ export default function FantasyMyTeam({ league }) {
                 row={r}
                 isSelected={selected?.type === 'player' && selected.key === r.player_id}
                 onTap={() => handlePlayerTap(r.player_id)}
-                onViewDetail={setDetailPlayerId}
+                onViewDetail={openPlayerDetail}
                 onMoveToIR={handleMoveToIR}
                 onDrop={setConfirmDrop}
+                blurbIds={blurbIds}
               />
             ))
           )}
@@ -479,9 +490,10 @@ export default function FantasyMyTeam({ league }) {
                 row={r}
                 isSelected={selected?.type === 'player' && selected.key === r.player_id}
                 onTap={() => handlePlayerTap(r.player_id)}
-                onViewDetail={setDetailPlayerId}
+                onViewDetail={openPlayerDetail}
                 onMoveOutOfIR={handleMoveOutOfIR}
                 onDrop={setConfirmDrop}
+                blurbIds={blurbIds}
               />
             ))}
           </div>

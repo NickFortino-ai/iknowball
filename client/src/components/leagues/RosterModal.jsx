@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { useFantasyUserRoster } from '../../hooks/useLeagues'
+import { useState, useMemo } from 'react'
+import { useFantasyUserRoster, useBlurbPlayerIds } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import UserProfileModal from '../profile/UserProfileModal'
 import PlayerDetailModal from './PlayerDetailModal'
 import { ProposeTradeModal } from './FantasyTrades'
+import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
 const INJURY_COLORS = {
   Out: 'bg-incorrect/20 text-incorrect',
@@ -47,7 +48,14 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
   const [showProfile, setShowProfile] = useState(false)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [tradePlayerId, setTradePlayerId] = useState(null)
+  const { data: blurbIdsList } = useBlurbPlayerIds(leagueId)
+  const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
   const isMe = userId === profile?.id
+
+  function openPlayerDetail(id) {
+    if (id) markBlurbSeen(id)
+    setDetailPlayerId(id)
+  }
 
   // Sort roster by slot order
   const sorted = [...(roster || [])].sort((a, b) => {
@@ -66,7 +74,7 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
     return (
       <div
         className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-text-primary/10 bg-bg-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
-        onClick={() => p.id && setDetailPlayerId(p.id)}
+        onClick={() => p.id && openPlayerDetail(p.id)}
       >
         <span className="text-[10px] font-semibold text-text-muted w-8 shrink-0 text-center bg-bg-secondary rounded px-1 py-0.5">
           {SLOT_LABELS[(row.slot || '').toLowerCase()] || row.slot}
@@ -77,7 +85,10 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
           <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" />
         )}
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-text-primary truncate">{p.full_name || 'Empty'}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-text-primary truncate">{p.full_name || 'Empty'}</span>
+            <BlurbDot playerId={p.id} blurbIds={blurbIds} />
+          </div>
           <div className="text-[10px] text-text-muted">{p.position} · {p.team || 'FA'}</div>
         </div>
         <InjuryBadge status={p.injury_status} />
