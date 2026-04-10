@@ -59,7 +59,7 @@ const ONBOARDING_STEPS = [
     page: '/hub?tab=all',
     targetSelector: null,
     title: 'Your Hub',
-    body: "Your home base. View your profile, manage your connections, and browse the activity feed. \"All of IKB\" shows what everyone across the platform is up to.",
+    body: "Your home base. View your profile, manage your connections, and browse the activity feed. Create posts, predictions, and polls to share with your squad. \"All of IKB\" shows what everyone across the platform is up to, plus a live ESPN news feed to stay on top of what\u2019s happening in sports.",
     position: 'center',
     freeScroll: true,
   },
