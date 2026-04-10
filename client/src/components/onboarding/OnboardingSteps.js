@@ -35,7 +35,7 @@ const ONBOARDING_STEPS = [
     page: '/leagues/create',
     targetSelector: null,
     title: 'Create Leagues',
-    body: "Commissioners love this app. Create Pick'em, Survivor, Squares, Brackets, Daily Fantasy (NBA & MLB), Fantasy Football, Home Run Derby, and more. Customize everything — scoring, duration, visibility — and invite your friends.",
+    body: "Commissioners love this app. Create Fantasy Football, Daily Fantasy (NBA & MLB), Survivor Pools, Brackets, Pick'em, Squares, and more. Customize everything — scoring, duration, visibility — and invite your friends.",
     position: 'center',
     freeScroll: true,
   },
