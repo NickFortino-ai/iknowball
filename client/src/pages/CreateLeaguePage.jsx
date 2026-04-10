@@ -1600,7 +1600,7 @@ export default function CreateLeaguePage() {
         {/* Backdrop picker — after all settings so format/mode influence available options */}
         {format && (
           <div>
-            <label className="block text-sm font-semibold text-text-secondary mb-2">League Backdrop</label>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">League Backdrop <span className="font-normal text-text-muted">(changeable at any time)</span></label>
             <div className="grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto scrollbar-hide rounded-lg">
               {/* Submit your own */}
               <div className="relative" style={{ paddingBottom: '56.25%' }}>

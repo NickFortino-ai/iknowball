@@ -223,7 +223,31 @@ export async function getFantasySettings(leagueId) {
 /**
  * Update fantasy settings (commissioner only, pre-draft).
  */
+// Fields that can only be changed before the draft completes
+const PRESEASON_ONLY_FIELDS = new Set([
+  'scoring_format', 'scoring_rules', 'roster_slots', 'waiver_type',
+  'faab_starting_budget', 'num_teams', 'playoff_teams',
+  'playoff_start_week', 'championship_week', 'format',
+])
+
+// Fields the commissioner can change during the season
+const SEASON_ALLOWED_FIELDS = new Set([
+  'trade_deadline', 'trade_review', 'current_week',
+])
+
 export async function updateFantasySettings(leagueId, updates) {
+  const current = await getFantasySettings(leagueId)
+  const draftDone = current?.draft_status === 'completed'
+
+  if (draftDone) {
+    const blocked = Object.keys(updates).filter((k) => PRESEASON_ONLY_FIELDS.has(k))
+    if (blocked.length) {
+      const err = new Error(`Cannot change ${blocked.join(', ')} after the draft has completed`)
+      err.status = 400
+      throw err
+    }
+  }
+
   const { data, error } = await supabase
     .from('fantasy_settings')
     .update(updates)
