@@ -29,17 +29,26 @@ export async function lockPicks() {
   for (const game of games) {
     const { data: picks } = await supabase
       .from('picks')
-      .select('id, picked_team, multiplier')
+      .select('id, picked_team, multiplier, odds_at_submission, risk_at_submission, reward_at_submission')
       .eq('game_id', game.id)
       .eq('status', 'pending')
 
     if (!picks?.length) continue
 
     for (const pick of picks) {
+      // Odds lock at pick time — use submission values. Fall back to current
+      // game odds only if submission odds are missing (legacy rows).
       const mult = pick.multiplier || 1
-      const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
-      const risk = odds ? calculateRiskPoints(odds) * mult : 0
-      const reward = odds ? calculateRewardPoints(odds) * mult : 0
+      let odds, risk, reward
+      if (pick.odds_at_submission != null) {
+        odds = pick.odds_at_submission
+        risk = pick.risk_at_submission || (calculateRiskPoints(odds) * mult)
+        reward = pick.reward_at_submission || (calculateRewardPoints(odds) * mult)
+      } else {
+        odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
+        risk = odds ? calculateRiskPoints(odds) * mult : 0
+        reward = odds ? calculateRewardPoints(odds) * mult : 0
+      }
 
       const { error } = await supabase
         .from('picks')
@@ -85,16 +94,23 @@ export async function lockPicks() {
   for (const game of games) {
     const { data: leaguePicks } = await supabase
       .from('league_picks')
-      .select('id, picked_team')
+      .select('id, picked_team, odds_at_submission, risk_at_submission, reward_at_submission')
       .eq('game_id', game.id)
       .eq('status', 'pending')
 
     if (!leaguePicks?.length) continue
 
     for (const pick of leaguePicks) {
-      const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
-      const risk = odds ? calculateRiskPoints(odds) : 0
-      const reward = odds ? calculateRewardPoints(odds) : 0
+      let odds, risk, reward
+      if (pick.odds_at_submission != null) {
+        odds = pick.odds_at_submission
+        risk = pick.risk_at_submission || (odds ? calculateRiskPoints(odds) : 0)
+        reward = pick.reward_at_submission || (odds ? calculateRewardPoints(odds) : 0)
+      } else {
+        odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
+        risk = odds ? calculateRiskPoints(odds) : 0
+        reward = odds ? calculateRewardPoints(odds) : 0
+      }
 
       const { error } = await supabase
         .from('league_picks')
@@ -140,16 +156,23 @@ export async function lockPicks() {
     for (const prop of props) {
       const { data: propPicks } = await supabase
         .from('prop_picks')
-        .select('id, picked_side')
+        .select('id, picked_side, odds_at_submission, risk_at_submission, reward_at_submission')
         .eq('prop_id', prop.id)
         .eq('status', 'pending')
 
       if (!propPicks?.length) continue
 
       for (const pick of propPicks) {
-        const odds = pick.picked_side === 'over' ? prop.over_odds : prop.under_odds
-        const risk = odds ? calculateRiskPoints(odds) : 0
-        const reward = odds ? calculateRewardPoints(odds) : 0
+        let odds, risk, reward
+        if (pick.odds_at_submission != null) {
+          odds = pick.odds_at_submission
+          risk = pick.risk_at_submission || (odds ? calculateRiskPoints(odds) : 0)
+          reward = pick.reward_at_submission || (odds ? calculateRewardPoints(odds) : 0)
+        } else {
+          odds = pick.picked_side === 'over' ? prop.over_odds : prop.under_odds
+          risk = odds ? calculateRiskPoints(odds) : 0
+          reward = odds ? calculateRewardPoints(odds) : 0
+        }
 
         const { error } = await supabase
           .from('prop_picks')
@@ -176,14 +199,17 @@ export async function lockPicks() {
   for (const game of games) {
     const { data: legs } = await supabase
       .from('parlay_legs')
-      .select('id, picked_team, parlay_id')
+      .select('id, picked_team, parlay_id, odds_at_submission')
       .eq('game_id', game.id)
       .eq('status', 'pending')
 
     if (!legs?.length) continue
 
     for (const leg of legs) {
-      const odds = leg.picked_team === 'home' ? game.home_odds : game.away_odds
+      // Use submission-time odds if available, fall back to current game odds
+      const odds = leg.odds_at_submission != null
+        ? leg.odds_at_submission
+        : (leg.picked_team === 'home' ? game.home_odds : game.away_odds)
       const multiplierAtLock = odds ? 1 + americanToMultiplier(odds) : 2
 
       const { error } = await supabase
