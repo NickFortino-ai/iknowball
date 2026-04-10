@@ -11,7 +11,7 @@ const ONBOARDING_STEPS = [
     page: '/picks',
     targetSelector: '[data-onboarding="game-card"]',
     title: 'Make Your Picks',
-    body: "There are three ways to play. Straight picks — tap a team to pick the winner. Parlays — combine multiple picks for a bigger payout (miss one and you lose it all). Player props — pick on individual performances like points, rebounds, or strikeouts. You can pick across any sport — NBA, MLB, NFL, NHL, and more.",
+    body: "There are three ways to make picks. Straight picks — tap a team to pick the winner. Parlays — combine multiple picks for a bigger payout (miss one and you lose it all). Player props — pick on individual performances like points, rebounds, or strikeouts. You can pick across any sport — NBA, MLB, NFL, NHL, and more.",
     position: 'top',
     freeScroll: true,
   },
