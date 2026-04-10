@@ -19,7 +19,7 @@ const sections = [
       },
       {
         q: 'What sports are available?',
-        a: 'NFL, NBA, NCAAB, NCAAF, WNBA, MLB, NHL, and MLS. Each sport has its own leaderboard filter so you can see who knows ball sport by sport.',
+        a: 'NFL, NBA, MLB, NHL, WNBA, MLS, NCAA Men\u2019s Basketball, NCAA Women\u2019s Basketball, NCAA Football, and Golf. You can also make futures predictions on major golf tournaments like the Masters. Each sport has its own leaderboard filter so you can see who knows ball sport by sport.',
       },
       {
         q: 'Why do you charge a subscription?',
