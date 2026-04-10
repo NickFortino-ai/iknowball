@@ -160,7 +160,9 @@ function TraditionalUserReport({ report, isMe }) {
         <Avatar user={user} size="lg" />
         <div className="min-w-0">
           <div className="font-display text-base text-text-primary truncate">{user.displayName}</div>
-          <div className="text-xs text-text-muted">@{user.username}</div>
+          {user.fantasyTeamName && (
+            <div className="text-xs italic uppercase tracking-wide text-text-secondary truncate">{user.fantasyTeamName}</div>
+          )}
         </div>
         {seasonRecord.standing && (
           <div className="ml-auto text-right">
@@ -452,6 +454,9 @@ function TraditionalLeagueAwards({ awards, champion }) {
             <Avatar user={champion.user} size="xl" />
           </div>
           <div className="font-display text-xl text-text-primary">{champion.user.displayName || champion.user.username}</div>
+          {champion.user.fantasyTeamName && (
+            <div className="text-sm italic uppercase tracking-wide text-text-secondary mt-0.5">{champion.user.fantasyTeamName}</div>
+          )}
           <div className="text-sm text-text-muted mt-1">
             {champion.seasonRecord.wins}-{champion.seasonRecord.losses} &middot; {champion.seasonRecord.pointsFor} pts
           </div>

@@ -926,6 +926,11 @@ export default function LeagueDetailPage() {
       } catch {}
     }
   }, [noteExpanded, league?.commissioner_note, league?.updated_at, id])
+
+  // Fantasy team name
+  const myMembership = league?.members?.find((m) => m.user_id === profile?.id)
+  const [showTeamNameModal, setShowTeamNameModal] = useState(false)
+  const [teamNameInput, setTeamNameInput] = useState('')
   const [noteText, setNoteText] = useState('')
   const noteRef = useRef(null)
   const [selectedUserId, setSelectedUserId] = useState(null)
@@ -1454,6 +1459,66 @@ export default function LeagueDetailPage() {
         </div>
       ) : null}
 
+
+      {/* Fantasy team name (traditional only) */}
+      {isTraditionalFantasy && profile && (
+        <div className="relative z-10 text-center mb-4">
+          <button
+            onClick={() => { setTeamNameInput(myMembership?.fantasy_team_name || ''); setShowTeamNameModal(true) }}
+            className="inline-flex items-center gap-1.5 group"
+          >
+            {myMembership?.fantasy_team_name ? (
+              <span className="font-display text-lg italic text-text-primary uppercase tracking-wide">
+                {myMembership.fantasy_team_name}
+              </span>
+            ) : (
+              <span className="text-sm text-text-muted">+ Set team name</span>
+            )}
+            <svg className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Team name settings modal */}
+      {showTeamNameModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={() => setShowTeamNameModal(false)}>
+          <div className="bg-bg-secondary rounded-2xl p-6 max-w-sm mx-4 w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg text-text-primary mb-4">Team Name</h3>
+            <input
+              type="text"
+              value={teamNameInput}
+              onChange={(e) => setTeamNameInput(e.target.value)}
+              placeholder="Enter your team name"
+              maxLength={30}
+              className="w-full px-3 py-2 rounded-lg bg-bg-card border border-text-primary/20 text-text-primary text-sm mb-4"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowTeamNameModal(false)}
+                className="px-4 py-2 rounded-lg text-sm text-text-muted hover:text-text-primary"
+              >Cancel</button>
+              <button
+                onClick={async () => {
+                  try {
+                    await api.patch(`/leagues/${id}/fantasy/team-name`, { team_name: teamNameInput })
+                    toast('Team name updated!', 'success')
+                    setShowTeamNameModal(false)
+                    // Refresh league data
+                    window.location.reload()
+                  } catch (err) {
+                    toast(err.message || 'Failed to update', 'error')
+                  }
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-white"
+              >Save</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (

@@ -552,7 +552,7 @@ async function generateTraditionalFantasyReport(leagueId) {
     waiverClaims,
   ] = await Promise.all([
     supabase.from('fantasy_settings').select('scoring_format, scoring_rules, season, championship_week, num_teams, draft_order').eq('league_id', leagueId).single(),
-    supabase.from('league_members').select('user_id, users(id, username, display_name, avatar_url, avatar_emoji)').eq('league_id', leagueId),
+    supabase.from('league_members').select('user_id, fantasy_team_name, users(id, username, display_name, avatar_url, avatar_emoji)').eq('league_id', leagueId),
     fetchAll(supabase.from('fantasy_matchups').select('*').eq('league_id', leagueId).eq('status', 'completed').order('week', { ascending: true })),
     fetchAll(supabase.from('fantasy_draft_picks').select('round, pick_number, user_id, player_id, is_auto_pick, nfl_players(id, full_name, position, headshot_url)').eq('league_id', leagueId).order('pick_number', { ascending: true })),
     supabase.from('fantasy_trades').select('id, proposer_user_id, receiver_user_id, status, responded_at, fantasy_trade_items(from_user_id, to_user_id, player_id, nfl_players(id, full_name, position, headshot_url))').eq('league_id', leagueId).eq('status', 'accepted'),
@@ -576,11 +576,15 @@ async function generateTraditionalFantasyReport(leagueId) {
 
   // User info map
   const userMap = {}
-  for (const m of members) userMap[m.user_id] = m.users
+  const teamNameMap = {}
+  for (const m of members) {
+    userMap[m.user_id] = m.users
+    teamNameMap[m.user_id] = m.fantasy_team_name || null
+  }
 
   function formatUser(userId) {
     const u = userMap[userId]
-    return u ? { id: userId, username: u.username, displayName: u.display_name || u.username, avatarUrl: u.avatar_url, avatarEmoji: u.avatar_emoji } : { id: userId }
+    return u ? { id: userId, username: u.username, displayName: u.display_name || u.username, avatarUrl: u.avatar_url, avatarEmoji: u.avatar_emoji, fantasyTeamName: teamNameMap[userId] || null } : { id: userId }
   }
 
   // --- Collect all player IDs we need stats for ---

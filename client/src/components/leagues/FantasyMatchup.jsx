@@ -47,7 +47,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 {matchup.home_user?.display_name || matchup.home_user?.username}
               </div>
               {matchup.home_user?.fantasy_team_name && (
-                <div className="text-[10px] text-text-muted italic truncate">{matchup.home_user.fantasy_team_name}</div>
+                <div className="text-[10px] text-text-muted italic uppercase tracking-wide truncate">{matchup.home_user.fantasy_team_name}</div>
               )}
               {matchup.home_user?.id === myId && !matchup.home_user?.fantasy_team_name && <div className="text-[9px] text-accent font-bold">YOU</div>}
             </div>
@@ -86,7 +86,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 {matchup.away_user?.display_name || matchup.away_user?.username}
               </div>
               {matchup.away_user?.fantasy_team_name && (
-                <div className="text-[10px] text-text-muted italic truncate">{matchup.away_user.fantasy_team_name}</div>
+                <div className="text-[10px] text-text-muted italic uppercase tracking-wide truncate">{matchup.away_user.fantasy_team_name}</div>
               )}
               {matchup.away_user?.id === myId && !matchup.away_user?.fantasy_team_name && <div className="text-[9px] text-accent font-bold">YOU</div>}
             </div>

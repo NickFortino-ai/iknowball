@@ -64,7 +64,7 @@ export default function FantasyStandings({ league }) {
                         {s.user?.display_name || s.user?.username}
                       </div>
                       {s.fantasyTeamName && (
-                        <div className="text-xs text-text-muted italic truncate">{s.fantasyTeamName}</div>
+                        <div className="text-xs text-text-muted italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
                       )}
                     </div>
                   </div>
