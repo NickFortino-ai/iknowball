@@ -189,7 +189,7 @@ export default function HomePage() {
       <div className="xl:-mx-24">
         <h2 className="font-display text-2xl text-center mb-8">
           Status Tiers
-          <InfoTooltip text="Your status is based on your lifetime point total across all picks and all sports. Every correct pick earns points. Every wrong pick costs points. Climb from Rookie to GOAT." />
+          <InfoTooltip text="Your status is based on your lifetime point total. Earn points by picking winners and winning leagues. Every wrong pick costs points. Climb from Rookie to GOAT." />
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
           {tiers.map((tier) => (
