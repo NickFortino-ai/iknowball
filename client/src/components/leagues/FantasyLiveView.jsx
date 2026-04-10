@@ -257,9 +257,13 @@ function MatchupLive({ league, week, season }) {
     return 0
   })
 
-  // My completed matchup result banner
+  // My completed matchup result banner — dismiss once seen
   const myMatchup = matchups.find((m) => m.status === 'completed' && (m.home_user?.id === profile?.id || m.away_user?.id === profile?.id))
-  const myResult = myMatchup ? (() => {
+  const [resultDismissed, setResultDismissed] = useState(() => {
+    if (!myMatchup) return false
+    return localStorage.getItem(`matchup-result-seen-${myMatchup.id}`) === '1'
+  })
+  const myResult = !resultDismissed && myMatchup ? (() => {
     const isHome = myMatchup.home_user?.id === profile?.id
     const myPts = isHome ? myMatchup.home_points : myMatchup.away_points
     const oppPts = isHome ? myMatchup.away_points : myMatchup.home_points
@@ -271,11 +275,15 @@ function MatchupLive({ league, week, season }) {
 
   return (
     <div className="space-y-4">
-      {/* Weekly matchup result banner */}
+      {/* Weekly matchup result banner — dismissible */}
       {myResult && (
-        <div className={`rounded-xl border p-4 text-center ${
+        <div className={`relative rounded-xl border p-4 text-center ${
           myResult.won ? 'border-correct/40 bg-correct/10' : myResult.tied ? 'border-accent/40 bg-accent/10' : 'border-incorrect/40 bg-incorrect/10'
         }`}>
+          <button
+            onClick={() => { localStorage.setItem(`matchup-result-seen-${myMatchup.id}`, '1'); setResultDismissed(true) }}
+            className="absolute top-2 right-2 text-text-muted hover:text-text-primary text-lg leading-none"
+          >&times;</button>
           <div className={`font-display text-lg ${myResult.won ? 'text-correct' : myResult.tied ? 'text-accent' : 'text-incorrect'}`}>
             {myResult.won ? 'Victory!' : myResult.tied ? 'Tie Game' : 'Defeat'}
           </div>
