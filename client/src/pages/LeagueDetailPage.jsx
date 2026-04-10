@@ -49,7 +49,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
       tabs = ['My Team', 'Players', 'Live', 'Matchups', 'Trades', memberOrStandings, 'Draft']
     } else {
       // Traditional: Matchups absorbs Live, no separate Live tab
-      tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Trades', 'Draft']
+      tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Draft']
     }
     if (!draftDone) tabs.splice(tabs.indexOf('Draft') + 1, 0, 'My Rankings')
     tabs.push('Thread')
@@ -1523,7 +1523,7 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
-      <div className="relative z-10 mb-6 flex justify-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="relative z-10 mb-6 flex md:justify-center gap-2 overflow-x-auto no-scrollbar scroll-smooth px-2 md:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
         {tabs.map((tab, i) => {
           const isLiveDisabled = tab === 'Live' && league.format === 'nba_dfs' && league.starts_at &&
             new Date(league.starts_at).toISOString().split('T')[0] > new Date().toLocaleDateString('en-CA')
@@ -1532,7 +1532,7 @@ export default function LeagueDetailPage() {
           <button
             key={tab}
             onClick={() => !isLiveDisabled && setActiveTab(i)}
-            className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors backdrop-blur-sm ${
+            className={`relative shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors backdrop-blur-sm whitespace-nowrap ${
               isLiveDisabled
                 ? 'bg-bg-primary/10 text-text-muted/40 cursor-not-allowed border border-text-primary/10'
                 : tab === 'Matchups' && matchupsLive && activeTab !== i
@@ -1658,7 +1658,7 @@ export default function LeagueDetailPage() {
         <div className="relative z-10"><FantasyLiveView league={league} fantasySettings={fantasySettings} /></div>
       )}
 
-      {tabs[activeTab] === 'Trades' && league.format === 'fantasy' && (
+      {(tabs[activeTab] === 'Trades' || tabs[activeTab] === 'Transactions') && league.format === 'fantasy' && (
         <div className="relative z-10"><FantasyTrades league={league} /></div>
       )}
 
