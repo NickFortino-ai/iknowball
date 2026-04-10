@@ -491,6 +491,116 @@ export async function makeOfflineDraftPick(leagueId, commissionerId, playerId) {
 }
 
 /**
+ * Start a draft in offline mode. Commissioner enters all picks manually
+ * after an in-person draft. No timers, no autopick.
+ */
+export async function startOfflineDraft(leagueId, commissionerId) {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id')
+    .eq('id', leagueId)
+    .single()
+  if (!league || league.commissioner_id !== commissionerId) {
+    const err = new Error('Only the commissioner can start an offline draft')
+    err.status = 403
+    throw err
+  }
+
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('draft_status')
+    .eq('league_id', leagueId)
+    .single()
+
+  if (settings?.draft_status !== 'pending') {
+    const err = new Error('Draft has already been started')
+    err.status = 400
+    throw err
+  }
+
+  // Verify pick slots exist
+  const { count } = await supabase
+    .from('fantasy_draft_picks')
+    .select('id', { count: 'exact', head: true })
+    .eq('league_id', leagueId)
+  if (!count) {
+    const err = new Error('Initialize draft order first')
+    err.status = 400
+    throw err
+  }
+
+  await supabase
+    .from('fantasy_settings')
+    .update({ draft_status: 'in_progress', draft_started_at: new Date().toISOString(), draft_mode: 'offline' })
+    .eq('league_id', leagueId)
+
+  return { status: 'in_progress', mode: 'offline' }
+}
+
+/**
+ * Commissioner undo: revert the most recent draft pick. Removes the player
+ * from the roster and clears the pick slot so it can be re-picked.
+ */
+export async function undoLastDraftPick(leagueId, commissionerId) {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id')
+    .eq('id', leagueId)
+    .single()
+  if (!league || league.commissioner_id !== commissionerId) {
+    const err = new Error('Only the commissioner can undo picks')
+    err.status = 403
+    throw err
+  }
+
+  // Find the most recent completed pick
+  const { data: lastPick } = await supabase
+    .from('fantasy_draft_picks')
+    .select('id, player_id, user_id, pick_number')
+    .eq('league_id', leagueId)
+    .not('player_id', 'is', null)
+    .order('pick_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!lastPick) {
+    const err = new Error('No picks to undo')
+    err.status = 400
+    throw err
+  }
+
+  // Remove player from roster
+  await supabase
+    .from('fantasy_rosters')
+    .delete()
+    .eq('league_id', leagueId)
+    .eq('user_id', lastPick.user_id)
+    .eq('player_id', lastPick.player_id)
+
+  // Clear the pick slot
+  await supabase
+    .from('fantasy_draft_picks')
+    .update({ player_id: null, picked_at: null, is_auto_pick: null })
+    .eq('id', lastPick.id)
+
+  // If draft was completed, revert to in_progress
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('draft_status')
+    .eq('league_id', leagueId)
+    .single()
+
+  if (settings?.draft_status === 'completed') {
+    await supabase
+      .from('fantasy_settings')
+      .update({ draft_status: 'in_progress' })
+      .eq('league_id', leagueId)
+  }
+
+  return { undone: lastPick }
+}
+
+/**
  * After the draft completes, fill every user's starting lineup with their
  * best available players (highest projected_pts_half_ppr per position),
  * with FLEX getting the best remaining RB/WR/TE.
@@ -1296,13 +1406,15 @@ export async function processScheduledDraftStarts() {
 export async function processDraftAutopicks() {
   const { data: liveDrafts } = await supabase
     .from('fantasy_settings')
-    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at')
+    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at, draft_mode')
     .eq('draft_status', 'in_progress')
 
   if (!liveDrafts?.length) return 0
 
   let autopicks = 0
   for (const d of liveDrafts) {
+    // Skip offline drafts — commissioner enters picks manually, no timer
+    if (d.draft_mode === 'offline') continue
     const timerSec = d.draft_pick_timer || 90
     try {
       // Next on-the-clock pick (earliest unfilled)

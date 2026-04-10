@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useMyRankings } from '../../hooks/useLeagues'
+import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings } from '../../hooks/useLeagues'
 import DraftPlayerPreview from './DraftPlayerPreview'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
@@ -74,9 +74,11 @@ export default function FantasyDraftRoom({ league }) {
   const { data: draftData, isLoading } = useDraftBoard(league.id)
   const makePick = useMakeDraftPick()
   const makeOfflinePick = useMakeOfflineDraftPick()
+  const undoPick = useUndoDraftPick()
   const [offlineMode, setOfflineMode] = useState(false)
   const initDraft = useInitDraft()
   const startDraft = useStartDraft()
+  const startOffline = useStartOfflineDraft()
   const { data: queue } = useDraftQueue(league.id)
   const setQueue = useSetDraftQueue()
   const pauseDraftMut = usePauseDraft()
@@ -129,6 +131,11 @@ export default function FantasyDraftRoom({ league }) {
   const settings = draftData?.settings
   const picks = draftData?.picks || []
   const draftStatus = settings?.draft_status || 'pending'
+
+  // Auto-enable offline mode when draft is in offline mode
+  useEffect(() => {
+    if (settings?.draft_mode === 'offline') setOfflineMode(true)
+  }, [settings?.draft_mode])
 
   // Current pick info
   const currentPick = useMemo(() => {
@@ -306,13 +313,30 @@ export default function FantasyDraftRoom({ league }) {
           </button>
         )}
         {isCommissioner && hasPickSlots && (
-          <button
-            onClick={handleStartDraft}
-            disabled={startDraft.isPending}
-            className="px-6 py-2 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
-          >
-            {startDraft.isPending ? 'Starting...' : 'Start Draft'}
-          </button>
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={handleStartDraft}
+              disabled={startDraft.isPending}
+              className="px-6 py-2 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
+            >
+              {startDraft.isPending ? 'Starting...' : 'Start Live Draft'}
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await startOffline.mutateAsync(league.id)
+                  toast('Offline draft started — enter your results', 'success')
+                } catch (err) {
+                  toast(err.message || 'Failed to start offline draft', 'error')
+                }
+              }}
+              disabled={startOffline.isPending}
+              className="px-6 py-2 rounded-xl text-sm font-semibold bg-bg-card text-text-secondary border border-text-primary/20 hover:bg-bg-secondary transition-colors disabled:opacity-50"
+            >
+              {startOffline.isPending ? 'Starting...' : 'Enter Draft Results'}
+            </button>
+            <p className="text-[10px] text-text-muted max-w-xs">Already drafted in person? Use "Enter Draft Results" to record picks without timers.</p>
+          </div>
         )}
         {hasPickSlots && (
           <div className="mt-4 text-left max-w-sm mx-auto">
@@ -365,6 +389,137 @@ export default function FantasyDraftRoom({ league }) {
         settings={settings}
         profileId={profile?.id}
       />
+    )
+  }
+
+  // Offline draft entry — clean commissioner-only UI
+  if (settings?.draft_mode === 'offline') {
+    const totalPicks = picks.length
+    const filledPicks = completedPicks.length
+    const progressPct = totalPicks > 0 ? Math.round((filledPicks / totalPicks) * 100) : 0
+    const numTeams = settings?.num_teams || 10
+
+    return (
+      <div className="space-y-4">
+        {/* Progress header */}
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs uppercase tracking-wider text-text-muted">Entering Draft Results</div>
+            <div className="text-xs text-text-muted">{filledPicks} / {totalPicks} picks</div>
+          </div>
+          <div className="w-full h-2 bg-bg-secondary rounded-full overflow-hidden">
+            <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+
+        {/* Current pick info */}
+        {currentPick && (
+          <div className="rounded-xl border border-accent/40 bg-accent/5 p-4 text-center">
+            <div className="font-display text-lg text-text-primary">
+              Round {currentPick.round} · Pick {((currentPick.pick_number - 1) % numTeams) + 1}
+            </div>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              {currentPick.users && <Avatar user={currentPick.users} size="sm" />}
+              <span className="text-sm font-semibold text-accent">
+                {currentPick.users?.display_name || currentPick.users?.username || 'Unknown'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Undo button */}
+        {filledPicks > 0 && (
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-text-muted">
+              Last pick: <span className="text-text-primary font-semibold">{completedPicks[completedPicks.length - 1]?.nfl_players?.full_name}</span>
+              {' '}to {completedPicks[completedPicks.length - 1]?.users?.display_name || completedPicks[completedPicks.length - 1]?.users?.username}
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await undoPick.mutateAsync(league.id)
+                  toast('Pick undone', 'success')
+                } catch (err) {
+                  toast(err.message || 'Failed to undo', 'error')
+                }
+              }}
+              disabled={undoPick.isPending}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-incorrect border border-incorrect/30 hover:bg-incorrect/10 transition-colors disabled:opacity-50"
+            >
+              {undoPick.isPending ? 'Undoing...' : 'Undo'}
+            </button>
+          </div>
+        )}
+
+        {/* Player search + filter */}
+        {currentPick && (
+          <>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Search players..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg bg-bg-primary border border-text-primary/20 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {POSITION_FILTERS.map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => setPosFilter(pos)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                    posFilter === pos ? 'bg-accent text-white' : 'bg-bg-card text-text-muted border border-text-primary/10 hover:bg-bg-secondary'
+                  }`}
+                >
+                  {pos}
+                </button>
+              ))}
+            </div>
+
+            {/* Player list */}
+            <div className="rounded-xl border border-text-primary/20 overflow-hidden max-h-[50vh] overflow-y-auto">
+              {(availablePlayers || []).map((player) => (
+                <div
+                  key={player.id}
+                  className="flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-0 hover:bg-accent/10 transition-colors"
+                >
+                  {player.headshot_url ? (
+                    <img src={player.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
+                    <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                  </div>
+                  <InjuryBadge status={player.injury_status} />
+                  <button
+                    onClick={() => handlePick(player.id)}
+                    disabled={makeOfflinePick.isPending}
+                    className="shrink-0 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-95 transition disabled:opacity-50"
+                  >
+                    Draft
+                  </button>
+                </div>
+              ))}
+              {(!availablePlayers || availablePlayers.length === 0) && (
+                <div className="text-center text-sm text-text-muted py-8">No players found</div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Recent picks log (collapsed) */}
+        {filledPicks > 0 && (
+          <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+            <div className="p-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-text-primary">Draft Log ({filledPicks} picks)</h3>
+            </div>
+            <DraftLogList completedPicks={completedPicks} numTeams={numTeams} profileId={profile?.id} listRef={pickListRef} />
+          </div>
+        )}
+      </div>
     )
   }
 

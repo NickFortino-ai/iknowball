@@ -861,6 +861,8 @@ import {
   startDraft,
   makeDraftPick,
   makeOfflineDraftPick,
+  startOfflineDraft,
+  undoLastDraftPick,
   getDraftBoard,
   getDraftQueue,
   setDraftQueue,
@@ -1062,6 +1064,18 @@ router.post('/:id/fantasy/draft/offline-pick', requireAuth, async (req, res) => 
   const { playerId } = req.body
   if (!playerId) return res.status(400).json({ error: 'playerId is required' })
   const result = await makeOfflineDraftPick(req.params.id, req.user.id, playerId)
+  res.json(result)
+})
+
+// Start draft in offline mode (commissioner enters results after in-person draft)
+router.post('/:id/fantasy/draft/start-offline', requireAuth, async (req, res) => {
+  const result = await startOfflineDraft(req.params.id, req.user.id)
+  res.json(result)
+})
+
+// Undo last draft pick (commissioner only)
+router.post('/:id/fantasy/draft/undo', requireAuth, async (req, res) => {
+  const result = await undoLastDraftPick(req.params.id, req.user.id)
   res.json(result)
 })
 

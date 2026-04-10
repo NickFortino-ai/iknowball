@@ -777,6 +777,26 @@ export function useMakeOfflineDraftPick() {
   })
 }
 
+export function useStartOfflineDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/fantasy/draft/start-offline`),
+    onSuccess: (_data, leagueId) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}
+
+export function useUndoDraftPick() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/fantasy/draft/undo`),
+    onSuccess: (_data, leagueId) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}
+
 export function usePauseDraft() {
   const queryClient = useQueryClient()
   return useMutation({
