@@ -143,6 +143,21 @@ router.get('/live', async (req, res) => {
     }
   }
 
+  // Weekly projections from Sleeper — prefer over season averages for matchup context
+  const projCol = { ppr: 'pts_ppr', half_ppr: 'pts_half_ppr', standard: 'pts_std' }[settings?.scoring_format] || 'pts_half_ppr'
+  const weeklyProjMap = {}
+  if (allPlayerIds.length) {
+    const { data: projRows } = await supabase
+      .from('nfl_player_projections')
+      .select(`player_id, ${projCol}`)
+      .eq('season', s)
+      .eq('week', w)
+      .in('player_id', [...new Set(allPlayerIds)])
+    for (const p of projRows || []) {
+      if (p[projCol] != null) weeklyProjMap[p.player_id] = Number(p[projCol])
+    }
+  }
+
   // Fetch NFL game statuses for this week from ESPN
   let gameStatuses = {} // team abbreviation → 'pre' | 'in' | 'post'
   let gameScores = {} // team abbreviation → { homeAbbrev, awayAbbrev, homeScore, awayScore, period, clock }
@@ -204,12 +219,13 @@ router.get('/live', async (req, res) => {
         salary: visible ? slot.salary : null,
         points_earned: status === 'live' || status === 'final' ? applyScoringRules(stat, leagueRules) : 0,
         projected: (() => {
-          const seasonAvg = seasonAvgMap[slot.player_id] || 0
+          const weeklyProj = weeklyProjMap[slot.player_id]
+          const proj = weeklyProj != null ? weeklyProj : (seasonAvgMap[slot.player_id] || 0)
           const currentPts = status === 'live' || status === 'final' ? applyScoringRules(stat, leagueRules) : 0
           if (status === 'final') return Math.round(currentPts * 10) / 10
           const period = gs.period ? Math.min(parseInt(gs.period, 10), 4) : 0
           const progress = status === 'live' ? Math.min(0.25 * period + 0.05, 1) : 0
-          return Math.round((currentPts + seasonAvg * (1 - progress)) * 10) / 10
+          return Math.round((currentPts + proj * (1 - progress)) * 10) / 10
         })(),
         game_status: status,
         game_period: gs.period || null,
@@ -360,6 +376,21 @@ router.get('/matchup-live', async (req, res) => {
     }
   }
 
+  // Weekly projections from Sleeper — prefer over season averages
+  const projColH2H = { ppr: 'pts_ppr', half_ppr: 'pts_half_ppr', standard: 'pts_std' }[settings?.scoring_format] || 'pts_half_ppr'
+  const weeklyProjMap = {}
+  if (allPlayerIds.length) {
+    const { data: projRows } = await supabase
+      .from('nfl_player_projections')
+      .select(`player_id, ${projColH2H}`)
+      .eq('season', s)
+      .eq('week', w)
+      .in('player_id', [...new Set(allPlayerIds)])
+    for (const p of projRows || []) {
+      if (p[projColH2H] != null) weeklyProjMap[p.player_id] = Number(p[projColH2H])
+    }
+  }
+
   // Estimate game progress fraction (NFL: 4 quarters, 60 min)
   function gameProgressFraction(teamState, period) {
     if (teamState === 'post') return 1
@@ -386,11 +417,13 @@ router.get('/matchup-live', async (req, res) => {
     const status = teamState === 'in' ? 'live' : teamState === 'post' ? 'final' : 'upcoming'
     const stat = statsMap[r.player_id] || null
     const pts = applyRulesH2H(stat, leagueRules)
-    const seasonAvg = seasonAvgMap[r.player_id] || 0
+    // Prefer weekly projection over season average
+    const weeklyProj = weeklyProjMap[r.player_id]
+    const proj = weeklyProj != null ? weeklyProj : (seasonAvgMap[r.player_id] || 0)
 
-    // Projected points: actual so far + remaining fraction * season avg
+    // Projected points: actual so far + remaining fraction * projection
     const progress = gameProgressFraction(teamState, gameScores[team]?.period)
-    const projected = status === 'final' ? pts : pts + seasonAvg * (1 - progress)
+    const projected = status === 'final' ? pts : pts + proj * (1 - progress)
 
     userRosters[r.user_id].push({
       slot: r.slot,
