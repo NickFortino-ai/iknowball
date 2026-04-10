@@ -392,7 +392,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
             View League Report
           </button>
         )}
-        {showReport && <LeagueReport leagueId={league.id} onClose={() => setShowReport(false)} />}
+        {showReport && <LeagueReport leagueId={league.id} leagueName={league.name} memberCount={league.member_count} onClose={() => setShowReport(false)} />}
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (

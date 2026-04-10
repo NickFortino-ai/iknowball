@@ -94,7 +94,7 @@ function SalaryCapLive({ league, week, season }) {
           View League Report
         </button>
       )}
-      {showReport && <LeagueReport leagueId={league.id} onClose={() => setShowReport(false)} />}
+      {showReport && <LeagueReport leagueId={league.id} leagueName={league.name} memberCount={league.member_count} onClose={() => setShowReport(false)} />}
       {members.map((m, idx) => {
         const isMe = m.user_id === profile?.id
         const isWinner = all_final && idx === 0
