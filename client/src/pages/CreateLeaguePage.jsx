@@ -901,7 +901,7 @@ export default function CreateLeaguePage() {
               <label className="text-xs text-text-muted block mb-1">Draft Type</label>
               <div className="flex gap-2">
                 {[
-                  { value: 'live', label: 'Live Draft' },
+                  { value: 'live', label: 'Online Draft' },
                   { value: 'offline', label: 'Offline Draft' },
                 ].map((opt) => (
                   <button
