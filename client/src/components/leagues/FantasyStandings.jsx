@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import Avatar from '../ui/Avatar'
-import UserProfileModal from '../profile/UserProfileModal'
+import RosterModal from './RosterModal'
 import { useFantasyStandings } from '../../hooks/useLeagues'
 
 export default function FantasyStandings({ league }) {
-  const [selectedUserId, setSelectedUserId] = useState(null)
+  const [selectedUser, setSelectedUser] = useState(null)
   const { data: serverStandings } = useFantasyStandings(league.id)
 
   const standings = (serverStandings && serverStandings.length)
@@ -50,7 +50,7 @@ export default function FantasyStandings({ league }) {
             {standings.map((s) => (
               <tr
                 key={s.userId}
-                onClick={() => setSelectedUserId(s.userId)}
+                onClick={() => setSelectedUser(s)}
                 className="border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer"
               >
                 <td className="py-3.5 px-2 text-center">
@@ -87,8 +87,14 @@ export default function FantasyStandings({ league }) {
           <div className="text-center py-8 text-text-muted text-sm">No members yet</div>
         )}
       </div>
-      {selectedUserId && (
-        <UserProfileModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
+      {selectedUser && (
+        <RosterModal
+          leagueId={league.id}
+          userId={selectedUser.userId}
+          user={selectedUser.user}
+          fantasyTeamName={selectedUser.fantasyTeamName}
+          onClose={() => setSelectedUser(null)}
+        />
       )}
     </div>
   )

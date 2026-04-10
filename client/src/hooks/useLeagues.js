@@ -1044,6 +1044,14 @@ export function useFantasyMatchupLive(leagueId, week, season) {
   })
 }
 
+export function useFantasyUserRoster(leagueId, userId) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'roster', userId],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/roster/${userId}`),
+    enabled: !!leagueId && !!userId,
+  })
+}
+
 export function useFantasyMatchupWeek(leagueId, week, season, currentWeek) {
   return useQuery({
     queryKey: ['fantasy', leagueId, 'matchup-week', week, season],
