@@ -66,8 +66,8 @@ const ONBOARDING_STEPS = [
   {
     page: null,
     targetSelector: '[data-onboarding="hamburger-menu"]',
-    title: 'Explore the Menu',
-    body: 'Access your settings, FAQ, Hall of Fame, and more from the menu.',
+    title: 'The Menu',
+    body: 'This is where you\u2019ll find the Hall of Fame & Record Book, FAQ, Share IKB with friends, account switching, and settings.',
     position: 'bottom',
   },
   {
