@@ -262,6 +262,7 @@ export default function CreateLeaguePage() {
   const [draftMode, setDraftMode] = useState('live') // 'live' or 'offline'
   const [draftPickTimer, setDraftPickTimer] = useState(90)
   const [draftDate, setDraftDate] = useState('') // datetime-local string in user's local TZ
+  const [draftLocation, setDraftLocation] = useState('')
   const [irSpots, setIrSpots] = useState(1)
   const [waiverType, setWaiverType] = useState('priority')
   const [faabStartingBudget, setFaabStartingBudget] = useState(100)
@@ -335,11 +336,12 @@ export default function CreateLeaguePage() {
       num_teams: numTeams,
       draft_mode: format === 'fantasy' && fantasyFormat === 'traditional' ? draftMode : undefined,
       draft_pick_timer: format === 'fantasy' && fantasyFormat === 'traditional' && draftMode === 'live' ? draftPickTimer : undefined,
+      draft_location: format === 'fantasy' && fantasyFormat === 'traditional' && draftLocation ? draftLocation : undefined,
       // datetime-local returns a naive string in the user's local timezone.
       // new Date() interprets it as local time and .toISOString() converts to
       // UTC for storage. Every other member's browser converts it back to
       // their own local timezone on display.
-      draft_date: format === 'fantasy' && fantasyFormat === 'traditional' && draftMode === 'live' && draftDate
+      draft_date: format === 'fantasy' && fantasyFormat === 'traditional' && draftDate
         ? new Date(draftDate).toISOString()
         : undefined,
       roster_slots: format === 'fantasy' && fantasyFormat === 'traditional'
@@ -922,7 +924,7 @@ export default function CreateLeaguePage() {
                   : 'Draft in person, then the commissioner enters the results. No timers or auto-pick.'}
               </p>
             </div>
-            {draftMode === 'live' && <>
+            {draftMode === 'live' && (
             <div>
               <label className="text-xs text-text-muted block mb-1">Draft Pick Timer</label>
               <div className="flex gap-2">
@@ -944,6 +946,7 @@ export default function CreateLeaguePage() {
                 ))}
               </div>
             </div>
+            )}
             <div>
               <label className="text-xs text-text-muted block mb-1">Draft Date & Time</label>
               <input
@@ -952,9 +955,24 @@ export default function CreateLeaguePage() {
                 onChange={(e) => setDraftDate(e.target.value)}
                 className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
               />
-              <p className="text-[10px] text-text-muted mt-1">Pick the moment you want the draft to start. Every member sees this in their own local timezone. Leave blank to start the draft manually.</p>
+              <p className="text-[10px] text-text-muted mt-1">
+                {draftMode === 'live'
+                  ? 'Pick the moment you want the draft to start. Every member sees this in their own local timezone. Leave blank to start the draft manually.'
+                  : 'When is the in-person draft? This is displayed to your league members.'}
+              </p>
             </div>
-            </>}
+            {draftMode === 'offline' && (
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Draft Location (optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. Mike's house, Buffalo Wild Wings"
+                value={draftLocation}
+                onChange={(e) => setDraftLocation(e.target.value)}
+                className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            )}
             <div>
               <label className="text-xs text-text-muted block mb-1">IR Spots</label>
               <div className="flex gap-2">

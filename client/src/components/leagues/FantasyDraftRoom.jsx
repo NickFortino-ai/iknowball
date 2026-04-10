@@ -294,15 +294,29 @@ export default function FantasyDraftRoom({ league }) {
     return (
       <div className="text-center py-8">
         <div className="text-4xl mb-3">{'\uD83C\uDFC8'}</div>
-        <h3 className="font-display text-lg text-text-primary mb-2">Draft Room</h3>
+        <h3 className="font-display text-lg text-text-primary mb-2">
+          {settings?.draft_mode === 'offline' ? 'Offline Draft' : 'Draft Room'}
+        </h3>
         <p className="text-sm text-text-secondary mb-4">
           {hasPickSlots
             ? `Draft order is set. ${league.members?.length || 0} teams, ${picks.length} total picks.`
             : `${league.members?.length || 0} teams joined. The commissioner needs to set the draft order.`}
         </p>
-        {draftDateValid && (
-          <DraftCountdown date={draftDate} />
+        {settings?.draft_location && (
+          <div className="mb-3 text-sm text-text-secondary">
+            <span className="text-text-muted">Location:</span> <span className="font-semibold text-text-primary">{settings.draft_location}</span>
+          </div>
         )}
+        {draftDateValid && settings?.draft_mode === 'offline' ? (
+          <div className="mb-4 px-4 py-3 rounded-xl border border-accent/40 bg-accent/10 inline-block">
+            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Draft date</div>
+            <div className="text-sm text-text-primary font-semibold">
+              {draftDate.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+            </div>
+          </div>
+        ) : draftDateValid ? (
+          <DraftCountdown date={draftDate} />
+        ) : null}
         {isCommissioner && !hasPickSlots && (
           <button
             onClick={handleInitDraft}
