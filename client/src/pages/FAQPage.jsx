@@ -231,7 +231,7 @@ function FAQItem({ q, a }) {
 
 export default function FAQPage() {
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12 pb-32">
+    <div className="max-w-2xl lg:max-w-4xl mx-auto px-4 py-8 sm:py-12 pb-32">
       <h1 className="font-display text-3xl text-center mb-2">FAQ</h1>
       <p className="text-text-muted text-center mb-6">Everything you need to know about I KNOW BALL</p>
 
