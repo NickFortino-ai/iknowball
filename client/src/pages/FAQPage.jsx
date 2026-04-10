@@ -83,7 +83,7 @@ The multiplier is only available on straight picks in the global competition. It
       },
       {
         q: 'What are player props?',
-        a: 'Props let you predict individual player performances instead of game outcomes. Things like \u201cWill Anthony Edwards score over 27.5 points?\u201d or \u201cWill Gerrit Cole record over 6.5 strikeouts?\u201d Props test deeper sports knowledge beyond just picking winners. I KNOW BALL features one player prop per day. Tapping a player\u2019s name shows their recent game log and season averages.',
+        a: 'Props let you predict individual player performances instead of game outcomes. Things like \u201cWill Anthony Edwards score over 27.5 points?\u201d or \u201cWill Gerrit Cole record over 6.5 strikeouts?\u201d Props test deeper sports knowledge beyond just picking winners. I KNOW BALL features multiple player props daily. Tapping a player\u2019s name shows their recent game log and season averages.',
       },
       {
         q: 'What are futures?',
@@ -107,7 +107,7 @@ The multiplier is only available on straight picks in the global competition. It
 \u2022 <strong class="text-white">Touchdown Survivor Pool:</strong> NFL-only survivor variant. Each week, pick one player you think will score a touchdown. If they score, you survive; if not, you lose a life. Each player can only be used once all season.
 \u2022 <strong class="text-white">Brackets:</strong> Tournament-style bracket competitions where you fill out a bracket and earn points for each correct pick. Finishing position determines your global score impact.
 \u2022 <strong class="text-white">Squares:</strong> Classic grid game for a specific matchup. Random numbers assigned, winners based on score at the end of each quarter.
-\u2022 <strong class="text-white">Fantasy Football:</strong> Two flavors \u2014 Traditional season-long with a snake draft, head-to-head matchups, waivers, and trades; or Weekly Salary Cap where you build a fresh lineup each week under a budget and compete for the best total.
+\u2022 <strong class="text-white">Fantasy Football:</strong> Two formats \u2014 Traditional season-long with a snake draft, head-to-head matchups, live scoring, weekly projections, waivers, trades, transactions log, team names, player notes, and a full end-of-season league report; or Weekly Salary Cap where you build a fresh lineup each week under a budget and compete for the best total.
 \u2022 <strong class="text-white">TD Pass Competition:</strong> Season-long NFL league where you pick one QB per week. You can never re-pick the same QB. Standings rank by total accumulated passing TDs across all your picks \u2014 most TDs by season\u2019s end wins.
 \u2022 <strong class="text-white">NBA Daily Fantasy:</strong> Build a nightly NBA lineup under a salary cap (9 positions) and compete for the highest score.
 \u2022 <strong class="text-white">MLB Daily Fantasy:</strong> Build a daily MLB lineup under a salary cap (C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) scored on hits, HRs, RBIs, runs, stolen bases, and more.
@@ -124,12 +124,27 @@ The multiplier is only available on straight picks in the global competition. It
 \u2022 <strong class="text-white">Squares:</strong> Does not affect global score.`,
       },
       {
+        q: 'What makes IKB Fantasy Football different?',
+        a: `IKB Traditional Fantasy Football is built from the ground up to be the most visually immersive fantasy experience available. Here\u2019s what you get:
+
+\u2022 <strong class="text-white">Snake Draft:</strong> Live draft with real-time picks, auto-draft for absent managers, and customizable draft order.
+\u2022 <strong class="text-white">Matchups:</strong> Weekly head-to-head matchups with live scoring, projected points, and win probability \u2014 all updating in real time as games play out.
+\u2022 <strong class="text-white">Waivers & Free Agency:</strong> Weekly waiver claims clear Wednesday at 3 AM ET. Dropped players hit waivers for 24 hours before becoming free agents. Priority goes to the team with the worst record.
+\u2022 <strong class="text-white">Trades:</strong> Propose trades directly from any opponent\u2019s roster. Tap the trade icon next to a player you want and build the deal.
+\u2022 <strong class="text-white">Team Names:</strong> Set a custom team name that appears across matchups, standings, and league reports.
+\u2022 <strong class="text-white">Transactions Log:</strong> Full chronological history of every add, drop, waiver claim, and trade in your league.
+\u2022 <strong class="text-white">Player Notes:</strong> AI-generated analysis for top players at every position, updated by the IKB team.
+\u2022 <strong class="text-white">Weekly Projections:</strong> Per-player projected points synced weekly for matchup previews and lineup decisions.
+\u2022 <strong class="text-white">League Report:</strong> End-of-season report with draft grades, trade analysis, waiver analysis, team MVP, and league-wide awards including champion recognition.
+\u2022 <strong class="text-white">Stadium Backdrops:</strong> Every league gets a real NFL stadium backdrop for an immersive feel.`,
+      },
+      {
         q: 'How do I invite friends to a league?',
         a: 'From your league page, use the link icon to copy an invite link, the share icon to share via your device\u2019s share sheet, or the invite icon to search and invite by username or email. When someone clicks the link, they\u2019ll be prompted to sign up and land directly in your league.',
       },
       {
         q: 'Can I choose a backdrop for my league?',
-        a: 'Yes. When creating a league, you can select a stadium backdrop image that appears on your league page, league card, and join card. NBA leagues see NBA arenas, NFL leagues see NFL stadiums, and MLB leagues see MLB ballparks.',
+        a: 'Yes. When creating a league, you can select a stadium backdrop image that appears on your league page, league card, and join card. Commissioners can change the backdrop at any time from league settings. NBA leagues see NBA arenas, NFL leagues see NFL stadiums, and MLB leagues see MLB ballparks.',
       },
       {
         q: 'What is the trophy case?',
