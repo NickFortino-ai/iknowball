@@ -1080,6 +1080,11 @@ router.get('/:id/fantasy/standings', requireAuth, async (req, res) => {
 // Draft-context player detail (separate from in-season player detail)
 router.get('/:id/fantasy/draft-player-detail/:playerId', requireAuth, async (req, res) => {
   const data = await getDraftPlayerDetail(req.params.playerId, { leagueId: req.params.id })
+  try {
+    const { getPublishedBlurb } = await import('../services/playerBlurbService.js')
+    const blurb = await getPublishedBlurb(req.params.playerId)
+    if (blurb) data.blurb = blurb
+  } catch {}
   res.json(data)
 })
 
@@ -1137,6 +1142,12 @@ router.get('/:id/fantasy/roster/:userId', requireAuth, async (req, res) => {
 router.get('/:id/fantasy/players/:playerId/detail', requireAuth, async (req, res) => {
   try {
     const data = await getPlayerDetail(req.params.id, req.params.playerId)
+    // Attach published blurb if available
+    try {
+      const { getPublishedBlurb } = await import('../services/playerBlurbService.js')
+      const blurb = await getPublishedBlurb(req.params.playerId)
+      if (blurb) data.blurb = blurb
+    } catch {}
     res.json(data)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

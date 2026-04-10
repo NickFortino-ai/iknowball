@@ -205,6 +205,14 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose }) {
               )}
             </div>
 
+            {/* Player Notes (published blurb) */}
+            {data.blurb && (
+              <div className="rounded-xl border border-text-primary/20 bg-bg-card/50 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1.5">Player Notes</div>
+                <p className="text-sm text-text-secondary leading-relaxed">{data.blurb.content}</p>
+              </div>
+            )}
+
             {/* Injury update */}
             {data.injury_detail && (
               <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3">

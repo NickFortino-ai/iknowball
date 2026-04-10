@@ -10,6 +10,7 @@ import ReportsPanel from '../components/admin/ReportsPanel'
 import ModerationPanel from '../components/admin/ModerationPanel'
 import PlayerPositionPanel from '../components/admin/PlayerPositionPanel'
 import BackdropSubmissionsPanel from '../components/admin/BackdropSubmissionsPanel'
+import PlayerBlurbsPanel from '../components/admin/PlayerBlurbsPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import Avatar from '../components/ui/Avatar'
@@ -240,6 +241,7 @@ export default function AdminPage() {
           { key: 'moderation', label: 'Moderation' },
           { key: 'backdrops', label: 'Backdrops', badge: pendingCounts?.backdrops },
           { key: 'positions', label: 'Positions' },
+          { key: 'playerblurbs', label: 'Player Blurbs' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -508,6 +510,8 @@ export default function AdminPage() {
       {adminSection === 'backdrops' && <BackdropSubmissionsPanel />}
 
       {adminSection === 'positions' && <PlayerPositionPanel />}
+
+      {adminSection === 'playerblurbs' && <PlayerBlurbsPanel />}
 
       {adminSection === 'props' && <>
       {/* Set / Settle toggle */}

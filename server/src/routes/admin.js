@@ -820,4 +820,125 @@ router.get('/pending-counts', async (req, res) => {
   })
 })
 
+// =====================================================================
+// Player Blurbs
+// =====================================================================
+
+// List players for the blurbs admin panel (ranked by season points, with blurb status)
+router.get('/blurbs/players', async (req, res) => {
+  const season = Number(req.query.season) || new Date().getFullYear()
+  const position = req.query.position || null
+
+  const { getTopPlayersByPosition } = await import('../services/playerBlurbService.js')
+  const byPosition = await getTopPlayersByPosition(season)
+
+  // Flatten all positions or filter to one
+  let players
+  if (position && position !== 'all') {
+    players = byPosition[position.toUpperCase()] || []
+  } else {
+    players = Object.values(byPosition).flat().sort((a, b) => b.seasonPoints - a.seasonPoints)
+  }
+
+  // Attach current blurb status for each player
+  const playerIds = players.map((p) => p.id)
+  if (playerIds.length) {
+    const { data: blurbs } = await supabase
+      .from('player_blurbs')
+      .select('player_id, status, id, content')
+      .in('player_id', playerIds)
+      .in('status', ['draft', 'published'])
+    const blurbMap = {}
+    for (const b of blurbs || []) {
+      // Prefer published, then draft
+      if (!blurbMap[b.player_id] || b.status === 'published') blurbMap[b.player_id] = b
+    }
+    for (const p of players) {
+      p.blurb = blurbMap[p.id] || null
+    }
+  }
+
+  res.json(players)
+})
+
+// Generate AI blurbs for selected player IDs
+router.post('/blurbs/generate', async (req, res) => {
+  const { playerIds, season, week } = req.body
+  if (!playerIds?.length) return res.status(400).json({ error: 'playerIds required' })
+  const { generateBlurbs } = await import('../services/playerBlurbService.js')
+  try {
+    const result = await generateBlurbs(playerIds, season || new Date().getFullYear(), week || 1)
+    res.json(result)
+  } catch (err) {
+    logger.error({ err }, 'Blurb generation failed')
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Create a manual blurb
+router.post('/blurbs', async (req, res) => {
+  const { player_id, content, season, week } = req.body
+  if (!player_id || !content) return res.status(400).json({ error: 'player_id and content required' })
+  const { data, error } = await supabase
+    .from('player_blurbs')
+    .insert({ player_id, content, status: 'draft', season: season || new Date().getFullYear(), week, generated_by: 'manual' })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
+// Update a blurb's content
+router.patch('/blurbs/:id', async (req, res) => {
+  const { content } = req.body
+  if (!content) return res.status(400).json({ error: 'content required' })
+  const { data, error } = await supabase
+    .from('player_blurbs')
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq('id', req.params.id)
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
+// Publish a single blurb (archives previous published for same player)
+router.post('/blurbs/:id/publish', async (req, res) => {
+  const { publishBlurb } = await import('../services/playerBlurbService.js')
+  try {
+    const result = await publishBlurb(req.params.id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Publish all draft blurbs at once
+router.post('/blurbs/publish-all', async (req, res) => {
+  const { publishAllDrafts } = await import('../services/playerBlurbService.js')
+  try {
+    const result = await publishAllDrafts()
+    res.json(result)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Get blurb history for a player (admin view)
+router.get('/blurbs/player/:playerId/history', async (req, res) => {
+  const { getPlayerBlurbHistory } = await import('../services/playerBlurbService.js')
+  const history = await getPlayerBlurbHistory(req.params.playerId)
+  res.json(history)
+})
+
+// Delete a blurb
+router.delete('/blurbs/:id', async (req, res) => {
+  const { error } = await supabase
+    .from('player_blurbs')
+    .delete()
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ deleted: true })
+})
+
 export default router
