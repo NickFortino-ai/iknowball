@@ -227,21 +227,25 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
       // Don't set anything — readiness stays null and the card shows no clip
       continue
     }
+    const outPlayers = []
     const flagged = []
     for (const slot of slots) {
       const status = injuryByPlayer[slot.espn_player_id]
-      if (status === 'Out' || (status && status !== 'Probable')) {
-        flagged.push(status)
-      }
+      if (status === 'Out') outPlayers.push(status)
+      else if (status && status !== 'Probable') flagged.push(status)
     }
-    if (flagged.length === 0) {
-      set(result, l.id, 'ready', 'Lineup set, no injuries')
-    } else {
-      const hasOut = flagged.includes('Out')
+    if (outPlayers.length > 0) {
+      const summary = outPlayers.length === 1
+        ? '1 Out player on your lineup'
+        : `${outPlayers.length} Out players on your lineup`
+      set(result, l.id, 'action', summary)
+    } else if (flagged.length > 0) {
       const summary = flagged.length === 1
-        ? `1 ${hasOut ? 'Out' : flagged[0]} player on your lineup`
+        ? `1 ${flagged[0]} player on your lineup`
         : `${flagged.length} flagged players on your lineup`
       set(result, l.id, 'attention', summary)
+    } else {
+      set(result, l.id, 'ready', 'Lineup set, no injuries')
     }
   }
 }
@@ -481,17 +485,24 @@ async function computeFantasyReadiness(leagues, userId, result) {
       set(result, l.id, 'action', summary)
       continue
     }
+    const outStarters = starters.filter((r) => r.nfl_players?.injury_status === 'Out')
+    if (outStarters.length > 0) {
+      const summary = outStarters.length === 1
+        ? `${outStarters[0].nfl_players?.full_name || 'A starter'} is Out`
+        : `${outStarters.length} Out starters`
+      set(result, l.id, 'action', summary)
+      continue
+    }
     const flagged = starters.filter((r) => {
       const inj = r.nfl_players?.injury_status
-      return inj === 'Out' || (inj && inj !== 'Probable')
+      return inj && inj !== 'Probable'
     })
     if (flagged.length === 0) {
       set(result, l.id, 'ready', 'Lineup set')
     } else {
-      const hasOut = flagged.some((r) => r.nfl_players?.injury_status === 'Out')
       const summary = flagged.length === 1
         ? `${flagged[0].nfl_players?.full_name || 'A starter'} is ${flagged[0].nfl_players?.injury_status}`
-        : `${flagged.length} ${hasOut ? 'injured' : 'flagged'} starters`
+        : `${flagged.length} flagged starters`
       set(result, l.id, 'attention', summary)
     }
   }
