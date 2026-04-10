@@ -176,7 +176,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const currentWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
   const totalWeeks = fantasySettings?.championship_week || 17
   const [viewWeek, setViewWeek] = useState(currentWeek)
-  const [expandedMatchup, setExpandedMatchup] = useState(null)
+  const [collapsedMatchup, setCollapsedMatchup] = useState(null)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [showReport, setShowReport] = useState(false)
 
@@ -307,8 +307,8 @@ export default function FantasyMatchup({ league, fantasySettings }) {
             matchup={matchup}
             myId={profile?.id}
             weekStatus={weekStatus}
-            isExpanded={expandedMatchup === matchup.id}
-            onToggle={() => setExpandedMatchup(expandedMatchup === matchup.id ? null : matchup.id)}
+            isExpanded={collapsedMatchup !== matchup.id}
+            onToggle={() => setCollapsedMatchup(collapsedMatchup === matchup.id ? null : matchup.id)}
             onPlayerClick={setDetailPlayerId}
           />
         ))
