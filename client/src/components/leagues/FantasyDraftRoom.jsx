@@ -312,31 +312,30 @@ export default function FantasyDraftRoom({ league }) {
             {initDraft.isPending ? 'Randomizing...' : 'Randomize Draft Order'}
           </button>
         )}
-        {isCommissioner && hasPickSlots && (
-          <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={handleStartDraft}
-              disabled={startDraft.isPending}
-              className="px-6 py-2 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
-            >
-              {startDraft.isPending ? 'Starting...' : 'Start Live Draft'}
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  await startOffline.mutateAsync(league.id)
-                  toast('Offline draft started — enter your results', 'success')
-                } catch (err) {
-                  toast(err.message || 'Failed to start offline draft', 'error')
-                }
-              }}
-              disabled={startOffline.isPending}
-              className="px-6 py-2 rounded-xl text-sm font-semibold bg-bg-card text-text-secondary border border-text-primary/20 hover:bg-bg-secondary transition-colors disabled:opacity-50"
-            >
-              {startOffline.isPending ? 'Starting...' : 'Enter Draft Results'}
-            </button>
-            <p className="text-[10px] text-text-muted max-w-xs">Already drafted in person? Use "Enter Draft Results" to record picks without timers.</p>
-          </div>
+        {isCommissioner && hasPickSlots && settings?.draft_mode === 'offline' && (
+          <button
+            onClick={async () => {
+              try {
+                await startOffline.mutateAsync(league.id)
+                toast('Offline draft started — enter your results', 'success')
+              } catch (err) {
+                toast(err.message || 'Failed to start offline draft', 'error')
+              }
+            }}
+            disabled={startOffline.isPending}
+            className="px-6 py-2 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
+          >
+            {startOffline.isPending ? 'Starting...' : 'Enter Draft Results'}
+          </button>
+        )}
+        {isCommissioner && hasPickSlots && settings?.draft_mode !== 'offline' && (
+          <button
+            onClick={handleStartDraft}
+            disabled={startDraft.isPending}
+            className="px-6 py-2 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
+          >
+            {startDraft.isPending ? 'Starting...' : 'Start Draft'}
+          </button>
         )}
         {hasPickSlots && (
           <div className="mt-4 text-left max-w-sm mx-auto">
