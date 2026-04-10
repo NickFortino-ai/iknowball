@@ -24,6 +24,14 @@ export function useFuturesPickHistory() {
   })
 }
 
+export function useUserSettledFutures(userId) {
+  return useQuery({
+    queryKey: ['futuresPicks', 'user', userId],
+    queryFn: () => api.get(`/futures/picks/user/${userId}`),
+    enabled: !!userId,
+  })
+}
+
 export function useSubmitFuturesPick() {
   const queryClient = useQueryClient()
 

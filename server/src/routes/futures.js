@@ -42,4 +42,9 @@ router.get('/picks/me/history', requireAuth, async (req, res) => {
   res.json(picks)
 })
 
+router.get('/picks/user/:userId', requireAuth, async (req, res) => {
+  const picks = await getUserFuturesPicks(req.params.userId, 'settled')
+  res.json(picks)
+})
+
 export default router

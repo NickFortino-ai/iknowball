@@ -24,8 +24,9 @@ import PropDetailModal from '../picks/PropDetailModal'
 import ReportModal from '../moderation/ReportModal'
 import { useBlockUser } from '../../hooks/useBlocked'
 import { getBackdropUrl } from '../../lib/backdropUrl'
+import { useUserSettledFutures } from '../../hooks/useFutures'
 
-function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, onItemTap }) {
+function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPicks, picks, onItemTap }) {
   const [expanded, setExpanded] = useState({})
 
   const parlayStats = useMemo(() => {
@@ -45,6 +46,21 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
     const points = settled.reduce((sum, p) => sum + (p.points_earned || 0), 0)
     return { wins, losses, total: settled.length, points }
   }, [propPicks])
+
+  const futuresStats = useMemo(() => {
+    const settled = (futuresPicks || []).filter((p) => p.status === 'settled')
+    if (!settled.length) return null
+    const wins = settled.filter((p) => p.is_correct === true).length
+    const losses = settled.filter((p) => p.is_correct === false).length
+    const points = settled.reduce((sum, p) => sum + (p.points_earned || 0), 0)
+    return { wins, losses, total: settled.length, points }
+  }, [futuresPicks])
+
+  const settledFuturesList = useMemo(() => {
+    return (futuresPicks || [])
+      .filter((p) => p.status === 'settled')
+      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+  }, [futuresPicks])
 
   const leaguePoints = useMemo(() => {
     if (!bonuses?.length) return 0
@@ -79,7 +95,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
       .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
   }, [propPicks])
 
-  const hasAnything = sportStats?.length > 0 || parlayStats || propStats || leaguePoints !== 0
+  const hasAnything = sportStats?.length > 0 || parlayStats || propStats || futuresStats || leaguePoints !== 0
 
   if (!hasAnything) return null
 
@@ -263,6 +279,43 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, picks, on
             </div>
           )
         })()}
+        {futuresStats && (() => {
+          const isOpen = expanded['futures']
+          const items = settledFuturesList.slice(0, 10)
+          return (
+            <div>
+              <button
+                onClick={() => toggle('futures')}
+                className="w-full bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-lg px-4 py-3 flex items-center justify-between text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs text-text-muted transition-transform ${isOpen ? 'rotate-90' : ''}`}>&#9656;</span>
+                  <span className="font-semibold text-sm">Futures</span>
+                  <span className="text-text-muted text-xs">
+                    {futuresStats.wins}W-{futuresStats.losses}L
+                  </span>
+                </div>
+                <span className={`font-semibold text-sm ${futuresStats.points >= 0 ? 'text-correct' : 'text-incorrect'}`}>{futuresStats.points > 0 ? '+' : ''}{futuresStats.points} pts</span>
+              </button>
+              {isOpen && items.length > 0 && (
+                <div className="mt-1 space-y-1">
+                  {items.map((fp) => (
+                    <div
+                      key={fp.id}
+                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold truncate">{fp.futures_markets?.title || 'Futures'}</div>
+                        <div className="text-xs text-text-muted truncate">Picked: {fp.picked_outcome}</div>
+                      </div>
+                      {renderItemPoints(fp.points_earned)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
@@ -276,6 +329,7 @@ export default function UserProfileModal({ userId, onClose }) {
   const { data: parlays, isLoading: parlaysLoading } = useUserParlayHistory(userId)
   const { data: propPicks, isLoading: propsLoading } = useUserPropPickHistory(userId)
   const { data: bonuses, isLoading: bonusesLoading } = useUserBonusHistory(userId)
+  const { data: futuresPicks } = useUserSettledFutures(userId)
   const [showH2HDetail, setShowH2HDetail] = useState(false)
   const isViewingOther = userId && session?.user?.id !== userId
   const isOwnProfile = !isViewingOther
@@ -654,7 +708,7 @@ export default function UserProfileModal({ userId, onClose }) {
             </div>
 
             {/* Event Type Breakdown */}
-            <EventTypeBreakdown sportStats={user.sport_stats} parlays={parlays} propPicks={propPicks} bonuses={bonuses} picks={picks} onItemTap={(type, id) => {
+            <EventTypeBreakdown sportStats={user.sport_stats} parlays={parlays} propPicks={propPicks} bonuses={bonuses} futuresPicks={futuresPicks} picks={picks} onItemTap={(type, id) => {
                   if (type === 'pick') setSelectedPickId(id)
                   else if (type === 'parlay') setSelectedParlayId(id)
                   else if (type === 'prop') setSelectedPropPickId(id)
