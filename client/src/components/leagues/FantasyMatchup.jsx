@@ -46,7 +46,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               <div className={`text-sm font-semibold truncate ${isCompleted && homeWinning ? 'text-correct' : 'text-text-primary'}`}>
                 {matchup.home_user?.display_name || matchup.home_user?.username}
               </div>
-              {matchup.home_user?.id === myId && <div className="text-[9px] text-accent font-bold">YOU</div>}
+              {matchup.home_user?.fantasy_team_name && (
+                <div className="text-[10px] text-text-muted italic truncate">{matchup.home_user.fantasy_team_name}</div>
+              )}
+              {matchup.home_user?.id === myId && !matchup.home_user?.fantasy_team_name && <div className="text-[9px] text-accent font-bold">YOU</div>}
             </div>
           </div>
 
@@ -82,7 +85,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               <div className={`text-sm font-semibold truncate ${isCompleted && !homeWinning ? 'text-correct' : 'text-text-primary'}`}>
                 {matchup.away_user?.display_name || matchup.away_user?.username}
               </div>
-              {matchup.away_user?.id === myId && <div className="text-[9px] text-accent font-bold">YOU</div>}
+              {matchup.away_user?.fantasy_team_name && (
+                <div className="text-[10px] text-text-muted italic truncate">{matchup.away_user.fantasy_team_name}</div>
+              )}
+              {matchup.away_user?.id === myId && !matchup.away_user?.fantasy_team_name && <div className="text-[9px] text-accent font-bold">YOU</div>}
             </div>
             <Avatar user={matchup.away_user} size="sm" />
           </div>

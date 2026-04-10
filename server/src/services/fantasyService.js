@@ -930,7 +930,7 @@ export async function getFantasyStandings(leagueId) {
   // Pull league members for the base list (so 0-game teams still show up)
   const { data: members } = await supabase
     .from('league_members')
-    .select('user_id, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .select('user_id, fantasy_team_name, users(id, username, display_name, avatar_url, avatar_emoji)')
     .eq('league_id', leagueId)
 
   if (!members?.length) return []
@@ -948,6 +948,7 @@ export async function getFantasyStandings(leagueId) {
     tally[m.user_id] = {
       user_id: m.user_id,
       user: m.users,
+      fantasy_team_name: m.fantasy_team_name || null,
       wins: 0,
       losses: 0,
       ties: 0,
@@ -995,6 +996,7 @@ export async function getFantasyStandings(leagueId) {
   const standings = Object.values(tally).map((t) => ({
     user: t.user,
     user_id: t.user_id,
+    fantasy_team_name: t.fantasy_team_name,
     wins: t.wins,
     losses: t.losses,
     ties: t.ties,

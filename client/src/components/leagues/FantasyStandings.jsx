@@ -7,13 +7,12 @@ export default function FantasyStandings({ league }) {
   const [selectedUserId, setSelectedUserId] = useState(null)
   const { data: serverStandings } = useFantasyStandings(league.id)
 
-  // Server returns ordered list with computed W-L-T, PF, PA, streak.
-  // Falls back to a flat member list (preseason / no matchups yet).
   const standings = (serverStandings && serverStandings.length)
     ? serverStandings.map((s) => ({
         rank: s.rank,
         user: s.user,
         userId: s.user_id,
+        fantasyTeamName: s.fantasy_team_name || null,
         wins: s.wins,
         losses: s.losses,
         ties: s.ties,
@@ -26,6 +25,7 @@ export default function FantasyStandings({ league }) {
         rank: i + 1,
         user: m.users,
         userId: m.user_id,
+        fantasyTeamName: m.fantasy_team_name || null,
         wins: 0, losses: 0, ties: 0,
         pointsFor: 0, pointsAgainst: 0,
         streak: '--',
@@ -38,8 +38,8 @@ export default function FantasyStandings({ league }) {
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-text-primary/10 text-text-muted text-xs">
-              <th className="py-3 px-2 text-center font-semibold w-12">Rank</th>
-              <th className="py-3 px-2 text-left font-semibold">Team</th>
+              <th className="py-3 px-2 text-center font-semibold w-10">#</th>
+              <th className="py-3 px-2 text-left font-semibold">Manager</th>
               <th className="py-3 px-2 text-center font-semibold">W-L-T</th>
               <th className="py-3 px-2 text-center font-semibold">PF</th>
               <th className="py-3 px-2 text-center font-semibold">PA</th>
@@ -59,9 +59,14 @@ export default function FantasyStandings({ league }) {
                 <td className="py-3.5 px-2">
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar user={s.user} size="lg" />
-                    <span className="font-bold text-base text-text-primary truncate">
-                      {s.user?.display_name || s.user?.username}
-                    </span>
+                    <div className="min-w-0">
+                      <div className="font-bold text-base text-text-primary truncate">
+                        {s.user?.display_name || s.user?.username}
+                      </div>
+                      {s.fantasyTeamName && (
+                        <div className="text-xs text-text-muted italic truncate">{s.fantasyTeamName}</div>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td className="py-3.5 px-2 text-center text-text-primary text-base">

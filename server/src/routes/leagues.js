@@ -1161,6 +1161,19 @@ router.get('/:id/fantasy/players', requireAuth, async (req, res) => {
   res.json(data)
 })
 
+// Set fantasy team name
+router.patch('/:id/fantasy/team-name', requireAuth, async (req, res) => {
+  const { team_name } = req.body
+  if (team_name != null && typeof team_name !== 'string') return res.status(400).json({ error: 'team_name must be a string' })
+  const { error } = await supabase
+    .from('league_members')
+    .update({ fantasy_team_name: team_name?.trim() || null })
+    .eq('league_id', req.params.id)
+    .eq('user_id', req.user.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ updated: true })
+})
+
 // Set starting lineup
 router.post('/:id/fantasy/lineup', requireAuth, async (req, res) => {
   try {

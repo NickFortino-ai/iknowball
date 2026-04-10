@@ -296,6 +296,21 @@ router.get('/matchup-live', async (req, res) => {
 
   // Get all rosters for league members
   const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
+
+  // Fetch team names
+  const { data: memberRows } = await supabase
+    .from('league_members')
+    .select('user_id, fantasy_team_name')
+    .eq('league_id', league_id)
+    .in('user_id', userIds)
+  const teamNameMap = {}
+  for (const m of memberRows || []) teamNameMap[m.user_id] = m.fantasy_team_name || null
+  // Inject team names into matchup user objects
+  for (const m of matchups) {
+    if (m.home_user) m.home_user.fantasy_team_name = teamNameMap[m.home_user_id] || null
+    if (m.away_user) m.away_user.fantasy_team_name = teamNameMap[m.away_user_id] || null
+  }
+
   const { data: rosters } = await supabase
     .from('fantasy_rosters')
     .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week)')
@@ -515,6 +530,20 @@ router.get('/matchup-week', async (req, res) => {
     .eq('week', w)
 
   if (!matchups?.length) return res.json({ matchups: [], weekStatus: isFuture ? 'future' : isPast ? 'past' : 'current' })
+
+  // Fetch team names for all users in matchups
+  const allUserIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
+  const { data: memberRows } = await supabase
+    .from('league_members')
+    .select('user_id, fantasy_team_name')
+    .eq('league_id', league_id)
+    .in('user_id', allUserIds)
+  const teamNameMap = {}
+  for (const m of memberRows || []) teamNameMap[m.user_id] = m.fantasy_team_name || null
+  for (const m of matchups) {
+    if (m.home_user) m.home_user.fantasy_team_name = teamNameMap[m.home_user_id] || null
+    if (m.away_user) m.away_user.fantasy_team_name = teamNameMap[m.away_user_id] || null
+  }
 
   // For future weeks: just return the schedule with season-long projections
   if (isFuture) {
