@@ -23,7 +23,7 @@ import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
 import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.js'
-import { syncPlayers, syncProjections } from '../services/sleeperService.js'
+import { syncPlayers, syncProjections, syncWeeklyProjections, getNFLState } from '../services/sleeperService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
 import { computeFantasyGlobalRankings } from './computeFantasyGlobalRankings.js'
 
@@ -157,6 +157,14 @@ export function startScheduler() {
     cron.schedule('0 3 * * *', async () => {
       try { await syncPlayers() } catch (err) { logger.error({ err }, 'NFL syncPlayers job failed') }
       try { await syncProjections() } catch (err) { logger.error({ err }, 'NFL syncProjections job failed') }
+      // Sync weekly projections for the current and next NFL week
+      try {
+        const state = await getNFLState()
+        if (state?.week && state?.season) {
+          await syncWeeklyProjections(state.season, state.week)
+          if (state.week < 18) await syncWeeklyProjections(state.season, state.week + 1)
+        }
+      } catch (err) { logger.error({ err }, 'NFL weekly projections sync failed') }
     }, { timezone: 'America/New_York' })
     logger.info('NFL player + projection sync scheduled: nightly 3:00 AM ET')
 

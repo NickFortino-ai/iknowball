@@ -400,6 +400,64 @@ export async function syncProjections(season = 2026) {
 }
 
 /**
+ * Sync weekly player projections from Sleeper for a specific week.
+ * These are per-player, per-week point projections used for matchup previews.
+ * Accounts for bye weeks, matchup difficulty, and recent usage.
+ */
+export async function syncWeeklyProjections(season, week) {
+  logger.info({ season, week }, 'Syncing weekly player projections from Sleeper')
+
+  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+  const posParams = positions.map((p) => `position[]=${p}`).join('&')
+
+  let data
+  try {
+    const res = await fetch(`${SLEEPER_STATS}/projections/nfl/${season}/${week}?season_type=regular&${posParams}`)
+    if (!res.ok) throw new Error(`Sleeper weekly projections API returned ${res.status}`)
+    data = await res.json()
+  } catch (err) {
+    logger.error({ err, season, week }, 'Failed to fetch Sleeper weekly projections')
+    throw err
+  }
+
+  if (!Array.isArray(data) || !data.length) {
+    logger.warn({ season, week }, 'No weekly projections data returned')
+    return { updated: 0 }
+  }
+
+  // Build upsert rows
+  const rows = data
+    .filter((proj) => proj.player_id && proj.stats)
+    .map((proj) => ({
+      player_id: String(proj.player_id),
+      season,
+      week,
+      pts_ppr: proj.stats.pts_ppr ?? null,
+      pts_half_ppr: proj.stats.pts_half_ppr ?? null,
+      pts_std: proj.stats.pts_std ?? null,
+      updated_at: new Date().toISOString(),
+    }))
+
+  // Batch upsert in chunks of 500
+  let updated = 0
+  const CHUNK = 500
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK)
+    const { error } = await supabase
+      .from('nfl_player_projections')
+      .upsert(chunk, { onConflict: 'player_id,season,week' })
+    if (error) {
+      logger.error({ error, offset: i }, 'Failed to upsert weekly projection chunk')
+    } else {
+      updated += chunk.length
+    }
+  }
+
+  logger.info({ updated, total: rows.length, season, week }, 'Weekly projections sync complete')
+  return { updated, total: rows.length }
+}
+
+/**
  * Get current NFL state (season, week, phase).
  */
 export async function getNFLState() {
