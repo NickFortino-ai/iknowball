@@ -89,7 +89,7 @@ export default function FantasyStandings({ league }) {
       </div>
       {selectedUser && (
         <RosterModal
-          leagueId={league.id}
+          league={league}
           userId={selectedUser.userId}
           user={selectedUser.user}
           fantasyTeamName={selectedUser.fantasyTeamName}

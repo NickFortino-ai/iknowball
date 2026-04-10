@@ -81,15 +81,15 @@ function TradeCard({ trade, currentUserId, onAccept, onDecline, onCancel }) {
   )
 }
 
-function ProposeTradeModal({ league, currentUserId, onClose }) {
+export function ProposeTradeModal({ league, currentUserId, onClose, initialReceiverId, initialAcquirePlayerId }) {
   const { data: myRoster } = useFantasyRoster(league.id)
   const propose = useProposeTrade(league.id)
 
   // List of other league members (anyone except me)
   const otherMembers = (league.members || []).filter((m) => m.user_id !== currentUserId)
-  const [receiverId, setReceiverId] = useState('')
+  const [receiverId, setReceiverId] = useState(initialReceiverId || '')
   const [myPlayerIds, setMyPlayerIds] = useState([])
-  const [theirPlayerIds, setTheirPlayerIds] = useState([])
+  const [theirPlayerIds, setTheirPlayerIds] = useState(initialAcquirePlayerId ? [initialAcquirePlayerId] : [])
   const [message, setMessage] = useState('')
 
   // Fetch the receiver's roster on demand

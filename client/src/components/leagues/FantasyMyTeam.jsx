@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade } from '../../hooks/useLeagues'
+import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
+import Avatar from '../ui/Avatar'
 import PlayerDetailModal from './PlayerDetailModal'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
 
@@ -120,7 +122,10 @@ function EmptySlot({ slotLabel, onTap, isSelected }) {
 }
 
 export default function FantasyMyTeam({ league }) {
+  const { profile } = useAuth()
   const { data: roster, isLoading } = useFantasyRoster(league.id)
+  const { data: trades } = useFantasyTrades(league.id)
+  const respond = useRespondToTrade(league.id)
   const setLineup = useSetFantasyLineup(league.id)
   const dropPlayer = useDropRosterPlayer(league.id)
   const [confirmDrop, setConfirmDrop] = useState(null) // roster row being dropped
@@ -128,6 +133,10 @@ export default function FantasyMyTeam({ league }) {
   const [selected, setSelected] = useState(null) // { type: 'slot'|'player', key: string }
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
+  const [expandedTradeId, setExpandedTradeId] = useState(null)
+
+  // Pending trades where I'm the receiver
+  const incomingTrades = (trades || []).filter((t) => t.status === 'pending' && t.receiver_user_id === profile?.id)
 
   // Build a working slot-by-player map (server slot or draftSlots override)
   const slotByPlayer = useMemo(() => {
@@ -167,6 +176,15 @@ export default function FantasyMyTeam({ league }) {
         <p className="text-sm text-text-secondary">No players on your roster yet. Complete the draft to build your team.</p>
       </div>
     )
+  }
+
+  async function handleTradeAction(tradeId, action) {
+    try {
+      await respond.mutateAsync({ tradeId, action })
+      toast(`Trade ${action}ed`, 'success')
+    } catch (err) {
+      toast(err.message || `Failed to ${action} trade`, 'error')
+    }
   }
 
   // Group roster by current (working) slot
@@ -307,6 +325,76 @@ export default function FantasyMyTeam({ league }) {
 
   return (
     <div className="space-y-4">
+      {/* Incoming trade proposals */}
+      {incomingTrades.map((trade) => {
+        const proposer = trade.proposer || trade.proposer_user
+        const isExpanded = expandedTradeId === trade.id
+        const proposerItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.proposer_user_id)
+        const receiverItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.receiver_user_id)
+        return (
+          <div key={trade.id} className="rounded-xl border border-accent/40 bg-accent/5 overflow-hidden">
+            <button
+              onClick={() => setExpandedTradeId(isExpanded ? null : trade.id)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left"
+            >
+              <Avatar user={proposer} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-text-primary">
+                  {proposer?.display_name || proposer?.username} proposed a trade
+                </div>
+                <div className="text-[10px] text-text-muted">Tap to review</div>
+              </div>
+              <svg className={`w-4 h-4 text-text-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {isExpanded && (
+              <div className="px-4 pb-4">
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <div className="text-[10px] uppercase text-text-muted mb-1">You receive</div>
+                    <div className="space-y-1">
+                      {proposerItems.map((item) => (
+                        <div key={item.player_id} className="flex items-center gap-2 rounded-lg bg-bg-primary border border-text-primary/10 px-2 py-1.5">
+                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />}
+                          <div className="text-xs font-semibold text-text-primary truncate">{item.nfl_players?.full_name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase text-text-muted mb-1">You give up</div>
+                    <div className="space-y-1">
+                      {receiverItems.map((item) => (
+                        <div key={item.player_id} className="flex items-center gap-2 rounded-lg bg-bg-primary border border-text-primary/10 px-2 py-1.5">
+                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />}
+                          <div className="text-xs font-semibold text-text-primary truncate">{item.nfl_players?.full_name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {trade.message && (
+                  <div className="text-xs text-text-secondary italic mb-3">"{trade.message}"</div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleTradeAction(trade.id, 'accept')}
+                    disabled={respond.isPending}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-correct text-white hover:bg-correct/90 transition-colors disabled:opacity-50"
+                  >Accept</button>
+                  <button
+                    onClick={() => handleTradeAction(trade.id, 'decline')}
+                    disabled={respond.isPending}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-incorrect text-white hover:bg-incorrect/90 transition-colors disabled:opacity-50"
+                  >Decline</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
       <button
         onClick={() => setShowGlobalRank(true)}
         className="w-full rounded-xl border border-text-primary/20 bg-bg-primary p-3 flex items-center justify-between hover:bg-bg-secondary transition-colors"

@@ -5,6 +5,7 @@ import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import UserProfileModal from '../profile/UserProfileModal'
 import PlayerDetailModal from './PlayerDetailModal'
+import { ProposeTradeModal } from './FantasyTrades'
 
 const INJURY_COLORS = {
   Out: 'bg-incorrect/20 text-incorrect',
@@ -39,11 +40,13 @@ function TradeIcon() {
   )
 }
 
-export default function RosterModal({ leagueId, userId, user, fantasyTeamName, onClose }) {
+export default function RosterModal({ league, userId, user, fantasyTeamName, onClose }) {
+  const leagueId = league?.id || league
   const { profile } = useAuth()
   const { data: roster, isLoading } = useFantasyUserRoster(leagueId, userId)
   const [showProfile, setShowProfile] = useState(false)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
+  const [tradePlayerId, setTradePlayerId] = useState(null)
   const isMe = userId === profile?.id
 
   // Sort roster by slot order
@@ -78,10 +81,14 @@ export default function RosterModal({ leagueId, userId, user, fantasyTeamName, o
           <div className="text-[10px] text-text-muted">{p.position} · {p.team || 'FA'}</div>
         </div>
         <InjuryBadge status={p.injury_status} />
-        {showTradeIcon && !isMe && (
-          <div className="shrink-0" title="Propose trade">
+        {showTradeIcon && !isMe && p.id && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setTradePlayerId(p.id) }}
+            className="shrink-0 p-1 rounded hover:bg-accent/10 transition-colors"
+            title="Propose trade for this player"
+          >
             <TradeIcon />
-          </div>
+          </button>
         )}
       </div>
     )
@@ -174,6 +181,17 @@ export default function RosterModal({ leagueId, userId, user, fantasyTeamName, o
       {/* Player detail modal */}
       {detailPlayerId && (
         <PlayerDetailModal leagueId={leagueId} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+      )}
+
+      {/* Trade proposal modal — prefilled with the selected player */}
+      {tradePlayerId && (
+        <ProposeTradeModal
+          league={typeof league === 'object' ? league : { id: leagueId, members: [] }}
+          currentUserId={profile?.id}
+          initialReceiverId={userId}
+          initialAcquirePlayerId={tradePlayerId}
+          onClose={() => setTradePlayerId(null)}
+        />
       )}
     </>
   )
