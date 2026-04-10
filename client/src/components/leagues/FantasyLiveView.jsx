@@ -257,8 +257,43 @@ function MatchupLive({ league, week, season }) {
     return 0
   })
 
+  // My completed matchup result banner
+  const myMatchup = matchups.find((m) => m.status === 'completed' && (m.home_user?.id === profile?.id || m.away_user?.id === profile?.id))
+  const myResult = myMatchup ? (() => {
+    const isHome = myMatchup.home_user?.id === profile?.id
+    const myPts = isHome ? myMatchup.home_points : myMatchup.away_points
+    const oppPts = isHome ? myMatchup.away_points : myMatchup.home_points
+    const opponent = isHome ? myMatchup.away_user : myMatchup.home_user
+    const won = myPts > oppPts
+    const tied = myPts === oppPts
+    return { won, tied, myPts, oppPts, opponent }
+  })() : null
+
   return (
     <div className="space-y-4">
+      {/* Weekly matchup result banner */}
+      {myResult && (
+        <div className={`rounded-xl border p-4 text-center ${
+          myResult.won ? 'border-correct/40 bg-correct/10' : myResult.tied ? 'border-accent/40 bg-accent/10' : 'border-incorrect/40 bg-incorrect/10'
+        }`}>
+          <div className={`font-display text-lg ${myResult.won ? 'text-correct' : myResult.tied ? 'text-accent' : 'text-incorrect'}`}>
+            {myResult.won ? 'Victory!' : myResult.tied ? 'Tie Game' : 'Defeat'}
+          </div>
+          <div className="flex items-center justify-center gap-4 mt-2">
+            <div className="text-right">
+              <div className="font-display text-2xl text-text-primary">{myResult.myPts}</div>
+              <div className="text-[10px] text-text-muted">You</div>
+            </div>
+            <div className="text-text-muted text-sm">vs</div>
+            <div className="text-left">
+              <div className="font-display text-2xl text-text-secondary">{myResult.oppPts}</div>
+              <div className="text-[10px] text-text-muted">{myResult.opponent?.display_name || myResult.opponent?.username || 'Opponent'}</div>
+            </div>
+          </div>
+          <div className="text-xs text-text-muted mt-2">Week {week}</div>
+        </div>
+      )}
+
       {sorted.map((matchup) => {
         const isMyMatchup = matchup.home_user?.id === profile?.id || matchup.away_user?.id === profile?.id
         const isExpanded = expandedMatchup === matchup.id

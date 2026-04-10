@@ -128,6 +128,9 @@ function getNotificationRoute(notification) {
     case 'league_report':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
 
+    case 'fantasy_matchup_result':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+
     // Underfill flow notifications
     case 'fantasy_league_underfilled':
       // Commish notification → open the league so the banner / modal is visible

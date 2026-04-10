@@ -3595,6 +3595,59 @@ export async function scoreFantasyMatchupsWeek(week, season) {
     }
   }
 
+  // Notify both users when a matchup is finalized for the first time
+  if (weekIsFinal) {
+    try {
+      const { createNotification } = await import('./notificationService.js')
+      // Find matchups we just completed (not ones that were already completed before)
+      for (const m of matchups) {
+        if (!isTraditional[m.league_id]) continue
+        const homePts = Math.round((userPointsMap[`${m.league_id}|${m.home_user_id}`] || 0) * 100) / 100
+        const awayPts = Math.round((userPointsMap[`${m.league_id}|${m.away_user_id}`] || 0) * 100) / 100
+        // Only notify if we haven't already (check if notification exists for this matchup)
+        const { count } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('type', 'fantasy_matchup_result')
+          .eq('user_id', m.home_user_id)
+          .contains('metadata', { matchupId: m.id })
+        if (count > 0) continue
+
+        const homeWon = homePts > awayPts
+        const awayWon = awayPts > homePts
+        const tie = homePts === awayPts
+
+        // Get usernames for the message
+        const { data: homeUser } = await supabase.from('users').select('display_name, username').eq('id', m.home_user_id).single()
+        const { data: awayUser } = await supabase.from('users').select('display_name, username').eq('id', m.away_user_id).single()
+        const homeName = homeUser?.display_name || homeUser?.username || 'Opponent'
+        const awayName = awayUser?.display_name || awayUser?.username || 'Opponent'
+
+        const meta = { leagueId: m.league_id, matchupId: m.id, week, homePoints: homePts, awayPoints: awayPts }
+
+        // Notify home user
+        const homeResult = tie ? 'tied' : homeWon ? 'won' : 'lost'
+        const homeMsg = homeWon
+          ? `You beat ${awayName} ${homePts}-${awayPts} in Week ${week}!`
+          : tie
+            ? `You tied ${awayName} ${homePts}-${awayPts} in Week ${week}`
+            : `You lost to ${awayName} ${awayPts}-${homePts} in Week ${week}`
+        await createNotification(m.home_user_id, 'fantasy_matchup_result', homeMsg, { ...meta, result: homeResult, opponentId: m.away_user_id })
+
+        // Notify away user
+        const awayResult = tie ? 'tied' : awayWon ? 'won' : 'lost'
+        const awayMsg = awayWon
+          ? `You beat ${homeName} ${awayPts}-${homePts} in Week ${week}!`
+          : tie
+            ? `You tied ${homeName} ${awayPts}-${homePts} in Week ${week}`
+            : `You lost to ${homeName} ${homePts}-${awayPts} in Week ${week}`
+        await createNotification(m.away_user_id, 'fantasy_matchup_result', awayMsg, { ...meta, result: awayResult, opponentId: m.home_user_id })
+      }
+    } catch (err) {
+      logger.error({ err }, 'Failed to send matchup result notifications')
+    }
+  }
+
   logger.info({ week, season, scored, leagues: leagueIds.length }, 'Fantasy H2H matchup scoring complete')
 
   // After scoring, see if any league just finished its regular season — if so,
