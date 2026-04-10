@@ -36,6 +36,12 @@ export default function FuturesSection() {
     return map
   }, [myPicks])
 
+  // Locked picks on closed markets — the event is currently happening
+  const livePicks = useMemo(() => {
+    if (!myPicks) return []
+    return myPicks.filter((p) => p.status === 'locked' && p.futures_markets?.status === 'closed')
+  }, [myPicks])
+
   const grouped = useMemo(() => {
     if (!markets) return []
     const map = {}
@@ -66,12 +72,42 @@ export default function FuturesSection() {
 
   if (isLoading) return <LoadingSpinner />
 
-  if (!grouped.length) {
+  if (!grouped.length && !livePicks.length) {
     return <EmptyState title="No futures" message="No futures markets available yet. Check back later." />
   }
 
   return (
     <div className="space-y-3">
+      {/* Live picks — user's locked picks on events currently in progress */}
+      {livePicks.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-display text-sm text-accent uppercase tracking-wider">Live</h3>
+          {livePicks.map((pick) => {
+            const market = pick.futures_markets
+            return (
+              <div key={pick.id} className="bg-bg-primary rounded-2xl border border-accent/40 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span className="text-xs text-accent font-semibold uppercase">In Progress</span>
+                </div>
+                <h4 className="font-display text-base text-text-primary mb-1">{market?.title || 'Futures Market'}</h4>
+                <div className="flex items-center justify-between bg-accent/10 border border-accent/30 rounded-xl px-3 py-2.5 mt-2">
+                  <span className="font-semibold text-sm text-accent">{pick.picked_outcome}</span>
+                  <div className="text-right shrink-0 ml-3">
+                    <div className="text-sm font-semibold">
+                      <span className="text-incorrect">-{pick.risk_at_submission}</span>
+                      <span className="text-text-muted mx-1">&rarr;</span>
+                      <span className="text-correct">+{pick.reward_at_submission}</span>
+                    </div>
+                    <div className="text-xs text-text-muted">{pick.odds_at_submission > 0 ? '+' : ''}{pick.odds_at_submission}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       <div className="bg-accent/10 border border-accent/20 rounded-xl px-4 py-3 text-sm text-text-secondary">
         <span className="font-semibold text-accent">Heads up:</span> Futures picks lock immediately and cannot be changed. You get one pick per market — choose wisely.
       </div>
