@@ -1209,6 +1209,19 @@ router.delete('/:id/fantasy/roster/:playerId', requireAuth, async (req, res) => 
   }
 })
 
+// === Transactions log ===
+router.get('/:id/fantasy/transactions', requireAuth, async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 500)
+  const { data, error } = await supabase
+    .from('fantasy_transactions')
+    .select('*, users(id, username, display_name, avatar_url, avatar_emoji), nfl_players(id, full_name, position, team, headshot_url)')
+    .eq('league_id', req.params.id)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || [])
+})
+
 // === Trades ===
 router.get('/:id/fantasy/trades', requireAuth, async (req, res) => {
   const data = await getTradesForLeague(req.params.id)

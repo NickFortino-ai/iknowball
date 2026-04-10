@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useFantasyTrades, useRespondToTrade, useFantasyRoster, useProposeTrade } from '../../hooks/useLeagues'
+import { useFantasyTrades, useRespondToTrade, useFantasyRoster, useProposeTrade, useFantasyTransactions } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -30,69 +30,122 @@ function TradeCard({ trade, currentUserId, onAccept, onDecline, onCancel }) {
   const proposerItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.proposer_user_id)
   const receiverItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.receiver_user_id)
 
-  const statusColor = trade.status === 'accepted' ? 'text-correct'
-    : trade.status === 'declined' || trade.status === 'cancelled' ? 'text-incorrect'
-    : 'text-yellow-500'
+  const statusColors = {
+    pending: 'text-yellow-500 bg-yellow-500/10',
+    accepted: 'text-correct bg-correct/10',
+    declined: 'text-incorrect bg-incorrect/10',
+    cancelled: 'text-text-muted bg-text-primary/5',
+    vetoed: 'text-incorrect bg-incorrect/10',
+  }
 
   return (
-    <div className="rounded-xl border border-text-primary/20 p-4 bg-bg-primary/40 backdrop-blur-sm">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Avatar user={trade.proposer} size="sm" />
-          <span className="text-xs font-semibold truncate">{trade.proposer?.display_name || trade.proposer?.username}</span>
-          <span className="text-text-muted text-xs">→</span>
-          <Avatar user={trade.receiver} size="sm" />
-          <span className="text-xs font-semibold truncate">{trade.receiver?.display_name || trade.receiver?.username}</span>
-        </div>
-        <span className={`text-[10px] uppercase font-bold ${statusColor}`}>{trade.status}</span>
+    <div className={`rounded-xl border border-text-primary/20 p-4 bg-bg-primary`}>
+      <div className="flex items-center gap-2 mb-3">
+        <Avatar user={trade.proposer} size="xs" />
+        <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4-4 4M3 12h18" />
+        </svg>
+        <Avatar user={trade.receiver} size="xs" />
+        <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded ${statusColors[trade.status] || ''}`}>
+          {trade.status}
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <div>
-          <div className="text-[10px] uppercase text-text-muted mb-1">{trade.proposer?.display_name || 'Proposer'} sends</div>
-          <div className="space-y-1">
-            {proposerItems.map((item) => <PlayerChip key={item.id} player={item.nfl_players} />)}
-            {!proposerItems.length && <div className="text-xs text-text-muted italic">Nothing</div>}
-          </div>
+          <div className="text-[10px] text-text-muted mb-1">{trade.proposer?.display_name || 'Proposer'} sends</div>
+          <div className="space-y-1">{proposerItems.map((i) => <PlayerChip key={i.player_id} player={i.nfl_players} />)}</div>
         </div>
         <div>
-          <div className="text-[10px] uppercase text-text-muted mb-1">{trade.receiver?.display_name || 'Receiver'} sends</div>
-          <div className="space-y-1">
-            {receiverItems.map((item) => <PlayerChip key={item.id} player={item.nfl_players} />)}
-            {!receiverItems.length && <div className="text-xs text-text-muted italic">Nothing</div>}
-          </div>
+          <div className="text-[10px] text-text-muted mb-1">{trade.receiver?.display_name || 'Receiver'} sends</div>
+          <div className="space-y-1">{receiverItems.map((i) => <PlayerChip key={i.player_id} player={i.nfl_players} />)}</div>
         </div>
       </div>
 
-      {trade.message && (
-        <div className="mt-3 text-xs text-text-secondary italic">"{trade.message}"</div>
-      )}
+      {trade.message && <div className="text-xs text-text-secondary italic mt-2">"{trade.message}"</div>}
 
       {isPending && isReceiver && (
-        <div className="flex gap-2 mt-3">
-          <button onClick={() => onDecline(trade.id)} className="flex-1 py-2 rounded-lg text-xs font-semibold bg-bg-card text-text-secondary border border-border hover:bg-incorrect/20 hover:text-incorrect transition-colors">Decline</button>
-          <button onClick={() => onAccept(trade.id)} className="flex-1 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors">Accept</button>
+        <div className="flex gap-3 mt-3">
+          <button onClick={() => onAccept(trade.id)} className="flex-1 py-2 rounded-lg text-sm font-semibold bg-correct text-white">Accept</button>
+          <button onClick={() => onDecline(trade.id)} className="flex-1 py-2 rounded-lg text-sm font-semibold bg-incorrect text-white">Decline</button>
         </div>
       )}
       {isPending && isProposer && (
-        <button onClick={() => onCancel(trade.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-semibold bg-bg-card text-text-secondary border border-border hover:bg-bg-card-hover transition-colors">Cancel Proposal</button>
+        <button onClick={() => onCancel(trade.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-semibold text-text-muted border border-text-primary/20 hover:bg-text-primary/5">Cancel</button>
       )}
     </div>
   )
 }
 
+// =====================================================================
+// Transaction Log Item
+// =====================================================================
+
+function TransactionRow({ txn }) {
+  const player = txn.nfl_players || {}
+  const user = txn.users || {}
+
+  const typeConfig = {
+    add: { icon: '+', color: 'text-correct', label: 'added' },
+    drop: { icon: '-', color: 'text-incorrect', label: 'dropped' },
+    waiver_add: { icon: '+', color: 'text-correct', label: 'claimed' },
+    waiver_drop: { icon: '-', color: 'text-incorrect', label: 'dropped' },
+    trade_send: { icon: '\u2192', color: 'text-accent', label: 'traded away' },
+    trade_receive: { icon: '\u2190', color: 'text-accent', label: 'acquired via trade' },
+    draft: { icon: '\u2605', color: 'text-text-primary', label: 'drafted' },
+  }
+  const cfg = typeConfig[txn.type] || { icon: '?', color: 'text-text-muted', label: txn.type }
+
+  const timeAgo = (() => {
+    const diff = Date.now() - new Date(txn.created_at).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.floor(hrs / 24)
+    return `${days}d ago`
+  })()
+
+  return (
+    <div className="flex items-center gap-2.5 py-2.5 border-b border-text-primary/5 last:border-0">
+      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${cfg.color} bg-bg-secondary`}>
+        {cfg.icon}
+      </span>
+      {player.headshot_url ? (
+        <img src={player.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-text-primary">
+          <span className="font-semibold">{user.display_name || user.username}</span>
+          {' '}<span className="text-text-muted">{cfg.label}</span>{' '}
+          <span className="font-semibold">{player.full_name}</span>
+        </div>
+        <div className="text-[10px] text-text-muted">
+          {player.position} · {player.team || 'FA'}
+          {txn.bid_amount > 0 && <span> · ${txn.bid_amount} FAAB</span>}
+          {' · '}{timeAgo}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =====================================================================
+// Propose Trade Modal (exported for reuse from RosterModal)
+// =====================================================================
+
 export function ProposeTradeModal({ league, currentUserId, onClose, initialReceiverId, initialAcquirePlayerId }) {
   const { data: myRoster } = useFantasyRoster(league.id)
   const propose = useProposeTrade(league.id)
 
-  // List of other league members (anyone except me)
   const otherMembers = (league.members || []).filter((m) => m.user_id !== currentUserId)
   const [receiverId, setReceiverId] = useState(initialReceiverId || '')
   const [myPlayerIds, setMyPlayerIds] = useState([])
   const [theirPlayerIds, setTheirPlayerIds] = useState(initialAcquirePlayerId ? [initialAcquirePlayerId] : [])
   const [message, setMessage] = useState('')
 
-  // Fetch the receiver's roster on demand
   const { data: theirRoster } = useQuery({
     queryKey: ['leagues', league.id, 'fantasy', 'roster', receiverId],
     queryFn: () => api.get(`/leagues/${league.id}/fantasy/roster/${receiverId}`),
@@ -105,14 +158,8 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
   }
 
   async function handleSubmit() {
-    if (!receiverId) {
-      toast('Pick a trade partner', 'error')
-      return
-    }
-    if (myPlayerIds.length === 0 && theirPlayerIds.length === 0) {
-      toast('Add at least one player', 'error')
-      return
-    }
+    if (!receiverId) { toast('Pick a trade partner', 'error'); return }
+    if (myPlayerIds.length === 0 && theirPlayerIds.length === 0) { toast('Add at least one player', 'error'); return }
     try {
       await propose.mutateAsync({
         receiver_user_id: receiverId,
@@ -132,15 +179,10 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
       <div className="bg-bg-secondary w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
           <h3 className="font-display text-lg">Propose Trade</h3>
-          <button onClick={onClose} className="text-text-muted p-1">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+          <button onClick={onClose} className="text-text-muted p-1">&times;</button>
         </div>
 
         <div className="p-4 space-y-4">
-          {/* Trading partner */}
           <div>
             <label className="block text-xs uppercase text-text-muted mb-2">Trade with</label>
             <div className="flex gap-2 overflow-x-auto pb-1">
@@ -153,8 +195,8 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
                     receiverId === m.user_id ? 'border-accent bg-accent/10' : 'border-border bg-bg-card hover:bg-bg-card-hover'
                   }`}
                 >
-                  <Avatar user={m.user || m} size="xs" />
-                  <span className="text-xs font-semibold truncate">{m.user?.display_name || m.user?.username || m.username}</span>
+                  <Avatar user={m.users || m} size="xs" />
+                  <span className="text-xs font-semibold truncate">{m.users?.display_name || m.users?.username || m.username}</span>
                 </button>
               ))}
             </div>
@@ -162,24 +204,15 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
 
           {receiverId && (
             <div className="grid grid-cols-2 gap-3">
-              {/* My side */}
               <div>
                 <div className="text-[10px] uppercase text-text-muted mb-1.5">You give ({myPlayerIds.length})</div>
                 <div className="space-y-1 max-h-72 overflow-y-auto">
                   {(myRoster || []).map((r) => {
                     const selected = myPlayerIds.includes(r.player_id)
                     return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => toggle(myPlayerIds, setMyPlayerIds, r.player_id)}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border text-left transition-colors ${
-                          selected ? 'border-accent bg-accent/10' : 'border-border bg-bg-card hover:bg-bg-card-hover'
-                        }`}
-                      >
-                        {r.nfl_players?.headshot_url && (
-                          <img src={r.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                        )}
+                      <button key={r.id} type="button" onClick={() => toggle(myPlayerIds, setMyPlayerIds, r.player_id)}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border text-left transition-colors ${selected ? 'border-accent bg-accent/10' : 'border-border bg-bg-card hover:bg-bg-card-hover'}`}>
+                        {r.nfl_players?.headshot_url && <img src={r.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />}
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-semibold truncate">{r.nfl_players?.full_name}</div>
                           <div className="text-[10px] text-text-muted">{r.nfl_players?.position} · {r.nfl_players?.team}</div>
@@ -189,25 +222,15 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
                   })}
                 </div>
               </div>
-
-              {/* Their side */}
               <div>
                 <div className="text-[10px] uppercase text-text-muted mb-1.5">You get ({theirPlayerIds.length})</div>
                 <div className="space-y-1 max-h-72 overflow-y-auto">
                   {(theirRoster || []).map((r) => {
                     const selected = theirPlayerIds.includes(r.player_id)
                     return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => toggle(theirPlayerIds, setTheirPlayerIds, r.player_id)}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border text-left transition-colors ${
-                          selected ? 'border-accent bg-accent/10' : 'border-border bg-bg-card hover:bg-bg-card-hover'
-                        }`}
-                      >
-                        {r.nfl_players?.headshot_url && (
-                          <img src={r.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                        )}
+                      <button key={r.id} type="button" onClick={() => toggle(theirPlayerIds, setTheirPlayerIds, r.player_id)}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border text-left transition-colors ${selected ? 'border-accent bg-accent/10' : 'border-border bg-bg-card hover:bg-bg-card-hover'}`}>
+                        {r.nfl_players?.headshot_url && <img src={r.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />}
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-semibold truncate">{r.nfl_players?.full_name}</div>
                           <div className="text-[10px] text-text-muted">{r.nfl_players?.position} · {r.nfl_players?.team}</div>
@@ -223,24 +246,15 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
           {receiverId && (
             <div>
               <label className="block text-xs uppercase text-text-muted mb-1.5">Optional message</label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Pitch your trade…"
-                rows={2}
-                maxLength={280}
-                className="w-full bg-bg-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none"
-              />
+              <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Pitch your trade…" rows={2} maxLength={280}
+                className="w-full bg-bg-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none" />
             </div>
           )}
 
           <div className="flex gap-2 pt-2">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-border hover:bg-bg-card-hover transition-colors">Cancel</button>
-            <button
-              onClick={handleSubmit}
-              disabled={propose.isPending || !receiverId}
-              className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
-            >
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-border">Cancel</button>
+            <button onClick={handleSubmit} disabled={propose.isPending || !receiverId}
+              className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white disabled:opacity-50">
               {propose.isPending ? 'Proposing…' : 'Propose Trade'}
             </button>
           </div>
@@ -250,21 +264,21 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
   )
 }
 
+// =====================================================================
+// Main Transactions Component
+// =====================================================================
+
 export default function FantasyTrades({ league }) {
   const { profile } = useAuth()
-  const { data: trades, isLoading } = useFantasyTrades(league.id)
+  const { data: trades, isLoading: tradesLoading } = useFantasyTrades(league.id)
+  const { data: transactions, isLoading: txnLoading } = useFantasyTransactions(league.id)
   const respond = useRespondToTrade(league.id)
   const [showProposeModal, setShowProposeModal] = useState(false)
+  const [activeView, setActiveView] = useState('activity') // 'activity' | 'trades'
 
-  if (isLoading) return (
-    <div className="space-y-3">
-      <SkeletonCard />
-      <SkeletonCard />
-    </div>
-  )
+  const isLoading = tradesLoading || txnLoading
 
   const pending = (trades || []).filter((t) => t.status === 'pending')
-  const completed = (trades || []).filter((t) => t.status !== 'pending')
 
   async function handleAction(tradeId, action) {
     try {
@@ -275,28 +289,9 @@ export default function FantasyTrades({ league }) {
     }
   }
 
-  if (!trades?.length) {
-    return (
-      <div className="space-y-4">
-        <button
-          onClick={() => setShowProposeModal(true)}
-          className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-colors"
-        >
-          + Propose Trade
-        </button>
-        <div className="text-center py-8">
-          <p className="text-sm text-text-secondary mb-2">No trades yet.</p>
-          <p className="text-xs text-text-muted">Propose a trade with another league member.</p>
-        </div>
-        {showProposeModal && (
-          <ProposeTradeModal league={league} currentUserId={profile?.id} onClose={() => setShowProposeModal(false)} />
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-4">
+      {/* Propose trade button */}
       <button
         onClick={() => setShowProposeModal(true)}
         className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-colors"
@@ -306,31 +301,66 @@ export default function FantasyTrades({ league }) {
       {showProposeModal && (
         <ProposeTradeModal league={league} currentUserId={profile?.id} onClose={() => setShowProposeModal(false)} />
       )}
-      {pending.length > 0 && (
-        <div>
-          <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Pending</h3>
-          <div className="space-y-3">
-            {pending.map((t) => (
-              <TradeCard
-                key={t.id}
-                trade={t}
-                currentUserId={profile?.id}
-                onAccept={(id) => handleAction(id, 'accept')}
-                onDecline={(id) => handleAction(id, 'decline')}
-                onCancel={(id) => handleAction(id, 'cancel')}
-              />
-            ))}
-          </div>
+
+      {/* Sub-tabs: Activity | Trades */}
+      <div className="flex gap-1">
+        {['activity', 'trades'].map((v) => (
+          <button
+            key={v}
+            onClick={() => setActiveView(v)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              activeView === v ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
+            }`}
+          >
+            {v === 'activity' ? 'Activity' : `Trades${pending.length ? ` (${pending.length})` : ''}`}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>
+      ) : activeView === 'activity' ? (
+        /* Activity log */
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden">
+          {!transactions?.length ? (
+            <div className="text-center py-8 text-sm text-text-muted">No transactions yet.</div>
+          ) : (
+            <div className="px-3">
+              {transactions.map((txn) => (
+                <TransactionRow key={txn.id} txn={txn} />
+              ))}
+            </div>
+          )}
         </div>
-      )}
-      {completed.length > 0 && (
-        <div>
-          <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">History</h3>
-          <div className="space-y-3">
-            {completed.map((t) => (
-              <TradeCard key={t.id} trade={t} currentUserId={profile?.id} onAccept={() => {}} onDecline={() => {}} onCancel={() => {}} />
-            ))}
-          </div>
+      ) : (
+        /* Trades view */
+        <div className="space-y-3">
+          {pending.length > 0 && (
+            <div>
+              <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Pending</h3>
+              <div className="space-y-3">
+                {pending.map((t) => (
+                  <TradeCard key={t.id} trade={t} currentUserId={profile?.id}
+                    onAccept={(id) => handleAction(id, 'accept')}
+                    onDecline={(id) => handleAction(id, 'decline')}
+                    onCancel={(id) => handleAction(id, 'cancel')} />
+                ))}
+              </div>
+            </div>
+          )}
+          {(trades || []).filter((t) => t.status !== 'pending').length > 0 && (
+            <div>
+              <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">History</h3>
+              <div className="space-y-3">
+                {(trades || []).filter((t) => t.status !== 'pending').map((t) => (
+                  <TradeCard key={t.id} trade={t} currentUserId={profile?.id} onAccept={() => {}} onDecline={() => {}} onCancel={() => {}} />
+                ))}
+              </div>
+            </div>
+          )}
+          {!(trades || []).length && (
+            <div className="text-center py-8 text-sm text-text-muted">No trades yet.</div>
+          )}
         </div>
       )}
     </div>

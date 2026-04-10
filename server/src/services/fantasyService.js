@@ -2163,6 +2163,11 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
     throw insertErr
   }
 
+  // Log transactions
+  const txns = [{ league_id: leagueId, user_id: userId, type: 'add', player_id: addPlayerId }]
+  if (dropPlayerId) txns.push({ league_id: leagueId, user_id: userId, type: 'drop', player_id: dropPlayerId })
+  await supabase.from('fantasy_transactions').insert(txns)
+
   return { added: addPlayer.full_name, dropped: dropPlayerId || null }
 }
 
@@ -2197,6 +2202,7 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
   const { error: delErr } = await supabase.from('fantasy_rosters').delete().eq('id', row.id)
   if (delErr) throw delErr
   await addToWaiverPool(leagueId, [playerId], 'dropped')
+  await supabase.from('fantasy_transactions').insert({ league_id: leagueId, user_id: userId, type: 'drop', player_id: playerId })
   return { dropped: row.nfl_players?.full_name || playerId }
 }
 
@@ -3046,6 +3052,10 @@ export async function processLeagueWaivers(leagueId) {
         })
       if (insertErr) throw insertErr
       addOk = true
+      // Log waiver transactions
+      const wTxns = [{ league_id: leagueId, user_id: winner.user_id, type: 'waiver_add', player_id: winner.add_player_id, bid_amount: winner.bid_amount || 0 }]
+      if (winner.drop_player_id) wTxns.push({ league_id: leagueId, user_id: winner.user_id, type: 'waiver_drop', player_id: winner.drop_player_id })
+      await supabase.from('fantasy_transactions').insert(wTxns)
     } catch (err) {
       logger.error({ err, claimId: winner.id }, 'Failed to apply waiver claim')
       await supabase
@@ -3308,6 +3318,23 @@ export async function acceptTrade(tradeId, userId) {
   } catch (err) {
     logger.error({ err }, 'Failed to send trade-accepted notification')
   }
+
+  // Log trade transactions
+  const txns = (trade.fantasy_trade_items || []).map((item) => ({
+    league_id: trade.league_id,
+    user_id: item.from_user_id,
+    type: 'trade_send',
+    player_id: item.player_id,
+    trade_id: tradeId,
+  }))
+  txns.push(...(trade.fantasy_trade_items || []).map((item) => ({
+    league_id: trade.league_id,
+    user_id: item.to_user_id,
+    type: 'trade_receive',
+    player_id: item.player_id,
+    trade_id: tradeId,
+  })))
+  if (txns.length) await supabase.from('fantasy_transactions').insert(txns)
 
   return { accepted: true }
 }
