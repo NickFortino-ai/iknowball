@@ -2,21 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
 import { sendEmailToUserIds } from './emailService.js'
-
-// Paginated fetch to bypass Supabase 1000-row server limit
-async function fetchAll(query) {
-  const PAGE = 1000
-  let all = []
-  let offset = 0
-  while (true) {
-    const { data, error } = await query.range(offset, offset + PAGE - 1)
-    if (error) throw error
-    all = all.concat(data || [])
-    if (!data || data.length < PAGE) break
-    offset += PAGE
-  }
-  return all
-}
+import { fetchAll } from '../utils/fetchAll.js'
 
 // Tier thresholds (mirrored from client scoring.js)
 const TIER_THRESHOLDS = [

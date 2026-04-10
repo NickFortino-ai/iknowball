@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { getLeaderboard, getUsersByTier } from '../services/leaderboardService.js'
 import { getRoyaltyData } from '../services/recordService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 
@@ -29,29 +30,30 @@ router.get('/royalty', requireAuth, async (req, res, next) => {
 // Leagues leaderboard — aggregate league finish points
 router.get('/leagues', requireAuth, async (req, res) => {
   // Fetch bonus points and actual league membership in parallel
-  const [bonusRes, memberRes] = await Promise.all([
-    supabase
-      .from('bonus_points')
-      .select('user_id, league_id, points, type, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
-      .in('type', ['league_win', 'bracket_finish', 'league_finish', 'survivor_win', 'league_pickem_earned']),
-    supabase
-      .from('league_members')
-      .select('user_id, league_id, leagues!inner(status)')
-      .eq('leagues.status', 'completed'),
+  const [bonusData, memberData] = await Promise.all([
+    fetchAll(
+      supabase
+        .from('bonus_points')
+        .select('user_id, league_id, points, type, users(id, username, display_name, avatar_url, avatar_emoji, tier, total_points)')
+        .in('type', ['league_win', 'bracket_finish', 'league_finish', 'survivor_win', 'league_pickem_earned'])
+    ),
+    fetchAll(
+      supabase
+        .from('league_members')
+        .select('user_id, league_id, leagues!inner(status)')
+        .eq('leagues.status', 'completed')
+    ),
   ])
-
-  if (bonusRes.error) throw bonusRes.error
-  if (memberRes.error) throw memberRes.error
 
   // Build map of completed leagues per user from league_members
   const completedLeaguesMap = {}
-  for (const m of (memberRes.data || [])) {
+  for (const m of (memberData || [])) {
     if (!completedLeaguesMap[m.user_id]) completedLeaguesMap[m.user_id] = new Set()
     completedLeaguesMap[m.user_id].add(m.league_id)
   }
 
   const userMap = {}
-  for (const b of (bonusRes.data || [])) {
+  for (const b of (bonusData || [])) {
     if (!userMap[b.user_id]) {
       userMap[b.user_id] = { user: b.users, leaguePoints: 0, wins: 0, leagueResults: {} }
     }

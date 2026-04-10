@@ -1,16 +1,17 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 export async function snapshotRanks() {
   logger.info('Starting daily rank snapshot')
 
   // Get global leaderboard ordered by points
-  const { data: users, error } = await supabase
-    .from('users')
-    .select('id, total_points')
-    .order('total_points', { ascending: false })
-
-  if (error) {
+  let users
+  try {
+    users = await fetchAll(
+      supabase.from('users').select('id, total_points').order('total_points', { ascending: false })
+    )
+  } catch (error) {
     logger.error({ error }, 'Failed to fetch users for rank snapshot')
     return
   }

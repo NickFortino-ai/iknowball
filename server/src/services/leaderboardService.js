@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 export async function getLeaderboard(scope = 'global', sportKey) {
   if (scope === 'global') {
@@ -13,12 +14,12 @@ export async function getLeaderboard(scope = 'global', sportKey) {
   }
 
   if (scope === 'props') {
-    const { data, error } = await supabase
-      .from('prop_picks')
-      .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
-      .eq('status', 'settled')
-
-    if (error) throw error
+    const data = await fetchAll(
+      supabase
+        .from('prop_picks')
+        .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
+        .eq('status', 'settled')
+    )
 
     const statsMap = {}
     for (const pick of data || []) {
@@ -43,12 +44,12 @@ export async function getLeaderboard(scope = 'global', sportKey) {
   }
 
   if (scope === 'parlays') {
-    const { data, error } = await supabase
-      .from('parlays')
-      .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
-      .eq('status', 'settled')
-
-    if (error) throw error
+    const data = await fetchAll(
+      supabase
+        .from('parlays')
+        .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
+        .eq('status', 'settled')
+    )
 
     const statsMap = {}
     for (const parlay of data || []) {
@@ -111,13 +112,13 @@ export async function getUsersByTier(tierName) {
     throw Object.assign(new Error(`Invalid tier: ${tierName}`), { status: 400 })
   }
 
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji, total_points, tier')
-    .eq('tier', tierName)
-    .order('total_points', { ascending: false })
-
-  if (error) throw error
+  const data = await fetchAll(
+    supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, avatar_emoji, total_points, tier')
+      .eq('tier', tierName)
+      .order('total_points', { ascending: false })
+  )
   return data
 }
 

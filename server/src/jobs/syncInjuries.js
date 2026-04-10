@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 import { ODDS_TO_ESPN, INJURY_SPORTS, BASKETBALL_SPORTS } from '../config/espnTeamMap.js'
 
 const SEVERITY_ORDER = { Out: 0, Doubtful: 1, Questionable: 2, Probable: 3, 'Day-To-Day': 4 }
@@ -330,11 +331,13 @@ export async function syncInjuries() {
       // Pull all NFL players (only ones still on a team) so we can
       // null-out injuries for players who no longer appear in ESPN's
       // active injury list and bump status for those who do.
-      const { data: nflPlayers } = await supabase
-        .from('nfl_players')
-        .select('id, full_name, injury_status, injury_body_part')
-        .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-        .not('team', 'is', null)
+      const nflPlayers = await fetchAll(
+        supabase
+          .from('nfl_players')
+          .select('id, full_name, injury_status, injury_body_part')
+          .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+          .not('team', 'is', null)
+      )
 
       let updated = 0
       let cleared = 0
