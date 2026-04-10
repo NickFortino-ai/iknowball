@@ -525,77 +525,108 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
 
   const report = data.report
   const isTraditional = report.format === 'traditional_fantasy'
-  const userIds = Object.keys(report.users || {})
-  const currentUserId = selectedUserId || profile?.id || userIds[0]
-  const currentReport = report.users?.[currentUserId]
+  const allUserIds = Object.keys(report.users || {})
+
+  // Order tabs: current user first, then everyone else
+  const myId = profile?.id
+  const orderedUserIds = myId && allUserIds.includes(myId)
+    ? [myId, ...allUserIds.filter((id) => id !== myId)]
+    : allUserIds
+
+  // 'league' tab is default, otherwise a user id
+  const activeTab = selectedUserId || 'league'
+  const currentReport = activeTab !== 'league' ? report.users?.[activeTab] : null
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
       <div
-        className="bg-bg-secondary w-full md:max-w-lg max-h-[90vh] rounded-t-2xl md:rounded-2xl overflow-y-auto"
+        className="bg-bg-secondary w-full md:max-w-2xl max-h-[90vh] rounded-t-2xl md:rounded-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Branded header */}
-        <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 z-10">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <div className="font-display text-[10px] uppercase tracking-widest text-accent mb-0.5">I KNOW BALL</div>
-              <h3 className="font-display text-lg text-text-primary truncate">{leagueName || 'League Report'}</h3>
-              <div className="text-xs text-text-muted">
-                {isTraditional
-                  ? `${report.season} Season \u00b7 ${report.totalWeeks} weeks \u00b7 ${memberCount || userIds.length} teams`
-                  : report.contestWeeks
-                    ? `${report.contestWeeks} weeks \u00b7 ${memberCount || userIds.length} players`
-                    : `${report.contestDays} contest days \u00b7 ${memberCount || userIds.length} players`}
+        <div className="sticky top-0 bg-bg-secondary z-10">
+          <div className="px-4 py-3 border-b border-text-primary/10">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="font-display text-[10px] uppercase tracking-widest text-accent mb-0.5">I KNOW BALL</div>
+                <h3 className="font-display text-lg text-text-primary truncate">{leagueName || 'League Report'}</h3>
+                <div className="text-xs text-text-muted">
+                  {isTraditional
+                    ? `${report.season} Season \u00b7 ${report.totalWeeks} weeks \u00b7 ${memberCount || allUserIds.length} teams`
+                    : report.contestWeeks
+                      ? `${report.contestWeeks} weeks \u00b7 ${memberCount || allUserIds.length} players`
+                      : `${report.contestDays} contest days \u00b7 ${memberCount || allUserIds.length} players`}
+                </div>
               </div>
+              <button onClick={onClose} className="text-text-muted p-1 shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
             </div>
-            <button onClick={onClose} className="text-text-muted p-1 shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+          </div>
+
+          {/* Tab bar — sticky below header */}
+          <div className="relative border-b border-text-primary/10">
+            {/* Fade hints for horizontal scroll */}
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-bg-secondary to-transparent z-10" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-bg-secondary to-transparent z-10" />
+            <div className="flex gap-1 px-4 py-2 overflow-x-auto scrollbar-hide scroll-smooth" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {/* League tab */}
+              <button
+                onClick={() => setSelectedUserId('league')}
+                className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'league'
+                    ? 'bg-accent text-white shadow-sm shadow-accent/25'
+                    : 'bg-bg-card text-text-secondary hover:bg-bg-card/80'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                League
+              </button>
+              {/* User tabs — current user first */}
+              {orderedUserIds.map((uid) => {
+                const u = report.users[uid]?.user
+                if (!u) return null
+                const isActive = activeTab === uid
+                const isMe = uid === myId
+                return (
+                  <button
+                    key={uid}
+                    onClick={() => setSelectedUserId(uid)}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                      isActive
+                        ? 'bg-accent text-white shadow-sm shadow-accent/25'
+                        : 'bg-bg-card text-text-secondary hover:bg-bg-card/80'
+                    }`}
+                  >
+                    <Avatar user={u} size="xs" />
+                    {isMe ? 'My Report' : (u.displayName || u.username)}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
-        {/* User selector */}
-        {userIds.length > 1 && (
-          <div className="px-4 py-3 flex gap-2 overflow-x-auto scrollbar-hide border-b border-text-primary/10">
-            {userIds.map((uid) => {
-              const u = report.users[uid]?.user
-              if (!u) return null
-              const isActive = uid === currentUserId
-              return (
-                <button
-                  key={uid}
-                  onClick={() => setSelectedUserId(uid)}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    isActive ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
-                  }`}
-                >
-                  <Avatar user={u} size="xs" />
-                  {u.displayName || u.username}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
         {/* Report content */}
         <div className="p-4">
-          {/* League-wide awards */}
-          {isTraditional
-            ? <TraditionalLeagueAwards
-                awards={report.leagueAwards}
-                champion={Object.values(report.users || {}).find((u) => u.seasonRecord?.standing === 1)}
-              />
-            : <DfsLeagueAwards awards={report.leagueAwards} />
-          }
-
-          {/* Per-user report */}
-          {currentReport ? (
+          {activeTab === 'league' ? (
+            <>
+              {isTraditional
+                ? <TraditionalLeagueAwards
+                    awards={report.leagueAwards}
+                    champion={Object.values(report.users || {}).find((u) => u.seasonRecord?.standing === 1)}
+                  />
+                : <DfsLeagueAwards awards={report.leagueAwards} />
+              }
+            </>
+          ) : currentReport ? (
             isTraditional
-              ? <TraditionalUserReport report={currentReport} isMe={currentUserId === profile?.id} />
-              : <DfsUserReport report={currentReport} isMe={currentUserId === profile?.id} />
+              ? <TraditionalUserReport report={currentReport} isMe={activeTab === myId} />
+              : <DfsUserReport report={currentReport} isMe={activeTab === myId} />
           ) : (
             <p className="text-center text-text-muted text-sm">No report data for this user.</p>
           )}
