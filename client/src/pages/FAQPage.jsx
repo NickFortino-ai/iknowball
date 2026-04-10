@@ -23,9 +23,9 @@ const sections = [
       },
       {
         q: 'Why do you charge a subscription?',
-        a: `Honestly? It costs real money to run this app. Servers, APIs, live odds, real-time scoring \u2014 none of that is free. We could plaster the app with obnoxious ads that assault your consciousness every time you try to make a pick, but we respect you too much for that.
+        a: `If you\u2019re not paying for the product, you are the product. Yahoo and ESPN are free because they monetize your data and sell your attention to advertisers. You are the product for Yahoo and ESPN. You are not the product here. IKB charges a dollar a month, runs zero ads, and shares nothing about you with anyone. The people behind IKB are devoted to one thing: building the best fantasy and sports prediction app ever made.
 
-So instead, we charge $1 a month. Not $0.99 \u2014 because are we still doing the disingenuous 99 cents thing? It\u2019s a dollar. One single dollar.
+It costs real money to run this app. Servers, APIs, live odds, real-time scoring \u2014 none of that is free. So instead of ads, we charge $1 a month. Not $0.99 \u2014 because are we still doing the disingenuous 99 cents thing? It\u2019s a dollar. One single dollar.
 
 Here\u2019s what else costs about a dollar: one third of a gas station coffee. One gumball machine gumball. A third of a banana at Whole Foods. A <em>shot</em> of beer. A pickle. Half a Snickers bar.
 
