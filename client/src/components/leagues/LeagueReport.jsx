@@ -440,10 +440,24 @@ function DfsLeagueAwards({ awards }) {
 // Traditional Fantasy League Awards
 // =====================================================================
 
-function TraditionalLeagueAwards({ awards }) {
+function TraditionalLeagueAwards({ awards, champion }) {
   if (!awards) return null
   return (
     <div className="mb-6 space-y-3">
+      {/* League Champion — featured prominently at the top */}
+      {champion && (
+        <div className="bg-gradient-to-br from-yellow-500/20 to-accent/10 border border-yellow-500/40 rounded-xl p-4 text-center mb-2">
+          <div className="text-[10px] uppercase tracking-widest text-yellow-500 mb-2">League Champion</div>
+          <div className="flex justify-center mb-2">
+            <Avatar user={champion.user} size="xl" />
+          </div>
+          <div className="font-display text-xl text-text-primary">{champion.user.displayName || champion.user.username}</div>
+          <div className="text-sm text-text-muted mt-1">
+            {champion.seasonRecord.wins}-{champion.seasonRecord.losses} &middot; {champion.seasonRecord.pointsFor} pts
+          </div>
+        </div>
+      )}
+
       <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">League Awards</h4>
       {awards.highestScorer && (
         <AwardCard
@@ -578,7 +592,10 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
         <div className="p-4">
           {/* League-wide awards */}
           {isTraditional
-            ? <TraditionalLeagueAwards awards={report.leagueAwards} />
+            ? <TraditionalLeagueAwards
+                awards={report.leagueAwards}
+                champion={Object.values(report.users || {}).find((u) => u.seasonRecord?.standing === 1)}
+              />
             : <DfsLeagueAwards awards={report.leagueAwards} />
           }
 
