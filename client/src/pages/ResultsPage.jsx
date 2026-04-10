@@ -127,13 +127,14 @@ export default function ResultsPage() {
     }
   }, [picks, parlays, propPicks, futuresPicks, todayKey])
 
+  const settledFutures = useMemo(() => (futuresPicks || []).filter(p => p.status === 'settled'), [futuresPicks])
+
   const hasTodayAction = todayPicks.length > 0 || todayParlays.length > 0 || todayProps.length > 0 || liveFutures.length > 0
-  const hasSettled = olderSettledPicks.length > 0 || olderSettledParlays.length > 0 || olderSettledProps.length > 0
+  const hasSettled = olderSettledPicks.length > 0 || olderSettledParlays.length > 0 || olderSettledProps.length > 0 || settledFutures.length > 0
 
   const allSettledPicks = useMemo(() => [...todayPicks.filter(p => p.status === 'settled'), ...olderSettledPicks], [todayPicks, olderSettledPicks])
   const allSettledParlays = useMemo(() => [...todayParlays.filter(p => p.status === 'settled'), ...olderSettledParlays], [todayParlays, olderSettledParlays])
   const allSettledProps = useMemo(() => [...todayProps.filter(p => p.status === 'settled'), ...olderSettledProps], [todayProps, olderSettledProps])
-  const settledFutures = useMemo(() => (futuresPicks || []).filter(p => p.status === 'settled'), [futuresPicks])
 
   const leaguePoints = useMemo(() => {
     if (!bonuses?.length) return 0
@@ -339,6 +340,25 @@ export default function ResultsPage() {
                       </a>
                     </div>
                   )
+                )}
+              </>
+            )
+          })()}
+
+          {settledFutures.length > 0 && (() => {
+            const isCollapsed = collapsed.futures !== undefined ? collapsed.futures : hasTodayAction
+            return (
+              <>
+                <button onClick={() => toggleSection('futures', hasTodayAction)} className="flex items-center justify-between w-full mb-3">
+                  <h2 className="font-display text-lg text-text-secondary">Futures</h2>
+                  <svg className={`w-5 h-5 text-text-muted transition-transform ${isCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {!isCollapsed && (
+                  <div className="space-y-3 mb-6">
+                    {settledFutures.map((fp) => (
+                      <FuturesPickCard key={fp.id} pick={fp} />
+                    ))}
+                  </div>
                 )}
               </>
             )
