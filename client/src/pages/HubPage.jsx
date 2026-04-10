@@ -395,7 +395,7 @@ export default function HubPage() {
                 {filterMode ? 'Done' : 'Filter'}
               </button>
             )}
-            <InfoTooltip text="Your connections are the users you're linked with. Anyone you've been in a league with is automatically added. You can also search for users by username and send a connection request. Your connections appear first when inviting people to leagues, making it easy to get your people together fast. The 🔥 you see in this list indicates an active win streak." />
+            <InfoTooltip text="Your squad is your network on I KNOW BALL. Search for users by username and send connection requests, or enable auto-connect on a league to link up with leaguemates automatically. Your connections appear first when inviting people to leagues. The 🔥 indicates an active win streak." />
           </div>
         </div>
         {!connections?.length ? (
