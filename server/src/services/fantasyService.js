@@ -2703,7 +2703,11 @@ export async function getWaiverLockedPlayerIds(leagueId) {
  */
 export async function addToWaiverPool(leagueId, playerIds, reason = 'dropped') {
   if (!playerIds?.length) return
-  const clearsAt = nextWaiverClearTime().toISOString()
+  // Dropped players go on a 24-hour waiver window so other managers can claim.
+  // Other reasons (e.g. trade) use the next Wednesday clearing time.
+  const clearsAt = reason === 'dropped'
+    ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    : nextWaiverClearTime().toISOString()
   const rows = playerIds.map((pid) => ({
     league_id: leagueId,
     player_id: pid,

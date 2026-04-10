@@ -81,6 +81,16 @@ function TradeCard({ trade, currentUserId, onAccept, onDecline, onCancel }) {
 // Transaction Log Item
 // =====================================================================
 
+function formatTimeAgo(ts) {
+  const diff = Date.now() - new Date(ts).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
 function TransactionRow({ txn }) {
   const player = txn.nfl_players || {}
   const user = txn.users || {}
@@ -88,23 +98,11 @@ function TransactionRow({ txn }) {
   const typeConfig = {
     add: { icon: '+', color: 'text-correct', label: 'added' },
     drop: { icon: '-', color: 'text-incorrect', label: 'dropped' },
-    waiver_add: { icon: '+', color: 'text-correct', label: 'claimed' },
+    waiver_add: { icon: '+', color: 'text-correct', label: 'claimed (waiver)' },
     waiver_drop: { icon: '-', color: 'text-incorrect', label: 'dropped' },
-    trade_send: { icon: '\u2192', color: 'text-accent', label: 'traded away' },
-    trade_receive: { icon: '\u2190', color: 'text-accent', label: 'acquired via trade' },
     draft: { icon: '\u2605', color: 'text-text-primary', label: 'drafted' },
   }
   const cfg = typeConfig[txn.type] || { icon: '?', color: 'text-text-muted', label: txn.type }
-
-  const timeAgo = (() => {
-    const diff = Date.now() - new Date(txn.created_at).getTime()
-    const mins = Math.floor(diff / 60000)
-    if (mins < 60) return `${mins}m ago`
-    const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs}h ago`
-    const days = Math.floor(hrs / 24)
-    return `${days}d ago`
-  })()
 
   return (
     <div className="flex items-center gap-2.5 py-2.5 border-b border-text-primary/5 last:border-0">
@@ -125,7 +123,41 @@ function TransactionRow({ txn }) {
         <div className="text-[10px] text-text-muted">
           {player.position} · {player.team || 'FA'}
           {txn.bid_amount > 0 && <span> · ${txn.bid_amount} FAAB</span>}
-          {' · '}{timeAgo}
+          {' · '}{formatTimeAgo(txn.created_at)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TradeTransactionRow({ items, timestamp }) {
+  // Group by direction: sends and receives per user
+  const sends = items.filter((t) => t.type === 'trade_send')
+  const receives = items.filter((t) => t.type === 'trade_receive')
+
+  // Build readable trade description: each user and what they acquired
+  // Group receives by user
+  const byReceiver = {}
+  for (const r of receives) {
+    const name = r.users?.display_name || r.users?.username || 'Unknown'
+    if (!byReceiver[name]) byReceiver[name] = []
+    byReceiver[name].push(r.nfl_players?.full_name || 'a player')
+  }
+
+  const parts = Object.entries(byReceiver).map(([name, players]) =>
+    `${name} acquires ${players.join(' and ')}`
+  )
+
+  return (
+    <div className="py-2.5 border-b border-text-primary/5 last:border-0">
+      <div className="flex items-center gap-2.5">
+        <span className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0 text-accent bg-bg-secondary">
+          {'\u21C4'}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-bold text-accent uppercase tracking-wide mb-0.5">Trade Approved</div>
+          <div className="text-sm text-text-primary">{parts.join('; ')}</div>
+          <div className="text-[10px] text-text-muted mt-0.5">{formatTimeAgo(timestamp)}</div>
         </div>
       </div>
     </div>
@@ -326,9 +358,24 @@ export default function FantasyTrades({ league }) {
             <div className="text-center py-8 text-sm text-text-muted">No transactions yet.</div>
           ) : (
             <div className="px-3">
-              {transactions.map((txn) => (
-                <TransactionRow key={txn.id} txn={txn} />
-              ))}
+              {(() => {
+                // Group trade_send/trade_receive by trade_id into single entries
+                const rendered = new Set()
+                const items = []
+                for (const txn of transactions) {
+                  if ((txn.type === 'trade_send' || txn.type === 'trade_receive') && txn.trade_id) {
+                    if (rendered.has(txn.trade_id)) continue
+                    rendered.add(txn.trade_id)
+                    const tradeItems = transactions.filter((t) => t.trade_id === txn.trade_id)
+                    items.push(
+                      <TradeTransactionRow key={`trade-${txn.trade_id}`} items={tradeItems} timestamp={txn.created_at} />
+                    )
+                  } else {
+                    items.push(<TransactionRow key={txn.id} txn={txn} />)
+                  }
+                }
+                return items
+              })()}
             </div>
           )}
         </div>

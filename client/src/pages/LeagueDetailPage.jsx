@@ -253,7 +253,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
         return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Top finishers earn bonus points on the global leaderboard.`
       }
-      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster with free-agent pickups (waivers process Wednesday 3 AM ET), trades, and IR moves. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Top finishers earn bonus points on the global leaderboard.`
+      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster through trades, free-agent pickups, and IR moves. Dropped players go on waivers for 24 hours — during that window, any manager can place a claim (highest priority or FAAB bid wins). Unclaimed players become free agents. The weekly waiver run processes all pending claims Wednesday at 3 AM ET. Tap any player to view their stats, game log, injury status, and analysis. Top finishers earn bonus points on the global leaderboard.`
     }
 
     if (league.format === 'squares') {
