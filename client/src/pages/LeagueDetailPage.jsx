@@ -929,6 +929,7 @@ export default function LeagueDetailPage() {
   }, [noteExpanded, league?.commissioner_note, league?.updated_at, id])
 
   // Fantasy team name
+  const isTraditionalFantasy = league?.format === 'fantasy' && fantasySettings?.format !== 'salary_cap'
   const myMembership = league?.members?.find((m) => m.user_id === profile?.id)
   const [showTeamNameModal, setShowTeamNameModal] = useState(false)
   const [teamNameInput, setTeamNameInput] = useState('')
