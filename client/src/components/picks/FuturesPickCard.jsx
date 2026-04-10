@@ -4,10 +4,10 @@ export default function FuturesPickCard({ pick }) {
   const market = pick.futures_markets
 
   return (
-    <div className={`bg-bg-card rounded-2xl border ${
+    <div className={`bg-bg-primary rounded-2xl border ${
       pick.status === 'settled'
-        ? pick.is_correct ? 'border-correct' : 'border-incorrect'
-        : 'border-accent'
+        ? pick.is_correct ? 'border-correct/40' : 'border-incorrect/40'
+        : 'border-text-primary/20'
     } p-4`}>
       <div className="flex items-center justify-between mb-2">
         <span className="font-semibold text-sm text-text-primary truncate">
