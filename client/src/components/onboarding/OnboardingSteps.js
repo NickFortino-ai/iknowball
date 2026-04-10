@@ -43,7 +43,7 @@ const ONBOARDING_STEPS = [
     page: '/leaderboard',
     targetSelector: null,
     title: 'Climb the Leaderboard',
-    body: 'Earn points from your picks to climb tiers — from Rookie all the way to GOAT. See how you stack up against everyone.',
+    body: 'Earn points from your picks and league finishes to climb tiers — from Rookie all the way to GOAT. There\u2019s an overall leaderboard and a leaderboard for every sport, so you can see who really knows ball.',
     position: 'center',
     freeScroll: true,
   },
