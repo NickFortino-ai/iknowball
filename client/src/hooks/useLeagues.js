@@ -1044,6 +1044,15 @@ export function useFantasyMatchupLive(leagueId, week, season) {
   })
 }
 
+export function useFantasyMatchupWeek(leagueId, week, season, currentWeek) {
+  return useQuery({
+    queryKey: ['fantasy', leagueId, 'matchup-week', week, season],
+    queryFn: () => api.get(`/dfs/matchup-week?league_id=${leagueId}&week=${week}&season=${season}&current_week=${currentWeek}`),
+    enabled: !!leagueId && !!week && week !== currentWeek,
+    staleTime: week < currentWeek ? Infinity : 60000, // past weeks never change
+  })
+}
+
 export function useMlbDfsStandings(leagueId) {
   return useQuery({
     queryKey: ['mlb-dfs', leagueId, 'standings'],

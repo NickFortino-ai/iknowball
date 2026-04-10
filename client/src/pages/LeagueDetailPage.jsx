@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -43,7 +43,14 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
 
   if (league.format === 'fantasy') {
     const draftDone = fantasySettings?.draft_status === 'completed'
-    const tabs = ['My Team', 'Players', 'Live', 'Matchups', 'Trades', memberOrStandings, 'Draft']
+    const isSalaryCap = fantasySettings?.format === 'salary_cap'
+    let tabs
+    if (isSalaryCap) {
+      tabs = ['My Team', 'Players', 'Live', 'Matchups', 'Trades', memberOrStandings, 'Draft']
+    } else {
+      // Traditional: Matchups absorbs Live, no separate Live tab
+      tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Trades', 'Draft']
+    }
     if (!draftDone) tabs.splice(tabs.indexOf('Draft') + 1, 0, 'My Rankings')
     tabs.push('Thread')
     return tabs
@@ -114,6 +121,27 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
   const { data: fantasySettings } = useFantasySettings(['nba_dfs', 'mlb_dfs', 'hr_derby', 'fantasy'].includes(league.format) ? league.id : null)
+  const isTraditionalFantasy = league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap'
+  const currentNflWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
+  const { data: liveMatchupData } = useFantasyMatchupLive(
+    isTraditionalFantasy ? league.id : null,
+    currentNflWeek,
+    fantasySettings?.season || 2026
+  )
+  // Matchups tab glows when any player on either side of user's matchup has a live or in-progress game
+  const matchupsLive = (() => {
+    if (!liveMatchupData?.matchups || !isTraditionalFantasy) return false
+    const myMatchup = liveMatchupData.matchups.find((m) =>
+      m.home_user?.id === profile?.id || m.away_user?.id === profile?.id
+    )
+    if (!myMatchup) return false
+    const allSlots = [...(myMatchup.home_roster || []), ...(myMatchup.away_roster || [])]
+    const hasLive = allSlots.some((s) => s.game_status === 'live')
+    const hasFinal = allSlots.some((s) => s.game_status === 'final')
+    const hasUpcoming = allSlots.some((s) => s.game_status === 'upcoming')
+    // Glow from first kickoff to last final: any game started (live or final) AND not all done
+    return (hasLive || hasFinal) && (hasLive || hasUpcoming)
+  })()
   const items = []
 
   // Date range / duration
@@ -1441,12 +1469,17 @@ export default function LeagueDetailPage() {
             className={`relative px-4 py-2 rounded-lg text-sm font-semibold transition-colors backdrop-blur-sm ${
               isLiveDisabled
                 ? 'bg-bg-primary/10 text-text-muted/40 cursor-not-allowed border border-text-primary/10'
-                : activeTab === i
-                  ? 'bg-bg-primary/20 text-accent border-2 border-accent'
-                  : 'bg-bg-primary/20 text-text-primary hover:bg-bg-primary/40 border border-text-primary/15'
+                : tab === 'Matchups' && matchupsLive && activeTab !== i
+                  ? 'bg-bg-primary/20 text-orange-400 border-2 border-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.4)]'
+                  : activeTab === i
+                    ? 'bg-bg-primary/20 text-accent border-2 border-accent'
+                    : 'bg-bg-primary/20 text-text-primary hover:bg-bg-primary/40 border border-text-primary/15'
             }`}
           >
             {tab}
+            {tab === 'Matchups' && matchupsLive && activeTab !== i && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+            )}
             {tab === 'Thread' && threadUnread?.unread && activeTab !== i && (
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
             )}
@@ -1564,7 +1597,7 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (
-        <div className="relative z-10"><FantasyMatchup league={league} /></div>
+        <div className="relative z-10"><FantasyMatchup league={league} fantasySettings={fantasySettings} /></div>
       )}
 
       {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Live' || tabs[activeTab] === 'Standings') && league.format === 'nba_dfs' && (

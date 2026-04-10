@@ -298,7 +298,7 @@ router.get('/matchup-live', async (req, res) => {
   const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
   const { data: rosters } = await supabase
     .from('fantasy_rosters')
-    .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, injury_status)')
+    .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week)')
     .eq('league_id', league_id)
     .in('user_id', userIds)
 
@@ -417,13 +417,13 @@ router.get('/matchup-live', async (req, res) => {
     const status = teamState === 'in' ? 'live' : teamState === 'post' ? 'final' : 'upcoming'
     const stat = statsMap[r.player_id] || null
     const pts = applyRulesH2H(stat, leagueRules)
-    // Prefer weekly projection over season average
-    const weeklyProj = weeklyProjMap[r.player_id]
-    const proj = weeklyProj != null ? weeklyProj : (seasonAvgMap[r.player_id] || 0)
+    // Zero projection for bye-week players
+    const onBye = player.bye_week === w
+    const weeklyProj = onBye ? 0 : (weeklyProjMap[r.player_id] != null ? weeklyProjMap[r.player_id] : (seasonAvgMap[r.player_id] || 0))
 
     // Projected points: actual so far + remaining fraction * projection
     const progress = gameProgressFraction(teamState, gameScores[team]?.period)
-    const projected = status === 'final' ? pts : pts + proj * (1 - progress)
+    const projected = onBye ? 0 : (status === 'final' ? pts : pts + weeklyProj * (1 - progress))
 
     userRosters[r.user_id].push({
       slot: r.slot,
@@ -493,6 +493,158 @@ router.get('/matchup-live', async (req, res) => {
   })
 
   res.json({ matchups: enrichedMatchups })
+})
+
+// Matchup data for any week — past (historical stats), current (live), future (projections)
+router.get('/matchup-week', async (req, res) => {
+  const { league_id, week, season, current_week } = req.query
+  if (!league_id || !week) return res.status(400).json({ error: 'league_id and week required' })
+  const w = parseInt(week)
+  const s = parseInt(season || '2026')
+  const cw = parseInt(current_week || week)
+
+  const isPast = w < cw
+  const isFuture = w > cw
+  const isCurrent = w === cw
+
+  // Get matchups for this week
+  const { data: matchups } = await supabase
+    .from('fantasy_matchups')
+    .select('*, home_user:users!fantasy_matchups_home_user_id_fkey(id, username, display_name, avatar_url, avatar_emoji), away_user:users!fantasy_matchups_away_user_id_fkey(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', league_id)
+    .eq('week', w)
+
+  if (!matchups?.length) return res.json({ matchups: [], weekStatus: isFuture ? 'future' : isPast ? 'past' : 'current' })
+
+  // For future weeks: just return the schedule with season-long projections
+  if (isFuture) {
+    const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
+    const { data: rosters } = await supabase
+      .from('fantasy_rosters')
+      .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std)')
+      .eq('league_id', league_id)
+      .in('user_id', userIds)
+
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('scoring_format')
+      .eq('league_id', league_id)
+      .single()
+    const projCol = { ppr: 'projected_pts_ppr', half_ppr: 'projected_pts_half_ppr', standard: 'projected_pts_std' }[settings?.scoring_format] || 'projected_pts_half_ppr'
+
+    const STARTER_SLOTS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
+    const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
+
+    const enriched = matchups.map((m) => {
+      const buildRoster = (userId) => (rosters || [])
+        .filter((r) => r.user_id === userId && STARTER_SLOTS.has((r.slot || '').toLowerCase()))
+        .map((r) => {
+          const p = r.nfl_players || {}
+          const onBye = p.bye_week === w
+          const seasonProj = onBye ? 0 : (Number(p[projCol]) || 0)
+          // Season-long projection is total season — estimate weekly by dividing by 17
+          const weeklyEst = onBye ? 0 : Math.round((seasonProj / 17) * 100) / 100
+          return {
+            slot: r.slot, player_id: r.player_id,
+            player_name: p.full_name || '?', position: p.position || '?',
+            team: p.team || '', headshot_url: p.headshot_url || null,
+            projected: weeklyEst, points: 0, game_status: 'upcoming',
+            on_bye: onBye,
+          }
+        })
+        .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
+
+      const homeRoster = buildRoster(m.home_user_id)
+      const awayRoster = buildRoster(m.away_user_id)
+      return {
+        id: m.id, status: m.status,
+        home_user: m.home_user, away_user: m.away_user,
+        home_points: 0, away_points: 0,
+        home_projected: Math.round(homeRoster.reduce((s, r) => s + r.projected, 0) * 100) / 100,
+        away_projected: Math.round(awayRoster.reduce((s, r) => s + r.projected, 0) * 100) / 100,
+        home_roster: homeRoster, away_roster: awayRoster,
+      }
+    })
+
+    return res.json({ matchups: enriched, weekStatus: 'future' })
+  }
+
+  // For past weeks: use stored matchup scores + historical player stats
+  if (isPast) {
+    const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
+    const { data: rosters } = await supabase
+      .from('fantasy_rosters')
+      .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url)')
+      .eq('league_id', league_id)
+      .in('user_id', userIds)
+
+    const allPlayerIds = (rosters || []).map((r) => r.player_id)
+    const statsMap = {}
+    if (allPlayerIds.length) {
+      const { data: stats } = await supabase
+        .from('nfl_player_stats')
+        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+        .eq('week', w).eq('season', s)
+        .in('player_id', [...new Set(allPlayerIds)])
+      for (const st of stats || []) statsMap[st.player_id] = st
+    }
+
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('scoring_format, scoring_rules')
+      .eq('league_id', league_id)
+      .single()
+    const { applyScoringRules: applyRules, buildScoringRulesFromPreset: buildRules } = await import('../services/fantasyService.js')
+    const leagueRules = settings?.scoring_rules || buildRules(settings?.scoring_format)
+
+    const STARTER_SLOTS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
+    const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
+
+    const enriched = matchups.map((m) => {
+      const buildRoster = (userId) => (rosters || [])
+        .filter((r) => r.user_id === userId && STARTER_SLOTS.has((r.slot || '').toLowerCase()))
+        .map((r) => {
+          const p = r.nfl_players || {}
+          const stat = statsMap[r.player_id]
+          const pts = applyRules(stat, leagueRules)
+          return {
+            slot: r.slot, player_id: r.player_id,
+            player_name: p.full_name || '?', position: p.position || '?',
+            team: p.team || '', headshot_url: p.headshot_url || null,
+            points: Math.round(pts * 100) / 100, projected: Math.round(pts * 100) / 100,
+            game_status: 'final',
+          }
+        })
+        .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
+
+      const homeRoster = buildRoster(m.home_user_id)
+      const awayRoster = buildRoster(m.away_user_id)
+      const hp = Number(m.home_points) || homeRoster.reduce((s, r) => s + r.points, 0)
+      const ap = Number(m.away_points) || awayRoster.reduce((s, r) => s + r.points, 0)
+      return {
+        id: m.id, status: m.status || 'completed',
+        home_user: m.home_user, away_user: m.away_user,
+        home_points: Math.round(hp * 100) / 100,
+        away_points: Math.round(ap * 100) / 100,
+        home_projected: Math.round(hp * 100) / 100,
+        away_projected: Math.round(ap * 100) / 100,
+        home_roster: homeRoster, away_roster: awayRoster,
+      }
+    })
+
+    return res.json({ matchups: enriched, weekStatus: 'past' })
+  }
+
+  // Current week: client should use /matchup-live for live data.
+  // If this endpoint is called for the current week, just return the matchup
+  // schedule with status info — client will overlay live data separately.
+  const enriched = matchups.map((m) => ({
+    id: m.id, status: m.status || 'active',
+    home_user: m.home_user, away_user: m.away_user,
+    home_points: Number(m.home_points) || 0,
+    away_points: Number(m.away_points) || 0,
+  }))
+  res.json({ matchups: enriched, weekStatus: 'current' })
 })
 
 export default router

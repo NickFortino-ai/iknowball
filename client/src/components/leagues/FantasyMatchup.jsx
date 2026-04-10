@@ -1,147 +1,322 @@
-import { useState, useMemo } from 'react'
-import { useFantasyRoster } from '../../hooks/useLeagues'
+import { useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
+import { useFantasyMatchupLive, useFantasyMatchupWeek } from '../../hooks/useLeagues'
 import Avatar from '../ui/Avatar'
+import { SkeletonCard } from '../ui/Skeleton'
+import PlayerDetailModal from './PlayerDetailModal'
+import LeagueReport from './LeagueReport'
 
-const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'te', 'flex', 'k', 'def']
-const SLOT_LABELS = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', te: 'TE', flex: 'W/R/T', k: 'K', def: 'DEF' }
+const SLOT_LABELS = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLX', k: 'K', def: 'DEF' }
 
-function PlayerRow({ player, side }) {
-  if (!player) {
-    return (
-      <td colSpan={3} className={`py-2 px-2 text-text-muted text-xs italic ${side === 'left' ? 'text-right' : 'text-left'}`}>
-        Empty
-      </td>
-    )
+function InjuryBadge({ status }) {
+  if (!status || status === 'Probable') return null
+  const colors = {
+    Out: 'bg-incorrect/20 text-incorrect',
+    IR: 'bg-incorrect/20 text-incorrect',
+    Questionable: 'bg-yellow-500/20 text-yellow-500',
+    Doubtful: 'bg-yellow-500/20 text-yellow-500',
+    'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
   }
+  return <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${colors[status] || 'bg-yellow-500/20 text-yellow-500'}`}>{status[0]}</span>
+}
 
-  const nfl = player.nfl_players
-  const pts = '--' // TODO: pull from weekly stats when available
+function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick }) {
+  const isMyMatchup = matchup.home_user?.id === myId || matchup.away_user?.id === myId
+  const isCompleted = matchup.status === 'completed' || weekStatus === 'past'
+  const homeWinning = (matchup.home_points || 0) >= (matchup.away_points || 0)
+  const hasScores = (matchup.home_points || 0) > 0 || (matchup.away_points || 0) > 0
 
-  if (side === 'left') {
-    return (
-      <>
-        <td className="py-2 px-1 text-right text-xs text-text-muted">--</td>
-        <td className="py-2 px-1 text-right">
-          <div className="flex items-center justify-end gap-2">
-            <div className="text-right">
-              <div className="text-sm font-semibold text-text-primary truncate max-w-[140px]">{nfl?.full_name}</div>
-              <div className="text-[10px] text-text-muted">{nfl?.team || 'FA'}</div>
-            </div>
-            {nfl?.headshot_url && (
-              <img src={nfl.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-            )}
-          </div>
-        </td>
-        <td className="py-2 px-2 text-right font-semibold text-text-primary text-sm">{pts}</td>
-      </>
-    )
-  }
+  // Win probability from projections
+  const hProj = matchup.home_projected || 0
+  const aProj = matchup.away_projected || 0
+  const totalProj = hProj + aProj
+  const homePct = totalProj > 0 ? Math.round((hProj / totalProj) * 100) : 50
 
   return (
-    <>
-      <td className="py-2 px-2 text-left font-semibold text-text-primary text-sm">{pts}</td>
-      <td className="py-2 px-1 text-left">
-        <div className="flex items-center gap-2">
-          {nfl?.headshot_url && (
-            <img src={nfl.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-          )}
-          <div>
-            <div className="text-sm font-semibold text-text-primary truncate max-w-[140px]">{nfl?.full_name}</div>
-            <div className="text-[10px] text-text-muted">{nfl?.team || 'FA'}</div>
+    <div className={`rounded-xl border overflow-hidden ${
+      isMyMatchup ? 'border-accent/40' : 'border-text-primary/20'
+    }`}>
+      {/* Matchup header — always visible */}
+      <button onClick={onToggle} className="w-full p-3 hover:bg-text-primary/5 transition-colors">
+        <div className="flex items-center gap-3">
+          {/* Home user */}
+          <div className="flex-1 flex items-center gap-2 min-w-0">
+            <Avatar user={matchup.home_user} size="sm" />
+            <div className="min-w-0 text-left">
+              <div className={`text-sm font-semibold truncate ${isCompleted && homeWinning ? 'text-correct' : 'text-text-primary'}`}>
+                {matchup.home_user?.display_name || matchup.home_user?.username}
+              </div>
+              {matchup.home_user?.id === myId && <div className="text-[9px] text-accent font-bold">YOU</div>}
+            </div>
+          </div>
+
+          {/* Scores */}
+          <div className="text-center shrink-0 px-2">
+            {hasScores || isCompleted ? (
+              <div className="flex items-center gap-2">
+                <span className={`font-display text-xl ${isCompleted && homeWinning ? 'text-correct' : 'text-text-primary'}`}>
+                  {(matchup.home_points || 0).toFixed(1)}
+                </span>
+                <span className="text-text-muted text-xs">-</span>
+                <span className={`font-display text-xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-text-primary'}`}>
+                  {(matchup.away_points || 0).toFixed(1)}
+                </span>
+              </div>
+            ) : weekStatus === 'future' && totalProj > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="font-display text-lg text-text-muted">{hProj.toFixed(1)}</span>
+                <span className="text-text-muted text-[10px]">proj</span>
+                <span className="font-display text-lg text-text-muted">{aProj.toFixed(1)}</span>
+              </div>
+            ) : (
+              <span className="text-text-muted text-sm">vs</span>
+            )}
+            {isCompleted && (
+              <div className="text-[9px] text-text-muted mt-0.5">Final</div>
+            )}
+          </div>
+
+          {/* Away user */}
+          <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
+            <div className="min-w-0 text-right">
+              <div className={`text-sm font-semibold truncate ${isCompleted && !homeWinning ? 'text-correct' : 'text-text-primary'}`}>
+                {matchup.away_user?.display_name || matchup.away_user?.username}
+              </div>
+              {matchup.away_user?.id === myId && <div className="text-[9px] text-accent font-bold">YOU</div>}
+            </div>
+            <Avatar user={matchup.away_user} size="sm" />
           </div>
         </div>
-      </td>
-      <td className="py-2 px-1 text-left text-xs text-text-muted">--</td>
-    </>
+
+        {/* Win probability bar (current/future only, when projections available) */}
+        {!isCompleted && totalProj > 0 && (
+          <div className="mt-2 h-1.5 rounded-full bg-bg-card overflow-hidden flex">
+            <div className="bg-accent/60 rounded-l-full transition-all" style={{ width: `${homePct}%` }} />
+            <div className="bg-text-muted/30 rounded-r-full flex-1" />
+          </div>
+        )}
+      </button>
+
+      {/* Expanded roster comparison */}
+      {isExpanded && matchup.home_roster && (
+        <div className="border-t border-text-primary/10 p-3">
+          <div className="space-y-1">
+            {(matchup.home_roster || []).map((hp, i) => {
+              const ap = matchup.away_roster?.[i]
+              return (
+                <div key={i} className="flex items-center gap-1 text-xs">
+                  {/* Home player */}
+                  <div
+                    className="flex-1 flex items-center gap-1.5 min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
+                    onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
+                  >
+                    {hp?.headshot_url ? (
+                      <img src={hp.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                    ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                    <span className="truncate text-text-primary">{hp?.player_name || '--'}</span>
+                    {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
+                    {hp?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
+                  </div>
+                  <div className={`w-10 text-right font-semibold shrink-0 ${
+                    hp?.game_status === 'live' ? 'text-accent' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
+                  }`}>
+                    {hp?.game_status === 'upcoming' && weekStatus !== 'past' ? (hp?.projected?.toFixed(1) || '0.0') : (hp?.points?.toFixed(1) || '0.0')}
+                  </div>
+
+                  {/* Position label */}
+                  <div className="w-8 text-center">
+                    <span className="text-[10px] font-semibold text-text-muted bg-bg-secondary rounded px-1 py-0.5">
+                      {SLOT_LABELS[hp?.slot] || '?'}
+                    </span>
+                  </div>
+
+                  {/* Away player */}
+                  <div className={`w-10 text-left font-semibold shrink-0 ${
+                    ap?.game_status === 'live' ? 'text-accent' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
+                  }`}>
+                    {ap?.game_status === 'upcoming' && weekStatus !== 'past' ? (ap?.projected?.toFixed(1) || '0.0') : (ap?.points?.toFixed(1) || '0.0')}
+                  </div>
+                  <div
+                    className="flex-1 flex items-center gap-1.5 justify-end min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
+                    onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
+                  >
+                    {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
+                    {ap?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
+                    <span className="truncate text-text-primary text-right">{ap?.player_name || '--'}</span>
+                    {ap?.headshot_url ? (
+                      <img src={ap.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                    ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Totals row */}
+          <div className="flex items-center gap-1 text-xs mt-2 pt-2 border-t border-text-primary/10 font-display">
+            <div className="flex-1 text-right text-text-muted">Total</div>
+            <div className="w-10 text-right font-bold text-text-primary">
+              {(matchup.home_points || matchup.home_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
+            </div>
+            <div className="w-8" />
+            <div className="w-10 text-left font-bold text-text-primary">
+              {(matchup.away_points || matchup.away_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
+            </div>
+            <div className="flex-1" />
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
-export default function FantasyMatchup({ league, matchup }) {
-  // For now, show a placeholder matchup using the first two members
-  const members = league.members || []
+export default function FantasyMatchup({ league, fantasySettings }) {
+  const { profile } = useAuth()
+  const season = fantasySettings?.season || 2026
+  const currentWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
+  const totalWeeks = fantasySettings?.championship_week || 17
+  const [viewWeek, setViewWeek] = useState(currentWeek)
+  const [expandedMatchup, setExpandedMatchup] = useState(null)
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
+  const [showReport, setShowReport] = useState(false)
 
-  if (members.length < 2) {
-    return <div className="text-center py-8 text-text-muted text-sm">Need at least 2 teams for matchups</div>
-  }
+  const isCurrent = viewWeek === currentWeek
 
-  const homeUser = matchup?.home_user || members[0]?.users
-  const awayUser = matchup?.away_user || members[1]?.users
-  const homePoints = matchup?.home_points || 0
-  const awayPoints = matchup?.away_points || 0
+  // Current week uses the live endpoint (with ESPN polling)
+  const liveQuery = useFantasyMatchupLive(league.id, viewWeek, season)
+  // Past/future weeks use the static endpoint
+  const weekQuery = useFantasyMatchupWeek(league.id, viewWeek, season, currentWeek)
+
+  const data = isCurrent ? liveQuery.data : weekQuery.data
+  const isLoading = isCurrent ? liveQuery.isLoading : weekQuery.isLoading
+  const matchups = data?.matchups || []
+  const weekStatus = isCurrent ? 'current' : (viewWeek < currentWeek ? 'past' : 'future')
+
+  // Sort user's matchup first
+  const sorted = [...matchups].sort((a, b) => {
+    const aIsMe = a.home_user?.id === profile?.id || a.away_user?.id === profile?.id
+    const bIsMe = b.home_user?.id === profile?.id || b.away_user?.id === profile?.id
+    if (aIsMe && !bIsMe) return -1
+    if (bIsMe && !aIsMe) return 1
+    return 0
+  })
+
+  // Matchup result banner (current week, completed)
+  const myMatchup = matchups.find((m) => m.status === 'completed' && (m.home_user?.id === profile?.id || m.away_user?.id === profile?.id))
+  const [resultDismissed, setResultDismissed] = useState(() => {
+    if (!myMatchup) return false
+    return localStorage.getItem(`matchup-result-seen-${myMatchup?.id}`) === '1'
+  })
+  const myResult = !resultDismissed && myMatchup && isCurrent ? (() => {
+    const isHome = myMatchup.home_user?.id === profile?.id
+    const myPts = isHome ? myMatchup.home_points : myMatchup.away_points
+    const oppPts = isHome ? myMatchup.away_points : myMatchup.home_points
+    const opponent = isHome ? myMatchup.away_user : myMatchup.home_user
+    const won = myPts > oppPts
+    const tied = myPts === oppPts
+    return { won, tied, myPts, oppPts, opponent }
+  })() : null
 
   return (
-    <div>
-      {/* Matchup Header */}
-      <div className="rounded-xl border border-text-primary/20 p-4 mb-4">
-        <div className="flex items-center justify-between">
-          {/* Home team */}
-          <div className="flex items-center gap-3">
-            <Avatar user={homeUser} size="lg" />
-            <div>
-              <div className="font-display text-base text-text-primary">{homeUser?.display_name || homeUser?.username}</div>
-              <div className="text-xs text-text-muted">--</div>
-            </div>
-          </div>
-
-          {/* Score */}
-          <div className="text-center px-4">
-            <div className="flex items-center gap-3">
-              <span className={`font-display text-2xl ${homePoints >= awayPoints ? 'text-text-primary' : 'text-text-muted'}`}>
-                {homePoints > 0 ? homePoints.toFixed(2) : '--'}
-              </span>
-              <span className="text-xs text-text-muted">vs</span>
-              <span className={`font-display text-2xl ${awayPoints >= homePoints ? 'text-text-primary' : 'text-text-muted'}`}>
-                {awayPoints > 0 ? awayPoints.toFixed(2) : '--'}
-              </span>
-            </div>
-          </div>
-
-          {/* Away team */}
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="font-display text-base text-text-primary">{awayUser?.display_name || awayUser?.username}</div>
-              <div className="text-xs text-text-muted">--</div>
-            </div>
-            <Avatar user={awayUser} size="lg" />
+    <div className="space-y-4">
+      {/* Week selector */}
+      <div className="flex items-center justify-center gap-3">
+        <button
+          onClick={() => setViewWeek((w) => Math.max(1, w - 1))}
+          disabled={viewWeek <= 1}
+          className="p-2 rounded-lg text-text-muted hover:text-text-primary disabled:opacity-30"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div className="text-center min-w-[100px]">
+          <div className="font-display text-lg text-text-primary">Week {viewWeek}</div>
+          <div className="text-[10px] text-text-muted">
+            {weekStatus === 'past' ? 'Final' : weekStatus === 'future' ? 'Upcoming' : 'Current'}
           </div>
         </div>
+        <button
+          onClick={() => setViewWeek((w) => Math.min(totalWeeks, w + 1))}
+          disabled={viewWeek >= totalWeeks}
+          className="p-2 rounded-lg text-text-muted hover:text-text-primary disabled:opacity-30"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        {!isCurrent && (
+          <button
+            onClick={() => setViewWeek(currentWeek)}
+            className="text-xs text-accent font-semibold hover:underline ml-1"
+          >
+            Today
+          </button>
+        )}
       </div>
 
-      {/* Roster Comparison Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs min-w-[600px]">
-          <thead>
-            <tr className="border-b border-border text-text-muted">
-              <th className="py-2 px-1 text-right">Proj</th>
-              <th className="py-2 px-1 text-right">Player</th>
-              <th className="py-2 px-2 text-right">Pts</th>
-              <th className="py-2 px-2 text-center font-semibold text-text-secondary">Pos</th>
-              <th className="py-2 px-2 text-left">Pts</th>
-              <th className="py-2 px-1 text-left">Player</th>
-              <th className="py-2 px-1 text-left">Proj</th>
-            </tr>
-          </thead>
-          <tbody>
-            {SLOT_ORDER.map((slot) => (
-              <tr key={slot} className="border-b border-border last:border-0">
-                {/* Left side placeholder */}
-                <td className="py-2 px-1 text-right text-text-muted">--</td>
-                <td className="py-2 px-1 text-right text-text-muted italic">--</td>
-                <td className="py-2 px-2 text-right text-text-muted">--</td>
-                <td className="py-2 px-2 text-center">
-                  <span className="text-xs font-semibold text-text-secondary bg-bg-secondary rounded px-1.5 py-0.5">
-                    {SLOT_LABELS[slot]}
-                  </span>
-                </td>
-                {/* Right side placeholder */}
-                <td className="py-2 px-2 text-left text-text-muted">--</td>
-                <td className="py-2 px-1 text-left text-text-muted italic">--</td>
-                <td className="py-2 px-1 text-left text-text-muted">--</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* League report button */}
+      {league.status === 'completed' && (
+        <button
+          onClick={() => setShowReport(true)}
+          className="w-full py-3 rounded-xl bg-accent/10 border border-accent/30 text-accent font-display text-sm flex items-center justify-center gap-2 hover:bg-accent/20 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          View League Report
+        </button>
+      )}
+      {showReport && <LeagueReport leagueId={league.id} leagueName={league.name} memberCount={league.member_count} onClose={() => setShowReport(false)} />}
+
+      {/* Result banner */}
+      {myResult && (
+        <div className={`relative rounded-xl border p-4 text-center ${
+          myResult.won ? 'border-correct/40 bg-correct/10' : myResult.tied ? 'border-accent/40 bg-accent/10' : 'border-incorrect/40 bg-incorrect/10'
+        }`}>
+          <button
+            onClick={() => { localStorage.setItem(`matchup-result-seen-${myMatchup.id}`, '1'); setResultDismissed(true) }}
+            className="absolute top-2 right-2 text-text-muted hover:text-text-primary text-lg leading-none"
+          >&times;</button>
+          <div className={`font-display text-lg ${myResult.won ? 'text-correct' : myResult.tied ? 'text-accent' : 'text-incorrect'}`}>
+            {myResult.won ? 'Victory!' : myResult.tied ? 'Tie Game' : 'Defeat'}
+          </div>
+          <div className="flex items-center justify-center gap-4 mt-2">
+            <div className="text-right">
+              <div className="font-display text-2xl text-text-primary">{myResult.myPts?.toFixed(1)}</div>
+              <div className="text-[10px] text-text-muted">You</div>
+            </div>
+            <div className="text-text-muted text-sm">vs</div>
+            <div className="text-left">
+              <div className="font-display text-2xl text-text-secondary">{myResult.oppPts?.toFixed(1)}</div>
+              <div className="text-[10px] text-text-muted">{myResult.opponent?.display_name || myResult.opponent?.username}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Matchup cards */}
+      {isLoading ? (
+        <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>
+      ) : !sorted.length ? (
+        <div className="text-center py-8 text-sm text-text-muted">No matchups for Week {viewWeek}.</div>
+      ) : (
+        sorted.map((matchup) => (
+          <MatchupCard
+            key={matchup.id}
+            matchup={matchup}
+            myId={profile?.id}
+            weekStatus={weekStatus}
+            isExpanded={expandedMatchup === matchup.id}
+            onToggle={() => setExpandedMatchup(expandedMatchup === matchup.id ? null : matchup.id)}
+            onPlayerClick={setDetailPlayerId}
+          />
+        ))
+      )}
+
+      {detailPlayerId && (
+        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+      )}
     </div>
   )
 }
