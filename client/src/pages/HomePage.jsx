@@ -135,12 +135,12 @@ export default function HomePage() {
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3 w-full max-w-xs mx-auto">
-            <Link to="/picks" className="w-full text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
-              Make Your Picks
-            </Link>
-            <Link to="/leagues" className="w-full text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to="/leagues" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
               Go to Leagues
+            </Link>
+            <Link to="/picks" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              Make Your Picks
             </Link>
           </div>
         )}
