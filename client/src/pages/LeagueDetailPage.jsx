@@ -50,11 +50,12 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
       tabs = ['Roster', 'Live', memberOrStandings, 'Thread']
     } else {
       // Traditional: Matchups absorbs Live, no separate Live tab
-      tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Thread', 'Draft']
+      tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Draft']
     }
     if (!isSalaryCap && !draftDone && tabs.includes('Draft')) {
       tabs.splice(tabs.indexOf('Draft') + 1, 0, 'Mock Draft')
     }
+    tabs.push('Thread')
     return tabs
   }
 
