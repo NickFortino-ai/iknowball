@@ -52,7 +52,7 @@ function LegModal({ game, onClose }) {
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6"
+        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -64,7 +64,16 @@ function LegModal({ game, onClose }) {
 
         {isLive ? (
           <div className="text-center space-y-4">
-            <div className="text-xs text-correct font-semibold uppercase tracking-wider">Live</div>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs text-correct font-semibold uppercase tracking-wider">Live</span>
+              {(game.period || game.clock) && (
+                <span className="text-xs text-text-primary font-semibold">
+                  {game.period ? formatPeriod(game.period, game.sports?.key) : ''}
+                  {game.period && game.clock ? ' ' : ''}
+                  {game.clock || ''}
+                </span>
+              )}
+            </div>
             <div className="flex items-center justify-center gap-6">
               <div className="text-center">
                 <div className="text-sm text-text-secondary mb-1">{game.away_team}</div>
@@ -76,13 +85,6 @@ function LegModal({ game, onClose }) {
                 <div className="text-3xl font-display">{game.live_home_score}</div>
               </div>
             </div>
-            {(game.period || game.clock) && (
-              <div className="text-xs text-text-muted">
-                {game.period && <span>{formatPeriod(game.period, game.sports?.key)}</span>}
-                {game.period && game.clock && <span> · </span>}
-                {game.clock && <span>{game.clock}</span>}
-              </div>
-            )}
           </div>
         ) : (
           <div className="text-center space-y-2 py-2">
