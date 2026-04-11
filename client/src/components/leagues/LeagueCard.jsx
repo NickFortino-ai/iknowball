@@ -36,10 +36,10 @@ function formatRunsUntil(league) {
 }
 
 const STATUS_STYLES = {
-  open: 'bg-correct/20 text-correct',
-  active: 'bg-correct/20 text-correct',
-  completed: 'bg-text-muted/20 text-text-muted',
-  archived: 'bg-text-muted/20 text-text-muted',
+  open: 'text-correct',
+  active: 'text-correct',
+  completed: 'text-text-muted',
+  archived: 'text-text-muted',
 }
 
 export default function LeagueCard({ league, noLink }) {
@@ -109,13 +109,13 @@ export default function LeagueCard({ league, noLink }) {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-text-muted min-h-[3.25rem] sm:min-h-0 content-start">
-          <span className="font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
+          <span className="font-semibold text-accent">
             {FORMAT_LABELS[league.format]}
           </span>
           <span>{SPORT_LABELS[league.sport]}</span>
           <span>{league.member_count} {league.member_count === 1 ? 'member' : 'members'}</span>
           {league.my_role === 'commissioner' && (
-            <span className="font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">Commish</span>
+            <span className="font-semibold text-tier-hof">Commish</span>
           )}
         </div>
         {league.status === 'open' && league.starts_at ? (
