@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
@@ -126,6 +126,7 @@ function EmptySlot({ slotLabel, onTap, isSelected }) {
 export default function FantasyMyTeam({ league }) {
   const { profile } = useAuth()
   const { data: roster, isLoading } = useFantasyRoster(league.id)
+  const { data: fantasySettings } = useFantasySettings(league.id)
   const { data: trades } = useFantasyTrades(league.id)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
   const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
@@ -180,9 +181,44 @@ export default function FantasyMyTeam({ league }) {
 
   const hasRoster = roster && roster.length > 0
   if (!hasRoster) {
+    const slots = fantasySettings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
+    const starterSlots = []
+    const slotExpansion = { qb: 'QB', rb: 'RB', wr: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
+    for (const [key, label] of Object.entries(slotExpansion)) {
+      for (let i = 0; i < (slots[key] || 0); i++) starterSlots.push(label)
+    }
+    const benchCount = slots.bench || 6
     return (
-      <div className="text-center py-6">
-        <p className="text-sm text-text-secondary">No players on your roster yet. Complete the draft to build your team.</p>
+      <div className="space-y-4">
+        <p className="text-sm text-text-secondary text-center">No players on your roster yet. Complete the draft to build your team.</p>
+        <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-text-primary">Starters</h3>
+          </div>
+          <div className="divide-y divide-text-primary/10">
+            {starterSlots.map((label, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                <span className="text-[10px] font-bold text-text-muted w-10 shrink-0">{label}</span>
+                <div className="w-9 h-9 rounded-full border border-text-primary/20 shrink-0" />
+                <div className="flex-1 text-xs text-text-muted italic">Empty</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-text-primary">Bench</h3>
+          </div>
+          <div className="divide-y divide-text-primary/10">
+            {Array.from({ length: benchCount }, (_, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                <span className="text-[10px] font-bold text-text-muted w-10 shrink-0">BN</span>
+                <div className="w-9 h-9 rounded-full border border-text-primary/20 shrink-0" />
+                <div className="flex-1 text-xs text-text-muted italic">Empty</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
