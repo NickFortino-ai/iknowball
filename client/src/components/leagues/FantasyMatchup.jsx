@@ -185,7 +185,8 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const currentWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
   const totalWeeks = fantasySettings?.championship_week || 17
   const [viewWeek, setViewWeek] = useState(currentWeek)
-  const [collapsedMatchup, setCollapsedMatchup] = useState(null)
+  const [matchupView, setMatchupView] = useState('mine') // 'mine' | 'all'
+  const [expandedMatchups, setExpandedMatchups] = useState(new Set())
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
   const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
@@ -303,23 +304,69 @@ export default function FantasyMatchup({ league, fantasySettings }) {
         </div>
       )}
 
+      {/* My Matchup / All Matchups toggle */}
+      {sorted.length > 0 && (
+        <div className="flex gap-1">
+          {['mine', 'all'].map((v) => (
+            <button
+              key={v}
+              onClick={() => setMatchupView(v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                matchupView === v ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
+              }`}
+            >
+              {v === 'mine' ? 'My Matchup' : 'All Matchups'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Matchup cards */}
       {isLoading ? (
         <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>
       ) : !sorted.length ? (
         <div className="text-center py-8 text-sm text-text-muted">Matchups will be generated automatically once the draft is complete.</div>
+      ) : matchupView === 'mine' ? (
+        // My Matchup view — only show user's matchup, always expanded
+        (() => {
+          const mine = sorted.find((m) => m.home_user?.id === profile?.id || m.away_user?.id === profile?.id)
+          return mine ? (
+            <MatchupCard
+              matchup={mine}
+              myId={profile?.id}
+              weekStatus={weekStatus}
+              isExpanded={true}
+              onToggle={() => {}}
+              onPlayerClick={openPlayerDetail}
+              blurbIds={blurbIds}
+            />
+          ) : (
+            <div className="text-center py-8 text-sm text-text-muted">No matchup found for you this week.</div>
+          )
+        })()
       ) : (
-        sorted.map((matchup) => (
-          <MatchupCard
-            key={matchup.id}
-            matchup={matchup}
-            myId={profile?.id}
-            weekStatus={weekStatus}
-            isExpanded={collapsedMatchup !== matchup.id}
-            onToggle={() => setCollapsedMatchup(collapsedMatchup === matchup.id ? null : matchup.id)}
-            onPlayerClick={openPlayerDetail} blurbIds={blurbIds}
-          />
-        ))
+        // All Matchups view — user's matchup expanded, others collapsed
+        sorted.map((matchup) => {
+          const isMyMatchup = matchup.home_user?.id === profile?.id || matchup.away_user?.id === profile?.id
+          const isExpanded = isMyMatchup || expandedMatchups.has(matchup.id)
+          return (
+            <MatchupCard
+              key={matchup.id}
+              matchup={matchup}
+              myId={profile?.id}
+              weekStatus={weekStatus}
+              isExpanded={isExpanded}
+              onToggle={() => setExpandedMatchups((prev) => {
+                const next = new Set(prev)
+                if (next.has(matchup.id)) next.delete(matchup.id)
+                else next.add(matchup.id)
+                return next
+              })}
+              onPlayerClick={openPlayerDetail}
+              blurbIds={blurbIds}
+            />
+          )
+        })
       )}
 
       {detailPlayerId && (
