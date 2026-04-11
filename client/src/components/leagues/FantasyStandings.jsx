@@ -61,10 +61,10 @@ export default function FantasyStandings({ league, isSalaryCap }) {
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className={`w-full text-sm ${isSalaryCap ? '' : 'min-w-[600px]'}`}>
+        <table className={`text-sm ${isSalaryCap ? 'w-full' : ''}`}>
           <thead>
             <tr className="border-b border-text-primary/10 text-text-muted text-xs">
-              <th className="py-3 px-2 text-center font-semibold w-10">#</th>
+              <th className="py-3 px-2 text-center font-semibold w-8">#</th>
               <th className="py-3 px-2 text-left font-semibold">Manager</th>
               <th className="py-3 px-2 text-center font-semibold">{isSalaryCap ? 'Wins' : 'W-L-T'}</th>
               <th
@@ -95,7 +95,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                   <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
                 </td>
                 <td className="py-3.5 px-2">
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className={`flex items-center gap-3 min-w-0 ${!isSalaryCap ? 'max-w-[180px]' : ''}`}>
                     <Avatar user={s.user} size="lg" />
                     <div className="min-w-0">
                       <div className="font-bold text-base text-text-primary truncate">
