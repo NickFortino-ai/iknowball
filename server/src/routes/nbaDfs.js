@@ -215,7 +215,7 @@ router.get('/live', async (req, res) => {
     }
 
     // Also handle GS vs GSW, NO vs NOP, NY vs NYK, SA vs SAS
-    const ABBREV_ALIASES = { GS: 'GSW', NO: 'NOP', NY: 'NYK', SA: 'SAS' }
+    const ABBREV_ALIASES = { GS: 'GSW', NO: 'NOP', NY: 'NYK', SA: 'SAS', WSH: 'WAS' }
 
     for (const [espnId, gs] of Object.entries(gameStateMap)) {
       if (gs.team) {
