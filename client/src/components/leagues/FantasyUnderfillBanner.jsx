@@ -40,7 +40,7 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
             <h3 className="font-display text-base text-accent mb-1">Set a draft date</h3>
             <p className="text-sm text-text-secondary">
               {isUnderfilled
-                ? `Your league has ${state.currentCount} ${state.currentCount === 1 ? 'member' : 'members'} — IKB requires at least 6 for traditional fantasy. Set a draft date and invite more people to get your league going. Leagues without a draft date that are underfilled will be automatically canceled when the NFL season kicks off.`
+                ? 'Hey Commish! There are two important tasks necessary for this league to run. Set a draft date and get enough people to join your league. Leagues without a draft date that are underfilled will be automatically canceled when the NFL season kicks off. Finding people to join will be easy. IKB users are always hungry for action.'
                 : 'Your league doesn\'t have a draft date yet. Head to league settings to pick a date and time so your members know when to show up.'}
             </p>
           </div>
