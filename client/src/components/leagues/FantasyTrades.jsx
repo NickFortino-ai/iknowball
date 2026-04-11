@@ -339,19 +339,8 @@ export default function FantasyTrades({ league }) {
 
   return (
     <div className="space-y-4">
-      {/* Propose trade button */}
-      <button
-        onClick={() => setShowProposeModal(true)}
-        className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-colors"
-      >
-        + Propose Trade
-      </button>
-      {showProposeModal && (
-        <ProposeTradeModal league={league} currentUserId={profile?.id} onClose={() => setShowProposeModal(false)} />
-      )}
-
-      {/* Sub-tabs: Activity | Trades */}
-      <div className="flex gap-1">
+      {/* Sub-tabs: Activity | Trades | + Propose Trade */}
+      <div className="flex gap-1 items-center">
         {['activity', 'trades'].map((v) => (
           <button
             key={v}
@@ -363,7 +352,16 @@ export default function FantasyTrades({ league }) {
             {v === 'activity' ? 'Activity' : `Trades${pending.length ? ` (${pending.length})` : ''}`}
           </button>
         ))}
+        <button
+          onClick={() => setShowProposeModal(true)}
+          className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+        >
+          + Propose Trade
+        </button>
       </div>
+      {showProposeModal && (
+        <ProposeTradeModal league={league} currentUserId={profile?.id} onClose={() => setShowProposeModal(false)} />
+      )}
 
       {isLoading ? (
         <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>
