@@ -236,77 +236,76 @@ export default function FantasyPlayerBrowser({ league }) {
           ))}
         </div>
       </div>
-      {/* Stat-column header (sortable) — synced with the per-row strip */}
-      <div className="border-b border-border bg-bg-primary/40">
-        <div className="flex items-center px-4 py-1.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">
-          <div className="w-[180px] shrink-0">Player</div>
-          <div className="flex-1 overflow-x-auto">
-            <div className="flex gap-1 min-w-max">
-              {STAT_COLUMNS.map((col) => (
-                <button
-                  key={col.key}
-                  type="button"
-                  onClick={() => setSortKey(col.key)}
-                  className={`w-12 text-center px-1 py-0.5 rounded transition-colors ${
-                    sortKey === col.key ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
-                  }`}
-                >
-                  {col.label}{sortKey === col.key ? ' ↓' : ''}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="w-[64px] shrink-0" />
-        </div>
-      </div>
-      <div className="max-h-[60vh] overflow-y-auto">
-        {isLoading ? (
-          <div className="text-center text-sm text-text-muted py-8">Loading...</div>
-        ) : (players || []).map((player) => {
-          const isClaimed = claimedPlayerIds.has(player.id)
-          const onWaivers = !!player.on_waivers
-          const stats = player.stats || {}
-          return (
-          <div key={player.id} className="flex items-center px-4 py-2.5 border-b border-border last:border-0">
-            <div className="w-[180px] shrink-0 flex items-center gap-2">
-              {player.headshot_url && (
-                <img
-                  src={player.headshot_url}
-                  alt=""
-                  className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => openPlayerDetail(player.id)}
-                  onError={(e) => { e.target.style.display = 'none' }}
-                />
-              )}
-              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openPlayerDetail(player.id)}>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
-                  <InjuryBadge status={player.injury_status} />
-                  <BlurbDot playerId={player.id} blurbIds={blurbIds} />
-                  {onWaivers && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers — must submit a claim">W</span>
-                  )}
-                  {isClaimed && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="You have a pending claim on this player">C</span>
-                  )}
-                </div>
-                <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
-              </div>
-            </div>
-            <div className="flex-1 overflow-x-auto">
-              <div className="flex gap-1 min-w-max">
+      {/* Single horizontal scroll container for header + rows */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[700px]">
+          {/* Stat-column header */}
+          <div className="border-b border-border bg-bg-primary/40">
+            <div className="flex items-center px-4 py-1.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+              <div className="w-[180px] shrink-0 sticky left-0 bg-bg-primary/40 z-10 px-1">Player</div>
+              <div className="flex gap-1 flex-1">
                 {STAT_COLUMNS.map((col) => (
-                  <div
+                  <button
                     key={col.key}
-                    className={`w-12 text-center text-xs tabular-nums py-1 rounded ${
-                      sortKey === col.key ? 'bg-accent/10 text-text-primary font-bold' : 'text-text-secondary'
+                    type="button"
+                    onClick={() => setSortKey(col.key)}
+                    className={`w-12 text-center px-1 py-0.5 rounded transition-colors ${
+                      sortKey === col.key ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
                     }`}
                   >
-                    {stats[col.key] ?? 0}
-                  </div>
+                    {col.label}{sortKey === col.key ? ' ↓' : ''}
+                  </button>
                 ))}
               </div>
+              <div className="w-[64px] shrink-0" />
             </div>
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {isLoading ? (
+              <div className="text-center text-sm text-text-muted py-8">Loading...</div>
+            ) : (players || []).map((player) => {
+              const isClaimed = claimedPlayerIds.has(player.id)
+              const onWaivers = !!player.on_waivers
+              const stats = player.stats || {}
+              return (
+              <div key={player.id} className="flex items-center px-4 py-2.5 border-b border-border last:border-0">
+                <div className="w-[180px] shrink-0 flex items-center gap-2 sticky left-0 bg-bg-primary z-10 px-1">
+                  {player.headshot_url && (
+                    <img
+                      src={player.headshot_url}
+                      alt=""
+                      className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => openPlayerDetail(player.id)}
+                      onError={(e) => { e.target.style.display = 'none' }}
+                    />
+                  )}
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openPlayerDetail(player.id)}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
+                      <InjuryBadge status={player.injury_status} />
+                      <BlurbDot playerId={player.id} blurbIds={blurbIds} />
+                      {onWaivers && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers — must submit a claim">W</span>
+                      )}
+                      {isClaimed && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="You have a pending claim on this player">C</span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                  </div>
+                </div>
+                <div className="flex gap-1 flex-1">
+                  {STAT_COLUMNS.map((col) => (
+                    <div
+                      key={col.key}
+                      className={`w-12 text-center text-xs tabular-nums py-1 rounded ${
+                        sortKey === col.key ? 'bg-accent/10 text-text-primary font-bold' : 'text-text-secondary'
+                      }`}
+                    >
+                      {stats[col.key] ?? 0}
+                    </div>
+                  ))}
+                </div>
             <div className="w-[64px] shrink-0 flex justify-end">
               {!isDraftPhase && roster?.length > 0 && !isClaimed && (
                 <button
@@ -331,7 +330,8 @@ export default function FantasyPlayerBrowser({ league }) {
           <div className="text-center text-sm text-text-muted py-8">No players found</div>
         )}
       </div>
-
+    </div>
+    </div>
     </div>
 
       {/* Add/drop confirm modal */}

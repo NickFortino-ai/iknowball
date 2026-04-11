@@ -1996,7 +1996,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // Read league settings so the ranking adapts to scoring + SuperFlex
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('scoring_format, roster_slots')
+    .select('scoring_format, roster_slots, draft_status, season')
     .eq('league_id', leagueId)
     .single()
   const scoringFormat = settings?.scoring_format || 'half_ppr'
@@ -2028,13 +2028,17 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const allPlayers = [...(offensiveRes.data || []), ...(defRes.data || [])]
   const error = null
 
-  // YTD aggregate stats (current season) for browse + sorting
+  // YTD aggregate stats for browse + sorting.
+  // Pre-draft: show last season's stats so users can evaluate players.
+  // Post-draft: show current season stats (zeros until games start).
   const season = settings?.season || new Date().getUTCFullYear()
+  const draftDone = settings?.draft_status === 'completed' || settings?.draft_status === 'in_progress'
+  const statSeason = draftDone ? season : season - 1
   const pointsCol = scoringFormat === 'ppr' ? 'pts_ppr' : scoringFormat === 'standard' ? 'pts_std' : 'pts_half_ppr'
   const { data: statRows } = await supabase
     .from('nfl_player_stats')
     .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm`)
-    .eq('season', season)
+    .eq('season', statSeason)
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
   const statsByPlayer = {}
   for (const r of statRows || []) {
