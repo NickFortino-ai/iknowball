@@ -1069,13 +1069,13 @@ export default function LeagueDetailPage() {
   }
 
   return (
-    <div className={`mx-auto px-4 py-6 relative ${['nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'fantasy', 'squares', 'bracket'].includes(league.format) ? 'max-w-2xl lg:max-w-5xl' : 'max-w-2xl'}`}>
+    <div className={`mx-auto px-4 py-6 relative overflow-x-hidden ${['nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'fantasy', 'squares', 'bracket'].includes(league.format) ? 'max-w-2xl lg:max-w-6xl' : 'max-w-2xl'}`}>
       {/* Full hero backdrop — shows for leagues with a backdrop_image or fantasy/DFS formats */}
       {hasBackdrop && (
         <div
           ref={backdropDragRef}
-          className={`absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden ${adjustingBackdrop ? 'pointer-events-auto cursor-ns-resize' : 'pointer-events-none'}`}
-          style={{ zIndex: adjustingBackdrop ? 30 : 0, touchAction: adjustingBackdrop ? 'none' : 'auto' }}
+          className={`absolute top-0 h-[520px] md:h-[480px] overflow-hidden ${adjustingBackdrop ? 'pointer-events-auto cursor-ns-resize' : 'pointer-events-none'}`}
+          style={{ zIndex: adjustingBackdrop ? 30 : 0, touchAction: adjustingBackdrop ? 'none' : 'auto', left: '50%', right: '50%', marginLeft: '-50vw', marginRight: '-50vw', width: '100vw' }}
           onMouseDown={adjustingBackdrop ? startBackdropDrag : undefined}
           onTouchStart={adjustingBackdrop ? startBackdropDrag : undefined}
         >
