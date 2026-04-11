@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useMyRankings, useSetMyRankings, useResetMyRankings, useDraftBoard } from '../../hooks/useLeagues'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
@@ -12,8 +12,6 @@ const POS_COLORS = {
   K: 'bg-gray-500/20 text-gray-300',
   DEF: 'bg-purple-500/20 text-purple-300',
 }
-
-const ROW_HEIGHT = 56 // px — used to compute drag drop targets
 
 export default function FantasyMyRankings({ league }) {
   const { data, isLoading } = useMyRankings(league.id)
@@ -69,64 +67,18 @@ export default function FantasyMyRankings({ league }) {
     }
   }
 
-  // ── Drag-to-reorder (edit mode only) ─────────────────────────────
-  // Operates on the *full* working array index, not the filtered list,
-  // so position/search filters can stay applied while dragging.
-  const dragIdx = useRef(null)
-  const dragStartY = useRef(0)
-  const [draggingPlayerId, setDraggingPlayerId] = useState(null)
-  const docHandlersRef = useRef(null)
-
-  function detachDocHandlers() {
-    if (docHandlersRef.current) {
-      window.removeEventListener('pointermove', docHandlersRef.current.move)
-      window.removeEventListener('pointerup', docHandlersRef.current.up)
-      window.removeEventListener('pointercancel', docHandlersRef.current.up)
-      docHandlersRef.current = null
-    }
-  }
-
-  function startDrag(playerId, e) {
-    if (!editMode) return
-    e.preventDefault()
-    e.stopPropagation()
+  // ── Move up/down (edit mode only) ────────────────────────────────
+  function movePlayer(playerId, direction) {
     const idx = working.findIndex((r) => r.player_id === playerId)
     if (idx < 0) return
-    dragIdx.current = idx
-    dragStartY.current = e.clientY
-    setDraggingPlayerId(playerId)
-
-    const onMove = (moveE) => {
-      if (dragIdx.current == null) return
-      moveE.preventDefault?.()
-      const delta = moveE.clientY - dragStartY.current
-      // Move in row-height steps
-      const stepDelta = Math.round(delta / ROW_HEIGHT)
-      if (stepDelta === 0) return
-      const newIdx = Math.max(0, Math.min(working.length - 1, dragIdx.current + stepDelta))
-      if (newIdx === dragIdx.current) return
-      setWorking((prev) => {
-        const next = [...prev]
-        const [item] = next.splice(dragIdx.current, 1)
-        next.splice(newIdx, 0, item)
-        return next
-      })
-      dragIdx.current = newIdx
-      dragStartY.current = moveE.clientY
-    }
-    const onUp = () => {
-      dragIdx.current = null
-      setDraggingPlayerId(null)
-      detachDocHandlers()
-    }
-    docHandlersRef.current = { move: onMove, up: onUp }
-    window.addEventListener('pointermove', onMove, { passive: false })
-    window.addEventListener('pointerup', onUp, { passive: true })
-    window.addEventListener('pointercancel', onUp, { passive: true })
+    const swap = direction === 'up' ? idx - 1 : idx + 1
+    if (swap < 0 || swap >= working.length) return
+    setWorking((prev) => {
+      const next = [...prev]
+      ;[next[idx], next[swap]] = [next[swap], next[idx]]
+      return next
+    })
   }
-
-  // Cleanup on unmount
-  useEffect(() => () => detachDocHandlers(), [])
 
   if (isLoading) return <LoadingSpinner />
 
@@ -148,8 +100,8 @@ export default function FantasyMyRankings({ league }) {
             <h3 className="font-display text-base text-text-primary">My Rankings</h3>
             <p className="text-[11px] text-text-muted">
               {editMode
-                ? 'Tap and drag the ⋮⋮ handle to reorder. Tap Save when done.'
-                : 'Your personal big board. Tap Edit to drag-reorder.'}
+                ? 'Use the arrows to reorder. Tap Save when done.'
+                : 'Your personal big board. Tap Edit to reorder.'}
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -214,34 +166,29 @@ export default function FantasyMyRankings({ league }) {
       {/* Ranked list */}
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="max-h-[65vh] overflow-y-auto divide-y divide-text-primary/10">
-          {visible.map((r) => {
+          {visible.map((r, visibleIdx) => {
             const p = r.nfl_players
             if (!p) return null
-            const isDragging = draggingPlayerId === r.player_id
+            const workingIdx = working.findIndex((w) => w.player_id === r.player_id)
             return (
               <div
                 key={r.player_id}
-                className={`flex items-center gap-2 px-2 py-2.5 transition-colors select-none ${isDragging ? 'bg-accent/20 ring-1 ring-accent shadow-lg z-20 relative' : ''}`}
-                style={{ touchAction: editMode ? 'none' : undefined, WebkitUserSelect: editMode ? 'none' : undefined }}
+                className="flex items-center gap-2 px-2 py-2.5"
               >
-                {/* Drag handle (edit mode only) */}
+                {/* Move buttons (edit mode only) */}
                 {editMode && (
-                  <button
-                    onPointerDown={(e) => startDrag(r.player_id, e)}
-                    onTouchStart={(e) => e.preventDefault()}
-                    className="shrink-0 w-8 h-10 flex items-center justify-center text-text-muted active:text-text-primary cursor-grab active:cursor-grabbing"
-                    style={{ touchAction: 'none' }}
-                    title="Drag to reorder"
-                  >
-                    <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor">
-                      <circle cx="4" cy="4" r="1.5" />
-                      <circle cx="10" cy="4" r="1.5" />
-                      <circle cx="4" cy="10" r="1.5" />
-                      <circle cx="10" cy="10" r="1.5" />
-                      <circle cx="4" cy="16" r="1.5" />
-                      <circle cx="10" cy="16" r="1.5" />
-                    </svg>
-                  </button>
+                  <div className="shrink-0 flex flex-col gap-0.5">
+                    <button
+                      onClick={() => movePlayer(r.player_id, 'up')}
+                      disabled={workingIdx <= 0}
+                      className="w-7 h-5 flex items-center justify-center text-text-muted hover:text-text-primary disabled:opacity-20 transition-colors"
+                    >▲</button>
+                    <button
+                      onClick={() => movePlayer(r.player_id, 'down')}
+                      disabled={workingIdx >= working.length - 1}
+                      className="w-7 h-5 flex items-center justify-center text-text-muted hover:text-text-primary disabled:opacity-20 transition-colors"
+                    >▼</button>
+                  </div>
                 )}
                 <span className="text-xs font-bold text-text-muted w-8 text-center shrink-0">{r.currentRank}</span>
                 {p.headshot_url && (
