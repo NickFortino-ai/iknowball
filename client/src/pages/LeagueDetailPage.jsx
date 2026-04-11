@@ -930,6 +930,24 @@ export default function LeagueDetailPage() {
 
   // Fantasy team name
   const isTraditionalFantasy = league?.format === 'fantasy' && fantasySettings?.format !== 'salary_cap'
+  const currentNflWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
+  const { data: liveMatchupData } = useFantasyMatchupLive(
+    isTraditionalFantasy ? id : null,
+    currentNflWeek,
+    fantasySettings?.season || 2026
+  )
+  const matchupsLive = (() => {
+    if (!liveMatchupData?.matchups || !isTraditionalFantasy) return false
+    const myMatchup = liveMatchupData.matchups.find((m) =>
+      m.home_user?.id === profile?.id || m.away_user?.id === profile?.id
+    )
+    if (!myMatchup) return false
+    const allSlots = [...(myMatchup.home_roster || []), ...(myMatchup.away_roster || [])]
+    const hasLive = allSlots.some((s) => s.game_status === 'live')
+    const hasFinal = allSlots.some((s) => s.game_status === 'final')
+    const hasUpcoming = allSlots.some((s) => s.game_status === 'upcoming')
+    return (hasLive || hasFinal) && (hasLive || hasUpcoming)
+  })()
   const myMembership = league?.members?.find((m) => m.user_id === profile?.id)
   const [showTeamNameModal, setShowTeamNameModal] = useState(false)
   const [teamNameInput, setTeamNameInput] = useState('')
