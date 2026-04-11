@@ -717,7 +717,7 @@ export async function autoDraftPick(leagueId, userId) {
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
       .not('team', 'is', null)
       .order('search_rank', { ascending: true })
-      .limit(50)
+      .limit(300)
     pick = (bestAvailable || []).find((p) => !drafted.has(p.id))
   }
   if (!pick) {

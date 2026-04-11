@@ -203,6 +203,7 @@ export async function deletePick(userId, gameId) {
 }
 
 export async function getUserPicks(userId, status) {
+  const { fetchAll } = await import('../utils/fetchAll.js')
   let query = supabase
     .from('picks')
     .select('*, games(*, sports(key, name))')
@@ -213,22 +214,19 @@ export async function getUserPicks(userId, status) {
     query = query.eq('status', status)
   }
 
-  const { data, error } = await query
-  if (error) throw error
-
-  return data
+  return fetchAll(query)
 }
 
 export async function getUserPickHistory(userId) {
-  const { data, error } = await supabase
-    .from('picks')
-    .select('*, games(*, sports(key, name))')
-    .eq('user_id', userId)
-    .in('status', ['locked', 'settled'])
-    .order('updated_at', { ascending: false })
-
-  if (error) throw error
-  return data
+  const { fetchAll } = await import('../utils/fetchAll.js')
+  return fetchAll(
+    supabase
+      .from('picks')
+      .select('*, games(*, sports(key, name))')
+      .eq('user_id', userId)
+      .in('status', ['locked', 'settled'])
+      .order('updated_at', { ascending: false })
+  )
 }
 
 export async function getPickById(pickId) {

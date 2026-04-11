@@ -440,7 +440,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .eq('status', 'settled')
       .or('and(is_correct.eq.true,odds_at_pick.gte.250),multiplier.gte.3'), 'updated_at')
       .order('updated_at', { ascending: false })
-      .limit(20),
+      .limit(50),
 
     // Source 2: Settled parlays (won + bad beats only, filtered in processing)
     skipForHotTakes ||
@@ -450,7 +450,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       'user_id', connectedIds)
       .eq('status', 'settled'), 'updated_at')
       .order('updated_at', { ascending: false })
-      .limit(20),
+      .limit(50),
 
     // Source 3: Streak events (squad/highlights + all scope for 10+ streaks)
     (isHotTakes || isUserHotTakes || isUserHighlights || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
@@ -459,7 +459,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .select('id, user_id, streak_length, created_at, sports(key, name)'),
       'user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
-      .limit(20),
+      .limit(50),
 
     // Source 4: (removed — tier_up cards disabled)
     Promise.resolve({ data: [] }),
@@ -471,7 +471,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .select('id, record_key, new_holder_id, previous_holder_id, previous_value, new_value, broken_at, records(display_name)'),
       'new_holder_id', connectedIds), 'broken_at')
       .order('broken_at', { ascending: false })
-      .limit(10),
+      .limit(30),
 
     // Source 6: Pick shares (squad only)
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
@@ -490,7 +490,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .or('and(type.eq.league_win,metadata->>isWinner.eq.true),type.eq.survivor_win')
       .in('user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
-      .limit(10),
+      .limit(30),
 
     // Source 8: H2H — settled picks in last 3 days (squad only)
     (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
@@ -556,7 +556,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .select('id, user_id, picked_outcome, odds_at_submission, risk_at_submission, reward_at_submission, status, is_correct, points_earned, created_at, updated_at, futures_markets(title, sport_key)'),
       'user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
-      .limit(20),
+      .limit(50),
   ])
 
   // For 'all' / 'hot_takes' / 'user_hot_takes' scope, batch-fetch user data from query results

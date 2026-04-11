@@ -184,6 +184,7 @@ export async function deleteLeaguePick(leagueId, userId, gameId) {
 }
 
 export async function getLeaguePicks(leagueId, userId, weekId) {
+  const { fetchAll } = await import('../utils/fetchAll.js')
   let query = supabase
     .from('league_picks')
     .select('*, games(*, sports(key, name))')
@@ -195,9 +196,7 @@ export async function getLeaguePicks(leagueId, userId, weekId) {
     query = query.eq('league_week_id', weekId)
   }
 
-  const { data, error } = await query
-  if (error) throw error
-  return data
+  return fetchAll(query)
 }
 
 export async function getLeagueGames(leagueId, weekId) {
