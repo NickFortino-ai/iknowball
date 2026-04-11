@@ -3,6 +3,135 @@ import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
 import { getLeaguePickStandings } from './leaguePickService.js'
 
+/**
+ * Check whether a league is still joinable based on its format and start date.
+ * For most formats: allow joining until the last game on the start date kicks off.
+ * For traditional fantasy: allow joining until draft starts.
+ * For bracket: allow joining until bracket locks.
+ * Throws with a 400 error if joining is no longer allowed.
+ */
+export async function assertLeagueJoinable(league) {
+  if (league.status === 'completed') {
+    const err = new Error('This league is no longer accepting members')
+    err.status = 400
+    throw err
+  }
+
+  // Traditional fantasy: draft-based join logic
+  if (league.format === 'fantasy') {
+    const { data: fs } = await supabase
+      .from('fantasy_settings')
+      .select('draft_status, format')
+      .eq('league_id', league.id)
+      .maybeSingle()
+
+    if (fs?.format === 'salary_cap') {
+      // NFL salary cap falls through to last-game-on-start-date logic below
+    } else {
+      // Traditional: allow joining until draft starts
+      if (fs && fs.draft_status !== 'pending') {
+        const err = new Error('This league\'s draft has already started')
+        err.status = 400
+        throw err
+      }
+      return // joinable
+    }
+  }
+
+  // Bracket: allow joining until bracket locks
+  if (league.format === 'bracket') {
+    const { data: tournament } = await supabase
+      .from('bracket_tournaments')
+      .select('locks_at, status')
+      .eq('league_id', league.id)
+      .single()
+
+    if (tournament && new Date(tournament.locks_at) <= new Date()) {
+      const err = new Error('This bracket is locked and no longer accepting entries')
+      err.status = 400
+      throw err
+    }
+    return // joinable
+  }
+
+  // Squares: just check starts_at
+  if (league.format === 'squares') {
+    if (league.starts_at && new Date(league.starts_at) <= new Date()) {
+      const err = new Error('This league has already started')
+      err.status = 400
+      throw err
+    }
+    return // joinable
+  }
+
+  // All other formats (survivor, pickem, nba_dfs, mlb_dfs, hr_derby, td_pass, salary_cap fantasy):
+  // Allow joining until the last game on the start date kicks off.
+  if (!league.starts_at) return // no start date = always joinable
+
+  const startDate = new Date(league.starts_at)
+  const now = new Date()
+
+  // If start date is in the future, always joinable
+  if (startDate > now) return
+
+  // Start date has arrived or passed — check if the last game on that date has kicked off
+  const sportKey = league.sport
+  if (!sportKey) {
+    // No sport means no games to check — fall back to simple starts_at check
+    if (startDate <= now) {
+      const err = new Error('This league has already started')
+      err.status = 400
+      throw err
+    }
+    return
+  }
+
+  const { data: sportRow } = await supabase.from('sports').select('id').eq('key', sportKey).single()
+  if (!sportRow) {
+    if (startDate <= now) {
+      const err = new Error('This league has already started')
+      err.status = 400
+      throw err
+    }
+    return
+  }
+
+  // Find the start date boundaries (midnight to midnight in ET)
+  // starts_at is stored as a date string like "2026-04-13" or ISO timestamp
+  const dateStr = startDate.toISOString().split('T')[0]
+  const dayStartET = new Date(`${dateStr}T04:00:00Z`) // midnight ET = 4 AM UTC
+  const dayEndET = new Date(`${dateStr}T04:00:00Z`)
+  dayEndET.setDate(dayEndET.getDate() + 1) // next midnight ET
+
+  // Get the last game on the start date for this sport
+  const { data: lastGame } = await supabase
+    .from('games')
+    .select('starts_at')
+    .eq('sport_id', sportRow.id)
+    .gte('starts_at', dayStartET.toISOString())
+    .lt('starts_at', dayEndET.toISOString())
+    .order('starts_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (lastGame) {
+    // Allow joining until the last game kicks off
+    if (new Date(lastGame.starts_at) <= now) {
+      const err = new Error('Games have started — this league is no longer accepting members')
+      err.status = 400
+      throw err
+    }
+    return // last game hasn't started yet — still joinable
+  }
+
+  // No games found on the start date — fall back to starts_at
+  if (startDate <= now) {
+    const err = new Error('This league has already started')
+    err.status = 400
+    throw err
+  }
+}
+
 // REGULAR-season end dates by sport. Full-season leagues end AFTER the
 // last day of the regular season's games (NO playoffs). Returns a Date
 // at 10 AM UTC the day AFTER the last game day, so all West Coast night
@@ -364,85 +493,7 @@ export async function joinLeague(userId, inviteCode) {
     throw err
   }
 
-  if (league.status === 'completed') {
-    const err = new Error('This league is no longer accepting members')
-    err.status = 400
-    throw err
-  }
-
-  // For survivor/pickem, allow joining if league hasn't started yet or any period still has time left
-  if (['survivor', 'pickem'].includes(league.format)) {
-    // If league starts in the future, always allow joining
-    const startsInFuture = league.starts_at && new Date(league.starts_at) > new Date()
-    if (!startsInFuture) {
-      const { count } = await supabase
-        .from('league_weeks')
-        .select('id', { count: 'exact', head: true })
-        .eq('league_id', league.id)
-        .gt('ends_at', new Date().toISOString())
-
-      if (!count) {
-        const err = new Error('This league is no longer accepting new members')
-        err.status = 400
-        throw err
-      }
-    }
-  } else if (league.format === 'bracket') {
-    // Bracket leagues allow joining until the bracket locks
-    const { data: tournament } = await supabase
-      .from('bracket_tournaments')
-      .select('locks_at, status')
-      .eq('league_id', league.id)
-      .single()
-
-    if (tournament && new Date(tournament.locks_at) <= new Date()) {
-      const err = new Error('This bracket is locked and no longer accepting entries')
-      err.status = 400
-      throw err
-    }
-  } else if (['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(league.format)) {
-    // DFS formats use joins_locked_at (first tip-off) instead of starts_at
-    if (league.joins_locked_at && new Date(league.joins_locked_at) <= new Date()) {
-      const err = new Error('This league is locked — games have started')
-      err.status = 400
-      throw err
-    }
-  } else if (league.format === 'fantasy') {
-    const { data: fs } = await supabase
-      .from('fantasy_settings')
-      .select('draft_status, format')
-      .eq('league_id', league.id)
-      .maybeSingle()
-
-    if (fs?.format === 'salary_cap') {
-      // Salary cap: allow joining until first NFL game of Week 1 kicks off
-      const { data: sportRow } = await supabase.from('sports').select('id').eq('key', 'americanfootball_nfl').single()
-      if (sportRow) {
-        const { count: liveOrFinal } = await supabase
-          .from('games')
-          .select('id', { count: 'exact', head: true })
-          .eq('sport_id', sportRow.id)
-          .in('status', ['live', 'final'])
-          .gte('starts_at', new Date(new Date().getFullYear(), 8, 1).toISOString()) // Sep 1 onwards
-        if (liveOrFinal > 0) {
-          const err = new Error('The NFL season has started — this league is no longer accepting members')
-          err.status = 400
-          throw err
-        }
-      }
-    } else {
-      // Traditional: allow joining until draft starts
-      if (fs && fs.draft_status !== 'pending') {
-        const err = new Error('This league\'s draft has already started')
-        err.status = 400
-        throw err
-      }
-    }
-  } else if (league.starts_at && new Date(league.starts_at) <= new Date()) {
-    const err = new Error('This league has already started')
-    err.status = 400
-    throw err
-  }
+  await assertLeagueJoinable(league)
 
   // Check max members
   if (league.max_members) {

@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
+import { assertLeagueJoinable } from './leagueService.js'
 
 export async function sendInvitation(leagueId, senderId, username) {
   // Verify sender is commissioner
@@ -149,7 +150,7 @@ export async function getMyInvitations(userId) {
 export async function acceptInvitation(invitationId, userId) {
   const { data: invitation } = await supabase
     .from('league_invitations')
-    .select('*, leagues(id, status, starts_at, max_members, settings, format)')
+    .select('*, leagues(id, status, starts_at, max_members, settings, format, sport, joins_locked_at)')
     .eq('id', invitationId)
     .eq('invited_user_id', userId)
     .single()
@@ -166,85 +167,7 @@ export async function acceptInvitation(invitationId, userId) {
     throw err
   }
 
-  if (invitation.leagues.status === 'completed') {
-    const err = new Error('This league is no longer accepting members')
-    err.status = 400
-    throw err
-  }
-
-  // For survivor/pickem, allow joining until the first period ends
-  if (['survivor', 'pickem'].includes(invitation.leagues.format)) {
-    const { data: firstWeek } = await supabase
-      .from('league_weeks')
-      .select('ends_at')
-      .eq('league_id', invitation.leagues.id)
-      .order('week_number', { ascending: true })
-      .limit(1)
-      .single()
-
-    if (!firstWeek || new Date(firstWeek.ends_at) <= new Date()) {
-      const err = new Error('This league has already started')
-      err.status = 400
-      throw err
-    }
-  } else if (invitation.leagues.format === 'bracket') {
-    const { data: tournament } = await supabase
-      .from('bracket_tournaments')
-      .select('locks_at, status')
-      .eq('league_id', invitation.leagues.id)
-      .single()
-
-    if (tournament && new Date(tournament.locks_at) <= new Date()) {
-      const err = new Error('This bracket is locked and no longer accepting entries')
-      err.status = 400
-      throw err
-    }
-  } else if (['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(invitation.leagues.format)) {
-    // DFS formats use joins_locked_at instead of starts_at
-    const { data: leagueFull } = await supabase
-      .from('leagues')
-      .select('joins_locked_at')
-      .eq('id', invitation.leagues.id)
-      .single()
-    if (leagueFull?.joins_locked_at && new Date(leagueFull.joins_locked_at) <= new Date()) {
-      const err = new Error('This league is locked — games have started')
-      err.status = 400
-      throw err
-    }
-  } else if (invitation.leagues.format === 'fantasy') {
-    const { data: fs } = await supabase
-      .from('fantasy_settings')
-      .select('draft_status, format')
-      .eq('league_id', invitation.leagues.id)
-      .maybeSingle()
-
-    if (fs?.format === 'salary_cap') {
-      const { data: sportRow } = await supabase.from('sports').select('id').eq('key', 'americanfootball_nfl').single()
-      if (sportRow) {
-        const { count: liveOrFinal } = await supabase
-          .from('games')
-          .select('id', { count: 'exact', head: true })
-          .eq('sport_id', sportRow.id)
-          .in('status', ['live', 'final'])
-          .gte('starts_at', new Date(new Date().getFullYear(), 8, 1).toISOString())
-        if (liveOrFinal > 0) {
-          const err = new Error('The NFL season has started — this league is no longer accepting members')
-          err.status = 400
-          throw err
-        }
-      }
-    } else {
-      if (fs && fs.draft_status !== 'pending') {
-        const err = new Error('This league\'s draft has already started')
-        err.status = 400
-        throw err
-      }
-    }
-  } else if (invitation.leagues.starts_at && new Date(invitation.leagues.starts_at) <= new Date()) {
-    const err = new Error('This league has already started')
-    err.status = 400
-    throw err
-  }
+  await assertLeagueJoinable(invitation.leagues)
 
   // Check max members
   if (invitation.leagues.max_members) {
