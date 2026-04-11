@@ -123,7 +123,7 @@ export default function HomePage() {
           <InfoTooltip text="I KNOW BALL is the all-in-one sports platform for people who live and breathe sports. Pick winners using live Vegas odds, run fantasy leagues with the best visuals in the game, and prove you actually know ball." />
         </h1>
         <p className="text-text-secondary text-lg sm:text-xl max-w-lg mx-auto mb-8">
-          Pick winners. Win leagues. Earn points based on real odds. Climb the ranks. Prove you know ball.
+          Win leagues. Pick winners. Prove you know ball.
         </p>
         {!isAuthenticated ? (
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
