@@ -758,7 +758,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                     next.splice(i, 0, moved)
                     setRegions(next)
                   }}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-accent/20 text-accent text-xs font-semibold cursor-grab active:cursor-grabbing select-none"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-accent text-sm font-semibold cursor-grab active:cursor-grabbing select-none"
                 >
                   {r}
                   <button onClick={() => handleRemoveRegion(i)} className="hover:text-incorrect">x</button>
