@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -140,10 +140,21 @@ function buildSlotPlan(rosterSlots, players) {
 
 // ── Component ────────────────────────────────────────────────────────
 
+const MAX_RECENT = 5
+function recentKey(leagueId) { return `leagueMockHistory_${leagueId}` }
+function loadRecent(leagueId) {
+  try { return JSON.parse(localStorage.getItem(recentKey(leagueId)) || '[]') } catch { return [] }
+}
+function saveRecent(leagueId, list) {
+  localStorage.setItem(recentKey(leagueId), JSON.stringify(list.slice(0, MAX_RECENT)))
+}
+
 export default function LeagueMockDraft({ league, fantasySettings }) {
   const { profile } = useAuth()
   const [started, setStarted] = useState(false)
   const [picks, setPicks] = useState([])
+  const [reviewMock, setReviewMock] = useState(null)
+  const [recentMocks, setRecentMocks] = useState(() => loadRecent(league.id))
   const [activeTab, setActiveTab] = useState('Players')
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -227,45 +238,132 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
     return () => clearTimeout(t)
   }, [currentPickIdx, isComplete, allPlayers, started])
 
+  // Save mock when complete
+  const savedRef = useRef(false)
+  useEffect(() => {
+    if (isComplete && picks.length > 0 && !savedRef.current) {
+      savedRef.current = true
+      handleComplete()
+    }
+  }, [isComplete])
+
   function handleUserPick(player) {
     if (!isUserTurn) return
     setPicks((p) => [...p, { overall: currentPick.overall, round: currentPick.round, pickInRound: currentPick.pickInRound, teamSlot: config.userSlot, player, personality: 'You' }])
     setSearchQuery('')
   }
 
+  function handleComplete() {
+    const myPicks = picks.filter((p) => p.teamSlot === config.userSlot).map((p) => ({
+      id: p.player.id, name: p.player.full_name, position: p.player.position, team: p.player.team, headshot: p.player.headshot_url,
+    }))
+    const mock = {
+      id: `mock_${Date.now()}`,
+      completedAt: new Date().toISOString(),
+      draftPosition: config.userSlot + 1,
+      roster: myPicks,
+      config,
+    }
+    const updated = [mock, ...recentMocks].slice(0, MAX_RECENT)
+    saveRecent(league.id, updated)
+    setRecentMocks(updated)
+    setReviewMock(mock)
+  }
+
   function handleRestart() {
     setPicks([])
     setStarted(false)
+    setReviewMock(null)
+    savedRef.current = false
+  }
+
+  function handleDeleteMock(mockId) {
+    const updated = recentMocks.filter((m) => m.id !== mockId)
+    saveRecent(league.id, updated)
+    setRecentMocks(updated)
+    if (reviewMock?.id === mockId) setReviewMock(null)
   }
 
   if (!config) return null
+
+  // Review a completed mock
+  if (reviewMock) {
+    const slotPlan = buildSlotPlan(config.rosterSlots, reviewMock.roster)
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-correct/40 bg-correct/10 p-4 text-center">
+          <div className="font-display text-lg text-correct mb-1">Mock Draft Complete</div>
+          <div className="text-xs text-text-muted">
+            Draft position #{reviewMock.draftPosition} · {new Date(reviewMock.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+          </div>
+        </div>
+        <RosterView slotPlan={slotPlan} />
+        <div className="flex gap-3">
+          <button onClick={handleRestart} className="flex-1 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-colors">
+            New Mock Draft
+          </button>
+          <button onClick={() => setReviewMock(null)} className="flex-1 py-3 rounded-xl bg-bg-card border border-text-primary/20 text-text-secondary font-semibold text-sm hover:bg-bg-card-hover transition-colors">
+            Back
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Pre-start screen
   if (!started) {
     const hasOrder = fantasySettings?.draft_order?.length > 0
     return (
-      <div className="text-center py-8 space-y-4">
-        <div className="text-4xl">{'\uD83C\uDFC8'}</div>
-        <h3 className="font-display text-lg text-text-primary">Mock Draft</h3>
-        <div className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 max-w-md mx-auto text-sm text-text-secondary">
-          This mock draft uses your league's settings — {config.numTeams} teams, {config.scoring === 'ppr' ? 'PPR' : config.scoring === 'half_ppr' ? 'Half-PPR' : 'Standard'} scoring, {config.rounds} rounds.
-          {hasOrder && (
-            <span className="block mt-1 text-accent font-semibold">
-              Your draft position: #{config.userSlot + 1} (based on your league's draft order)
-            </span>
-          )}
-          {!hasOrder && (
-            <span className="block mt-1 text-text-muted">
-              Draft position will be randomized (draft order not set yet).
-            </span>
-          )}
+      <div className="space-y-4 py-4">
+        <div className="text-center space-y-4">
+          <div className="text-4xl">{'\uD83C\uDFC8'}</div>
+          <h3 className="font-display text-lg text-text-primary">Mock Draft</h3>
+          <div className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 max-w-md mx-auto text-sm text-text-secondary">
+            This mock draft uses your league's settings — {config.numTeams} teams, {config.scoring === 'ppr' ? 'PPR' : config.scoring === 'half_ppr' ? 'Half-PPR' : 'Standard'} scoring, {config.rounds} rounds.
+            {hasOrder && (
+              <span className="block mt-1 text-accent font-semibold">
+                Your draft position: #{config.userSlot + 1} (based on your league's draft order)
+              </span>
+            )}
+            {!hasOrder && (
+              <span className="block mt-1 text-text-muted">
+                Draft position will be randomized (draft order not set yet).
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setStarted(true)}
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+          >
+            Start Mock Draft
+          </button>
         </div>
-        <button
-          onClick={() => setStarted(true)}
-          className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
-        >
-          Start Mock Draft
-        </button>
+
+        {/* Recent mocks */}
+        {recentMocks.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">Recent Mocks</h4>
+            <div className="space-y-2">
+              {recentMocks.map((mock) => (
+                <div key={mock.id} className="rounded-xl border border-text-primary/20 bg-bg-primary px-4 py-3 flex items-center justify-between">
+                  <button onClick={() => setReviewMock(mock)} className="flex-1 text-left min-w-0">
+                    <div className="text-sm font-semibold text-text-primary">
+                      Pick #{mock.draftPosition}
+                    </div>
+                    <div className="text-xs text-text-muted">
+                      {new Date(mock.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      {' · '}{mock.roster?.length || 0} players
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMock(mock.id)}
+                    className="text-text-muted hover:text-incorrect text-lg ml-3 shrink-0"
+                  >&times;</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -274,24 +372,8 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
   if (!allPlayers?.length) return <div className="text-center text-text-muted py-12">Couldn't load players.</div>
 
   // Completed
-  if (isComplete) {
-    const myPicks = picks.filter((p) => p.teamSlot === config.userSlot).map((p) => ({
-      id: p.player.id, name: p.player.full_name, position: p.player.position, team: p.player.team, headshot: p.player.headshot_url,
-    }))
-    const slotPlan = buildSlotPlan(config.rosterSlots, myPicks)
-    return (
-      <div className="space-y-4">
-        <div className="rounded-xl border border-correct/40 bg-correct/10 p-4 text-center">
-          <div className="font-display text-lg text-correct mb-1">Mock Draft Complete</div>
-          <p className="text-sm text-text-secondary">Your roster is set. Start another to practice different strategies.</p>
-        </div>
-        <RosterView slotPlan={slotPlan} />
-        <button onClick={handleRestart} className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-colors">
-          New Mock Draft
-        </button>
-      </div>
-    )
-  }
+  // isComplete is handled by the effect that calls handleComplete → sets reviewMock
+  if (isComplete && reviewMock) return null // will render review screen above
 
   // Active drafting
   const adpCtx = { scoring: config.scoring, superflex: (config.rosterSlots?.superflex || 0) > 0, qbCount: config.rosterSlots?.qb || 1 }
