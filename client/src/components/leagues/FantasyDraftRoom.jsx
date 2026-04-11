@@ -291,6 +291,14 @@ export default function FantasyDraftRoom({ league }) {
     const hasPickSlots = picks.length > 0
     const draftDate = settings?.draft_date ? new Date(settings.draft_date) : null
     const draftDateValid = draftDate && !isNaN(draftDate.getTime())
+    const msUntilDraft = draftDateValid ? draftDate.getTime() - Date.now() : Infinity
+    const withinOneHour = hasPickSlots && draftDateValid && msUntilDraft <= 60 * 60 * 1000 && msUntilDraft > 0
+
+    // ── Board preview with countdown (T-60min) ──────────────────────
+    if (withinOneHour) {
+      return <DraftBoardPreview settings={settings} picks={picks} draftDate={draftDate} profileId={profile?.id} league={league} isCommissioner={isCommissioner} onStartDraft={handleStartDraft} startDraftPending={startDraft.isPending} />
+    }
+
     return (
       <div className="text-center py-8">
         <div className="text-4xl mb-3">{'\uD83C\uDFC8'}</div>
@@ -1184,6 +1192,92 @@ function DraftBoard({ picks, settings, profileId }) {
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ── Pre-draft board preview (T-60min countdown) ──────────────────────
+
+function DraftBoardPreview({ settings, picks, draftDate, profileId, isCommissioner, onStartDraft, startDraftPending }) {
+  const draftOrder = settings?.draft_order || []
+  const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
+  const totalSlots = Object.values(rosterSlots).reduce((a, b) => a + b, 0)
+
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const remaining = Math.max(0, draftDate.getTime() - now)
+  const mins = Math.floor(remaining / 60000)
+  const secs = Math.floor((remaining % 60000) / 1000)
+
+  const userNames = {}
+  for (const pick of picks) {
+    if (pick.users) userNames[pick.user_id] = pick.users.display_name || pick.users.username
+  }
+  const userSlot = draftOrder.indexOf(profileId)
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center py-6">
+        <div className="text-[10px] uppercase tracking-widest text-text-muted mb-2">Draft starts in</div>
+        <div className="font-display text-6xl md:text-7xl text-accent tabular-nums">
+          {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+        </div>
+        {settings?.draft_location && (
+          <div className="mt-3 text-sm text-text-secondary">
+            <span className="text-text-muted">Location:</span> <span className="font-semibold text-text-primary">{settings.draft_location}</span>
+          </div>
+        )}
+        {userSlot >= 0 && (
+          <div className="mt-2 text-sm text-text-secondary">
+            You're picking at <span className="font-bold text-accent">#{userSlot + 1}</span>
+          </div>
+        )}
+        {isCommissioner && remaining <= 0 && (
+          <button
+            onClick={onStartDraft}
+            disabled={startDraftPending}
+            className="mt-4 px-6 py-2.5 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
+          >
+            {startDraftPending ? 'Starting...' : 'Start Draft Now'}
+          </button>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-text-primary/20 p-2 overflow-auto">
+        <table className="text-xs border-collapse w-full table-fixed">
+          <thead>
+            <tr>
+              <th className="px-1 py-2 text-text-muted font-semibold text-center w-10 border border-border bg-bg-secondary">Rd</th>
+              {draftOrder.map((userId, i) => (
+                <th key={userId} className={`px-2 py-2 font-semibold text-center border border-border ${userId === profileId ? 'text-accent' : 'text-text-secondary'}`}>
+                  <div className="text-text-muted text-[10px]">{i + 1}</div>
+                  <div className="truncate">{userNames[userId] || 'Team'}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: totalSlots }, (_, r) => (
+              <tr key={r}>
+                <td className="px-1 py-3 text-center text-text-muted font-semibold border border-border bg-bg-secondary">
+                  <div className="flex items-center gap-0.5 justify-center">
+                    {r + 1}
+                    <span className="text-[8px]">{r % 2 === 0 ? '\u2192' : '\u2190'}</span>
+                  </div>
+                </td>
+                {draftOrder.map((userId) => (
+                  <td key={userId} className="px-2 py-3 border border-border text-center">
+                    <div className="text-text-muted/30">{'\u2014'}</div>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

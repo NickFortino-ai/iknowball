@@ -1310,6 +1310,46 @@ export async function processDraftPreStartNotifications() {
 }
 
 /**
+ * Auto-randomize draft order 60 minutes before draft if commish hasn't.
+ * This lets the draft board preview appear for all members in the final hour.
+ */
+export async function autoInitializeDraftOrder() {
+  const sixtyMinFromNow = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+  const nowIso = new Date().toISOString()
+
+  // Find drafts within 60 minutes that haven't been initialized yet
+  const { data: candidates } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, draft_date')
+    .eq('draft_status', 'pending')
+    .not('draft_date', 'is', null)
+    .lte('draft_date', sixtyMinFromNow)
+    .gt('draft_date', nowIso)
+
+  if (!candidates?.length) return 0
+
+  let initialized = 0
+  for (const row of candidates) {
+    // Check if picks already exist (order already randomized)
+    const { count } = await supabase
+      .from('fantasy_draft_picks')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', row.league_id)
+
+    if (count > 0) continue // already initialized
+
+    try {
+      await initializeDraft(row.league_id)
+      logger.info({ leagueId: row.league_id }, 'Auto-initialized draft order at T-60min')
+      initialized++
+    } catch (err) {
+      logger.error({ err, leagueId: row.league_id }, 'Failed to auto-initialize draft order')
+    }
+  }
+  return initialized
+}
+
+/**
  * Scheduled draft starter: scan every pending draft whose draft_date has
  * arrived and start it. If the commissioner never randomized the order,
  * we auto-initialize first so the league isn't stuck. Notifies all members.
@@ -1826,6 +1866,11 @@ export function startDraftAutopickLoop() {
       await autoCancelDatelessUnderfilled()
     } catch (err) {
       logger.error({ err }, 'Dateless underfill auto-cancel tick error')
+    }
+    try {
+      await autoInitializeDraftOrder()
+    } catch (err) {
+      logger.error({ err }, 'Auto-initialize draft order tick error')
     }
     try {
       await processScheduledDraftStarts()
