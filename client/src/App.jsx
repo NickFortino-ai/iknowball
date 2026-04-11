@@ -35,7 +35,8 @@ import MessageThreadPage from './pages/MessageThreadPage'
 import GuidelinesPage from './pages/GuidelinesPage'
 import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
 import InstallPrompt from './components/pwa/InstallPrompt'
-import { initPushNotifications } from './lib/pushNotifications'
+// Push notifications disabled until APNs backend is wired up
+// import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
 import { initIAPListener } from './lib/iapListener'
 import { useRealtimeGames } from './hooks/useRealtimeGames'
@@ -47,7 +48,6 @@ function AppRoutes() {
 
   useEffect(() => {
     initialize()
-    initPushNotifications()
     initStatusBar()
     initIAPListener()
   }, [initialize])
