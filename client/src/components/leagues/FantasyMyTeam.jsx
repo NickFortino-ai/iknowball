@@ -190,7 +190,7 @@ export default function FantasyMyTeam({ league }) {
     const benchCount = slots.bench || 6
     return (
       <div className="space-y-4">
-        <p className="text-sm text-text-secondary text-center">No players on your roster yet. Complete the draft to build your team.</p>
+        <p className="text-sm text-text-secondary text-center">You'll see your team here after the draft!</p>
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
             <h3 className="text-sm font-semibold text-text-primary">Starters</h3>
