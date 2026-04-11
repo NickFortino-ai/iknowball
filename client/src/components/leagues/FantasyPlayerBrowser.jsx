@@ -51,7 +51,7 @@ export default function FantasyPlayerBrowser({ league }) {
   const [playerView, setPlayerView] = useState('ADP') // 'ADP' | 'My Ranks'
   const [searchQuery, setSearchQuery] = useState('')
   const [posFilter, setPosFilter] = useState('All')
-  const [sortKey, setSortKey] = useState('pts')
+  const [sortKey, setSortKey] = useState('rank')
   const [addingPlayer, setAddingPlayer] = useState(null) // player being added
   const [dropPlayerId, setDropPlayerId] = useState('') // chosen drop
   const [bidAmount, setBidAmount] = useState(0)
@@ -242,7 +242,16 @@ export default function FantasyPlayerBrowser({ league }) {
           {/* Stat-column header */}
           <div className="border-b border-border bg-bg-primary/40">
             <div className="flex items-center px-4 py-1.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">
-              <div className="w-[180px] shrink-0 sticky left-0 bg-bg-primary/40 z-10 px-1">Player</div>
+              <button
+                type="button"
+                onClick={() => setSortKey('rank')}
+                className={`w-10 shrink-0 text-center px-1 py-0.5 rounded transition-colors sticky left-0 bg-bg-primary/40 z-10 ${
+                  sortKey === 'rank' ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
+                }`}
+              >
+                {sortKey === 'rank' ? '#↓' : '#'}
+              </button>
+              <div className="w-[170px] shrink-0 px-1">Player</div>
               <div className="flex gap-1 flex-1">
                 {STAT_COLUMNS.map((col) => (
                   <button
@@ -263,13 +272,16 @@ export default function FantasyPlayerBrowser({ league }) {
           <div className="max-h-[60vh] overflow-y-auto">
             {isLoading ? (
               <div className="text-center text-sm text-text-muted py-8">Loading...</div>
-            ) : (players || []).map((player) => {
+            ) : (players || []).map((player, idx) => {
               const isClaimed = claimedPlayerIds.has(player.id)
               const onWaivers = !!player.on_waivers
               const stats = player.stats || {}
               return (
               <div key={player.id} className="flex items-center px-4 py-2.5 border-b border-border last:border-0">
-                <div className="w-[180px] shrink-0 flex items-center gap-2 sticky left-0 bg-bg-primary z-10 px-1">
+                <div className="w-10 shrink-0 text-center text-xs font-bold text-text-muted sticky left-0 bg-bg-primary z-10">
+                  {player.adp_rank || idx + 1}
+                </div>
+                <div className="w-[170px] shrink-0 flex items-center gap-2 px-1">
                   {player.headshot_url && (
                     <img
                       src={player.headshot_url}
