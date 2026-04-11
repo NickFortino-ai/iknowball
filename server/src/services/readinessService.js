@@ -193,11 +193,33 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
     .eq('game_date', yesterdayET)
     : { data: [] }
 
+  // Check if yesterday's games are still live (any game from yesterday not final)
+  let yesterdayStillLive = false
+  if (yesterdayET && yesterdayET !== todayET) {
+    const { data: sportRow } = await supabase.from('sports').select('id').eq('key',
+      rosterTable === 'nba_dfs_rosters' ? 'basketball_nba' : 'baseball_mlb'
+    ).single()
+    if (sportRow) {
+      const yStart = new Date(yesterdayET + 'T00:00:00-05:00')
+      const yEnd = new Date(yStart.getTime() + 36 * 60 * 60 * 1000)
+      const { count } = await supabase
+        .from('games')
+        .select('id', { count: 'exact', head: true })
+        .eq('sport_id', sportRow.id)
+        .eq('status', 'live')
+        .gte('starts_at', yStart.toISOString())
+        .lte('starts_at', yEnd.toISOString())
+      yesterdayStillLive = (count || 0) > 0
+    }
+  }
+
   const rosterByLeague = {}
   for (const r of todayRosters || []) rosterByLeague[r.league_id] = r
-  // Yesterday fallback — only if no today roster exists for that league
-  for (const r of yesterdayRosters || []) {
-    if (!rosterByLeague[r.league_id]) rosterByLeague[r.league_id] = r
+  // Yesterday fallback — only if yesterday's games are still live
+  if (yesterdayStillLive) {
+    for (const r of yesterdayRosters || []) {
+      if (!rosterByLeague[r.league_id]) rosterByLeague[r.league_id] = r
+    }
   }
   // Use the matched roster's date for salary lookups
   const effectiveDateByLeague = {}
