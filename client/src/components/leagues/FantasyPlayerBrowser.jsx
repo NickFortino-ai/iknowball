@@ -64,12 +64,21 @@ export default function FantasyPlayerBrowser({ league }) {
     setDetailPlayerId(id)
   }
 
-  const { data: players, isLoading } = useAvailablePlayers(
+  const { data: rawPlayers, isLoading } = useAvailablePlayers(
     league.id,
     searchQuery || undefined,
-    posFilter !== 'All' ? posFilter : undefined,
-    sortKey
+    posFilter !== 'All' ? posFilter : undefined
   )
+  // Sort client-side for instant re-sort without API round-trip
+  const players = useMemo(() => {
+    if (!rawPlayers) return null
+    if (!sortKey || sortKey === 'rank') return rawPlayers
+    return [...rawPlayers].sort((a, b) => {
+      const av = a.stats?.[sortKey] || 0
+      const bv = b.stats?.[sortKey] || 0
+      return bv - av
+    })
+  }, [rawPlayers, sortKey])
   const { data: roster } = useFantasyRoster(league.id)
   const { data: settings } = useFantasySettings(league.id)
   const { data: waiverData } = useWaiverState(league.id)
