@@ -101,17 +101,9 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     byFormat[l.format].push(l)
   }
 
-  // Today (Eastern) — used for DFS / hr_derby. If it's past midnight ET but
-  // games from yesterday are still live, use yesterday's date so rostered
-  // lineups still match. This prevents false "no lineup" red clips after midnight.
-  const nowET = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
-  const etHour = new Date(nowET).getHours()
-  let todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  if (etHour < 6) {
-    // Before 6 AM ET, check yesterday's date — games from last night may still be live
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    todayET = yesterday.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  }
+  // Today (Eastern) — used for DFS / hr_derby.
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const yesterdayET = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 
   // Pre-compute which sports are "done" for today (last game ended 4h ago).
   // Daily formats whose sport is done will return null (no clip) until the
@@ -130,12 +122,12 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
   try {
     if (byFormat.nba_dfs?.length) {
       if (!doneSports.has('basketball_nba')) {
-        await computeDfsReadiness(byFormat.nba_dfs, userId, todayET, 'nba_dfs_rosters', 'nba_dfs_roster_slots', 'nba_dfs_salaries', result)
+        await computeDfsReadiness(byFormat.nba_dfs, userId, todayET, 'nba_dfs_rosters', 'nba_dfs_roster_slots', 'nba_dfs_salaries', result, yesterdayET)
       }
     }
     if (byFormat.mlb_dfs?.length) {
       if (!doneSports.has('baseball_mlb')) {
-        await computeDfsReadiness(byFormat.mlb_dfs, userId, todayET, 'mlb_dfs_rosters', 'mlb_dfs_roster_slots', 'mlb_dfs_salaries', result)
+        await computeDfsReadiness(byFormat.mlb_dfs, userId, todayET, 'mlb_dfs_rosters', 'mlb_dfs_roster_slots', 'mlb_dfs_salaries', result, yesterdayET)
       }
     }
     if (byFormat.survivor?.length) {
@@ -182,38 +174,53 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
  * injury status of 'Out'. Players with 'Questionable' / 'Day-To-Day' flag the
  * lineup as 'attention'.
  */
-async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTable, salaryTable, result) {
+async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTable, salaryTable, result, yesterdayET) {
   const leagueIds = leagues.map((l) => l.id)
-  const { data: rosters } = await supabase
+  // Check today's roster first; if none found for a league, fall back to
+  // yesterday's — handles post-midnight when last night's games are still live.
+  const { data: todayRosters } = await supabase
     .from(rosterTable)
-    .select(`id, league_id, ${slotTable}(espn_player_id)`)
+    .select(`id, league_id, game_date, ${slotTable}(espn_player_id)`)
     .in('league_id', leagueIds)
     .eq('user_id', userId)
     .eq('game_date', todayET)
 
+  const { data: yesterdayRosters } = yesterdayET ? await supabase
+    .from(rosterTable)
+    .select(`id, league_id, game_date, ${slotTable}(espn_player_id)`)
+    .in('league_id', leagueIds)
+    .eq('user_id', userId)
+    .eq('game_date', yesterdayET)
+    : { data: [] }
+
   const rosterByLeague = {}
-  for (const r of rosters || []) {
-    rosterByLeague[r.league_id] = r
+  for (const r of todayRosters || []) rosterByLeague[r.league_id] = r
+  // Yesterday fallback — only if no today roster exists for that league
+  for (const r of yesterdayRosters || []) {
+    if (!rosterByLeague[r.league_id]) rosterByLeague[r.league_id] = r
   }
+  // Use the matched roster's date for salary lookups
+  const effectiveDateByLeague = {}
+  for (const [lid, r] of Object.entries(rosterByLeague)) effectiveDateByLeague[lid] = r.game_date || todayET
 
   // Pull injury statuses for every player on every roster in one query
   const allPlayerIds = new Set()
-  for (const r of rosters || []) {
+  for (const r of Object.values(rosterByLeague)) {
     for (const slot of r[slotTable] || []) {
       if (slot.espn_player_id) allPlayerIds.add(slot.espn_player_id)
     }
   }
-  // Pull EVERY salary row for tonight that touches one of our roster players,
-  // including null injury_status, so we can distinguish "healthy" from
-  // "we have no record of this player". A missing row means we can't verify
-  // injuries — better to leave the clip off than show a false green.
+  // Pull salary rows for both today and yesterday so injury data matches
+  // whichever date the roster was found under.
   const knownPlayer = new Set()
   const injuryByPlayer = {}
   if (allPlayerIds.size > 0) {
+    const dates = [todayET]
+    if (yesterdayET && yesterdayET !== todayET) dates.push(yesterdayET)
     const { data: salaries } = await supabase
       .from(salaryTable)
       .select('espn_player_id, injury_status')
-      .eq('game_date', todayET)
+      .in('game_date', dates)
       .in('espn_player_id', [...allPlayerIds])
     for (const s of salaries || []) {
       knownPlayer.add(s.espn_player_id)
