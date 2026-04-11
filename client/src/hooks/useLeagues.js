@@ -1034,6 +1034,36 @@ export function useMlbDfsLive(leagueId, date) {
   })
 }
 
+export function useNflDfsPlayers(week, season, position) {
+  const params = new URLSearchParams({ week, season })
+  if (position) params.set('position', position)
+  return useQuery({
+    queryKey: ['nfl-dfs', 'players', week, season, position],
+    queryFn: () => api.get(`/dfs/players?${params}`),
+    enabled: !!week,
+    staleTime: 60000,
+  })
+}
+
+export function useNflDfsRoster(leagueId, week, season) {
+  return useQuery({
+    queryKey: ['nfl-dfs', leagueId, 'roster', week, season],
+    queryFn: () => api.get(`/dfs/roster?league_id=${leagueId}&week=${week}&season=${season}`),
+    enabled: !!leagueId && !!week,
+    refetchInterval: 60000,
+  })
+}
+
+export function useSaveNflDfsRoster() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/dfs/roster', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['nfl-dfs', variables.league_id, 'roster'] })
+    },
+  })
+}
+
 export function useNflDfsLive(leagueId, week, season) {
   return useQuery({
     queryKey: ['nfl-dfs', leagueId, 'live', week, season],

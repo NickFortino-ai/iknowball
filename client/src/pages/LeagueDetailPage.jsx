@@ -11,6 +11,7 @@ import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
 import LeagueThread from '../components/leagues/LeagueThread'
 import FantasyDraftRoom from '../components/leagues/FantasyDraftRoom'
+import NflSalaryCapView from '../components/leagues/NflSalaryCapView'
 import LeagueMockDraft from '../components/leagues/LeagueMockDraft'
 import FantasyMyRankings from '../components/leagues/FantasyMyRankings'
 import FantasyMyTeam from '../components/leagues/FantasyMyTeam'
@@ -1673,8 +1674,11 @@ export default function LeagueDetailPage() {
         <div className="relative z-10"><LeagueMockDraft league={league} fantasySettings={fantasySettings} /></div>
       )}
 
-      {(tabs[activeTab] === 'My Team' || tabs[activeTab] === 'Roster') && league.format === 'fantasy' && (
+      {tabs[activeTab] === 'My Team' && league.format === 'fantasy' && (
         <div className="relative z-10"><FantasyMyTeam league={league} /></div>
+      )}
+      {tabs[activeTab] === 'Roster' && league.format === 'fantasy' && fantasySettings?.format === 'salary_cap' && (
+        <div className="relative z-10"><NflSalaryCapView league={league} /></div>
       )}
 
       {tabs[activeTab] === 'Standings' && league.format === 'fantasy' && (
