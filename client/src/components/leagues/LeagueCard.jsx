@@ -37,7 +37,7 @@ function formatRunsUntil(league) {
 
 const STATUS_STYLES = {
   open: 'bg-correct/20 text-correct',
-  active: 'bg-accent/20 text-accent',
+  active: 'bg-correct/20 text-correct',
   completed: 'bg-text-muted/20 text-text-muted',
   archived: 'bg-text-muted/20 text-text-muted',
 }
@@ -98,7 +98,7 @@ export default function LeagueCard({ league, noLink }) {
             centered. Doesn't affect layout flow because it's absolutely
             positioned. */}
         {league.format === 'fantasy' && league.draft_date && league.draft_status !== 'completed' && (
-          <div className="hidden sm:block absolute right-5 top-1/2 -translate-y-1/2 text-right pointer-events-none">
+          <div className="hidden sm:block absolute right-5 bottom-4 text-right pointer-events-none">
             <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} compact={false} />
           </div>
         )}
