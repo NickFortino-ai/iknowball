@@ -66,7 +66,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
             <tr className="border-b border-text-primary/10 text-text-muted text-xs">
               <th className="py-3 px-2 text-center font-semibold w-8">#</th>
               <th className="py-3 px-2 text-left font-semibold">Manager</th>
-              <th className="py-3 px-2 text-center font-semibold">{isSalaryCap ? 'Wins' : 'W-L-T'}</th>
+              <th className="py-3 px-2 text-center font-semibold">{isSalaryCap ? 'Wins' : 'W-L'}</th>
               <th
                 className={`py-3 px-2 text-center font-semibold ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`}
                 onClick={() => !isSalaryCap && handleSortClick('pf')}
@@ -95,9 +95,9 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                   <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
                 </td>
                 <td className="py-3.5 px-2">
-                  <div className={`flex items-center gap-3 min-w-0 ${!isSalaryCap ? 'max-w-[180px]' : ''}`}>
-                    <Avatar user={s.user} size="lg" />
-                    <div className="min-w-0">
+                  <div className={`flex items-center gap-3 min-w-0 overflow-hidden ${!isSalaryCap ? 'max-w-[180px]' : ''}`}>
+                    <Avatar user={s.user} size="lg" className="shrink-0" />
+                    <div className="min-w-0 overflow-hidden">
                       <div className="font-bold text-base text-text-primary truncate">
                         {s.user?.display_name || s.user?.username}
                       </div>
@@ -110,7 +110,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                 <td className="py-3.5 px-2 text-center text-text-primary text-base">
                   {isSalaryCap
                     ? (s.wins > 0 ? s.wins : '--')
-                    : (s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}-${s.ties}` : '--')}
+                    : (s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}${s.ties ? `-${s.ties}` : ''}` : '--')}
                 </td>
                 <td className="py-3.5 px-2 text-center text-white font-display text-base">
                   {s.pointsFor > 0 ? s.pointsFor.toFixed(1) : '--'}
