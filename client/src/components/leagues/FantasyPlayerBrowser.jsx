@@ -249,6 +249,12 @@ export default function FantasyPlayerBrowser({ league }) {
           ))}
         </div>
       </div>
+      {/* Season label for pre-draft (showing last year's stats) */}
+      {settings?.draft_status === 'pending' && (
+        <div className="px-4 py-1.5 text-[10px] text-text-muted font-semibold uppercase tracking-wider">
+          2025 Stats
+        </div>
+      )}
       {/* Single horizontal scroll container for header + rows */}
       <div className="overflow-x-auto">
         <div className="min-w-[700px]">
