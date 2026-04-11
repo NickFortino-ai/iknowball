@@ -248,7 +248,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
         </button>
         <div className="text-center min-w-[100px]">
           <div className="font-display text-lg text-text-primary">Week {viewWeek}</div>
-          <div className="text-[10px] text-text-muted">
+          <div className={`text-[10px] font-semibold ${weekStatus === 'current' ? 'text-accent' : 'text-text-muted'}`}>
             {weekStatus === 'past' ? 'Final' : weekStatus === 'future' ? 'Upcoming' : 'Current'}
           </div>
         </div>
@@ -261,14 +261,6 @@ export default function FantasyMatchup({ league, fantasySettings }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </button>
-        {!isCurrent && (
-          <button
-            onClick={() => setViewWeek(currentWeek)}
-            className="text-xs text-accent font-semibold hover:underline ml-1"
-          >
-            Current week
-          </button>
-        )}
       </div>
 
       {/* League report button */}
