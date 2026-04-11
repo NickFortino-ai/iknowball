@@ -55,7 +55,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
     if (!isSalaryCap && !draftDone && tabs.includes('Draft')) {
       tabs.splice(tabs.indexOf('Draft') + 1, 0, 'Mock Draft')
     }
-    tabs.push('Thread')
+    if (!isSalaryCap) tabs.push('Thread')
     return tabs
   }
 
