@@ -50,7 +50,7 @@ Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom 
     description: 'Build a nightly NBA lineup under a salary cap and compete for the highest score',
     details: `Build a nightly 9-man NBA lineup (PG, PG, SG, SG, SF, SF, PF, PF, C) under a salary cap. Players are priced using a weighted algorithm that factors in recent performance and opponent defensive strength — so salaries shift nightly based on matchups and form. Scoring follows DraftKings-style NBA rules. Your league tracks wins across every night of the duration.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. For example, if you win a 20-member league, you'd earn 19 position points + 20 bonus = 39 total points added to your global IKB score.
 
 At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
 
@@ -62,7 +62,7 @@ Commissioner controls: salary cap, team count, league duration, and lineup lock 
     description: 'Build a daily MLB lineup under a salary cap — scored on hits, HRs, RBIs, runs, and more',
     details: `Build a daily 10-man MLB lineup (SP, C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) under a salary cap. Scored on hits, home runs, RBIs, runs, stolen bases, and walks. Player pricing uses recent game logs and opponent pitching and defensive strength. Compete each night with your league across the full slate.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. For example, if you win a 10-member league, you'd earn 9 position points + 20 bonus = 29 total points added to your global IKB score.
 
 At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
 
@@ -74,7 +74,7 @@ Commissioner controls: salary cap, team count, league duration, lineup lock time
     description: 'Pick 3 hitters per day — score points for every HR they hit, with distance as tiebreaker',
     details: `Pick up to 3 hitters per day who you think will go yard. Each player can only be used once per week. Total home runs determine standings — HR distance is the tiebreaker. No salaries, no lineups, no optimization required. Just: will this guy hit one tonight?
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. For example, if you win a 15-member league, you'd earn 14 position points + 30 bonus = 44 total points added to your global IKB score.
 
 Commissioner controls: league length, team count. Custom backdrop from a curated library or upload your own.`,
   },
@@ -84,7 +84,7 @@ Commissioner controls: league length, team count. Custom backdrop from a curated
     description: 'Pick one QB per week — never repeat a QB. Most passing TDs across the season wins',
     details: `Season-long NFL league where you pick one quarterback per week — and you can never pick the same QB twice all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by season's end wins. Rushing TDs don't count. Ties split the bonus.
 
-When the season ends, your final position converts to global IKB points using the position formula — top half positive, bottom half negative, with a +10 bonus for the winner.
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. For example, if you win a 30-member league, you'd earn 29 position points + 50 bonus = 79 total points added to your global IKB score.
 
 Commissioner controls: league length (defaults to full NFL season), team count. Custom backdrop from a curated library or upload your own.`,
   },
@@ -94,7 +94,7 @@ Commissioner controls: league length (defaults to full NFL season), team count. 
     description: 'Pick game winners with odds-based scoring — your points reflect the real odds',
     details: `A picks league where everyone chooses winners from the same slate of games. The twist: IKB scores on odds, not just right or wrong. A chalk pick on the favorite pays less; nailing an underdog pays big. That means one gutsy upset call can leapfrog you over someone who played it safe all week. League picks live on their own leaderboard throughout the duration.
 
-When the league ends, points you earned during play transfer to your global IKB score, plus the winner gets a bonus equal to the number of members in the league.
+When the league ends, all the pick points you earned during play transfer to your global IKB score. On top of that, the winner gets a bonus equal to the number of members in the league. For example, in a 25-member Pick'em league, the winner would receive all their accumulated pick points plus a 25-point bonus added to their global IKB score.
 
 Commissioner controls: sport (single or all), duration (this week, custom range, or full season), pick frequency (daily or weekly), games per period, lock time (game start or submission), and open vs invite-only. Custom backdrop from a curated library or upload your own.`,
   },
@@ -116,7 +116,7 @@ Commissioner controls: sport, period frequency (daily or weekly), lives per play
     description: 'Fill out a tournament bracket with escalating points per round',
     details: `Tournament-style competition. The commissioner selects a template — NCAA Tournament, NBA Playoffs, NHL Playoffs, NFL Playoffs, and more — members fill out their bracket before the lock, and points scale dramatically by round. A correct championship pick is worth multiples of a first-round call. NBA and NHL playoff brackets include a series length prediction for each matchup — nail the exact number of games for bonus points.
 
-When the bracket completes, your finishing position determines your global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. Ties split the bonus.
+When the bracket completes, your finishing position determines your global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. For example, if you win a 50-member bracket league, you'd earn 49 position points + 100 bonus = 149 total points added to your global IKB score. Ties split the bonus.
 
 Commissioner controls: bracket template, lock time, and visibility. Custom backdrop or upload your own, plus a centerpiece image behind the bracket.`,
   },
