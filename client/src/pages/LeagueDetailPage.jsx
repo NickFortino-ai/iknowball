@@ -164,7 +164,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       items.push({ label: 'Champion', value: fantasySettings.champion_metric === 'most_wins' ? 'Most Nightly Wins' : 'Most Total Points' })
     }
     if (league.starts_at) {
-      items.push({ label: 'Starts', value: new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }) })
+      items.push({ label: 'Starts', value: league.format === 'fantasy' ? 'NFL Week 1' : new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }) })
     }
     items.push({ label: 'Visibility', value: league.visibility === 'open' ? 'Open' : 'Invite Only' })
   } else {
@@ -1207,7 +1207,9 @@ export default function LeagueDetailPage() {
         </div>
         {league.status === 'open' && league.starts_at && (
           <div className="mt-2 text-sm text-yellow-500 font-semibold">
-            Starts {new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}
+            {league.format === 'fantasy' && fantasySettings?.format === 'salary_cap'
+              ? 'Starts with NFL Week 1'
+              : `Starts ${new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}`}
           </div>
         )}
         </div>
