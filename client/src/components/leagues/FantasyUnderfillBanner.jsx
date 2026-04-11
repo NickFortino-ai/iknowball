@@ -28,15 +28,33 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
   const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   if (!league || league.format !== 'fantasy') return null
+
+  // No draft date set — suggest the commish pick one
+  if (!fantasySettings?.draft_date) {
+    return (
+      <div className="rounded-xl border-2 border-accent/50 bg-accent/10 p-4 mb-4 relative z-10">
+        <div className="flex items-start gap-3">
+          <div className="text-2xl">{'\uD83D\uDCC5'}</div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display text-base text-accent mb-1">Set a draft date</h3>
+            <p className="text-sm text-text-secondary">
+              Your league doesn't have a draft date yet. Head to league settings to pick a date and time so your members know when to show up.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!state || state.state === 'ok') return null
 
-  // Only show if draft is within 3 days — no urgency without a date
-  if (!fantasySettings?.draft_date) return null
+  // Only show underfill banner within 3 days of draft
   const msUntilDraft = new Date(fantasySettings.draft_date).getTime() - Date.now()
   if (msUntilDraft > 3 * 24 * 60 * 60 * 1000) return null
 
   const isBelowThreshold = state.state === 'below_threshold'
   const isResizable = state.state === 'resizable'
+  const isClosed = league.visibility === 'closed'
 
   async function handleResize() {
     try {
@@ -92,8 +110,8 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
             <h3 className="font-display text-base text-yellow-500 mb-1">League is underfilled</h3>
             <p className="text-sm text-text-secondary mb-3">
               {isBelowThreshold
-                ? `Only ${state.currentCount} of ${league.member_count >= state.currentCount ? league.member_count : ''}${state.currentCount === 1 ? '' : ' '}members have joined. IKB doesn't run traditional fantasy leagues with fewer than 6 teams. You can postpone the draft to give more people a chance to join, or cancel the league.`
-                : `Only ${state.currentCount} members have joined a league set up for more. You can resize down to ${state.targetEven} teams (drops the ${state.willDrop} most recent signup${state.willDrop === 1 ? '' : 's'}), postpone the draft, or cancel the league.`}
+                ? `Only ${state.currentCount} ${state.currentCount === 1 ? 'member has' : 'members have'} joined. IKB requires at least 6 teams for traditional fantasy leagues. ${isClosed ? 'Try opening the league so anyone on IKB can join, ' : ''}You can postpone the draft to give more people a chance to join, or cancel the league.`
+                : `Only ${state.currentCount} members have joined a league set up for ${fantasySettings?.num_teams || 'more'}. ${isClosed ? 'Try opening the league to fill remaining spots, or y' : 'Y'}ou can resize down to ${state.targetEven} teams or postpone the draft.`}
             </p>
             <button
               onClick={() => setOpen(true)}
