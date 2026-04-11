@@ -22,20 +22,26 @@ function PlayerChip({ player }) {
   )
 }
 
-function TradeCard({ trade, currentUserId, onAccept, onDecline, onCancel }) {
+function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, onCancel, onApprove, onVeto }) {
   const isReceiver = trade.receiver_user_id === currentUserId
   const isProposer = trade.proposer_user_id === currentUserId
   const isPending = trade.status === 'pending'
+  const isPendingReview = trade.status === 'pending_review'
 
   const proposerItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.proposer_user_id)
   const receiverItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.receiver_user_id)
 
   const statusColors = {
     pending: 'text-yellow-500 bg-yellow-500/10',
+    pending_review: 'text-accent bg-accent/10',
     accepted: 'text-correct bg-correct/10',
     declined: 'text-incorrect bg-incorrect/10',
     cancelled: 'text-text-muted bg-text-primary/5',
     vetoed: 'text-incorrect bg-incorrect/10',
+  }
+
+  const statusLabels = {
+    pending_review: 'awaiting approval',
   }
 
   return (
@@ -47,7 +53,7 @@ function TradeCard({ trade, currentUserId, onAccept, onDecline, onCancel }) {
         </svg>
         <Avatar user={trade.receiver} size="xs" />
         <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded ${statusColors[trade.status] || ''}`}>
-          {trade.status}
+          {statusLabels[trade.status] || trade.status}
         </span>
       </div>
 
@@ -72,6 +78,15 @@ function TradeCard({ trade, currentUserId, onAccept, onDecline, onCancel }) {
       )}
       {isPending && isProposer && (
         <button onClick={() => onCancel(trade.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-semibold text-text-muted border border-text-primary/20 hover:bg-text-primary/5">Cancel</button>
+      )}
+      {isPendingReview && isCommissioner && (
+        <div className="flex gap-3 mt-3">
+          <button onClick={() => onApprove?.(trade.id)} className="flex-1 py-2 rounded-lg text-sm font-semibold bg-correct text-white">Approve</button>
+          <button onClick={() => onVeto?.(trade.id)} className="flex-1 py-2 rounded-lg text-sm font-semibold bg-incorrect text-white">Veto</button>
+        </div>
+      )}
+      {isPending && isCommissioner && !isReceiver && !isProposer && (
+        <button onClick={() => onVeto?.(trade.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-semibold text-incorrect border border-incorrect/30 hover:bg-incorrect/10">Veto</button>
       )}
     </div>
   )
@@ -310,7 +325,8 @@ export default function FantasyTrades({ league }) {
 
   const isLoading = tradesLoading || txnLoading
 
-  const pending = (trades || []).filter((t) => t.status === 'pending')
+  const isCommissioner = league.commissioner_id === profile?.id
+  const pending = (trades || []).filter((t) => t.status === 'pending' || t.status === 'pending_review')
 
   async function handleAction(tradeId, action) {
     try {
@@ -387,20 +403,22 @@ export default function FantasyTrades({ league }) {
               <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Pending</h3>
               <div className="space-y-3">
                 {pending.map((t) => (
-                  <TradeCard key={t.id} trade={t} currentUserId={profile?.id}
+                  <TradeCard key={t.id} trade={t} currentUserId={profile?.id} isCommissioner={isCommissioner}
                     onAccept={(id) => handleAction(id, 'accept')}
                     onDecline={(id) => handleAction(id, 'decline')}
-                    onCancel={(id) => handleAction(id, 'cancel')} />
+                    onCancel={(id) => handleAction(id, 'cancel')}
+                    onApprove={(id) => handleAction(id, 'approve')}
+                    onVeto={(id) => handleAction(id, 'veto')} />
                 ))}
               </div>
             </div>
           )}
-          {(trades || []).filter((t) => t.status !== 'pending').length > 0 && (
+          {(trades || []).filter((t) => t.status !== 'pending' && t.status !== 'pending_review').length > 0 && (
             <div>
               <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">History</h3>
               <div className="space-y-3">
-                {(trades || []).filter((t) => t.status !== 'pending').map((t) => (
-                  <TradeCard key={t.id} trade={t} currentUserId={profile?.id} onAccept={() => {}} onDecline={() => {}} onCancel={() => {}} />
+                {(trades || []).filter((t) => t.status !== 'pending' && t.status !== 'pending_review').map((t) => (
+                  <TradeCard key={t.id} trade={t} currentUserId={profile?.id} isCommissioner={isCommissioner} onAccept={() => {}} onDecline={() => {}} onCancel={() => {}} />
                 ))}
               </div>
             </div>

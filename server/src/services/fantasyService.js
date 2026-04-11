@@ -3306,6 +3306,21 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
     throw err
   }
 
+  // Check trade deadline
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('trade_deadline')
+    .eq('league_id', leagueId)
+    .maybeSingle()
+  if (settings?.trade_deadline) {
+    const deadline = new Date(settings.trade_deadline + 'T23:59:59Z')
+    if (new Date() > deadline) {
+      const err = new Error('The trade deadline has passed')
+      err.status = 400
+      throw err
+    }
+  }
+
   // Verify all players belong to the right rosters
   const allPlayerIds = [...(proposerPlayerIds || []), ...(receiverPlayerIds || [])]
   const { data: rosters } = await supabase
@@ -3407,6 +3422,63 @@ export async function acceptTrade(tradeId, userId) {
     throw err
   }
 
+  // Check trade deadline
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('trade_deadline, trade_review')
+    .eq('league_id', trade.league_id)
+    .maybeSingle()
+  if (settings?.trade_deadline) {
+    const deadline = new Date(settings.trade_deadline + 'T23:59:59Z')
+    if (new Date() > deadline) {
+      const err = new Error('The trade deadline has passed')
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Commissioner review: set to pending_review instead of executing immediately
+  if (settings?.trade_review === 'commissioner') {
+    await supabase
+      .from('fantasy_trades')
+      .update({ status: 'pending_review', responded_at: new Date().toISOString() })
+      .eq('id', tradeId)
+
+    // Notify the commissioner
+    try {
+      const { createNotification } = await import('./notificationService.js')
+      const { data: league } = await supabase.from('leagues').select('name, commissioner_id').eq('id', trade.league_id).single()
+      if (league?.commissioner_id) {
+        await createNotification(
+          league.commissioner_id,
+          'fantasy_trade_proposed',
+          `A trade in ${league.name} needs your approval`,
+          { leagueId: trade.league_id, tradeId, needsReview: true },
+        )
+      }
+      // Also notify proposer that trade is pending review
+      await createNotification(
+        trade.proposer_user_id,
+        'fantasy_trade_accepted',
+        `Your trade in ${league?.name || 'your league'} was accepted — awaiting commissioner approval`,
+        { leagueId: trade.league_id, tradeId, actorId: userId },
+      )
+    } catch (err) {
+      logger.error({ err }, 'Failed to send trade review notifications')
+    }
+
+    return { pending_review: true }
+  }
+
+  // No review needed — execute immediately
+  return _executeTrade(tradeId, trade, userId)
+}
+
+/**
+ * Execute a trade: swap player ownership and log transactions.
+ * Called by acceptTrade (when no review) or approveTrade (commissioner approval).
+ */
+async function _executeTrade(tradeId, trade, actorId) {
   // Apply the swap: update fantasy_rosters.user_id for each item
   for (const item of trade.fantasy_trade_items || []) {
     const { error } = await supabase
@@ -3433,7 +3505,7 @@ export async function acceptTrade(tradeId, userId) {
       trade.proposer_user_id,
       'fantasy_trade_accepted',
       `Your trade in ${league?.name || 'your league'} was accepted`,
-      { leagueId: trade.league_id, tradeId, actorId: userId },
+      { leagueId: trade.league_id, tradeId, actorId },
     )
   } catch (err) {
     logger.error({ err }, 'Failed to send trade-accepted notification')
@@ -3457,6 +3529,104 @@ export async function acceptTrade(tradeId, userId) {
   if (txns.length) await supabase.from('fantasy_transactions').insert(txns)
 
   return { accepted: true }
+}
+
+/**
+ * Commissioner approves a pending_review trade. Executes the swap.
+ */
+export async function approveTrade(tradeId, commissionerId) {
+  const { data: trade } = await supabase
+    .from('fantasy_trades')
+    .select('*, fantasy_trade_items(*)')
+    .eq('id', tradeId)
+    .single()
+  if (!trade) { const err = new Error('Trade not found'); err.status = 404; throw err }
+  if (trade.status !== 'pending_review') {
+    const err = new Error(`Trade is ${trade.status}, not pending review`)
+    err.status = 400
+    throw err
+  }
+
+  // Verify commissioner
+  const { data: league } = await supabase.from('leagues').select('commissioner_id, name').eq('id', trade.league_id).single()
+  if (league?.commissioner_id !== commissionerId) {
+    const err = new Error('Only the commissioner can approve trades')
+    err.status = 403
+    throw err
+  }
+
+  const result = await _executeTrade(tradeId, trade, commissionerId)
+
+  // Notify both parties
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    await createNotification(
+      trade.proposer_user_id,
+      'fantasy_trade_approved',
+      `Your trade in ${league.name} was approved by the commissioner`,
+      { leagueId: trade.league_id, tradeId },
+    )
+    await createNotification(
+      trade.receiver_user_id,
+      'fantasy_trade_approved',
+      `A trade in ${league.name} was approved by the commissioner`,
+      { leagueId: trade.league_id, tradeId },
+    )
+  } catch (err) {
+    logger.error({ err }, 'Failed to send trade-approved notifications')
+  }
+
+  return result
+}
+
+/**
+ * Commissioner vetoes a trade (pending or pending_review).
+ */
+export async function vetoTrade(tradeId, commissionerId) {
+  const { data: trade } = await supabase
+    .from('fantasy_trades')
+    .select('*')
+    .eq('id', tradeId)
+    .single()
+  if (!trade) { const err = new Error('Trade not found'); err.status = 404; throw err }
+  if (trade.status !== 'pending' && trade.status !== 'pending_review') {
+    const err = new Error(`Can only veto pending trades, this trade is ${trade.status}`)
+    err.status = 400
+    throw err
+  }
+
+  const { data: league } = await supabase.from('leagues').select('commissioner_id, name').eq('id', trade.league_id).single()
+  if (league?.commissioner_id !== commissionerId) {
+    const err = new Error('Only the commissioner can veto trades')
+    err.status = 403
+    throw err
+  }
+
+  await supabase
+    .from('fantasy_trades')
+    .update({ status: 'vetoed', responded_at: new Date().toISOString() })
+    .eq('id', tradeId)
+
+  // Notify both parties
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    await createNotification(
+      trade.proposer_user_id,
+      'fantasy_trade_vetoed',
+      `Your trade in ${league.name} was vetoed by the commissioner`,
+      { leagueId: trade.league_id, tradeId },
+    )
+    await createNotification(
+      trade.receiver_user_id,
+      'fantasy_trade_vetoed',
+      `A trade in ${league.name} was vetoed by the commissioner`,
+      { leagueId: trade.league_id, tradeId },
+    )
+  } catch (err) {
+    logger.error({ err }, 'Failed to send trade-vetoed notifications')
+  }
+
+  return { vetoed: true }
 }
 
 export async function declineTrade(tradeId, userId) {

@@ -884,6 +884,8 @@ import {
   acceptTrade,
   declineTrade,
   cancelTrade,
+  approveTrade,
+  vetoTrade,
   getTradesForLeague,
   submitWaiverClaim,
   cancelWaiverClaim,
@@ -1289,6 +1291,24 @@ router.post('/:id/fantasy/trades/:tradeId/decline', requireAuth, async (req, res
 router.post('/:id/fantasy/trades/:tradeId/cancel', requireAuth, async (req, res) => {
   try {
     const result = await cancelTrade(req.params.tradeId, req.user.id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.post('/:id/fantasy/trades/:tradeId/approve', requireAuth, async (req, res) => {
+  try {
+    const result = await approveTrade(req.params.tradeId, req.user.id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.post('/:id/fantasy/trades/:tradeId/veto', requireAuth, async (req, res) => {
+  try {
+    const result = await vetoTrade(req.params.tradeId, req.user.id)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
