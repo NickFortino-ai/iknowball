@@ -1069,13 +1069,13 @@ export default function LeagueDetailPage() {
   }
 
   return (
-    <div className={`mx-auto px-4 py-6 relative overflow-x-hidden ${['nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'fantasy', 'squares', 'bracket'].includes(league.format) ? 'max-w-2xl lg:max-w-6xl' : 'max-w-2xl'}`}>
-      {/* Full hero backdrop — shows for leagues with a backdrop_image or fantasy/DFS formats */}
+    <div className="relative">
+      {/* Full hero backdrop — full viewport width, positioned absolutely behind content */}
       {hasBackdrop && (
         <div
           ref={backdropDragRef}
-          className={`absolute top-0 h-[520px] md:h-[480px] overflow-hidden ${adjustingBackdrop ? 'pointer-events-auto cursor-ns-resize' : 'pointer-events-none'}`}
-          style={{ zIndex: adjustingBackdrop ? 30 : 0, touchAction: adjustingBackdrop ? 'none' : 'auto', left: '50%', right: '50%', marginLeft: '-50vw', marginRight: '-50vw', width: '100vw' }}
+          className={`absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden ${adjustingBackdrop ? 'pointer-events-auto cursor-ns-resize' : 'pointer-events-none'}`}
+          style={{ zIndex: adjustingBackdrop ? 30 : 0, touchAction: adjustingBackdrop ? 'none' : 'auto' }}
           onMouseDown={adjustingBackdrop ? startBackdropDrag : undefined}
           onTouchStart={adjustingBackdrop ? startBackdropDrag : undefined}
         >
@@ -1125,6 +1125,8 @@ export default function LeagueDetailPage() {
           )}
         </div>
       )}
+
+      <div className={`mx-auto px-4 py-6 relative ${['nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'fantasy', 'squares', 'bracket'].includes(league.format) ? 'max-w-2xl lg:max-w-6xl' : 'max-w-2xl'}`}>
 
       {/* Header */}
       <div className="mb-6 relative z-10">
@@ -1544,7 +1546,7 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
-      <div className="relative z-10 mb-6 flex md:justify-center gap-2 overflow-x-auto no-scrollbar scroll-smooth px-2 md:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="relative z-10 mb-6 flex gap-2 overflow-x-auto no-scrollbar scroll-smooth px-2 md:px-0 md:flex-wrap md:justify-center" style={{ WebkitOverflowScrolling: 'touch' }}>
         {tabs.map((tab, i) => {
           const isLiveDisabled = tab === 'Live' && league.format === 'nba_dfs' && league.starts_at &&
             new Date(league.starts_at).toISOString().split('T')[0] > new Date().toLocaleDateString('en-CA')
@@ -1819,6 +1821,7 @@ export default function LeagueDetailPage() {
           </button>
         </div>
       )}
+    </div>
     </div>
   )
 }
