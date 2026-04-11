@@ -200,6 +200,25 @@ export async function getUserFuturesPickHistory(userId) {
   return data || []
 }
 
+export async function getFuturesPickById(pickId) {
+  const { data: pick, error } = await supabase
+    .from('futures_picks')
+    .select('*, futures_markets(*)')
+    .eq('id', pickId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!pick) return null
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, avatar_emoji')
+    .eq('id', pick.user_id)
+    .single()
+
+  return { pick, market: pick.futures_markets, user }
+}
+
 export async function closeFuturesMarket(marketId) {
   const { error } = await supabase
     .from('futures_markets')
@@ -298,7 +317,7 @@ export async function settleFuturesMarket(marketId, winningOutcome) {
       pick.user_id,
       'futures_result',
       `Your futures pick "${pick.picked_outcome}" ${isCorrect ? 'won' : 'lost'}! (${pointsEarned > 0 ? '+' : ''}${pointsEarned} pts)`,
-      { marketId, pickId: pick.id }
+      { marketId, pickId: pick.id, futuresPickId: pick.id, picked_outcome: pick.picked_outcome, points_earned: pointsEarned, isCorrect }
     )
 
     // Check records after futures pick settles

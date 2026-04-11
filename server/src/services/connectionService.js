@@ -798,7 +798,15 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     if (!user) continue
 
     if (fp.status === 'settled' && fp.is_correct) {
-      // Winning futures pick — always featured prominently
+      // 2-week rule: pick must have been made at least 14 days before settlement
+      const pickDate = new Date(fp.created_at).getTime()
+      const settleDate = new Date(fp.updated_at).getTime()
+      const daysBetween = (settleDate - pickDate) / (1000 * 60 * 60 * 24)
+      if (daysBetween < 14) continue
+
+      // All of IKB: only show if odds were at least +120
+      if (isAll && (fp.odds_at_submission || 0) < 120) continue
+
       feed.push({
         type: 'futures_hit',
         id: fp.id,
@@ -812,6 +820,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
           sport_key: fp.futures_markets?.sport_key,
           odds_at_submission: fp.odds_at_submission,
           points_earned: fp.points_earned,
+          pick_date: fp.created_at,
           status: fp.status,
           is_correct: fp.is_correct,
         },
@@ -831,6 +840,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
           sport_key: fp.futures_markets?.sport_key,
           odds_at_submission: fp.odds_at_submission,
           points_earned: fp.points_earned,
+          pick_date: fp.created_at,
           status: fp.status,
           is_correct: fp.is_correct,
         },

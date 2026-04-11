@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
+import { api } from '../../lib/api'
 
 const sportTabs = [
   { label: 'All', key: '' },
@@ -22,6 +23,14 @@ export default function FuturesAdminPanel() {
   const [newSport, setNewSport] = useState('basketball_nba')
   const [newTitle, setNewTitle] = useState('')
   const [newOutcomes, setNewOutcomes] = useState([{ name: '', odds: '' }])
+  const [teamSuggestions, setTeamSuggestions] = useState([])
+  const [focusedOutcome, setFocusedOutcome] = useState(null)
+
+  // Fetch teams for autocomplete when sport changes
+  useEffect(() => {
+    if (!showCreate) return
+    api.get(`/teams?sport=${newSport}`).then(setTeamSuggestions).catch(() => setTeamSuggestions([]))
+  }, [newSport, showCreate])
 
   const { data: markets, isLoading } = useAdminFuturesMarkets(sportFilter || undefined)
   const syncFutures = useSyncFutures()
@@ -134,19 +143,48 @@ export default function FuturesAdminPanel() {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs text-text-muted">Outcomes (name + American odds)</label>
-            {newOutcomes.map((o, i) => (
+            {newOutcomes.map((o, i) => {
+              const query = o.name.toLowerCase()
+              const filtered = focusedOutcome === i && query.length >= 1
+                ? teamSuggestions.filter((t) => t.toLowerCase().includes(query)).slice(0, 8)
+                : []
+              return (
               <div key={i} className="flex gap-2">
-                <input
-                  type="text"
-                  value={o.name}
-                  onChange={(e) => {
-                    const updated = [...newOutcomes]
-                    updated[i].name = e.target.value
-                    setNewOutcomes(updated)
-                  }}
-                  placeholder="e.g. Boston Celtics"
-                  className="flex-1 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
-                />
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={o.name}
+                    onChange={(e) => {
+                      const updated = [...newOutcomes]
+                      updated[i].name = e.target.value
+                      setNewOutcomes(updated)
+                    }}
+                    onFocus={() => setFocusedOutcome(i)}
+                    onBlur={() => setTimeout(() => setFocusedOutcome(null), 150)}
+                    placeholder="e.g. Boston Celtics"
+                    className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
+                  />
+                  {filtered.length > 0 && (
+                    <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filtered.map((team) => (
+                        <button
+                          key={team}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            const updated = [...newOutcomes]
+                            updated[i].name = team
+                            setNewOutcomes(updated)
+                            setFocusedOutcome(null)
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-accent/10 transition-colors"
+                        >
+                          {team}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <input
                   type="number"
                   value={o.odds}
@@ -164,8 +202,8 @@ export default function FuturesAdminPanel() {
                     className="text-text-muted hover:text-incorrect text-lg"
                   >&times;</button>
                 )}
-              </div>
-            ))}
+              </div>)
+            })}
             <button
               onClick={() => setNewOutcomes([...newOutcomes, { name: '', odds: '' }])}
               className="text-xs text-accent hover:text-accent-hover"

@@ -12,6 +12,7 @@ import { useUnreadMessageCount } from '../../hooks/useMessages'
 import { getTier } from '../../lib/scoring'
 import TierBadge from '../ui/TierBadge'
 import PickDetailModal from '../social/PickDetailModal'
+import FuturesHitModalWrapper from '../feed/FuturesHitModalWrapper'
 import ParlayResultModal from '../picks/ParlayResultModal'
 import PropDetailModal from '../picks/PropDetailModal'
 import LeagueWinModal from '../leagues/LeagueWinModal'
@@ -72,8 +73,9 @@ function getNotificationRoute(notification) {
 
   switch (type) {
     case 'parlay_result':
-    case 'futures_result':
       return '/results'
+    case 'futures_result':
+      return null // handled by modal
     case 'streak_milestone':
       return null // handled by modal
     case 'connection_request':
@@ -168,6 +170,7 @@ export default function Navbar() {
   const [leagueWinData, setLeagueWinData] = useState(null)
   const [selectedHotTakeId, setSelectedHotTakeId] = useState(null)
   const [selectedStreakId, setSelectedStreakId] = useState(null)
+  const [selectedFuturesPickId, setSelectedFuturesPickId] = useState(null)
   const dropdownRef = useRef(null)
   const mobileDropdownRef = useRef(null)
   const mobileMenuRef = useRef(null)
@@ -449,13 +452,14 @@ export default function Navbar() {
                           const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
                           const hotTakeId = n.metadata?.hotTakeId || (n.metadata?.targetType === 'hot_take' ? n.metadata.targetId : null)
                           const isStreakMilestone = n.type === 'streak_milestone' && n.metadata?.streakId
-                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || isStreakMilestone || route
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || n.metadata?.futuresPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || isStreakMilestone || route
                           return (
                             <div
                               key={n.id}
                               className={`px-4 py-3 border-b border-border last:border-b-0${tappable ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
                               onClick={() => {
-                                if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
+                                if (n.metadata?.futuresPickId) { setSelectedFuturesPickId(n.metadata.futuresPickId); setShowInvites(false) }
+                                else if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                                 else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                                 else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
                                 else if (isStreakMilestone) { setSelectedStreakId(n.metadata.streakId); setShowInvites(false) }
@@ -1029,6 +1033,7 @@ export default function Navbar() {
     <LeagueWinModal data={leagueWinData} onClose={() => setLeagueWinData(null)} />
     <HotTakeDetailModal hotTakeId={selectedHotTakeId} onClose={() => setSelectedHotTakeId(null)} />
     <StreakDetailModal streakId={selectedStreakId} onClose={() => setSelectedStreakId(null)} />
+    <FuturesHitModalWrapper futuresPickId={selectedFuturesPickId} onClose={() => setSelectedFuturesPickId(null)} />
     </>
   )
 }

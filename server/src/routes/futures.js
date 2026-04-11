@@ -8,6 +8,7 @@ import {
   submitFuturesPick,
   getUserFuturesPicks,
   getUserFuturesPickHistory,
+  getFuturesPickById,
 } from '../services/futuresService.js'
 
 const router = Router()
@@ -40,6 +41,12 @@ router.get('/picks/me', requireAuth, async (req, res) => {
 router.get('/picks/me/history', requireAuth, async (req, res) => {
   const picks = await getUserFuturesPickHistory(req.user.id)
   res.json(picks)
+})
+
+router.get('/picks/:pickId', requireAuth, async (req, res) => {
+  const data = await getFuturesPickById(req.params.pickId)
+  if (!data) return res.status(404).json({ error: 'Pick not found' })
+  res.json(data)
 })
 
 router.get('/picks/user/:userId', requireAuth, async (req, res) => {
