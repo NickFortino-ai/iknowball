@@ -62,7 +62,17 @@ export default function FantasyPlayerBrowser({ league }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [posFilter, setPosFilter] = useState('All')
   const [sortKey, setSortKey] = useState('rank')
+  const [sortDir, setSortDir] = useState('desc') // 'desc' = highest first, 'asc' = lowest first
   const statColumns = posFilter === 'DEF' ? DEF_STAT_COLUMNS : OFFENSE_STAT_COLUMNS
+
+  function handleSort(key) {
+    if (key === sortKey && key !== 'rank') {
+      setSortDir((d) => d === 'desc' ? 'asc' : 'desc')
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'rank' ? 'asc' : 'desc')
+    }
+  }
   const [addingPlayer, setAddingPlayer] = useState(null) // player being added
   const [dropPlayerId, setDropPlayerId] = useState('') // chosen drop
   const [bidAmount, setBidAmount] = useState(0)
@@ -89,11 +99,11 @@ export default function FantasyPlayerBrowser({ league }) {
       sorted = [...rawPlayers].sort((a, b) => {
         const av = a.stats?.[sortKey] || 0
         const bv = b.stats?.[sortKey] || 0
-        return bv - av
+        return sortDir === 'desc' ? bv - av : av - bv
       })
     }
     return sorted.slice(0, 200)
-  }, [rawPlayers, sortKey])
+  }, [rawPlayers, sortKey, sortDir])
   const { data: roster } = useFantasyRoster(league.id)
   const { data: settings } = useFantasySettings(league.id)
   const { data: waiverData } = useWaiverState(league.id)
@@ -274,7 +284,7 @@ export default function FantasyPlayerBrowser({ league }) {
             <div className="flex items-center px-4 py-1.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">
               <button
                 type="button"
-                onClick={() => setSortKey('rank')}
+                onClick={() => handleSort('rank')}
                 className={`w-10 shrink-0 text-center px-1 py-0.5 rounded transition-colors sticky left-0 bg-bg-primary/40 z-10 ${
                   sortKey === 'rank' ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
                 }`}
@@ -287,12 +297,12 @@ export default function FantasyPlayerBrowser({ league }) {
                   <button
                     key={col.key}
                     type="button"
-                    onClick={() => setSortKey(col.key)}
+                    onClick={() => handleSort(col.key)}
                     className={`w-12 text-center px-1 py-0.5 rounded transition-colors ${
                       sortKey === col.key ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
                     }`}
                   >
-                    {col.label}{sortKey === col.key ? ' ↓' : ''}
+                    {col.label}{sortKey === col.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
                   </button>
                 ))}
               </div>
