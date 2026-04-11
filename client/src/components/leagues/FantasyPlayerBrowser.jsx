@@ -299,7 +299,7 @@ export default function FantasyPlayerBrowser({ league }) {
                   <div
                     key={col.key}
                     className={`w-12 text-center text-xs tabular-nums py-1 rounded ${
-                      sortKey === col.key ? 'bg-accent/10 text-accent font-bold' : 'text-text-secondary'
+                      sortKey === col.key ? 'bg-accent/10 text-text-primary font-bold' : 'text-text-secondary'
                     }`}
                   >
                     {stats[col.key] ?? 0}

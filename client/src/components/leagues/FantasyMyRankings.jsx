@@ -259,7 +259,7 @@ export default function FantasyMyRankings({ league }) {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-text-primary truncate">{p.full_name}</div>
                   <div className="text-[10px] text-text-muted flex items-center gap-1.5">
-                    <span className={`px-1.5 py-0.5 rounded font-bold ${POS_COLORS[p.position] || 'bg-text-primary/10 text-text-muted'}`}>{p.position}</span>
+                    <span className="font-bold text-text-primary">{p.position}</span>
                     <span>{p.team || 'FA'}</span>
                     {p.bye_week && <span>· Bye {p.bye_week}</span>}
                   </div>
