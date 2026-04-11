@@ -10,6 +10,10 @@ function formatGameTime(dateStr) {
 }
 
 function formatPeriod(period, sportKey) {
+  // MLB stores period as text (e.g. "Top 5th") — use directly
+  if (sportKey?.startsWith('baseball') && period && isNaN(parseInt(period, 10))) {
+    return period
+  }
   const p = parseInt(period, 10)
   if (!p) return null
   // WNCAAB uses quarters, NCAAB uses halves
