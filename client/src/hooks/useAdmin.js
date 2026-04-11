@@ -153,6 +153,14 @@ export function useEmailLogs() {
   })
 }
 
+export function useAdminLeagueSearch(query) {
+  return useQuery({
+    queryKey: ['admin', 'league-search', query],
+    queryFn: () => api.get(`/admin/leagues/search?q=${encodeURIComponent(query)}`),
+    enabled: query?.length >= 2,
+  })
+}
+
 // Futures
 export function useSyncFutures() {
   return useMutation({

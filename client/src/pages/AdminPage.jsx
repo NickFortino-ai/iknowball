@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNBASalaries, useSyncMLBSalaries, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNBASalaries, useSyncMLBSalaries, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -38,8 +38,11 @@ export default function AdminPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [scheduleMode, setScheduleMode] = useState(false)
   const [scheduledAt, setScheduledAt] = useState('')
+  const [leagueSearch, setLeagueSearch] = useState('')
+  const [showLeagueSearch, setShowLeagueSearch] = useState(false)
 
   const { data: userSearchResults } = useSearchUsers(userSearch)
+  const { data: leagueSearchResults } = useAdminLeagueSearch(leagueSearch)
   const sportKey = sportTabs[activeSport].key
   const { data: games, isLoading: gamesLoading } = useGames(sportKey, 'upcoming', 7)
   const { data: featuredProps } = useAdminFeaturedProps()
@@ -382,7 +385,61 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-text-muted uppercase tracking-wider mb-1">Body (HTML supported)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs text-text-muted uppercase tracking-wider">Body (HTML supported)</label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => { setShowLeagueSearch(!showLeagueSearch); setLeagueSearch('') }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors border border-text-primary/20 text-text-secondary hover:text-accent hover:border-accent"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                    Insert League Link
+                  </button>
+                  {showLeagueSearch && (
+                    <div className="absolute right-0 top-full mt-1 w-72 bg-bg-card border border-border rounded-xl shadow-lg z-20 p-2">
+                      <input
+                        type="text"
+                        value={leagueSearch}
+                        onChange={(e) => setLeagueSearch(e.target.value)}
+                        placeholder="Search leagues by name..."
+                        autoFocus
+                        className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent mb-1"
+                      />
+                      {leagueSearch.length >= 2 && leagueSearchResults?.length > 0 && (
+                        <div className="max-h-48 overflow-y-auto space-y-0.5">
+                          {leagueSearchResults.map((league) => (
+                            <button
+                              key={league.id}
+                              type="button"
+                              onClick={() => {
+                                const link = `<a href="https://iknowball.club/leagues/${league.id}" style="display:inline-block;background:#f97316;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Join ${league.name}</a>`
+                                setEmailBody((prev) => prev ? `${prev}\n\n${link}` : link)
+                                setShowLeagueSearch(false)
+                                setLeagueSearch('')
+                                toast.success(`Link to "${league.name}" inserted`)
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-bg-card-hover transition-colors"
+                            >
+                              <div className="text-sm font-medium text-text-primary">{league.name}</div>
+                              <div className="text-xs text-text-muted">{league.sport} &middot; {league.format} &middot; {league.status}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {leagueSearch.length >= 2 && leagueSearchResults?.length === 0 && (
+                        <div className="text-sm text-text-muted px-3 py-2">No leagues found</div>
+                      )}
+                      {leagueSearch.length < 2 && (
+                        <div className="text-xs text-text-muted px-3 py-1.5">Type at least 2 characters...</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
               <textarea
                 value={emailBody}
                 onChange={(e) => setEmailBody(e.target.value)}

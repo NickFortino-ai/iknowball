@@ -249,6 +249,20 @@ router.get('/email-logs', async (req, res) => {
   res.json(data)
 })
 
+// League search (for email link insertion)
+router.get('/leagues/search', async (req, res) => {
+  const { q } = req.query
+  if (!q || q.length < 2) return res.json([])
+  const { data, error } = await supabase
+    .from('leagues')
+    .select('id, name, sport, format, status')
+    .ilike('name', `%${q}%`)
+    .order('created_at', { ascending: false })
+    .limit(10)
+  if (error) throw error
+  res.json(data)
+})
+
 // Weekly recap
 router.post('/generate-recap', async (req, res) => {
   await generateWeeklyRecap()
