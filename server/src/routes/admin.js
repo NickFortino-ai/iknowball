@@ -263,6 +263,96 @@ router.get('/leagues/search', async (req, res) => {
   res.json(data)
 })
 
+// =====================================================================
+// User Lookup
+// =====================================================================
+router.get('/users/lookup', async (req, res) => {
+  const { user_id } = req.query
+  if (!user_id) return res.status(400).json({ error: 'user_id required' })
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, avatar_emoji, email, total_points, tier, is_paid, is_lifetime, subscription_status, subscription_expires_at, subscription_plan, payment_source, stripe_customer_id, created_at')
+    .eq('id', user_id)
+    .single()
+  if (error) throw error
+
+  // Recent picks
+  const { data: picks } = await supabase
+    .from('picks')
+    .select('id, picked_team, status, is_correct, points_earned, created_at, games(home_team, away_team, starts_at, status)')
+    .eq('user_id', user_id)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  // Leagues
+  const { data: memberships } = await supabase
+    .from('league_members')
+    .select('league_id, joined_at, leagues(name, format, sport, status)')
+    .eq('user_id', user_id)
+    .order('joined_at', { ascending: false })
+    .limit(20)
+
+  res.json({ user, picks: picks || [], leagues: (memberships || []).map(m => ({ ...m.leagues, league_id: m.league_id, joined_at: m.joined_at })) })
+})
+
+// =====================================================================
+// Subscription Override
+// =====================================================================
+router.post('/users/subscription', async (req, res) => {
+  const { user_id, subscription_status, subscription_plan, subscription_expires_at, is_paid, payment_source } = req.body
+  if (!user_id) return res.status(400).json({ error: 'user_id required' })
+
+  const update = {}
+  if (subscription_status !== undefined) update.subscription_status = subscription_status
+  if (subscription_plan !== undefined) update.subscription_plan = subscription_plan
+  if (subscription_expires_at !== undefined) update.subscription_expires_at = subscription_expires_at
+  if (is_paid !== undefined) update.is_paid = is_paid
+  if (payment_source !== undefined) update.payment_source = payment_source
+
+  if (!Object.keys(update).length) return res.status(400).json({ error: 'No fields to update' })
+
+  const { error } = await supabase.from('users').update(update).eq('id', user_id)
+  if (error) throw error
+
+  logger.info({ user_id, update, admin: req.user.id }, 'Admin subscription override')
+  res.json({ success: true })
+})
+
+// =====================================================================
+// Game Status Override
+// =====================================================================
+router.get('/games/search', async (req, res) => {
+  const { q, status } = req.query
+  if (!q || q.length < 2) return res.json([])
+  const query = supabase
+    .from('games')
+    .select('id, home_team, away_team, status, starts_at, winner, home_score, away_score')
+    .or(`home_team.ilike.%${q}%,away_team.ilike.%${q}%`)
+    .order('starts_at', { ascending: false })
+    .limit(15)
+  if (status) query.eq('status', status)
+  const { data, error } = await query
+  if (error) throw error
+  res.json(data)
+})
+
+router.post('/games/override', async (req, res) => {
+  const { game_id, status, winner, home_score, away_score } = req.body
+  if (!game_id || !status) return res.status(400).json({ error: 'game_id and status required' })
+
+  const update = { status }
+  if (winner !== undefined) update.winner = winner
+  if (home_score !== undefined) update.home_score = home_score
+  if (away_score !== undefined) update.away_score = away_score
+
+  const { error } = await supabase.from('games').update(update).eq('id', game_id)
+  if (error) throw error
+
+  logger.info({ game_id, update, admin: req.user.id }, 'Admin game status override')
+  res.json({ success: true })
+})
+
 // Weekly recap
 router.post('/generate-recap', async (req, res) => {
   await generateWeeklyRecap()

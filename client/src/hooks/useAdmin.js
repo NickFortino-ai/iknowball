@@ -161,6 +161,40 @@ export function useAdminLeagueSearch(query) {
   })
 }
 
+// User Lookup
+export function useAdminUserLookup(userId) {
+  return useQuery({
+    queryKey: ['admin', 'user-lookup', userId],
+    queryFn: () => api.get(`/admin/users/lookup?user_id=${userId}`),
+    enabled: !!userId,
+  })
+}
+
+export function useAdminSubscriptionOverride() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/admin/users/subscription', data),
+    onSuccess: (_, variables) => qc.invalidateQueries({ queryKey: ['admin', 'user-lookup', variables.user_id] }),
+  })
+}
+
+// Game Override
+export function useAdminGameSearch(query) {
+  return useQuery({
+    queryKey: ['admin', 'game-search', query],
+    queryFn: () => api.get(`/admin/games/search?q=${encodeURIComponent(query)}`),
+    enabled: query?.length >= 2,
+  })
+}
+
+export function useAdminGameOverride() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/admin/games/override', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'game-search'] }),
+  })
+}
+
 // Futures
 export function useSyncFutures() {
   return useMutation({
