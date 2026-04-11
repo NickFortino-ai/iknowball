@@ -2016,7 +2016,8 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       .select(PLAYER_SELECT)
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
       .not('team', 'is', null)
-      .limit(500),
+      .order('search_rank', { ascending: true, nullsFirst: false })
+      .limit(800),
     supabase
       .from('nfl_players')
       .select(PLAYER_SELECT)
@@ -2134,7 +2135,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     filtered = filtered.filter((p) => p.full_name?.toLowerCase().includes(q))
   }
 
-  return filtered.slice(0, 300).map((p) => {
+  return filtered.map((p) => {
     const s = p._stats || {}
     return {
       ...p,

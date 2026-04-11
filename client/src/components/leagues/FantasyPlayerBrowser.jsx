@@ -92,7 +92,7 @@ export default function FantasyPlayerBrowser({ league }) {
         return bv - av
       })
     }
-    return sorted.slice(0, 60)
+    return sorted.slice(0, 200)
   }, [rawPlayers, sortKey])
   const { data: roster } = useFantasyRoster(league.id)
   const { data: settings } = useFantasySettings(league.id)
