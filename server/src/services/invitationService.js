@@ -211,6 +211,18 @@ export async function acceptInvitation(invitationId, userId) {
       err.status = 400
       throw err
     }
+  } else if (invitation.leagues.format === 'fantasy') {
+    // Fantasy leagues: allow joining until draft starts
+    const { data: fs } = await supabase
+      .from('fantasy_settings')
+      .select('draft_status')
+      .eq('league_id', invitation.leagues.id)
+      .maybeSingle()
+    if (fs && fs.draft_status !== 'pending') {
+      const err = new Error('This league\'s draft has already started')
+      err.status = 400
+      throw err
+    }
   } else if (invitation.leagues.starts_at && new Date(invitation.leagues.starts_at) <= new Date()) {
     const err = new Error('This league has already started')
     err.status = 400
