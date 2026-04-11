@@ -767,7 +767,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             </div>
             {regions.length > 1 && (
               <div className="text-[10px] text-text-muted mt-1">
-                Drag to reorder — regions 1 &amp; 2 pair in the Final Four, as do 3 &amp; 4
+                Drag to reorder — regions 1 &amp; 2 pair in the semifinals, as do 3 &amp; 4
               </div>
             )}
           </div>
