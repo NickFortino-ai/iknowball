@@ -61,7 +61,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[600px]">
+        <table className={`w-full text-sm ${isSalaryCap ? '' : 'min-w-[600px]'}`}>
           <thead>
             <tr className="border-b border-text-primary/10 text-text-muted text-xs">
               <th className="py-3 px-2 text-center font-semibold w-10">#</th>
