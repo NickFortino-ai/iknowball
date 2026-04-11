@@ -69,15 +69,19 @@ export default function FantasyPlayerBrowser({ league }) {
     searchQuery || undefined,
     posFilter !== 'All' ? posFilter : undefined
   )
-  // Sort client-side for instant re-sort without API round-trip
+  // Sort client-side for instant re-sort without API round-trip.
+  // Server returns up to 300 players; we display 60 after sorting.
   const players = useMemo(() => {
     if (!rawPlayers) return null
-    if (!sortKey || sortKey === 'rank') return rawPlayers
-    return [...rawPlayers].sort((a, b) => {
-      const av = a.stats?.[sortKey] || 0
-      const bv = b.stats?.[sortKey] || 0
-      return bv - av
-    })
+    let sorted = rawPlayers
+    if (sortKey && sortKey !== 'rank') {
+      sorted = [...rawPlayers].sort((a, b) => {
+        const av = a.stats?.[sortKey] || 0
+        const bv = b.stats?.[sortKey] || 0
+        return bv - av
+      })
+    }
+    return sorted.slice(0, 60)
   }, [rawPlayers, sortKey])
   const { data: roster } = useFantasyRoster(league.id)
   const { data: settings } = useFantasySettings(league.id)

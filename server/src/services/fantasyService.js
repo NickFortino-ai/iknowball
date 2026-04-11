@@ -2127,7 +2127,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     filtered = filtered.filter((p) => p.full_name?.toLowerCase().includes(q))
   }
 
-  return filtered.slice(0, 60).map((p) => {
+  return filtered.slice(0, 300).map((p) => {
     const s = p._stats || {}
     return {
       ...p,
