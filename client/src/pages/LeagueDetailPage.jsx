@@ -949,6 +949,8 @@ export default function LeagueDetailPage() {
     const hasUpcoming = allSlots.some((s) => s.game_status === 'upcoming')
     return (hasLive || hasFinal) && (hasLive || hasUpcoming)
   })()
+  const backdropSport = league?.sport === 'all' ? undefined : league?.sport
+  const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const myMembership = league?.members?.find((m) => m.user_id === profile?.id)
   const [showTeamNameModal, setShowTeamNameModal] = useState(false)
   const [teamNameInput, setTeamNameInput] = useState('')
