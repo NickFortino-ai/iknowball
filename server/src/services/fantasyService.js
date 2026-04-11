@@ -2035,10 +2035,13 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const draftDone = settings?.draft_status === 'completed' || settings?.draft_status === 'in_progress'
   const statSeason = draftDone ? season : season - 1
   const pointsCol = scoringFormat === 'ppr' ? 'pts_ppr' : scoringFormat === 'standard' ? 'pts_std' : 'pts_half_ppr'
-  const { data: statRows } = await supabase
-    .from('nfl_player_stats')
-    .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm`)
-    .eq('season', statSeason)
+  const { fetchAll } = await import('../utils/fetchAll.js')
+  const statRows = await fetchAll(
+    supabase
+      .from('nfl_player_stats')
+      .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm`)
+      .eq('season', statSeason)
+  )
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
   const statsByPlayer = {}
   for (const r of statRows || []) {
