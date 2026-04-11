@@ -266,7 +266,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
             onClick={() => setViewWeek(currentWeek)}
             className="text-xs text-accent font-semibold hover:underline ml-1"
           >
-            This week
+            Current week
           </button>
         )}
       </div>
