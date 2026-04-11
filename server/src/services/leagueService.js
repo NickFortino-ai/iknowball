@@ -408,16 +408,35 @@ export async function joinLeague(userId, inviteCode) {
       throw err
     }
   } else if (league.format === 'fantasy') {
-    // Fantasy leagues: allow joining until draft starts
     const { data: fs } = await supabase
       .from('fantasy_settings')
-      .select('draft_status')
+      .select('draft_status, format')
       .eq('league_id', league.id)
       .maybeSingle()
-    if (fs && fs.draft_status !== 'pending') {
-      const err = new Error('This league\'s draft has already started')
-      err.status = 400
-      throw err
+
+    if (fs?.format === 'salary_cap') {
+      // Salary cap: allow joining until first NFL game of Week 1 kicks off
+      const { data: sportRow } = await supabase.from('sports').select('id').eq('key', 'americanfootball_nfl').single()
+      if (sportRow) {
+        const { count: liveOrFinal } = await supabase
+          .from('games')
+          .select('id', { count: 'exact', head: true })
+          .eq('sport_id', sportRow.id)
+          .in('status', ['live', 'final'])
+          .gte('starts_at', new Date(new Date().getFullYear(), 8, 1).toISOString()) // Sep 1 onwards
+        if (liveOrFinal > 0) {
+          const err = new Error('The NFL season has started — this league is no longer accepting members')
+          err.status = 400
+          throw err
+        }
+      }
+    } else {
+      // Traditional: allow joining until draft starts
+      if (fs && fs.draft_status !== 'pending') {
+        const err = new Error('This league\'s draft has already started')
+        err.status = 400
+        throw err
+      }
     }
   } else if (league.starts_at && new Date(league.starts_at) <= new Date()) {
     const err = new Error('This league has already started')
