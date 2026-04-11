@@ -33,3 +33,13 @@ UPDATE league_backdrops SET label = 'Kia Center', sort_order = 28 WHERE filename
 UPDATE league_backdrops SET label = 'Xfinity Mobile Center', sort_order = 29 WHERE filename = 'nba-xfinity-mobile-center.webp';
 UPDATE league_backdrops SET label = 'Delta Center', sort_order = 30 WHERE filename = 'nba-delta-center.webp';
 UPDATE league_backdrops SET label = 'Capital One Arena', sort_order = 31 WHERE filename = 'nba-capital-one.webp';
+
+-- Non-arena NBA backdrops (appear after arenas)
+INSERT INTO league_backdrops (filename, label, formats, sort_order) VALUES
+  ('nba-the-court-is-yours.webp', 'The Court is Yours', '{basketball_nba}', 32),
+  ('nba-glow.webp', 'Glow to Practice', '{basketball_nba}', 33),
+  ('nba-check.webp', 'Check', '{basketball_nba}', 34),
+  ('nba-big-shoes.webp', 'Big Shoes to Fill', '{basketball_nba}', 35),
+  ('nba-play-bball.webp', 'Play Bball', '{basketball_nba}', 36),
+  ('nba-orbit.webp', 'Orbit', '{basketball_nba}', 37)
+ON CONFLICT (filename) DO UPDATE SET label = EXCLUDED.label, formats = EXCLUDED.formats, sort_order = EXCLUDED.sort_order;
