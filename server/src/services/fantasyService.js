@@ -2087,10 +2087,10 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     .sort((a, b) => a._adp - b._adp)
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
 
-  // Sort key: explicit ?sort=column wins; otherwise default to season points
-  // once stats exist, falling back to ADP preseason.
-  const seasonStarted = (statRows || []).length > 0
-  const sortKey = sort && STAT_COLUMNS.includes(sort) ? sort : (seasonStarted ? 'pts' : null)
+  // Sort key: explicit ?sort=column wins; otherwise default to ADP pre-draft,
+  // season points post-draft once current season stats exist.
+  const hasCurrentSeasonStats = draftDone && (statRows || []).length > 0
+  const sortKey = sort && STAT_COLUMNS.includes(sort) ? sort : (hasCurrentSeasonStats ? 'pts' : null)
 
   // Slice offense and defense separately so DEFs are guaranteed in the pool
   // (otherwise their _adp=9999 sinks them past the 300-row cutoff). Top 268
