@@ -24,6 +24,7 @@ import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
 import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.js'
 import { syncPlayers, syncProjections, syncWeeklyProjections, getNFLState } from '../services/sleeperService.js'
+import { rolloverFantasyWeek } from '../services/fantasyService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
 import { computeFantasyGlobalRankings } from './computeFantasyGlobalRankings.js'
 
@@ -165,6 +166,13 @@ export function startScheduler() {
           if (state.week < 18) await syncWeeklyProjections(state.season, state.week + 1)
         }
       } catch (err) { logger.error({ err }, 'NFL weekly projections sync failed') }
+      // Auto-rollover current_week for all active fantasy leagues
+      try {
+        const nflState = state || await getNFLState()
+        if (nflState?.week && nflState?.season) {
+          await rolloverFantasyWeek(nflState.week, nflState.season)
+        }
+      } catch (err) { logger.error({ err }, 'Fantasy week rollover failed') }
     }, { timezone: 'America/New_York' })
     logger.info('NFL player + projection sync scheduled: nightly 3:00 AM ET')
 

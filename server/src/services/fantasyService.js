@@ -3267,6 +3267,37 @@ export async function processLeagueWaivers(leagueId) {
 }
 
 /**
+ * Sync current_week for all active fantasy leagues from Sleeper's NFL state.
+ * Runs nightly at 3 AM ET. Only updates leagues whose current_week is behind.
+ */
+export async function rolloverFantasyWeek(sleeperWeek, sleeperSeason) {
+  // Find all fantasy leagues that are in-season (draft completed, not yet finished)
+  const { data: leagues } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, current_week, season')
+    .eq('draft_status', 'completed')
+    .eq('season', sleeperSeason)
+
+  if (!leagues?.length) return { updated: 0 }
+
+  let updated = 0
+  for (const league of leagues) {
+    if (league.current_week < sleeperWeek) {
+      await supabase
+        .from('fantasy_settings')
+        .update({ current_week: sleeperWeek })
+        .eq('league_id', league.league_id)
+      updated++
+    }
+  }
+
+  if (updated > 0) {
+    logger.info({ sleeperWeek, sleeperSeason, updated }, 'Fantasy week rollover complete')
+  }
+  return { updated }
+}
+
+/**
  * Process every traditional fantasy league with pending claims.
  * Called by the weekly waiver cron.
  */
