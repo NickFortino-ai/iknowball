@@ -6,7 +6,21 @@ import { createNotification } from '../services/notificationService.js'
 import { connectAutoConnectMembers } from '../services/connectionService.js'
 import { generateLeagueReport } from '../services/leagueReportService.js'
 
-const CHAMPION_BONUS = 10
+// Scaled winner bonus based on league size — matches survivor pool structure.
+// Used by bracket, NBA DFS, MLB DFS, HR Derby, TD Pass.
+function scaledWinnerBonus(memberCount) {
+  if (memberCount >= 41) return 100
+  if (memberCount >= 31) return 75
+  if (memberCount >= 16) return 50
+  if (memberCount >= 11) return 30
+  if (memberCount >= 6) return 20
+  return 10
+}
+
+function scaledBonusForRank(rank, n) {
+  if (rank !== 1) return 0
+  return scaledWinnerBonus(n)
+}
 
 async function getLeagueMemberCount(leagueId) {
   const { count, error } = await supabase
@@ -98,7 +112,7 @@ async function awardPositionBasedPoints(league, standings, formatLabel, bonusFor
   const n = standings.length
   if (n === 0) return
 
-  const computeBonus = bonusForRank || ((rank) => (rank === 1 ? CHAMPION_BONUS : 0))
+  const computeBonus = bonusForRank || scaledBonusForRank
 
   // Group by shared rank to handle ties
   const rankGroups = {}
