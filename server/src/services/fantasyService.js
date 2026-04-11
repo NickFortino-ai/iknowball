@@ -2039,7 +2039,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const statRows = await fetchAll(
     supabase
       .from('nfl_player_stats')
-      .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm`)
+      .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed`)
       .eq('season', statSeason)
   )
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
@@ -2048,6 +2048,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     const acc = statsByPlayer[r.player_id] || {
       pts: 0, pass_yd: 0, pass_td: 0, pass_int: 0, rush_att: 0, rush_yd: 0, rush_td: 0,
       rec_tgt: 0, rec: 0, rec_yd: 0, rec_td: 0, fum_lost: 0, fgm: 0, xpm: 0,
+      def_sack: 0, def_int: 0, def_fum_rec: 0, def_td: 0, def_safety: 0, def_pts_allowed: 0,
     }
     acc.pts += Number(r[pointsCol]) || 0
     acc.pass_yd += Number(r.pass_yd) || 0
@@ -2063,6 +2064,12 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     acc.fum_lost += Number(r.fum_lost) || 0
     acc.fgm += Number(r.fgm) || 0
     acc.xpm += Number(r.xpm) || 0
+    acc.def_sack += Number(r.def_sack) || 0
+    acc.def_int += Number(r.def_int) || 0
+    acc.def_fum_rec += Number(r.def_fum_rec) || 0
+    acc.def_td += Number(r.def_td) || 0
+    acc.def_safety += Number(r.def_safety) || 0
+    acc.def_pts_allowed += Number(r.def_pts_allowed) || 0
     statsByPlayer[r.player_id] = acc
   }
   function ytd(id) { return statsByPlayer[id] || {} }
@@ -2149,6 +2156,12 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         fum_lost: s.fum_lost || 0,
         fgm: s.fgm || 0,
         xpm: s.xpm || 0,
+        def_sack: Math.round((s.def_sack || 0) * 10) / 10,
+        def_int: s.def_int || 0,
+        def_fum_rec: s.def_fum_rec || 0,
+        def_td: s.def_td || 0,
+        def_safety: s.def_safety || 0,
+        def_pts_allowed: s.def_pts_allowed || 0,
       },
       on_waivers: waiverLockedSet.has(p.id),
     }

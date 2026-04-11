@@ -13,7 +13,7 @@ const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 
 // Sortable stat columns shown in the strip on the right of each row.
 // `key` matches the server-side sort param + the row.stats[key] field.
-const STAT_COLUMNS = [
+const OFFENSE_STAT_COLUMNS = [
   { key: 'pts', label: 'PTS' },
   { key: 'pass_yd', label: 'PA YD' },
   { key: 'pass_td', label: 'PA TD' },
@@ -28,6 +28,16 @@ const STAT_COLUMNS = [
   { key: 'fum_lost', label: 'FUM' },
   { key: 'fgm', label: 'FGM' },
   { key: 'xpm', label: 'XPM' },
+]
+
+const DEF_STAT_COLUMNS = [
+  { key: 'pts', label: 'PTS' },
+  { key: 'def_sack', label: 'SK' },
+  { key: 'def_int', label: 'INT' },
+  { key: 'def_fum_rec', label: 'FR' },
+  { key: 'def_td', label: 'TD' },
+  { key: 'def_safety', label: 'SAF' },
+  { key: 'def_pts_allowed', label: 'PA' },
 ]
 
 const INJURY_COLORS = {
@@ -52,6 +62,7 @@ export default function FantasyPlayerBrowser({ league }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [posFilter, setPosFilter] = useState('All')
   const [sortKey, setSortKey] = useState('rank')
+  const statColumns = posFilter === 'DEF' ? DEF_STAT_COLUMNS : OFFENSE_STAT_COLUMNS
   const [addingPlayer, setAddingPlayer] = useState(null) // player being added
   const [dropPlayerId, setDropPlayerId] = useState('') // chosen drop
   const [bidAmount, setBidAmount] = useState(0)
@@ -272,7 +283,7 @@ export default function FantasyPlayerBrowser({ league }) {
               </button>
               <div className="w-[170px] shrink-0 px-1">Player</div>
               <div className="flex gap-1 flex-1">
-                {STAT_COLUMNS.map((col) => (
+                {statColumns.map((col) => (
                   <button
                     key={col.key}
                     type="button"
@@ -326,7 +337,7 @@ export default function FantasyPlayerBrowser({ league }) {
                   </div>
                 </div>
                 <div className="flex gap-1 flex-1">
-                  {STAT_COLUMNS.map((col) => (
+                  {statColumns.map((col) => (
                     <div
                       key={col.key}
                       className={`w-12 text-center text-xs tabular-nums py-1 rounded ${
