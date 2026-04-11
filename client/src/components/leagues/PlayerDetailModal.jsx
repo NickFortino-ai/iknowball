@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { usePlayerDetail } from '../../hooks/useLeagues'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -154,17 +154,30 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
 
 export default function PlayerDetailModal({ leagueId, playerId, onClose }) {
   const { data, isLoading } = usePlayerDetail(leagueId, playerId)
+  const contentRef = useRef(null)
 
   useEffect(() => {
     lockScroll()
     return () => unlockScroll()
   }, [])
 
+  // Prevent background scroll on touch when modal content doesn't overflow
+  const handleTouchMove = useCallback((e) => {
+    const el = contentRef.current
+    if (!el) return
+    const hasOverflow = el.scrollHeight > el.clientHeight
+    if (!hasOverflow) {
+      e.preventDefault()
+    }
+  }, [])
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose} onTouchMove={handleTouchMove}>
       <div
+        ref={contentRef}
         className="bg-bg-secondary w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
       >
         {/* Close */}
         <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 flex items-center justify-end z-10">
