@@ -100,7 +100,7 @@ export default function BracketTemplateManager() {
                 <div>
                   <div className="font-semibold text-sm">{t.name}</div>
                   <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
-                    <span className="px-2 py-0.5 rounded bg-accent/20 text-accent font-semibold">
+                    <span className="text-accent font-semibold">
                       {SPORT_LABELS[t.sport]}
                     </span>
                     <span>{t.team_count} teams</span>

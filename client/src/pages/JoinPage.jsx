@@ -95,7 +95,7 @@ export default function JoinPage() {
         <div className="bg-bg-primary rounded-xl border border-border p-5 mb-6">
           <h2 className="font-display text-2xl mb-3">{league.name}</h2>
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
+            <span className="text-xs font-semibold text-accent">
               {FORMAT_LABELS[league.format] || league.format}
             </span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-bg-card text-text-secondary">
