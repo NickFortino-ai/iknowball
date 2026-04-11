@@ -412,8 +412,8 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                   className={`w-full grid ${gridCols} gap-2 px-4 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
                 >
                   <span className={`font-display text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar user={s.user} size="lg" />
+                  <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+                    <Avatar user={s.user} size="lg" className="shrink-0" />
                     <span className={`font-bold truncate text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
                       {s.user?.display_name || s.user?.username}
                     </span>
