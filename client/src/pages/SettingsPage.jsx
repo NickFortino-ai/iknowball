@@ -36,7 +36,7 @@ const sportsInterests = [
 function Section({ label, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="bg-bg-card rounded-xl border border-border mb-4 overflow-hidden">
+    <div className="bg-bg-primary rounded-xl border border-text-primary/20 mb-4 overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-4"
