@@ -307,7 +307,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
       {isLoading ? (
         <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>
       ) : !sorted.length ? (
-        <div className="text-center py-8 text-sm text-text-muted">No matchups for Week {viewWeek}.</div>
+        <div className="text-center py-8 text-sm text-text-muted">Matchups will be generated automatically once the draft is complete.</div>
       ) : (
         sorted.map((matchup) => (
           <MatchupCard
