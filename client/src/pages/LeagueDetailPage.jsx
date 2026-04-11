@@ -11,6 +11,7 @@ import SquaresView from '../components/leagues/SquaresView'
 import BracketView from '../components/leagues/BracketView'
 import LeagueThread from '../components/leagues/LeagueThread'
 import FantasyDraftRoom from '../components/leagues/FantasyDraftRoom'
+import LeagueMockDraft from '../components/leagues/LeagueMockDraft'
 import FantasyMyRankings from '../components/leagues/FantasyMyRankings'
 import FantasyMyTeam from '../components/leagues/FantasyMyTeam'
 import FantasyPlayerBrowser from '../components/leagues/FantasyPlayerBrowser'
@@ -52,7 +53,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
       tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Thread', 'Draft']
     }
     if (!isSalaryCap && !draftDone && tabs.includes('Draft')) {
-      tabs.splice(tabs.indexOf('Draft') + 1, 0, 'My Rankings')
+      tabs.splice(tabs.indexOf('Draft') + 1, 0, 'Mock Draft', 'My Rankings')
     }
     return tabs
   }
@@ -1660,6 +1661,10 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Draft' && league.format === 'fantasy' && (
         <div className="relative z-10"><FantasyDraftRoom league={league} /></div>
+      )}
+
+      {tabs[activeTab] === 'Mock Draft' && league.format === 'fantasy' && (
+        <div className="relative z-10"><LeagueMockDraft league={league} fantasySettings={fantasySettings} /></div>
       )}
 
       {tabs[activeTab] === 'My Rankings' && league.format === 'fantasy' && (
