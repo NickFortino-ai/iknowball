@@ -464,7 +464,7 @@ function MockBoard({ picks, numTeams, userSlot, teamNames, rounds }) {
 
   return (
     <div className="overflow-auto max-h-[70vh]">
-      <table className="text-xs border-collapse w-full table-fixed">
+      <table className="text-xs border-collapse">
         <thead>
           <tr>
             <th className="px-1 py-2 text-text-muted font-semibold text-center w-10 border border-border bg-bg-secondary sticky left-0 z-10">Rd</th>
