@@ -112,33 +112,74 @@ router.post('/redeem-promo', async (req, res) => {
 
   // Determine if this is a lifetime promo or trial promo
   const isLifetime = promo.type === 'lifetime' || !promo.type
-  const updateData = {
-    is_paid: true,
-    promo_code_used: promo.code,
-    payment_source: 'promo',
-    is_lifetime: isLifetime,
-    subscription_status: isLifetime ? 'lifetime' : 'active',
+
+  if (isLifetime) {
+    // Lifetime promo: grant access immediately, no payment needed
+    const { error: userError } = await supabase
+      .from('users')
+      .update({
+        is_paid: true,
+        promo_code_used: promo.code,
+        payment_source: 'promo',
+        is_lifetime: true,
+        subscription_status: 'lifetime',
+      })
+      .eq('id', req.user.id)
+
+    if (userError) {
+      logger.error({ error: userError, userId: req.user.id }, 'Failed to update user after promo redemption')
+      return res.status(500).json({ error: 'Failed to apply promo code' })
+    }
+
+    logger.info({ userId: req.user.id, code: promo.code }, 'Lifetime promo code redeemed')
+    return res.json({ success: true, type: 'lifetime' })
   }
 
-  // If it's a trial promo (e.g., first month free), set expiration
-  if (promo.type === 'trial' && promo.trial_days) {
-    updateData.subscription_expires_at = new Date(Date.now() + promo.trial_days * 24 * 60 * 60 * 1000).toISOString()
-    updateData.is_lifetime = false
-    updateData.subscription_status = 'active'
-  }
+  // Trial promo: redirect to Stripe with free trial period
+  // User provides payment info upfront, auto-billed after trial ends
+  const trialDays = promo.trial_days || 180
+  const origin = env.CORS_ORIGIN.split(',')[0].trim()
 
-  const { error: userError } = await supabase
+  // Save promo code on user before checkout
+  await supabase
     .from('users')
-    .update(updateData)
+    .update({ promo_code_used: promo.code })
     .eq('id', req.user.id)
 
-  if (userError) {
-    logger.error({ error: userError, userId: req.user.id }, 'Failed to update user after promo redemption')
-    return res.status(500).json({ error: 'Failed to apply promo code' })
+  // Get or create Stripe customer
+  const { data: user } = await supabase
+    .from('users')
+    .select('stripe_customer_id, username')
+    .eq('id', req.user.id)
+    .single()
+
+  let customerId = user?.stripe_customer_id
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      metadata: { user_id: req.user.id, username: user?.username || '' },
+    })
+    customerId = customer.id
+    await supabase
+      .from('users')
+      .update({ stripe_customer_id: customerId })
+      .eq('id', req.user.id)
   }
 
-  logger.info({ userId: req.user.id, code: promo.code, isLifetime }, 'Promo code redeemed')
-  res.json({ success: true })
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    customer: customerId,
+    line_items: [{ price: PRICE_IDS.monthly, quantity: 1 }],
+    metadata: { user_id: req.user.id, plan: 'monthly', promo_code: promo.code },
+    subscription_data: {
+      trial_period_days: trialDays,
+      metadata: { user_id: req.user.id, promo_code: promo.code },
+    },
+    success_url: `${origin}/payment?status=success`,
+    cancel_url: `${origin}/payment?status=cancelled`,
+  })
+
+  logger.info({ userId: req.user.id, code: promo.code, trialDays }, 'Trial promo → Stripe checkout with trial')
+  res.json({ success: true, type: 'trial', trialDays, checkoutUrl: session.url })
 })
 
 // Verify Apple IAP transaction

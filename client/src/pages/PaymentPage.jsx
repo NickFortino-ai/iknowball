@@ -215,8 +215,14 @@ export default function PaymentPage() {
     setPromoLoading(true)
     setError(null)
     try {
-      await api.post('/payments/redeem-promo', { code: promoCode })
-      await navigateAfterPayment(fetchProfile, navigate)
+      const result = await api.post('/payments/redeem-promo', { code: promoCode })
+      if (result.type === 'trial' && result.checkoutUrl) {
+        // Trial promo → redirect to Stripe to collect payment info
+        window.location.href = result.checkoutUrl
+      } else {
+        // Lifetime promo → access granted immediately
+        await navigateAfterPayment(fetchProfile, navigate)
+      }
     } catch (err) {
       setError(err.message)
     } finally {
