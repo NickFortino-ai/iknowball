@@ -29,8 +29,9 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
 
   if (!league || league.format !== 'fantasy') return null
 
-  // No draft date set — suggest the commish pick one
+  // No draft date set — show combined message if also underfilled
   if (!fantasySettings?.draft_date) {
+    const isUnderfilled = state && state.state !== 'ok'
     return (
       <div className="rounded-xl border-2 border-accent/50 bg-accent/10 p-4 mb-4 relative z-10">
         <div className="flex items-start gap-3">
@@ -38,7 +39,9 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
           <div className="flex-1 min-w-0">
             <h3 className="font-display text-base text-accent mb-1">Set a draft date</h3>
             <p className="text-sm text-text-secondary">
-              Your league doesn't have a draft date yet. Head to league settings to pick a date and time so your members know when to show up.
+              {isUnderfilled
+                ? `Your league has ${state.currentCount} ${state.currentCount === 1 ? 'member' : 'members'} — IKB requires at least 6 for traditional fantasy. Set a draft date and invite more people to get your league going. Leagues without a draft date that are underfilled will be automatically canceled when the NFL season kicks off.`
+                : 'Your league doesn\'t have a draft date yet. Head to league settings to pick a date and time so your members know when to show up.'}
             </p>
           </div>
         </div>

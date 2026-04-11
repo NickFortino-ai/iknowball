@@ -1594,6 +1594,72 @@ export async function processFantasyUnderfillNotifications() {
 }
 
 /**
+ * Auto-cancel traditional fantasy leagues that have no draft date AND are
+ * underfilled (< 6 members) once the NFL season has started (any Week 1
+ * game is live or final).
+ *
+ * Safety: only cancels leagues where ALL of these are true:
+ *   1. format = 'traditional'
+ *   2. draft_status = 'pending' (never drafted)
+ *   3. draft_date IS NULL
+ *   4. member count < 6
+ *   5. At least one NFL Week 1 game is live or final
+ */
+export async function autoCancelDatelessUnderfilled() {
+  // Check if NFL season has started — any Week 1 game live or final
+  const { data: sportRow } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', 'americanfootball_nfl')
+    .single()
+  if (!sportRow) return 0
+
+  // Look for a Week 1 game that has started. We check the games table
+  // for NFL games with status live/final in the current season's early window.
+  // Since we don't store "week" on the games table, check if ANY NFL game is
+  // live or final in the last 7 days (covers the first week of games).
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const { count: startedGames } = await supabase
+    .from('games')
+    .select('id', { count: 'exact', head: true })
+    .eq('sport_id', sportRow.id)
+    .in('status', ['live', 'final'])
+    .gte('starts_at', sevenDaysAgo)
+  if (!startedGames) return 0
+
+  // Find all traditional fantasy leagues with no draft date, still pending
+  const { data: candidates } = await supabase
+    .from('fantasy_settings')
+    .select('league_id, num_teams, leagues!inner(status)')
+    .eq('format', 'traditional')
+    .eq('draft_status', 'pending')
+    .is('draft_date', null)
+  if (!candidates?.length) return 0
+
+  let canceled = 0
+  for (const row of candidates) {
+    if (row.leagues?.status && !['open', 'active'].includes(row.leagues.status)) continue
+
+    const { count: memberCount } = await supabase
+      .from('league_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', row.league_id)
+
+    if ((memberCount || 0) >= MIN_FANTASY_TEAMS) continue
+
+    // All 5 conditions met — safe to cancel
+    logger.info({ leagueId: row.league_id, memberCount }, 'Auto-canceling dateless underfilled league — NFL season has started')
+    try {
+      await cancelFantasyLeague(row.league_id, { reason: 'underfilled_season_started' })
+      canceled++
+    } catch (err) {
+      logger.error({ err, leagueId: row.league_id }, 'Failed to auto-cancel dateless underfilled league')
+    }
+  }
+  return canceled
+}
+
+/**
  * Drop the most recent signups from a fantasy league until the member count
  * matches the closest valid even number (>= 6). Updates fantasy_settings.
  * num_teams to match. Sends `fantasy_league_member_dropped` notifications to
@@ -1755,6 +1821,11 @@ export function startDraftAutopickLoop() {
       await processFantasyUnderfillNotifications()
     } catch (err) {
       logger.error({ err }, 'Fantasy underfill notification tick error')
+    }
+    try {
+      await autoCancelDatelessUnderfilled()
+    } catch (err) {
+      logger.error({ err }, 'Dateless underfill auto-cancel tick error')
     }
     try {
       await processScheduledDraftStarts()
