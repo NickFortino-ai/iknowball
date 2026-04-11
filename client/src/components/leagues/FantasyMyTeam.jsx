@@ -180,20 +180,26 @@ export default function FantasyMyTeam({ league }) {
   )
 
   const hasRoster = roster && roster.length > 0
+  const isSalaryCap = fantasySettings?.format === 'salary_cap'
   if (!hasRoster) {
-    const slots = fantasySettings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
+    const slots = fantasySettings?.roster_slots || (isSalaryCap
+      ? { qb: 1, rb: 2, wr: 3, te: 1, flex: 1, k: 1, def: 1 }
+      : { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 })
     const starterSlots = []
-    const slotExpansion = { qb: 'QB', rb: 'RB', wr: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
+    const slotExpansion = { qb: 'QB', rb: 'RB', wr: 'WR', te: 'TE', flex: 'FLEX', superflex: 'SFLEX', k: 'K', def: 'DEF' }
     for (const [key, label] of Object.entries(slotExpansion)) {
       for (let i = 0; i < (slots[key] || 0); i++) starterSlots.push(label)
     }
-    const benchCount = slots.bench || 6
+    const benchCount = isSalaryCap ? 0 : (slots.bench || 6)
+    const irCount = isSalaryCap ? 0 : (slots.ir || 0)
     return (
       <div className="space-y-4">
-        <p className="text-sm text-text-secondary text-center">You'll see your team here after the draft!</p>
+        <p className="text-sm text-text-secondary text-center">
+          {isSalaryCap ? 'Set your lineup each week under the salary cap.' : "You'll see your team here after the draft!"}
+        </p>
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-text-primary">Starters</h3>
+            <h3 className="text-sm font-semibold text-text-primary">{isSalaryCap ? 'Lineup' : 'Starters'}</h3>
           </div>
           <div className="divide-y divide-text-primary/10">
             {starterSlots.map((label, i) => (
@@ -205,6 +211,7 @@ export default function FantasyMyTeam({ league }) {
             ))}
           </div>
         </div>
+        {benchCount > 0 && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
             <h3 className="text-sm font-semibold text-text-primary">Bench</h3>
@@ -219,6 +226,7 @@ export default function FantasyMyTeam({ league }) {
             ))}
           </div>
         </div>
+        )}
       </div>
     )
   }
