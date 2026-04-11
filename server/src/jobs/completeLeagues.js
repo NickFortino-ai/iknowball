@@ -203,7 +203,7 @@ const TRADITIONAL_FANTASY_BONUSES = {
   16: { 1: 175, 2: 70, 3: 35 },
   20: { 1: 200, 2: 80, 3: 40 },
 }
-function getTraditionalFantasyBonus(rank, n) {
+export function getTraditionalFantasyBonus(rank, n) {
   if (rank > 3) return 0
   // Exact match for the standard sizes
   if (TRADITIONAL_FANTASY_BONUSES[n]) return TRADITIONAL_FANTASY_BONUSES[n][rank]
@@ -619,6 +619,17 @@ export async function completeLeagues() {
           await awardBracketStandings(league, standings)
         }
       } else if (league.format === 'fantasy' || league.format === 'nba_dfs') {
+        // Traditional fantasy with playoffs: skip auto-completion here —
+        // championship game triggers finalizeFantasyChampion() in fantasyService
+        const { data: fSettings } = await supabase
+          .from('fantasy_settings')
+          .select('format, playoff_teams')
+          .eq('league_id', league.id)
+          .single()
+        if (fSettings?.format !== 'salary_cap' && (fSettings?.playoff_teams || 0) > 0) {
+          logger.info({ leagueId: league.id }, 'Traditional fantasy with playoffs — skipping auto-completion (handled by playoff bracket)')
+          continue
+        }
         const standings = await getFantasyLeagueStandings(league)
         if (standings?.length > 0) {
           const { data: settings } = await supabase

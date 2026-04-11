@@ -3897,13 +3897,89 @@ export async function getTradesForLeague(leagueId) {
  * matchups have known users seeded by rank. Later rounds are placeholders
  * — the user-id columns get filled when the prior round completes.
  */
+// =====================================================================
+// Fantasy Playoff Bracket — Full lifecycle
+// =====================================================================
+
+// Static bracket definitions: which bracket_position feeds into which
+// Format: { winners: { source_bp: [target_bp, 'home'|'away'] }, losers: { ... } }
+const BRACKET_DEFS = {
+  4: {
+    rounds: 2,
+    // Round 1: bp1 = 1v4, bp2 = 2v3
+    // Round 2: bp3 = championship, bp4 = consolation (3rd place)
+    firstRound: [
+      { bp: 1, seedHome: 1, seedAway: 4 },
+      { bp: 2, seedHome: 2, seedAway: 3 },
+    ],
+    future: [
+      { bp: 3, round: 2, consolation: false }, // Championship
+      { bp: 4, round: 2, consolation: true },  // 3rd place
+    ],
+    winners: { 1: [3, 'home'], 2: [3, 'away'] },
+    losers:  { 1: [4, 'home'], 2: [4, 'away'] },
+    championshipBp: 3,
+  },
+  6: {
+    rounds: 3,
+    // Round 1: bp1 = 3v6, bp2 = 4v5 (seeds 1,2 get byes)
+    // Round 2: bp3 = 1 vs W(bp2), bp4 = 2 vs W(bp1)
+    // Round 2 consolation: bp5 = L(bp1) vs L(bp2)
+    // Round 3: bp6 = championship, bp7 = consolation (3rd place)
+    firstRound: [
+      { bp: 1, seedHome: 3, seedAway: 6 },
+      { bp: 2, seedHome: 4, seedAway: 5 },
+    ],
+    byes: [
+      { bp: 3, round: 2, seedHome: 1, consolation: false }, // seed 1 gets bye → home in round 2
+      { bp: 4, round: 2, seedHome: 2, consolation: false }, // seed 2 gets bye → home in round 2
+    ],
+    future: [
+      { bp: 5, round: 2, consolation: true },  // Consolation R1
+      { bp: 6, round: 3, consolation: false },  // Championship
+      { bp: 7, round: 3, consolation: true },   // 3rd place
+    ],
+    winners: { 1: [4, 'away'], 2: [3, 'away'], 3: [6, 'home'], 4: [6, 'away'] },
+    losers:  { 1: [5, 'home'], 2: [5, 'away'], 3: [7, 'home'], 4: [7, 'away'] },
+    championshipBp: 6,
+  },
+  8: {
+    rounds: 3,
+    // Round 1: bp1=1v8, bp2=4v5, bp3=3v6, bp4=2v7
+    // Round 2: bp5=W1vW2, bp6=W3vW4, bp7=L1vL2(cons), bp8=L3vL4(cons)
+    // Round 3: bp9=champ, bp10=3rd place(cons), bp11=5th place(cons)
+    firstRound: [
+      { bp: 1, seedHome: 1, seedAway: 8 },
+      { bp: 2, seedHome: 4, seedAway: 5 },
+      { bp: 3, seedHome: 3, seedAway: 6 },
+      { bp: 4, seedHome: 2, seedAway: 7 },
+    ],
+    future: [
+      { bp: 5, round: 2, consolation: false },
+      { bp: 6, round: 2, consolation: false },
+      { bp: 7, round: 2, consolation: true },
+      { bp: 8, round: 2, consolation: true },
+      { bp: 9, round: 3, consolation: false },  // Championship
+      { bp: 10, round: 3, consolation: true },   // 3rd place
+      { bp: 11, round: 3, consolation: true },   // 5th place
+    ],
+    winners: { 1: [5, 'home'], 2: [5, 'away'], 3: [6, 'home'], 4: [6, 'away'], 5: [9, 'home'], 6: [9, 'away'], 7: [11, 'home'], 8: [11, 'away'] },
+    losers:  { 1: [7, 'home'], 2: [7, 'away'], 3: [8, 'home'], 4: [8, 'away'], 5: [10, 'home'], 6: [10, 'away'] },
+    championshipBp: 9,
+  },
+}
+
 export async function generatePlayoffBracket(leagueId) {
   const settings = await getFantasySettings(leagueId)
   if (!settings || settings.format === 'salary_cap') return null
 
   const playoffTeams = settings.playoff_teams || 4
   const startWeek = settings.playoff_start_week || 15
-  const championshipWeek = settings.championship_week || 17
+  const def = BRACKET_DEFS[playoffTeams]
+  if (!def) {
+    logger.warn({ leagueId, playoffTeams }, 'Unsupported playoff bracket size')
+    return null
+  }
 
   // Avoid double-generating
   const { data: existing } = await supabase
@@ -3917,7 +3993,7 @@ export async function generatePlayoffBracket(leagueId) {
     return null
   }
 
-  // Compute standings using the same logic as completeLeagues
+  // Compute regular-season standings
   const { data: regSeasonMatchups } = await supabase
     .from('fantasy_matchups')
     .select('home_user_id, away_user_id, home_points, away_points, status')
@@ -3933,23 +4009,19 @@ export async function generatePlayoffBracket(leagueId) {
   const userStats = {}
   const h2hWins = {}
   for (const m of regSeasonMatchups) {
-    if (!userStats[m.home_user_id]) userStats[m.home_user_id] = { user_id: m.home_user_id, wins: 0, losses: 0, pf: 0, pa: 0 }
-    if (!userStats[m.away_user_id]) userStats[m.away_user_id] = { user_id: m.away_user_id, wins: 0, losses: 0, pf: 0, pa: 0 }
-    if (!h2hWins[m.home_user_id]) h2hWins[m.home_user_id] = {}
-    if (!h2hWins[m.away_user_id]) h2hWins[m.away_user_id] = {}
-
+    for (const uid of [m.home_user_id, m.away_user_id]) {
+      if (!userStats[uid]) userStats[uid] = { user_id: uid, wins: 0, losses: 0, pf: 0, pa: 0 }
+      if (!h2hWins[uid]) h2hWins[uid] = {}
+    }
     userStats[m.home_user_id].pf += Number(m.home_points)
     userStats[m.away_user_id].pf += Number(m.away_points)
     userStats[m.home_user_id].pa += Number(m.away_points)
     userStats[m.away_user_id].pa += Number(m.home_points)
-
     if (m.home_points > m.away_points) {
-      userStats[m.home_user_id].wins++
-      userStats[m.away_user_id].losses++
+      userStats[m.home_user_id].wins++; userStats[m.away_user_id].losses++
       h2hWins[m.home_user_id][m.away_user_id] = (h2hWins[m.home_user_id][m.away_user_id] || 0) + 1
     } else if (m.away_points > m.home_points) {
-      userStats[m.away_user_id].wins++
-      userStats[m.home_user_id].losses++
+      userStats[m.away_user_id].wins++; userStats[m.home_user_id].losses++
       h2hWins[m.away_user_id][m.home_user_id] = (h2hWins[m.away_user_id][m.home_user_id] || 0) + 1
     }
   }
@@ -3964,41 +4036,261 @@ export async function generatePlayoffBracket(leagueId) {
   })
 
   const seeds = sorted.slice(0, playoffTeams)
-  if (seeds.length < playoffTeams) {
-    logger.warn({ leagueId, have: seeds.length, want: playoffTeams }, 'Not enough teams for full playoff bracket')
-  }
+  const seedMap = {} // seed number (1-indexed) → user_id
+  seeds.forEach((s, i) => { seedMap[i + 1] = s.user_id })
 
   const inserts = []
 
-  // Pair seeds in standard bracket order based on bracket size
-  if (playoffTeams === 4) {
-    // Semis: 1v4, 2v3 → champ
-    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[0]?.user_id, away_user_id: seeds[3]?.user_id })
-    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[1]?.user_id, away_user_id: seeds[2]?.user_id })
-  } else if (playoffTeams === 6) {
-    // Round 1: 3v6, 4v5 (top 2 have byes) → semis next week
-    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[2]?.user_id, away_user_id: seeds[5]?.user_id })
-    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[3]?.user_id, away_user_id: seeds[4]?.user_id })
-  } else if (playoffTeams === 8) {
-    // QF: 1v8, 2v7, 3v6, 4v5
-    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[0]?.user_id, away_user_id: seeds[7]?.user_id })
-    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[1]?.user_id, away_user_id: seeds[6]?.user_id })
-    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[2]?.user_id, away_user_id: seeds[5]?.user_id })
-    inserts.push({ league_id: leagueId, week: startWeek, home_user_id: seeds[3]?.user_id, away_user_id: seeds[4]?.user_id })
+  // Round 1 matchups (with actual users)
+  for (const m of def.firstRound) {
+    inserts.push({
+      league_id: leagueId, week: startWeek, round: 1, bracket_position: m.bp,
+      home_user_id: seedMap[m.seedHome] || null, away_user_id: seedMap[m.seedAway] || null,
+      seed_home: m.seedHome, seed_away: m.seedAway, is_consolation: false,
+    })
   }
 
-  // Filter incomplete pairs
-  const valid = inserts.filter((m) => m.home_user_id && m.away_user_id)
+  // Bye entries (6-team: seeds 1,2 pre-placed in round 2)
+  if (def.byes) {
+    for (const b of def.byes) {
+      inserts.push({
+        league_id: leagueId, week: startWeek + b.round - 1, round: b.round, bracket_position: b.bp,
+        home_user_id: seedMap[b.seedHome] || null, away_user_id: null,
+        seed_home: b.seedHome, seed_away: null, is_consolation: b.consolation || false,
+      })
+    }
+  }
 
-  if (!valid.length) return null
-  const { error } = await supabase.from('fantasy_matchups').insert(valid)
+  // Future rounds (TBD matchups with NULL users)
+  for (const f of def.future || []) {
+    inserts.push({
+      league_id: leagueId, week: startWeek + f.round - 1, round: f.round, bracket_position: f.bp,
+      home_user_id: null, away_user_id: null,
+      seed_home: null, seed_away: null, is_consolation: f.consolation || false,
+    })
+  }
+
+  const { error } = await supabase.from('fantasy_matchups').insert(inserts)
   if (error) {
-    logger.error({ error, leagueId }, 'Failed to insert playoff matchups')
+    logger.error({ error, leagueId }, 'Failed to insert playoff bracket')
     return null
   }
 
-  logger.info({ leagueId, playoffTeams, startWeek, championshipWeek, generated: valid.length }, 'Playoff bracket generated')
-  return { generated: valid.length, seeds: seeds.map((s) => ({ user_id: s.user_id, wins: s.wins, losses: s.losses })) }
+  // Send clinched/missed notifications
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    const allUserIds = Object.values(userStats).map(s => s.user_id)
+    const playoffUserIds = new Set(seeds.map(s => s.user_id))
+
+    for (const uid of allUserIds) {
+      if (playoffUserIds.has(uid)) {
+        const seed = seeds.findIndex(s => s.user_id === uid) + 1
+        await createNotification(uid, 'fantasy_playoff_clinched',
+          `You clinched the #${seed} seed in the playoffs!`,
+          { leagueId, seed })
+      } else {
+        await createNotification(uid, 'fantasy_playoff_missed',
+          'Your season is over — you missed the playoffs.',
+          { leagueId })
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to send playoff clinch/miss notifications')
+  }
+
+  logger.info({ leagueId, playoffTeams, startWeek, generated: inserts.length }, 'Full playoff bracket generated')
+  return { generated: inserts.length, seeds: seeds.map((s, i) => ({ user_id: s.user_id, seed: i + 1, wins: s.wins, losses: s.losses })) }
+}
+
+/**
+ * After a playoff week's matchups finalize, advance winners to the next round
+ * and place losers in consolation matchups. If the championship game just
+ * completed, trigger league completion.
+ */
+export async function advancePlayoffRound(leagueId, week) {
+  const settings = await getFantasySettings(leagueId)
+  if (!settings || settings.format === 'salary_cap') return
+
+  const playoffTeams = settings.playoff_teams || 4
+  const def = BRACKET_DEFS[playoffTeams]
+  if (!def) return
+
+  // Get all completed playoff matchups for this week (that have users assigned)
+  const { data: completedMatchups } = await supabase
+    .from('fantasy_matchups')
+    .select('id, bracket_position, home_user_id, away_user_id, home_points, away_points, seed_home, seed_away, is_consolation, status')
+    .eq('league_id', leagueId)
+    .eq('week', week)
+    .eq('status', 'completed')
+    .not('round', 'is', null)
+
+  if (!completedMatchups?.length) return
+
+  // Get all bracket matchups for this league (to update future rounds)
+  const { data: allBracketMatchups } = await supabase
+    .from('fantasy_matchups')
+    .select('id, bracket_position, home_user_id, away_user_id, round, is_consolation')
+    .eq('league_id', leagueId)
+    .not('round', 'is', null)
+
+  const byBp = {}
+  for (const m of allBracketMatchups) byBp[m.bracket_position] = m
+
+  const { createNotification } = await import('./notificationService.js')
+  let championUserId = null
+
+  for (const m of completedMatchups) {
+    if (!m.home_user_id || !m.away_user_id) continue
+
+    const homeWon = Number(m.home_points) > Number(m.away_points)
+    const winnerId = homeWon ? m.home_user_id : m.away_user_id
+    const loserId = homeWon ? m.away_user_id : m.home_user_id
+    const winnerSeed = homeWon ? m.seed_home : m.seed_away
+    const loserSeed = homeWon ? m.seed_away : m.seed_home
+
+    // Check if this is the championship game
+    if (m.bracket_position === def.championshipBp && !m.is_consolation) {
+      championUserId = winnerId
+      continue // Championship completion handled below
+    }
+
+    // Advance winner to next main-bracket round
+    const winTarget = def.winners[m.bracket_position]
+    if (winTarget && !m.is_consolation) {
+      const [targetBp, slot] = winTarget
+      const target = byBp[targetBp]
+      if (target) {
+        const update = slot === 'home'
+          ? { home_user_id: winnerId, seed_home: winnerSeed }
+          : { away_user_id: winnerId, seed_away: winnerSeed }
+        await supabase.from('fantasy_matchups').update(update).eq('id', target.id)
+
+        // Notify winner
+        await createNotification(winnerId, 'fantasy_playoff_advanced',
+          'You won your playoff matchup — advancing to the next round!',
+          { leagueId, week }).catch(() => {})
+      }
+    }
+
+    // Place loser in consolation
+    const loseTarget = def.losers[m.bracket_position]
+    if (loseTarget && !m.is_consolation) {
+      const [targetBp, slot] = loseTarget
+      const target = byBp[targetBp]
+      if (target) {
+        const update = slot === 'home'
+          ? { home_user_id: loserId, seed_home: loserSeed }
+          : { away_user_id: loserId, seed_away: loserSeed }
+        await supabase.from('fantasy_matchups').update(update).eq('id', target.id)
+      }
+
+      // Notify loser (only for main bracket losses)
+      await createNotification(loserId, 'fantasy_playoff_eliminated',
+        'Your playoff run is over. You\'ll play in the consolation bracket.',
+        { leagueId, week }).catch(() => {})
+    }
+  }
+
+  // Championship completed — finalize the league
+  if (championUserId) {
+    await finalizeFantasyChampion(leagueId, championUserId, settings)
+  }
+}
+
+/**
+ * Called when the championship game completes. Awards bonus points,
+ * determines final standings by playoff placement, marks league completed,
+ * and sends champion notification.
+ */
+async function finalizeFantasyChampion(leagueId, championUserId, settings) {
+  const { createNotification } = await import('./notificationService.js')
+
+  // Get all playoff matchups to determine placement
+  const { data: playoffMatchups } = await supabase
+    .from('fantasy_matchups')
+    .select('bracket_position, home_user_id, away_user_id, home_points, away_points, is_consolation, status, round')
+    .eq('league_id', leagueId)
+    .not('round', 'is', null)
+    .eq('status', 'completed')
+
+  const playoffTeams = settings.playoff_teams || 4
+  const def = BRACKET_DEFS[playoffTeams]
+  const champBp = def.championshipBp
+  const champMatch = playoffMatchups?.find(m => m.bracket_position === champBp && !m.is_consolation)
+
+  // Build final standings: 1st = champ, 2nd = champ loser, 3rd/4th from consolation, etc.
+  const standings = []
+  if (champMatch) {
+    const homeWon = Number(champMatch.home_points) > Number(champMatch.away_points)
+    standings.push({ user_id: homeWon ? champMatch.home_user_id : champMatch.away_user_id }) // 1st
+    standings.push({ user_id: homeWon ? champMatch.away_user_id : champMatch.home_user_id }) // 2nd
+  }
+
+  // 3rd place from consolation final (same round as championship)
+  const champRound = champMatch?.round
+  const consolFinal = playoffMatchups?.find(m => m.round === champRound && m.is_consolation)
+  if (consolFinal) {
+    const homeWon = Number(consolFinal.home_points) > Number(consolFinal.away_points)
+    standings.push({ user_id: homeWon ? consolFinal.home_user_id : consolFinal.away_user_id }) // 3rd
+    standings.push({ user_id: homeWon ? consolFinal.away_user_id : consolFinal.home_user_id }) // 4th
+  }
+
+  // Get league for bonus point calculation
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('id, name, member_count, format, sport')
+    .eq('id', leagueId)
+    .single()
+
+  if (league && standings.length) {
+    // Import bonus logic
+    const { getTraditionalFantasyBonus } = await import('../jobs/completeLeagues.js')
+
+    const n = standings.length
+    for (let i = 0; i < standings.length; i++) {
+      const rank = i + 1
+      const positionPts = n + 1 - 2 * rank
+      const bonus = getTraditionalFantasyBonus(rank, league.member_count || n)
+      const totalPts = positionPts + bonus
+
+      if (totalPts !== 0) {
+        const { incrementUserPoints } = await import('./scoringService.js')
+        await incrementUserPoints(standings[i].user_id, totalPts)
+
+        // Log bonus
+        await supabase.from('bonus_points').insert({
+          user_id: standings[i].user_id,
+          league_id: leagueId,
+          points: totalPts,
+          label: `Fantasy #${rank}: ${positionPts} pos + ${bonus} bonus`,
+        }).catch(() => {})
+      }
+    }
+
+    // Mark league completed
+    await supabase.from('leagues').update({ status: 'completed' }).eq('id', leagueId)
+
+    // Notify champion
+    await createNotification(championUserId, 'fantasy_champion',
+      `You are the ${league.name} champion!`,
+      { leagueId, leagueName: league.name }).catch(() => {})
+
+    // Notify all members
+    const { data: members } = await supabase
+      .from('league_members')
+      .select('user_id')
+      .eq('league_id', leagueId)
+
+    for (const m of members || []) {
+      if (m.user_id === championUserId) continue
+      const rank = standings.findIndex(s => s.user_id === m.user_id)
+      await createNotification(m.user_id, 'league_win',
+        rank >= 0 ? `${league.name} is complete! You finished #${rank + 1}.` : `${league.name} is complete!`,
+        { leagueId, leagueName: league.name, isWinner: false }).catch(() => {})
+    }
+
+    logger.info({ leagueId, championUserId }, 'Fantasy champion finalized')
+  }
 }
 
 /**
@@ -4162,19 +4454,26 @@ export async function scoreFantasyMatchupsWeek(week, season) {
 
   logger.info({ week, season, scored, leagues: leagueIds.length }, 'Fantasy H2H matchup scoring complete')
 
-  // After scoring, see if any league just finished its regular season — if so,
-  // generate the playoff bracket. We check leagues whose playoff_start_week
-  // equals next week (so the week we just scored was the last regular week).
+  // After scoring, handle playoff lifecycle for each league
   if (weekIsFinal) {
     for (const leagueId of leagueIds) {
       const settings = await getFantasySettings(leagueId)
       if (!settings || settings.format === 'salary_cap') continue
       const startWeek = settings.playoff_start_week || 15
+
       if (week === startWeek - 1) {
+        // Last regular season week → generate playoff bracket
         try {
           await generatePlayoffBracket(leagueId)
         } catch (err) {
           logger.error({ err, leagueId }, 'Failed to generate playoff bracket')
+        }
+      } else if (week >= startWeek) {
+        // Playoff week → advance winners to next round
+        try {
+          await advancePlayoffRound(leagueId, week)
+        } catch (err) {
+          logger.error({ err, leagueId }, 'Failed to advance playoff round')
         }
       }
     }

@@ -57,6 +57,51 @@ router.get('/weekly-results', async (req, res) => {
   res.json(data)
 })
 
+// Playoff bracket data — returns all playoff matchups with user info
+router.get('/playoff-bracket', async (req, res) => {
+  const { league_id } = req.query
+  if (!league_id) return res.status(400).json({ error: 'league_id required' })
+
+  const { data: matchups, error } = await supabase
+    .from('fantasy_matchups')
+    .select('id, week, round, bracket_position, home_user_id, away_user_id, home_points, away_points, seed_home, seed_away, is_consolation, status')
+    .eq('league_id', league_id)
+    .not('round', 'is', null)
+    .order('bracket_position', { ascending: true })
+
+  if (error) throw error
+
+  // Enrich with user data
+  const userIds = [...new Set(matchups.flatMap(m => [m.home_user_id, m.away_user_id]).filter(Boolean))]
+  const { data: users } = userIds.length
+    ? await supabase.from('users').select('id, username, display_name, avatar_url, avatar_emoji').in('id', userIds)
+    : { data: [] }
+  const userMap = {}
+  for (const u of users || []) userMap[u.id] = u
+
+  // Also get fantasy_team_name from league_members
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, fantasy_team_name')
+    .eq('league_id', league_id)
+  const teamNameMap = {}
+  for (const m of members || []) teamNameMap[m.user_id] = m.fantasy_team_name
+
+  const enriched = matchups.map(m => ({
+    ...m,
+    home_user: m.home_user_id ? { ...userMap[m.home_user_id], fantasy_team_name: teamNameMap[m.home_user_id] } : null,
+    away_user: m.away_user_id ? { ...userMap[m.away_user_id], fantasy_team_name: teamNameMap[m.away_user_id] } : null,
+  }))
+
+  const settings = await getFantasySettings(league_id)
+  res.json({
+    matchups: enriched,
+    playoff_teams: settings?.playoff_teams || 4,
+    playoff_start_week: settings?.playoff_start_week || 15,
+    championship_week: settings?.championship_week || 17,
+  })
+})
+
 // Live view — all members' rosters with current points (salary cap DFS mode)
 router.get('/live', async (req, res) => {
   const { league_id, week, season } = req.query

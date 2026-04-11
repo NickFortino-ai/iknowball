@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { useFantasyMatchupLive, useFantasyMatchupWeek, useBlurbPlayerIds } from '../../hooks/useLeagues'
+import { useFantasyMatchupLive, useFantasyMatchupWeek, useBlurbPlayerIds, usePlayoffBracket } from '../../hooks/useLeagues'
 import Avatar from '../ui/Avatar'
 import { SkeletonCard } from '../ui/Skeleton'
 import PlayerDetailModal from './PlayerDetailModal'
 import LeagueReport from './LeagueReport'
+import PlayoffBracket from './PlayoffBracket'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
 const SLOT_LABELS = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLX', k: 'K', def: 'DEF' }
@@ -185,7 +186,9 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const currentWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
   const totalWeeks = fantasySettings?.championship_week || 17
   const [viewWeek, setViewWeek] = useState(currentWeek)
-  const [matchupView, setMatchupView] = useState('mine') // 'mine' | 'all'
+  const playoffStartWeek = fantasySettings?.playoff_start_week || 15
+  const isPlayoffWeek = viewWeek >= playoffStartWeek
+  const [matchupView, setMatchupView] = useState('mine') // 'mine' | 'all' | 'bracket'
   const [expandedMatchups, setExpandedMatchups] = useState(new Set())
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
@@ -249,8 +252,8 @@ export default function FantasyMatchup({ league, fantasySettings }) {
         </button>
         <div className="text-center min-w-[100px]">
           <div className="font-display text-lg text-text-primary">Week {viewWeek}</div>
-          <div className={`text-[10px] font-semibold ${weekStatus === 'current' ? 'text-accent' : 'text-text-muted'}`}>
-            {weekStatus === 'past' ? 'Final' : weekStatus === 'future' ? 'Upcoming' : 'Current'}
+          <div className={`text-[10px] font-semibold ${isPlayoffWeek ? 'text-accent' : weekStatus === 'current' ? 'text-accent' : 'text-text-muted'}`}>
+            {isPlayoffWeek ? 'Playoffs' : weekStatus === 'past' ? 'Final' : weekStatus === 'future' ? 'Upcoming' : 'Current'}
           </div>
         </div>
         <button
@@ -304,10 +307,10 @@ export default function FantasyMatchup({ league, fantasySettings }) {
         </div>
       )}
 
-      {/* My Matchup / All Matchups toggle */}
+      {/* My Matchup / All Matchups / Bracket toggle */}
       {sorted.length > 0 && (
         <div className="flex gap-1">
-          {['mine', 'all'].map((v) => (
+          {['mine', 'all', ...(isPlayoffWeek ? ['bracket'] : [])].map((v) => (
             <button
               key={v}
               onClick={() => setMatchupView(v)}
@@ -315,7 +318,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
                 matchupView === v ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
               }`}
             >
-              {v === 'mine' ? 'My Matchup' : 'All Matchups'}
+              {v === 'mine' ? 'My Matchup' : v === 'bracket' ? 'Bracket' : 'All Matchups'}
             </button>
           ))}
         </div>
@@ -367,6 +370,11 @@ export default function FantasyMatchup({ league, fantasySettings }) {
             />
           )
         })
+      )}
+
+      {/* Bracket view */}
+      {matchupView === 'bracket' && (
+        <PlayoffBracket leagueId={league.id} />
       )}
 
       {detailPlayerId && (

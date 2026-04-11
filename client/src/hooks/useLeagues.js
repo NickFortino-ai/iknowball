@@ -1064,6 +1064,14 @@ export function useSaveNflDfsRoster() {
   })
 }
 
+export function usePlayoffBracket(leagueId) {
+  return useQuery({
+    queryKey: ['playoff-bracket', leagueId],
+    queryFn: () => api.get(`/dfs/playoff-bracket?league_id=${leagueId}`),
+    enabled: !!leagueId,
+  })
+}
+
 export function useNflDfsLive(leagueId, week, season) {
   return useQuery({
     queryKey: ['nfl-dfs', leagueId, 'live', week, season],
