@@ -126,20 +126,22 @@ export default function SurvivorView({ league }) {
 
       {/* Make pick button */}
       {pickWeek && !leagueCompleted && (
-        <button
-          onClick={() => setShowPickForm(!showPickForm)}
-          className={`w-full py-3 rounded-xl font-display transition-colors mb-4 relative z-10 ${
-            board.user_has_picked
-              ? 'bg-bg-primary/50 backdrop-blur-sm text-text-secondary hover:bg-bg-primary/70 border border-accent'
-              : 'bg-accent/90 backdrop-blur-sm text-white hover:bg-accent border border-accent'
-          }`}
-        >
-          {showPickForm
-            ? 'Hide Pick Form'
-            : board.user_has_picked
-              ? `Edit ${periodLabel} ${board.display_period_number || pickWeek.week_number} Pick`
-              : `Make ${periodLabel} ${board.display_period_number || pickWeek.week_number} Pick`}
-        </button>
+        <div className="flex justify-center mb-4 relative z-10">
+          <button
+            onClick={() => setShowPickForm(!showPickForm)}
+            className={`px-8 py-3 rounded-xl font-display transition-colors ${
+              board.user_has_picked
+                ? 'bg-accent/10 backdrop-blur-sm text-text-secondary hover:bg-accent/20 border border-accent'
+                : 'bg-accent/80 backdrop-blur-sm text-white hover:bg-accent border border-accent'
+            }`}
+          >
+            {showPickForm
+              ? 'Hide Pick Form'
+              : board.user_has_picked
+                ? `Edit ${periodLabel} ${board.display_period_number || pickWeek.week_number} Pick`
+                : `Make ${periodLabel} ${board.display_period_number || pickWeek.week_number} Pick`}
+          </button>
+        </div>
       )}
 
       {/* Touchdown pick form */}
