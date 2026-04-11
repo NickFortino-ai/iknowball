@@ -323,7 +323,7 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto border-b border-text-primary/10">
-        {['Players', 'My Roster', 'Log'].map((t) => {
+        {['Players', 'My Roster', 'Board', 'Log'].map((t) => {
           const badge = t === 'My Roster' ? `${slotPlan.filled}/${slotPlan.totalRoster}` : null
           return (
             <button key={t} onClick={() => setActiveTab(t)}
@@ -372,6 +372,12 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
       )}
 
       {activeTab === 'My Roster' && <RosterView slotPlan={slotPlan} />}
+
+      {activeTab === 'Board' && (
+        <div className="rounded-xl border border-text-primary/20 p-2 overflow-auto">
+          <MockBoard picks={picks} numTeams={config.numTeams} userSlot={config.userSlot} teamNames={teamNames} rounds={config.rounds} />
+        </div>
+      )}
 
       {activeTab === 'Log' && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden max-h-[60vh] overflow-y-auto">
@@ -438,6 +444,60 @@ function RosterView({ slotPlan }) {
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+function MockBoard({ picks, numTeams, userSlot, teamNames, rounds }) {
+  const grid = []
+  for (let r = 0; r < rounds; r++) {
+    const row = []
+    const isReverse = r % 2 === 1
+    for (let c = 0; c < numTeams; c++) {
+      const colIdx = isReverse ? numTeams - 1 - c : c
+      const overall = r * numTeams + colIdx + 1
+      const pick = picks.find((p) => p.overall === overall)
+      row.push(pick || null)
+    }
+    grid.push(row)
+  }
+
+  return (
+    <div className="overflow-auto max-h-[70vh]">
+      <table className="text-xs border-collapse w-full table-fixed">
+        <thead>
+          <tr>
+            <th className="px-1 py-2 text-text-muted font-semibold text-center w-10 border border-border bg-bg-secondary sticky left-0 z-10">Rd</th>
+            {Array.from({ length: numTeams }, (_, i) => (
+              <th key={i} className={`px-2 py-2 font-semibold text-center border border-border min-w-[120px] ${i === userSlot ? 'text-accent' : 'text-text-secondary'}`}>
+                <div className="text-text-muted text-[10px]">{i + 1}</div>
+                <div className="truncate">{teamNames[i]}</div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grid.map((row, roundIdx) => (
+            <tr key={roundIdx}>
+              <td className="px-1 py-1 text-center text-text-muted font-semibold border border-border bg-bg-secondary sticky left-0 z-10">
+                {roundIdx + 1}
+              </td>
+              {row.map((pick, colIdx) => (
+                <td key={colIdx} className="px-2 py-2 border border-border min-w-[120px]">
+                  {pick?.player ? (
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate text-[11px]">{pick.player.full_name}</div>
+                      <div className="text-[10px] opacity-70 truncate">{pick.player.position} {pick.player.team}</div>
+                    </div>
+                  ) : (
+                    <div className="text-text-muted text-center">{'\u2014'}</div>
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
