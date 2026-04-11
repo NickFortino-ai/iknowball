@@ -2,10 +2,12 @@ import { useState } from 'react'
 import Avatar from '../ui/Avatar'
 import RosterModal from './RosterModal'
 import { useFantasyStandings } from '../../hooks/useLeagues'
+import { useAuth } from '../../hooks/useAuth'
 
 export default function FantasyStandings({ league }) {
   const [selectedUser, setSelectedUser] = useState(null)
   const { data: serverStandings } = useFantasyStandings(league.id)
+  const { profile } = useAuth()
 
   const standings = (serverStandings && serverStandings.length)
     ? serverStandings.map((s) => ({
@@ -32,6 +34,12 @@ export default function FantasyStandings({ league }) {
         gamesPlayed: 0,
       }))
 
+  // Pre-season: no games played yet — show user on top, no rank numbers
+  const seasonStarted = standings.some((s) => s.gamesPlayed > 0 || s.wins > 0 || s.losses > 0 || s.pointsFor > 0)
+  const sortedStandings = seasonStarted
+    ? standings
+    : [...standings].sort((a, b) => (a.userId === profile?.id ? -1 : b.userId === profile?.id ? 1 : 0))
+
   return (
     <div>
       <div className="overflow-x-auto">
@@ -47,14 +55,14 @@ export default function FantasyStandings({ league }) {
             </tr>
           </thead>
           <tbody>
-            {standings.map((s) => (
+            {sortedStandings.map((s) => (
               <tr
                 key={s.userId}
                 onClick={() => setSelectedUser(s)}
                 className="border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer"
               >
                 <td className="py-3.5 px-2 text-center">
-                  <span className={`font-display text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
+                  <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
                 </td>
                 <td className="py-3.5 px-2">
                   <div className="flex items-center gap-3 min-w-0">
@@ -83,7 +91,7 @@ export default function FantasyStandings({ league }) {
             ))}
           </tbody>
         </table>
-        {standings.length === 0 && (
+        {sortedStandings.length === 0 && (
           <div className="text-center py-8 text-text-muted text-sm">No members yet</div>
         )}
       </div>
