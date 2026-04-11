@@ -1157,7 +1157,7 @@ export default function LeagueDetailPage() {
             </span>
           )}
           {/* Invite action icons */}
-          {(league.status === 'open' || (league.status === 'active' && league.joins_locked_at && new Date(league.joins_locked_at) > new Date())) && league.format !== 'bracket' && (
+          {(league.status === 'open' || (league.status === 'active' && league.joins_locked_at && new Date(league.joins_locked_at) > new Date()) || (league.format === 'fantasy' && fantasySettings?.draft_status === 'pending')) && league.format !== 'bracket' && (
             <div className="flex items-center gap-5">
               <button
                 onClick={async () => {
