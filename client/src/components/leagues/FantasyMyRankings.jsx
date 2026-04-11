@@ -221,14 +221,16 @@ export default function FantasyMyRankings({ league }) {
             return (
               <div
                 key={r.player_id}
-                className={`flex items-center gap-2 px-2 py-2.5 transition-colors ${isDragging ? 'bg-accent/20 ring-1 ring-accent shadow-lg z-20 relative' : ''}`}
-                style={{ touchAction: editMode ? 'none' : undefined }}
+                className={`flex items-center gap-2 px-2 py-2.5 transition-colors select-none ${isDragging ? 'bg-accent/20 ring-1 ring-accent shadow-lg z-20 relative' : ''}`}
+                style={{ touchAction: editMode ? 'none' : undefined, WebkitUserSelect: editMode ? 'none' : undefined }}
               >
                 {/* Drag handle (edit mode only) */}
                 {editMode && (
                   <button
                     onPointerDown={(e) => startDrag(r.player_id, e)}
+                    onTouchStart={(e) => e.preventDefault()}
                     className="shrink-0 w-8 h-10 flex items-center justify-center text-text-muted active:text-text-primary cursor-grab active:cursor-grabbing"
+                    style={{ touchAction: 'none' }}
                     title="Drag to reorder"
                   >
                     <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor">

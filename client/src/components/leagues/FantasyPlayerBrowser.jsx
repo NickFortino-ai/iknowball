@@ -7,6 +7,7 @@ import {
 import { toast } from '../ui/Toast'
 import PlayerDetailModal from './PlayerDetailModal'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
+import FantasyMyRankings from './FantasyMyRankings'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 
@@ -47,6 +48,7 @@ function InjuryBadge({ status }) {
 }
 
 export default function FantasyPlayerBrowser({ league }) {
+  const [playerView, setPlayerView] = useState('ADP') // 'ADP' | 'My Ranks'
   const [searchQuery, setSearchQuery] = useState('')
   const [posFilter, setPosFilter] = useState('All')
   const [sortKey, setSortKey] = useState('pts')
@@ -130,8 +132,31 @@ export default function FantasyPlayerBrowser({ league }) {
     }
   }
 
+  // Pre-draft: show ADP / My Ranks toggle
+  const showRankingsToggle = settings?.draft_status !== 'completed'
+
   return (
     <div className="space-y-3">
+      {/* ADP / My Ranks toggle */}
+      {showRankingsToggle && (
+        <div className="flex gap-1 bg-bg-secondary rounded-lg p-1">
+          {['ADP', 'My Ranks'].map((v) => (
+            <button
+              key={v}
+              onClick={() => setPlayerView(v)}
+              className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                playerView === v ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >{v}</button>
+          ))}
+        </div>
+      )}
+
+      {/* My Ranks view */}
+      {playerView === 'My Ranks' && showRankingsToggle ? (
+        <FantasyMyRankings league={league} />
+      ) : <>
+
       {/* Waiver state summary */}
       {isWaiver && !isDraftPhase && myWaiverState && (
         <div className="rounded-xl border border-text-primary/20 px-4 py-3 bg-bg-primary/40 backdrop-blur-sm flex items-center justify-between">
@@ -368,6 +393,7 @@ export default function FantasyPlayerBrowser({ league }) {
       {detailPlayerId && (
         <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
       )}
+    </>}
     </div>
   )
 }

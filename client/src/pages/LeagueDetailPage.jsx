@@ -53,7 +53,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
       tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Thread', 'Draft']
     }
     if (!isSalaryCap && !draftDone && tabs.includes('Draft')) {
-      tabs.splice(tabs.indexOf('Draft') + 1, 0, 'Mock Draft', 'My Rankings')
+      tabs.splice(tabs.indexOf('Draft') + 1, 0, 'Mock Draft')
     }
     return tabs
   }
@@ -1665,10 +1665,6 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Mock Draft' && league.format === 'fantasy' && (
         <div className="relative z-10"><LeagueMockDraft league={league} fantasySettings={fantasySettings} /></div>
-      )}
-
-      {tabs[activeTab] === 'My Rankings' && league.format === 'fantasy' && (
-        <div className="relative z-10"><FantasyMyRankings league={league} /></div>
       )}
 
       {(tabs[activeTab] === 'My Team' || tabs[activeTab] === 'Roster') && league.format === 'fantasy' && (
