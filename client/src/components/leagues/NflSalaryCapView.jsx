@@ -29,7 +29,6 @@ export default function NflSalaryCapView({ league }) {
   const { data: roster, isLoading: rosterLoading } = useNflDfsRoster(league.id, currentWeek, season)
   const saveRoster = useSaveNflDfsRoster()
 
-  const [selectedSlot, setSelectedSlot] = useState(null)
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -51,6 +50,7 @@ export default function NflSalaryCapView({ league }) {
     return map
   }, [roster])
 
+  const hasSavedRoster = roster?.dfs_roster_slots?.length > 0
   const usedPlayerIds = useMemo(() => new Set(Object.values(lineup).filter(Boolean).map((p) => p.player_id || p.id)), [lineup])
   const totalSalary = useMemo(() => Object.values(lineup).reduce((sum, p) => sum + (p?.salary || 0), 0), [lineup])
   const remaining = salaryCap - totalSalary
@@ -61,28 +61,18 @@ export default function NflSalaryCapView({ league }) {
     if (!players) return []
     return players
       .filter((p) => !usedPlayerIds.has(p.id))
-      .filter((p) => {
-        if (selectedSlot) {
-          const slotDef = SLOTS.find((s) => s.key === selectedSlot)
-          return slotDef?.positions.includes(p.position)
-        }
-        return posFilter === 'All' || p.position === posFilter
-      })
+      .filter((p) => posFilter === 'All' || p.position === posFilter)
       .filter((p) => !searchQuery || p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
-      .filter((p) => p.salary <= remaining + (lineup[selectedSlot]?.salary || 0))
+      .filter((p) => p.salary <= remaining)
       .sort((a, b) => (b.salary || 0) - (a.salary || 0))
       .slice(0, 100)
-  }, [players, usedPlayerIds, posFilter, searchQuery, selectedSlot, remaining, lineup])
+  }, [players, usedPlayerIds, posFilter, searchQuery, remaining])
 
-  function handleAssign(player) {
-    if (!selectedSlot) {
-      // Find first empty eligible slot
-      const slot = SLOTS.find((s) => !lineup[s.key] && s.positions.includes(player.position))
-      if (!slot) { toast('No eligible slot available', 'error'); return }
-      handleSave(slot.key, player)
-    } else {
-      handleSave(selectedSlot, player)
-    }
+  function addPlayer(player) {
+    // Find first empty eligible slot
+    const slot = SLOTS.find((s) => !lineup[s.key] && s.positions.includes(player.position))
+    if (!slot) { toast('No eligible slot available', 'error'); return }
+    handleSave(slot.key, player)
   }
 
   async function handleSave(slotKey, player) {
@@ -94,14 +84,13 @@ export default function NflSalaryCapView({ league }) {
 
     try {
       await saveRoster.mutateAsync({ league_id: league.id, week: currentWeek, season, slots })
-      setSelectedSlot(null)
       setSearchQuery('')
     } catch (err) {
       toast(err.message || 'Failed to save roster', 'error')
     }
   }
 
-  async function handleRemove(slotKey) {
+  async function removeSlot(slotKey) {
     const newLineup = { ...lineup, [slotKey]: null }
     const slots = SLOTS.map((s) => {
       const p = newLineup[s.key]
@@ -118,118 +107,162 @@ export default function NflSalaryCapView({ league }) {
   if (playersLoading || rosterLoading) return <LoadingSpinner />
 
   return (
-    <div className="space-y-4">
-      {/* Salary bar */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-xs uppercase text-text-muted tracking-wider">Week {currentWeek} Lineup</div>
-          <div className="text-xs text-text-muted">{filledCount}/{SLOTS.length} filled</div>
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-text-muted text-xs">Remaining </span>
-            <span className={`font-display text-lg ${remaining < 0 ? 'text-incorrect' : 'text-correct'}`}>
+    <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+      {/* Left column: roster */}
+      <div>
+        {/* Salary Bar */}
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Salary Cap</span>
+            <span className="text-xs text-text-primary font-semibold">{filledCount}/{SLOTS.length} slots</span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className={`font-display text-2xl ${remaining < 0 ? 'text-incorrect' : 'text-correct'}`}>
               ${remaining.toLocaleString()}
             </span>
+            <span className="text-xs text-text-primary">of ${salaryCap.toLocaleString()}</span>
           </div>
-          <div className="text-xs text-text-muted">
-            ${totalSalary.toLocaleString()} / ${salaryCap.toLocaleString()}
-          </div>
-        </div>
-        <div className="w-full h-1.5 bg-bg-secondary rounded-full mt-2 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${remaining < 0 ? 'bg-incorrect' : 'bg-accent'}`}
-            style={{ width: `${Math.min(100, (totalSalary / salaryCap) * 100)}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Roster slots */}
-      <div className="rounded-xl border border-text-primary/20 overflow-hidden">
-        {SLOTS.map((slot) => {
-          const player = lineup[slot.key]
-          const isSelected = selectedSlot === slot.key
-          return (
+          <div className="mt-2 h-1.5 bg-text-primary/10 rounded-full overflow-hidden">
             <div
-              key={slot.key}
-              onClick={() => !player?.is_locked && setSelectedSlot(isSelected ? null : slot.key)}
-              className={`flex items-center gap-3 px-3 py-2.5 border-b border-text-primary/10 last:border-0 cursor-pointer transition-colors ${
-                isSelected ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-text-primary/5'
-              }`}
-            >
-              <span className="text-[10px] font-bold text-text-muted w-10 shrink-0">{slot.label}</span>
-              {player ? (
-                <>
-                  {player.headshot_url && (
-                    <img src={player.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
-                    <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'} · ${(player.salary || 0).toLocaleString()}</div>
-                  </div>
-                  {player.is_locked ? (
-                    <span className="text-[10px] text-text-muted">Locked</span>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleRemove(slot.key) }}
-                      className="text-incorrect text-xs font-semibold hover:text-incorrect/80 shrink-0"
-                    >Drop</button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="w-9 h-9 rounded-full border border-text-primary/20 shrink-0" />
-                  <div className="flex-1 text-xs text-text-muted italic">
-                    {isSelected ? 'Select a player below' : `Tap to fill ${slot.label}`}
-                  </div>
-                </>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Player browser */}
-      {selectedSlot && (
-        <div className="rounded-xl border border-text-primary/20 overflow-hidden">
-          <div className="p-3 border-b border-border">
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search players..."
-              className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+              className={`h-full rounded-full transition-all ${remaining < 0 ? 'bg-incorrect' : 'bg-accent'}`}
+              style={{ width: `${Math.min((totalSalary / salaryCap) * 100, 100)}%` }}
             />
           </div>
-          <div className="max-h-[40vh] overflow-y-auto">
+          {(SLOTS.length - filledCount) > 0 && (
+            <div className="mt-2 text-xs text-text-muted text-right">
+              ${Math.round(remaining / (SLOTS.length - filledCount)).toLocaleString()} avg per player
+            </div>
+          )}
+        </div>
+
+        {/* My Roster */}
+        <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-text-primary/10">
+            <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
+          </div>
+          {SLOTS.map((slot) => {
+            const player = lineup[slot.key]
+            const isLocked = player?.is_locked
+            const pointsEarned = player?.points_earned || 0
+            return (
+              <div
+                key={slot.key}
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
+              >
+                <span className="text-xs font-bold text-accent w-7 shrink-0">{slot.label}</span>
+                {player ? (
+                  <>
+                    {player.headshot_url && (
+                      <img
+                        src={player.headshot_url}
+                        alt=""
+                        className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                        onError={(e) => { e.target.style.display = 'none' }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-text-primary truncate">{player.full_name}</span>
+                        {isLocked && (
+                          <svg className="w-3 h-3 text-text-muted shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                    </div>
+                    {isLocked ? (
+                      <span className="text-sm font-display text-text-primary">{Math.round(pointsEarned * 10) / 10}</span>
+                    ) : (
+                      <span className="text-xs font-bold text-correct">${(player.salary || 0).toLocaleString()}</span>
+                    )}
+                    {!isLocked && (
+                      <button
+                        onClick={() => removeSlot(slot.key)}
+                        className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
+                      >
+                        &times;
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex-1 text-xs text-text-muted italic">Empty</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Right column: player pool */}
+      <div className="rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+        <div className="px-4 py-3 border-b border-text-primary/10">
+          <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search players..."
+            className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
+          />
+          <div className="flex gap-1.5 flex-wrap">
+            {POS_FILTERS.map((pos) => (
+              <button
+                key={pos}
+                onClick={() => setPosFilter(pos)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                  posFilter === pos
+                    ? 'bg-accent text-white'
+                    : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+                }`}
+              >
+                {pos}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {!available.length ? (
+          <div className="px-4 py-6 text-center text-xs text-text-muted">
+            {!players?.length ? `Player salaries for Week ${currentWeek} haven't been generated yet. They'll be available closer to game time.` : 'No players match your filters.'}
+          </div>
+        ) : (
+          <div className="max-h-[50vh] lg:max-h-none overflow-y-auto">
             {available.map((player) => (
               <div
                 key={player.id}
-                onClick={() => handleAssign(player)}
-                className="flex items-center gap-3 px-3 py-2.5 border-b border-text-primary/10 last:border-0 cursor-pointer hover:bg-accent/10 transition-colors"
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
               >
-                {player.headshot_url && (
-                  <img src={player.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
-                  <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {player.headshot_url ? (
+                    <img
+                      src={player.headshot_url}
+                      alt=""
+                      className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                      onError={(e) => { e.target.style.display = 'none' }}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
+                      {player.position}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-bold text-text-primary truncate block">{player.full_name}</span>
+                    <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                  </div>
+                  <span className="text-base font-semibold text-accent tabular-nums shrink-0">${(player.salary || 0).toLocaleString()}</span>
                 </div>
-                <div className="text-sm font-display text-accent shrink-0">${(player.salary || 0).toLocaleString()}</div>
+                <button
+                  onClick={() => addPlayer(player)}
+                  className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
+                >
+                  +
+                </button>
               </div>
             ))}
-            {available.length === 0 && (
-              <div className="text-center text-sm text-text-muted py-8">No eligible players found</div>
-            )}
           </div>
-        </div>
-      )}
-
-      {/* No players available message */}
-      {!players?.length && !playersLoading && (
-        <div className="text-center py-8 text-sm text-text-muted">
-          Player salaries for Week {currentWeek} haven't been generated yet. They'll be available closer to game time.
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
