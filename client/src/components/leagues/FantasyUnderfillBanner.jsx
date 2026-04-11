@@ -30,11 +30,10 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
   if (!league || league.format !== 'fantasy') return null
   if (!state || state.state === 'ok') return null
 
-  // Only show if draft is within 3 days (or no draft date set)
-  if (fantasySettings?.draft_date) {
-    const msUntilDraft = new Date(fantasySettings.draft_date).getTime() - Date.now()
-    if (msUntilDraft > 3 * 24 * 60 * 60 * 1000) return null
-  }
+  // Only show if draft is within 3 days — no urgency without a date
+  if (!fantasySettings?.draft_date) return null
+  const msUntilDraft = new Date(fantasySettings.draft_date).getTime() - Date.now()
+  if (msUntilDraft > 3 * 24 * 60 * 60 * 1000) return null
 
   const isBelowThreshold = state.state === 'below_threshold'
   const isResizable = state.state === 'resizable'
