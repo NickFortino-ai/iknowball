@@ -4,7 +4,7 @@ import RosterModal from './RosterModal'
 import { useFantasyStandings } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 
-export default function FantasyStandings({ league }) {
+export default function FantasyStandings({ league, isSalaryCap }) {
   const [selectedUser, setSelectedUser] = useState(null)
   const { data: serverStandings } = useFantasyStandings(league.id)
   const { profile } = useAuth()
@@ -48,10 +48,10 @@ export default function FantasyStandings({ league }) {
             <tr className="border-b border-text-primary/10 text-text-muted text-xs">
               <th className="py-3 px-2 text-center font-semibold w-10">#</th>
               <th className="py-3 px-2 text-left font-semibold">Manager</th>
-              <th className="py-3 px-2 text-center font-semibold">W-L-T</th>
-              <th className="py-3 px-2 text-center font-semibold">PF</th>
-              <th className="py-3 px-2 text-center font-semibold">PA</th>
-              <th className="py-3 px-2 text-center font-semibold">Streak</th>
+              <th className="py-3 px-2 text-center font-semibold">{isSalaryCap ? 'Wins' : 'W-L-T'}</th>
+              <th className="py-3 px-2 text-center font-semibold">{isSalaryCap ? 'Points' : 'PF'}</th>
+              {!isSalaryCap && <th className="py-3 px-2 text-center font-semibold">PA</th>}
+              {!isSalaryCap && <th className="py-3 px-2 text-center font-semibold">Streak</th>}
             </tr>
           </thead>
           <tbody>
@@ -78,15 +78,21 @@ export default function FantasyStandings({ league }) {
                   </div>
                 </td>
                 <td className="py-3.5 px-2 text-center text-text-primary text-base">
-                  {s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}-${s.ties}` : '--'}
+                  {isSalaryCap
+                    ? (s.wins > 0 ? s.wins : '--')
+                    : (s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}-${s.ties}` : '--')}
                 </td>
                 <td className="py-3.5 px-2 text-center text-white font-display text-base">
                   {s.pointsFor > 0 ? s.pointsFor.toFixed(1) : '--'}
                 </td>
-                <td className="py-3.5 px-2 text-center text-text-primary text-base">
-                  {s.pointsAgainst > 0 ? s.pointsAgainst.toFixed(1) : '--'}
-                </td>
-                <td className="py-3.5 px-2 text-center text-text-muted">{s.streak}</td>
+                {!isSalaryCap && (
+                  <td className="py-3.5 px-2 text-center text-text-primary text-base">
+                    {s.pointsAgainst > 0 ? s.pointsAgainst.toFixed(1) : '--'}
+                  </td>
+                )}
+                {!isSalaryCap && (
+                  <td className="py-3.5 px-2 text-center text-text-muted">{s.streak}</td>
+                )}
               </tr>
             ))}
           </tbody>
