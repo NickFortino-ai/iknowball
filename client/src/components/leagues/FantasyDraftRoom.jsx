@@ -317,15 +317,27 @@ export default function FantasyDraftRoom({ league }) {
         ) : draftDateValid ? (
           <DraftCountdown date={draftDate} />
         ) : null}
-        {isCommissioner && !hasPickSlots && (
-          <button
-            onClick={handleInitDraft}
-            disabled={initDraft.isPending}
-            className="px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 mb-3"
-          >
-            {initDraft.isPending ? 'Randomizing...' : 'Randomize Draft Order'}
-          </button>
-        )}
+        {isCommissioner && !hasPickSlots && (() => {
+          const memberCount = league.members?.length || 0
+          const numTeams = settings?.num_teams || 10
+          const isFull = memberCount >= numTeams
+          return (
+            <>
+              <button
+                onClick={handleInitDraft}
+                disabled={initDraft.isPending || !isFull}
+                className="px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 mb-3"
+              >
+                {initDraft.isPending ? 'Randomizing...' : 'Randomize Draft Order'}
+              </button>
+              {!isFull && (
+                <p className="text-xs text-text-muted mb-3">
+                  {memberCount}/{numTeams} members joined — league must be full before setting draft order.
+                </p>
+              )}
+            </>
+          )
+        })()}
         {isCommissioner && hasPickSlots && settings?.draft_mode === 'offline' && (
           <button
             onClick={async () => {
