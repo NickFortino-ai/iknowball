@@ -1211,7 +1211,7 @@ export default function LeagueDetailPage() {
           leagues that haven't drafted yet */}
       {isCommissioner && league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && fantasySettings?.draft_status !== 'completed' && fantasySettings?.draft_status !== 'in_progress' && (
         <div className="mt-4">
-          <FantasyUnderfillBanner league={league} />
+          <FantasyUnderfillBanner league={league} fantasySettings={fantasySettings} />
         </div>
       )}
 

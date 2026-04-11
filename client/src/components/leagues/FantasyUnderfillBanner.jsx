@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom'
  * Plus a "Switch to open" suggestion if the league is currently
  * invite-only — increases the chance of filling up.
  */
-export default function FantasyUnderfillBanner({ league }) {
+export default function FantasyUnderfillBanner({ league, fantasySettings }) {
   const navigate = useNavigate()
   const { data: state } = useFantasyUnderfillState(league?.id)
   const resize = useResizeFantasyLeague(league?.id)
@@ -29,6 +29,12 @@ export default function FantasyUnderfillBanner({ league }) {
 
   if (!league || league.format !== 'fantasy') return null
   if (!state || state.state === 'ok') return null
+
+  // Only show if draft is within 3 days (or no draft date set)
+  if (fantasySettings?.draft_date) {
+    const msUntilDraft = new Date(fantasySettings.draft_date).getTime() - Date.now()
+    if (msUntilDraft > 3 * 24 * 60 * 60 * 1000) return null
+  }
 
   const isBelowThreshold = state.state === 'below_threshold'
   const isResizable = state.state === 'resizable'
@@ -80,7 +86,7 @@ export default function FantasyUnderfillBanner({ league }) {
 
   return (
     <>
-      <div className="rounded-xl border-2 border-yellow-500/50 bg-yellow-500/10 p-4 mb-4">
+      <div className="rounded-xl border-2 border-yellow-500/50 bg-yellow-500/15 p-4 mb-4 relative z-10">
         <div className="flex items-start gap-3">
           <div className="text-2xl">⚠️</div>
           <div className="flex-1 min-w-0">
