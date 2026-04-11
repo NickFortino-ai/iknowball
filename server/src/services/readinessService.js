@@ -367,6 +367,52 @@ async function computeTdPassReadiness(leagues, userId, result) {
 }
 
 /**
+ * Check if all NFL games for a given fantasy week are final/postponed.
+ * When true, the readiness clip should be suppressed until the week rolls over.
+ */
+async function isNflWeekDone(week, season) {
+  if (!week || !season) return false
+  try {
+    const { getNflGamesForWeek } = await import('./sleeperService.js')
+    // Sleeper doesn't have a direct week→games endpoint, so we check our DB
+    // for NFL games in the week's date range. NFL weeks roughly:
+    // Thursday through Monday. We check if any game is still upcoming/live.
+    const { data: sportRow } = await supabase
+      .from('sports')
+      .select('id')
+      .eq('key', 'americanfootball_nfl')
+      .single()
+    if (!sportRow) return false
+
+    // Get all NFL games that have fantasy stats for this week
+    const { data: stats } = await supabase
+      .from('nfl_player_stats')
+      .select('game_id')
+      .eq('week', week)
+      .eq('season', season)
+      .limit(1)
+
+    // If no stats rows exist for this week, the week hasn't started
+    if (!stats?.length) return false
+
+    // Check if any NFL game is still live or upcoming this week by looking at
+    // games within a reasonable window. NFL weeks span Thu-Mon.
+    // Alternative approach: check fantasy_matchups status
+    const { data: matchups } = await supabase
+      .from('fantasy_matchups')
+      .select('status')
+      .eq('week', week)
+      .limit(5)
+
+    // If all matchups for this week are 'completed', the week is done
+    if (matchups?.length > 0 && matchups.every((m) => m.status === 'completed')) {
+      return true
+    }
+  } catch {}
+  return false
+}
+
+/**
  * Fantasy traditional: ready if every required starter slot is filled AND no
  * starter is currently 'Out'. Questionable starters → attention.
  */
@@ -374,10 +420,22 @@ async function computeFantasyReadiness(leagues, userId, result) {
   const leagueIds = leagues.map((l) => l.id)
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('league_id, format, roster_slots')
+    .select('league_id, format, roster_slots, current_week, season')
     .in('league_id', leagueIds)
   const settingsByLeague = {}
   for (const s of settings || []) settingsByLeague[s.league_id] = s
+
+  // Check if all NFL games for the current fantasy week are done.
+  // If so, suppress clips until the week rolls over (Tuesday 3 AM ET).
+  const weekDoneCache = {}
+  for (const s of settings || []) {
+    if (s.current_week && s.season) {
+      const key = `${s.season}-${s.current_week}`
+      if (!(key in weekDoneCache)) {
+        weekDoneCache[key] = await isNflWeekDone(s.current_week, s.season)
+      }
+    }
+  }
 
   const { data: rosters } = await supabase
     .from('fantasy_rosters')
@@ -419,6 +477,9 @@ async function computeFantasyReadiness(leagues, userId, result) {
     const s = settingsByLeague[l.id]
     // No settings row at all → can't verify, leave null
     if (!s) continue
+    // If all NFL games for this week are final, suppress the clip
+    const weekKey = s.current_week && s.season ? `${s.season}-${s.current_week}` : null
+    if (weekKey && weekDoneCache[weekKey]) continue
     // Salary cap fantasy: red if no lineup OR any Out player; yellow if any
     // Questionable/Doubtful; green otherwise. Bye-week players in the lineup
     // are also red since the slot is effectively wasted.
