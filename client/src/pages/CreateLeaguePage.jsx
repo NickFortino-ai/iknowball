@@ -633,6 +633,20 @@ export default function CreateLeaguePage() {
             </div>
           </div>
         )}
+
+        {/* Start date for non-custom durations (this_week, full_season, playoffs_only) */}
+        {duration && duration !== 'custom_range' && (
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">Start Date</label>
+            <input
+              type="date"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
+              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+            />
+            <p className="text-xs text-text-muted mt-1">When members can start making picks. Leave blank to start today.</p>
+          </div>
+        )}
         </>}
 
         {/* Max Members — only standalone for formats without their own settings section */}
