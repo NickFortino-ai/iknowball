@@ -6,6 +6,8 @@ import { useAuth } from '../../hooks/useAuth'
 
 export default function FantasyStandings({ league, isSalaryCap }) {
   const [selectedUser, setSelectedUser] = useState(null)
+  const [sortCol, setSortCol] = useState(null) // null = default (W-L), 'pf', 'pa'
+  const [sortDir, setSortDir] = useState('desc')
   const { data: serverStandings } = useFantasyStandings(league.id)
   const { profile } = useAuth()
 
@@ -36,9 +38,25 @@ export default function FantasyStandings({ league, isSalaryCap }) {
 
   // Pre-season: no games played yet — show user on top, no rank numbers
   const seasonStarted = standings.some((s) => s.gamesPlayed > 0 || s.wins > 0 || s.losses > 0 || s.pointsFor > 0)
-  const sortedStandings = seasonStarted
-    ? standings
-    : [...standings].sort((a, b) => (a.userId === profile?.id ? -1 : b.userId === profile?.id ? 1 : 0))
+
+  function handleSortClick(col) {
+    if (sortCol === col) {
+      if (sortDir === 'desc') setSortDir('asc')
+      else { setSortCol(null); setSortDir('desc') } // third tap resets to default
+    } else {
+      setSortCol(col)
+      setSortDir('desc')
+    }
+  }
+
+  const sortedStandings = (() => {
+    if (!seasonStarted) {
+      return [...standings].sort((a, b) => (a.userId === profile?.id ? -1 : b.userId === profile?.id ? 1 : 0))
+    }
+    if (!sortCol) return standings // default server order (W-L record)
+    const key = sortCol === 'pf' ? 'pointsFor' : 'pointsAgainst'
+    return [...standings].sort((a, b) => sortDir === 'desc' ? b[key] - a[key] : a[key] - b[key])
+  })()
 
   return (
     <div>
@@ -49,8 +67,20 @@ export default function FantasyStandings({ league, isSalaryCap }) {
               <th className="py-3 px-2 text-center font-semibold w-10">#</th>
               <th className="py-3 px-2 text-left font-semibold">Manager</th>
               <th className="py-3 px-2 text-center font-semibold">{isSalaryCap ? 'Wins' : 'W-L-T'}</th>
-              <th className="py-3 px-2 text-center font-semibold">{isSalaryCap ? 'Points' : 'PF'}</th>
-              {!isSalaryCap && <th className="py-3 px-2 text-center font-semibold">PA</th>}
+              <th
+                className={`py-3 px-2 text-center font-semibold ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`}
+                onClick={() => !isSalaryCap && handleSortClick('pf')}
+              >
+                {isSalaryCap ? 'Points' : 'PF'}{sortCol === 'pf' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+              </th>
+              {!isSalaryCap && (
+                <th
+                  className="py-3 px-2 text-center font-semibold cursor-pointer select-none hover:text-text-primary"
+                  onClick={() => handleSortClick('pa')}
+                >
+                  PA{sortCol === 'pa' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+              )}
               {!isSalaryCap && <th className="py-3 px-2 text-center font-semibold">Streak</th>}
             </tr>
           </thead>
