@@ -101,8 +101,17 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     byFormat[l.format].push(l)
   }
 
-  // Today (Eastern) — used for DFS / hr_derby
-  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  // Today (Eastern) — used for DFS / hr_derby. If it's past midnight ET but
+  // games from yesterday are still live, use yesterday's date so rostered
+  // lineups still match. This prevents false "no lineup" red clips after midnight.
+  const nowET = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+  const etHour = new Date(nowET).getHours()
+  let todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  if (etHour < 6) {
+    // Before 6 AM ET, check yesterday's date — games from last night may still be live
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    todayET = yesterday.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  }
 
   // Pre-compute which sports are "done" for today (last game ended 4h ago).
   // Daily formats whose sport is done will return null (no clip) until the
