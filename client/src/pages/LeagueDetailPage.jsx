@@ -1173,7 +1173,7 @@ export default function LeagueDetailPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
                 </svg>
               </button>
-              {navigator.share && (
+              {navigator.share && league.status !== 'open' && !(league.format === 'fantasy' && fantasySettings?.draft_status === 'pending') && (
                 <button
                   onClick={async () => {
                     const url = `${window.location.origin}/join/${league.invite_code}`
