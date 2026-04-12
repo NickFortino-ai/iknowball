@@ -17,6 +17,8 @@ function adpScore(p, ctx = {}) {
   else raw = p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank
   raw = raw ?? 9999
   if (p.position === 'QB' && (ctx.superflex || ctx.qbCount >= 2)) raw -= 30
+  // In 1QB leagues, push QBs down to realistic ADP range when using search_rank fallback
+  if (p.position === 'QB' && !ctx.superflex && (ctx.qbCount || 1) < 2 && !p.adp_ppr && !p.adp_half_ppr) raw += 40
   return raw
 }
 

@@ -15,22 +15,17 @@ const router = Router()
 router.get('/players', requireAuth, async (req, res) => {
   // Pull a wide pool, then sort client-side by best-available signal:
   // adp_half_ppr (most accurate) → adp_ppr → search_rank fallback.
-  // Note: don't filter by status='Active' — Sleeper's DEF "players" don't
-  // carry that field, so the filter would silently drop every defense.
-  // The team-IS-NOT-NULL + position filter is enough to exclude retired/FA.
   const SELECT = 'id, full_name, position, team, headshot_url, search_rank, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, adp_ppr, adp_half_ppr'
 
-  // Two parallel queries so defenses are guaranteed to make it into the
-  // pool. The unified query previously ordered by search_rank with limit
-  // 500, and DEF rows (which default to search_rank=9999 in our Sleeper
-  // sync) could get pushed out by ~500 deep WRs and RBs that share the
-  // same fallback rank. Pull them separately and merge.
+  // Two parallel queries so defenses are guaranteed to make it into the pool.
+  // Filter out retired players explicitly alongside team IS NOT NULL.
   const [offensiveResult, defResult] = await Promise.all([
     supabase
       .from('nfl_players')
       .select(SELECT)
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
       .not('team', 'is', null)
+      .neq('status', 'retired')
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(500),
     supabase

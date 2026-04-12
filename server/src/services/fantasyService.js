@@ -716,6 +716,7 @@ export async function autoDraftPick(leagueId, userId) {
       .select('id')
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
       .not('team', 'is', null)
+      .neq('status', 'retired')
       .order('search_rank', { ascending: true })
       .limit(300)
     pick = (bestAvailable || []).find((p) => !drafted.has(p.id))
@@ -876,6 +877,7 @@ async function seedUserRankings(leagueId, userId) {
     .select('id, position, search_rank, adp_ppr, adp_half_ppr')
     .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
     .not('team', 'is', null)
+    .neq('status', 'retired')
     .limit(500)
 
   if (!pool?.length) return
@@ -2016,6 +2018,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       .select(PLAYER_SELECT)
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
       .not('team', 'is', null)
+      .neq('status', 'retired')
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(800),
     supabase
