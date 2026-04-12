@@ -226,7 +226,7 @@ export default function HomePage() {
         {/* League Formats */}
         <div className="mb-16">
           <h2 className="font-display text-3xl text-center mb-3">Run Your League</h2>
-          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">11 formats. 7 sports. Unlimited leagues. Play with friends all year round.</p>
+          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">11 formats. 10 sports. Unlimited leagues. Play with friends all year round.</p>
 
           {/* Row 1: Traditional Fantasy Football (featured) + Salary Cap Fantasy Football */}
           <div className="grid lg:grid-cols-5 gap-4 mb-4">
@@ -326,7 +326,7 @@ export default function HomePage() {
           <h2 className="font-display text-3xl text-center mb-3">Pick Winners. Build Your Record.</h2>
           <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">Beyond leagues, every pick counts toward your global score. Climb from Rookie to GOAT.</p>
 
-          <div className="grid sm:grid-cols-2 gap-4 mb-6">
+          <div className="grid sm:grid-cols-3 gap-4 mb-6">
             {/* Game Pick Preview */}
             <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
               <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Game Picks</div>
@@ -374,6 +374,38 @@ export default function HomePage() {
               </div>
               <p className="text-sm text-text-secondary mt-4 leading-relaxed">Predict player performances — points, rebounds, strikeouts, home runs. New props drop daily for every sport in season.</p>
             </div>
+
+            {/* Futures Preview */}
+            <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
+              <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Futures</div>
+              <div className="rounded-xl border border-text-primary/15 bg-black/30 p-4 relative overflow-hidden">
+                <div className="text-center mb-3">
+                  <div className="font-semibold text-text-primary">2026 NBA Championship</div>
+                  <div className="text-xs text-text-muted">Pick the winner before the season ends</div>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20">
+                    <span className="text-sm font-semibold text-text-primary">Boston Celtics</span>
+                    <span className="text-xs font-semibold"><span className="text-incorrect">-10</span> <span className="text-text-muted">→</span> <span className="text-correct">+14</span></span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20">
+                    <span className="text-sm font-semibold text-text-primary">OKC Thunder</span>
+                    <span className="text-xs font-semibold"><span className="text-incorrect">-10</span> <span className="text-text-muted">→</span> <span className="text-correct">+18</span></span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20">
+                    <span className="text-sm font-semibold text-text-primary">Cleveland Cavaliers</span>
+                    <span className="text-xs font-semibold"><span className="text-incorrect">-10</span> <span className="text-text-muted">→</span> <span className="text-correct">+22</span></span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20 opacity-50">
+                    <span className="text-sm font-semibold text-text-primary">New York Knicks</span>
+                    <span className="text-xs font-semibold"><span className="text-incorrect">-10</span> <span className="text-text-muted">→</span> <span className="text-correct">+30</span></span>
+                  </div>
+                </div>
+                {/* Fade-out effect at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+              </div>
+              <p className="text-sm text-text-secondary mt-4 leading-relaxed">Predict champions, MVPs, and tournament winners across every sport — including golf majors. Big risk, big reward.</p>
+            </div>
           </div>
 
           {/* Scoring explainer */}
@@ -420,7 +452,7 @@ export default function HomePage() {
         <div className="mb-16 flex flex-wrap items-center justify-center gap-8 sm:gap-16 py-6 border-y border-text-primary/10">
           {[
             { value: '11', label: 'League Formats' },
-            { value: '7+', label: 'Sports Covered' },
+            { value: '10', label: 'Sports Covered' },
             { value: '24/7', label: 'Live Odds' },
             { value: '∞', label: 'Leagues to Run' },
           ].map((stat) => (
