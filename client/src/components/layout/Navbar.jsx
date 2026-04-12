@@ -1015,16 +1015,7 @@ export default function Navbar() {
           </div>
         )}
 
-        {!isAuthenticated && (
-          <div className="flex items-center gap-2">
-            <Link to="/login" className="text-sm text-text-secondary hover:text-text-primary transition-colors">
-              Sign In
-            </Link>
-            <Link to="/signup" className="text-sm bg-accent hover:bg-accent-hover text-white px-4 py-1.5 rounded-lg transition-colors font-medium">
-              Sign Up
-            </Link>
-          </div>
-        )}
+        {/* Auth links moved to hero CTA on landing page */}
       </div>
     </nav>
     <PickDetailModal pickId={selectedPickId} onClose={() => setSelectedPickId(null)} />

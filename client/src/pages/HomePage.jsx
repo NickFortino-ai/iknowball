@@ -180,7 +180,7 @@ export default function HomePage() {
           {!isAuthenticated ? (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link to="/signup" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
-                Start Picking
+                Sign Up
               </Link>
               <Link to="/login" className="w-full sm:w-auto text-center bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 text-white px-8 py-3 rounded-xl text-lg transition-colors">
                 Sign In
