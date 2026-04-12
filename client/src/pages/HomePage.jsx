@@ -401,7 +401,7 @@ export default function HomePage() {
             <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
               <div className="text-xs font-bold uppercase tracking-wider text-accent mb-3">The Hub</div>
               <h3 className="font-display text-lg text-white mb-2">Social Feed</h3>
-              <p className="text-sm text-text-secondary leading-relaxed">Post hot takes, react to plays, see what the community is picking. Your own sports social network.</p>
+              <p className="text-sm text-text-secondary leading-relaxed">Share posts, predictions, and polls. React to plays, see what the community is picking. Your own sports social network.</p>
             </div>
             <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
               <div className="text-xs font-bold uppercase tracking-wider text-accent mb-3">Headlines</div>
