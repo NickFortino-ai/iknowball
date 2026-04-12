@@ -137,19 +137,22 @@ export default function MessageThreadPage() {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSend} className="flex gap-2 pt-3 border-t border-border">
-        <input
-          type="text"
+      <form onSubmit={handleSend} className="flex items-end gap-2 pt-3 border-t border-border">
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
           placeholder="Type a message..."
           maxLength={2000}
-          className="flex-1 bg-bg-input border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 transition-colors"
+          rows={1}
+          className="flex-1 bg-bg-input border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 transition-colors resize-none max-h-32 overflow-y-auto"
+          style={{ height: 'auto', minHeight: '2.5rem' }}
+          ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 128) + 'px' } }}
         />
         <button
           type="submit"
           disabled={!input.trim() || sendMessage.isPending}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
         >
           Send
         </button>
