@@ -357,6 +357,7 @@ export default function HomePage() {
               <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Player Props</div>
               <div className="rounded-xl border border-text-primary/15 bg-black/30 p-4">
                 <div className="text-center mb-3">
+                  <img src="https://a.espncdn.com/i/headshots/mlb/players/full/33192.png" alt="Aaron Judge" className="w-14 h-14 rounded-full object-cover bg-bg-secondary mx-auto mb-2" />
                   <div className="font-semibold text-text-primary">Aaron Judge</div>
                   <div className="text-xs text-text-muted">NYY vs LAA · Total Bases</div>
                 </div>
