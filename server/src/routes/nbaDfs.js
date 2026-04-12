@@ -415,8 +415,12 @@ router.get('/player/lookup', async (req, res) => {
   const { name, sport } = req.query
   if (!name) return res.status(400).json({ error: 'name required' })
 
+  // Normalize: strip periods (C.J. → CJ) for matching
+  const normalized = name.replace(/\./g, '')
+
   // Try DFS salaries table (NBA first, then MLB)
-  const { data } = await supabase
+  // Try exact name first, then normalized (handles C.J. vs CJ)
+  let { data } = await supabase
     .from('nba_dfs_salaries')
     .select('espn_player_id, player_name, headshot_url, team, position')
     .ilike('player_name', `%${name}%`)
@@ -424,15 +428,37 @@ router.get('/player/lookup', async (req, res) => {
     .limit(1)
     .maybeSingle()
 
+  if (!data && normalized !== name) {
+    const r = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id, player_name, headshot_url, team, position')
+      .ilike('player_name', `%${normalized}%`)
+      .order('game_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    data = r.data
+  }
+
   if (data) return res.json(data)
 
-  const { data: mlbData } = await supabase
+  let { data: mlbData } = await supabase
     .from('mlb_dfs_salaries')
     .select('espn_player_id, player_name, headshot_url, team, position')
     .ilike('player_name', `%${name}%`)
     .order('game_date', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  if (!mlbData && normalized !== name) {
+    const r = await supabase
+      .from('mlb_dfs_salaries')
+      .select('espn_player_id, player_name, headshot_url, team, position')
+      .ilike('player_name', `%${normalized}%`)
+      .order('game_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    mlbData = r.data
+  }
 
   if (mlbData) return res.json(mlbData)
 
