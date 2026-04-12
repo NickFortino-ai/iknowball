@@ -226,9 +226,9 @@ export default function HomePage() {
         {/* League Formats */}
         <div className="mb-16">
           <h2 className="font-display text-3xl text-center mb-3">Run Your League</h2>
-          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">Six formats. Seven sports. Unlimited leagues. Play with friends all year.</p>
+          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">11 formats. 7 sports. Unlimited leagues. Play with friends all year round.</p>
 
-          {/* Row 1: Fantasy Football (featured) + Pick'em */}
+          {/* Row 1: Traditional Fantasy Football (featured) + Salary Cap Fantasy Football */}
           <div className="grid lg:grid-cols-5 gap-4 mb-4">
             <Link to="/signup" className="group lg:col-span-3 relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/50 transition-colors">
               <div className="absolute inset-0 bg-gradient-to-br from-green-800/30 via-green-900/20 to-transparent pointer-events-none" />
@@ -236,36 +236,33 @@ export default function HomePage() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-accent">Featured</span>
                 </div>
-                <h3 className="font-display text-2xl sm:text-3xl text-white mb-2">Fantasy Football</h3>
-                <p className="text-sm text-text-secondary leading-relaxed mb-4 max-w-md">Draft your squad, set weekly lineups, work the waiver wire, make trades, and battle through a full playoff bracket. The most complete fantasy football experience — built from scratch.</p>
+                <h3 className="font-display text-2xl sm:text-3xl text-white mb-2">Traditional Fantasy Football</h3>
+                <p className="text-sm text-text-secondary leading-relaxed mb-4 max-w-md">Snake draft, weekly lineups, waiver wire, trades, and a full playoff bracket. The complete fantasy football experience — built from scratch with the best visuals in the game.</p>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src="https://a.espncdn.com/i/teamlogos/nfl/500/default-team-logo-500.png" alt="" className="w-6 h-6 object-contain opacity-50" />
-                    <span className="text-xs text-text-muted">NFL</span>
-                  </div>
+                  <span className="text-xs text-text-muted">NFL</span>
                   <span className="text-sm text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
                 </div>
               </div>
             </Link>
             <Link to="/signup" className="group lg:col-span-2 relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/50 transition-colors">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-700/25 via-orange-900/15 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-800/25 via-emerald-900/15 to-transparent pointer-events-none" />
               <div className="relative p-6">
-                <h3 className="font-display text-xl text-white mb-2">Pick'em</h3>
-                <p className="text-sm text-text-secondary leading-relaxed mb-4">Pick the winner of every game using real Vegas odds. Underdogs pay more — favorites pay less. Climb the standings all season.</p>
+                <h3 className="font-display text-xl text-white mb-2">Salary Cap Fantasy Football</h3>
+                <p className="text-sm text-text-secondary leading-relaxed mb-4">Draft under a salary cap — every player has a price. Build a new roster each week and compete for the highest score. No waivers, no trades, just roster-building strategy.</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">NFL · NBA · MLB · NHL</span>
+                  <span className="text-xs text-text-muted">NFL</span>
                   <span className="text-xs text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
                 </div>
               </div>
             </Link>
           </div>
 
-          {/* Row 2: Survivor + NBA DFS + MLB DFS */}
+          {/* Row 2: Pick'em + Survivor + Brackets */}
           <div className="grid sm:grid-cols-3 gap-4 mb-4">
             {[
+              { title: "Pick'em", desc: 'Pick the winner of every game using real Vegas odds. Underdogs pay more, favorites pay less. Compete for the best record all season.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL' },
               { title: 'Survivor', desc: "Pick one team to win each day. If they lose, you lose a life. Can't reuse a team. Last one standing wins.", gradient: 'from-red-800/25 via-red-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL' },
-              { title: 'NBA Daily Fantasy', desc: 'Build a fresh roster every night under a salary cap. No draft, no season-long commitment — just nightly lineups.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'NBA' },
-              { title: 'MLB Daily Fantasy', desc: 'Set a new lineup every game day under a salary cap. Stack hitters, pick pitchers, chase the big night.', gradient: 'from-sky-800/25 via-sky-900/15 to-transparent', sports: 'MLB' },
+              { title: 'Brackets', desc: 'Fill out a bracket and compete with your league. March Madness, NFL playoffs, NBA playoffs — every major tournament covered.', gradient: 'from-violet-800/25 via-violet-900/15 to-transparent', sports: 'NCAAB · NFL · NBA · All Playoffs' },
             ].map((mode) => (
               <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
                 <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} pointer-events-none`} />
@@ -281,10 +278,32 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Row 3: Squares + Home Run Derby */}
-          <div className="grid sm:grid-cols-2 gap-4">
+          {/* Row 3: TD Survivor + Passing TD Competition + NBA DFS */}
+          <div className="grid sm:grid-cols-3 gap-4 mb-4">
             {[
-              { title: 'Squares', desc: 'Claim a square on the grid. When the score hits your row and column at the end of a quarter, you win.', gradient: 'from-purple-800/25 via-purple-900/15 to-transparent', sports: 'NFL · NBA · MLB' },
+              { title: 'Touchdown Survivor', desc: 'Pick one player to score a non-passing TD each week. Rush, reception, return — any TD counts. Miss and you lose a life.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL' },
+              { title: 'Passing TD Competition', desc: 'Pick the QB you think will throw the most touchdowns each week. 20 legendary QBs to choose from — each usable only once.', gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL' },
+              { title: 'NBA Daily Fantasy', desc: 'Build a fresh roster every night under a salary cap. No draft, no season commitment — just nightly lineup strategy.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'NBA' },
+            ].map((mode) => (
+              <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
+                <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} pointer-events-none`} />
+                <div className="relative">
+                  <h3 className="font-display text-lg text-white mb-2">{mode.title}</h3>
+                  <p className="text-sm text-text-secondary leading-relaxed mb-3">{mode.desc}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-muted">{mode.sports}</span>
+                    <span className="text-xs text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Row 4: MLB DFS + Squares + Home Run Derby */}
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              { title: 'MLB Daily Fantasy', desc: 'Set a new lineup every game day under a salary cap. Stack hitters, pick pitchers, chase the big night.', gradient: 'from-sky-800/25 via-sky-900/15 to-transparent', sports: 'MLB' },
+              { title: 'Squares', desc: 'Claim a square on the grid. When the score hits your row and column at the end of a quarter, you win. Classic game-day format.', gradient: 'from-purple-800/25 via-purple-900/15 to-transparent', sports: 'NFL · NBA · MLB' },
               { title: 'Home Run Derby', desc: 'Pick 3 hitters per day. Each player usable once per week. Most homers across the season wins.', gradient: 'from-amber-800/25 via-amber-900/15 to-transparent', sports: 'MLB' },
             ].map((mode) => (
               <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
@@ -357,7 +376,7 @@ export default function HomePage() {
                   <span className="text-xs text-text-muted">Risk 10 → Win up to 18</span>
                 </div>
               </div>
-              <p className="text-sm text-text-secondary mt-4 leading-relaxed">Bet on player performances — points, rebounds, strikeouts, home runs. New props drop daily for every sport in season.</p>
+              <p className="text-sm text-text-secondary mt-4 leading-relaxed">Predict player performances — points, rebounds, strikeouts, home runs. New props drop daily for every sport in season.</p>
             </div>
           </div>
 
@@ -404,7 +423,7 @@ export default function HomePage() {
         {/* Social proof strip */}
         <div className="mb-16 flex flex-wrap items-center justify-center gap-8 sm:gap-16 py-6 border-y border-text-primary/10">
           {[
-            { value: '7', label: 'League Formats' },
+            { value: '11', label: 'League Formats' },
             { value: '7+', label: 'Sports Covered' },
             { value: '24/7', label: 'Live Odds' },
             { value: '∞', label: 'Leagues to Run' },
