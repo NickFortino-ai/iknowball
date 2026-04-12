@@ -132,7 +132,7 @@ export default function HomePage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setHeroIdx((i) => (i + 1) % HERO_IMAGES.length)
-    }, 9000)
+    }, 11000)
     return () => clearInterval(interval)
   }, [])
 
@@ -150,9 +150,9 @@ export default function HomePage() {
               className="absolute inset-0 w-full h-full object-cover"
               style={{
                 opacity: i === heroIdx ? 1 : 0,
-                transform: i === heroIdx ? 'scale(1.08)' : 'scale(1)',
+                transform: i === heroIdx ? 'scale(1.05)' : 'scale(1)',
                 transition: i === heroIdx
-                  ? 'opacity 2.5s ease-in-out, transform 12s ease-out'
+                  ? 'opacity 2.5s ease-in-out, transform 15s ease-out'
                   : 'opacity 2.5s ease-in-out, transform 0.01s 2.6s',
               }}
               loading={i <= 1 ? 'eager' : 'lazy'}
