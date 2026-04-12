@@ -33,7 +33,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-bg-card rounded-2xl p-8 border border-border">
+      <div className="w-full max-w-md bg-bg-primary rounded-2xl p-8 border border-text-primary/20">
         <h1 className="font-display text-3xl text-center mb-2">Join the Game</h1>
         <p className="text-text-secondary text-center mb-8">
           {localStorage.getItem('pendingInviteCode')
