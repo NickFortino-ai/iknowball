@@ -50,7 +50,7 @@ export default function ParlaySlip() {
             <span className="text-text-primary font-semibold">
               {parlayLegs.length}-Leg Parlay
             </span>
-            <span className="bg-accent/20 text-accent text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="text-accent text-xs font-bold">
               {combinedMultiplier.toFixed(2)}x
             </span>
           </div>
