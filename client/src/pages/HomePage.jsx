@@ -127,14 +127,14 @@ export default function HomePage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setHeroIdx((i) => (i + 1) % HERO_IMAGES.length)
-    }, 5000)
+    }, 9000)
     return () => clearInterval(interval)
   }, [])
 
   return (
-    <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-8 sm:py-12">
-      {/* Hero with cycling stadium backdrops */}
-      <div className="relative text-center mb-16 overflow-hidden rounded-2xl">
+    <div>
+      {/* Hero with cycling stadium backdrops — full width like league backdrops */}
+      <div className="relative text-center mb-0 overflow-hidden">
         {/* Backdrop images */}
         <div className="absolute inset-0">
           {HERO_IMAGES.map((src, i) => (
@@ -142,17 +142,17 @@ export default function HomePage() {
               key={src}
               src={src}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms] ease-in-out"
+              className="absolute inset-0 w-full h-full object-cover"
               style={{
                 opacity: i === heroIdx ? 1 : 0,
-                transform: i === heroIdx ? 'scale(1.05)' : 'scale(1)',
-                transition: 'opacity 2s ease-in-out, transform 8s ease-out',
+                transform: i === heroIdx ? 'scale(1.08)' : 'scale(1)',
+                transition: 'opacity 2.5s ease-in-out, transform 12s ease-out',
               }}
               loading={i <= 1 ? 'eager' : 'lazy'}
             />
           ))}
-          {/* Dark gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
+          {/* Dark gradient overlay — stronger at bottom for fade into content */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-bg-primary" />
         </div>
 
         {/* Content */}
@@ -185,6 +185,9 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {/* Content container */}
+      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-8 sm:py-12">
 
       {/* Welcome Card — new users only (account < 7 days old, not all tasks done) */}
       {isAuthenticated && profile?.created_at && (Date.now() - new Date(profile.created_at).getTime() < 7 * 24 * 60 * 60 * 1000) && (
@@ -259,6 +262,7 @@ export default function HomePage() {
       </footer>
 
       <TierUsersModal tier={selectedTier} onClose={() => setSelectedTier(null)} />
+      </div>
     </div>
   )
 }
