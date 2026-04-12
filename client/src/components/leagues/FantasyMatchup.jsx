@@ -162,8 +162,8 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               const ap = matchup.away_roster?.[i]
               const hStat = buildStatLine(hp?.stats, hp?.position)
               const aStat = buildStatLine(ap?.stats, ap?.position)
-              const hPts = hp?.game_status === 'upcoming' && weekStatus !== 'past' ? hp?.projected : hp?.points
-              const aPts = ap?.game_status === 'upcoming' && weekStatus !== 'past' ? ap?.projected : ap?.points
+              const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
+              const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
               return (
                 <div key={i} className="grid grid-cols-[1fr_3rem_3.5rem_2.5rem_3.5rem_3rem_1fr] gap-1 items-center text-xs py-1.5 border-b border-text-primary/5 last:border-0">
                   {/* Home player */}
@@ -185,16 +185,16 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     </div>
                   </div>
                   <div className="text-right text-text-muted text-[11px]">{hp?.projected?.toFixed(1) || '--'}</div>
-                  <div className={`text-right font-bold ${hp?.game_status === 'live' ? 'text-accent' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
-                    {(hPts || 0).toFixed(1)}
+                  <div className={`text-right font-bold ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
+                    {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                   </div>
                   <div className="text-center">
                     <span className="text-[10px] font-semibold text-text-muted bg-bg-secondary rounded px-1 py-0.5">
                       {SLOT_LABELS[hp?.slot] || '?'}
                     </span>
                   </div>
-                  <div className={`text-left font-bold ${ap?.game_status === 'live' ? 'text-accent' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
-                    {(aPts || 0).toFixed(1)}
+                  <div className={`text-left font-bold ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
+                    {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                   </div>
                   <div className="text-left text-text-muted text-[11px]">{ap?.projected?.toFixed(1) || '--'}</div>
                   {/* Away player */}
@@ -254,9 +254,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {hp?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
                     </div>
                     <div className={`w-10 text-right font-semibold shrink-0 ${
-                      hp?.game_status === 'live' ? 'text-accent' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
+                      hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
                     }`}>
-                      {hp?.game_status === 'upcoming' && weekStatus !== 'past' ? (hp?.projected?.toFixed(1) || '0.0') : (hp?.points?.toFixed(1) || '0.0')}
+                      {hp?.game_status === 'live' || hp?.game_status === 'final' || weekStatus === 'past' ? (hp?.points?.toFixed(1) || '0.0') : '--'}
                     </div>
                     <div className="w-8 text-center">
                       <span className="text-[10px] font-semibold text-text-muted bg-bg-secondary rounded px-1 py-0.5">
@@ -264,9 +264,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       </span>
                     </div>
                     <div className={`w-10 text-left font-semibold shrink-0 ${
-                      ap?.game_status === 'live' ? 'text-accent' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
+                      ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
                     }`}>
-                      {ap?.game_status === 'upcoming' && weekStatus !== 'past' ? (ap?.projected?.toFixed(1) || '0.0') : (ap?.points?.toFixed(1) || '0.0')}
+                      {ap?.game_status === 'live' || ap?.game_status === 'final' || weekStatus === 'past' ? (ap?.points?.toFixed(1) || '0.0') : '--'}
                     </div>
                     <div
                       className="flex-1 flex items-center gap-1.5 justify-end min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
