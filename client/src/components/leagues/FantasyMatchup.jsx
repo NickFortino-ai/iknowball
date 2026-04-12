@@ -96,13 +96,24 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           </div>
         </div>
 
-        {/* Win probability bar (current/future only, when projections available) */}
-        {!isCompleted && totalProj > 0 && (
+        {/* Win probability bar (live/future) or result bar (completed) */}
+        {isCompleted && hasScores ? (
+          <div className="mt-2">
+            <div className="h-1.5 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${homeWinning ? 'bg-correct' : 'bg-correct float-right'}`} style={{ width: '100%' }} />
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className={`text-[9px] font-semibold ${homeWinning ? 'text-correct' : 'text-text-muted'}`}>{homeWinning ? 'Winner' : 'Loser'}</span>
+              <span className="text-[9px] text-text-muted">Final</span>
+              <span className={`text-[9px] font-semibold ${!homeWinning ? 'text-correct' : 'text-text-muted'}`}>{!homeWinning ? 'Winner' : 'Loser'}</span>
+            </div>
+          </div>
+        ) : !isCompleted && totalProj > 0 ? (
           <div className="mt-2 h-1.5 rounded-full bg-bg-card overflow-hidden flex">
             <div className="bg-accent/60 rounded-l-full transition-all" style={{ width: `${homePct}%` }} />
             <div className="bg-text-muted/30 rounded-r-full flex-1" />
           </div>
-        )}
+        ) : null}
       </button>
 
       {/* Expanded roster comparison */}
