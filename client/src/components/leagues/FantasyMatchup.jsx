@@ -173,7 +173,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   >
                     {hp?.headshot_url ? (
                       <img src={hp.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0" />}
+                    ) : <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[10px] text-text-muted font-bold">{hp?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
                         <span className="font-semibold text-text-primary truncate">{hp?.player_name || '--'}</span>
@@ -211,7 +211,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     </div>
                     {ap?.headshot_url ? (
                       <img src={ap.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0" />}
+                    ) : <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[10px] text-text-muted font-bold">{ap?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
                   </div>
                 </div>
               )
@@ -249,7 +249,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       <div className="flex items-center gap-1.5">
                         {hp?.headshot_url ? (
                           <img src={hp.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                        ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                        ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[9px] text-text-muted font-bold">{hp?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1">
                             <span className="font-semibold text-text-primary truncate">{hp?.player_name || '--'}</span>
@@ -318,7 +318,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         </div>
                         {ap?.headshot_url ? (
                           <img src={ap.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                        ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                        ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[9px] text-text-muted font-bold">{ap?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
                       </div>
                     </div>
                   </div>

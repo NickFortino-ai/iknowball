@@ -243,9 +243,13 @@ function LiveView({ league, date: leagueDate }) {
                         <span className="flex-1 text-base text-text-muted font-mono">????</span>
                       ) : (
                         <>
-                          {slot.headshot_url && (
+                          {slot.headshot_url ? (
                             <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
                               onError={(e) => { e.target.style.display = 'none' }} />
+                          ) : (
+                            <div className="w-11 h-11 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold">
+                              {slot.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </div>
                           )}
                           <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
                             <div className="flex items-center gap-2 lg:w-44 lg:shrink-0">
@@ -835,13 +839,17 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                     }}
                     className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
                   >
-                    {player.headshot_url && (
+                    {player.headshot_url ? (
                       <img
                         src={player.headshot_url}
                         alt=""
                         className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
                         onError={(e) => { e.target.style.display = 'none' }}
                       />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
+                        {player.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
@@ -965,8 +973,8 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                       onError={(e) => { e.target.src = ''; e.target.style.display = 'none' }}
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
-                      {player.position.split('/')[0]}
+                    <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold">
+                      {player.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
