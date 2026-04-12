@@ -73,13 +73,13 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           <div className="flex-1 flex items-center gap-2 min-w-0">
             <Avatar user={matchup.home_user} size="sm" />
             <div className="min-w-0 text-left">
-              <div className={`text-sm font-semibold truncate ${isCompleted && homeWinning ? 'text-correct' : 'text-text-primary'}`}>
-                {matchup.home_user?.display_name || matchup.home_user?.username}
+              <div className={`text-sm font-semibold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+                {matchup.home_user?.fantasy_team_name || matchup.home_user?.display_name || matchup.home_user?.username}
               </div>
-              {matchup.home_user?.fantasy_team_name && (
-                <div className="text-[10px] text-text-muted italic uppercase tracking-wide truncate">{matchup.home_user.fantasy_team_name}</div>
-              )}
-              {matchup.home_user?.id === myId && !matchup.home_user?.fantasy_team_name && <div className="text-[9px] text-accent font-bold">YOU</div>}
+              <div className="text-[10px] text-text-muted truncate">
+                {matchup.home_user?.fantasy_team_name ? (matchup.home_user?.display_name || matchup.home_user?.username) : ''}
+                {matchup.home_user?.record && <span className={matchup.home_user?.fantasy_team_name ? ' ml-1' : ''}>{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</span>}
+              </div>
             </div>
           </div>
 
@@ -112,13 +112,13 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           {/* Away user */}
           <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
             <div className="min-w-0 text-right">
-              <div className={`text-sm font-semibold truncate ${isCompleted && !homeWinning ? 'text-correct' : 'text-text-primary'}`}>
-                {matchup.away_user?.display_name || matchup.away_user?.username}
+              <div className={`text-sm font-semibold truncate ${isCompleted && !homeWinning ? 'text-correct' : matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+                {matchup.away_user?.fantasy_team_name || matchup.away_user?.display_name || matchup.away_user?.username}
               </div>
-              {matchup.away_user?.fantasy_team_name && (
-                <div className="text-[10px] text-text-muted italic uppercase tracking-wide truncate">{matchup.away_user.fantasy_team_name}</div>
-              )}
-              {matchup.away_user?.id === myId && !matchup.away_user?.fantasy_team_name && <div className="text-[9px] text-accent font-bold">YOU</div>}
+              <div className="text-[10px] text-text-muted truncate">
+                {matchup.away_user?.record && <span>{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</span>}
+                {matchup.away_user?.fantasy_team_name ? <span className="ml-1">{matchup.away_user?.display_name || matchup.away_user?.username}</span> : ''}
+              </div>
             </div>
             <Avatar user={matchup.away_user} size="sm" />
           </div>

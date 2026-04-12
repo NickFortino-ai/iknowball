@@ -350,10 +350,31 @@ router.get('/matchup-live', async (req, res) => {
     .in('user_id', userIds)
   const teamNameMap = {}
   for (const m of memberRows || []) teamNameMap[m.user_id] = m.fantasy_team_name || null
-  // Inject team names into matchup user objects
+  // Compute W-L records from completed matchups
+  const { data: allCompleted } = await supabase
+    .from('fantasy_matchups')
+    .select('home_user_id, away_user_id, home_points, away_points')
+    .eq('league_id', league_id)
+    .eq('status', 'completed')
+    .is('round', null) // regular season only
+  const recordMap = {}
+  for (const cm of allCompleted || []) {
+    if (!recordMap[cm.home_user_id]) recordMap[cm.home_user_id] = { wins: 0, losses: 0 }
+    if (!recordMap[cm.away_user_id]) recordMap[cm.away_user_id] = { wins: 0, losses: 0 }
+    if (cm.home_points > cm.away_points) { recordMap[cm.home_user_id].wins++; recordMap[cm.away_user_id].losses++ }
+    else if (cm.away_points > cm.home_points) { recordMap[cm.away_user_id].wins++; recordMap[cm.home_user_id].losses++ }
+  }
+
+  // Inject team names and records into matchup user objects
   for (const m of matchups) {
-    if (m.home_user) m.home_user.fantasy_team_name = teamNameMap[m.home_user_id] || null
-    if (m.away_user) m.away_user.fantasy_team_name = teamNameMap[m.away_user_id] || null
+    if (m.home_user) {
+      m.home_user.fantasy_team_name = teamNameMap[m.home_user_id] || null
+      m.home_user.record = recordMap[m.home_user_id] || { wins: 0, losses: 0 }
+    }
+    if (m.away_user) {
+      m.away_user.fantasy_team_name = teamNameMap[m.away_user_id] || null
+      m.away_user.record = recordMap[m.away_user_id] || { wins: 0, losses: 0 }
+    }
   }
 
   const { data: rosters } = await supabase
