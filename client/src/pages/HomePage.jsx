@@ -151,7 +151,9 @@ export default function HomePage() {
               style={{
                 opacity: i === heroIdx ? 1 : 0,
                 transform: i === heroIdx ? 'scale(1.08)' : 'scale(1)',
-                transition: 'opacity 2.5s ease-in-out, transform 12s ease-out',
+                transition: i === heroIdx
+                  ? 'opacity 2.5s ease-in-out, transform 12s ease-out'
+                  : 'opacity 2.5s ease-in-out, transform 0.01s 2.6s',
               }}
               loading={i <= 1 ? 'eager' : 'lazy'}
             />
