@@ -3,9 +3,14 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
 import HeadlinesCard from '../components/home/HeadlinesCard'
-import FeaturedPropSection from '../components/picks/FeaturedPropSection'
 import OpenLeaguesSection from '../components/home/OpenLeaguesSection'
 import TierUsersModal from '../components/home/TierUsersModal'
+import { useMyLeagues } from '../hooks/useLeagues'
+import { useMyPicks } from '../hooks/usePicks'
+import { getTier } from '../lib/scoring'
+import TierBadge from '../components/ui/TierBadge'
+import Avatar from '../components/ui/Avatar'
+import { getBackdropUrl } from '../lib/backdropUrl'
 
 const tiers = [
   { name: 'Lost', points: '<0', color: 'border-tier-lost text-tier-lost', desc: 'Gone negative' },
@@ -87,6 +92,124 @@ function WelcomeCard({ userId }) {
               {item.label}
             </span>
           </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const FORMAT_LABELS = {
+  pickem: "Pick'em",
+  survivor: 'Survivor',
+  squares: 'Squares',
+  bracket: 'Bracket',
+  fantasy: 'Fantasy Football',
+  nba_dfs: 'NBA DFS',
+  mlb_dfs: 'MLB DFS',
+  hr_derby: 'HR Derby',
+  td_pass: 'TD Pass',
+}
+
+const SPORT_LABELS = {
+  americanfootball_nfl: 'NFL',
+  basketball_nba: 'NBA',
+  baseball_mlb: 'MLB',
+  basketball_ncaab: 'NCAAB',
+  basketball_wncaab: 'WNCAAB',
+  americanfootball_ncaaf: 'NCAAF',
+  basketball_wnba: 'WNBA',
+  icehockey_nhl: 'NHL',
+  soccer_usa_mls: 'MLS',
+  all: 'All Sports',
+}
+
+function MyProfileRow({ profile }) {
+  const navigate = useNavigate()
+  const tier = getTier(profile.total_points)
+  const hasBackdrop = !!profile.backdrop_image
+  const { data: lockedPicks } = useMyPicks('locked')
+  const lockedCount = lockedPicks?.length || 0
+
+  return (
+    <div
+      onClick={() => navigate('/hub')}
+      className={`relative bg-bg-primary/80 backdrop-blur-sm border border-white/15 rounded-2xl cursor-pointer hover:border-accent/40 transition-colors overflow-hidden max-w-3xl mx-auto ${hasBackdrop ? 'p-5 lg:p-6' : 'p-5 lg:p-6'}`}
+    >
+      {hasBackdrop && (
+        <>
+          <img
+            src={getBackdropUrl(profile.backdrop_image)}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
+            style={{ objectPosition: `center ${profile.backdrop_y ?? 50}%` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/80 via-bg-primary/50 to-bg-primary/80 pointer-events-none" />
+        </>
+      )}
+      <div className="relative z-10 flex items-center gap-4">
+        <Avatar user={profile} size="2xl" className="bg-accent/15 border border-accent/25" />
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-xl lg:text-2xl truncate text-white">{profile.display_name || profile.username}</div>
+          <div className="text-text-muted text-sm">@{profile.username}</div>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          <TierBadge tier={tier.name} size="md" />
+          <span className="text-white font-display text-lg lg:text-xl">{profile.total_points} pts</span>
+          {profile.rank && (
+            <span className="text-text-muted text-xs">#{profile.rank} overall</span>
+          )}
+        </div>
+      </div>
+      {lockedCount > 0 && (
+        <div className="relative z-10 mt-3 pt-3 border-t border-white/10 text-center">
+          <span className="text-sm text-accent font-semibold">{lockedCount} pick{lockedCount !== 1 ? 's' : ''} locked in today</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MyActiveLeagues() {
+  const { data: leagues, isLoading } = useMyLeagues()
+
+  const active = (leagues || []).filter((l) => l.status !== 'completed')
+
+  if (isLoading || !active.length) return null
+
+  return (
+    <div className="mb-8">
+      <h2 className="font-display text-xl mb-4">Your Leagues</h2>
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+        {active.map((league) => (
+          <Link
+            key={league.id}
+            to={`/leagues/${league.id}`}
+            className="relative flex-shrink-0 w-52 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/40 transition-colors"
+          >
+            {league.backdrop_image && (
+              <>
+                <img
+                  src={getBackdropUrl(league.backdrop_image)}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none"
+                  style={{ objectPosition: `center ${league.backdrop_y ?? 50}%` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/40 to-bg-primary/80 pointer-events-none" />
+              </>
+            )}
+            <div className="relative p-4">
+              <div className="font-semibold text-sm text-white truncate mb-1">{league.name}</div>
+              <div className="text-xs text-text-muted mb-2">
+                {FORMAT_LABELS[league.format] || league.format} · {SPORT_LABELS[league.sport] || league.sport}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs font-semibold ${league.status === 'active' ? 'text-correct' : league.status === 'open' ? 'text-accent' : 'text-text-muted'}`}>
+                  {league.status === 'active' ? 'Live' : league.status === 'open' ? 'Open' : league.status}
+                </span>
+                <span className="text-xs text-text-muted">{league.member_count} members</span>
+              </div>
+            </div>
+          </Link>
         ))}
       </div>
     </div>
@@ -187,14 +310,17 @@ export default function HomePage() {
               </Link>
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/leagues" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
-                Go to Leagues
-              </Link>
-              <Link to="/picks" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
-                Make Your Picks
-              </Link>
-            </div>
+            <>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
+                <Link to="/leagues" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
+                  Go to Leagues
+                </Link>
+                <Link to="/picks" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
+                  Make Your Picks
+                </Link>
+              </div>
+              {profile && <MyProfileRow profile={profile} />}
+            </>
           )}
         </div>
       </div>
@@ -207,13 +333,11 @@ export default function HomePage() {
         <WelcomeCard userId={session?.user?.id} />
       )}
 
-      {/* Logged-in: Open Leagues + Featured Prop + Headlines */}
+      {/* Logged-in: Open Leagues + Active Leagues + Headlines */}
       {isAuthenticated && (
         <>
           <OpenLeaguesSection />
-          <div className="mb-8 lg:max-w-3xl lg:mx-auto">
-            <FeaturedPropSection date={new Date()} fallback defaultExpanded />
-          </div>
+          <MyActiveLeagues />
           <div ref={headlinesRef}>
             <HeadlinesCard forceExpanded={forceHeadlines} />
           </div>
