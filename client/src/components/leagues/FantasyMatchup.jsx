@@ -178,7 +178,6 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       <div className="flex items-center gap-1">
                         <span className="font-semibold text-text-primary truncate">{hp?.player_name || '--'}</span>
                         {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
-                        {hp?.player_id && <BlurbDot playerId={hp.player_id} blurbIds={blurbIds} />}
                       </div>
                       {hStat && <div className="text-[10px] text-text-muted truncate">{hStat}</div>}
                       {hp?.on_bye && <div className="text-[9px] text-text-muted font-bold">BYE</div>}
@@ -204,7 +203,6 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   >
                     <div className="min-w-0 text-right">
                       <div className="flex items-center gap-1 justify-end">
-                        {ap?.player_id && <BlurbDot playerId={ap.player_id} blurbIds={blurbIds} />}
                         {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
                         <span className="font-semibold text-text-primary truncate">{ap?.player_name || '--'}</span>
                       </div>
@@ -234,51 +232,94 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             </div>
           </div>
 
-          {/* Mobile: compact view (unchanged) */}
+          {/* Mobile: enhanced compact view */}
           <div className="lg:hidden">
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {(matchup.home_roster || []).map((hp, i) => {
                 const ap = matchup.away_roster?.[i]
+                const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
+                const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
                 return (
-                  <div key={i} className="flex items-center gap-1 text-xs">
+                  <div key={i} className="flex items-start gap-1 text-xs border-b border-text-primary/5 last:border-0 py-1.5">
+                    {/* Home player */}
                     <div
-                      className="flex-1 flex items-center gap-1.5 min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
+                      className="flex-1 min-w-0 cursor-pointer px-1"
                       onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
                     >
-                      {hp?.headshot_url ? (
-                        <img src={hp.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                      ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
-                      <span className="truncate text-text-primary">{hp?.player_name || '--'}</span>
-                      {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
-                      {hp?.player_id && <BlurbDot playerId={hp.player_id} blurbIds={blurbIds} />}
-                      {hp?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
+                      <div className="flex items-center gap-1.5">
+                        {hp?.headshot_url ? (
+                          <img src={hp.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                        ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold text-text-primary truncate">{hp?.player_name || '--'}</span>
+                            {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
+                          </div>
+                          <div className="text-[10px] text-text-muted">
+                            {hp?.team} - {hp?.position}
+                            {hp?.on_bye && <span className="font-bold ml-1">BYE</span>}
+                          </div>
+                          {(hLive || weekStatus === 'past') && hp?.opponent && (
+                            <div className="text-[10px] text-text-muted">
+                              {hp.game_status === 'final' ? 'Final' : `Q${hp.game_period || '?'}`}
+                              {hp.team_score != null && ` ${hp.team_score > hp.opp_score ? '(W)' : hp.team_score < hp.opp_score ? '(L)' : '(T)'} ${hp.team_score}-${hp.opp_score}`}
+                              {hp.is_home ? ` vs ${hp.opponent}` : ` @ ${hp.opponent}`}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className={`w-10 text-right font-semibold shrink-0 ${
-                      hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
-                    }`}>
-                      {hp?.game_status === 'live' || hp?.game_status === 'final' || weekStatus === 'past' ? (hp?.points?.toFixed(1) || '0.0') : '--'}
+                    {/* Home points + projection */}
+                    <div className="w-12 text-right shrink-0 pt-0.5">
+                      <div className={`font-bold ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
+                        {hLive || weekStatus === 'past' ? (hp?.points?.toFixed(1) || '0.0') : '--'}
+                      </div>
+                      {hp?.projected != null && !hp?.on_bye && (
+                        <div className="text-[9px] text-text-muted">{hp.projected.toFixed(1)}</div>
+                      )}
                     </div>
-                    <div className="w-8 text-center">
+                    {/* Position */}
+                    <div className="w-8 text-center pt-1 shrink-0">
                       <span className="text-[10px] font-semibold text-text-muted bg-bg-secondary rounded px-1 py-0.5">
                         {SLOT_LABELS[hp?.slot] || '?'}
                       </span>
                     </div>
-                    <div className={`w-10 text-left font-semibold shrink-0 ${
-                      ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
-                    }`}>
-                      {ap?.game_status === 'live' || ap?.game_status === 'final' || weekStatus === 'past' ? (ap?.points?.toFixed(1) || '0.0') : '--'}
+                    {/* Away points + projection */}
+                    <div className="w-12 text-left shrink-0 pt-0.5">
+                      <div className={`font-bold ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
+                        {aLive || weekStatus === 'past' ? (ap?.points?.toFixed(1) || '0.0') : '--'}
+                      </div>
+                      {ap?.projected != null && !ap?.on_bye && (
+                        <div className="text-[9px] text-text-muted">{ap.projected.toFixed(1)}</div>
+                      )}
                     </div>
+                    {/* Away player */}
                     <div
-                      className="flex-1 flex items-center gap-1.5 justify-end min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
+                      className="flex-1 min-w-0 cursor-pointer px-1"
                       onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
                     >
-                      {ap?.player_id && <BlurbDot playerId={ap.player_id} blurbIds={blurbIds} />}
-                      {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
-                      {ap?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
-                      <span className="truncate text-text-primary text-right">{ap?.player_name || '--'}</span>
-                      {ap?.headshot_url ? (
-                        <img src={ap.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                      ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <div className="min-w-0 flex-1 text-right">
+                          <div className="flex items-center gap-1 justify-end">
+                            {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
+                            <span className="font-semibold text-text-primary truncate">{ap?.player_name || '--'}</span>
+                          </div>
+                          <div className="text-[10px] text-text-muted">
+                            {ap?.team} - {ap?.position}
+                            {ap?.on_bye && <span className="font-bold ml-1">BYE</span>}
+                          </div>
+                          {(aLive || weekStatus === 'past') && ap?.opponent && (
+                            <div className="text-[10px] text-text-muted">
+                              {ap.game_status === 'final' ? 'Final' : `Q${ap.game_period || '?'}`}
+                              {ap.team_score != null && ` ${ap.team_score > ap.opp_score ? '(W)' : ap.team_score < ap.opp_score ? '(L)' : '(T)'} ${ap.team_score}-${ap.opp_score}`}
+                              {ap.is_home ? ` vs ${ap.opponent}` : ` @ ${ap.opponent}`}
+                            </div>
+                          )}
+                        </div>
+                        {ap?.headshot_url ? (
+                          <img src={ap.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                        ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                      </div>
                     </div>
                   </div>
                 )

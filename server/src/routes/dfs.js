@@ -395,11 +395,19 @@ router.get('/matchup-live', async (req, res) => {
 
         const period = comp.status?.period || null
         const clock = comp.status?.displayClock || null
-        for (const c of comp.competitors || []) {
-          const abbrev = c.team?.abbreviation
-          if (abbrev) {
-            gameStatuses[abbrev] = state
-            gameScores[abbrev] = { period, clock, state }
+        const teams = (comp.competitors || []).map(c => ({ abbrev: c.team?.abbreviation, score: parseInt(c.score) || 0, homeAway: c.homeAway }))
+        const homeTeam = teams.find(t => t.homeAway === 'home')
+        const awayTeam = teams.find(t => t.homeAway === 'away')
+        for (const t of teams) {
+          if (t.abbrev) {
+            gameStatuses[t.abbrev] = state
+            const opp = t === homeTeam ? awayTeam : homeTeam
+            gameScores[t.abbrev] = {
+              period, clock, state,
+              teamScore: t.score, oppScore: opp?.score || 0,
+              oppAbbrev: opp?.abbrev || null,
+              isHome: t.homeAway === 'home',
+            }
           }
         }
       }
@@ -485,6 +493,7 @@ router.get('/matchup-live', async (req, res) => {
     const progress = gameProgressFraction(teamState, gameScores[team]?.period)
     const projected = onBye ? 0 : (status === 'final' ? pts : pts + weeklyProj * (1 - progress))
 
+    const gs = gameScores[team] || {}
     userRosters[r.user_id].push({
       slot: r.slot,
       player_id: r.player_id,
@@ -494,8 +503,12 @@ router.get('/matchup-live', async (req, res) => {
       headshot_url: player.headshot_url || null,
       injury_status: player.injury_status || null,
       game_status: status,
-      game_period: gameScores[team]?.period || null,
-      game_clock: gameScores[team]?.clock || null,
+      game_period: gs.period || null,
+      game_clock: gs.clock || null,
+      opponent: gs.oppAbbrev || null,
+      team_score: gs.teamScore ?? null,
+      opp_score: gs.oppScore ?? null,
+      is_home: gs.isHome ?? null,
       points: pts,
       projected: Math.round(projected * 100) / 100,
       stats: stat ? {
