@@ -167,7 +167,7 @@ export default function OpenLeaguesSection() {
 
                   {/* Expanded info card */}
                   {infoLeagueId === league.id && (
-                    <div className="mt-3 bg-bg-primary border border-text-primary/20 rounded-lg p-3 text-xs text-text-secondary space-y-2">
+                    <div className="mt-3 bg-bg-primary/85 backdrop-blur-md border border-text-primary/20 rounded-lg p-3 text-xs text-text-secondary space-y-2">
                       {/* Format description (the enticing pitch) */}
                       <p className="text-sm text-text-primary leading-relaxed">
                         {league.format === 'survivor' && "Pick one team to win each period. If they lose, you lose a life. You can't reuse a team. The last manager standing takes the league."}

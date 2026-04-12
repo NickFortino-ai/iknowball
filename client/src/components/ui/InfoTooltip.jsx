@@ -48,7 +48,7 @@ export default function InfoTooltip({ text }) {
       {open && (
         <div
           ref={clampToViewport}
-          className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-80 max-w-[calc(100vw-1rem)] bg-bg-card border border-border rounded-xl shadow-lg z-50 px-4 py-3 text-sm text-text-secondary leading-relaxed font-sans font-normal tracking-normal normal-case text-left"
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-3 w-80 max-w-[calc(100vw-1rem)] bg-bg-card/85 backdrop-blur-md border border-border rounded-xl shadow-lg z-[100] px-4 py-3 text-sm text-text-secondary leading-relaxed font-sans font-normal tracking-normal normal-case text-left"
         >
           {text}
         </div>
