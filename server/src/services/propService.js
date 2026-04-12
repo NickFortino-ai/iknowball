@@ -470,8 +470,8 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
   function normalizeName(name) {
     if (!name) return ''
     return String(name)
-      .replace(/\.\s*$/, '')              // trailing period (e.g. "Jr.")
-      .replace(/\s+(jr|sr|ii|iii|iv)\.?\s*$/i, ' $1') // strip period after suffix
+      .replace(/\./g, '')                 // strip all periods (C.J. → CJ, Jr. → Jr)
+      .replace(/\s+(jr|sr|ii|iii|iv)\s*$/i, ' $1') // normalize suffix
       .replace(/\s+/g, ' ')
       .trim()
       .toLowerCase()
