@@ -14,7 +14,7 @@ export default function FuturesPickCard({ pick }) {
           {market?.title || 'Futures'}
         </span>
         {pick.status === 'locked' && (
-          <span className="text-xs font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded">
+          <span className="text-xs font-semibold text-accent">
             Locked
           </span>
         )}
