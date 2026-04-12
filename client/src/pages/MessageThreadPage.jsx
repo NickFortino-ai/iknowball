@@ -62,9 +62,9 @@ export default function MessageThreadPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
+    <div className="max-w-lg mx-auto flex flex-col px-4" style={{ height: 'calc(100vh - 8rem)' }}>
       {/* Header */}
-      <div className="flex items-center gap-3 pb-3 border-b border-border mb-3">
+      <div className="flex items-center gap-3 pt-4 pb-3 border-b border-border mb-3">
         <button
           onClick={() => navigate('/messages')}
           className="p-1 rounded-lg text-text-muted hover:text-text-primary transition-colors"
