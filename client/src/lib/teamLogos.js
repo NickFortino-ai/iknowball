@@ -68,17 +68,53 @@ const WNBA_ABBRS = {
   'Washington Mystics': 'wsh',
 }
 
+// NCAA uses numeric ESPN team IDs instead of abbreviations
+const NCAAF_IDS = {
+  'Auburn Tigers': 2, 'Baylor Bears': 239, 'California Golden Bears': 25,
+  'Clemson Tigers': 228, 'LSU Tigers': 99, 'Louisville Cardinals': 97,
+  'Michigan Wolverines': 130, 'NC State Wolfpack': 152,
+  'North Carolina Tar Heels': 153, 'Notre Dame Fighting Irish': 87,
+  'Ohio State Buckeyes': 194, 'Oklahoma Sooners': 201, 'Ole Miss Rebels': 145,
+  'TCU Horned Frogs': 2628, 'Texas Longhorns': 251, 'UCLA Bruins': 26,
+  'Virginia Cavaliers': 258, 'Wisconsin Badgers': 275,
+  // Additional FBS teams (will appear as games are added)
+  'Alabama Crimson Tide': 333, 'Arizona State Sun Devils': 9, 'Arizona Wildcats': 12,
+  'Arkansas Razorbacks': 8, 'BYU Cougars': 252, 'Cincinnati Bearcats': 2132,
+  'Colorado Buffaloes': 38, 'Duke Blue Devils': 150, 'Florida Gators': 57,
+  'Florida State Seminoles': 52, 'Georgia Bulldogs': 61, 'Georgia Tech Yellow Jackets': 59,
+  'Houston Cougars': 248, 'Illinois Fighting Illini': 356, 'Indiana Hoosiers': 84,
+  'Iowa Hawkeyes': 2294, 'Iowa State Cyclones': 66, 'Kansas Jayhawks': 2305,
+  'Kansas State Wildcats': 2306, 'Kentucky Wildcats': 96, 'Maryland Terrapins': 120,
+  'Miami Hurricanes': 2390, 'Michigan State Spartans': 127, 'Minnesota Golden Gophers': 135,
+  'Mississippi State Bulldogs': 344, 'Missouri Tigers': 142, 'Nebraska Cornhuskers': 158,
+  'Northwestern Wildcats': 77, 'Oklahoma State Cowboys': 197, 'Oregon Ducks': 2483,
+  'Oregon State Beavers': 204, 'Penn State Nittany Lions': 213, 'Pittsburgh Panthers': 221,
+  'Purdue Boilermakers': 2509, 'Rutgers Scarlet Knights': 164, 'SMU Mustangs': 2567,
+  'South Carolina Gamecocks': 2579, 'Stanford Cardinal': 24, 'Syracuse Orange': 183,
+  'Tennessee Volunteers': 2633, 'Texas A&M Aggies': 245, 'Texas Tech Red Raiders': 2641,
+  'UCF Knights': 2116, 'USC Trojans': 30, 'Utah Utes': 254,
+  'Vanderbilt Commodores': 238, 'Virginia Tech Hokies': 259, 'Wake Forest Demon Deacons': 154,
+  'Washington Huskies': 264, 'Washington State Cougars': 265, 'West Virginia Mountaineers': 277,
+}
+
 const SPORT_MAP = {
   icehockey_nhl: { abbrs: NHL_ABBRS, sport: 'nhl' },
   basketball_nba: { abbrs: NBA_ABBRS, sport: 'nba' },
   baseball_mlb: { abbrs: MLB_ABBRS, sport: 'mlb' },
   americanfootball_nfl: { abbrs: NFL_ABBRS, sport: 'nfl' },
   basketball_wnba: { abbrs: WNBA_ABBRS, sport: 'wnba' },
+  americanfootball_ncaaf: { ids: NCAAF_IDS, sport: 'ncaa' },
 }
 
 export function getTeamLogoUrl(teamName, sportKey) {
   const config = SPORT_MAP[sportKey]
   if (!config) return null
+  // NCAA uses numeric IDs: /i/teamlogos/ncaa/500/{id}.png
+  if (config.ids) {
+    const id = config.ids[teamName]
+    if (!id) return null
+    return `https://a.espncdn.com/i/teamlogos/${config.sport}/500/${id}.png`
+  }
   const abbr = config.abbrs[teamName]
   if (!abbr) return null
   return `https://a.espncdn.com/i/teamlogos/${config.sport}/500/${abbr}.png`
