@@ -128,7 +128,7 @@ export default function HomePage() {
     '/backdrops/nfl-atandt.webp',
     '/backdrops/mlb-globe-life-field.webp',
     '/backdrops/nba-fiserv.webp',
-    '/backdrops/nfl-mercedes-benz.webp',
+    '/backdrops/nfl-lucas-oil.webp',
     '/backdrops/mlb-pnc.webp',
     '/backdrops/nfl-us-bank.webp',
     '/backdrops/mlb-oracle.webp',
