@@ -336,18 +336,17 @@ export default function HomePage() {
                     <img src="https://a.espncdn.com/i/teamlogos/mlb/500/laa.png" alt="" className="w-8 h-8 object-contain" />
                     <span className="font-semibold text-text-primary">Los Angeles Angels</span>
                   </div>
-                  <span className="text-sm text-correct font-bold">+152</span>
+                  <span className="text-xs text-correct font-semibold">Risk 10 → Win 15</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <img src="https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png" alt="" className="w-8 h-8 object-contain" />
                     <span className="font-semibold text-text-primary">New York Yankees</span>
                   </div>
-                  <span className="text-sm text-accent font-bold">-180</span>
+                  <span className="text-xs text-accent font-semibold">Risk 10 → Win 6</span>
                 </div>
-                <div className="mt-3 pt-3 border-t border-text-primary/10 flex items-center justify-between">
-                  <span className="text-xs text-text-muted">Risk 10 on Angels → Win 15.2</span>
-                  <span className="text-xs text-text-muted">Tomorrow 1:05 PM</span>
+                <div className="mt-3 pt-3 border-t border-text-primary/10 text-center">
+                  <span className="text-xs text-text-muted">Underdogs pay more · Favorites pay less</span>
                 </div>
               </div>
               <p className="text-sm text-text-secondary mt-4 leading-relaxed">Pick the winner of any game, any sport. Underdogs pay more. Every correct pick earns points — every miss costs 10.</p>
@@ -364,16 +363,13 @@ export default function HomePage() {
                 <div className="flex items-center justify-center gap-3 mb-3">
                   <div className="flex-1 text-center py-2.5 rounded-lg border border-text-primary/20 bg-black/20">
                     <div className="text-xs text-text-muted mb-0.5">Over 1.5</div>
-                    <div className="text-sm font-bold text-text-primary">-125</div>
+                    <div className="text-xs font-semibold text-text-primary">Risk 10 → Win 8</div>
                   </div>
                   <div className="text-xs text-text-muted font-bold">1.5</div>
                   <div className="flex-1 text-center py-2.5 rounded-lg border border-text-primary/20 bg-black/20">
                     <div className="text-xs text-text-muted mb-0.5">Under 1.5</div>
-                    <div className="text-sm font-bold text-text-primary">+105</div>
+                    <div className="text-xs font-semibold text-text-primary">Risk 10 → Win 11</div>
                   </div>
-                </div>
-                <div className="text-center">
-                  <span className="text-xs text-text-muted">Risk 10 → Win up to 18</span>
                 </div>
               </div>
               <p className="text-sm text-text-secondary mt-4 leading-relaxed">Predict player performances — points, rebounds, strikeouts, home runs. New props drop daily for every sport in season.</p>
