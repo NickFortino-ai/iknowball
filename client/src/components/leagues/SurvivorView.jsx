@@ -6,6 +6,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
 import Avatar from '../ui/Avatar'
 import TouchdownPicker from './TouchdownPicker'
 
@@ -174,7 +175,7 @@ export default function SurvivorView({ league }) {
         const dateKeys = Object.keys(grouped).sort()
 
         return (
-          <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm">
+          <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-primary">
             {poolExpanded && (
               <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3 text-center">
                 <div className="text-xs text-text-secondary font-semibold mb-0.5">Pool Expanded</div>
@@ -198,12 +199,15 @@ export default function SurvivorView({ league }) {
                         const awayPicked = currentPickTeam === game.away_team
                         const homePicked = currentPickTeam === game.home_team
 
+                        const awayLogo = getTeamLogoUrl(game.away_team, league.sport === 'all' ? game.sport_key : league.sport)
+                        const homeLogo = getTeamLogoUrl(game.home_team, league.sport === 'all' ? game.sport_key : league.sport)
+
                         return (
                           <div key={game.id} className="flex items-center gap-2">
                             <button
                               onClick={() => handlePick(game.id, 'away')}
                               disabled={awayUsed || submitPick.isPending}
-                              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                              className={`flex-1 py-3 px-3 rounded-lg text-sm font-semibold transition-colors flex flex-col items-center gap-1.5 ${
                                 awayUsed
                                   ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
                                   : awayPicked
@@ -211,16 +215,17 @@ export default function SurvivorView({ league }) {
                                     : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
-                              {game.away_team}
+                              {awayLogo && <img src={awayLogo} alt="" className="w-8 h-8 object-contain" />}
+                              <span>{game.away_team}</span>
                               {game.away_odds != null && (
-                                <span className="ml-1.5 text-xs font-normal text-text-muted">{formatOdds(game.away_odds)}</span>
+                                <span className="text-xs font-normal text-text-muted">{formatOdds(game.away_odds)}</span>
                               )}
                             </button>
                             <span className="text-xs text-text-muted">@</span>
                             <button
                               onClick={() => handlePick(game.id, 'home')}
                               disabled={homeUsed || submitPick.isPending}
-                              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ${
+                              className={`flex-1 py-3 px-3 rounded-lg text-sm font-semibold transition-colors flex flex-col items-center gap-1.5 ${
                                 homeUsed
                                   ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
                                   : homePicked
@@ -228,9 +233,10 @@ export default function SurvivorView({ league }) {
                                     : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
-                              {game.home_team}
+                              {homeLogo && <img src={homeLogo} alt="" className="w-8 h-8 object-contain" />}
+                              <span>{game.home_team}</span>
                               {game.home_odds != null && (
-                                <span className="ml-1.5 text-xs font-normal text-text-muted">{formatOdds(game.home_odds)}</span>
+                                <span className="text-xs font-normal text-text-muted">{formatOdds(game.home_odds)}</span>
                               )}
                             </button>
                           </div>
