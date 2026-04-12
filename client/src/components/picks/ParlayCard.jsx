@@ -116,7 +116,7 @@ export default function ParlayCard({ parlay, onDelete }) {
   const isLocked = parlay.status === 'locked'
 
   const borderColor = isWon ? 'border-correct' : isLost ? 'border-red-900' : isPending ? 'border-accent/50' : isLocked ? 'border-accent' : 'border-border'
-  const badgeColor = isWon ? 'bg-correct/20 text-correct' : isLost ? 'bg-incorrect/20 text-incorrect' : isPending ? 'bg-accent/20 text-accent' : isLocked ? 'bg-accent/20 text-accent' : 'bg-bg-secondary text-text-muted'
+  const badgeColor = isWon ? 'text-correct' : isLost ? 'text-incorrect' : isPending ? 'text-accent' : isLocked ? 'text-accent' : 'text-text-muted'
   const badgeLabel = isWon ? 'Won' : isLost ? 'Lost' : isPending ? 'Pending' : isLocked ? 'Locked' : 'Push'
 
   return (
