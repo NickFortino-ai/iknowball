@@ -237,7 +237,7 @@ export default function HomePage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-accent">Featured</span>
                 </div>
                 <h3 className="font-display text-2xl sm:text-3xl text-white mb-2">Traditional Fantasy Football</h3>
-                <p className="text-sm text-text-secondary leading-relaxed mb-4 max-w-md">Snake draft, weekly lineups, waiver wire, trades, and a full playoff bracket. The complete fantasy football experience — built from scratch with the best visuals in the game.</p>
+                <p className="text-sm text-text-secondary leading-relaxed mb-4 max-w-md">Snake draft, weekly lineups, waiver wire, trades, and a full playoff bracket. Fast, accurate stat updates, smooth user experience, visually appealing. Commissioners love IKB.</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-text-muted">NFL</span>
                   <span className="text-sm text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
