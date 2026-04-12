@@ -363,6 +363,13 @@ export default function PaymentPage() {
             </form>
           )
         )}
+
+        {/* Why we charge */}
+        <div className="mt-6 pt-5 border-t border-text-primary/10">
+          <p className="text-xs text-text-muted leading-relaxed">
+            <span className="text-text-secondary font-semibold">Why do we charge?</span> If you're not paying for the product, you are the product. IKB runs zero ads and shares nothing about you with anyone. It costs real money to run live odds, real-time scoring, and fantasy leagues — so instead of selling your data, we charge a dollar a month. The people behind IKB are devoted to one thing: building the best fantasy and sports prediction app ever made.
+          </p>
+        </div>
       </div>
     </div>
   )
