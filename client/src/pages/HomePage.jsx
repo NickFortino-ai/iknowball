@@ -121,6 +121,11 @@ export default function HomePage() {
     '/backdrops/nba-cryptocom.webp',
     '/backdrops/nfl-sofi.webp',
     '/backdrops/mlb-fenway.webp',
+    '/backdrops/nba-chase.webp',
+    '/backdrops/nfl-arrowhead.webp',
+    '/backdrops/mlb-dodger.webp',
+    '/backdrops/nba-united.webp',
+    '/backdrops/nfl-atandt.webp',
   ]
   const [heroIdx, setHeroIdx] = useState(0)
 
