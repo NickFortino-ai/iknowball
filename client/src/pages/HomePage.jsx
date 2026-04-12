@@ -427,7 +427,7 @@ export default function HomePage() {
 
         {/* Beyond the Games — Hub + Headlines */}
         <div className="mb-16">
-          <h2 className="font-display text-3xl text-center mb-3">More Than Just Leagues</h2>
+          <h2 className="font-display text-3xl text-center mb-3">Connect and Compete</h2>
           <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">A full sports community with a social feed, weekly recaps, and real competition.</p>
           <div className="grid sm:grid-cols-3 gap-4">
             <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
