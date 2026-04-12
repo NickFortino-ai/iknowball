@@ -22,6 +22,34 @@ function InjuryBadge({ status }) {
   return <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${colors[status] || 'bg-yellow-500/20 text-yellow-500'}`}>{status[0]}</span>
 }
 
+function buildStatLine(stats, position) {
+  if (!stats) return null
+  const parts = []
+  if (position === 'QB') {
+    if (stats.pass_yds) parts.push(`${stats.pass_yds} PaYD`)
+    if (stats.pass_td) parts.push(`${stats.pass_td} PaTD`)
+    if (stats.int) parts.push(`${stats.int} INT`)
+    if (stats.rush_yds) parts.push(`${stats.rush_yds} RuYD`)
+    if (stats.rush_td) parts.push(`${stats.rush_td} RuTD`)
+  } else if (position === 'K') {
+    if (stats.fgm) parts.push(`${stats.fgm} FG`)
+    if (stats.fgm_50_plus) parts.push(`${stats.fgm_50_plus} 50+`)
+    if (stats.xpm) parts.push(`${stats.xpm} XP`)
+  } else if (position === 'DEF') {
+    if (stats.def_sack) parts.push(`${stats.def_sack} SK`)
+    if (stats.def_int) parts.push(`${stats.def_int} INT`)
+    if (stats.def_fum_rec) parts.push(`${stats.def_fum_rec} FR`)
+    if (stats.def_td) parts.push(`${stats.def_td} TD`)
+  } else {
+    if (stats.rush_yds) parts.push(`${stats.rush_yds} RuYD`)
+    if (stats.rush_td) parts.push(`${stats.rush_td} RuTD`)
+    if (stats.rec) parts.push(`${stats.rec} Rec`)
+    if (stats.rec_yds) parts.push(`${stats.rec_yds} ReYD`)
+    if (stats.rec_td) parts.push(`${stats.rec_td} ReTD`)
+  }
+  return parts.length ? parts.join(', ') : null
+}
+
 function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds }) {
   const isMyMatchup = matchup.home_user?.id === myId || matchup.away_user?.id === myId
   const isCompleted = matchup.status === 'completed' || weekStatus === 'past'
@@ -119,71 +147,154 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
       {/* Expanded roster comparison */}
       {isExpanded && matchup.home_roster && (
         <div className="border-t border-text-primary/10 p-3">
-          <div className="space-y-1">
+          {/* Desktop: full table with stat lines and projections */}
+          <div className="hidden lg:block">
+            <div className="grid grid-cols-[1fr_3rem_3.5rem_2.5rem_3.5rem_3rem_1fr] gap-1 text-[10px] text-text-muted uppercase tracking-wider px-1 pb-2 border-b border-text-primary/10 mb-1">
+              <span>Player</span>
+              <span className="text-right">Proj</span>
+              <span className="text-right font-semibold">Pts</span>
+              <span className="text-center">Pos</span>
+              <span className="text-left font-semibold">Pts</span>
+              <span className="text-left">Proj</span>
+              <span className="text-right">Player</span>
+            </div>
             {(matchup.home_roster || []).map((hp, i) => {
               const ap = matchup.away_roster?.[i]
+              const hStat = buildStatLine(hp?.stats, hp?.position)
+              const aStat = buildStatLine(ap?.stats, ap?.position)
+              const hPts = hp?.game_status === 'upcoming' && weekStatus !== 'past' ? hp?.projected : hp?.points
+              const aPts = ap?.game_status === 'upcoming' && weekStatus !== 'past' ? ap?.projected : ap?.points
               return (
-                <div key={i} className="flex items-center gap-1 text-xs">
+                <div key={i} className="grid grid-cols-[1fr_3rem_3.5rem_2.5rem_3.5rem_3rem_1fr] gap-1 items-center text-xs py-1.5 border-b border-text-primary/5 last:border-0">
                   {/* Home player */}
                   <div
-                    className="flex-1 flex items-center gap-1.5 min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
+                    className="flex items-center gap-2 min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
                     onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
                   >
                     {hp?.headshot_url ? (
-                      <img src={hp.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
-                    <span className="truncate text-text-primary">{hp?.player_name || '--'}</span>
-                    {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
-                    {hp?.player_id && <BlurbDot playerId={hp.player_id} blurbIds={blurbIds} />}
-                    {hp?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
+                      <img src={hp.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                    ) : <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0" />}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="font-semibold text-text-primary truncate">{hp?.player_name || '--'}</span>
+                        {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
+                        {hp?.player_id && <BlurbDot playerId={hp.player_id} blurbIds={blurbIds} />}
+                      </div>
+                      {hStat && <div className="text-[10px] text-text-muted truncate">{hStat}</div>}
+                      {hp?.on_bye && <div className="text-[9px] text-text-muted font-bold">BYE</div>}
+                    </div>
                   </div>
-                  <div className={`w-10 text-right font-semibold shrink-0 ${
-                    hp?.game_status === 'live' ? 'text-accent' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
-                  }`}>
-                    {hp?.game_status === 'upcoming' && weekStatus !== 'past' ? (hp?.projected?.toFixed(1) || '0.0') : (hp?.points?.toFixed(1) || '0.0')}
+                  <div className="text-right text-text-muted text-[11px]">{hp?.projected?.toFixed(1) || '--'}</div>
+                  <div className={`text-right font-bold ${hp?.game_status === 'live' ? 'text-accent' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
+                    {(hPts || 0).toFixed(1)}
                   </div>
-
-                  {/* Position label */}
-                  <div className="w-8 text-center">
+                  <div className="text-center">
                     <span className="text-[10px] font-semibold text-text-muted bg-bg-secondary rounded px-1 py-0.5">
                       {SLOT_LABELS[hp?.slot] || '?'}
                     </span>
                   </div>
-
-                  {/* Away player */}
-                  <div className={`w-10 text-left font-semibold shrink-0 ${
-                    ap?.game_status === 'live' ? 'text-accent' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
-                  }`}>
-                    {ap?.game_status === 'upcoming' && weekStatus !== 'past' ? (ap?.projected?.toFixed(1) || '0.0') : (ap?.points?.toFixed(1) || '0.0')}
+                  <div className={`text-left font-bold ${ap?.game_status === 'live' ? 'text-accent' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
+                    {(aPts || 0).toFixed(1)}
                   </div>
+                  <div className="text-left text-text-muted text-[11px]">{ap?.projected?.toFixed(1) || '--'}</div>
+                  {/* Away player */}
                   <div
-                    className="flex-1 flex items-center gap-1.5 justify-end min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
+                    className="flex items-center gap-2 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
                     onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
                   >
-                    {ap?.player_id && <BlurbDot playerId={ap.player_id} blurbIds={blurbIds} />}
-                    {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
-                    {ap?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
-                    <span className="truncate text-text-primary text-right">{ap?.player_name || '--'}</span>
+                    <div className="min-w-0 text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        {ap?.player_id && <BlurbDot playerId={ap.player_id} blurbIds={blurbIds} />}
+                        {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
+                        <span className="font-semibold text-text-primary truncate">{ap?.player_name || '--'}</span>
+                      </div>
+                      {aStat && <div className="text-[10px] text-text-muted truncate">{aStat}</div>}
+                      {ap?.on_bye && <div className="text-[9px] text-text-muted font-bold">BYE</div>}
+                    </div>
                     {ap?.headshot_url ? (
-                      <img src={ap.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                      <img src={ap.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                    ) : <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0" />}
                   </div>
                 </div>
               )
             })}
+            {/* Totals */}
+            <div className="grid grid-cols-[1fr_3rem_3.5rem_2.5rem_3.5rem_3rem_1fr] gap-1 items-center text-xs mt-1 pt-2 border-t border-text-primary/10 font-display">
+              <div />
+              <div />
+              <div className="text-right font-bold text-text-primary">
+                {(matchup.home_points || matchup.home_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
+              </div>
+              <div className="text-center text-text-muted text-[10px]">Total</div>
+              <div className="text-left font-bold text-text-primary">
+                {(matchup.away_points || matchup.away_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
+              </div>
+              <div />
+              <div />
+            </div>
           </div>
 
-          {/* Totals row */}
-          <div className="flex items-center gap-1 text-xs mt-2 pt-2 border-t border-text-primary/10 font-display">
-            <div className="flex-1 text-right text-text-muted">Total</div>
-            <div className="w-10 text-right font-bold text-text-primary">
-              {(matchup.home_points || matchup.home_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
+          {/* Mobile: compact view (unchanged) */}
+          <div className="lg:hidden">
+            <div className="space-y-1">
+              {(matchup.home_roster || []).map((hp, i) => {
+                const ap = matchup.away_roster?.[i]
+                return (
+                  <div key={i} className="flex items-center gap-1 text-xs">
+                    <div
+                      className="flex-1 flex items-center gap-1.5 min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
+                      onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
+                    >
+                      {hp?.headshot_url ? (
+                        <img src={hp.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                      ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                      <span className="truncate text-text-primary">{hp?.player_name || '--'}</span>
+                      {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
+                      {hp?.player_id && <BlurbDot playerId={hp.player_id} blurbIds={blurbIds} />}
+                      {hp?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
+                    </div>
+                    <div className={`w-10 text-right font-semibold shrink-0 ${
+                      hp?.game_status === 'live' ? 'text-accent' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
+                    }`}>
+                      {hp?.game_status === 'upcoming' && weekStatus !== 'past' ? (hp?.projected?.toFixed(1) || '0.0') : (hp?.points?.toFixed(1) || '0.0')}
+                    </div>
+                    <div className="w-8 text-center">
+                      <span className="text-[10px] font-semibold text-text-muted bg-bg-secondary rounded px-1 py-0.5">
+                        {SLOT_LABELS[hp?.slot] || '?'}
+                      </span>
+                    </div>
+                    <div className={`w-10 text-left font-semibold shrink-0 ${
+                      ap?.game_status === 'live' ? 'text-accent' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'
+                    }`}>
+                      {ap?.game_status === 'upcoming' && weekStatus !== 'past' ? (ap?.projected?.toFixed(1) || '0.0') : (ap?.points?.toFixed(1) || '0.0')}
+                    </div>
+                    <div
+                      className="flex-1 flex items-center gap-1.5 justify-end min-w-0 py-1 cursor-pointer hover:bg-text-primary/5 rounded px-1"
+                      onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
+                    >
+                      {ap?.player_id && <BlurbDot playerId={ap.player_id} blurbIds={blurbIds} />}
+                      {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
+                      {ap?.on_bye && <span className="text-[9px] text-text-muted font-bold">BYE</span>}
+                      <span className="truncate text-text-primary text-right">{ap?.player_name || '--'}</span>
+                      {ap?.headshot_url ? (
+                        <img src={ap.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                      ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0" />}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-            <div className="w-8" />
-            <div className="w-10 text-left font-bold text-text-primary">
-              {(matchup.away_points || matchup.away_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
+            <div className="flex items-center gap-1 text-xs mt-2 pt-2 border-t border-text-primary/10 font-display">
+              <div className="flex-1 text-right text-text-muted">Total</div>
+              <div className="w-10 text-right font-bold text-text-primary">
+                {(matchup.home_points || matchup.home_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
+              </div>
+              <div className="w-8" />
+              <div className="w-10 text-left font-bold text-text-primary">
+                {(matchup.away_points || matchup.away_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
+              </div>
+              <div className="flex-1" />
             </div>
-            <div className="flex-1" />
           </div>
         </div>
       )}
