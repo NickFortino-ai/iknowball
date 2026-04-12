@@ -126,6 +126,13 @@ export default function HomePage() {
     '/backdrops/mlb-dodger.webp',
     '/backdrops/nba-united.webp',
     '/backdrops/nfl-atandt.webp',
+    '/backdrops/mlb-yankee.webp',
+    '/backdrops/nba-barclays.webp',
+    '/backdrops/nfl-mercedes-benz.webp',
+    '/backdrops/mlb-pnc.webp',
+    '/backdrops/nba-fiserv.webp',
+    '/backdrops/nfl-us-bank.webp',
+    '/backdrops/mlb-oracle.webp',
   ]
   const [heroIdx, setHeroIdx] = useState(0)
 
