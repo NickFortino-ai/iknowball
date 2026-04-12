@@ -114,36 +114,76 @@ export default function HomePage() {
     return <Navigate to="/payment" replace />
   }
 
+  const HERO_IMAGES = [
+    '/backdrops/nba-msg.webp',
+    '/backdrops/nfl-lambeau.webp',
+    '/backdrops/mlb-wrigley.webp',
+    '/backdrops/nba-cryptocom.webp',
+    '/backdrops/nfl-sofi.webp',
+    '/backdrops/mlb-fenway.webp',
+  ]
+  const [heroIdx, setHeroIdx] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroIdx((i) => (i + 1) % HERO_IMAGES.length)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-8 sm:py-12">
-      {/* Hero */}
-      <div className="text-center mb-16">
-        <h1 className="font-display text-5xl sm:text-7xl text-accent mb-4 tracking-tight">
-          I KNOW BALL
-          <InfoTooltip text="I KNOW BALL is the all-in-one sports platform for people who live and breathe sports. Pick winners using live Vegas odds, run fantasy leagues with the best visuals in the game, and prove you actually know ball." />
-        </h1>
-        <p className="text-text-secondary text-lg sm:text-xl max-w-lg mx-auto mb-8">
-          Win leagues. Pick winners.<br />Prove you know ball.
-        </p>
-        {!isAuthenticated ? (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/signup" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
-              Start Picking
-            </Link>
-            <Link to="/login" className="w-full sm:w-auto text-center border border-border hover:border-border-hover text-text-secondary hover:text-text-primary px-8 py-3 rounded-xl text-lg transition-colors">
-              Sign In
-            </Link>
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/leagues" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
-              Go to Leagues
-            </Link>
-            <Link to="/picks" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
-              Make Your Picks
-            </Link>
-          </div>
-        )}
+      {/* Hero with cycling stadium backdrops */}
+      <div className="relative text-center mb-16 overflow-hidden rounded-2xl">
+        {/* Backdrop images */}
+        <div className="absolute inset-0">
+          {HERO_IMAGES.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms] ease-in-out"
+              style={{
+                opacity: i === heroIdx ? 1 : 0,
+                transform: i === heroIdx ? 'scale(1.05)' : 'scale(1)',
+                transition: 'opacity 2s ease-in-out, transform 8s ease-out',
+              }}
+              loading={i <= 1 ? 'eager' : 'lazy'}
+            />
+          ))}
+          {/* Dark gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 py-16 sm:py-24 px-4">
+          <h1 className="font-display text-5xl sm:text-7xl text-accent mb-4 tracking-tight drop-shadow-lg">
+            I KNOW BALL
+            <InfoTooltip text="I KNOW BALL is the all-in-one sports platform for people who live and breathe sports. Pick winners using live Vegas odds, run fantasy leagues with the best visuals in the game, and prove you actually know ball." />
+          </h1>
+          <p className="text-white/90 text-lg sm:text-xl max-w-lg mx-auto mb-8 drop-shadow">
+            Win leagues. Pick winners.<br />Prove you know ball.
+          </p>
+          {!isAuthenticated ? (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link to="/signup" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
+                Start Picking
+              </Link>
+              <Link to="/login" className="w-full sm:w-auto text-center bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 text-white px-8 py-3 rounded-xl text-lg transition-colors">
+                Sign In
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link to="/leagues" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
+                Go to Leagues
+              </Link>
+              <Link to="/picks" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
+                Make Your Picks
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Welcome Card — new users only (account < 7 days old, not all tasks done) */}
