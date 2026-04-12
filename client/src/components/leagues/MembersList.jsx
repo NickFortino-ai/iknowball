@@ -71,7 +71,7 @@ export default function MembersList({ members, pendingInvitations, commissionerI
                     <div className="text-xs text-text-muted">@{user.username}</div>
                   </div>
                 </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">
+                <span className="text-[10px] font-semibold text-yellow-400">
                   Invited
                 </span>
               </div>
