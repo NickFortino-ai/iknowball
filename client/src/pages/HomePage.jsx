@@ -220,25 +220,79 @@ export default function HomePage() {
         </>
       )}
 
-      {/* How Scoring Works — logged-out only */}
+      {/* Logged-out showcase */}
       {!isAuthenticated && (
+        <>
+        {/* What You Can Play */}
         <div className="mb-16">
-          <h2 className="font-display text-2xl text-center mb-8">How Scoring Works</h2>
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
+          <h2 className="font-display text-3xl text-center mb-3">What You Can Play</h2>
+          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">Run leagues with your friends across every major sport. Every format. Every season.</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { title: "Pick'em", desc: 'Pick winners using live Vegas odds. Underdogs pay more. Rack up points all season.', icon: '🎯', gradient: 'from-orange-600/20 to-transparent', sports: 'NFL · NBA · MLB · NHL' },
+              { title: 'Survivor', desc: "Pick one team to win each day. Lose and you're out. Last one standing wins.", icon: '💀', gradient: 'from-red-600/20 to-transparent', sports: 'NFL · NBA · MLB · NHL' },
+              { title: 'Fantasy Football', desc: 'Draft a roster, set lineups, work the wire. Full-season fantasy with playoffs.', icon: '🏈', gradient: 'from-green-600/20 to-transparent', sports: 'NFL' },
+              { title: 'NBA Daily Fantasy', desc: 'Build a new roster every night under a salary cap. No draft, no commitment.', icon: '🏀', gradient: 'from-blue-600/20 to-transparent', sports: 'NBA' },
+              { title: 'MLB Daily Fantasy', desc: 'Set a fresh lineup every game day. Salary cap strategy meets baseball.', icon: '⚾', gradient: 'from-sky-600/20 to-transparent', sports: 'MLB' },
+              { title: 'Squares', desc: 'Claim a square on the grid. Score lands on your number, you win the quarter.', icon: '🟧', gradient: 'from-purple-600/20 to-transparent', sports: 'NFL · NBA · MLB' },
+            ].map((mode) => (
+              <Link
+                key={mode.title}
+                to="/signup"
+                className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} pointer-events-none`} />
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-2xl">{mode.icon}</span>
+                    <h3 className="font-display text-xl text-white">{mode.title}</h3>
+                  </div>
+                  <p className="text-sm text-text-secondary leading-relaxed mb-3">{mode.desc}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-muted">{mode.sports}</span>
+                    <span className="text-xs text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Global Picks — the core experience */}
+        <div className="mb-16 text-center">
+          <h2 className="font-display text-3xl mb-3">Pick Winners. Build Your Record.</h2>
+          <p className="text-text-muted max-w-lg mx-auto mb-8">Beyond leagues, every pick you make counts toward your global record. Climb the leaderboard, earn status tiers, and prove you actually know ball.</p>
+          <div className="grid sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+            <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6 text-center">
               <div className="font-display text-3xl text-correct mb-2">+20</div>
-              <div className="text-text-secondary text-sm">Pick an underdog and win big — risk 10, win 20</div>
+              <div className="text-text-secondary text-sm">Pick an underdog and win big</div>
             </div>
-            <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
+            <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6 text-center">
               <div className="font-display text-3xl text-accent mb-2">+4</div>
-              <div className="text-text-secondary text-sm">Pick a favorite for a safe gain — risk 10, win 4</div>
+              <div className="text-text-secondary text-sm">Pick a favorite for a safe gain</div>
             </div>
-            <div className="bg-bg-card rounded-2xl border border-border p-6 text-center">
+            <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6 text-center">
               <div className="font-display text-3xl text-incorrect mb-2">-10</div>
-              <div className="text-text-secondary text-sm">Wrong pick? You lose 10 points every time</div>
+              <div className="text-text-secondary text-sm">Wrong pick costs you every time</div>
             </div>
           </div>
         </div>
+
+        {/* Social proof strip */}
+        <div className="mb-16 flex flex-wrap items-center justify-center gap-8 sm:gap-16 py-6 border-y border-text-primary/10">
+          {[
+            { value: '6', label: 'League Formats' },
+            { value: '7+', label: 'Sports Covered' },
+            { value: '24/7', label: 'Live Odds' },
+            { value: '∞', label: 'Leagues to Run' },
+          ].map((stat) => (
+            <div key={stat.label} className="text-center">
+              <div className="font-display text-2xl sm:text-3xl text-accent">{stat.value}</div>
+              <div className="text-xs text-text-muted mt-1">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+        </>
       )}
 
       {/* Tier Breakdown — always shown */}
