@@ -341,7 +341,7 @@ export default function MockDraftPage() {
         />
       )}
       {screen === 'review' && reviewMock && (
-        <ReviewScreen mock={reviewMock} onBack={() => setScreen('home')} onNew={() => setScreen('setup')} />
+        <ReviewScreen mock={reviewMock} onBack={() => setScreen('home')} onNew={() => setScreen('setup')} onBookmark={bookmarkMock} />
       )}
     </div>
   )
@@ -1075,8 +1075,9 @@ function SlotRow({ label, player }) {
 // ────────────────────────────────────────────────────────────────────
 // Review
 
-function ReviewScreen({ mock, onBack, onNew }) {
+function ReviewScreen({ mock, onBack, onNew, onBookmark }) {
   const [openTeam, setOpenTeam] = useState(mock.config.userSlot)
+  const [bookmarked, setBookmarked] = useState(!!mock._serverId)
   const teams = []
   const names = mock.teamNames || []
   for (let i = 0; i < mock.config.numTeams; i++) {
@@ -1136,7 +1137,18 @@ function ReviewScreen({ mock, onBack, onNew }) {
       </div>
 
       <div className="flex gap-2">
-        <button onClick={onBack} className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-bg-card border border-text-primary/20 text-text-secondary">Back to Mock Draft</button>
+        <button onClick={onBack} className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-bg-card border border-text-primary/20 text-text-secondary">Back</button>
+        {onBookmark && !bookmarked && (
+          <button
+            onClick={() => { onBookmark(mock); setBookmarked(true) }}
+            className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold border border-accent text-accent hover:bg-accent/10 transition-colors"
+          >
+            Save Mock
+          </button>
+        )}
+        {bookmarked && (
+          <span className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold text-correct text-center">Saved</span>
+        )}
         <button onClick={onNew} className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-accent text-white">+ New Mock</button>
       </div>
     </div>

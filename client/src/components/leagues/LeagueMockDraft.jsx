@@ -144,11 +144,18 @@ function buildSlotPlan(rosterSlots, players) {
 
 const MAX_RECENT = 5
 function recentKey(leagueId) { return `leagueMockHistory_${leagueId}` }
+function savedKey(leagueId) { return `leagueMockSaved_${leagueId}` }
 function loadRecent(leagueId) {
   try { return JSON.parse(localStorage.getItem(recentKey(leagueId)) || '[]') } catch { return [] }
 }
 function saveRecent(leagueId, list) {
   localStorage.setItem(recentKey(leagueId), JSON.stringify(list.slice(0, MAX_RECENT)))
+}
+function loadSaved(leagueId) {
+  try { return JSON.parse(localStorage.getItem(savedKey(leagueId)) || '[]') } catch { return [] }
+}
+function persistSaved(leagueId, list) {
+  localStorage.setItem(savedKey(leagueId), JSON.stringify(list))
 }
 
 export default function LeagueMockDraft({ league, fantasySettings }) {
@@ -157,6 +164,21 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
   const [picks, setPicks] = useState([])
   const [reviewMock, setReviewMock] = useState(null)
   const [recentMocks, setRecentMocks] = useState(() => loadRecent(league.id))
+  const [savedMocks, setSavedMocks] = useState(() => loadSaved(league.id))
+  const [justBookmarked, setJustBookmarked] = useState(false)
+
+  function bookmarkMock(mock) {
+    const alreadySaved = savedMocks.some((m) => m.id === mock.id)
+    if (alreadySaved) return
+    const next = [mock, ...savedMocks]
+    persistSaved(league.id, next)
+    setSavedMocks(next)
+    // Remove from recent
+    const nextRecent = recentMocks.filter((m) => m.id !== mock.id)
+    saveRecent(league.id, nextRecent)
+    setRecentMocks(nextRecent)
+    setJustBookmarked(true)
+  }
   const [activeTab, setActiveTab] = useState('Players')
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -300,12 +322,19 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
           </div>
         </div>
         <RosterView slotPlan={slotPlan} />
-        <div className="flex gap-3">
-          <button onClick={handleRestart} className="flex-1 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-colors">
-            New Mock Draft
-          </button>
-          <button onClick={() => setReviewMock(null)} className="flex-1 py-3 rounded-xl bg-bg-card border border-text-primary/20 text-text-secondary font-semibold text-sm hover:bg-bg-card-hover transition-colors">
+        <div className="flex gap-2">
+          <button onClick={() => { setReviewMock(null); setJustBookmarked(false) }} className="flex-1 py-3 rounded-xl bg-bg-card border border-text-primary/20 text-text-secondary font-semibold text-sm hover:bg-bg-card-hover transition-colors">
             Back
+          </button>
+          {!justBookmarked && !savedMocks.some((m) => m.id === reviewMock.id) ? (
+            <button onClick={() => bookmarkMock(reviewMock)} className="flex-1 py-3 rounded-xl border border-accent text-accent font-semibold text-sm hover:bg-accent/10 transition-colors">
+              Save Mock
+            </button>
+          ) : (
+            <span className="flex-1 py-3 rounded-xl text-correct font-semibold text-sm text-center">Saved</span>
+          )}
+          <button onClick={handleRestart} className="flex-1 py-3 rounded-xl bg-accent text-white font-semibold text-sm hover:bg-accent-hover transition-colors">
+            New Mock
           </button>
         </div>
       </div>
@@ -341,14 +370,14 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
           </button>
         </div>
 
-        {/* Recent mocks */}
-        {recentMocks.length > 0 && (
+        {/* Saved mocks */}
+        {savedMocks.length > 0 && (
           <div className="mt-6">
-            <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">Recent Mocks</h4>
+            <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">Saved Mocks</h4>
             <div className="space-y-2">
-              {recentMocks.map((mock) => (
-                <div key={mock.id} className="rounded-xl border border-text-primary/20 bg-bg-primary px-4 py-3 flex items-center justify-between">
-                  <button onClick={() => setReviewMock(mock)} className="flex-1 text-left min-w-0">
+              {savedMocks.map((mock) => (
+                <div key={mock.id} className="rounded-xl border border-accent/30 bg-bg-primary px-4 py-3 flex items-center justify-between">
+                  <button onClick={() => { setReviewMock(mock); setJustBookmarked(true) }} className="flex-1 text-left min-w-0">
                     <div className="text-sm font-semibold text-text-primary">
                       Pick #{mock.draftPosition}
                     </div>
@@ -358,9 +387,46 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
                     </div>
                   </button>
                   <button
-                    onClick={() => handleDeleteMock(mock.id)}
+                    onClick={() => { const next = savedMocks.filter((m) => m.id !== mock.id); persistSaved(league.id, next); setSavedMocks(next) }}
                     className="text-text-muted hover:text-incorrect text-lg ml-3 shrink-0"
                   >&times;</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent mocks */}
+        {recentMocks.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">Recent Mocks</h4>
+            <div className="space-y-2">
+              {recentMocks.map((mock) => (
+                <div key={mock.id} className="rounded-xl border border-text-primary/20 bg-bg-primary px-4 py-3 flex items-center justify-between">
+                  <button onClick={() => { setReviewMock(mock); setJustBookmarked(false) }} className="flex-1 text-left min-w-0">
+                    <div className="text-sm font-semibold text-text-primary">
+                      Pick #{mock.draftPosition}
+                    </div>
+                    <div className="text-xs text-text-muted">
+                      {new Date(mock.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      {' · '}{mock.roster?.length || 0} players
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                    <button
+                      onClick={() => bookmarkMock(mock)}
+                      className="text-text-muted hover:text-accent text-sm"
+                      title="Save mock"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteMock(mock.id)}
+                      className="text-text-muted hover:text-incorrect text-lg"
+                    >&times;</button>
+                  </div>
                 </div>
               ))}
             </div>
