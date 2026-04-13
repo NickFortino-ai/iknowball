@@ -6,7 +6,6 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
-import LeagueReport from './LeagueReport'
 
 const SLOTS = [
   { key: 'SP', label: 'SP', positions: ['SP'] },
@@ -272,7 +271,6 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   const [initDate, setInitDate] = useState(null)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
   const [standingsUserId, setStandingsUserId] = useState(null)
-  const [showReport, setShowReport] = useState(false)
   const [editing, setEditing] = useState(false)
 
   if (initDate !== date) {
@@ -385,18 +383,6 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
     const gridCols = 'grid-cols-[2.5rem_1fr_3rem_5rem]'
     return (
       <div>
-        {league.status === 'completed' && (
-          <button
-            onClick={() => setShowReport(true)}
-            className="w-full mb-4 py-3 rounded-xl bg-accent/10 border border-accent/30 text-accent font-display text-sm flex items-center justify-center gap-2 hover:bg-accent/20 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            View League Report
-          </button>
-        )}
-        {showReport && <LeagueReport leagueId={league.id} leagueName={league.name} memberCount={league.member_count} onClose={() => setShowReport(false)} />}
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
