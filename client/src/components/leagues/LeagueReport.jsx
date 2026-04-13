@@ -527,7 +527,7 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
     </div>
   ) : (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={onClose}>
-      <div className="bg-bg-secondary rounded-2xl p-6 text-center max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-bg-primary border border-text-primary/20 rounded-2xl p-6 text-center max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
         <p className="text-text-primary font-semibold mb-2">No Report Available</p>
         <p className="text-text-muted text-sm">Reports are generated when a league completes with enough contest days (10+ for NBA/MLB, 6+ weeks for NFL).</p>
         <button onClick={onClose} className="mt-4 text-accent text-sm font-semibold">Close</button>
@@ -552,8 +552,8 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
   const content = (
     <>
         {/* Branded header */}
-        <div className={inline ? '' : 'sticky top-0 bg-bg-secondary z-10'}>
-          <div className="px-4 py-3 border-b border-text-primary/10">
+        <div className={inline ? '' : 'sticky top-0 bg-bg-primary z-10'}>
+          <div className="px-4 py-3 border-b border-text-primary/20">
             <div className="flex items-center justify-between">
               <div className="min-w-0">
                 <div className="font-display text-[10px] uppercase tracking-widest text-accent mb-0.5">I KNOW BALL</div>
@@ -575,10 +575,10 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
           </div>
 
           {/* Tab bar — sticky below header */}
-          <div className="relative border-b border-text-primary/10">
+          <div className="relative border-b border-text-primary/20">
             {/* Fade hints for horizontal scroll */}
-            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-bg-secondary to-transparent z-10" />
-            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-bg-secondary to-transparent z-10" />
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-bg-primary to-transparent z-10" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-bg-primary to-transparent z-10" />
             <div className="flex gap-1 px-4 py-2 overflow-x-auto scrollbar-hide scroll-smooth" style={{ WebkitOverflowScrolling: 'touch' }}>
               {/* League tab */}
               <button
@@ -647,12 +647,12 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
     </>
   )
 
-  if (inline) return <div className="bg-bg-secondary rounded-2xl overflow-y-auto">{content}</div>
+  if (inline) return <div className="bg-bg-primary rounded-2xl border border-text-primary/20 overflow-y-auto">{content}</div>
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
       <div
-        className="bg-bg-secondary w-full md:max-w-2xl max-h-[90vh] rounded-t-2xl md:rounded-2xl overflow-y-auto"
+        className="bg-bg-primary border border-text-primary/20 w-full md:max-w-2xl max-h-[90vh] rounded-t-2xl md:rounded-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {content}
