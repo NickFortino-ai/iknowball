@@ -67,13 +67,10 @@ export default function DraftStartsIn({ draftDate, draftStatus, compact = true }
       </div>
     )
   }
-  // Prominent display: bigger, with a subtle background pill
+  // Prominent display: single line, right-aligned
   return (
-    <div className="inline-flex flex-col items-end">
-      <div className="text-[10px] uppercase tracking-wider text-text-muted">Draft</div>
-      <div className="text-base md:text-lg font-display text-accent leading-tight">
-        {label.replace(/^Draft (is |starts )/, '')}
-      </div>
+    <div className="text-sm md:text-base font-display text-accent text-right">
+      {label}
     </div>
   )
 }
