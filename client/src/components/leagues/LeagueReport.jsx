@@ -582,7 +582,7 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
               </div>
             )}
             <div className="text-center mb-4">
-              <div className="font-display text-sm md:text-base uppercase tracking-widest text-accent mb-1">I KNOW BALL</div>
+              <div className="font-display text-xl text-accent tracking-tight mb-1">I KNOW BALL</div>
               <h3 className="font-display text-xl md:text-2xl font-bold text-white">League Report</h3>
             </div>
             <div>
