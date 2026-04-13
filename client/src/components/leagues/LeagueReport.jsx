@@ -143,7 +143,7 @@ function DfsUserReport({ report, isMe }) {
           )}
           {seasonStats.bestNight && (
             <div className="flex justify-between">
-              <span className="text-text-muted">Best Night</span>
+              <span className="text-text-muted">Best Roster</span>
               <span className="text-text-primary font-semibold">{fmt(seasonStats.bestNight.points)} pts ({seasonStats.bestNight.date})</span>
             </div>
           )}
