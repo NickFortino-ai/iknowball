@@ -70,15 +70,15 @@ function DfsUserReport({ report, isMe }) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 md:gap-3 mb-5 md:mb-6">
-        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+        <div className="bg-bg-primary rounded-lg border border-text-primary/20 p-2.5 md:p-4 text-center">
           <div className="font-display text-xl md:text-3xl text-text-primary">{seasonStats.wins}</div>
           <div className="text-[10px] md:text-xs text-text-muted">Wins</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+        <div className="bg-bg-primary rounded-lg border border-text-primary/20 p-2.5 md:p-4 text-center">
           <div className="font-display text-xl md:text-3xl text-text-primary">{seasonStats.avgPointsPerNight}</div>
           <div className="text-[10px] md:text-xs text-text-muted">Avg Pts</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+        <div className="bg-bg-primary rounded-lg border border-text-primary/20 p-2.5 md:p-4 text-center">
           <div className="font-display text-xl md:text-3xl text-text-primary">{uniquePlayersRostered}</div>
           <div className="text-[10px] md:text-xs text-text-muted">Players Used</div>
         </div>
@@ -199,19 +199,19 @@ function TraditionalUserReport({ report, isMe }) {
 
       {/* Season record grid */}
       <div className="grid grid-cols-4 gap-2 md:gap-3 mb-5 md:mb-6">
-        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+        <div className="bg-bg-primary rounded-lg border border-text-primary/20 p-2.5 md:p-4 text-center">
           <div className="font-display text-xl md:text-3xl text-correct">{seasonRecord.wins}</div>
           <div className="text-[10px] md:text-xs text-text-muted">Wins</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+        <div className="bg-bg-primary rounded-lg border border-text-primary/20 p-2.5 md:p-4 text-center">
           <div className="font-display text-xl md:text-3xl text-incorrect">{seasonRecord.losses}</div>
           <div className="text-[10px] md:text-xs text-text-muted">Losses</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+        <div className="bg-bg-primary rounded-lg border border-text-primary/20 p-2.5 md:p-4 text-center">
           <div className="font-display text-xl md:text-3xl text-text-primary">{fmt(seasonRecord.pointsFor)}</div>
           <div className="text-[10px] md:text-xs text-text-muted">PF</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+        <div className="bg-bg-primary rounded-lg border border-text-primary/20 p-2.5 md:p-4 text-center">
           <div className="font-display text-xl md:text-3xl text-text-secondary">{fmt(seasonRecord.pointsAgainst)}</div>
           <div className="text-[10px] md:text-xs text-text-muted">PA</div>
         </div>
@@ -253,7 +253,7 @@ function TraditionalUserReport({ report, isMe }) {
       {draftAnalysis && (
         <Section title="Draft Report">
           <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
-            <div className="bg-bg-card/50 rounded-lg px-4 py-3 md:px-6 md:py-4 text-center">
+            <div className="bg-bg-primary rounded-lg border border-text-primary/20 px-4 py-3 md:px-6 md:py-4 text-center">
               <div className="font-display text-2xl md:text-4xl text-text-primary">{draftAnalysis.draftGrade}</div>
               <div className="text-[10px] md:text-xs text-text-muted">Grade</div>
             </div>
@@ -348,7 +348,7 @@ function TraditionalUserReport({ report, isMe }) {
       {/* Best Waiver Pickup */}
       {bestWaiverPickup && (
         <Section title="Best Waiver Pickup">
-          <div className="bg-bg-card/50 rounded-lg p-3">
+          <div className="bg-bg-primary rounded-lg border border-text-primary/20 p-3">
             <PlayerRow
               name={bestWaiverPickup.player.name}
               headshot={bestWaiverPickup.player.headshot}
