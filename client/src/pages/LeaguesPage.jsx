@@ -9,6 +9,12 @@ import ErrorState from '../components/ui/ErrorState'
 
 const LONG_PRESS_MS = 400
 
+// Draft Prep visible April through early September (before NFL Week 1)
+function isDraftPrepSeason() {
+  const month = new Date().getMonth() // 0-indexed
+  return month >= 3 && month <= 8
+}
+
 function DraggableLeagueList({ leagues }) {
   const navigate = useNavigate()
   const [order, setOrder] = useState(() => leagues.map((l) => l.id))
@@ -236,12 +242,14 @@ export default function LeaguesPage() {
           >
             Create League
           </Link>
-          <Link
-            to="/leagues/mock-draft"
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/5 backdrop-blur text-text-secondary hover:bg-white/10 transition-colors border border-accent text-center"
-          >
-            Mock Draft
-          </Link>
+          {isDraftPrepSeason() && (
+            <Link
+              to="/leagues/draft-prep"
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/5 backdrop-blur text-text-secondary hover:bg-white/10 transition-colors border border-accent text-center"
+            >
+              Draft Prep
+            </Link>
+          )}
         </div>
       </div>
 

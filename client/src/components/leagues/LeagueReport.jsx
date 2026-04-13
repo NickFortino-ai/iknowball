@@ -91,7 +91,7 @@ function DfsUserReport({ report, isMe }) {
               name={pickOfTheYear.playerName}
               headshot={pickOfTheYear.headshot}
               stat={`${fmt(pickOfTheYear.points)} pts`}
-              statLabel={`$${pickOfTheYear.salary.toLocaleString()}`}
+              statLabel={`${pickOfTheYear.valueMultiplier || fmt(pickOfTheYear.points / (pickOfTheYear.salary / 1000))}x value · $${pickOfTheYear.salary.toLocaleString()}`}
               subtext={fmtDate(pickOfTheYear.date)}
             />
           </div>
@@ -112,7 +112,7 @@ function DfsUserReport({ report, isMe }) {
         <Section title="Best Value Plays">
           <div className="divide-y divide-text-primary/10">
             {bestValuePlays.map((p, i) => (
-              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${fmt(p.points)} pts`} statLabel={`$${p.salary.toLocaleString()}`} subtext={fmtDate(p.date)} />
+              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${fmt(p.points)} pts`} statLabel={`${fmt(p.points / (p.salary / 1000))}x value · $${p.salary.toLocaleString()}`} subtext={fmtDate(p.date)} />
             ))}
           </div>
         </Section>
@@ -452,7 +452,7 @@ function DfsLeagueAwards({ awards }) {
       )}
       {awards.mostContrarianPick && (
         <PlayerAwardCard
-          title="Most Contrarian Pick"
+          title="Bold Call"
           playerName={awards.mostContrarianPick.playerName}
           headshot={awards.mostContrarianPick.headshot}
           rightValue={`${fmt(awards.mostContrarianPick.points)} pts`}

@@ -19,6 +19,7 @@ import LeaguesPage from './pages/LeaguesPage'
 import CreateLeaguePage from './pages/CreateLeaguePage'
 import JoinLeaguePage from './pages/JoinLeaguePage'
 import MockDraftPage from './pages/MockDraftPage'
+import DraftPrepPage from './pages/DraftPrepPage'
 import LeagueDetailPage from './pages/LeagueDetailPage'
 import AdminPage from './pages/AdminPage'
 import PaymentPage from './pages/PaymentPage'
@@ -77,7 +78,8 @@ function AppRoutes() {
         <Route path="/leagues" element={<ProtectedRoute><LeaguesPage /></ProtectedRoute>} />
         <Route path="/leagues/create" element={<ProtectedRoute><CreateLeaguePage /></ProtectedRoute>} />
         <Route path="/leagues/join" element={<ProtectedRoute><JoinLeaguePage /></ProtectedRoute>} />
-        <Route path="/leagues/mock-draft" element={<ProtectedRoute><MockDraftPage /></ProtectedRoute>} />
+        <Route path="/leagues/draft-prep" element={<ProtectedRoute><DraftPrepPage /></ProtectedRoute>} />
+        <Route path="/leagues/mock-draft" element={<Navigate to="/leagues/draft-prep?tab=mock-draft" replace />} />
         <Route path="/leagues/:id" element={<ProtectedRoute><LeagueDetailPage /></ProtectedRoute>} />
         <Route path="/hall-of-fame" element={<ProtectedRoute><HallOfFamePage /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />

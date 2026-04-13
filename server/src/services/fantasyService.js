@@ -1,5 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { effectiveAdp as computeEffectiveAdp } from '../utils/effectiveAdp.js'
+import { getLeagueSyncInfo } from './draftPrepService.js'
 
 // =====================================================================
 // SCORING RULES
@@ -882,18 +884,8 @@ async function seedUserRankings(leagueId, userId) {
 
   if (!pool?.length) return
 
-  function effectiveAdp(p) {
-    let raw
-    if (scoringFormat === 'ppr') raw = p.adp_ppr ?? p.adp_half_ppr ?? p.search_rank
-    else if (scoringFormat === 'standard') raw = p.search_rank ?? p.adp_half_ppr ?? p.adp_ppr
-    else raw = p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank
-    raw = raw ?? 9999
-    if (p.position === 'QB' && isSuperflex) raw -= 30
-    return raw
-  }
-
   const ranked = pool
-    .map((p) => ({ ...p, _adp: effectiveAdp(p) }))
+    .map((p) => ({ ...p, _adp: computeEffectiveAdp(p, scoringFormat, isSuperflex) }))
     .sort((a, b) => a._adp - b._adp)
     .slice(0, RANKINGS_SEED_SIZE)
 
@@ -908,6 +900,20 @@ async function seedUserRankings(leagueId, userId) {
 }
 
 export async function getMyRankings(leagueId, userId) {
+  // Check if this league is synced to draft prep
+  const syncInfo = await getLeagueSyncInfo(leagueId, userId)
+  if (syncInfo.isSynced) {
+    const { data, error } = await supabase
+      .from('draft_prep_rankings')
+      .select('player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank)')
+      .eq('user_id', userId)
+      .eq('roster_config_hash', syncInfo.roster_config_hash)
+      .eq('scoring_format', syncInfo.scoring_format)
+      .order('rank', { ascending: true })
+    if (error) throw error
+    return data || []
+  }
+
   const { data: existing, error: existingErr } = await supabase
     .from('fantasy_user_rankings')
     .select('player_id, rank')
@@ -940,6 +946,30 @@ export async function setMyRankings(leagueId, userId, playerIds) {
     err.status = 400
     throw err
   }
+
+  // If synced, write to draft prep rankings (same underlying data)
+  const syncInfo = await getLeagueSyncInfo(leagueId, userId)
+  if (syncInfo.isSynced) {
+    await supabase
+      .from('draft_prep_rankings')
+      .delete()
+      .eq('user_id', userId)
+      .eq('roster_config_hash', syncInfo.roster_config_hash)
+      .eq('scoring_format', syncInfo.scoring_format)
+
+    if (!playerIds.length) return { count: 0 }
+    const rows = playerIds.map((pid, i) => ({
+      user_id: userId,
+      roster_config_hash: syncInfo.roster_config_hash,
+      scoring_format: syncInfo.scoring_format,
+      player_id: pid,
+      rank: i,
+    }))
+    const { error } = await supabase.from('draft_prep_rankings').insert(rows)
+    if (error) throw error
+    return { count: rows.length }
+  }
+
   await supabase
     .from('fantasy_user_rankings')
     .delete()
@@ -963,6 +993,19 @@ export async function setMyRankings(leagueId, userId, playerIds) {
  * the user wants a fresh starting point.
  */
 export async function resetMyRankings(leagueId, userId) {
+  // If synced, reset draft prep rankings instead
+  const syncInfo = await getLeagueSyncInfo(leagueId, userId)
+  if (syncInfo.isSynced) {
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('roster_slots')
+      .eq('league_id', leagueId)
+      .single()
+    const { resetDraftPrepRankings } = await import('./draftPrepService.js')
+    await resetDraftPrepRankings(userId, syncInfo.roster_config_hash, syncInfo.scoring_format, settings?.roster_slots)
+    return { reset: true }
+  }
+
   await supabase
     .from('fantasy_user_rankings')
     .delete()

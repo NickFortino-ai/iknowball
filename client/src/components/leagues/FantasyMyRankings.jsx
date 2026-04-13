@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useMyRankings, useSetMyRankings, useResetMyRankings, useDraftBoard } from '../../hooks/useLeagues'
+import { useDraftPrepRankings, useSetDraftPrepRankings, useResetDraftPrepRankings } from '../../hooks/useDraftPrep'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 
@@ -13,11 +14,30 @@ const POS_COLORS = {
   DEF: 'bg-purple-500/20 text-purple-300',
 }
 
-export default function FantasyMyRankings({ league }) {
-  const { data, isLoading } = useMyRankings(league.id)
-  const { data: draftData } = useDraftBoard(league.id)
-  const setRankings = useSetMyRankings()
-  const resetRankings = useResetMyRankings()
+/**
+ * Dual-mode rankings component.
+ * - League mode: pass { league } — reads/writes fantasy_user_rankings (or draft_prep if synced)
+ * - Draft Prep mode: pass { draftPrepConfig: { scoringFormat, configHash } }
+ */
+export default function FantasyMyRankings({ league, draftPrepConfig, syncBadge }) {
+  const isDraftPrep = !!draftPrepConfig
+
+  // League-mode hooks (only called when league is provided)
+  const leagueRankings = useMyRankings(isDraftPrep ? null : league?.id)
+  const leagueSetRankings = useSetMyRankings()
+  const leagueResetRankings = useResetMyRankings()
+  const { data: draftData } = useDraftBoard(isDraftPrep ? null : league?.id)
+
+  // Draft Prep mode hooks (only called when draftPrepConfig is provided)
+  const prepRankings = useDraftPrepRankings(
+    isDraftPrep ? draftPrepConfig.scoringFormat : null,
+    isDraftPrep ? draftPrepConfig.configHash : null,
+  )
+  const prepSetRankings = useSetDraftPrepRankings()
+  const prepResetRankings = useResetDraftPrepRankings()
+
+  // Unify the interface
+  const { data, isLoading } = isDraftPrep ? prepRankings : leagueRankings
 
   const [working, setWorking] = useState([])
   const [posFilter, setPosFilter] = useState('All')
@@ -29,14 +49,15 @@ export default function FantasyMyRankings({ league }) {
     if (data) setWorking(data.map((r) => ({ ...r })))
   }, [data])
 
-  // Drafted players are filtered out of the display
+  // Drafted players are filtered out of the display (league mode only)
   const draftedSet = useMemo(() => {
+    if (isDraftPrep) return new Set()
     const ids = new Set()
     for (const p of (draftData?.picks || [])) {
       if (p.player_id) ids.add(p.player_id)
     }
     return ids
-  }, [draftData])
+  }, [draftData, isDraftPrep])
 
   const dirty = useMemo(() => {
     if (!data || !working.length) return false
@@ -49,7 +70,15 @@ export default function FantasyMyRankings({ league }) {
 
   async function handleSave() {
     try {
-      await setRankings.mutateAsync({ leagueId: league.id, playerIds: working.map((r) => r.player_id) })
+      if (isDraftPrep) {
+        await prepSetRankings.mutateAsync({
+          scoringFormat: draftPrepConfig.scoringFormat,
+          configHash: draftPrepConfig.configHash,
+          playerIds: working.map((r) => r.player_id),
+        })
+      } else {
+        await leagueSetRankings.mutateAsync({ leagueId: league.id, playerIds: working.map((r) => r.player_id) })
+      }
       setEditMode(false)
       toast('Rankings saved', 'success')
     } catch (err) {
@@ -58,14 +87,24 @@ export default function FantasyMyRankings({ league }) {
   }
 
   async function handleReset() {
-    if (!confirm('Reset to current ADP for this league? Your edits will be lost.')) return
+    if (!confirm('Reset to current ADP? Your edits will be lost.')) return
     try {
-      await resetRankings.mutateAsync(league.id)
+      if (isDraftPrep) {
+        await prepResetRankings.mutateAsync({
+          scoringFormat: draftPrepConfig.scoringFormat,
+          configHash: draftPrepConfig.configHash,
+        })
+      } else {
+        await leagueResetRankings.mutateAsync(league.id)
+      }
       toast('Reset to ADP', 'success')
     } catch (err) {
       toast(err.message || 'Failed to reset', 'error')
     }
   }
+
+  const isSaving = isDraftPrep ? prepSetRankings.isPending : leagueSetRankings.isPending
+  const isResetting = isDraftPrep ? prepResetRankings.isPending : leagueResetRankings.isPending
 
   // ── Move up/down (edit mode only) ────────────────────────────────
   function movePlayer(playerId, direction) {
@@ -97,7 +136,14 @@ export default function FantasyMyRankings({ league }) {
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-3">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div>
-            <h3 className="font-display text-base text-text-primary">My Rankings</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-display text-base text-text-primary">My Rankings</h3>
+              {syncBadge && (
+                <span className="text-[10px] font-semibold text-accent bg-accent/10 border border-accent/30 rounded-full px-2 py-0.5">
+                  Synced with Draft Prep
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-text-muted">
               {editMode
                 ? 'Use the arrows to reorder. Tap Save when done.'
@@ -108,7 +154,7 @@ export default function FantasyMyRankings({ league }) {
             {!editMode && (
               <button
                 onClick={handleReset}
-                disabled={resetRankings.isPending}
+                disabled={isResetting}
                 className="text-[11px] text-text-muted hover:text-incorrect underline disabled:opacity-50"
               >
                 Reset to ADP
@@ -124,10 +170,10 @@ export default function FantasyMyRankings({ league }) {
             ) : (
               <button
                 onClick={handleSave}
-                disabled={setRankings.isPending}
+                disabled={isSaving}
                 className="px-4 py-1 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
               >
-                {setRankings.isPending ? 'Saving...' : 'Save'}
+                {isSaving ? 'Saving...' : 'Save'}
               </button>
             )}
           </div>

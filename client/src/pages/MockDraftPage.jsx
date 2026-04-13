@@ -222,7 +222,7 @@ function clearLegacySaved() {
 // ────────────────────────────────────────────────────────────────────
 // Page
 
-export default function MockDraftPage() {
+export default function MockDraftPage({ embedded = false, defaultConfig }) {
   const [screen, setScreen] = useState('home') // home | setup | draft | review
   const [config, setConfig] = useState(null)
   const [recent, setRecent] = useState(loadRecent())
@@ -310,13 +310,8 @@ export default function MockDraftPage() {
     }
   }
 
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-32">
-      <div className="flex items-center gap-3 mb-6">
-        <Link to="/leagues" className="text-text-muted hover:text-text-primary">←</Link>
-        <h1 className="font-display text-3xl">Mock Draft</h1>
-      </div>
-
+  const content = (
+    <>
       {screen === 'home' && (
         <HomeScreen
           recent={recent}
@@ -343,6 +338,18 @@ export default function MockDraftPage() {
       {screen === 'review' && reviewMock && (
         <ReviewScreen mock={reviewMock} onBack={() => setScreen('home')} onNew={() => setScreen('setup')} onBookmark={bookmarkMock} />
       )}
+    </>
+  )
+
+  if (embedded) return content
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-32">
+      <div className="flex items-center gap-3 mb-6">
+        <Link to="/leagues" className="text-text-muted hover:text-text-primary">←</Link>
+        <h1 className="font-display text-3xl">Mock Draft</h1>
+      </div>
+      {content}
     </div>
   )
 }

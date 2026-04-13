@@ -196,7 +196,8 @@ function buildReport(rosters, headshotMap, nightlyResults, userMap, contestDays,
     const pickOfTheYearRaw = valuePlays[0] || null
     const pickOfTheYear = pickOfTheYearRaw ? {
       ...pickOfTheYearRaw,
-      context: `${pickOfTheYearRaw.points} pts on a $${pickOfTheYearRaw.salary.toLocaleString()} salary — best value play of the season.`,
+      valueMultiplier: Math.round(pickOfTheYearRaw.points / (pickOfTheYearRaw.salary / 1000) * 10) / 10,
+      context: `${Math.round(pickOfTheYearRaw.points / (pickOfTheYearRaw.salary / 1000) * 10) / 10}x value on a $${pickOfTheYearRaw.salary.toLocaleString()} salary — best value play of the season.`,
     } : null
 
     // Heavy lifters — top 3 players by total points across all appearances
@@ -337,7 +338,7 @@ function buildReport(rosters, headshotMap, nightlyResults, userMap, contestDays,
         avatarUrl: onlyUser.avatar_url,
         avatarEmoji: onlyUser.avatar_emoji,
       } : null,
-      context: `Only ${onlyUser?.display_name || onlyUser?.username || 'this manager'} had them — paid off with ${Math.round(contrarianTop.points * 10) / 10} points.`,
+      context: `No one else in the league rostered them that day. ${onlyUser?.display_name || onlyUser?.username || 'This manager'} took the gamble and it paid off with ${Math.round(contrarianTop.points * 10) / 10} pts.`,
     }
   })() : null
 
