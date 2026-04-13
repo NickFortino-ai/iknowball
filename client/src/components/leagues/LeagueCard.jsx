@@ -112,7 +112,9 @@ export default function LeagueCard({ league, noLink }) {
           <span className="font-semibold text-accent">
             {FORMAT_LABELS[league.format]}
           </span>
-          <span>{SPORT_LABELS[league.sport]}</span>
+          {!['nba_dfs', 'mlb_dfs'].includes(league.format) && (
+            <span>{SPORT_LABELS[league.sport]}</span>
+          )}
           <span>{league.member_count} {league.member_count === 1 ? 'member' : 'members'}</span>
           {league.my_role === 'commissioner' && (
             <span className="font-semibold text-tier-hof">Commish</span>
