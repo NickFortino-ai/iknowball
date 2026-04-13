@@ -1045,4 +1045,78 @@ router.delete('/blurbs/:id', async (req, res) => {
   res.json({ deleted: true })
 })
 
+// ============================================
+// Season Dates
+// ============================================
+
+router.get('/season-dates', requireAuth, requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from('season_dates')
+    .select('*')
+    .order('season_year', { ascending: false })
+    .order('sport_key')
+
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || [])
+})
+
+router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
+  const { sport_key, season_year, regular_season_ends_at } = req.body
+  if (!sport_key || !season_year || !regular_season_ends_at) {
+    return res.status(400).json({ error: 'sport_key, season_year, and regular_season_ends_at are required' })
+  }
+
+  const { data, error } = await supabase
+    .from('season_dates')
+    .upsert({ sport_key, season_year: Number(season_year), regular_season_ends_at, updated_at: new Date().toISOString() },
+      { onConflict: 'sport_key,season_year' })
+    .select()
+    .single()
+
+  if (error) return res.status(500).json({ error: error.message })
+
+  // Clamp full_season leagues in this sport that have ends_at past the regular season end
+  const EXCLUDED_FORMATS = ['fantasy', 'squares', 'bracket', 'survivor']
+  const { data: leagues, error: leagueErr } = await supabase
+    .from('leagues')
+    .select('id, format, ends_at')
+    .eq('sport', sport_key)
+    .eq('duration', 'full_season')
+    .neq('status', 'completed')
+    .gt('ends_at', regular_season_ends_at)
+
+  if (!leagueErr && leagues?.length) {
+    let clamped = 0
+    for (const league of leagues) {
+      if (EXCLUDED_FORMATS.includes(league.format)) continue
+      // Traditional fantasy with playoffs — skip
+      if (league.format === 'fantasy') {
+        const { data: settings } = await supabase
+          .from('fantasy_settings')
+          .select('format, playoff_teams')
+          .eq('league_id', league.id)
+          .single()
+        if (settings?.format !== 'salary_cap') continue
+      }
+      await supabase
+        .from('leagues')
+        .update({ ends_at: regular_season_ends_at, updated_at: new Date().toISOString() })
+        .eq('id', league.id)
+      clamped++
+    }
+    logger.info({ sportKey: sport_key, seasonYear: season_year, clamped, total: leagues.length }, 'Clamped full_season league end dates to regular season end')
+  }
+
+  res.json(data)
+})
+
+router.delete('/season-dates/:id', requireAuth, requireAdmin, async (req, res) => {
+  const { error } = await supabase
+    .from('season_dates')
+    .delete()
+    .eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ deleted: true })
+})
+
 export default router

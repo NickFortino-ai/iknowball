@@ -541,6 +541,43 @@ export async function completeLeagues() {
     logger.info({ count: openLeagues.length }, 'Activated open leagues past start date')
   }
 
+  // Clamp full_season leagues to season end dates (if admin has set them)
+  const { data: seasonDates } = await supabase
+    .from('season_dates')
+    .select('sport_key, regular_season_ends_at')
+
+  if (seasonDates?.length) {
+    const CLAMP_EXCLUDED = ['squares', 'bracket', 'survivor']
+    for (const sd of seasonDates) {
+      const { data: overdue } = await supabase
+        .from('leagues')
+        .select('id, format')
+        .eq('sport', sd.sport_key)
+        .eq('duration', 'full_season')
+        .neq('status', 'completed')
+        .gt('ends_at', sd.regular_season_ends_at)
+
+      if (!overdue?.length) continue
+      for (const league of overdue) {
+        if (CLAMP_EXCLUDED.includes(league.format)) continue
+        // Traditional fantasy with playoffs — skip
+        if (league.format === 'fantasy') {
+          const { data: settings } = await supabase
+            .from('fantasy_settings')
+            .select('format, playoff_teams')
+            .eq('league_id', league.id)
+            .single()
+          if (settings?.format !== 'salary_cap') continue
+        }
+        await supabase
+          .from('leagues')
+          .update({ ends_at: sd.regular_season_ends_at, updated_at: new Date().toISOString() })
+          .eq('id', league.id)
+        logger.info({ leagueId: league.id, sportKey: sd.sport_key, endsAt: sd.regular_season_ends_at }, 'Clamped league end date to season end')
+      }
+    }
+  }
+
   // Find non-bracket leagues past their end date that haven't been completed
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
