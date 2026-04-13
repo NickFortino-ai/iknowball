@@ -1768,56 +1768,6 @@ export default function LeagueDetailPage() {
               </div>
             )}
 
-            {/* Backdrop picker — commissioner can change at any time */}
-            {isCommissioner && availableBackdrops?.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-text-primary/10">
-                <button
-                  onClick={() => setShowBackdropPicker((v) => !v)}
-                  className="flex items-center justify-between w-full text-left"
-                >
-                  <span className="text-sm font-semibold text-text-secondary">Change Backdrop</span>
-                  <svg className={`w-4 h-4 text-text-muted transition-transform ${showBackdropPicker ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {showBackdropPicker && (
-                  <div className="mt-3 grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto scrollbar-hide rounded-lg">
-                    {availableBackdrops.map((b) => {
-                      const isSelected = league.backdrop_image === b.image_url
-                      return (
-                        <button
-                          key={b.id}
-                          onClick={async () => {
-                            try {
-                              await updateLeague.mutateAsync({ leagueId: league.id, data: { backdrop_image: b.image_url } })
-                              toast('Backdrop updated!', 'success')
-                            } catch (err) {
-                              toast(err.message || 'Failed to update', 'error')
-                            }
-                          }}
-                          className={`relative aspect-[16/9] rounded-lg overflow-hidden border-2 transition-all ${
-                            isSelected ? 'border-accent ring-2 ring-accent/30' : 'border-transparent hover:border-text-primary/30'
-                          }`}
-                        >
-                          <img
-                            src={getBackdropUrl(b.image_url)}
-                            alt={b.label || ''}
-                            className="w-full h-full object-cover"
-                          />
-                          {isSelected && (
-                            <div className="absolute inset-0 bg-accent/20 flex items-center justify-center">
-                              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            </div>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
