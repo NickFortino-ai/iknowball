@@ -169,6 +169,16 @@ function MyProfileRow({ profile }) {
   )
 }
 
+// Formats that already contain the sport name in their label
+const SPORT_IN_FORMAT = { nba_dfs: true, mlb_dfs: true }
+
+function formatWithSport(league) {
+  const label = FORMAT_LABELS[league.format] || league.format
+  if (SPORT_IN_FORMAT[league.format]) return label
+  const sport = SPORT_LABELS[league.sport] || league.sport
+  return `${label} · ${sport}`
+}
+
 function MyActiveLeagues() {
   const { data: leagues, isLoading } = useMyLeagues()
 
@@ -186,6 +196,14 @@ function MyActiveLeagues() {
             to={`/leagues/${league.id}`}
             className="relative flex-shrink-0 w-52 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/40 transition-colors"
           >
+            {/* Readiness color clip */}
+            {league.readiness && (
+              <span className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-bl-md z-20 ${
+                league.readiness === 'ready' ? 'bg-correct'
+                  : league.readiness === 'attention' ? 'bg-yellow-500'
+                  : 'bg-incorrect'
+              }`} />
+            )}
             {league.backdrop_image && (
               <>
                 <img
@@ -199,15 +217,24 @@ function MyActiveLeagues() {
             )}
             <div className="relative p-4">
               <div className="font-semibold text-sm text-white truncate mb-1">{league.name}</div>
-              <div className="text-xs text-text-muted mb-2">
-                {FORMAT_LABELS[league.format] || league.format} · {SPORT_LABELS[league.sport] || league.sport}
-              </div>
+              <div className="text-xs text-text-muted mb-2">{formatWithSport(league)}</div>
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-semibold ${league.status === 'active' ? 'text-correct' : league.status === 'open' ? 'text-accent' : 'text-text-muted'}`}>
-                  {league.status === 'active' ? 'Live' : league.status === 'open' ? 'Open' : league.status}
-                </span>
                 <span className="text-xs text-text-muted">{league.member_count} members</span>
               </div>
+              {league.draft_status === 'in_progress' ? (
+                <div className="mt-2 text-center font-display text-sm font-bold text-correct uppercase tracking-wide">Drafting Now</div>
+              ) : league.draft_date && league.draft_status === 'pending' && (
+                <div className="mt-2 text-center font-semibold text-xs text-accent uppercase tracking-wide">
+                  {(() => {
+                    const target = new Date(league.draft_date)
+                    const dayDiff = Math.round((target.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000)
+                    const time = new Date(league.draft_date).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+                    if (dayDiff <= 0) return `Draft today at ${time}`
+                    if (dayDiff === 1) return `Draft tomorrow at ${time}`
+                    return `Draft in ${dayDiff} days`
+                  })()}
+                </div>
+              )}
             </div>
           </Link>
         ))}
