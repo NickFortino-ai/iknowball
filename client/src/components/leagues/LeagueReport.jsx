@@ -10,13 +10,19 @@ const fmt = (v) => typeof v === 'number' ? parseFloat(v.toFixed(1)) : v
 // Map report user objects (camelCase) to Avatar-compatible format (snake_case)
 const toAvatarUser = (u) => u ? { ...u, avatar_url: u.avatarUrl, avatar_emoji: u.avatarEmoji } : u
 
+function getInitials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  return parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : name[0].toUpperCase()
+}
+
 function PlayerRow({ name, headshot, stat, statLabel, subtext }) {
   return (
     <div className="flex items-center gap-3 md:gap-4 py-2.5 md:py-3">
       {headshot ? (
         <img src={headshot} alt={name} className="w-11 h-11 md:w-14 md:h-14 rounded-full object-cover bg-bg-secondary shrink-0" />
       ) : (
-        <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-bg-secondary flex items-center justify-center text-text-muted text-xs md:text-sm shrink-0">?</div>
+        <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-bg-secondary flex items-center justify-center text-text-muted text-sm md:text-base font-semibold shrink-0">{getInitials(name)}</div>
       )}
       <div className="flex-1 min-w-0">
         <div className="text-sm md:text-base font-semibold text-text-primary truncate">{name}</div>
@@ -73,7 +79,7 @@ function DfsUserReport({ report, isMe }) {
 
       {pickOfTheYear && (
         <Section title="Pick of the Year">
-          <div className="bg-accent/10 border border-accent/30 rounded-lg p-3">
+          <div className="border border-accent/40 rounded-lg p-3 md:p-4">
             <PlayerRow
               name={pickOfTheYear.playerName}
               headshot={pickOfTheYear.headshot}
@@ -219,7 +225,7 @@ function TraditionalUserReport({ report, isMe }) {
       {/* Team MVP */}
       {teamMvp && (
         <Section title="Team MVP">
-          <div className="bg-accent/10 border border-accent/30 rounded-lg p-3">
+          <div className="border border-accent/40 rounded-lg p-3 md:p-4">
             <PlayerRow
               name={teamMvp.player.name}
               headshot={teamMvp.player.headshot}
@@ -371,7 +377,7 @@ function PlayerAwardCard({ title, playerName, headshot, rightValue, context, use
         {headshot ? (
           <img src={headshot} alt="" className="w-11 h-11 md:w-14 md:h-14 rounded-full object-cover bg-bg-secondary shrink-0" />
         ) : (
-          <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-bg-secondary shrink-0" />
+          <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-bg-secondary flex items-center justify-center text-text-muted text-sm md:text-base font-semibold shrink-0">{getInitials(playerName)}</div>
         )}
         <div className="flex-1 min-w-0">
           <div className="text-sm md:text-lg font-bold text-text-primary truncate">{playerName}</div>
