@@ -24,6 +24,7 @@ import NbaDfsView from '../components/leagues/NbaDfsView'
 import MlbDfsView from '../components/leagues/MlbDfsView'
 import HrDerbyView from '../components/leagues/HrDerbyView'
 import TdPassView from '../components/leagues/TdPassView'
+import LeagueReport from '../components/leagues/LeagueReport'
 import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -32,9 +33,13 @@ import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl } from '../lib/backdropUrl'
 
+const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'mlb_dfs']
+
 function getLeagueTabs(league, isBracketLocked, fantasySettings) {
   const isOpen = league.status === 'open'
+  const isCompleted = league.status === 'completed'
   const memberOrStandings = isOpen ? 'Members' : 'Standings'
+  const reportTab = isCompleted && REPORT_FORMATS.includes(league.format) ? ['Report'] : []
 
   if (league.format === 'pickem') {
     return ['Picks', memberOrStandings, 'Thread']
@@ -48,7 +53,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
     const isSalaryCap = fantasySettings?.format === 'salary_cap'
     let tabs
     if (isSalaryCap) {
-      tabs = ['Roster', 'Live', memberOrStandings, 'Thread']
+      tabs = ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread']
     } else {
       // Traditional: Matchups absorbs Live, no separate Live tab
       tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Draft']
@@ -56,15 +61,15 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
     if (!isSalaryCap && !draftDone && tabs.includes('Draft')) {
       tabs.splice(tabs.indexOf('Draft') + 1, 0, 'Mock Draft')
     }
-    if (!isSalaryCap) tabs.push('Thread')
+    if (!isSalaryCap) tabs.push(...reportTab, 'Thread')
     return tabs
   }
 
   const TABS = {
     survivor: ['Picks', memberOrStandings, 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
-    nba_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
-    mlb_dfs: ['Roster', 'Live', memberOrStandings, 'Thread'],
+    nba_dfs: ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread'],
+    mlb_dfs: ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread'],
     hr_derby: ['Picks', memberOrStandings, 'Thread'],
     td_pass: ['Picks', 'History', memberOrStandings, 'Thread'],
   }
@@ -1726,6 +1731,10 @@ export default function LeagueDetailPage() {
             tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'History' ? 'history' : 'picks'}
           />
         </div>
+      )}
+
+      {tabs[activeTab] === 'Report' && (
+        <LeagueReport leagueId={league.id} leagueName={league.name} memberCount={league.member_count} inline />
       )}
 
       {tabs[activeTab] === 'Thread' && (

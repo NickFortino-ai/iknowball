@@ -507,18 +507,25 @@ function TraditionalLeagueAwards({ awards, champion }) {
 // Main Component
 // =====================================================================
 
-export default function LeagueReport({ leagueId, leagueName, memberCount, onClose }) {
+export default function LeagueReport({ leagueId, leagueName, memberCount, onClose, inline }) {
   const { profile } = useAuth()
   const { data, isLoading, error } = useLeagueReport(leagueId)
   const [selectedUserId, setSelectedUserId] = useState(null)
 
-  if (isLoading) return (
+  if (isLoading) return inline ? (
+    <div className="flex justify-center py-12"><LoadingSpinner /></div>
+  ) : (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={onClose}>
       <LoadingSpinner />
     </div>
   )
 
-  if (error || !data?.report) return (
+  if (error || !data?.report) return inline ? (
+    <div className="text-center py-12">
+      <p className="text-text-primary font-semibold mb-2">No Report Available</p>
+      <p className="text-text-muted text-sm">Reports are generated when a league completes with enough contest days (10+ for NBA/MLB, 6+ weeks for NFL).</p>
+    </div>
+  ) : (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={onClose}>
       <div className="bg-bg-secondary rounded-2xl p-6 text-center max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
         <p className="text-text-primary font-semibold mb-2">No Report Available</p>
@@ -542,14 +549,10 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
   const activeTab = selectedUserId || 'league'
   const currentReport = activeTab !== 'league' ? report.users?.[activeTab] : null
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
-      <div
-        className="bg-bg-secondary w-full md:max-w-2xl max-h-[90vh] rounded-t-2xl md:rounded-2xl overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+  const content = (
+    <>
         {/* Branded header */}
-        <div className="sticky top-0 bg-bg-secondary z-10">
+        <div className={inline ? '' : 'sticky top-0 bg-bg-secondary z-10'}>
           <div className="px-4 py-3 border-b border-text-primary/10">
             <div className="flex items-center justify-between">
               <div className="min-w-0">
@@ -563,11 +566,11 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
                       : `${report.contestDays} contest days \u00b7 ${memberCount || allUserIds.length} players`}
                 </div>
               </div>
-              <button onClick={onClose} className="text-text-muted p-1 shrink-0">
+              {!inline && <button onClick={onClose} className="text-text-muted p-1 shrink-0">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -641,6 +644,18 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
             <div className="text-[10px] uppercase tracking-widest text-text-muted/50">I KNOW BALL</div>
           </div>
         </div>
+    </>
+  )
+
+  if (inline) return <div className="bg-bg-secondary rounded-2xl overflow-y-auto">{content}</div>
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div
+        className="bg-bg-secondary w-full md:max-w-2xl max-h-[90vh] rounded-t-2xl md:rounded-2xl overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {content}
       </div>
     </div>
   )

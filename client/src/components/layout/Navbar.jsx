@@ -128,7 +128,7 @@ function getNotificationRoute(notification) {
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Live` : null
 
     case 'league_report':
-      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Report` : null
 
     case 'fantasy_matchup_result':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
@@ -452,7 +452,7 @@ export default function Navbar() {
                           const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
                           const hotTakeId = n.metadata?.hotTakeId || (n.metadata?.targetType === 'hot_take' ? n.metadata.targetId : null)
                           const isStreakMilestone = n.type === 'streak_milestone' && n.metadata?.streakId
-                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || n.metadata?.futuresPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || isStreakMilestone || route
+                          const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || n.metadata?.futuresPickId || hotTakeId || isSurvivorWin || (isLeagueWin && n.metadata?.leagueId) || isSurvivorStreakEnd || isStreakMilestone || route
                           return (
                             <div
                               key={n.id}
