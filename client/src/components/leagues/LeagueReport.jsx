@@ -7,6 +7,13 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 // Round floating point display values (241.09999999999997 → 241.1)
 const fmt = (v) => typeof v === 'number' ? parseFloat(v.toFixed(1)) : v
 
+// Format ISO date string (2026-04-06) to M/D/YYYY (4/6/2026)
+const fmtDate = (d) => {
+  if (!d) return d
+  const [y, m, day] = d.split('-')
+  return `${parseInt(m)}/${parseInt(day)}/${y}`
+}
+
 // Map report user objects (camelCase) to Avatar-compatible format (snake_case)
 const toAvatarUser = (u) => u ? { ...u, avatar_url: u.avatarUrl, avatar_emoji: u.avatarEmoji } : u
 
@@ -85,7 +92,7 @@ function DfsUserReport({ report, isMe }) {
               headshot={pickOfTheYear.headshot}
               stat={`${fmt(pickOfTheYear.points)} pts`}
               statLabel={`$${pickOfTheYear.salary.toLocaleString()}`}
-              subtext={pickOfTheYear.date}
+              subtext={fmtDate(pickOfTheYear.date)}
             />
           </div>
         </Section>
@@ -105,7 +112,7 @@ function DfsUserReport({ report, isMe }) {
         <Section title="Best Value Plays">
           <div className="divide-y divide-text-primary/10">
             {bestValuePlays.map((p, i) => (
-              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${fmt(p.points)} pts`} statLabel={`$${p.salary.toLocaleString()}`} subtext={p.date} />
+              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${fmt(p.points)} pts`} statLabel={`$${p.salary.toLocaleString()}`} subtext={fmtDate(p.date)} />
             ))}
           </div>
         </Section>
@@ -150,7 +157,7 @@ function DfsUserReport({ report, isMe }) {
           {seasonStats.bestNight && (
             <div className="flex justify-between">
               <span className="text-text-muted">Best Roster</span>
-              <span className="text-text-primary font-semibold">{fmt(seasonStats.bestNight.points)} pts ({seasonStats.bestNight.date})</span>
+              <span className="text-text-primary font-semibold">{fmt(seasonStats.bestNight.points)} pts ({fmtDate(seasonStats.bestNight.date)})</span>
             </div>
           )}
           {favoritePosition && (
