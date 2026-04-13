@@ -199,18 +199,16 @@ function buildReport(rosters, headshotMap, nightlyResults, userMap, contestDays,
       context: `${pickOfTheYearRaw.points} pts on a $${pickOfTheYearRaw.salary.toLocaleString()} salary — best value play of the season.`,
     } : null
 
-    // Worst investments (high salary, low points)
-    const busts = userSlots
-      .filter((s) => s.salary >= 6000 && s.points >= 0)
-      .map((s) => ({
-        playerName: s.playerName,
-        headshot: headshotMap[s.espnId] || null,
-        salary: s.salary,
-        points: s.points,
-        value: s.salary > 0 ? Math.round(s.points / s.salary * 10000) / 10 : 0,
-        date: s.date,
-      }))
-      .sort((a, b) => a.value - b.value)
+    // Heavy lifters — top 3 players by total points across all appearances
+    const playerTotals = {}
+    for (const s of userSlots) {
+      const key = s.espnId || s.playerName
+      if (!playerTotals[key]) playerTotals[key] = { playerName: s.playerName, headshot: headshotMap[s.espnId] || null, totalPoints: 0, appearances: 0 }
+      playerTotals[key].totalPoints += s.points
+      playerTotals[key].appearances++
+    }
+    const heavyLifters = Object.values(playerTotals)
+      .sort((a, b) => b.totalPoints - a.totalPoints)
       .slice(0, 3)
 
     // Unique players rostered
@@ -254,7 +252,7 @@ function buildReport(rosters, headshotMap, nightlyResults, userMap, contestDays,
       mostPlayed,
       pickOfTheYear,
       bestValuePlays: valuePlays,
-      worstInvestments: busts,
+      heavyLifters,
       uniquePlayersRostered: uniquePlayers,
       favoritePosition: favoritePosition ? { position: favoritePosition[0], totalSpent: favoritePosition[1] } : null,
       seasonStats: {

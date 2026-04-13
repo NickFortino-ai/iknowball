@@ -41,7 +41,7 @@ function Section({ title, children }) {
 // =====================================================================
 
 function DfsUserReport({ report, isMe }) {
-  const { user, mostPlayed, pickOfTheYear, bestValuePlays, worstInvestments, uniquePlayersRostered, favoritePosition, seasonStats } = report
+  const { user, mostPlayed, pickOfTheYear, bestValuePlays, heavyLifters, uniquePlayersRostered, favoritePosition, seasonStats } = report
 
   return (
     <div className={`rounded-xl border p-4 md:p-6 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
@@ -102,11 +102,11 @@ function DfsUserReport({ report, isMe }) {
         </Section>
       )}
 
-      {worstInvestments.length > 0 && (
-        <Section title="Worst Investments">
+      {heavyLifters?.length > 0 && (
+        <Section title="Heavy Lifters">
           <div className="divide-y divide-text-primary/10">
-            {worstInvestments.map((p, i) => (
-              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${fmt(p.points)} pts`} statLabel={`$${p.salary.toLocaleString()}`} subtext={p.date} />
+            {heavyLifters.map((p, i) => (
+              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${fmt(p.totalPoints)} pts`} statLabel={`${p.appearances} games`} />
             ))}
           </div>
         </Section>
