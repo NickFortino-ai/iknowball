@@ -586,10 +586,10 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
               {/* League tab */}
               <button
                 onClick={() => setSelectedUserId('league')}
-                className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all border ${
                   activeTab === 'league'
-                    ? 'bg-accent text-white shadow-sm shadow-accent/25'
-                    : 'bg-bg-card text-text-secondary hover:bg-bg-card/80'
+                    ? 'bg-accent text-white border-accent shadow-sm shadow-accent/25'
+                    : 'bg-bg-primary text-text-secondary border-text-primary/20 hover:border-accent/40'
                 }`}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -603,17 +603,18 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
                 if (!u) return null
                 const isActive = activeTab === uid
                 const isMe = uid === myId
+                const avatarUser = { ...u, avatar_url: u.avatarUrl, avatar_emoji: u.avatarEmoji }
                 return (
                   <button
                     key={uid}
                     onClick={() => setSelectedUserId(uid)}
-                    className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all border ${
                       isActive
-                        ? 'bg-accent text-white shadow-sm shadow-accent/25'
-                        : 'bg-bg-card text-text-secondary hover:bg-bg-card/80'
+                        ? 'bg-accent text-white border-accent shadow-sm shadow-accent/25'
+                        : 'bg-bg-primary text-text-secondary border-text-primary/20 hover:border-accent/40'
                     }`}
                   >
-                    <Avatar user={u} size="xs" />
+                    <Avatar user={avatarUser} size="xs" />
                     {isMe ? 'My Report' : (u.displayName || u.username)}
                   </button>
                 )
