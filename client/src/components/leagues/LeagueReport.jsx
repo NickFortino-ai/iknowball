@@ -131,6 +131,12 @@ function DfsUserReport({ report, isMe }) {
             <span className="text-text-muted">Total Salary Spent</span>
             <span className="text-text-primary font-semibold">${seasonStats.totalSalarySpent.toLocaleString()}</span>
           </div>
+          {seasonStats.totalSalarySpent > 0 && (
+            <div className="flex justify-between">
+              <span className="text-text-muted">Avg Points Per $1,000 Spent</span>
+              <span className="text-text-primary font-semibold">{fmt(seasonStats.totalPointsScored / seasonStats.totalSalarySpent * 1000)}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-text-muted">Contest Days Played</span>
             <span className="text-text-primary font-semibold">{seasonStats.contestDaysPlayed}</span>
