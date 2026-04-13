@@ -166,11 +166,11 @@ async function awardPositionBasedPoints(league, standings, formatLabel, bonusFor
 
       if (isWinner) {
         await createNotification(entry.user_id, 'league_win',
-          `You ${groupSize > 1 ? 'tied for first in' : 'won'} the ${league.name} ${formatLabel.toLowerCase()}! +${totalPoints} pts`,
+          `You ${groupSize > 1 ? 'tied for first in' : 'won'} the ${league.name} ${formatLabel}! +${totalPoints} pts`,
           { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: league.format, isWinner: true })
 
         const winnerName = await getUsername(entry.user_id)
-        await notifyLeagueMembers(league, entry.user_id, winnerName, formatLabel.toLowerCase())
+        await notifyLeagueMembers(league, entry.user_id, winnerName, formatLabel)
       } else {
         // Notify non-winners of their global score impact
         const pointsLabel = totalPoints >= 0 ? `+${totalPoints}` : `${totalPoints}`
