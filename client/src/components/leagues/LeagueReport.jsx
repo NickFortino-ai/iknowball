@@ -4,6 +4,9 @@ import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
+// Round floating point display values (241.09999999999997 → 241.1)
+const fmt = (v) => typeof v === 'number' ? parseFloat(v.toFixed(1)) : v
+
 function PlayerRow({ name, headshot, stat, statLabel, subtext }) {
   return (
     <div className="flex items-center gap-3 py-2">
@@ -71,7 +74,7 @@ function DfsUserReport({ report, isMe }) {
             <PlayerRow
               name={pickOfTheYear.playerName}
               headshot={pickOfTheYear.headshot}
-              stat={`${pickOfTheYear.points} pts`}
+              stat={`${fmt(pickOfTheYear.points)} pts`}
               statLabel={`$${pickOfTheYear.salary.toLocaleString()}`}
               subtext={pickOfTheYear.date}
             />
@@ -93,7 +96,7 @@ function DfsUserReport({ report, isMe }) {
         <Section title="Best Value Plays">
           <div className="divide-y divide-text-primary/10">
             {bestValuePlays.map((p, i) => (
-              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${p.points} pts`} statLabel={`$${p.salary.toLocaleString()}`} subtext={p.date} />
+              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${fmt(p.points)} pts`} statLabel={`$${p.salary.toLocaleString()}`} subtext={p.date} />
             ))}
           </div>
         </Section>
@@ -103,7 +106,7 @@ function DfsUserReport({ report, isMe }) {
         <Section title="Worst Investments">
           <div className="divide-y divide-text-primary/10">
             {worstInvestments.map((p, i) => (
-              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${p.points} pts`} statLabel={`$${p.salary.toLocaleString()}`} subtext={p.date} />
+              <PlayerRow key={i} name={p.playerName} headshot={p.headshot} stat={`${fmt(p.points)} pts`} statLabel={`$${p.salary.toLocaleString()}`} subtext={p.date} />
             ))}
           </div>
         </Section>
@@ -113,7 +116,7 @@ function DfsUserReport({ report, isMe }) {
         <div className="space-y-1.5 text-sm">
           <div className="flex justify-between">
             <span className="text-text-muted">Total Points</span>
-            <span className="text-text-primary font-semibold">{seasonStats.totalPointsScored}</span>
+            <span className="text-text-primary font-semibold">{fmt(seasonStats.totalPointsScored)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-text-muted">Total Salary Spent</span>
@@ -132,7 +135,7 @@ function DfsUserReport({ report, isMe }) {
           {seasonStats.bestNight && (
             <div className="flex justify-between">
               <span className="text-text-muted">Best Night</span>
-              <span className="text-text-primary font-semibold">{seasonStats.bestNight.points} pts ({seasonStats.bestNight.date})</span>
+              <span className="text-text-primary font-semibold">{fmt(seasonStats.bestNight.points)} pts ({seasonStats.bestNight.date})</span>
             </div>
           )}
           {favoritePosition && (
@@ -183,11 +186,11 @@ function TraditionalUserReport({ report, isMe }) {
           <div className="text-[10px] text-text-muted">Losses</div>
         </div>
         <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-accent">{seasonRecord.pointsFor}</div>
+          <div className="font-display text-lg text-accent">{fmt(seasonRecord.pointsFor)}</div>
           <div className="text-[10px] text-text-muted">PF</div>
         </div>
         <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-text-secondary">{seasonRecord.pointsAgainst}</div>
+          <div className="font-display text-lg text-text-secondary">{fmt(seasonRecord.pointsAgainst)}</div>
           <div className="text-[10px] text-text-muted">PA</div>
         </div>
       </div>
@@ -218,7 +221,7 @@ function TraditionalUserReport({ report, isMe }) {
               name={teamMvp.player.name}
               headshot={teamMvp.player.headshot}
               stat={`${teamMvp.player.position || ''}`}
-              statLabel={`${teamMvp.totalPoints} pts`}
+              statLabel={`${fmt(teamMvp.totalPoints)} pts`}
             />
           </div>
         </Section>
@@ -299,7 +302,7 @@ function TraditionalUserReport({ report, isMe }) {
                       <div key={j} className="flex items-center gap-1.5 py-0.5">
                         {s.player.headshot ? <img src={s.player.headshot} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" /> : <div className="w-5 h-5 rounded-full bg-bg-secondary shrink-0" />}
                         <span className="text-text-primary truncate">{s.player.name}</span>
-                        <span className="text-text-muted ml-auto shrink-0">{s.pointsAfterTrade}</span>
+                        <span className="text-text-muted ml-auto shrink-0">{fmt(s.pointsAfterTrade)}</span>
                       </div>
                     ))}
                   </div>
@@ -309,7 +312,7 @@ function TraditionalUserReport({ report, isMe }) {
                       <div key={j} className="flex items-center gap-1.5 py-0.5">
                         {r.player.headshot ? <img src={r.player.headshot} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" /> : <div className="w-5 h-5 rounded-full bg-bg-secondary shrink-0" />}
                         <span className="text-text-primary truncate">{r.player.name}</span>
-                        <span className="text-text-muted ml-auto shrink-0">{r.pointsAfterTrade}</span>
+                        <span className="text-text-muted ml-auto shrink-0">{fmt(r.pointsAfterTrade)}</span>
                       </div>
                     ))}
                   </div>
@@ -327,7 +330,7 @@ function TraditionalUserReport({ report, isMe }) {
             <PlayerRow
               name={bestWaiverPickup.player.name}
               headshot={bestWaiverPickup.player.headshot}
-              stat={`${bestWaiverPickup.pointsProduced} pts`}
+              stat={`${fmt(bestWaiverPickup.pointsProduced)} pts`}
               statLabel={bestWaiverPickup.bidAmount > 0 ? `$${bestWaiverPickup.bidAmount} FAAB` : 'Free'}
             />
           </div>
@@ -387,9 +390,9 @@ function MatchupAwardCard({ title, entry }) {
         <Avatar user={entry.winner.user} size="sm" />
         <div className="flex-1 min-w-0 text-center">
           <div className="text-sm font-display">
-            <span className="text-correct">{entry.winner.points}</span>
+            <span className="text-correct">{fmt(entry.winner.points)}</span>
             <span className="text-text-muted mx-1">-</span>
-            <span className="text-incorrect">{entry.loser.points}</span>
+            <span className="text-incorrect">{fmt(entry.loser.points)}</span>
           </div>
           <div className="text-[10px] text-text-muted">Week {entry.week} &middot; {entry.margin} pt margin</div>
         </div>
@@ -412,7 +415,7 @@ function DfsLeagueAwards({ awards }) {
         <AwardCard
           title="Top Scorer Overall"
           user={awards.topScorer.user}
-          rightValue={`${awards.topScorer.totalPoints} pts`}
+          rightValue={`${fmt(awards.topScorer.totalPoints)} pts`}
           context={awards.topScorer.context}
         />
       )}
@@ -430,7 +433,7 @@ function DfsLeagueAwards({ awards }) {
           title="Most Contrarian Pick"
           playerName={awards.mostContrarianPick.playerName}
           headshot={awards.mostContrarianPick.headshot}
-          rightValue={`${awards.mostContrarianPick.points} pts`}
+          rightValue={`${fmt(awards.mostContrarianPick.points)} pts`}
           context={awards.mostContrarianPick.context}
         />
       )}
@@ -458,7 +461,7 @@ function TraditionalLeagueAwards({ awards, champion }) {
             <div className="text-sm italic uppercase tracking-wide text-text-secondary mt-0.5">{champion.user.fantasyTeamName}</div>
           )}
           <div className="text-sm text-text-muted mt-1">
-            {champion.seasonRecord.wins}-{champion.seasonRecord.losses} &middot; {champion.seasonRecord.pointsFor} pts
+            {champion.seasonRecord.wins}-{champion.seasonRecord.losses} &middot; {fmt(champion.seasonRecord.pointsFor)} pts
           </div>
         </div>
       )}
@@ -468,7 +471,7 @@ function TraditionalLeagueAwards({ awards, champion }) {
         <AwardCard
           title="Highest Scorer"
           user={awards.highestScorer.user}
-          rightValue={`${awards.highestScorer.totalPointsFor} pts`}
+          rightValue={`${fmt(awards.highestScorer.totalPointsFor)} pts`}
           context={awards.highestScorer.context}
         />
       )}
@@ -495,7 +498,7 @@ function TraditionalLeagueAwards({ awards, champion }) {
           title="Best Waiver Pickup"
           playerName={awards.bestWaiverPickup.player.name}
           headshot={awards.bestWaiverPickup.player.headshot}
-          rightValue={`${awards.bestWaiverPickup.pointsProduced} pts`}
+          rightValue={`${fmt(awards.bestWaiverPickup.pointsProduced)} pts`}
           user={awards.bestWaiverPickup.user}
         />
       )}
