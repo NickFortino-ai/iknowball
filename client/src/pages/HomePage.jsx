@@ -310,17 +310,14 @@ export default function HomePage() {
               </Link>
             </div>
           ) : (
-            <>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
-                <Link to="/leagues" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
-                  Go to Leagues
-                </Link>
-                <Link to="/picks" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
-                  Make Your Picks
-                </Link>
-              </div>
-              {profile && <MyProfileRow profile={profile} />}
-            </>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link to="/leagues" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
+                Go to Leagues
+              </Link>
+              <Link to="/picks" className="w-full sm:w-auto text-center bg-accent hover:bg-accent-hover text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors shadow-lg">
+                Make Your Picks
+              </Link>
+            </div>
           )}
         </div>
       </div>
