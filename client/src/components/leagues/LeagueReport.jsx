@@ -346,7 +346,7 @@ function TraditionalUserReport({ report, isMe }) {
 
 function AwardCard({ title, user, rightValue, context }) {
   return (
-    <div className="bg-bg-card rounded-xl border border-text-primary/20 p-3">
+    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3">
       <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">{title}</div>
       <div className="flex items-center gap-3">
         {user && <Avatar user={user} size="sm" />}
@@ -362,7 +362,7 @@ function AwardCard({ title, user, rightValue, context }) {
 
 function PlayerAwardCard({ title, playerName, headshot, rightValue, context, user }) {
   return (
-    <div className="bg-bg-card rounded-xl border border-text-primary/20 p-3">
+    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3">
       <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">{title}</div>
       <div className="flex items-center gap-3">
         {headshot ? (
@@ -384,7 +384,7 @@ function PlayerAwardCard({ title, playerName, headshot, rightValue, context, use
 function MatchupAwardCard({ title, entry }) {
   if (!entry) return null
   return (
-    <div className="bg-bg-card rounded-xl border border-text-primary/20 p-3">
+    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3">
       <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">{title}</div>
       <div className="flex items-center gap-2">
         <Avatar user={entry.winner.user} size="sm" />
