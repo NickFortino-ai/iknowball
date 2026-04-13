@@ -169,7 +169,7 @@ async function awardPositionBasedPoints(league, standings, formatLabel, bonusFor
           `You ${groupSize > 1 ? 'tied for first in' : 'won'} the ${league.name} ${formatLabel.toLowerCase()}! +${totalPoints} pts`,
           { leagueId: league.id, leagueName: league.name, points: totalPoints, memberCount: n, format: league.format, isWinner: true })
 
-        const winnerName = entry.user?.display_name || entry.user?.username || 'Someone'
+        const winnerName = await getUsername(entry.user_id)
         await notifyLeagueMembers(league, entry.user_id, winnerName, formatLabel.toLowerCase())
       } else {
         // Notify non-winners of their global score impact
@@ -393,7 +393,7 @@ async function awardLeaguePickPoints(league) {
       { leagueId: league.id, leagueName: league.name, points: entry.total_points, memberCount, format: 'pickem', isWinner: false })
   }
 
-  const winnerName = standings[0].user?.display_name || standings[0].user?.username || 'Someone'
+  const winnerName = await getUsername(standings[0].user_id)
   await notifyLeagueMembers(league, winnerId, winnerName, 'pickem')
 
   logger.info({ winnerId, leagueId: league.id, bonus: memberCount, members: standings.length }, 'League pick points awarded')
