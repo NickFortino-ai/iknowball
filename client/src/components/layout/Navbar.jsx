@@ -483,7 +483,7 @@ export default function Navbar() {
                               }}
                             >
                               <div className="flex items-start gap-2">
-                                <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : n.type === 'survivor_win' ? '\uD83D\uDC51' : n.type === 'league_win' && n.metadata?.isWinner === false && n.metadata?.points != null ? (n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA') : n.message?.includes('lost') ? '\u274C' : '\uD83C\uDFC6'}</span>
+                                <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : n.type === 'survivor_win' ? '\uD83D\uDC51' : n.type === 'league_report' ? '\uD83D\uDCCB' : n.type === 'league_win' && n.metadata?.isWinner === false && n.metadata?.points != null ? (n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA') : n.message?.includes('lost') ? '\u274C' : '\uD83C\uDFC6'}</span>
                                 <div className="min-w-0 flex-1">
                                   <div className="text-sm">{n.message}</div>
                                   <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
@@ -999,7 +999,7 @@ export default function Navbar() {
                           }}
                         >
                           <div className="flex items-start gap-2">
-                            <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : n.type === 'survivor_win' ? '\uD83D\uDC51' : n.type === 'league_win' && n.metadata?.isWinner === false && n.metadata?.points != null ? (n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA') : n.message?.includes('lost') ? '\u274C' : '\uD83C\uDFC6'}</span>
+                            <span className="flex-shrink-0">{n.type === 'reaction' ? '\uD83D\uDD25' : n.type === 'comment' ? '\uD83D\uDCAC' : n.type === 'survivor_win' ? '\uD83D\uDC51' : n.type === 'league_report' ? '\uD83D\uDCCB' : n.type === 'league_win' && n.metadata?.isWinner === false && n.metadata?.points != null ? (n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA') : n.message?.includes('lost') ? '\u274C' : '\uD83C\uDFC6'}</span>
                             <div className="min-w-0 flex-1">
                               <div className="text-sm">{n.message}</div>
                               <div className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</div>
