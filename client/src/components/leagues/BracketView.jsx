@@ -181,7 +181,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
     const locksAtDate = tournament.locks_at
       ? new Date(tournament.locks_at).toLocaleString('en-US', {
           weekday: 'long', month: 'long', day: 'numeric',
-          hour: 'numeric', minute: '2-digit',
+          hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
         })
       : null
 
@@ -207,10 +207,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
         {locksAtDate && (
           <p className="text-sm text-text-secondary">
             Brackets must be completed by{' '}
-            <span className="text-text-primary font-semibold">{new Date(locksAtDate).toLocaleString('en-US', {
-              weekday: 'long', month: 'long', day: 'numeric',
-              hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-            })}</span>
+            <span className="text-text-primary font-semibold">{locksAtDate}</span>
           </p>
         )}
       </div>
