@@ -470,7 +470,7 @@ export default function Navbar() {
                                   setShowInvites(false)
                                 }
                                 else if (isLeagueWin) {
-                                  if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
+                                  if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}?tab=Standings`)
                                   if (n.metadata?.isWinner !== false) setLeagueWinData({ mode: 'win', ...n.metadata })
                                   setShowInvites(false)
                                 }
@@ -986,7 +986,7 @@ export default function Navbar() {
                               setShowInvites(false)
                             }
                             else if (isLeagueWin) {
-                              if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
+                              if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}?tab=Standings`)
                               if (n.metadata?.isWinner !== false) setLeagueWinData({ mode: 'win', ...n.metadata })
                               setShowInvites(false)
                             }
