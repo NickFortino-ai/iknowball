@@ -7,6 +7,9 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 // Round floating point display values (241.09999999999997 → 241.1)
 const fmt = (v) => typeof v === 'number' ? parseFloat(v.toFixed(1)) : v
 
+// Map report user objects (camelCase) to Avatar-compatible format (snake_case)
+const toAvatarUser = (u) => u ? { ...u, avatar_url: u.avatarUrl, avatar_emoji: u.avatarEmoji } : u
+
 function PlayerRow({ name, headshot, stat, statLabel, subtext }) {
   return (
     <div className="flex items-center gap-3 md:gap-4 py-2.5 md:py-3">
@@ -46,7 +49,7 @@ function DfsUserReport({ report, isMe }) {
   return (
     <div className={`rounded-xl border p-4 md:p-6 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
       <div className="flex items-center gap-3 md:gap-4 mb-5 md:mb-6">
-        <Avatar user={user} size="xl" />
+        <Avatar user={toAvatarUser(user)} size="xl" />
         <div className="min-w-0">
           <div className="font-display text-lg md:text-xl text-text-primary truncate">{user.displayName}</div>
           <div className="text-xs md:text-sm text-text-muted">@{user.username}</div>
@@ -160,7 +163,7 @@ function TraditionalUserReport({ report, isMe }) {
   return (
     <div className={`rounded-xl border p-4 md:p-6 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
       <div className="flex items-center gap-3 md:gap-4 mb-5 md:mb-6">
-        <Avatar user={user} size="xl" />
+        <Avatar user={toAvatarUser(user)} size="xl" />
         <div className="min-w-0">
           <div className="font-display text-lg md:text-xl text-text-primary truncate">{user.displayName}</div>
           {user.fantasyTeamName && (
@@ -288,7 +291,7 @@ function TraditionalUserReport({ report, isMe }) {
               <div key={i} className={`rounded-lg border p-3 ${t.won ? 'border-correct/30 bg-correct/5' : 'border-incorrect/30 bg-incorrect/5'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Avatar user={t.partnerUser} size="xs" />
+                    <Avatar user={toAvatarUser(t.partnerUser)} size="xs" />
                     <span className="text-xs text-text-muted">Week {t.week}</span>
                   </div>
                   <span className={`text-sm font-display ${t.won ? 'text-correct' : 'text-incorrect'}`}>
@@ -349,7 +352,7 @@ function AwardCard({ title, user, rightValue, context }) {
     <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 md:p-5">
       <div className="text-[10px] md:text-xs uppercase tracking-wider text-text-muted mb-2 md:mb-3">{title}</div>
       <div className="flex items-center gap-3 md:gap-4">
-        {user && <Avatar user={user} size="lg" />}
+        {user && <Avatar user={toAvatarUser(user)} size="lg" />}
         <div className="flex-1 min-w-0">
           <div className="text-sm md:text-lg font-bold text-text-primary truncate">{user?.displayName || user?.username || 'Unknown'}</div>
         </div>
@@ -387,7 +390,7 @@ function MatchupAwardCard({ title, entry }) {
     <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 md:p-5">
       <div className="text-[10px] md:text-xs uppercase tracking-wider text-text-muted mb-2 md:mb-3">{title}</div>
       <div className="flex items-center gap-3 md:gap-4">
-        <Avatar user={entry.winner.user} size="lg" />
+        <Avatar user={toAvatarUser(entry.winner.user)} size="lg" />
         <div className="flex-1 min-w-0 text-center">
           <div className="text-base md:text-xl font-display">
             <span className="text-correct">{fmt(entry.winner.points)}</span>
@@ -396,7 +399,7 @@ function MatchupAwardCard({ title, entry }) {
           </div>
           <div className="text-[10px] md:text-xs text-text-muted">Week {entry.week} &middot; {entry.margin} pt margin</div>
         </div>
-        <Avatar user={entry.loser.user} size="lg" />
+        <Avatar user={toAvatarUser(entry.loser.user)} size="lg" />
       </div>
     </div>
   )
@@ -454,7 +457,7 @@ function TraditionalLeagueAwards({ awards, champion }) {
         <div className="bg-gradient-to-br from-yellow-500/20 to-accent/10 border border-yellow-500/40 rounded-xl p-5 md:p-8 text-center mb-2">
           <div className="text-[10px] md:text-xs uppercase tracking-widest text-yellow-500 mb-3 md:mb-4">League Champion</div>
           <div className="flex justify-center mb-3">
-            <Avatar user={champion.user} size="2xl" />
+            <Avatar user={toAvatarUser(champion.user)} size="2xl" />
           </div>
           <div className="font-display text-xl md:text-3xl text-text-primary">{champion.user.displayName || champion.user.username}</div>
           {champion.user.fantasyTeamName && (
