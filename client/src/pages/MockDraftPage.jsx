@@ -839,9 +839,11 @@ function DraftScreen({ config, onExit, onComplete }) {
                   </div>
                   <div className="text-right shrink-0">
                     {player[scoringKey] != null && (
-                      <div className="text-sm font-display text-accent">{Number(player[scoringKey]).toFixed(1)}</div>
+                      <>
+                        <div className="text-sm font-display text-accent">{Number(player[scoringKey]).toFixed(1)}</div>
+                        <div className="text-[10px] text-text-muted">proj</div>
+                      </>
                     )}
-                    <div className="text-[10px] text-text-muted">proj</div>
                   </div>
                 </button>
                 {isUserTurn && (
