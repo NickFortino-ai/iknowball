@@ -556,24 +556,29 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
     <>
         {/* Branded header */}
         <div className={inline ? '' : 'sticky top-0 bg-bg-primary z-10'}>
-          <div className="px-4 py-3 border-b border-text-primary/20">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="font-display text-[10px] uppercase tracking-widest text-accent mb-0.5">I KNOW BALL</div>
-                <h3 className="font-display text-lg md:text-xl text-text-primary truncate">{leagueName || 'League Report'}</h3>
-                <div className="text-xs md:text-sm text-text-muted">
-                  {isTraditional
-                    ? `${report.season} Season \u00b7 ${report.totalWeeks} weeks \u00b7 ${memberCount || allUserIds.length} teams`
-                    : report.contestWeeks
-                      ? `${report.contestWeeks} weeks \u00b7 ${memberCount || allUserIds.length} players`
-                      : `${report.contestDays} contest days \u00b7 ${memberCount || allUserIds.length} players`}
-                </div>
+          <div className="px-4 md:px-6 py-4 md:py-5 border-b border-text-primary/20">
+            {!inline && (
+              <div className="flex justify-end mb-2">
+                <button onClick={onClose} className="text-text-muted p-1 shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               </div>
-              {!inline && <button onClick={onClose} className="text-text-muted p-1 shrink-0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>}
+            )}
+            <div className="text-center mb-4">
+              <div className="font-display text-sm md:text-base uppercase tracking-widest text-accent mb-1">I KNOW BALL</div>
+              <h3 className="font-display text-xl md:text-2xl font-bold text-white">League Report</h3>
+            </div>
+            <div>
+              <div className="font-display text-base md:text-lg text-text-primary truncate">{leagueName}</div>
+              <div className="text-xs md:text-sm text-text-muted mt-0.5">
+                {isTraditional
+                  ? `${report.season} Season \u00b7 ${report.totalWeeks} weeks \u00b7 ${memberCount || allUserIds.length} teams`
+                  : report.contestWeeks
+                    ? `${report.contestWeeks} weeks \u00b7 ${memberCount || allUserIds.length} players`
+                    : `${report.contestDays} contest days \u00b7 ${memberCount || allUserIds.length} players`}
+              </div>
             </div>
           </div>
 
