@@ -9,19 +9,19 @@ const fmt = (v) => typeof v === 'number' ? parseFloat(v.toFixed(1)) : v
 
 function PlayerRow({ name, headshot, stat, statLabel, subtext }) {
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="flex items-center gap-3 md:gap-4 py-2.5 md:py-3">
       {headshot ? (
-        <img src={headshot} alt={name} className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0" />
+        <img src={headshot} alt={name} className="w-11 h-11 md:w-14 md:h-14 rounded-full object-cover bg-bg-secondary shrink-0" />
       ) : (
-        <div className="w-10 h-10 rounded-full bg-bg-secondary flex items-center justify-center text-text-muted text-xs shrink-0">?</div>
+        <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-bg-secondary flex items-center justify-center text-text-muted text-xs md:text-sm shrink-0">?</div>
       )}
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-text-primary truncate">{name}</div>
-        {subtext && <div className="text-xs text-text-muted">{subtext}</div>}
+        <div className="text-sm md:text-base font-semibold text-text-primary truncate">{name}</div>
+        {subtext && <div className="text-xs md:text-sm text-text-muted">{subtext}</div>}
       </div>
       <div className="text-right shrink-0">
-        <div className="text-sm font-display text-text-primary">{stat}</div>
-        {statLabel && <div className="text-[10px] text-text-muted">{statLabel}</div>}
+        <div className="text-sm md:text-lg font-display text-text-primary">{stat}</div>
+        {statLabel && <div className="text-[10px] md:text-xs text-text-muted">{statLabel}</div>}
       </div>
     </div>
   )
@@ -29,8 +29,8 @@ function PlayerRow({ name, headshot, stat, statLabel, subtext }) {
 
 function Section({ title, children }) {
   return (
-    <div className="mb-5">
-      <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">{title}</h4>
+    <div className="mb-6 md:mb-8">
+      <h4 className="text-xs md:text-sm text-text-muted uppercase tracking-wider mb-2 md:mb-3">{title}</h4>
       {children}
     </div>
   )
@@ -44,27 +44,27 @@ function DfsUserReport({ report, isMe }) {
   const { user, mostPlayed, pickOfTheYear, bestValuePlays, worstInvestments, uniquePlayersRostered, favoritePosition, seasonStats } = report
 
   return (
-    <div className={`rounded-xl border p-4 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
-      <div className="flex items-center gap-3 mb-4">
-        <Avatar user={user} size="lg" />
+    <div className={`rounded-xl border p-4 md:p-6 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
+      <div className="flex items-center gap-3 md:gap-4 mb-5 md:mb-6">
+        <Avatar user={user} size="xl" />
         <div className="min-w-0">
-          <div className="font-display text-base text-text-primary truncate">{user.displayName}</div>
-          <div className="text-xs text-text-muted">@{user.username}</div>
+          <div className="font-display text-lg md:text-xl text-text-primary truncate">{user.displayName}</div>
+          <div className="text-xs md:text-sm text-text-muted">@{user.username}</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-5">
-        <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-text-primary">{seasonStats.wins}</div>
-          <div className="text-[10px] text-text-muted">Wins</div>
+      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-5 md:mb-6">
+        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+          <div className="font-display text-xl md:text-3xl text-text-primary">{seasonStats.wins}</div>
+          <div className="text-[10px] md:text-xs text-text-muted">Wins</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-text-primary">{seasonStats.avgPointsPerNight}</div>
-          <div className="text-[10px] text-text-muted">Avg Pts</div>
+        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+          <div className="font-display text-xl md:text-3xl text-text-primary">{seasonStats.avgPointsPerNight}</div>
+          <div className="text-[10px] md:text-xs text-text-muted">Avg Pts</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-text-primary">{uniquePlayersRostered}</div>
-          <div className="text-[10px] text-text-muted">Players Used</div>
+        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+          <div className="font-display text-xl md:text-3xl text-text-primary">{uniquePlayersRostered}</div>
+          <div className="text-[10px] md:text-xs text-text-muted">Players Used</div>
         </div>
       </div>
 
@@ -113,7 +113,7 @@ function DfsUserReport({ report, isMe }) {
       )}
 
       <Section title="Season Summary">
-        <div className="space-y-1.5 text-sm">
+        <div className="space-y-2 md:space-y-3 text-sm md:text-base">
           <div className="flex justify-between">
             <span className="text-text-muted">Total Points</span>
             <span className="text-text-primary font-semibold">{fmt(seasonStats.totalPointsScored)}</span>
@@ -158,56 +158,56 @@ function TraditionalUserReport({ report, isMe }) {
   const { user, seasonRecord, draftAnalysis, tradeAnalysis, bestWaiverPickup, teamMvp } = report
 
   return (
-    <div className={`rounded-xl border p-4 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
-      <div className="flex items-center gap-3 mb-4">
-        <Avatar user={user} size="lg" />
+    <div className={`rounded-xl border p-4 md:p-6 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
+      <div className="flex items-center gap-3 md:gap-4 mb-5 md:mb-6">
+        <Avatar user={user} size="xl" />
         <div className="min-w-0">
-          <div className="font-display text-base text-text-primary truncate">{user.displayName}</div>
+          <div className="font-display text-lg md:text-xl text-text-primary truncate">{user.displayName}</div>
           {user.fantasyTeamName && (
-            <div className="text-xs italic uppercase tracking-wide text-text-secondary truncate">{user.fantasyTeamName}</div>
+            <div className="text-xs md:text-sm italic uppercase tracking-wide text-text-secondary truncate">{user.fantasyTeamName}</div>
           )}
         </div>
         {seasonRecord.standing && (
           <div className="ml-auto text-right">
-            <div className="font-display text-2xl text-text-primary">#{seasonRecord.standing}</div>
-            <div className="text-[10px] text-text-muted">Final</div>
+            <div className="font-display text-2xl md:text-4xl text-text-primary">#{seasonRecord.standing}</div>
+            <div className="text-[10px] md:text-xs text-text-muted">Final</div>
           </div>
         )}
       </div>
 
       {/* Season record grid */}
-      <div className="grid grid-cols-4 gap-2 mb-5">
-        <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-correct">{seasonRecord.wins}</div>
-          <div className="text-[10px] text-text-muted">Wins</div>
+      <div className="grid grid-cols-4 gap-2 md:gap-3 mb-5 md:mb-6">
+        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+          <div className="font-display text-xl md:text-3xl text-correct">{seasonRecord.wins}</div>
+          <div className="text-[10px] md:text-xs text-text-muted">Wins</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-incorrect">{seasonRecord.losses}</div>
-          <div className="text-[10px] text-text-muted">Losses</div>
+        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+          <div className="font-display text-xl md:text-3xl text-incorrect">{seasonRecord.losses}</div>
+          <div className="text-[10px] md:text-xs text-text-muted">Losses</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-text-primary">{fmt(seasonRecord.pointsFor)}</div>
-          <div className="text-[10px] text-text-muted">PF</div>
+        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+          <div className="font-display text-xl md:text-3xl text-text-primary">{fmt(seasonRecord.pointsFor)}</div>
+          <div className="text-[10px] md:text-xs text-text-muted">PF</div>
         </div>
-        <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-text-secondary">{fmt(seasonRecord.pointsAgainst)}</div>
-          <div className="text-[10px] text-text-muted">PA</div>
+        <div className="bg-bg-card/50 rounded-lg p-2.5 md:p-4 text-center">
+          <div className="font-display text-xl md:text-3xl text-text-secondary">{fmt(seasonRecord.pointsAgainst)}</div>
+          <div className="text-[10px] md:text-xs text-text-muted">PA</div>
         </div>
       </div>
 
       {/* Streaks */}
       {(seasonRecord.longestWinStreak > 1 || seasonRecord.longestLoseStreak > 1) && (
-        <div className="flex gap-3 mb-5 text-sm">
+        <div className="flex gap-3 mb-5 md:mb-6">
           {seasonRecord.longestWinStreak > 1 && (
-            <div className="flex-1 bg-correct/10 border border-correct/20 rounded-lg p-2 text-center">
-              <div className="font-display text-lg text-correct">{seasonRecord.longestWinStreak}</div>
-              <div className="text-[10px] text-text-muted">Best Win Streak</div>
+            <div className="flex-1 bg-correct/10 border border-correct/20 rounded-lg p-2.5 md:p-4 text-center">
+              <div className="font-display text-xl md:text-3xl text-correct">{seasonRecord.longestWinStreak}</div>
+              <div className="text-[10px] md:text-xs text-text-muted">Best Win Streak</div>
             </div>
           )}
           {seasonRecord.longestLoseStreak > 1 && (
-            <div className="flex-1 bg-incorrect/10 border border-incorrect/20 rounded-lg p-2 text-center">
-              <div className="font-display text-lg text-incorrect">{seasonRecord.longestLoseStreak}</div>
-              <div className="text-[10px] text-text-muted">Worst Lose Streak</div>
+            <div className="flex-1 bg-incorrect/10 border border-incorrect/20 rounded-lg p-2.5 md:p-4 text-center">
+              <div className="font-display text-xl md:text-3xl text-incorrect">{seasonRecord.longestLoseStreak}</div>
+              <div className="text-[10px] md:text-xs text-text-muted">Worst Lose Streak</div>
             </div>
           )}
         </div>
@@ -230,12 +230,12 @@ function TraditionalUserReport({ report, isMe }) {
       {/* Draft Analysis */}
       {draftAnalysis && (
         <Section title="Draft Report">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="bg-bg-card/50 rounded-lg px-3 py-2 text-center">
-              <div className="font-display text-2xl text-text-primary">{draftAnalysis.draftGrade}</div>
-              <div className="text-[10px] text-text-muted">Grade</div>
+          <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
+            <div className="bg-bg-card/50 rounded-lg px-4 py-3 md:px-6 md:py-4 text-center">
+              <div className="font-display text-2xl md:text-4xl text-text-primary">{draftAnalysis.draftGrade}</div>
+              <div className="text-[10px] md:text-xs text-text-muted">Grade</div>
             </div>
-            <div className="text-sm text-text-muted">
+            <div className="text-sm md:text-base text-text-muted">
               {draftAnalysis.totalDraftedPoints} total points from drafted players
             </div>
           </div>
@@ -346,37 +346,37 @@ function TraditionalUserReport({ report, isMe }) {
 
 function AwardCard({ title, user, rightValue, context }) {
   return (
-    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3">
-      <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">{title}</div>
-      <div className="flex items-center gap-3">
-        {user && <Avatar user={user} size="sm" />}
+    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 md:p-5">
+      <div className="text-[10px] md:text-xs uppercase tracking-wider text-text-muted mb-2 md:mb-3">{title}</div>
+      <div className="flex items-center gap-3 md:gap-4">
+        {user && <Avatar user={user} size="lg" />}
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-text-primary truncate">{user?.displayName || user?.username || 'Unknown'}</div>
+          <div className="text-sm md:text-lg font-bold text-text-primary truncate">{user?.displayName || user?.username || 'Unknown'}</div>
         </div>
-        {rightValue && <div className="font-display text-lg text-text-primary">{rightValue}</div>}
+        {rightValue && <div className="font-display text-lg md:text-2xl text-text-primary">{rightValue}</div>}
       </div>
-      {context && <div className="text-[11px] text-text-muted mt-2">{context}</div>}
+      {context && <div className="text-[11px] md:text-sm text-text-muted mt-2 md:mt-3">{context}</div>}
     </div>
   )
 }
 
 function PlayerAwardCard({ title, playerName, headshot, rightValue, context, user }) {
   return (
-    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3">
-      <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">{title}</div>
-      <div className="flex items-center gap-3">
+    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 md:p-5">
+      <div className="text-[10px] md:text-xs uppercase tracking-wider text-text-muted mb-2 md:mb-3">{title}</div>
+      <div className="flex items-center gap-3 md:gap-4">
         {headshot ? (
-          <img src={headshot} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0" />
+          <img src={headshot} alt="" className="w-11 h-11 md:w-14 md:h-14 rounded-full object-cover bg-bg-secondary shrink-0" />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0" />
+          <div className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-bg-secondary shrink-0" />
         )}
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-text-primary truncate">{playerName}</div>
-          {user && <div className="text-[11px] text-text-muted truncate">{user.displayName || user.username}</div>}
+          <div className="text-sm md:text-lg font-bold text-text-primary truncate">{playerName}</div>
+          {user && <div className="text-[11px] md:text-sm text-text-muted truncate">{user.displayName || user.username}</div>}
         </div>
-        {rightValue && <div className="font-display text-lg text-text-primary">{rightValue}</div>}
+        {rightValue && <div className="font-display text-lg md:text-2xl text-text-primary">{rightValue}</div>}
       </div>
-      {context && <div className="text-[11px] text-text-muted mt-2">{context}</div>}
+      {context && <div className="text-[11px] md:text-sm text-text-muted mt-2 md:mt-3">{context}</div>}
     </div>
   )
 }
@@ -384,19 +384,19 @@ function PlayerAwardCard({ title, playerName, headshot, rightValue, context, use
 function MatchupAwardCard({ title, entry }) {
   if (!entry) return null
   return (
-    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3">
-      <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">{title}</div>
-      <div className="flex items-center gap-2">
-        <Avatar user={entry.winner.user} size="sm" />
+    <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 md:p-5">
+      <div className="text-[10px] md:text-xs uppercase tracking-wider text-text-muted mb-2 md:mb-3">{title}</div>
+      <div className="flex items-center gap-3 md:gap-4">
+        <Avatar user={entry.winner.user} size="lg" />
         <div className="flex-1 min-w-0 text-center">
-          <div className="text-sm font-display">
+          <div className="text-base md:text-xl font-display">
             <span className="text-correct">{fmt(entry.winner.points)}</span>
-            <span className="text-text-muted mx-1">-</span>
+            <span className="text-text-muted mx-1.5">-</span>
             <span className="text-incorrect">{fmt(entry.loser.points)}</span>
           </div>
-          <div className="text-[10px] text-text-muted">Week {entry.week} &middot; {entry.margin} pt margin</div>
+          <div className="text-[10px] md:text-xs text-text-muted">Week {entry.week} &middot; {entry.margin} pt margin</div>
         </div>
-        <Avatar user={entry.loser.user} size="sm" />
+        <Avatar user={entry.loser.user} size="lg" />
       </div>
     </div>
   )
@@ -409,8 +409,8 @@ function MatchupAwardCard({ title, entry }) {
 function DfsLeagueAwards({ awards }) {
   if (!awards) return null
   return (
-    <div className="mb-6 space-y-3">
-      <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">League Awards</h4>
+    <div className="mb-6 md:mb-8 space-y-3 md:space-y-4">
+      <h4 className="text-xs md:text-sm text-text-muted uppercase tracking-wider mb-2 md:mb-3">League Awards</h4>
       {awards.topScorer && (
         <AwardCard
           title="Top Scorer Overall"
@@ -448,25 +448,25 @@ function DfsLeagueAwards({ awards }) {
 function TraditionalLeagueAwards({ awards, champion }) {
   if (!awards) return null
   return (
-    <div className="mb-6 space-y-3">
+    <div className="mb-6 md:mb-8 space-y-3 md:space-y-4">
       {/* League Champion — featured prominently at the top */}
       {champion && (
-        <div className="bg-gradient-to-br from-yellow-500/20 to-accent/10 border border-yellow-500/40 rounded-xl p-4 text-center mb-2">
-          <div className="text-[10px] uppercase tracking-widest text-yellow-500 mb-2">League Champion</div>
-          <div className="flex justify-center mb-2">
-            <Avatar user={champion.user} size="xl" />
+        <div className="bg-gradient-to-br from-yellow-500/20 to-accent/10 border border-yellow-500/40 rounded-xl p-5 md:p-8 text-center mb-2">
+          <div className="text-[10px] md:text-xs uppercase tracking-widest text-yellow-500 mb-3 md:mb-4">League Champion</div>
+          <div className="flex justify-center mb-3">
+            <Avatar user={champion.user} size="2xl" />
           </div>
-          <div className="font-display text-xl text-text-primary">{champion.user.displayName || champion.user.username}</div>
+          <div className="font-display text-xl md:text-3xl text-text-primary">{champion.user.displayName || champion.user.username}</div>
           {champion.user.fantasyTeamName && (
-            <div className="text-sm italic uppercase tracking-wide text-text-secondary mt-0.5">{champion.user.fantasyTeamName}</div>
+            <div className="text-sm md:text-base italic uppercase tracking-wide text-text-secondary mt-0.5">{champion.user.fantasyTeamName}</div>
           )}
-          <div className="text-sm text-text-muted mt-1">
+          <div className="text-sm md:text-base text-text-muted mt-1">
             {champion.seasonRecord.wins}-{champion.seasonRecord.losses} &middot; {fmt(champion.seasonRecord.pointsFor)} pts
           </div>
         </div>
       )}
 
-      <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">League Awards</h4>
+      <h4 className="text-xs md:text-sm text-text-muted uppercase tracking-wider mb-2 md:mb-3">League Awards</h4>
       {awards.highestScorer && (
         <AwardCard
           title="Highest Scorer"
@@ -560,8 +560,8 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
             <div className="flex items-center justify-between">
               <div className="min-w-0">
                 <div className="font-display text-[10px] uppercase tracking-widest text-accent mb-0.5">I KNOW BALL</div>
-                <h3 className="font-display text-lg text-text-primary truncate">{leagueName || 'League Report'}</h3>
-                <div className="text-xs text-text-muted">
+                <h3 className="font-display text-lg md:text-xl text-text-primary truncate">{leagueName || 'League Report'}</h3>
+                <div className="text-xs md:text-sm text-text-muted">
                   {isTraditional
                     ? `${report.season} Season \u00b7 ${report.totalWeeks} weeks \u00b7 ${memberCount || allUserIds.length} teams`
                     : report.contestWeeks
@@ -624,7 +624,7 @@ export default function LeagueReport({ leagueId, leagueName, memberCount, onClos
         </div>
 
         {/* Report content */}
-        <div className="p-4">
+        <div className="p-4 md:p-6">
           {activeTab === 'league' ? (
             <>
               {isTraditional
