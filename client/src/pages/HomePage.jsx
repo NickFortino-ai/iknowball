@@ -302,19 +302,19 @@ export default function HomePage() {
           </p>
           {!isAuthenticated ? (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/signup" className="w-full sm:w-auto text-center bg-white/10 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/15 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              <Link to="/signup" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
                 Sign Up
               </Link>
-              <Link to="/login" className="w-full sm:w-auto text-center bg-white/10 backdrop-blur-md border border-white/20 hover:border-white/40 hover:bg-white/15 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              <Link to="/login" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-white/20 hover:border-white/40 hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
                 Sign In
               </Link>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/leagues" className="w-full sm:w-auto text-center bg-white/10 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/15 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              <Link to="/leagues" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
                 Go to Leagues
               </Link>
-              <Link to="/picks" className="w-full sm:w-auto text-center bg-white/10 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/15 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              <Link to="/picks" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
                 Make Your Picks
               </Link>
             </div>
