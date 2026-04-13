@@ -199,7 +199,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             <span className="text-text-primary font-semibold">
               {new Date(picksAvailableAt).toLocaleString('en-US', {
                 weekday: 'long', month: 'long', day: 'numeric',
-                hour: 'numeric', minute: '2-digit',
+                hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
               })}
             </span>
           </p>
@@ -207,7 +207,10 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
         {locksAtDate && (
           <p className="text-sm text-text-secondary">
             Brackets must be completed by{' '}
-            <span className="text-text-primary font-semibold">{locksAtDate}</span>
+            <span className="text-text-primary font-semibold">{new Date(locksAtDate).toLocaleString('en-US', {
+              weekday: 'long', month: 'long', day: 'numeric',
+              hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+            })}</span>
           </p>
         )}
       </div>
