@@ -44,7 +44,7 @@ function DfsUserReport({ report, isMe }) {
   const { user, mostPlayed, pickOfTheYear, bestValuePlays, worstInvestments, uniquePlayersRostered, favoritePosition, seasonStats } = report
 
   return (
-    <div className={`rounded-xl border p-4 ${isMe ? 'border-accent/50 bg-accent/5' : 'border-text-primary/20 bg-bg-primary'}`}>
+    <div className={`rounded-xl border p-4 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
       <div className="flex items-center gap-3 mb-4">
         <Avatar user={user} size="lg" />
         <div className="min-w-0">
@@ -158,7 +158,7 @@ function TraditionalUserReport({ report, isMe }) {
   const { user, seasonRecord, draftAnalysis, tradeAnalysis, bestWaiverPickup, teamMvp } = report
 
   return (
-    <div className={`rounded-xl border p-4 ${isMe ? 'border-accent/50 bg-accent/5' : 'border-text-primary/20 bg-bg-primary'}`}>
+    <div className={`rounded-xl border p-4 ${isMe ? 'border-accent/50 bg-bg-primary' : 'border-text-primary/20 bg-bg-primary'}`}>
       <div className="flex items-center gap-3 mb-4">
         <Avatar user={user} size="lg" />
         <div className="min-w-0">
