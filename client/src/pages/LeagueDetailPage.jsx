@@ -518,7 +518,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               : 'Not set'}
           </div>
         </div>
-      ) : (<>
+      ) : league.format === 'bracket' ? null : (<>
       {/* Duration */}
       <div>
         <label className="block text-xs text-text-muted mb-2">Duration</label>
