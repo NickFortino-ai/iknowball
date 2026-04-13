@@ -20,7 +20,7 @@ function PlayerRow({ name, headshot, stat, statLabel, subtext }) {
         {subtext && <div className="text-xs text-text-muted">{subtext}</div>}
       </div>
       <div className="text-right shrink-0">
-        <div className="text-sm font-display text-accent">{stat}</div>
+        <div className="text-sm font-display text-text-primary">{stat}</div>
         {statLabel && <div className="text-[10px] text-text-muted">{statLabel}</div>}
       </div>
     </div>
@@ -55,7 +55,7 @@ function DfsUserReport({ report, isMe }) {
 
       <div className="grid grid-cols-3 gap-2 mb-5">
         <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-accent">{seasonStats.wins}</div>
+          <div className="font-display text-lg text-text-primary">{seasonStats.wins}</div>
           <div className="text-[10px] text-text-muted">Wins</div>
         </div>
         <div className="bg-bg-card/50 rounded-lg p-2 text-center">
@@ -129,7 +129,7 @@ function DfsUserReport({ report, isMe }) {
           {seasonStats.longestWinStreak > 1 && (
             <div className="flex justify-between">
               <span className="text-text-muted">Longest Win Streak</span>
-              <span className="text-accent font-semibold">{seasonStats.longestWinStreak}</span>
+              <span className="text-text-primary font-semibold">{seasonStats.longestWinStreak}</span>
             </div>
           )}
           {seasonStats.bestNight && (
@@ -169,7 +169,7 @@ function TraditionalUserReport({ report, isMe }) {
         </div>
         {seasonRecord.standing && (
           <div className="ml-auto text-right">
-            <div className="font-display text-2xl text-accent">#{seasonRecord.standing}</div>
+            <div className="font-display text-2xl text-text-primary">#{seasonRecord.standing}</div>
             <div className="text-[10px] text-text-muted">Final</div>
           </div>
         )}
@@ -186,7 +186,7 @@ function TraditionalUserReport({ report, isMe }) {
           <div className="text-[10px] text-text-muted">Losses</div>
         </div>
         <div className="bg-bg-card/50 rounded-lg p-2 text-center">
-          <div className="font-display text-lg text-accent">{fmt(seasonRecord.pointsFor)}</div>
+          <div className="font-display text-lg text-text-primary">{fmt(seasonRecord.pointsFor)}</div>
           <div className="text-[10px] text-text-muted">PF</div>
         </div>
         <div className="bg-bg-card/50 rounded-lg p-2 text-center">
@@ -232,7 +232,7 @@ function TraditionalUserReport({ report, isMe }) {
         <Section title="Draft Report">
           <div className="flex items-center gap-3 mb-3">
             <div className="bg-bg-card/50 rounded-lg px-3 py-2 text-center">
-              <div className="font-display text-2xl text-accent">{draftAnalysis.draftGrade}</div>
+              <div className="font-display text-2xl text-text-primary">{draftAnalysis.draftGrade}</div>
               <div className="text-[10px] text-text-muted">Grade</div>
             </div>
             <div className="text-sm text-text-muted">
@@ -353,7 +353,7 @@ function AwardCard({ title, user, rightValue, context }) {
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-text-primary truncate">{user?.displayName || user?.username || 'Unknown'}</div>
         </div>
-        {rightValue && <div className="font-display text-lg text-accent">{rightValue}</div>}
+        {rightValue && <div className="font-display text-lg text-text-primary">{rightValue}</div>}
       </div>
       {context && <div className="text-[11px] text-text-muted mt-2">{context}</div>}
     </div>
@@ -374,7 +374,7 @@ function PlayerAwardCard({ title, playerName, headshot, rightValue, context, use
           <div className="text-sm font-bold text-text-primary truncate">{playerName}</div>
           {user && <div className="text-[11px] text-text-muted truncate">{user.displayName || user.username}</div>}
         </div>
-        {rightValue && <div className="font-display text-lg text-accent">{rightValue}</div>}
+        {rightValue && <div className="font-display text-lg text-text-primary">{rightValue}</div>}
       </div>
       {context && <div className="text-[11px] text-text-muted mt-2">{context}</div>}
     </div>
