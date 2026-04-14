@@ -37,6 +37,25 @@ function getUnsubscribeUrl(userId) {
   return `${baseUrl}/unsubscribe?token=${token}`
 }
 
+// Server-direct unsubscribe URL for the List-Unsubscribe header
+// (one-click POST from Gmail/Yahoo). This skips the client UI and
+// hits the API directly. RFC 8058.
+function getListUnsubscribeUrl(userId) {
+  const token = encodeToken(userId)
+  const apiBase = env.API_URL || env.CORS_ORIGIN.split(',')[0].trim() + '/api'
+  return `${apiBase}/email/unsubscribe?token=${token}`
+}
+
+// Standard bulk-sender headers Gmail/Yahoo look for. Without these,
+// mass emails increasingly get spam-filed or outright blocked.
+function bulkEmailHeaders(userId) {
+  const url = getListUnsubscribeUrl(userId)
+  return {
+    'List-Unsubscribe': `<${url}>`,
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  }
+}
+
 function appendUnsubscribeFooter(html, userId) {
   const url = getUnsubscribeUrl(userId)
   const baseUrl = env.CORS_ORIGIN.split(',')[0].trim()
@@ -98,6 +117,7 @@ export async function sendEmailBlast(subject, body) {
         subject,
         html: htmlWithFooter,
         text: htmlWithFooter.replace(/<[^>]*>/g, ''),
+        headers: bulkEmailHeaders(user.id),
       })
       sent++
     } catch (err) {
@@ -225,6 +245,7 @@ export async function sendTargetedEmail(subject, body, usernames) {
         subject,
         html: htmlWithFooter,
         text: htmlWithFooter.replace(/<[^>]*>/g, ''),
+        headers: bulkEmailHeaders(user.id),
       })
       sent++
     } catch (err) {
@@ -311,6 +332,7 @@ export async function sendEmailToUserIds(userIds, buildEmailFn) {
         subject,
         html: htmlWithFooter,
         text: htmlWithFooter.replace(/<[^>]*>/g, ''),
+        headers: bulkEmailHeaders(userId),
       })
       sent++
     } catch (err) {
@@ -431,6 +453,7 @@ export async function sendTemplateBracketEmail(subject, body, templateId) {
         subject,
         html: htmlWithFooter,
         text: htmlWithFooter.replace(/<[^>]*>/g, ''),
+        headers: bulkEmailHeaders(userId),
       })
       sent++
     } catch (err) {
