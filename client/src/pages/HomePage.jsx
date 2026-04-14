@@ -438,7 +438,7 @@ export default function HomePage() {
           <div className="grid sm:grid-cols-3 gap-4 mb-4">
             {[
               { title: 'Touchdown Survivor', desc: 'Pick one player to score a non-passing TD each week. Rush, reception, return — any TD counts. Miss and you lose a life.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL' },
-              { title: 'Passing TD Competition', desc: 'Pick the QB you think will throw the most touchdowns each week. The user with the most passing touchdowns at the end of the year wins.', gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL' },
+              { title: 'Passing TD Competition', desc: "Pick the QB you think will throw the most touchdowns each week — can't re-use a QB. The user with the most passing touchdowns at the end of the year wins.", gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL' },
               { title: 'NBA Daily Fantasy', desc: 'Build a fresh roster every night under a salary cap. No draft, no season commitment — just nightly lineup strategy.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'NBA' },
             ].map((mode) => (
               <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
