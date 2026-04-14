@@ -52,10 +52,10 @@ export default function HallOfFamePage() {
 
   return (
     <div data-onboarding="hall-of-fame">
-      {/* Hero with cycling HOF backdrops — title stays compact at top, image
-          extends far below so more of the backdrop is visible. Royalty
-          overlaps the bottom portion of the hero via negative margin. */}
-      <div className="relative text-center overflow-hidden min-h-[55vh] sm:min-h-[60vh]">
+      {/* Hero with cycling HOF backdrops — text block sits near the bottom
+          of the hero area, above the gradient fade. Royalty section overlaps
+          the bottom of the hero via negative margin. */}
+      <div className="relative text-center overflow-hidden min-h-[55vh] sm:min-h-[60vh] flex flex-col justify-end">
         <div className="absolute inset-0">
           {HERO_IMAGES.map((src, i) => (
             <img
@@ -77,7 +77,7 @@ export default function HallOfFamePage() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-bg-primary" />
         </div>
 
-        <div className="relative z-10 py-6 sm:py-8 px-4">
+        <div className="relative z-10 pb-10 sm:pb-14 px-4">
           <h1 className="font-display text-3xl sm:text-5xl text-accent tracking-tight drop-shadow-lg">
             I KNOW BALL
           </h1>
@@ -87,7 +87,7 @@ export default function HallOfFamePage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 pb-6 -mt-16 sm:-mt-20 relative z-10">
+      <div className="max-w-2xl mx-auto px-4 pb-6 -mt-8 sm:-mt-10 relative z-10">
         {/* Royalty */}
         <div className="border-b border-border">
           <SectionToggle title="Royalty" open={openSections.royalty} onToggle={() => toggle('royalty')} />
