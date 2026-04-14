@@ -57,9 +57,14 @@ export async function createParlay(userId, legs) {
   // Defense in depth: catch duplicate-game corruption (same matchup synced
   // twice — one stale row says 'upcoming' with a future timestamp, the real
   // row says 'live' or 'final'). Look for any sibling game between the same
-  // two teams within a 24h window that ISN'T upcoming. If we find one, the
-  // game has clearly already started — reject.
-  // Need full game info for this check
+  // two teams within a ±2h window that ISN'T upcoming.
+  //
+  // Window must be tight (±2h, NOT ±24h). MLB/NBA/NHL series routinely have
+  // the same two teams play on consecutive days ~24h apart — a ±24h window
+  // false-flagged those as "duplicates" and rejected legitimate parlays
+  // whenever the previous day's matchup had already finished. ±2h matches
+  // the syncOdds dedupe window — any true duplicate rows from upstream
+  // corruption would be within that span.
   const { data: fullGames } = await supabase
     .from('games')
     .select('id, home_team, away_team, starts_at, sport_id')
@@ -67,8 +72,8 @@ export async function createParlay(userId, legs) {
 
   for (const g of fullGames || []) {
     const startMs = new Date(g.starts_at).getTime()
-    const lo = new Date(startMs - 24 * 60 * 60 * 1000).toISOString()
-    const hi = new Date(startMs + 24 * 60 * 60 * 1000).toISOString()
+    const lo = new Date(startMs - 2 * 60 * 60 * 1000).toISOString()
+    const hi = new Date(startMs + 2 * 60 * 60 * 1000).toISOString()
     const { data: siblings } = await supabase
       .from('games')
       .select('id, status, starts_at')
