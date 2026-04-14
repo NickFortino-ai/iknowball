@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNBASalaries, useSyncMLBSalaries, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useGenerateRecap, useSyncNBASalaries, useSyncMLBSalaries, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -56,6 +56,7 @@ export default function AdminPage() {
   const scoreGames = useScoreGames()
   const recalculatePoints = useRecalculatePoints()
   const recalculateRecords = useRecalculateRecords()
+  const generateRecap = useGenerateRecap()
   const syncNBASalaries = useSyncNBASalaries()
   const syncMLBSalaries = useSyncMLBSalaries()
   const sendEmailBlast = useSendEmailBlast()
@@ -179,6 +180,16 @@ export default function AdminPage() {
       toast(`Records recalculated — ${result.updated} updated`, 'success')
     } catch (err) {
       toast(err.message || 'Record recalculation failed', 'error')
+    }
+  }
+
+  async function handleGenerateRecap() {
+    if (!window.confirm('Generate this week\'s headlines now? If one already exists for this week, it will be skipped (delete it first if you want a fresh regen).')) return
+    try {
+      await generateRecap.mutateAsync()
+      toast('Weekly recap generated', 'success')
+    } catch (err) {
+      toast(err.message || 'Recap generation failed', 'error')
     }
   }
 
@@ -845,6 +856,13 @@ export default function AdminPage() {
             className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {recalculateRecords.isPending ? 'Recalculating...' : 'Recalculate Records'}
+          </button>
+          <button
+            onClick={handleGenerateRecap}
+            disabled={generateRecap.isPending}
+            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {generateRecap.isPending ? 'Generating...' : 'Generate Recap'}
           </button>
           <button
             onClick={async () => {
