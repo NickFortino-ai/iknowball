@@ -351,16 +351,16 @@ function CategoryCrown({ crown, index, onUserTap }) {
       className="text-center py-5 cursor-pointer group"
       onClick={() => onUserTap?.(holder.id)}
     >
-      {/* Crown SVG — scaled up 1.6x on desktop for more visual weight */}
+      {/* Crown SVG — scaled up 1.2x on mobile, 1.6x on desktop */}
       <div className="flex justify-center mb-2 lg:mb-3">
-        <div className="lg:scale-[1.6] lg:origin-bottom">
+        <div className="scale-[1.2] lg:scale-[1.6] origin-bottom">
           <SmallCrownSVG id={`cat-crown-${index}`} jewel={getJewelTheme(crown.scope)} />
         </div>
       </div>
       <div className="text-xs lg:text-sm font-semibold text-[#DAA520] uppercase tracking-wider mb-2 lg:mb-3">{crown.scope}</div>
-      {/* Avatar — lg on mobile, 2xl on desktop */}
+      {/* Avatar — xl on mobile, 2xl on desktop */}
       <div className="flex justify-center mb-1 lg:mb-2">
-        <Avatar user={holder} size="lg" className="bg-[#FFD700]/10 border border-[#FFD700]/15 lg:hidden" />
+        <Avatar user={holder} size="xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 lg:hidden" />
         <Avatar user={holder} size="2xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 hidden lg:flex" />
       </div>
       <div className="text-sm lg:text-base font-medium text-text-primary group-hover:text-[#FFD700] transition-colors truncate">
