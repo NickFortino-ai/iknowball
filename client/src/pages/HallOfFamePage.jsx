@@ -75,17 +75,17 @@ export default function HallOfFamePage() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-bg-primary" />
         </div>
 
-        <div className="relative z-10 py-12 sm:py-16 px-4">
-          <h1 className="font-display text-4xl sm:text-6xl text-accent tracking-tight drop-shadow-lg">
+        <div className="relative z-10 py-6 sm:py-8 px-4">
+          <h1 className="font-display text-3xl sm:text-5xl text-accent tracking-tight drop-shadow-lg">
             I KNOW BALL
           </h1>
-          <h2 className="font-display text-xl sm:text-2xl text-white/90 drop-shadow mt-1">
+          <h2 className="font-display text-lg sm:text-xl text-white/90 drop-shadow mt-0.5">
             HALL OF FAME
           </h2>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 pb-6">
+      <div className="max-w-2xl mx-auto px-4 pb-6 -mt-6 relative z-10">
         {/* Royalty */}
         <div className="border-b border-border">
           <SectionToggle title="Royalty" open={openSections.royalty} onToggle={() => toggle('royalty')} />
