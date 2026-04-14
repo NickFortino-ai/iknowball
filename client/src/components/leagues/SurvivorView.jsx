@@ -30,6 +30,7 @@ export default function SurvivorView({ league }) {
   const currentUserId = session?.user?.id
   const [showPickForm, setShowPickForm] = useState(false)
   const [localPickTeam, setLocalPickTeam] = useState(null)
+  const [localPickGameId, setLocalPickGameId] = useState(null)
 
   const currentWeek = league.current_week
   // Use pick_week from board (advances past locked picks) with fallback to current_week
@@ -37,13 +38,14 @@ export default function SurvivorView({ league }) {
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
 
   // Find current pick: prefer board.current_pick, fall back to user's latest pending pick from member data
-  const fallbackPickTeam = useMemo(() => {
-    if (board?.current_pick?.team_name) return null
+  const fallback = useMemo(() => {
+    if (board?.current_pick?.team_name) return { team_name: null, game_id: null }
     const myEntry = board?.members?.find((m) => m.users?.id === currentUserId)
     const pendingPick = myEntry?.picks?.find((p) => p.status === 'pending')
-    return pendingPick?.team_name || null
+    return { team_name: pendingPick?.team_name || null, game_id: pendingPick?.game_id || null }
   }, [board, currentUserId])
-  const currentPickTeam = localPickTeam || board?.current_pick?.team_name || fallbackPickTeam
+  const currentPickTeam = localPickTeam || board?.current_pick?.team_name || fallback.team_name
+  const currentPickGameId = localPickGameId || board?.current_pick?.game_id || fallback.game_id
 
   // Winner detection
   const isWinner = board?.survivor_winner?.user_id === currentUserId
@@ -79,6 +81,7 @@ export default function SurvivorView({ league }) {
         pickedTeam,
       })
       setLocalPickTeam(teamName)
+      setLocalPickGameId(gameId)
       toast('Survivor pick submitted!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to submit pick', 'error')
@@ -87,7 +90,10 @@ export default function SurvivorView({ league }) {
 
   // Clear local pick when board refreshes with server data
   useEffect(() => {
-    if (board?.current_pick?.team_name) setLocalPickTeam(null)
+    if (board?.current_pick?.team_name) {
+      setLocalPickTeam(null)
+      setLocalPickGameId(null)
+    }
   }, [board?.current_pick?.team_name])
 
   // Auto-expand pick form if user hasn't picked yet
@@ -196,8 +202,12 @@ export default function SurvivorView({ league }) {
                       const gameRows = grouped[dateKey].map((game) => {
                         const homeUsed = !poolExpanded && usedTeamSet.has(game.home_team)
                         const awayUsed = !poolExpanded && usedTeamSet.has(game.away_team)
-                        const awayPicked = currentPickTeam === game.away_team
-                        const homePicked = currentPickTeam === game.home_team
+                        // Only highlight a pick on the EXACT game it was made on —
+                        // matching by team name alone visually "picks" the same
+                        // team in future games (e.g. consecutive-day matchups).
+                        const isThisGamePicked = currentPickGameId === game.id
+                        const awayPicked = isThisGamePicked && currentPickTeam === game.away_team
+                        const homePicked = isThisGamePicked && currentPickTeam === game.home_team
 
                         const awayLogo = getTeamLogoUrl(game.away_team, league.sport === 'all' ? game.sport_key : league.sport)
                         const homeLogo = getTeamLogoUrl(game.home_team, league.sport === 'all' ? game.sport_key : league.sport)
