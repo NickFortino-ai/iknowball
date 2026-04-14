@@ -24,7 +24,7 @@ export async function createHotTake(userId, content, teamTags, sportKey, imageUr
       const username = actor?.username || 'Someone'
       for (const taggedId of userTags) {
         if (taggedId === userId) continue
-        await createNotification(taggedId, 'hot_take_callout', `@${username} called you out in a hot take`, {
+        await createNotification(taggedId, 'hot_take_callout', `@${username} tagged you in a post`, {
           actorId: userId,
           hotTakeId: data.id,
         })
@@ -243,7 +243,7 @@ export async function updateHotTake(userId, hotTakeId, content, teamTags, sportK
           .single()
         const username = actor?.username || 'Someone'
         for (const taggedId of newlyTagged) {
-          await createNotification(taggedId, 'hot_take_callout', `@${username} called you out in a hot take`, {
+          await createNotification(taggedId, 'hot_take_callout', `@${username} tagged you in a post`, {
             actorId: userId,
             hotTakeId,
           })
