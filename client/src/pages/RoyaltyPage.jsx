@@ -390,9 +390,13 @@ export function RoyaltyContent() {
         {secondaryCrowns.length > 0 && (
           <>
             <div className="border-t border-border/50 my-2" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2">
+            {/* On desktop, all secondary crowns in a single row; mobile keeps
+                the stacked grid for readability. */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-nowrap lg:justify-center lg:gap-x-2">
               {secondaryCrowns.map((crown, i) => (
-                <CategoryCrown key={crown.scope || i} crown={crown} index={i} onUserTap={setProfileUserId} />
+                <div key={crown.scope || i} className="lg:flex-1 lg:min-w-0">
+                  <CategoryCrown crown={crown} index={i} onUserTap={setProfileUserId} />
+                </div>
               ))}
             </div>
           </>
