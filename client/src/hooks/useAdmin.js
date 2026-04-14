@@ -443,7 +443,11 @@ export function useGenerateRecap() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => api.post('/admin/generate-recap'),
+    // Recap generation + audit + possible retry can run 60+ seconds, which
+    // exceeds the default 30s first-attempt timeout. Use longTimeout so the
+    // UI doesn't surface a false "request timed out" while the server is
+    // still working (and usually finishing fine).
+    mutationFn: () => api.post('/admin/generate-recap', undefined, { longTimeout: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recaps'] })
     },

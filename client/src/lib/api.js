@@ -50,13 +50,17 @@ async function request(path, options = {}) {
   // complete instead of failing on a single transient TypeError.
   const backoffs = [0, 600, 1500, 3000]
   let lastErr
+  // Callers can pass { longTimeout: true } for operations that legitimately
+  // take a while (e.g., recap generation with fact-check + retry can take
+  // 60+ seconds). Default tolerates Render cold-start (~25s) but not longer.
+  const longFirst = options.longTimeout ? 120000 : 30000
+  const longRetry = options.longTimeout ? 60000 : 15000
   for (let attempt = 0; attempt < backoffs.length; attempt++) {
     if (backoffs[attempt] > 0) {
       await new Promise((r) => setTimeout(r, backoffs[attempt]))
     }
     try {
-      // First attempt uses a longer timeout in case the server is cold-starting.
-      const timeoutMs = attempt === 0 ? 30000 : 15000
+      const timeoutMs = attempt === 0 ? longFirst : longRetry
       res = await rawFetch(path, options, authHeaders, timeoutMs)
       lastErr = null
       break
@@ -104,10 +108,10 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  get: (path) => request(path),
-  post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),
-  postForm: (path, formData) => request(path, { method: 'POST', body: formData }),
-  put: (path, data) => request(path, { method: 'PUT', body: JSON.stringify(data) }),
-  patch: (path, data) => request(path, { method: 'PATCH', body: JSON.stringify(data) }),
-  delete: (path) => request(path, { method: 'DELETE' }),
+  get: (path, opts = {}) => request(path, opts),
+  post: (path, data, opts = {}) => request(path, { method: 'POST', body: JSON.stringify(data), ...opts }),
+  postForm: (path, formData, opts = {}) => request(path, { method: 'POST', body: formData, ...opts }),
+  put: (path, data, opts = {}) => request(path, { method: 'PUT', body: JSON.stringify(data), ...opts }),
+  patch: (path, data, opts = {}) => request(path, { method: 'PATCH', body: JSON.stringify(data), ...opts }),
+  delete: (path, opts = {}) => request(path, { method: 'DELETE', ...opts }),
 }
