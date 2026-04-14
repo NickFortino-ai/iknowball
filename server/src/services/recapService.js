@@ -6,6 +6,24 @@ import { getPronouns } from '../utils/pronouns.js'
 import { getAllCrownHolders } from './leaderboardService.js'
 
 /**
+ * A user has "thin data" when there is nothing specific for Claude to
+ * anchor a narrative on — no notable picks, no notable parlay, no
+ * notable props, no meaningful underdog hit, no meaningful streak, and
+ * no tier movement. Without anchors, Claude reaches for invention to
+ * fill a sentence. We'd rather have no narrative than a wrong one.
+ */
+function hasNarrativeAnchors(user) {
+  if (user.notable_picks?.length) return true
+  if (user.notable_parlay) return true
+  if (user.notable_props?.length) return true
+  if (user.biggest_underdog) return true
+  if ((user.current_streak?.length || 0) >= 3) return true
+  if (user.tier_change && user.tier_change !== 0) return true
+  if (Math.abs(user.rank_change || 0) >= 5) return true
+  return false
+}
+
+/**
  * Collect weekly performance data for all users who made picks
  * in the given Monday–Sunday window.
  */
@@ -656,6 +674,10 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd, audit
         notable_parlay: u.notable_parlay,
         notable_props: u.notable_props,
         daily_breakdown: u.daily_breakdown,
+        // Flag for the prompt: users with no narrative anchors should
+        // get just the ranking header, no prose. Prevents hallucination
+        // when a top-5 user had a boring week with nothing to cite.
+        skip_narrative: !hasNarrativeAnchors(u),
       }
     }),
     pickOfWeek: pickOfWeekUser ? {
@@ -687,8 +709,12 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd, audit
       notable_picks: longestStreakUser.notable_picks,
       notable_parlay: longestStreakUser.notable_parlay,
     } : null,
+    // Only include honorable mentions with narrative anchors. A user with
+    // 10+ picks but no notable hit/miss/streak has nothing to cite beyond
+    // generic "solid week" filler — the exact failure mode that produces
+    // hallucinations. Better to omit them entirely.
     honorableMentions: (allUsers || [])
-      .filter((u) => u.total_picks >= 10 && !top5Ids.has(u.user_id))
+      .filter((u) => u.total_picks >= 10 && !top5Ids.has(u.user_id) && hasNarrativeAnchors(u))
       .map((u) => {
         const p = getPronouns(u.title_preference)
         return {
@@ -758,6 +784,12 @@ Use this exact format:
 {narrative}
 
 (continue for all 5)
+
+SKIP NARRATIVE RULE: If a top5 user has "skip_narrative": true, output ONLY the ranking header for them and NO sentence underneath. Like this:
+
+### 3. {display_name} ({record}) | {+/-points} pts
+
+(no narrative text at all — just move on to #4). These are users with nothing specific to cite. DO NOT invent filler. DO NOT write "solid week" or "quietly climbing" or similar empty prose. The header alone is the full entry.
 
 ## AWARDS
 **Pick of the Week**: {user} — {description}
