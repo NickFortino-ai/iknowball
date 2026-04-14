@@ -54,6 +54,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0.7);
 }
 
+/* Skinnier, theme-matched scrollbars on desktop. Mobile browsers typically
+   auto-hide scrollbars already, so this only applies at md and above. */
+@media (min-width: 768px) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover);
+  }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
