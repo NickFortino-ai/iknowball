@@ -78,10 +78,10 @@ export default function HallOfFamePage() {
         </div>
 
         <div className="relative z-10 pb-10 sm:pb-14 px-4">
-          <h1 className="font-display text-3xl sm:text-5xl text-accent tracking-tight drop-shadow-lg">
+          <h1 className="font-display text-3xl sm:text-5xl lg:text-8xl text-accent tracking-tight drop-shadow-lg">
             I KNOW BALL
           </h1>
-          <h2 className="font-display text-lg sm:text-xl text-white/90 drop-shadow mt-0.5">
+          <h2 className="font-display text-lg sm:text-xl lg:text-4xl text-white/90 drop-shadow mt-0.5 lg:mt-2">
             HALL OF FAME
           </h2>
         </div>
