@@ -355,7 +355,7 @@ export default function CreateLeaguePage() {
       playoff_start_week: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffStartWeek : undefined,
       championship_week: format === 'fantasy' && fantasyFormat === 'traditional' ? championshipWeek : undefined,
       scoring_rules: format === 'fantasy' && fantasyFormat === 'traditional' && scoringRules ? scoringRules : undefined,
-      salary_cap: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
+      salary_cap: (format === 'nba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
       season_type: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
       champion_metric: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'full_season' ? championMetric : undefined,
       single_week: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'single_week' ? singleWeek : undefined,
@@ -1243,7 +1243,7 @@ export default function CreateLeaguePage() {
               <div>
                 <label className="text-xs text-text-muted block mb-1">Salary Cap</label>
                 <div className="flex gap-2">
-                  {[35000, 40000, 50000, 60000].map((n) => (
+                  {[50000, 60000, 75000].map((n) => (
                     <button
                       key={n}
                       type="button"
