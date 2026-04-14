@@ -401,7 +401,7 @@ export function RoyaltyContent() {
                 container centered in the viewport regardless of parent. */}
             <div className="lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
               <div className="lg:max-w-7xl lg:mx-auto lg:px-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-nowrap lg:justify-center lg:gap-x-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-wrap lg:justify-center lg:gap-x-6 lg:gap-y-4">
                   {secondaryCrowns.map((crown, i) => (
                     <div key={crown.scope || i} className="lg:flex-1 lg:min-w-0">
                       <CategoryCrown crown={crown} index={i} onUserTap={setProfileUserId} />
