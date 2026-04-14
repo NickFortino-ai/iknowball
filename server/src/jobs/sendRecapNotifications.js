@@ -91,7 +91,7 @@ export async function sendRecapNotifications() {
             <p style="font-size: 15px; color: #ccc; margin-bottom: 24px;">
               ${personalLine}
             </p>
-            <a href="${baseUrl}"
+            <a href="${baseUrl}/hall-of-fame?section=headlines"
                style="display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
               See Full Headlines
             </a>

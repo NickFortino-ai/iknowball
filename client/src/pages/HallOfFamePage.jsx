@@ -27,7 +27,9 @@ export default function HallOfFamePage() {
   const section = searchParams.get('section')
   const recordParam = searchParams.get('record')
   const [openSections, setOpenSections] = useState(
-    section === 'records' ? { records: true } : { royalty: true }
+    section === 'records' ? { records: true }
+      : section === 'headlines' ? { headlines: true }
+      : { royalty: true }
   )
 
   function toggle(key) {
