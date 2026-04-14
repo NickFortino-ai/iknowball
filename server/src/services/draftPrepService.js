@@ -17,15 +17,13 @@ async function fetchPlayerPool() {
       .select('id, position, search_rank, adp_ppr, adp_half_ppr')
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
       .not('team', 'is', null)
-      .neq('status', 'retired')
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(500),
     supabase
       .from('nfl_players')
       .select('id, position, search_rank, adp_ppr, adp_half_ppr')
       .eq('position', 'DEF')
-      .not('team', 'is', null)
-      .neq('status', 'retired'),
+      .not('team', 'is', null),
   ])
   return [...(offensiveResult.data || []), ...(defResult.data || [])]
 }
@@ -280,7 +278,6 @@ export async function getAdpList(scoringFormat, position) {
       .select(SELECT)
       .eq('position', position)
       .not('team', 'is', null)
-      .neq('status', 'retired')
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(300)
     if (error) throw error
@@ -297,15 +294,13 @@ export async function getAdpList(scoringFormat, position) {
       .select(SELECT)
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
       .not('team', 'is', null)
-      .neq('status', 'retired')
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(300),
     supabase
       .from('nfl_players')
       .select(SELECT)
       .eq('position', 'DEF')
-      .not('team', 'is', null)
-      .neq('status', 'retired'),
+      .not('team', 'is', null),
   ])
   if (offensiveResult.error) throw offensiveResult.error
   if (defResult.error) throw defResult.error

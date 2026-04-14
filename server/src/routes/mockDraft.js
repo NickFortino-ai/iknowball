@@ -25,7 +25,6 @@ router.get('/players', requireAuth, async (req, res) => {
       .select(SELECT)
       .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
       .not('team', 'is', null)
-      .neq('status', 'retired')
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(500),
     supabase
