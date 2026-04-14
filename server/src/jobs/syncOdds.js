@@ -161,7 +161,63 @@ async function syncSport(sportKey, { force = false } = {}) {
     }
   }
 
-  return { sport: sportKey, status: 'ok', apiEvents: events.length, synced: upserted }
+  // Prune orphaned upcoming rows: the Odds API sometimes reassigns an
+  // event to a new external_id when a game's time changes. The old row
+  // survives with its outdated starts_at because nothing updates it —
+  // resulting in duplicate matchups appearing on different days.
+  //
+  // After processing the current API response, find upcoming games for
+  // this sport within the API's reasonable horizon (8 days) whose
+  // external_id isn't in today's event list. Those are phantoms. Delete
+  // only those with no downstream dependencies (picks/parlay legs/league
+  // picks) to stay safe; log warnings for any dependency-bearing phantoms
+  // so admins can resolve manually.
+  const seenExternalIds = new Set(events.map((e) => e.id))
+  const horizon = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000)
+  const { data: candidates } = await supabase
+    .from('games')
+    .select('id, external_id, home_team, away_team, starts_at')
+    .eq('sport_id', sport.id)
+    .eq('status', 'upcoming')
+    .gte('starts_at', now.toISOString())
+    .lte('starts_at', horizon.toISOString())
+
+  const orphans = (candidates || []).filter((g) => !seenExternalIds.has(g.external_id))
+  for (const orphan of orphans) {
+    // Check for dependent records
+    const [picksRes, legsRes, leaguePicksRes] = await Promise.all([
+      supabase.from('picks').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
+      supabase.from('parlay_legs').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
+      supabase.from('league_picks').select('id', { count: 'exact', head: true }).eq('game_id', orphan.id),
+    ])
+    const totalDeps = (picksRes.count || 0) + (legsRes.count || 0) + (leaguePicksRes.count || 0)
+
+    if (totalDeps > 0) {
+      logger.warn({
+        sportKey,
+        gameId: orphan.id,
+        matchup: `${orphan.away_team} @ ${orphan.home_team}`,
+        startsAt: orphan.starts_at,
+        picks: picksRes.count,
+        parlayLegs: legsRes.count,
+        leaguePicks: leaguePicksRes.count,
+      }, 'Orphaned game has picks — admin must resolve manually')
+      continue
+    }
+
+    const { error: delErr } = await supabase.from('games').delete().eq('id', orphan.id)
+    if (delErr) {
+      logger.error({ err: delErr, gameId: orphan.id }, 'Failed to delete orphan game')
+    } else {
+      logger.info({
+        sportKey,
+        matchup: `${orphan.away_team} @ ${orphan.home_team}`,
+        startsAt: orphan.starts_at,
+      }, 'Pruned orphaned upcoming game (external_id no longer in API response)')
+    }
+  }
+
+  return { sport: sportKey, status: 'ok', apiEvents: events.length, synced: upserted, pruned: orphans.length }
 }
 
 export async function syncOdds({ force = false } = {}) {
