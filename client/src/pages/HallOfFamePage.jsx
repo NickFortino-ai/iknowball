@@ -87,7 +87,11 @@ export default function HallOfFamePage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 pb-6 -mt-8 sm:-mt-10 relative z-10">
+      {/* Outer wrapper widens to max-w-5xl on desktop so the Royalty /
+          Record Book / Headlines Archive section headers left-align with
+          their wider expanded content, instead of being centered in a
+          narrower column that floats away from the content. */}
+      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 pb-6 -mt-8 sm:-mt-10 relative z-10">
         {/* Royalty */}
         <div className="border-b border-border">
           <SectionToggle title="Royalty" open={openSections.royalty} onToggle={() => toggle('royalty')} />
@@ -98,28 +102,25 @@ export default function HallOfFamePage() {
           )}
         </div>
 
-        {/* Record Book — breaks out to max-w-5xl on desktop with a 2-col grid
-            inside each category so records use the full page width. */}
+        {/* Record Book — 2-col grid within each category on desktop (handled
+            inside RecordBookContent). The wider wrapper gives it room. */}
         <div className="border-b border-border">
           <SectionToggle title="Record Book" open={openSections.records} onToggle={() => toggle('records')} />
           {openSections.records && (
-            <div className="pb-4 lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
-              <div className="lg:max-w-5xl lg:mx-auto lg:px-4">
-                <RecordBookContent scrollToRecord={recordParam} />
-              </div>
+            <div className="pb-4">
+              <RecordBookContent scrollToRecord={recordParam} />
             </div>
           )}
         </div>
 
-        {/* Headlines Archive — breaks out to max-w-4xl on desktop for
-            comfortable reading of the recap narratives without going too wide. */}
+        {/* Headlines Archive — constrained to max-w-4xl left-aligned so the
+            recap narratives don't get too wide to read comfortably, while
+            staying flush-left with the section header. */}
         <div>
           <SectionToggle title="Headlines Archive" open={openSections.headlines} onToggle={() => toggle('headlines')} />
           {openSections.headlines && (
-            <div className="pb-4 lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
-              <div className="lg:max-w-4xl lg:mx-auto lg:px-4">
-                <HeadlinesArchiveContent />
-              </div>
+            <div className="pb-4 lg:max-w-4xl">
+              <HeadlinesArchiveContent />
             </div>
           )}
         </div>
