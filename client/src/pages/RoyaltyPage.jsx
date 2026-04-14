@@ -351,18 +351,23 @@ function CategoryCrown({ crown, index, onUserTap }) {
       className="text-center py-5 cursor-pointer group"
       onClick={() => onUserTap?.(holder.id)}
     >
-      <div className="flex justify-center mb-2">
-        <SmallCrownSVG id={`cat-crown-${index}`} jewel={getJewelTheme(crown.scope)} />
+      {/* Crown SVG — scaled up 1.6x on desktop for more visual weight */}
+      <div className="flex justify-center mb-2 lg:mb-3">
+        <div className="lg:scale-[1.6] lg:origin-bottom">
+          <SmallCrownSVG id={`cat-crown-${index}`} jewel={getJewelTheme(crown.scope)} />
+        </div>
       </div>
-      <div className="text-xs font-semibold text-[#DAA520] uppercase tracking-wider mb-2">{crown.scope}</div>
-      <div className="flex justify-center mb-1">
-        <Avatar user={holder} size="lg" className="bg-[#FFD700]/10 border border-[#FFD700]/15" />
+      <div className="text-xs lg:text-sm font-semibold text-[#DAA520] uppercase tracking-wider mb-2 lg:mb-3">{crown.scope}</div>
+      {/* Avatar — lg on mobile, 2xl on desktop */}
+      <div className="flex justify-center mb-1 lg:mb-2">
+        <Avatar user={holder} size="lg" className="bg-[#FFD700]/10 border border-[#FFD700]/15 lg:hidden" />
+        <Avatar user={holder} size="2xl" className="bg-[#FFD700]/10 border border-[#FFD700]/15 hidden lg:flex" />
       </div>
-      <div className="text-sm font-medium text-text-primary group-hover:text-[#FFD700] transition-colors truncate">
+      <div className="text-sm lg:text-base font-medium text-text-primary group-hover:text-[#FFD700] transition-colors truncate">
         {holder.display_name || holder.username}
       </div>
       {crown.points != null && (
-        <div className="text-xs text-text-muted mt-0.5">{crown.points?.toLocaleString()} pts</div>
+        <div className="text-xs lg:text-sm text-text-muted mt-0.5 lg:mt-1">{crown.points?.toLocaleString()} pts</div>
       )}
     </div>
   )
@@ -395,8 +400,8 @@ export function RoyaltyContent() {
                 left-1/2 + -translate-x-1/2 + w-screen combo anchors a wider
                 container centered in the viewport regardless of parent. */}
             <div className="lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
-              <div className="lg:max-w-5xl lg:mx-auto lg:px-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-nowrap lg:justify-center lg:gap-x-4">
+              <div className="lg:max-w-7xl lg:mx-auto lg:px-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-nowrap lg:justify-center lg:gap-x-6">
                   {secondaryCrowns.map((crown, i) => (
                     <div key={crown.scope || i} className="lg:flex-1 lg:min-w-0">
                       <CategoryCrown crown={crown} index={i} onUserTap={setProfileUserId} />
