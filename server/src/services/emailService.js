@@ -81,6 +81,7 @@ export async function getSubscribedUsers() {
 export async function sendEmailBlast(subject, body) {
   const transport = getTransporter()
   const users = await getSubscribedUsers()
+  const htmlBody = textToEmailHtml(body)
 
   logger.info({ count: users.length }, 'Sending email blast')
 
@@ -90,7 +91,7 @@ export async function sendEmailBlast(subject, body) {
 
   for (const user of users) {
     try {
-      const htmlWithFooter = appendUnsubscribeFooter(body, user.id)
+      const htmlWithFooter = appendUnsubscribeFooter(htmlBody, user.id)
       await transport.sendMail({
         from: `"I KNOW BALL" <${env.SMTP_FROM}>`,
         to: user.email,
@@ -126,8 +127,36 @@ export async function sendEmailBlast(subject, body) {
   return { total: users.length, sent, failed, errors }
 }
 
+/**
+ * Convert plain-text body from the admin composer into paragraph-preserving
+ * HTML. Double-newlines become paragraph breaks; single-newlines become
+ * <br>. Does nothing if the body already contains block-level HTML (detected
+ * by common tags) so admins can still paste pre-formatted HTML if they want.
+ */
+function textToEmailHtml(body) {
+  if (!body) return ''
+  const hasBlockHtml = /<(p|div|br|h[1-6]|ul|ol|table)\b/i.test(body)
+  if (hasBlockHtml) return body
+
+  // Escape HTML-sensitive characters, then convert paragraph/line breaks.
+  const escaped = body
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  const paragraphs = escaped
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p style="margin: 0 0 16px 0;">${p.replace(/\n/g, '<br>')}</p>`)
+    .join('')
+
+  return paragraphs
+}
+
 export async function sendTargetedEmail(subject, body, usernames) {
   const transport = getTransporter()
+  const htmlBody = textToEmailHtml(body)
 
   // Look up user IDs by username
   const { data: users, error: dbError } = await supabase
@@ -177,7 +206,7 @@ export async function sendTargetedEmail(subject, body, usernames) {
     }
 
     try {
-      const htmlWithFooter = appendUnsubscribeFooter(body, user.id)
+      const htmlWithFooter = appendUnsubscribeFooter(htmlBody, user.id)
       await transport.sendMail({
         from: `"I KNOW BALL" <${env.SMTP_FROM}>`,
         to: email,
