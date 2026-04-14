@@ -293,7 +293,9 @@ export function RecordBookContent({ scrollToRecord = null }) {
               <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
                 {CATEGORY_LABELS[cat]}
               </h2>
-              <div className="space-y-3">
+              {/* 2-col grid on desktop so records use the wider container;
+                  single-col on mobile/tablet for readability. */}
+              <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
                 {catRecords.map((record) => (
                   <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
                 ))}

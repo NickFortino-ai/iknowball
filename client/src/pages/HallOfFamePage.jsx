@@ -98,22 +98,28 @@ export default function HallOfFamePage() {
           )}
         </div>
 
-        {/* Record Book */}
+        {/* Record Book — breaks out to max-w-5xl on desktop with a 2-col grid
+            inside each category so records use the full page width. */}
         <div className="border-b border-border">
           <SectionToggle title="Record Book" open={openSections.records} onToggle={() => toggle('records')} />
           {openSections.records && (
-            <div className="pb-4">
-              <RecordBookContent scrollToRecord={recordParam} />
+            <div className="pb-4 lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
+              <div className="lg:max-w-5xl lg:mx-auto lg:px-4">
+                <RecordBookContent scrollToRecord={recordParam} />
+              </div>
             </div>
           )}
         </div>
 
-        {/* Headlines Archive */}
+        {/* Headlines Archive — breaks out to max-w-4xl on desktop for
+            comfortable reading of the recap narratives without going too wide. */}
         <div>
           <SectionToggle title="Headlines Archive" open={openSections.headlines} onToggle={() => toggle('headlines')} />
           {openSections.headlines && (
-            <div className="pb-4">
-              <HeadlinesArchiveContent />
+            <div className="pb-4 lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
+              <div className="lg:max-w-4xl lg:mx-auto lg:px-4">
+                <HeadlinesArchiveContent />
+              </div>
             </div>
           )}
         </div>
