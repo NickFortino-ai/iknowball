@@ -265,24 +265,24 @@ export default function HomePage() {
   }
 
   const HERO_IMAGES = [
-    '/backdrops/nba-msg.webp',
-    '/backdrops/nfl-lambeau.webp',
-    '/backdrops/mlb-wrigley.webp',
-    '/backdrops/nba-american-airlines.webp',
-    '/backdrops/nfl-superdome.webp',
-    '/backdrops/mlb-fenway.webp',
-    '/backdrops/nba-intuit-dome.webp',
-    '/backdrops/nfl-arrowhead.webp',
-    '/backdrops/mlb-dodger.webp',
-    '/backdrops/nba-little-caesars.webp',
-    '/backdrops/nfl-atandt.webp',
-    '/backdrops/mlb-globe-life-field.webp',
-    '/backdrops/nba-fiserv.webp',
-    '/backdrops/nfl-gillette.webp',
-    '/backdrops/mlb-pnc.webp',
-    '/backdrops/nfl-us-bank.webp',
-    '/backdrops/mlb-oracle.webp',
-  ]
+    'nba-msg.webp',
+    'nfl-lambeau.webp',
+    'mlb-wrigley.webp',
+    'nba-american-airlines.webp',
+    'nfl-superdome.webp',
+    'mlb-fenway.webp',
+    'nba-intuit-dome.webp',
+    'nfl-arrowhead.webp',
+    'mlb-dodger.webp',
+    'nba-little-caesars.webp',
+    'nfl-atandt.webp',
+    'mlb-globe-life-field.webp',
+    'nba-fiserv.webp',
+    'nfl-gillette.webp',
+    'mlb-pnc.webp',
+    'nfl-us-bank.webp',
+    'mlb-oracle.webp',
+  ].map(getBackdropUrl)
   const [heroIdx, setHeroIdx] = useState(0)
 
   useEffect(() => {

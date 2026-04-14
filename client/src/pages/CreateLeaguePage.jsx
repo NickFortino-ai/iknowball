@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useNflSeasonOpener } from '../hooks/useLeagues'
 import { api } from '../lib/api'
+import { getBackdropUrl } from '../lib/backdropUrl'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
@@ -1708,7 +1709,7 @@ export default function CreateLeaguePage() {
                     }`}
                   >
                     <img
-                      src={`/backdrops/${b.filename}`}
+                      src={getBackdropUrl(b.filename)}
                       alt={b.label}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
