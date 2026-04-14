@@ -72,15 +72,43 @@ function maxByPos(rosterSlots) {
   }
 }
 
-// Filter pool by what this bot is allowed to draft right now
+// Filter pool by what this bot is allowed to draft right now.
+// Layered caps:
+//   1. Hard roster maximum (maxByPos)
+//   2. Progressive same-position caps that track how realistic human
+//      drafters mix positions — prevents a bot from taking 5 RBs in
+//      a row even if the ADP board front-loads RBs. Without these
+//      caps, "RB Heavy" (and even "Best Available" on RB-leaning
+//      boards) drafts unrealistic monopositional teams.
+//   3. No K/DEF until round 11 (standard in real drafts)
+//   4. No 2nd QB/TE in 1-QB leagues before round 8 (leave bench room)
 function eligiblePool(available, botRoster, rosterSlots, round) {
   const max = maxByPos(rosterSlots)
   const have = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 }
   for (const p of botRoster) have[p.position] = (have[p.position] || 0) + 1
+  const picksMade = botRoster.length
+  const isSuperflex = (rosterSlots.superflex || 0) > 0 || (rosterSlots.qb || 0) >= 2
+
   return available.filter((p) => {
     if (have[p.position] >= max[p.position]) return false
     // Don't take K/DEF before round 11
     if ((p.position === 'K' || p.position === 'DEF') && round < 11) return false
+
+    // Same-position caps by how far into the draft the bot is.
+    // These are the "no human would do this" guards, not strategy.
+    if (p.position === 'RB' || p.position === 'WR') {
+      // At most 2 RB or 2 WR after 3 picks — forces diversification
+      if (picksMade <= 3 && have[p.position] >= 2) return false
+      // At most 3 RB or 3 WR through round 7
+      if (picksMade <= 7 && have[p.position] >= 3) return false
+      // At most 4 RB or 4 WR through round 11
+      if (picksMade <= 11 && have[p.position] >= 4) return false
+    }
+
+    // Second QB / second TE: only after round 8 (unless SuperFlex)
+    if (!isSuperflex && p.position === 'QB' && have.QB >= 1 && round < 8) return false
+    if (p.position === 'TE' && have.TE >= 1 && round < 8) return false
+
     return true
   })
 }
@@ -115,7 +143,10 @@ function pickZeroRB(ctx) {
 
 function pickRBHeavy(ctx) {
   let pool = eligiblePool(ctx.available, ctx.botRoster, ctx.rosterSlots, ctx.round)
-  if (ctx.round <= 3) {
+  // Lean RB in rounds 1-3 but allow elite WR/TE to sneak through.
+  // 75% of the time just pick top RB; 25% of the time let best available
+  // win (catches Chase/Jefferson/Kelce when their ADP is top-3).
+  if (ctx.round <= 3 && Math.random() < 0.75) {
     const rbs = pool.filter((p) => p.position === 'RB')
     if (rbs.length) {
       rbs.sort((a, b) => adpCompare(a, b, ctx.scoringKey, ctx.adpCtx))
