@@ -999,6 +999,10 @@ export async function getRecapArchive({ isAdmin = false } = {}) {
     throw error
   }
 
+  // Attach user avatars per recap so the archive renders the same rich
+  // inline layout (avatar + name + record) as the landing-page card.
+  await Promise.all((data || []).map(attachRecapAvatars))
+
   return data || []
 }
 
@@ -1025,6 +1029,35 @@ export async function updateRecapContent(recapId, recapContent) {
  * Get the most recent weekly recap from the database.
  * Admins see all recaps; regular users only see recaps past their visible_after time.
  */
+/**
+ * Enrich a recap row with a `user_avatars` map keyed by display name so
+ * the UI can render avatars inline. Mutates and returns the passed-in row.
+ */
+async function attachRecapAvatars(recap) {
+  if (!recap?.recap_content) return recap
+  const nameMatches = recap.recap_content.match(/^### \d+\.\s+(.+?)\s+\(/gm) || []
+  const names = [...new Set(nameMatches.map((m) => m.replace(/^### \d+\.\s+/, '').replace(/\s+\($/, '')))]
+  if (!names.length) return recap
+
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, display_name, username, avatar_url, avatar_emoji')
+    .or(names.map((n) => `display_name.eq.${n},username.eq.${n}`).join(','))
+
+  if (users?.length) {
+    const avatarMap = {}
+    for (const u of users) {
+      for (const name of names) {
+        if (u.display_name === name || u.username === name) {
+          avatarMap[name] = { id: u.id, avatar_url: u.avatar_url, avatar_emoji: u.avatar_emoji, username: u.username }
+        }
+      }
+    }
+    recap.user_avatars = avatarMap
+  }
+  return recap
+}
+
 export async function getLatestRecap({ isAdmin = false } = {}) {
   let query = supabase
     .from('weekly_recaps')
@@ -1045,31 +1078,6 @@ export async function getLatestRecap({ isAdmin = false } = {}) {
   }
 
   if (!data) return null
-
-  // Extract display names from rankings in content and attach avatar data
-  const nameMatches = (data.recap_content || '').match(/^### \d+\.\s+(.+?)\s+\(/gm) || []
-  const names = nameMatches.map((m) => m.replace(/^### \d+\.\s+/, '').replace(/\s+\($/, ''))
-
-  if (names.length > 0) {
-    // Look up by display_name OR username since recaps may use either
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, display_name, username, avatar_url, avatar_emoji')
-      .or(names.map((n) => `display_name.eq.${n},username.eq.${n}`).join(','))
-
-    if (users?.length) {
-      const avatarMap = {}
-      for (const u of users) {
-        // Map by whichever name appears in the recap
-        for (const name of names) {
-          if (u.display_name === name || u.username === name) {
-            avatarMap[name] = { id: u.id, avatar_url: u.avatar_url, avatar_emoji: u.avatar_emoji, username: u.username }
-          }
-        }
-      }
-      data.user_avatars = avatarMap
-    }
-  }
-
+  await attachRecapAvatars(data)
   return data
 }
