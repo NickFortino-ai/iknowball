@@ -17,7 +17,8 @@ const RECORD_SORT = {
   longest_win_streak: 0,
   longest_parlay_streak: 1,
   longest_prop_streak: 2,
-  longest_crown_tenure: 3,
+  longest_survivor_streak: 3,
+  longest_crown_tenure: 4,
   biggest_underdog_hit: 0,
   biggest_parlay: 1,
   most_parlay_legs: 2,
@@ -115,8 +116,8 @@ function FuturesDetailCard({ pickId }) {
   )
 }
 
-function RecordCard({ record, onUserTap }) {
-  const [expanded, setExpanded] = useState(false)
+function RecordCard({ record, onUserTap, defaultExpanded = false }) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const [showDetail, setShowDetail] = useState(false)
   const holder = record.users
   const hasSubs = record.sub_records?.length > 0
@@ -288,17 +289,52 @@ export function RecordBookContent({ scrollToRecord = null }) {
         {CATEGORY_ORDER.map((cat) => {
           const catRecords = grouped[cat]
           if (!catRecords?.length) return null
+
+          // Streaks category: the all-sport win streak has per-sport sub-records
+          // that expand. Give it its own full-width row (expanded by default),
+          // then lay the remaining 4 records out as 2x2 underneath. This also
+          // avoids the dropdown-expansion pulling down the right column.
+          const isStreakCategory = cat === 'streak'
+          const featuredRecord = isStreakCategory ? catRecords[0] : null
+          const gridRecords = isStreakCategory ? catRecords.slice(1) : catRecords
+
+          // Split remaining records into two independent columns on desktop.
+          // Using a grid gives all cells in a row the same height, so
+          // expanding one cell forces its row-mate to grow too. Manual
+          // splitting into two flex-columns keeps their heights independent.
+          const mid = Math.ceil(gridRecords.length / 2)
+          const leftCol = gridRecords.slice(0, mid)
+          const rightCol = gridRecords.slice(mid)
+
           return (
             <div key={cat}>
               <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
                 {CATEGORY_LABELS[cat]}
               </h2>
-              {/* 2-col grid on desktop so records use the wider container;
-                  single-col on mobile/tablet for readability. */}
-              <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-                {catRecords.map((record) => (
-                  <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
-                ))}
+
+              {featuredRecord && (
+                <div className="mb-3">
+                  <RecordCard
+                    record={featuredRecord}
+                    onUserTap={setProfileUserId}
+                    defaultExpanded
+                  />
+                </div>
+              )}
+
+              <div className="lg:flex lg:gap-3 lg:items-start">
+                <div className="space-y-3 lg:flex-1 lg:min-w-0">
+                  {leftCol.map((record) => (
+                    <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
+                  ))}
+                </div>
+                {rightCol.length > 0 && (
+                  <div className="space-y-3 mt-3 lg:mt-0 lg:flex-1 lg:min-w-0">
+                    {rightCol.map((record) => (
+                      <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )
