@@ -390,14 +390,20 @@ export function RoyaltyContent() {
         {secondaryCrowns.length > 0 && (
           <>
             <div className="border-t border-border/50 my-2" />
-            {/* On desktop, all secondary crowns in a single row; mobile keeps
-                the stacked grid for readability. */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-nowrap lg:justify-center lg:gap-x-2">
-              {secondaryCrowns.map((crown, i) => (
-                <div key={crown.scope || i} className="lg:flex-1 lg:min-w-0">
-                  <CategoryCrown crown={crown} index={i} onUserTap={setProfileUserId} />
+            {/* On desktop, break out of the parent's max-w-2xl so the single
+                row of secondary crowns can use the full viewport width. The
+                left-1/2 + -translate-x-1/2 + w-screen combo anchors a wider
+                container centered in the viewport regardless of parent. */}
+            <div className="lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
+              <div className="lg:max-w-5xl lg:mx-auto lg:px-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-nowrap lg:justify-center lg:gap-x-4">
+                  {secondaryCrowns.map((crown, i) => (
+                    <div key={crown.scope || i} className="lg:flex-1 lg:min-w-0">
+                      <CategoryCrown crown={crown} index={i} onUserTap={setProfileUserId} />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </>
         )}
