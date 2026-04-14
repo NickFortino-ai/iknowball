@@ -448,7 +448,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
         <div className="rounded-xl border border-text-primary/20 bg-bg-primary/50 backdrop-blur-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Salary Cap</span>
-            <span className="text-xs text-text-primary font-semibold">{filledSlots}/${SLOTS.length} slots</span>
+            <span className="text-xs text-text-primary font-semibold">{filledSlots}/{SLOTS.length} slots</span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className={`font-display text-2xl ${remainingSalary < 0 ? 'text-incorrect' : 'text-correct'}`}>
