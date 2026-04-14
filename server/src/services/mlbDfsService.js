@@ -136,13 +136,23 @@ function mlbPitcherGameFpts(statMap) {
 
 /**
  * Calculate salary from MLB batter FPPG.
- * $3,000 base + $500/fppg, capped at $5,500.
- * Targets: elite hitter ~$4,500-5,500, solid ~$3,500-4,500, value ~$3,000-3,500
+ * $2,500 base + $700/fppg, capped at $8,500.
+ *
+ * Previous tuning (base $3k + $500/fppg, cap $5.5k) compressed elite and
+ * average hitters into the same price — anyone FPPG 5+ hit the cap, so
+ * an elite bat at 12 FPPG was priced the same as an average 5 FPPG hitter.
+ * Widening the slope and lifting the cap spreads the curve out:
+ *   elite 12 FPPG → $8,500 (cap)
+ *   strong 9 FPPG → $8,800 → capped to $8,500
+ *   solid 7 FPPG  → $7,400
+ *   average 5 FPPG → $6,000
+ *   value 3 FPPG → $4,600
+ *   replacement 1 FPPG → $3,200
  */
 function mlbFppgToSalary(fppg) {
   if (!fppg || fppg <= 0) return 3000
-  const salary = Math.round((3000 + fppg * 500) / 100) * 100
-  return Math.max(3000, Math.min(5500, salary))
+  const salary = Math.round((2500 + fppg * 700) / 100) * 100
+  return Math.max(3000, Math.min(8500, salary))
 }
 
 /**
@@ -157,11 +167,16 @@ function mlbPitcherFppgToSalary(fppg) {
 }
 
 /**
- * Position scarcity multipliers.
- * C: scarce/low output, SS/2B: scarce, 1B/3B/OF: standard, SP: premium
+ * Position scarcity / production multipliers applied AFTER the base
+ * FPPG → salary calc. These reflect typical fantasy production at each
+ * position, not market scarcity — lower = cheaper.
+ *
+ * Catchers dropped from 0.85 → 0.70 since they produce poorly in
+ * fantasy and elite-catcher salaries were still uncomfortably high.
+ * Other positions unchanged.
  */
 const POSITION_SCARCITY = {
-  C: 0.85,
+  C: 0.70,
   SS: 0.90,
   '2B': 0.90,
   '1B': 1.00,

@@ -46,7 +46,7 @@ router.post('/roster', async (req, res) => {
 
   // Verify salary cap
   const settings = await getFantasySettings(league_id)
-  const cap = settings?.salary_cap || 50000
+  const cap = settings?.salary_cap || 60000
   const totalSalary = slots.reduce((sum, s) => sum + (s.salary || 0), 0)
   if (totalSalary > cap) {
     return res.status(400).json({ error: 'Roster exceeds salary cap' })

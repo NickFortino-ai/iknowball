@@ -258,7 +258,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   const date = selectedDate
 
   const { data: fantasySettings } = useFantasySettings(league.id)
-  const salaryCap = fantasySettings?.salary_cap || 50000
+  const salaryCap = fantasySettings?.salary_cap || 60000
   const { data: players, isLoading: playersLoading } = useMlbDfsPlayers(date)
   const { data: existingRoster, isLoading: rosterLoading } = useMlbDfsRoster(league.id, date)
   const saveRoster = useSaveMlbDfsRoster()
