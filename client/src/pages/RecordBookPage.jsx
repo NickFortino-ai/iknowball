@@ -12,6 +12,11 @@ import FuturesPickCard from '../components/picks/FuturesPickCard'
 
 const CATEGORY_ORDER = ['streak', 'single_pick', 'percentage', 'efficiency', 'climb']
 
+// Categories rendered as side-by-side pairs on desktop (single-column on mobile).
+// Efficiency and Climb each have only 1-4 short records, so pairing them makes
+// good use of the wider desktop layout.
+const PAIRED_ROWS = [['efficiency', 'climb']]
+
 // Display order within each category (lower = higher on list)
 const RECORD_SORT = {
   longest_win_streak: 0,
@@ -283,59 +288,82 @@ export function RecordBookContent({ scrollToRecord = null }) {
   if (isError) return <ErrorState title="Failed to load records" message="Check your connection and try again." onRetry={refetch} />
   if (!records?.length) return <EmptyState title="No records yet" message="Records will appear as picks are settled." />
 
+  // Render one category block (header + featured record + 2-col grid)
+  function renderCategory(cat) {
+    const catRecords = grouped[cat]
+    if (!catRecords?.length) return null
+
+    // Streaks category: the all-sport win streak has per-sport sub-records
+    // that expand. Give it its own full-width row (expanded by default),
+    // then lay the remaining 4 records out as 2x2 underneath.
+    const isStreakCategory = cat === 'streak'
+    const featuredRecord = isStreakCategory ? catRecords[0] : null
+    const gridRecords = isStreakCategory ? catRecords.slice(1) : catRecords
+
+    // Split records into two independent flex-columns so expanding one
+    // card doesn't force its row-mate to grow (CSS grid shares row height).
+    const mid = Math.ceil(gridRecords.length / 2)
+    const leftCol = gridRecords.slice(0, mid)
+    const rightCol = gridRecords.slice(mid)
+
+    return (
+      <div key={cat}>
+        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
+          {CATEGORY_LABELS[cat]}
+        </h2>
+
+        {featuredRecord && (
+          <div className="mb-3">
+            <RecordCard
+              record={featuredRecord}
+              onUserTap={setProfileUserId}
+              defaultExpanded
+            />
+          </div>
+        )}
+
+        <div className="lg:flex lg:gap-3 lg:items-start">
+          <div className="space-y-3 lg:flex-1 lg:min-w-0">
+            {leftCol.map((record) => (
+              <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
+            ))}
+          </div>
+          {rightCol.length > 0 && (
+            <div className="space-y-3 mt-3 lg:mt-0 lg:flex-1 lg:min-w-0">
+              {rightCol.map((record) => (
+                <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Build the final row list: paired categories become one row with two
+  // side-by-side blocks on desktop; all others are single-block rows.
+  const pairedSet = new Set(PAIRED_ROWS.flat())
+  const rows = []
+  for (const cat of CATEGORY_ORDER) {
+    if (pairedSet.has(cat)) continue
+    rows.push([cat])
+  }
+  for (const pair of PAIRED_ROWS) {
+    const visible = pair.filter((c) => grouped[c]?.length)
+    if (visible.length) rows.push(visible)
+  }
+
   return (
     <>
       <div className="space-y-8">
-        {CATEGORY_ORDER.map((cat) => {
-          const catRecords = grouped[cat]
-          if (!catRecords?.length) return null
-
-          // Streaks category: the all-sport win streak has per-sport sub-records
-          // that expand. Give it its own full-width row (expanded by default),
-          // then lay the remaining 4 records out as 2x2 underneath. This also
-          // avoids the dropdown-expansion pulling down the right column.
-          const isStreakCategory = cat === 'streak'
-          const featuredRecord = isStreakCategory ? catRecords[0] : null
-          const gridRecords = isStreakCategory ? catRecords.slice(1) : catRecords
-
-          // Split remaining records into two independent columns on desktop.
-          // Using a grid gives all cells in a row the same height, so
-          // expanding one cell forces its row-mate to grow too. Manual
-          // splitting into two flex-columns keeps their heights independent.
-          const mid = Math.ceil(gridRecords.length / 2)
-          const leftCol = gridRecords.slice(0, mid)
-          const rightCol = gridRecords.slice(mid)
-
+        {rows.map((row, rowIdx) => {
+          if (row.length === 1) return renderCategory(row[0])
+          // Multi-category row — side-by-side on desktop, stacked on mobile
           return (
-            <div key={cat}>
-              <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">
-                {CATEGORY_LABELS[cat]}
-              </h2>
-
-              {featuredRecord && (
-                <div className="mb-3">
-                  <RecordCard
-                    record={featuredRecord}
-                    onUserTap={setProfileUserId}
-                    defaultExpanded
-                  />
-                </div>
-              )}
-
-              <div className="lg:flex lg:gap-3 lg:items-start">
-                <div className="space-y-3 lg:flex-1 lg:min-w-0">
-                  {leftCol.map((record) => (
-                    <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
-                  ))}
-                </div>
-                {rightCol.length > 0 && (
-                  <div className="space-y-3 mt-3 lg:mt-0 lg:flex-1 lg:min-w-0">
-                    {rightCol.map((record) => (
-                      <RecordCard key={record.record_key} record={record} onUserTap={setProfileUserId} />
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div key={`row-${rowIdx}`} className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-8 lg:space-y-0">
+              {row.map((cat) => (
+                <div key={cat}>{renderCategory(cat)}</div>
+              ))}
             </div>
           )
         })}
