@@ -1754,7 +1754,7 @@ export default function LeagueDetailPage() {
               <h2 className="font-display text-xl text-text-primary">League Settings</h2>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="text-text-muted hover:text-text-primary text-xl leading-none"
+                className="w-10 h-10 -m-2 flex items-center justify-center text-text-muted hover:text-text-primary text-xl leading-none rounded-full hover:bg-bg-secondary transition-colors"
               >
                 &times;
               </button>
