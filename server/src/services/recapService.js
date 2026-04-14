@@ -776,6 +776,10 @@ ${JSON.stringify(dataPayload, null, 2)}`
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
       max_tokens: 1500,
+      // Low temperature — creativity is the enemy of factual accuracy in
+      // these recaps. Hallucinations at temp=1.0 were inventing games,
+      // scores, and picks that didn't exist in the payload.
+      temperature: 0.2,
       messages: [{ role: 'user', content: prompt }],
     }),
   })
@@ -786,7 +790,10 @@ ${JSON.stringify(dataPayload, null, 2)}`
   }
 
   const result = await response.json()
-  return result.content[0].text
+  // Return both the generated text AND the input payload so callers can
+  // persist the payload for auditing. Without this, hallucinations are
+  // impossible to diff against the real input data.
+  return { text: result.content[0].text, inputJson: dataPayload }
 }
 
 /**

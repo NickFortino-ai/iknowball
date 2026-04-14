@@ -53,15 +53,17 @@ export async function generateWeeklyRecap() {
     return
   }
 
-  // Generate AI recap content (with 1 retry)
-  let recapContent
+  // Generate AI recap content (with 1 retry). Returns { text, inputJson }.
+  let recapResult
   try {
-    recapContent = await generateRecapContent(weeklyData, weekStartStr, weekEndStr)
+    recapResult = await generateRecapContent(weeklyData, weekStartStr, weekEndStr)
   } catch (err) {
     logger.warn({ err: err.message }, 'Claude API failed, retrying in 5s')
     await new Promise((r) => setTimeout(r, 5000))
-    recapContent = await generateRecapContent(weeklyData, weekStartStr, weekEndStr)
+    recapResult = await generateRecapContent(weeklyData, weekStartStr, weekEndStr)
   }
+  const recapContent = recapResult.text
+  const inputJson = recapResult.inputJson
 
   // Determine featured user IDs (deduplicated)
   const featuredSet = new Set(weeklyData.top5.map((u) => u.user_id))
@@ -76,11 +78,15 @@ export async function generateWeeklyRecap() {
   const offset = pacificNow.includes('PDT') ? '-07:00' : '-08:00'
   const visibleAfter = new Date(`${pacificDate}T13:00:00${offset}`)
 
-  // Save to DB (notifications/emails are sent separately after visible_after)
+  // Save to DB (notifications/emails are sent separately after visible_after).
+  // input_json stores the exact payload Claude received — required for
+  // auditing hallucinations (Claude could invent a game/score that's not
+  // in the input; comparing against input_json is the only way to detect).
   const { error: insertError } = await supabase.from('weekly_recaps').insert({
     week_start: weekStartStr,
     week_end: weekEndStr,
     recap_content: recapContent,
+    input_json: inputJson,
     featured_user_ids: featuredUserIds,
     pick_of_week_user_id: weeklyData.pickOfWeekUser?.user_id || null,
     biggest_fall_user_id: weeklyData.biggestFallUser?.user_id || null,
