@@ -117,7 +117,11 @@ export default function DraftPrepAdp({ scoringFormat }) {
                 </div>
               </div>
               <div className="w-14 text-right text-sm font-semibold text-text-primary shrink-0">
-                {p[adpKey] != null ? Math.round(p[adpKey] * 10) / 10 : p.search_rank ?? '—'}
+                {p[adpKey] != null
+                  ? Math.round(p[adpKey] * 10) / 10
+                  : p.search_rank != null && p.search_rank < 9999
+                    ? p.search_rank
+                    : '—'}
               </div>
               <div className="w-14 text-right text-sm text-text-muted shrink-0">
                 {p[projKey] != null ? Math.round(p[projKey] * 10) / 10 : '—'}

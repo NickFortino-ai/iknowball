@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { effectiveAdp } from '../utils/effectiveAdp.js'
 import { buildRosterConfigHash } from '../utils/rosterConfigHash.js'
 
-const RANKINGS_SEED_SIZE = 200
+const RANKINGS_SEED_SIZE = 220
 
 const PLAYER_SELECT = 'player_id, rank, nfl_players(id, full_name, position, team, headshot_url, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank)'
 
@@ -33,12 +33,23 @@ async function seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSl
   const pool = await fetchPlayerPool()
   if (!pool.length) return
 
+  // Split by position so defenses are guaranteed to make the seed even
+  // when their Sleeper ADP/search_rank is null (falls back to 9999).
+  // Without this split, all 32 DEFs sort past the seed cutoff and never
+  // appear in user rankings. Same risk for Ks when ADP data is thin.
   const ranked = pool
     .map((p) => ({ ...p, _adp: effectiveAdp(p, scoringFormat, isSuperflex) }))
     .sort((a, b) => a._adp - b._adp)
-    .slice(0, RANKINGS_SEED_SIZE)
 
-  const rows = ranked.map((p, i) => ({
+  const defs = ranked.filter((p) => p.position === 'DEF')
+  const offense = ranked.filter((p) => p.position !== 'DEF')
+
+  // Reserve slots for all defenses (typically ~32), fill the rest with
+  // the top offensive players by ADP.
+  const offenseSeed = offense.slice(0, Math.max(0, RANKINGS_SEED_SIZE - defs.length))
+  const seed = [...offenseSeed, ...defs]
+
+  const rows = seed.map((p, i) => ({
     user_id: userId,
     roster_config_hash: configHash,
     scoring_format: scoringFormat,
