@@ -332,19 +332,20 @@ function LeaguePicksView({ league, standings }) {
       {gamesLoading ? (
         <div className="text-center text-text-muted text-sm py-8">Loading games...</div>
       ) : !visibleGames?.length ? (() => {
-        // Distinguish "truly no games that day" from "we just haven't synced
-        // odds for that day yet." The odds API publishes ~2-3 days ahead;
-        // any selected day beyond that is more likely a sync-horizon issue
-        // than a genuine no-games day.
+        // Odds API publishes ~2-3 days ahead, so a future day with no games
+        // could either be a real off day OR just awaiting sync. We can't
+        // distinguish the two without querying a schedule API, so the
+        // message stays agnostic — doesn't promise games, doesn't claim
+        // there aren't any. For past/current days we trust the data.
         const selectedWeek = weeks?.find((w) => w.id === selectedWeekId)
         const weekStart = selectedWeek?.starts_at ? new Date(selectedWeek.starts_at) : null
         const daysOut = weekStart ? Math.floor((weekStart.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : 0
-        const isBeyondSyncHorizon = daysOut >= 2
+        const isFarFuture = daysOut >= 2
         return (
           <EmptyState
-            title={isBeyondSyncHorizon ? 'Games coming soon' : 'No games'}
-            message={isBeyondSyncHorizon
-              ? 'Odds for these games haven\'t been published yet — check back closer to gameday.'
+            title={isFarFuture ? 'Nothing here yet' : 'No games'}
+            message={isFarFuture
+              ? 'Either no games are scheduled or odds haven\'t been published yet. Check back closer to gameday.'
               : `No games scheduled for this ${isDaily ? 'day' : 'period'}`}
           />
         )
