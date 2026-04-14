@@ -628,7 +628,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
 export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
   const {
     top5, allUsers, pickOfWeekUser, biggestFallUser, longestStreakUser,
-    recordsBroken, crownChanges, bigLeagueWinners, allLeagueWins,
+    recordsBroken, crownChanges, currentCrownHolders, bigLeagueWinners, allLeagueWins,
     survivorAdvancements, bigParlayMilestones, squaresWinsList, streakHighlights,
   } = weeklyData
   const top5Ids = new Set(top5.map((u) => u.user_id))
@@ -709,6 +709,23 @@ export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
       }),
     recordsBroken: recordsBroken || [],
     crownChanges: crownChanges || [],
+    // The reigning #1 on the global leaderboard — must be mentioned in
+    // every recap even when nothing changes, so readers always know who's
+    // wearing the IKB crown this week.
+    reigningKing: currentCrownHolders?.['I KNOW BALL']
+      ? {
+          display_name: currentCrownHolders['I KNOW BALL'].display_name,
+          username: currentCrownHolders['I KNOW BALL'].username,
+          crown_changed_this_week: (crownChanges || []).some((c) => c.crown === 'I KNOW BALL'),
+        }
+      : null,
+    otherCrownHolders: Object.entries(currentCrownHolders || {})
+      .filter(([crown]) => crown !== 'I KNOW BALL')
+      .map(([crown, holder]) => ({
+        crown,
+        display_name: holder.display_name,
+        username: holder.username,
+      })),
     bigLeagueWinners: bigLeagueWinners || [],
     allLeagueWins: allLeagueWins || [],
     survivorAdvancements: survivorAdvancements || [],
@@ -761,7 +778,12 @@ Additional data fields you may use (only when non-empty, only verbatim):
 
 If the "bigLeagueWinners" array is non-empty, add a "## BIG LEAGUE WINNERS" section. For each entry, write 1-2 sentences highlighting the user, the league they won (use "league_name" verbatim), the member count, and how they won it — you may cite their notable_picks / notable_parlay / weekly_record / weekly_points to add color. Same accuracy rules apply: only cite fields present in the entry.
 
-If any all-time records were broken this week (provided in recordsBroken), add a "RECORDS BROKEN" section and highlight them prominently. If any crowns (leaderboard #1 spots) changed hands this week (provided in crownChanges), add a "CROWN WATCH" section mentioning the new holder and who they dethroned. Only include these sections if the arrays are non-empty.
+If any all-time records were broken this week (provided in recordsBroken), add a "RECORDS BROKEN" section and highlight them prominently.
+
+ALWAYS include a "## CROWN WATCH" section at the top (right after the opening, before RANKINGS). Use the "reigningKing" object — this is the current #1 user on the global IKB leaderboard and MUST be mentioned in every recap, even when nothing changed:
+- If "reigningKing.crown_changed_this_week" is true, announce the new king and (using crownChanges) who they dethroned. Use energetic language — this is the biggest story of the week.
+- If "reigningKing.crown_changed_this_week" is false, briefly acknowledge the reigning king is still on top (e.g. "{reigningKing.display_name} stays on the throne another week"). One sentence is enough when nothing changed, but never skip it.
+- You may also cite other crown movers from crownChanges in this section if the array is non-empty.
 
 Here is the data:
 ${JSON.stringify(dataPayload, null, 2)}`
