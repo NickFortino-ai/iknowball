@@ -416,8 +416,8 @@ export default function HomePage() {
           {/* Row 2: Pick'em + Survivor + Brackets */}
           <div className="grid sm:grid-cols-3 gap-4 mb-4">
             {[
-              { title: "Pick'em", desc: 'Pick the winner of every game using real Vegas odds. Underdogs pay more, favorites pay less. Compete for the best record all season.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL' },
-              { title: 'Survivor', desc: "Pick one team to win each day (or week). If they lose, you lose a life. Can't reuse a team. Last one standing wins.", gradient: 'from-red-800/25 via-red-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL' },
+              { title: "Pick'em", desc: 'Pick the winner of every game using real Vegas odds. Underdogs pay more, favorites pay less. Compete for the best record all season.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA' },
+              { title: 'Survivor', desc: "Pick one team to win each day (or week). If they lose, you lose a life. Can't reuse a team. Last one standing wins.", gradient: 'from-red-800/25 via-red-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA' },
               { title: 'Brackets', desc: 'Fill out a bracket and compete with your league. March Madness, NFL playoffs, NBA playoffs — every major tournament covered.', gradient: 'from-violet-800/25 via-violet-900/15 to-transparent', sports: 'NCAAB · NFL · NBA · All Playoffs' },
             ].map((mode) => (
               <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
