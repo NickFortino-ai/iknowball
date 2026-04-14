@@ -14,6 +14,22 @@ const TIER_THRESHOLDS = [
 
 // ── Update a record if the new value beats the current one ──────────────────
 async function updateRecord(key, holderId, value, metadata = {}) {
+  // Safety guard: streak/pick-based records must have their value match
+  // the length of their constituent pick/parlay/prop IDs. A mismatch has
+  // been observed in production where value=25 was stored with only 24
+  // pickIds, leading the modal to show a "25" streak with only 24 picks
+  // listed. When this happens, trust the length of the ID array over the
+  // reported count — each ID represents exactly one qualifying event.
+  const streakIdKeys = ['pickIds', 'parlayIds', 'propPickIds']
+  for (const idKey of streakIdKeys) {
+    const ids = metadata?.[idKey]
+    if (Array.isArray(ids) && ids.length !== value) {
+      logger.warn({ key, holderId, value, idKey, idCount: ids.length }, 'Record value/ID count mismatch — correcting value to ID count')
+      value = ids.length
+      break
+    }
+  }
+
   const { data: existing } = await supabase
     .from('records')
     .select('record_holder_id, record_value, category')
