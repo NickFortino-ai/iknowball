@@ -459,7 +459,7 @@ export default function HomePage() {
           <div className="grid sm:grid-cols-3 gap-4">
             {[
               { title: 'MLB Daily Fantasy', desc: 'Set a new lineup every game day under a salary cap. Stack hitters, pick pitchers, chase the big night.', gradient: 'from-sky-800/25 via-sky-900/15 to-transparent', sports: 'MLB' },
-              { title: 'Squares', desc: 'There is no better way to get a whole party of people engaged in the game than squares. Use squares for the Super Bowl or any game you\'re watching with friends!', gradient: 'from-purple-800/25 via-purple-900/15 to-transparent', sports: 'NFL · NBA · MLB' },
+              { title: 'Squares', desc: 'There is no better way to get a whole party of people engaged in the game than squares. Use squares for the Super Bowl or any game you\'re watching with friends!', gradient: 'from-purple-800/25 via-purple-900/15 to-transparent', sports: 'NFL · NBA · MLB · NCAA' },
               { title: 'Home Run Derby', desc: 'Pick 3 hitters per day. Each player usable once per week. Most homers across the season wins.', gradient: 'from-amber-800/25 via-amber-900/15 to-transparent', sports: 'MLB' },
             ].map((mode) => (
               <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
