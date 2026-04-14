@@ -593,9 +593,9 @@ export default function HomePage() {
               <p className="text-sm text-text-secondary leading-relaxed">Share posts, predictions, and polls. React to plays, see what the community is picking. Your own sports social network.</p>
             </div>
             <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
-              <div className="text-xs font-bold uppercase tracking-wider text-accent mb-3">Headlines</div>
-              <h3 className="font-display text-lg text-white mb-2">Weekly Recaps</h3>
-              <p className="text-sm text-text-secondary leading-relaxed">AI-powered weekly recaps highlighting top performers, biggest upsets, and who's climbing the leaderboard.</p>
+              <div className="text-xs font-bold uppercase tracking-wider text-accent mb-3">Link Your Socials</div>
+              <h3 className="font-display text-lg text-white mb-2">Get Followed</h3>
+              <p className="text-sm text-text-secondary leading-relaxed">Add your Instagram, X, TikTok, and YouTube to your profile so other users can find you across every platform. Once people see you know ball, they'll want to follow you everywhere.</p>
             </div>
             <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
               <div className="text-xs font-bold uppercase tracking-wider text-accent mb-3">Leaderboard</div>
