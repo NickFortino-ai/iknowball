@@ -133,7 +133,12 @@ export function useRecalculateRecords() {
 export function useSendEmailBlast() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ subject, body, scheduled_at }) => api.post('/admin/email-blast', { subject, body, scheduled_at }),
+    // Email blast to every subscribed user loops one SMTP send per
+    // recipient and can easily exceed 30s — use longTimeout so the
+    // client waits rather than reporting failure on a still-running
+    // request.
+    mutationFn: ({ subject, body, scheduled_at }) =>
+      api.post('/admin/email-blast', { subject, body, scheduled_at }, { longTimeout: true }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'email-logs'] }),
   })
 }
@@ -141,7 +146,11 @@ export function useSendEmailBlast() {
 export function useSendTargetedEmail() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ subject, body, usernames, scheduled_at }) => api.post('/admin/email-targeted', { subject, body, usernames, scheduled_at }),
+    // Targeted sends can also run long (one SMTP call per recipient).
+    // The default 30s client timeout was surfacing false 'timed out'
+    // errors while the server was still processing.
+    mutationFn: ({ subject, body, usernames, scheduled_at }) =>
+      api.post('/admin/email-targeted', { subject, body, usernames, scheduled_at }, { longTimeout: true }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'email-logs'] }),
   })
 }
