@@ -1,7 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { assertConnected } from './socialService.js'
 import { checkUserMuted, checkContent } from './contentFilterService.js'
-import { createNotification } from './notificationService.js'
 
 export async function sendMessage(senderId, receiverId, content) {
   if (await checkUserMuted(senderId)) {
@@ -27,19 +26,9 @@ export async function sendMessage(senderId, receiverId, content) {
 
   if (error) throw error
 
-  // Best-effort notification + push
-  try {
-    const { data: sender } = await supabase
-      .from('users')
-      .select('username')
-      .eq('id', senderId)
-      .single()
-    const username = sender?.username || 'Someone'
-    await createNotification(receiverId, 'direct_message', `${username} sent you a message`, {
-      actorId: senderId,
-      messageId: data.id,
-    })
-  } catch (_) { /* notification is best-effort */ }
+  // Intentionally no notification here — the messages inbox has its own
+  // unread indicator on the chat icon, which is where users will look.
+  // Adding a bell notification too made every DM double-notify.
 
   return data
 }
