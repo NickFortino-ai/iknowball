@@ -18,12 +18,17 @@ const SPORT_LABELS = {
   soccer_usa_mls: 'MLS',
 }
 
-// College brackets (NCAA, WNCAA, CFP) group teams into regions.
-// Pro leagues group into conferences. Internal data model uses
-// "regions" for both; this helper picks the user-facing label.
+// Internal data model uses "regions" for bracket groupings regardless
+// of sport. This helper picks the sport-appropriate display label:
+//   MLB → "leagues" (AL / NL)
+//   College (NCAA / WNCAA / CFP) → "regions"
+//   Everything else (NBA / NFL / NHL / WNBA / MLS) → "conferences"
 function groupingLabel(sport, count) {
   const isCollege = sport === 'basketball_ncaab' || sport === 'basketball_wncaab' || sport === 'americanfootball_ncaaf'
-  const noun = isCollege ? 'region' : 'conference'
+  let noun
+  if (sport === 'baseball_mlb') noun = 'league'
+  else if (isCollege) noun = 'region'
+  else noun = 'conference'
   return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
 
