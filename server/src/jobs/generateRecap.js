@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
-import { collectWeeklyData, generateRecapContent } from '../services/recapService.js'
+import { collectWeeklyData, generateRecapContentValidated } from '../services/recapService.js'
 
 function formatLocalDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -53,17 +53,20 @@ export async function generateWeeklyRecap() {
     return
   }
 
-  // Generate AI recap content (with 1 retry). Returns { text, inputJson }.
+  // Generate AI recap content with fact-checking audit.
+  // Returns { text, inputJson, auditIssues }. If auditIssues is non-empty
+  // after a retry, admins should review before visible_after.
   let recapResult
   try {
-    recapResult = await generateRecapContent(weeklyData, weekStartStr, weekEndStr)
+    recapResult = await generateRecapContentValidated(weeklyData, weekStartStr, weekEndStr)
   } catch (err) {
     logger.warn({ err: err.message }, 'Claude API failed, retrying in 5s')
     await new Promise((r) => setTimeout(r, 5000))
-    recapResult = await generateRecapContent(weeklyData, weekStartStr, weekEndStr)
+    recapResult = await generateRecapContentValidated(weeklyData, weekStartStr, weekEndStr)
   }
   const recapContent = recapResult.text
   const inputJson = recapResult.inputJson
+  const auditIssues = recapResult.auditIssues || []
 
   // Determine featured user IDs (deduplicated)
   const featuredSet = new Set(weeklyData.top5.map((u) => u.user_id))
@@ -87,6 +90,7 @@ export async function generateWeeklyRecap() {
     week_end: weekEndStr,
     recap_content: recapContent,
     input_json: inputJson,
+    audit_issues: auditIssues,
     featured_user_ids: featuredUserIds,
     pick_of_week_user_id: weeklyData.pickOfWeekUser?.user_id || null,
     biggest_fall_user_id: weeklyData.biggestFallUser?.user_id || null,
@@ -100,5 +104,12 @@ export async function generateWeeklyRecap() {
     throw insertError
   }
 
-  logger.info({ weekStart: weekStartStr, featured: featuredUserIds.length, visibleAfter: visibleAfter.toISOString() }, 'Weekly recap generated — notifications will be sent after visible_after')
+  logger.info({
+    weekStart: weekStartStr,
+    featured: featuredUserIds.length,
+    visibleAfter: visibleAfter.toISOString(),
+    auditIssues: auditIssues.length,
+  }, auditIssues.length > 0
+    ? 'Weekly recap generated with unresolved audit issues — admin should review'
+    : 'Weekly recap generated and passed audit — notifications will be sent after visible_after')
 }

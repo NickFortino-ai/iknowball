@@ -625,7 +625,7 @@ export async function collectWeeklyData(weekStart, weekEnd) {
 /**
  * Call Claude API to generate the weekly headlines narrative.
  */
-export async function generateRecapContent(weeklyData, weekStart, weekEnd) {
+export async function generateRecapContent(weeklyData, weekStart, weekEnd, auditFeedback = null) {
   const {
     top5, allUsers, pickOfWeekUser, biggestFallUser, longestStreakUser,
     recordsBroken, crownChanges, currentCrownHolders, bigLeagueWinners, allLeagueWins,
@@ -786,7 +786,12 @@ ALWAYS include a "## CROWN WATCH" section at the top (right after the opening, b
 - You may also cite other crown movers from crownChanges in this section if the array is non-empty.
 
 Here is the data:
-${JSON.stringify(dataPayload, null, 2)}`
+${JSON.stringify(dataPayload, null, 2)}${auditFeedback ? `
+
+PRIOR ATTEMPT FAILED FACT-CHECKING. A previous version of this recap made these specific claims that COULD NOT BE VERIFIED against the data payload:
+${auditFeedback.map((issue) => `- ${issue}`).join('\n')}
+
+Rewrite the recap. Remove these unverified claims entirely. If you can't describe something specifically using ONLY the fields in the payload, describe it generally (overall record, weekly points, rank movement, streak) instead of inventing specifics. Do not replace one fabricated detail with another.` : ''}`
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -816,6 +821,128 @@ ${JSON.stringify(dataPayload, null, 2)}`
   // persist the payload for auditing. Without this, hallucinations are
   // impossible to diff against the real input data.
   return { text: result.content[0].text, inputJson: dataPayload }
+}
+
+/**
+ * Audit a generated recap against its input payload using Claude at temp=0.
+ * Returns { ok, issues } where `issues` is a list of specific factual claims
+ * in the recap that are NOT supported by anything in the payload.
+ *
+ * This is the last line of defense against hallucinations. The generator
+ * already runs at temp=0.2 with strict instructions; the auditor catches
+ * whatever slips through.
+ */
+export async function auditRecapContent(recapText, inputJson) {
+  const auditPrompt = `You are a fact-checker for a sports app's weekly recap. You will receive (1) a generated RECAP text and (2) the exact DATA PAYLOAD that was used to generate it.
+
+Your job: find every specific, concrete factual claim in the RECAP that is NOT supported by the DATA. Specific factual claims include:
+- Team names mentioned in a context (e.g. "hit +350 on the Celtics" — the team name in this context must appear in the payload as a picked_team or in a notable_picks.game string for that user)
+- Game matchups (e.g. "Orlando Magic @ Boston Celtics")
+- Final scores (e.g. "108-113")
+- Odds values (e.g. "+350")
+- Player names mentioned as props (e.g. "Gary Payton II points over")
+- Specific daily records (e.g. "went 12-3 on Sunday alone" — the daily_breakdown for that user must actually show 12 wins and 3 losses on Sunday)
+- Specific streak counts or sport attributions
+
+General statements about overall weekly points, rank, tier, or overall W/L record that match the payload ARE fine. Do NOT flag those.
+
+Output format: a JSON array of strings. Each string describes ONE unsupported claim found in the recap, including the user it was about. Be concise.
+
+Examples of good output:
+["ustadbadger: claimed '12-3 on Sunday alone' but Sunday daily_breakdown shows 5-4",
+ "ustadbadger: claimed '+350 Celtics hit' but no notable_picks entry has Celtics as picked_team",
+ "mason_dmz: claimed '3-game NBA streak' but current_streak.sport is 'MLB'"]
+
+If the recap is fully supported by the data, output an empty array: []
+
+RECAP:
+${recapText}
+
+DATA PAYLOAD:
+${JSON.stringify(inputJson, null, 2)}
+
+Return ONLY the JSON array, nothing else.`
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1000,
+      temperature: 0,
+      messages: [{ role: 'user', content: auditPrompt }],
+    }),
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`Audit API error ${response.status}: ${body}`)
+  }
+
+  const result = await response.json()
+  const text = result.content[0].text.trim()
+
+  // Parse the JSON array. Claude sometimes wraps it in markdown fences.
+  let issues = []
+  try {
+    const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
+    const parsed = JSON.parse(cleaned)
+    if (Array.isArray(parsed)) issues = parsed
+  } catch (err) {
+    logger.warn({ err: err.message, text }, 'Failed to parse audit response — treating as clean')
+  }
+
+  return { ok: issues.length === 0, issues }
+}
+
+/**
+ * Generate + audit + regenerate (once) the weekly recap.
+ * Returns { text, inputJson, auditIssues } where auditIssues is the
+ * final list of issues that remained after retry (empty if clean).
+ */
+export async function generateRecapContentValidated(weeklyData, weekStart, weekEnd) {
+  // First attempt — normal generation at temp=0.2
+  const first = await generateRecapContent(weeklyData, weekStart, weekEnd)
+
+  let audit
+  try {
+    audit = await auditRecapContent(first.text, first.inputJson)
+  } catch (err) {
+    logger.warn({ err: err.message }, 'Audit failed — using unvalidated recap')
+    return { text: first.text, inputJson: first.inputJson, auditIssues: [] }
+  }
+
+  if (audit.ok) {
+    logger.info('Recap passed audit on first attempt')
+    return { text: first.text, inputJson: first.inputJson, auditIssues: [] }
+  }
+
+  logger.warn({ issueCount: audit.issues.length, issues: audit.issues }, 'Recap failed audit — regenerating with feedback')
+
+  // Second attempt — regenerate with audit feedback
+  const second = await generateRecapContent(weeklyData, weekStart, weekEnd, audit.issues)
+
+  let secondAudit
+  try {
+    secondAudit = await auditRecapContent(second.text, second.inputJson)
+  } catch (err) {
+    logger.warn({ err: err.message }, 'Second audit failed — using retry output anyway')
+    return { text: second.text, inputJson: second.inputJson, auditIssues: audit.issues }
+  }
+
+  if (secondAudit.ok) {
+    logger.info('Recap passed audit on second attempt')
+    return { text: second.text, inputJson: second.inputJson, auditIssues: [] }
+  }
+
+  // Still not clean — save the retry output but log the remaining issues
+  // so admins can manually edit before visible_after.
+  logger.error({ issues: secondAudit.issues }, 'Recap still failed audit after retry — saving with issues logged')
+  return { text: second.text, inputJson: second.inputJson, auditIssues: secondAudit.issues }
 }
 
 /**
