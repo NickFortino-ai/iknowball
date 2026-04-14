@@ -693,10 +693,12 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         },
       })
     } else {
-      // Check for bad beat: fully settled 4+ leg parlay with exactly 1 lost leg (all others won)
+      // Bad beat: fully settled parlay with 5+ legs and exactly 1 lost leg
+      // (all others won). "One away from cashing" stings more on bigger
+      // parlays; raising the minimum from 4 to 5 legs trims the feed.
       const lostLegs = parlay.parlay_legs?.filter((l) => l.status === 'lost') || []
       const wonLegs = parlay.parlay_legs?.filter((l) => l.status === 'won') || []
-      if (lostLegs.length === 1 && wonLegs.length === parlay.leg_count - 1 && parlay.leg_count >= 4) {
+      if (lostLegs.length === 1 && wonLegs.length === parlay.leg_count - 1 && parlay.leg_count >= 5) {
         feed.push({
           type: 'bad_beat',
           id: parlay.id,
