@@ -68,16 +68,23 @@ export default function DraftPrepSyncPanel({ configHash, scoringFormat }) {
         <div className="text-xs text-text-muted">No fantasy leagues with upcoming drafts found.</div>
       ) : (
         <div className="space-y-1.5">
-          {fantasyLeagues.map((l) => (
+          {fantasyLeagues.map((l) => {
+            let mismatchLabel = null
+            if (!l.isMatching) {
+              if (!l.rosterMatches && !l.scoringMatches) mismatchLabel = 'Different roster & scoring'
+              else if (!l.rosterMatches) mismatchLabel = 'Different roster'
+              else if (!l.scoringMatches) mismatchLabel = 'Different scoring'
+            }
+            return (
             <div key={l.leagueId} className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg hover:bg-white/5">
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-text-primary truncate">{l.name}</div>
                 <div className="text-[10px] text-text-muted flex items-center gap-1.5">
                   <span>{l.scoringFormat === 'ppr' ? 'PPR' : l.scoringFormat === 'standard' ? 'Standard' : 'Half-PPR'}</span>
                   {l.isMatching ? (
-                    <span className="text-correct font-semibold">Matching roster</span>
+                    <span className="text-correct font-semibold">Matching</span>
                   ) : (
-                    <span className="text-yellow-500">Different roster</span>
+                    <span className="text-yellow-500">{mismatchLabel}</span>
                   )}
                 </div>
               </div>
@@ -93,7 +100,8 @@ export default function DraftPrepSyncPanel({ configHash, scoringFormat }) {
                 {l.isSynced ? 'Synced' : 'Sync'}
               </button>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

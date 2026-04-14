@@ -29,6 +29,7 @@ const PICK_STYLES = {
   eliminated: 'bg-incorrect/20 text-incorrect border border-incorrect/30',
   locked: 'bg-white/10 text-text-primary border border-white/20',
   pending: 'bg-white/10 text-text-primary border border-white/20',
+  missed: 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30',
 }
 
 export default function SurvivorStandings({ league, onUserTap }) {
@@ -84,16 +85,59 @@ export default function SurvivorStandings({ league, onUserTap }) {
 
   function PickChain({ member }) {
     const picks = member.picks || []
-    if (!picks.length) return null
+    const weeks = board?.weeks || []
+
+    // Build a chain: for every week that has been processed (missed_picks_processed
+    // or past ends_at), include either the user's pick for that week, or a
+    // "missed" placeholder if they have no pick. Weeks with no pick before
+    // elimination = life lost.
+    const pickByWeekId = new Map(picks.map((p) => [p.league_week_id, p]))
+    const nowMs = Date.now()
+
+    const chain = []
+    for (const week of weeks) {
+      const weekEndedMs = new Date(week.ends_at).getTime()
+      const isPast = week.missed_picks_processed || weekEndedMs < nowMs
+      if (!isPast) continue
+
+      const isPostElimination = !member.is_alive && member.eliminated_week != null && week.week_number > member.eliminated_week
+      if (isPostElimination) continue
+
+      const pick = pickByWeekId.get(week.id)
+      if (pick) {
+        chain.push({ kind: 'pick', week, pick })
+      } else if (week.missed_picks_processed) {
+        // Week has been processed by missed-pick job and user has no pick → life lost
+        chain.push({ kind: 'missed', week })
+      }
+    }
+
+    // Also include any picks for weeks that aren't yet past (e.g. current pending/locked)
+    for (const p of picks) {
+      if (!chain.some((c) => c.kind === 'pick' && c.pick.id === p.id)) {
+        chain.push({ kind: 'pick', week: { week_number: p.league_weeks?.week_number }, pick: p })
+      }
+    }
+
+    if (!chain.length) return null
 
     return (
       <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mt-2" ref={(el) => { if (el) el.scrollLeft = el.scrollWidth }}>
-        {picks.map((p) => {
-          const isLocked = p.team_name === 'Locked'
-          const isPostElimination = !member.is_alive && member.eliminated_week != null && p.league_weeks?.week_number > member.eliminated_week
-          if (isPostElimination) return null
+        {chain.map((item, i) => {
+          if (item.kind === 'missed') {
+            return (
+              <span
+                key={`missed-${item.week.id}`}
+                className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${PICK_STYLES.missed}`}
+                title={`${periodLabel} ${item.week.week_number}: Missed pick — lost a life`}
+              >
+                Missed
+              </span>
+            )
+          }
 
-          const isMissed = !p.team_name && p.status === 'eliminated'
+          const p = item.pick
+          const isLocked = p.team_name === 'Locked'
           const chipStyle = isLocked
             ? 'bg-white/5 text-text-muted italic border border-white/10'
             : PICK_STYLES[p.status] || 'bg-white/5 text-text-muted border border-white/10'
@@ -102,7 +146,7 @@ export default function SurvivorStandings({ league, onUserTap }) {
             <span
               key={p.id}
               className={`text-xs font-semibold px-2 py-1 rounded-lg shrink-0 ${chipStyle}`}
-              title={`${periodLabel} ${p.league_weeks?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`}
+              title={`${periodLabel} ${p.league_weeks?.week_number || item.week?.week_number}: ${isLocked ? 'Hidden' : p.team_name || 'No pick'}`}
             >
               {isLocked ? '???' : p.team_name?.split(' ').pop() || 'No pick'}
             </span>

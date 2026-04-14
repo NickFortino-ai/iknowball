@@ -30,8 +30,11 @@ export default function DraftPrepAdp({ scoringFormat }) {
 
     return [...filtered].sort((a, b) => {
       let va, vb
-      if (sortCol === 'adp') { va = a[adpKey] ?? 9999; vb = b[adpKey] ?? 9999 }
-      else if (sortCol === 'proj') { va = a[projKey] ?? 0; vb = b[projKey] ?? 0 }
+      // ADP falls back to search_rank when the scoring-specific ADP is null
+      if (sortCol === 'adp') {
+        va = a[adpKey] ?? a.search_rank ?? 9999
+        vb = b[adpKey] ?? b.search_rank ?? 9999
+      } else if (sortCol === 'proj') { va = a[projKey] ?? 0; vb = b[projKey] ?? 0 }
       else if (sortCol === 'name') { va = a.full_name || ''; vb = b.full_name || '' }
       else { va = 0; vb = 0 }
 
@@ -114,7 +117,7 @@ export default function DraftPrepAdp({ scoringFormat }) {
                 </div>
               </div>
               <div className="w-14 text-right text-sm font-semibold text-text-primary shrink-0">
-                {p[adpKey] != null ? Math.round(p[adpKey] * 10) / 10 : '—'}
+                {p[adpKey] != null ? Math.round(p[adpKey] * 10) / 10 : p.search_rank ?? '—'}
               </div>
               <div className="w-14 text-right text-sm text-text-muted shrink-0">
                 {p[projKey] != null ? Math.round(p[projKey] * 10) / 10 : '—'}

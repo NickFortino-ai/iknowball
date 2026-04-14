@@ -61,7 +61,7 @@ export default function DraftPrepPage() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Link to="/leagues" className="text-text-muted hover:text-text-primary">←</Link>
-        <h1 className="font-display text-3xl">Draft Prep</h1>
+        <h1 className="font-display text-3xl">Fantasy Football Draft Prep</h1>
       </div>
 
       {/* Config bar */}

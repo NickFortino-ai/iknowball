@@ -9,14 +9,25 @@ const PLAYER_SELECT = 'player_id, rank, nfl_players(id, full_name, position, tea
 // ── Helpers ──────────────────────────────────────────────────────────
 
 async function fetchPlayerPool() {
-  const { data } = await supabase
-    .from('nfl_players')
-    .select('id, position, search_rank, adp_ppr, adp_half_ppr')
-    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-    .not('team', 'is', null)
-    .neq('status', 'retired')
-    .limit(500)
-  return data || []
+  // Two parallel queries — DEFs need to be guaranteed in the pool even though
+  // they typically have very high (null or large) search_rank values.
+  const [offensiveResult, defResult] = await Promise.all([
+    supabase
+      .from('nfl_players')
+      .select('id, position, search_rank, adp_ppr, adp_half_ppr')
+      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+      .not('team', 'is', null)
+      .neq('status', 'retired')
+      .order('search_rank', { ascending: true, nullsFirst: false })
+      .limit(500),
+    supabase
+      .from('nfl_players')
+      .select('id, position, search_rank, adp_ppr, adp_half_ppr')
+      .eq('position', 'DEF')
+      .not('team', 'is', null)
+      .neq('status', 'retired'),
+  ])
+  return [...(offensiveResult.data || []), ...(defResult.data || [])]
 }
 
 async function seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSlots) {
@@ -224,30 +235,18 @@ export async function unsyncLeague(userId, leagueId) {
 }
 
 export async function syncAllLeagues(userId, mode, configHash, scoringFormat) {
-  // Get all user's fantasy leagues with pending/in_progress drafts
-  const { data: memberships } = await supabase
-    .from('league_members')
-    .select('league_id, leagues(id, name, format, status), fantasy_settings:leagues!inner(league_id, scoring_format, roster_slots, draft_status)')
-    .eq('user_id', userId)
-
-  if (!memberships?.length) return { synced: [] }
+  // Reuse the matching-leagues logic — it already filters out salary cap,
+  // completed drafts, and non-fantasy formats.
+  const candidates = await getMatchingLeagues(userId, configHash || '', scoringFormat || 'half_ppr')
+  if (!candidates.length) return { synced: [] }
 
   const synced = []
-  for (const m of memberships) {
-    const settings = Array.isArray(m.fantasy_settings) ? m.fantasy_settings[0] : m.fantasy_settings
-    if (!settings || settings.draft_status === 'completed') continue
-    if (!m.leagues || m.leagues.format !== 'fantasy') continue
-
-    const leagueConfigHash = buildRosterConfigHash(settings.roster_slots || {})
-    const leagueScoringFormat = settings.scoring_format || 'half_ppr'
-
-    if (mode === 'matching' && (leagueConfigHash !== configHash || leagueScoringFormat !== scoringFormat)) {
-      continue
-    }
-
+  for (const c of candidates) {
+    if (c.isSynced) continue
+    if (mode === 'matching' && !c.isMatching) continue
     try {
-      await syncLeague(userId, m.league_id)
-      synced.push({ leagueId: m.league_id, name: m.leagues.name })
+      await syncLeague(userId, c.leagueId)
+      synced.push({ leagueId: c.leagueId, name: c.name })
     } catch (e) {
       // Skip leagues that fail (e.g. no settings)
     }
@@ -270,24 +269,55 @@ export async function getLeagueSyncInfo(leagueId, userId) {
 // ── ADP List ─────────────────────────────────────────────────────────
 
 export async function getAdpList(scoringFormat, position) {
-  let query = supabase
-    .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, bye_week, injury_status, adp_ppr, adp_half_ppr, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank')
-    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-    .not('team', 'is', null)
-    .neq('status', 'retired')
+  const SELECT = 'id, full_name, position, team, headshot_url, bye_week, injury_status, adp_ppr, adp_half_ppr, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, search_rank'
 
+  // Fetch offensive + defenses separately so DEFs are guaranteed in the list
+  // even when filtered to All positions. If a specific position is requested,
+  // short-circuit to a single query.
   if (position && position !== 'All') {
-    query = query.eq('position', position)
+    const { data, error } = await supabase
+      .from('nfl_players')
+      .select(SELECT)
+      .eq('position', position)
+      .not('team', 'is', null)
+      .neq('status', 'retired')
+      .order('search_rank', { ascending: true, nullsFirst: false })
+      .limit(300)
+    if (error) throw error
+
+    // Apply effective-ADP sort (scoring-aware) on the returned rows
+    return (data || [])
+      .map((p) => ({ ...p, _adp: effectiveAdp(p, scoringFormat, false) }))
+      .sort((a, b) => a._adp - b._adp)
   }
 
-  // Order by the scoring-appropriate ADP column
-  const adpCol = scoringFormat === 'ppr' ? 'adp_ppr' : 'adp_half_ppr'
-  query = query.order(adpCol, { ascending: true, nullsFirst: false }).limit(300)
+  const [offensiveResult, defResult] = await Promise.all([
+    supabase
+      .from('nfl_players')
+      .select(SELECT)
+      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+      .not('team', 'is', null)
+      .neq('status', 'retired')
+      .order('search_rank', { ascending: true, nullsFirst: false })
+      .limit(300),
+    supabase
+      .from('nfl_players')
+      .select(SELECT)
+      .eq('position', 'DEF')
+      .not('team', 'is', null)
+      .neq('status', 'retired'),
+  ])
+  if (offensiveResult.error) throw offensiveResult.error
+  if (defResult.error) throw defResult.error
 
-  const { data, error } = await query
-  if (error) throw error
-  return data || []
+  const offensiveSorted = (offensiveResult.data || [])
+    .map((p) => ({ ...p, _adp: effectiveAdp(p, scoringFormat, false) }))
+    .sort((a, b) => a._adp - b._adp)
+  const defs = (defResult.data || [])
+    .map((p) => ({ ...p, _adp: effectiveAdp(p, scoringFormat, false) }))
+    .sort((a, b) => a._adp - b._adp)
+
+  return [...offensiveSorted, ...defs]
 }
 
 // ── Matching Leagues ─────────────────────────────────────────────────
@@ -309,7 +339,7 @@ export async function getMatchingLeagues(userId, configHash, scoringFormat) {
 
   const { data: settingsList } = await supabase
     .from('fantasy_settings')
-    .select('league_id, scoring_format, roster_slots, draft_status')
+    .select('league_id, scoring_format, roster_slots, draft_status, format')
     .in('league_id', leagueIds)
 
   if (!settingsList?.length) return []
@@ -323,17 +353,23 @@ export async function getMatchingLeagues(userId, configHash, scoringFormat) {
   const syncedSet = new Set((syncRecords || []).map((s) => s.league_id))
 
   return settingsList
+    // Only traditional fantasy football — exclude salary cap (DFS) leagues
+    .filter((s) => s.format !== 'salary_cap')
     .filter((s) => s.draft_status !== 'completed')
     .map((s) => {
       const league = memberships.find((m) => m.league_id === s.league_id)?.leagues
       const hash = buildRosterConfigHash(s.roster_slots || {})
+      const rosterMatches = hash === configHash
+      const scoringMatches = s.scoring_format === scoringFormat
       return {
         leagueId: s.league_id,
         name: league?.name,
         status: league?.status,
         configHash: hash,
         scoringFormat: s.scoring_format,
-        isMatching: hash === configHash && s.scoring_format === scoringFormat,
+        rosterMatches,
+        scoringMatches,
+        isMatching: rosterMatches && scoringMatches,
         isSynced: syncedSet.has(s.league_id),
       }
     })

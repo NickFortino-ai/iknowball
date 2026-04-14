@@ -874,15 +874,27 @@ async function seedUserRankings(leagueId, userId) {
   // same effective-ADP function the draft player browser uses. This
   // means new league copies seed in the EXACT order the user will see
   // on the draft board (scoring-aware + SuperFlex-aware).
-  const { data: pool } = await supabase
-    .from('nfl_players')
-    .select('id, position, search_rank, adp_ppr, adp_half_ppr')
-    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
-    .not('team', 'is', null)
-    .neq('status', 'retired')
-    .limit(500)
+  // DEFs queried separately so they're guaranteed in the pool even though
+  // they typically have very high (or null) search_rank values.
+  const [offensiveResult, defResult] = await Promise.all([
+    supabase
+      .from('nfl_players')
+      .select('id, position, search_rank, adp_ppr, adp_half_ppr')
+      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+      .not('team', 'is', null)
+      .neq('status', 'retired')
+      .order('search_rank', { ascending: true, nullsFirst: false })
+      .limit(500),
+    supabase
+      .from('nfl_players')
+      .select('id, position, search_rank, adp_ppr, adp_half_ppr')
+      .eq('position', 'DEF')
+      .not('team', 'is', null)
+      .neq('status', 'retired'),
+  ])
+  const pool = [...(offensiveResult.data || []), ...(defResult.data || [])]
 
-  if (!pool?.length) return
+  if (!pool.length) return
 
   const ranked = pool
     .map((p) => ({ ...p, _adp: computeEffectiveAdp(p, scoringFormat, isSuperflex) }))
