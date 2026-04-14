@@ -18,6 +18,15 @@ const SPORT_LABELS = {
   soccer_usa_mls: 'MLS',
 }
 
+// College brackets (NCAA, WNCAA, CFP) group teams into regions.
+// Pro leagues group into conferences. Internal data model uses
+// "regions" for both; this helper picks the user-facing label.
+function groupingLabel(sport, count) {
+  const isCollege = sport === 'basketball_ncaab' || sport === 'basketball_wncaab' || sport === 'americanfootball_ncaaf'
+  const noun = isCollege ? 'region' : 'conference'
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
+}
+
 export default function BracketTemplateManager() {
   const [sportFilter, setSportFilter] = useState('')
   const [editingTemplate, setEditingTemplate] = useState(null) // null = list, 'new' = create, id = edit
@@ -105,7 +114,7 @@ export default function BracketTemplateManager() {
                     </span>
                     <span>{t.team_count} teams</span>
                     <span>{t.rounds?.length || 0} rounds</span>
-                    {t.regions?.length > 0 && <span>{t.regions.length} regions</span>}
+                    {t.regions?.length > 0 && <span>{groupingLabel(t.sport, t.regions.length)}</span>}
                   </div>
                   {t.description && (
                     <div className="text-xs text-text-muted mt-1">{t.description}</div>
