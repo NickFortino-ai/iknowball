@@ -255,7 +255,7 @@ router.get('/leagues/search', async (req, res) => {
   if (!q || q.length < 2) return res.json([])
   const { data, error } = await supabase
     .from('leagues')
-    .select('id, name, sport, format, status')
+    .select('id, name, sport, format, status, invite_code')
     .ilike('name', `%${q}%`)
     .order('created_at', { ascending: false })
     .limit(10)

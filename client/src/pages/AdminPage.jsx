@@ -431,7 +431,13 @@ export default function AdminPage() {
                               key={league.id}
                               type="button"
                               onClick={() => {
-                                const link = `<a href="https://iknowball.club/leagues/${league.id}" style="display:inline-block;background:#f97316;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Join ${league.name}</a>`
+                                // /join/{invite_code} lets non-members join
+                                // and takes members straight to the league.
+                                // /leagues/{id} was blank for non-members.
+                                const url = league.invite_code
+                                  ? `https://iknowball.club/join/${league.invite_code}`
+                                  : `https://iknowball.club/leagues/${league.id}`
+                                const link = `<a href="${url}" style="display:inline-block;background:#f97316;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Join ${league.name}</a>`
                                 setEmailBody((prev) => prev ? `${prev}\n\n${link}` : link)
                                 setShowLeagueSearch(false)
                                 setLeagueSearch('')

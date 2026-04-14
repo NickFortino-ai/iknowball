@@ -135,23 +135,35 @@ export async function sendEmailBlast(subject, body) {
  */
 function textToEmailHtml(body) {
   if (!body) return ''
-  const hasBlockHtml = /<(p|div|br|h[1-6]|ul|ol|table)\b/i.test(body)
-  if (hasBlockHtml) return body
+  // Detect ANY HTML tag (block or inline). If the admin inserted a league
+  // link via the composer, the body has an <a> tag; escaping it would
+  // break the button. In that case, just convert newlines to <br> and
+  // wrap in <p>s without escaping.
+  const hasAnyHtml = /<[a-z][^>]*>/i.test(body)
 
-  // Escape HTML-sensitive characters, then convert paragraph/line breaks.
+  if (hasAnyHtml) {
+    // Split on blank lines into paragraphs; within each paragraph, single
+    // newlines become <br>. Inline HTML tags pass through untouched.
+    return body
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `<p style="margin: 0 0 16px 0;">${p.replace(/\n/g, '<br>')}</p>`)
+      .join('')
+  }
+
+  // Pure plain text — safe to escape before converting.
   const escaped = body
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  const paragraphs = escaped
+  return escaped
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)
     .map((p) => `<p style="margin: 0 0 16px 0;">${p.replace(/\n/g, '<br>')}</p>`)
     .join('')
-
-  return paragraphs
 }
 
 export async function sendTargetedEmail(subject, body, usernames) {
