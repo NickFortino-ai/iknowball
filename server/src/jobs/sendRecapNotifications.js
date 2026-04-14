@@ -7,8 +7,17 @@ import { sendEmailToUserIds } from '../services/emailService.js'
 /**
  * Send notifications and emails for weekly recaps that are now visible
  * to users but haven't had notifications sent yet.
+ *
+ * TEMPORARILY DISABLED — the Headlines UI is hidden from non-admins
+ * while we fix the recordsBroken data source. Sending notifications
+ * for content users can't see would be confusing. Cron keeps running
+ * so recaps still get generated for admin QA; only the user-facing
+ * fan-out is paused.
  */
 export async function sendRecapNotifications() {
+  logger.info('Recap notifications temporarily paused — Headlines hidden from non-admins')
+  return
+  // eslint-disable-next-line no-unreachable
   const now = new Date().toISOString()
 
   // Find recaps that are visible but notifications haven't been sent

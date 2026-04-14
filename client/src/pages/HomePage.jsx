@@ -362,9 +362,17 @@ export default function HomePage() {
         <>
           <OpenLeaguesSection />
           <MyActiveLeagues />
-          <div ref={headlinesRef}>
-            <HeadlinesCard forceExpanded={forceHeadlines} />
-          </div>
+          {/* Headlines hidden from non-admins while we dial in the data
+              pipeline — recordsBroken was pulling from user_sport_stats
+              (per-user-per-sport bests) instead of the authoritative
+              records table, so Claude's recaps were telling users about
+              non-existent new records. Admins still see the card so they
+              can QA generated output before we flip it back on. */}
+          {profile?.is_admin && (
+            <div ref={headlinesRef}>
+              <HeadlinesCard forceExpanded={forceHeadlines} />
+            </div>
+          )}
         </>
       )}
 
