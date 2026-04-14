@@ -3431,20 +3431,15 @@ export async function processLeagueWaivers(leagueId) {
         { leagueId, playerId: winner.add_player_id })
     } catch (err) { logger.error({ err }, 'Failed to send awarded notification') }
 
-    // Fail and notify the losers
+    // Fail the losing claims silently — users don't need a bell ping for
+    // every waiver they didn't win. They can see the outcome in the
+    // waiver queue UI. Only successful awards notify.
     for (const loser of playerClaims) {
       if (loser.id === winner.id) continue
       await supabase
         .from('fantasy_waiver_claims')
         .update({ status: 'failed', fail_reason: 'Outbid by another claim', processed_at: new Date().toISOString() })
         .eq('id', loser.id)
-      try {
-        const { createNotification } = await import('./notificationService.js')
-        const { data: addPlayer } = await supabase.from('nfl_players').select('full_name').eq('id', loser.add_player_id).single()
-        await createNotification(loser.user_id, 'fantasy_waiver_failed',
-          `Your waiver claim for ${addPlayer?.full_name || 'a player'} was unsuccessful.`,
-          { leagueId, playerId: loser.add_player_id })
-      } catch (err) { logger.error({ err }, 'Failed to send failed notification') }
     }
   }
 

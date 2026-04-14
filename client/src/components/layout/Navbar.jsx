@@ -49,17 +49,50 @@ const navLinks = [
 
 function getNotificationIcon(n) {
   switch (n.type) {
+    // Social
     case 'reaction': return '\uD83D\uDD25' // 🔥
     case 'comment': return '\uD83D\uDCAC' // 💬
+    case 'hot_take_callout': return '\uD83C\uDFF7\uFE0F' // 🏷️
+    case 'connection_request': return '\uD83E\uDD1D' // 🤝
+    case 'connection_accepted': return '\uD83E\uDD1D' // 🤝
+    case 'league_invitation': return '\uD83D\uDCE8' // 📨
+
+    // Survivor / league wins
     case 'survivor_win': return '\uD83D\uDC51' // 👑
     case 'league_report': return '\uD83D\uDCCB' // 📋
-    case 'hot_take_callout': return '\uD83C\uDFF7\uFE0F' // 🏷️
-    case 'league_invitation': return '\uD83D\uDCE8' // 📨
     case 'league_win':
       if (n.metadata?.isWinner === false && n.metadata?.points != null) {
         return n.metadata.points < 0 ? '\uD83D\uDCC9' : '\uD83D\uDCCA' // 📉 / 📊
       }
       return '\uD83C\uDFC6' // 🏆
+
+    // Fantasy — positive
+    case 'fantasy_champion': return '\uD83C\uDFC6' // 🏆
+    case 'fantasy_playoff_clinched': return '\uD83C\uDF9F\uFE0F' // 🎟️
+    case 'fantasy_playoff_advanced': return '\u2705' // ✅
+    case 'fantasy_waiver_awarded': return '\u2705' // ✅
+    case 'fantasy_trade_accepted': return '\uD83E\uDD1D' // 🤝
+    case 'fantasy_trade_approved': return '\u2705' // ✅
+
+    // Fantasy — negative
+    case 'fantasy_playoff_eliminated': return '\u274C' // ❌
+    case 'fantasy_playoff_missed': return '\u274C' // ❌
+    case 'fantasy_trade_declined': return '\u274C' // ❌
+    case 'fantasy_trade_vetoed': return '\uD83D\uDEAB' // 🚫
+    case 'fantasy_league_canceled': return '\u274C' // ❌
+
+    // Fantasy — neutral / info
+    case 'fantasy_matchup_result': return '\uD83D\uDCCA' // 📊
+    case 'fantasy_trade_proposed': return '\uD83D\uDD04' // 🔄
+    case 'fantasy_draft_started': return '\uD83D\uDCE3' // 📣
+    case 'fantasy_draft_starting_soon': return '\u23F0' // ⏰
+    case 'fantasy_draft_postponed': return '\u23F8\uFE0F' // ⏸️
+    case 'fantasy_draft_order_set': return '\uD83D\uDCCB' // 📋
+    case 'fantasy_stat_correction': return '\uD83D\uDCDD' // 📝
+    case 'fantasy_league_underfilled': return '\u26A0\uFE0F' // ⚠️
+    case 'fantasy_league_member_dropped': return '\uD83D\uDC4B' // 👋
+    case 'fantasy_league_resized': return '\uD83D\uDCCF' // 📏
+
     default:
       if (n.message?.includes('lost')) return '\u274C' // ❌
       return '\uD83C\uDFC6' // 🏆
