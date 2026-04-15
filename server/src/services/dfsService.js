@@ -334,34 +334,41 @@ function nflGameFpts(statMap) {
 }
 
 /**
- * NFL salary from FPPG, with position-specific curves.
+ * NFL salary from FPPG, with position-specific curves calibrated to
+ * real FanDuel pricing data (verified against live FD board).
  *
  * Why per-position: QBs accumulate way more raw FPPG than RB/WR/TE
  * because of passing volume, so a single universal curve sends every
- * starter QB to the cap. Real DFS sites (DraftKings/FanDuel) use
- * different curves per position calibrated to that position's typical
- * FPPG range and market price. We mirror that here.
+ * starter QB to the cap. Real DFS sites use different curves per
+ * position; we mirror that here.
  *
- * Tuned around \$60k cap, 9 slots (\$6.7k avg per slot):
+ * Tuned to FanDuel \$60k cap, 9 slots (\$6.7k avg per slot):
  *
- *   QB:   floor \$5,500, cap \$8,500
- *     elite 25 FPPG → \$8,500 (Mahomes/Allen)
- *     strong 22 FPPG → \$8,100
- *     mid 18 FPPG → \$7,500
- *     streamer 15 FPPG → \$7,100
- *     replacement 8 FPPG → \$6,100
+ *   QB:   floor \$5,500, cap \$9,000
+ *     elite 27 FPPG → \$9,000 (Allen tier)
+ *     strong 23 FPPG → \$8,500 (Burrow / Hurts tier)
+ *     mid 18 FPPG → \$7,700 (Caleb Williams tier)
+ *     streamer 15 FPPG → \$7,300 (Bo Nix / Jared Goff tier)
+ *     replacement 8 FPPG → \$6,200
  *
- *   RB / WR: floor \$3,500, cap \$11,000
- *     elite 22 FPPG → \$11,000 (cap, CMC/Jefferson tier)
- *     strong 17 FPPG → \$9,800
- *     mid 12 FPPG → \$7,800
- *     value 7 FPPG → \$5,800
- *     bench 3 FPPG → \$4,200
+ *   RB:   floor \$3,500, cap \$9,600
+ *     elite 22 FPPG → \$9,600 (Bijan tier)
+ *     strong 18 FPPG → \$8,800
+ *     mid 14 FPPG → \$7,500
+ *     value 10 FPPG → \$6,200
+ *     bench 5 FPPG → \$4,600
  *
- *   TE:   floor \$3,000, cap \$8,000
- *     elite 16 FPPG → \$8,000 (cap, Kelce tier)
- *     mid 10 FPPG → \$6,250
- *     streamer 5 FPPG → \$4,375
+ *   WR:   floor \$3,500, cap \$9,900
+ *     elite 22 FPPG → \$9,900 (Puka tier)
+ *     strong 18 FPPG → \$8,800
+ *     mid 14 FPPG → \$7,500
+ *     value 10 FPPG → \$6,200
+ *     bench 5 FPPG → \$4,600
+ *
+ *   TE:   floor \$3,000, cap \$8,200
+ *     elite 16 FPPG → \$8,200 (McBride tier)
+ *     mid 10 FPPG → \$6,500
+ *     streamer 5 FPPG → \$4,500
  */
 function nflFppgToSalary(fppg, position) {
   if (!fppg || fppg <= 0) {
@@ -372,18 +379,22 @@ function nflFppgToSalary(fppg, position) {
 
   let raw, floor, cap
   if (position === 'QB') {
-    raw = 5000 + fppg * 140
+    raw = 5000 + fppg * 150
     floor = 5500
-    cap = 8500
+    cap = 9000
   } else if (position === 'TE') {
-    raw = 2500 + fppg * 375
+    raw = 2500 + fppg * 400
     floor = 3000
-    cap = 8000
-  } else {
-    // RB, WR — same curve
-    raw = 3000 + fppg * 400
+    cap = 8200
+  } else if (position === 'WR') {
+    raw = 3000 + fppg * 325
     floor = 3500
-    cap = 11000
+    cap = 9900
+  } else {
+    // RB
+    raw = 3000 + fppg * 325
+    floor = 3500
+    cap = 9600
   }
 
   const salary = Math.round(raw / 100) * 100
