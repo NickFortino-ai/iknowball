@@ -12,6 +12,7 @@ import PlayerPositionPanel from '../components/admin/PlayerPositionPanel'
 import BackdropSubmissionsPanel from '../components/admin/BackdropSubmissionsPanel'
 import PlayerBlurbsPanel from '../components/admin/PlayerBlurbsPanel'
 import AdminToolsPanel from '../components/admin/AdminToolsPanel'
+import DashboardPanel from '../components/admin/DashboardPanel'
 import SeasonDatesPanel from '../components/admin/SeasonDatesPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
@@ -29,7 +30,7 @@ const sportTabs = [
 
 export default function AdminPage() {
   const { profile } = useAuth()
-  const [adminSection, setAdminSection] = useState('props') // props | brackets | email | futures | reports | moderation
+  const [adminSection, setAdminSection] = useState('dashboard') // dashboard | props | brackets | email | futures | reports | moderation
   const [activeSport, setActiveSport] = useState(0)
   const [selectedGame, setSelectedGame] = useState(null)
   const [emailSubject, setEmailSubject] = useState('')
@@ -249,6 +250,7 @@ export default function AdminPage() {
       {/* Top-level section tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pt-2 -mt-2">
         {[
+          { key: 'dashboard', label: 'Dashboard' },
           { key: 'props', label: 'Props Manager' },
           { key: 'brackets', label: 'Brackets' },
           { key: 'futures', label: 'Futures' },
@@ -594,6 +596,8 @@ export default function AdminPage() {
       {adminSection === 'seasons' && <SeasonDatesPanel />}
 
       {adminSection === 'tools' && <AdminToolsPanel />}
+
+      {adminSection === 'dashboard' && <DashboardPanel />}
 
       {adminSection === 'props' && <>
       {/* Set / Settle toggle */}

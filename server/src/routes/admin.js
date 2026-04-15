@@ -57,8 +57,135 @@ const router = Router()
 router.use(requireAuth, requireAdmin)
 
 // ============================================
-// Reports Management
+// Admin Dashboard — Phase 1 daily-pulse metrics
 // ============================================
+
+router.get('/dashboard', async (req, res) => {
+  const range = req.query.range || '30d'
+  const days = range === '7d' ? 7 : range === '90d' ? 90 : 30
+  const now = new Date()
+  const periodStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString()
+  const priorStart = new Date(now.getTime() - days * 2 * 24 * 60 * 60 * 1000).toISOString()
+
+  // Helpers — Supabase head:true returns count without pulling rows
+  const countSince = async (table, column, since) => {
+    const { count } = await supabase
+      .from(table)
+      .select(column, { count: 'exact', head: true })
+      .gte(column, since)
+    return count || 0
+  }
+  const countBetween = async (table, column, from, to) => {
+    const { count } = await supabase
+      .from(table)
+      .select(column, { count: 'exact', head: true })
+      .gte(column, from)
+      .lt(column, to)
+    return count || 0
+  }
+  const totalCount = async (table) => {
+    const { count } = await supabase.from(table).select('id', { count: 'exact', head: true })
+    return count || 0
+  }
+  const growth = (current, prior) => {
+    if (!prior) return current ? null : 0 // null → "n/a" (no prior baseline)
+    return Math.round(((current - prior) / prior) * 100)
+  }
+
+  // 1. USERS
+  const totalUsers = await totalCount('users')
+  const newUsersThisPeriod = await countSince('users', 'created_at', periodStart)
+  const newUsersPriorPeriod = await countBetween('users', 'created_at', priorStart, periodStart)
+  const userGrowthPct = growth(newUsersThisPeriod, newUsersPriorPeriod)
+
+  // 2. ENGAGEMENT — distinct users with any pick activity in last 24h
+  // Uses picks.created_at as the activity proxy (don't have last_login
+  // tracking and adding it just for this metric isn't worth it; making
+  // a pick is a stronger engagement signal than opening the app anyway).
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+  const { data: dauPicks } = await supabase
+    .from('picks')
+    .select('user_id')
+    .gte('created_at', last24h)
+  const dau = new Set((dauPicks || []).map((p) => p.user_id)).size
+
+  // 3. REVENUE — paid subscribers, MRR estimate
+  const { data: paidUsers } = await supabase
+    .from('users')
+    .select('subscription_plan, subscription_status, is_lifetime')
+    .eq('is_paid', true)
+  const paidActive = (paidUsers || []).filter(
+    (u) => u.subscription_status === 'active' || u.subscription_status === 'lifetime' || u.is_lifetime
+  )
+  const monthlyCount = paidActive.filter((u) => u.subscription_plan === 'monthly').length
+  const yearlyCount = paidActive.filter((u) => u.subscription_plan === 'yearly').length
+  // MRR estimate — monthly subs $1/mo + yearly subs amortized (\$10/12).
+  // Lifetime subs not counted in MRR (they paid once).
+  const mrrEstimate = monthlyCount * 1 + yearlyCount * (10 / 12)
+
+  // New paid subs this period (best proxy: new-since-period users with is_paid=true)
+  const { count: newPaidThisPeriod } = await supabase
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_paid', true)
+    .gte('created_at', periodStart)
+
+  // 4. LEAGUES — created in period
+  const leaguesThisPeriod = await countSince('leagues', 'created_at', periodStart)
+  const leaguesPriorPeriod = await countBetween('leagues', 'created_at', priorStart, periodStart)
+  const leagueGrowthPct = growth(leaguesThisPeriod, leaguesPriorPeriod)
+
+  // 5. PICKS — total made in period (single picks only; parlays + props
+  // tracked separately if we want later)
+  const picksThisPeriod = await countSince('picks', 'created_at', periodStart)
+  const picksPriorPeriod = await countBetween('picks', 'created_at', priorStart, periodStart)
+  const pickGrowthPct = growth(picksThisPeriod, picksPriorPeriod)
+
+  // 6. LATEST ACTIVITY — most recent 5 signups + 5 leagues created
+  const { data: recentUsers } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, avatar_emoji, created_at')
+    .order('created_at', { ascending: false })
+    .limit(5)
+  const { data: recentLeagues } = await supabase
+    .from('leagues')
+    .select('id, name, format, sport, created_at, users!leagues_commissioner_id_fkey(username, display_name)')
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  res.json({
+    range,
+    days,
+    users: {
+      total: totalUsers,
+      newThisPeriod: newUsersThisPeriod,
+      growthPct: userGrowthPct,
+    },
+    engagement: {
+      dau,
+    },
+    revenue: {
+      paidActive: paidActive.length,
+      monthlyCount,
+      yearlyCount,
+      lifetimeCount: paidActive.filter((u) => u.is_lifetime || u.subscription_status === 'lifetime').length,
+      newPaidThisPeriod: newPaidThisPeriod || 0,
+      mrrEstimate: Math.round(mrrEstimate * 100) / 100,
+    },
+    leagues: {
+      newThisPeriod: leaguesThisPeriod,
+      growthPct: leagueGrowthPct,
+    },
+    picks: {
+      newThisPeriod: picksThisPeriod,
+      growthPct: pickGrowthPct,
+    },
+    latest: {
+      users: recentUsers || [],
+      leagues: recentLeagues || [],
+    },
+  })
+})
 
 router.get('/reports', async (req, res) => {
   const { status } = req.query

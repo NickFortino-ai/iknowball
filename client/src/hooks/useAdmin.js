@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
+export function useAdminDashboard(range = '30d') {
+  return useQuery({
+    queryKey: ['admin', 'dashboard', range],
+    queryFn: () => api.get(`/admin/dashboard?range=${range}`),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useAdminPropsForGame(gameId) {
   return useQuery({
     queryKey: ['adminProps', gameId],
