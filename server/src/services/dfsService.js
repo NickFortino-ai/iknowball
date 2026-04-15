@@ -335,21 +335,43 @@ function nflGameFpts(statMap) {
 
 /**
  * NFL salary from FPPG.
- * $4,500 base + $400/fppg, capped at $10,000.
+ * $3,000 base + $500/fppg, floor $3,500, cap $12,000.
+ *
+ * Previous tuning (base $4.5k + $400/fppg, cap $10k) compressed elite
+ * and average players into the same price — anyone FPPG 14+ hit the
+ * cap, so a 25-FPPG Mahomes was priced identical to a 14-FPPG
+ * streamer QB. Wider slope + lower base + higher cap restores the
+ * spread:
+ *   elite 25 FPPG → $12,000 (cap)
+ *   strong 18 FPPG → $12,000 (cap)
+ *   solid 15 FPPG → $10,500
+ *   average 10 FPPG → $8,000
+ *   below avg 7 FPPG → $6,500
+ *   replacement 4 FPPG → $5,000
+ *   bench 1 FPPG → $3,500 (floor)
+ *
+ * Default league salary cap is $60k for 9 slots ($6,667 avg slot),
+ * so a 1 elite + 1 strong + 7 mid roster fits comfortably.
  */
 function nflFppgToSalary(fppg) {
-  if (!fppg || fppg <= 0) return 4500
-  const salary = Math.round((4500 + fppg * 400) / 100) * 100
-  return Math.max(4500, Math.min(10000, salary))
+  if (!fppg || fppg <= 0) return 3500
+  const salary = Math.round((3000 + fppg * 500) / 100) * 100
+  return Math.max(3500, Math.min(12000, salary))
 }
 
 export async function generateSalaries(week, season) {
   logger.info({ week, season }, 'Generating DFS salaries')
 
+  // Filter on team IS NOT NULL only — the retire-cleanup pass in
+  // sleeperService nulls team on retired players. Previously we also
+  // had .eq('status', 'Active') which silently excluded all defenses
+  // (Sleeper stores team defenses with status=null since they aren't
+  // real player records), so DEFs never reached the salary algorithm.
+  // It also dropped IR/PUP players entirely; we'd rather show those
+  // with their injury_status flagged so users can decide.
   const { data: players, error } = await supabase
     .from('nfl_players')
-    .select('id, position, search_rank, projected_pts_half_ppr, espn_id, team')
-    .eq('status', 'Active')
+    .select('id, position, search_rank, projected_pts_half_ppr, espn_id, team, injury_status')
     .not('team', 'is', null)
     .in('position', ['QB', 'RB', 'WR', 'TE', 'DEF'])
     .order('search_rank', { ascending: true })
