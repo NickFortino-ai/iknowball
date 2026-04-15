@@ -52,7 +52,7 @@ export default function StatusFlagsBanner() {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <h2 className="font-display text-base text-text-primary leading-tight">Quick guide: status flags</h2>
-          <p className="text-xs text-text-muted mt-1">
+          <p className="text-sm text-text-primary mt-1">
             Each league card has a small colored flag in the top right corner showing whether you
             need to act.
           </p>
@@ -74,7 +74,7 @@ export default function StatusFlagsBanner() {
           </div>
         ))}
       </div>
-      <p className="text-[11px] text-text-muted mt-3">
+      <p className="text-sm text-text-primary mt-3">
         Flags only appear for formats that take per-contest action (e.g. DFS lineups, survivor picks,
         pick'em). Tap the flag on a card for the specific reason.
       </p>
