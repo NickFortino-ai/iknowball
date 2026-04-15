@@ -66,7 +66,7 @@ router.get('/preview/:code', async (req, res) => {
   const code = req.params.code.toUpperCase()
   const { data: league, error } = await supabase
     .from('leagues')
-    .select('id, name, format, sport, status, max_members')
+    .select('id, name, format, sport, status, max_members, backdrop_image, backdrop_y, commissioner_id, users!leagues_commissioner_id_fkey(username, display_name)')
     .eq('invite_code', code)
     .single()
 
