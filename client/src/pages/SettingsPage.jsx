@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useProfile } from '../hooks/useProfile'
@@ -14,6 +14,7 @@ import { useBlockedUsers, useUnblockUser } from '../hooks/useBlocked'
 import PasswordInput from '../components/ui/PasswordInput'
 import { useLeagueBackdrops } from '../hooks/useLeagues'
 import { getBackdropUrl } from '../lib/backdropUrl'
+import NotificationPreferences from '../components/settings/NotificationPreferences'
 
 const avatarEmojis = [
   '🏀', '🏈', '⚾', '🏆', '🔥', '🎯',
@@ -184,7 +185,6 @@ export default function SettingsPage() {
   const pushSupported = typeof window !== 'undefined' && 'PushManager' in window && 'serviceWorker' in navigator && !!import.meta.env.VITE_VAPID_PUBLIC_KEY
   const pushEnabled = pushStatus?.hasSubscriptions || false
 
-  const [pushPrefs, setPushPrefs] = useState({ parlay_result: true, streak_milestone: true })
   const photoFileRef = useRef(null)
   const { uploading, uploadAvatar, removeAvatar } = useAvatarUpload()
 
@@ -203,9 +203,7 @@ export default function SettingsPage() {
       setVenmoHandle(profile.venmo_handle || '')
       setThreadsHandle(profile.threads_handle || '')
       setBackdropImage(profile.backdrop_image || '')
-      if (profile.push_preferences) {
-        setPushPrefs(profile.push_preferences)
-      }
+      // push_preferences now owned by NotificationPreferences component
     }
   }, [profile])
 
@@ -224,17 +222,6 @@ export default function SettingsPage() {
       } else {
         toast(err.message || 'Failed to update push notifications', 'error')
       }
-    }
-  }
-
-  async function handlePushPrefToggle(key) {
-    const updated = { ...pushPrefs, [key]: !pushPrefs[key] }
-    setPushPrefs(updated)
-    try {
-      await api.patch('/users/me', { push_preferences: updated })
-    } catch (err) {
-      setPushPrefs(pushPrefs) // revert on error
-      toast('Failed to update preference', 'error')
     }
   }
 
@@ -553,62 +540,40 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      {/* Push Notifications */}
-      <Section label="Push Notifications">
-        {Capacitor.isNativePlatform() ? (
-          <p className="text-sm text-text-muted">
-            Manage push notifications in your device's Settings app.
-          </p>
-        ) : !pushSupported ? (
-          <p className="text-sm text-text-muted">
-            Push notifications are not supported in this browser.
-          </p>
-        ) : (
+      {/* Notifications */}
+      <Section label="Notifications">
+        {/* Web-only master subscribe toggle. Native iOS handles the master
+            permission at the OS level (Settings → Notifications → IKB).
+            Per-type preferences below work on both platforms. */}
+        {!Capacitor.isNativePlatform() && pushSupported && (
           <>
-            {/* Master toggle */}
             <button
               onClick={handlePushToggle}
               disabled={subscribePush.isPending || unsubscribePush.isPending}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-bg-input border border-border hover:border-border-hover transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-bg-input border border-border hover:border-border-hover transition-colors disabled:opacity-50 mb-4"
             >
-              <span className="text-sm text-text-primary">Enable Push Notifications</span>
+              <span className="text-sm text-text-primary">Enable browser push notifications</span>
               <div className={`w-10 h-6 rounded-full transition-colors flex items-center ${pushEnabled ? 'bg-accent justify-end' : 'bg-border justify-start'}`}>
                 <div className="w-5 h-5 bg-white rounded-full mx-0.5 shadow" />
               </div>
             </button>
 
             {Notification.permission === 'denied' && (
-              <p className="text-xs text-red-400 mt-2">
+              <p className="text-xs text-red-400 mb-4">
                 Notifications are blocked. Please enable them in your browser settings.
               </p>
             )}
-
-            {/* Per-type toggles */}
-            {pushEnabled && (
-              <div className="mt-3 space-y-2">
-                <button
-                  onClick={() => handlePushPrefToggle('parlay_result')}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-bg-input border border-border hover:border-border-hover transition-colors"
-                >
-                  <span className="text-sm text-text-secondary">Parlay Results</span>
-                  <div className={`w-10 h-6 rounded-full transition-colors flex items-center ${pushPrefs.parlay_result ? 'bg-accent justify-end' : 'bg-border justify-start'}`}>
-                    <div className="w-5 h-5 bg-white rounded-full mx-0.5 shadow" />
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handlePushPrefToggle('streak_milestone')}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-bg-input border border-border hover:border-border-hover transition-colors"
-                >
-                  <span className="text-sm text-text-secondary">Streak Milestones</span>
-                  <div className={`w-10 h-6 rounded-full transition-colors flex items-center ${pushPrefs.streak_milestone ? 'bg-accent justify-end' : 'bg-border justify-start'}`}>
-                    <div className="w-5 h-5 bg-white rounded-full mx-0.5 shadow" />
-                  </div>
-                </button>
-              </div>
-            )}
           </>
         )}
+
+        {!Capacitor.isNativePlatform() && !pushSupported && (
+          <p className="text-sm text-text-muted mb-4">
+            Push notifications aren't supported in this browser, but you can still tune your
+            in-app notification types below.
+          </p>
+        )}
+
+        <NotificationPreferences profile={profile} />
       </Section>
 
       {/* Blocked Users */}

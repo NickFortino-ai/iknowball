@@ -23,10 +23,12 @@ const updateSchema = z.object({
   bio: z.string().max(200).optional(),
   avatar_emoji: z.string().max(4).optional(),
   sports_interests: z.array(z.string()).max(10).optional(),
-  push_preferences: z.object({
-    parlay_result: z.boolean(),
-    streak_milestone: z.boolean(),
-  }).optional(),
+  // Per-type push preferences. Any notification type key can be set
+  // to true/false. Missing key = default on. Used by
+  // notificationService.js to decide whether to fire a push for that
+  // user/type combination. Full list of active types is kept on the
+  // client in components/settings/NotificationPreferences.jsx.
+  push_preferences: z.record(z.string(), z.boolean()).optional(),
   title_preference: z.enum(['king', 'queen']).nullable().optional(),
   x_handle: z.string().max(30).nullable().optional(),
   instagram_handle: z.string().max(30).nullable().optional(),
