@@ -122,12 +122,12 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
   try {
     if (byFormat.nba_dfs?.length) {
       if (!doneSports.has('basketball_nba')) {
-        await computeDfsReadiness(byFormat.nba_dfs, userId, todayET, 'nba_dfs_rosters', 'nba_dfs_roster_slots', 'nba_dfs_salaries', result, yesterdayET)
+        await computeDfsReadiness(byFormat.nba_dfs, userId, todayET, 'nba_dfs_rosters', 'nba_dfs_roster_slots', 'nba_dfs_salaries', result, yesterdayET, 9)
       }
     }
     if (byFormat.mlb_dfs?.length) {
       if (!doneSports.has('baseball_mlb')) {
-        await computeDfsReadiness(byFormat.mlb_dfs, userId, todayET, 'mlb_dfs_rosters', 'mlb_dfs_roster_slots', 'mlb_dfs_salaries', result, yesterdayET)
+        await computeDfsReadiness(byFormat.mlb_dfs, userId, todayET, 'mlb_dfs_rosters', 'mlb_dfs_roster_slots', 'mlb_dfs_salaries', result, yesterdayET, 10)
       }
     }
     if (byFormat.survivor?.length) {
@@ -174,7 +174,7 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
  * injury status of 'Out'. Players with 'Questionable' / 'Day-To-Day' flag the
  * lineup as 'attention'.
  */
-async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTable, salaryTable, result, yesterdayET) {
+async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTable, salaryTable, result, yesterdayET, expectedSlotCount) {
   const leagueIds = leagues.map((l) => l.id)
   // Check today's roster first; if none found for a league, fall back to
   // yesterday's — handles post-midnight when last night's games are still live.
@@ -193,9 +193,18 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
     .eq('game_date', yesterdayET)
     : { data: [] }
 
-  // Check if yesterday's games are still live (any game from yesterday not final)
+  // Check if yesterday's games are still live (any game from yesterday not final).
+  // Also scope the yesterday fallback to the legitimate post-midnight overlap
+  // window (before 8am ET) — outside that window, showing yesterday's roster as
+  // "today's readiness" is a lie. A stale 'live' game status in the DB should
+  // not keep pinning the card to yesterday all day long.
   let yesterdayStillLive = false
-  if (yesterdayET && yesterdayET !== todayET) {
+  const nowEtHour = parseInt(
+    new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }),
+    10
+  )
+  const inOverlapWindow = nowEtHour < 8
+  if (inOverlapWindow && yesterdayET && yesterdayET !== todayET) {
     const { data: sportRow } = await supabase.from('sports').select('id').eq('key',
       rosterTable === 'nba_dfs_rosters' ? 'basketball_nba' : 'baseball_mlb'
     ).single()
@@ -257,6 +266,13 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
       continue
     }
     const slots = r[slotTable] || []
+    // An empty or incomplete roster is not a set lineup — even if a row exists
+    // in the rosters table, the user still has work to do. Without this guard,
+    // an empty slot list passes `.every()` vacuously and falsely reports ready.
+    if (slots.length < expectedSlotCount) {
+      set(result, l.id, 'action', "You haven't set tonight's lineup")
+      continue
+    }
     // Every roster player must have a known salary row for us to trust the
     // injury check. If any player is missing from the salaries table for
     // tonight, leave readiness null rather than green-lying.
