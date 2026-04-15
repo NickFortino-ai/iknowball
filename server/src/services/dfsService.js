@@ -334,29 +334,60 @@ function nflGameFpts(statMap) {
 }
 
 /**
- * NFL salary from FPPG.
- * $3,000 base + $500/fppg, floor $3,500, cap $12,000.
+ * NFL salary from FPPG, with position-specific curves.
  *
- * Previous tuning (base $4.5k + $400/fppg, cap $10k) compressed elite
- * and average players into the same price — anyone FPPG 14+ hit the
- * cap, so a 25-FPPG Mahomes was priced identical to a 14-FPPG
- * streamer QB. Wider slope + lower base + higher cap restores the
- * spread:
- *   elite 25 FPPG → $12,000 (cap)
- *   strong 18 FPPG → $12,000 (cap)
- *   solid 15 FPPG → $10,500
- *   average 10 FPPG → $8,000
- *   below avg 7 FPPG → $6,500
- *   replacement 4 FPPG → $5,000
- *   bench 1 FPPG → $3,500 (floor)
+ * Why per-position: QBs accumulate way more raw FPPG than RB/WR/TE
+ * because of passing volume, so a single universal curve sends every
+ * starter QB to the cap. Real DFS sites (DraftKings/FanDuel) use
+ * different curves per position calibrated to that position's typical
+ * FPPG range and market price. We mirror that here.
  *
- * Default league salary cap is $60k for 9 slots ($6,667 avg slot),
- * so a 1 elite + 1 strong + 7 mid roster fits comfortably.
+ * Tuned around \$60k cap, 9 slots (\$6.7k avg per slot):
+ *
+ *   QB:   floor \$5,500, cap \$8,500
+ *     elite 25 FPPG → \$8,500 (Mahomes/Allen)
+ *     strong 22 FPPG → \$8,100
+ *     mid 18 FPPG → \$7,500
+ *     streamer 15 FPPG → \$7,100
+ *     replacement 8 FPPG → \$6,100
+ *
+ *   RB / WR: floor \$3,500, cap \$11,000
+ *     elite 22 FPPG → \$11,000 (cap, CMC/Jefferson tier)
+ *     strong 17 FPPG → \$9,800
+ *     mid 12 FPPG → \$7,800
+ *     value 7 FPPG → \$5,800
+ *     bench 3 FPPG → \$4,200
+ *
+ *   TE:   floor \$3,000, cap \$8,000
+ *     elite 16 FPPG → \$8,000 (cap, Kelce tier)
+ *     mid 10 FPPG → \$6,250
+ *     streamer 5 FPPG → \$4,375
  */
-function nflFppgToSalary(fppg) {
-  if (!fppg || fppg <= 0) return 3500
-  const salary = Math.round((3000 + fppg * 500) / 100) * 100
-  return Math.max(3500, Math.min(12000, salary))
+function nflFppgToSalary(fppg, position) {
+  if (!fppg || fppg <= 0) {
+    if (position === 'QB') return 5500
+    if (position === 'TE') return 3000
+    return 3500
+  }
+
+  let raw, floor, cap
+  if (position === 'QB') {
+    raw = 5000 + fppg * 140
+    floor = 5500
+    cap = 8500
+  } else if (position === 'TE') {
+    raw = 2500 + fppg * 375
+    floor = 3000
+    cap = 8000
+  } else {
+    // RB, WR — same curve
+    raw = 3000 + fppg * 400
+    floor = 3500
+    cap = 11000
+  }
+
+  const salary = Math.round(raw / 100) * 100
+  return Math.max(floor, Math.min(cap, salary))
 }
 
 export async function generateSalaries(week, season) {
@@ -420,7 +451,7 @@ export async function generateSalaries(week, season) {
       const gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season)
       const seasonFppg = player.projected_pts_half_ppr || 0
       const fppg = calcWeightedFppg(nflGameFpts, gameLog, seasonFppg, { recentN: 4, midN: 8 })
-      salary = nflFppgToSalary(fppg)
+      salary = nflFppgToSalary(fppg, pos)
 
       // Apply defensive adjustment
       const opponent = teamOpponentMap[player.team]
