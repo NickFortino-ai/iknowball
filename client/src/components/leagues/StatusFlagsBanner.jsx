@@ -15,7 +15,7 @@ const DOTS = [
   {
     color: 'bg-yellow-500',
     label: 'Yellow',
-    description: 'You\'re set, but something needs a second look (e.g. one of your starters just picked up an injury).',
+    description: 'You\'re set, but you need to keep an eye on something (e.g. one of your starters is questionable to play).',
   },
   {
     color: 'bg-incorrect',
