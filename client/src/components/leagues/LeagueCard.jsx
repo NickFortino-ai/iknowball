@@ -66,14 +66,17 @@ export default function LeagueCard({ league, noLink }) {
                 : 'bg-incorrect'
             }`}
           />
-          {/* Hover/touch popover */}
-          <div className="hidden group-hover:block group-active:block absolute top-4 right-1 z-30 pointer-events-none">
-            <div className={`whitespace-nowrap text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-lg border ${
+          {/* Hover/touch popover — positioned up-and-left of the flag so it
+              doesn't overlap the league's status text underneath. Solid
+              bg-bg-primary (not translucent) so nothing underneath bleeds
+              through the tooltip. */}
+          <div className="hidden group-hover:block group-active:block absolute top-3 right-5 z-30 pointer-events-none">
+            <div className={`whitespace-nowrap text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-lg border bg-bg-primary ${
               league.readiness === 'ready'
-                ? 'bg-correct/15 border-correct/40 text-correct'
+                ? 'border-correct/60 text-correct'
                 : league.readiness === 'attention'
-                ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-500'
-                : 'bg-incorrect/15 border-incorrect/40 text-incorrect'
+                ? 'border-yellow-500/60 text-yellow-500'
+                : 'border-incorrect/60 text-incorrect'
             }`}>
               {league.readiness_detail || (
                 league.readiness === 'ready' ? 'Ready for the next contest'
