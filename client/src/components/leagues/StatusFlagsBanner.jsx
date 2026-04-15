@@ -75,7 +75,7 @@ export default function StatusFlagsBanner() {
         ))}
       </div>
       <p className="text-sm text-text-primary mt-3">
-        Flags only appear for formats that take per-contest action (e.g. DFS lineups, survivor picks,
+        Flags only appear for formats that take per-contest action (e.g. Fantasy, survivor picks,
         pick'em). Tap the flag on a card for the specific reason.
       </p>
     </div>
