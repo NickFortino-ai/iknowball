@@ -333,7 +333,19 @@ export default function CreateLeaguePage() {
     const isFantasyFormat = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby'].includes(format)
     const fantasySettings = isFantasyFormat ? {
       format: (format === 'nba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : fantasyFormat,
-      scoring_format: (format === 'nba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? 'ppr' : scoringFormat,
+      // NFL salary cap (DFS) leagues use half-PPR — that's what FanDuel
+      // uses and what the salary algorithm is calibrated against. Keeping
+      // them on full PPR while salaries assume half-PPR systematically
+      // underprices high-target pass-catchers (they get 50% more receiving
+      // credit at scoring time than their salary anticipates).
+      // NBA/MLB DFS use 'ppr' as a placeholder — their scoring is computed
+      // in their own services (nbaDfsService / mlbDfsService) and ignores
+      // this column.
+      scoring_format: fantasyFormat === 'salary_cap'
+        ? 'half_ppr'
+        : (format === 'nba_dfs' || format === 'mlb_dfs')
+          ? 'ppr'
+          : scoringFormat,
       num_teams: numTeams,
       draft_mode: format === 'fantasy' && fantasyFormat === 'traditional' ? draftMode : undefined,
       draft_pick_timer: format === 'fantasy' && fantasyFormat === 'traditional' && draftMode === 'live' ? draftPickTimer : undefined,
