@@ -141,7 +141,15 @@ router.get('/dashboard', async (req, res) => {
   const picksPriorPeriod = await countBetween('picks', 'created_at', priorStart, periodStart)
   const pickGrowthPct = growth(picksThisPeriod, picksPriorPeriod)
 
-  // 6. LATEST ACTIVITY — most recent 5 signups + 5 leagues created
+  // 6. PROMO CODES — count of uses per code (pulled from the
+  // promo_codes table where current_uses is maintained on redemption).
+  // Sorted by uses desc so the most-used codes surface first.
+  const { data: promoCodes } = await supabase
+    .from('promo_codes')
+    .select('code, current_uses, max_uses, is_active')
+    .order('current_uses', { ascending: false })
+
+  // 7. LATEST ACTIVITY — most recent 5 signups + 5 leagues created
   const { data: recentUsers } = await supabase
     .from('users')
     .select('id, username, display_name, avatar_url, avatar_emoji, created_at')
@@ -180,6 +188,7 @@ router.get('/dashboard', async (req, res) => {
       newThisPeriod: picksThisPeriod,
       growthPct: pickGrowthPct,
     },
+    promoCodes: promoCodes || [],
     latest: {
       users: recentUsers || [],
       leagues: recentLeagues || [],

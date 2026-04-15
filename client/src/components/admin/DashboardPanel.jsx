@@ -60,7 +60,7 @@ export default function DashboardPanel() {
   if (isLoading) return <LoadingSpinner />
   if (isError || !data) return <p className="text-text-muted">Failed to load dashboard.</p>
 
-  const { users, engagement, revenue, leagues, picks, latest } = data
+  const { users, engagement, revenue, leagues, picks, promoCodes, latest } = data
 
   return (
     <div className="space-y-6">
@@ -121,6 +121,33 @@ export default function DashboardPanel() {
           growth={picks.growthPct}
           sublabel="vs prior period"
         />
+      </div>
+
+      {/* Promo codes — usage by code */}
+      <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-5">
+        <div className="text-xs text-text-muted uppercase tracking-wider mb-3">Promo code usage</div>
+        {(!promoCodes || promoCodes.length === 0) ? (
+          <p className="text-sm text-text-muted">No promo codes created</p>
+        ) : (
+          <div className="space-y-2">
+            {promoCodes.map((p) => (
+              <div key={p.code} className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm text-text-primary">{p.code}</span>
+                    {!p.is_active && (
+                      <span className="text-[10px] uppercase text-text-muted">Inactive</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm text-text-primary shrink-0">
+                  <span className="font-semibold">{p.current_uses}</span>
+                  <span className="text-text-muted"> / {p.max_uses ?? '∞'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Latest activity — real-time pulse */}
