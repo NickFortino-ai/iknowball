@@ -1,6 +1,8 @@
 {
   "rewrites": [
     { "source": "/join/:code", "destination": "/api/share/league/:code" },
+    { "source": "/api/og/:path*", "destination": "/api/og/:path*" },
+    { "source": "/api/share/:path*", "destination": "/api/share/:path*" },
     { "source": "/api/:path*", "destination": "https://iknowball.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
