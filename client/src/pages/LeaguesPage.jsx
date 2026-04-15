@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMyLeagues, useReorderLeagues } from '../hooks/useLeagues'
 import LeagueCard from '../components/leagues/LeagueCard'
+import StatusFlagsBanner from '../components/leagues/StatusFlagsBanner'
 import TrophyCase from '../components/leagues/TrophyCase'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
@@ -265,7 +266,10 @@ export default function LeaguesPage() {
       ) : (
         <>
           {active.length > 0 ? (
-            <DraggableLeagueList leagues={active} />
+            <>
+              <StatusFlagsBanner />
+              <DraggableLeagueList leagues={active} />
+            </>
           ) : (
             <EmptyState
               title="No active leagues"
