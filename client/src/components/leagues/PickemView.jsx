@@ -116,49 +116,6 @@ function StandingsTable({ standings, leagueId }) {
   )
 }
 
-function MiniLeaderboard({ standings, leagueId }) {
-  const [expandedUser, setExpandedUser] = useState(null)
-
-  if (!standings?.length) return null
-  const top3 = standings.slice(0, 3)
-
-  return (
-    <div className="bg-bg-card rounded-xl border border-border p-3 mt-6">
-      <div className="text-xs font-semibold text-text-muted mb-2">Leaderboard</div>
-      <div className="space-y-1">
-        {top3.map((s) => (
-          <div key={s.user_id}>
-            <button
-              onClick={() => setExpandedUser(expandedUser === s.user_id ? null : s.user_id)}
-              className="w-full flex items-center justify-between text-sm py-1 hover:bg-bg-card-hover rounded-lg px-1 transition-colors"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-text-muted font-semibold w-4">{s.rank}</span>
-                <Avatar user={s.user} size="md" className="shrink-0" />
-                <span className="font-semibold truncate">
-                  {s.user?.display_name || s.user?.username}
-                </span>
-                <svg
-                  className={`w-3 h-3 text-text-muted transition-transform flex-shrink-0 ${expandedUser === s.user_id ? 'rotate-180' : ''}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              <span className="font-semibold text-accent">{s.total_points}</span>
-            </button>
-            {expandedUser === s.user_id && (
-              <div className="mt-1">
-                <SettledPicksList leagueId={leagueId} userId={s.user_id} />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function LeaguePicksView({ league, standings }) {
   const { data: weeks } = useLeagueWeeks(league.id)
   const [selectedWeekId, setSelectedWeekId] = useState(null)
