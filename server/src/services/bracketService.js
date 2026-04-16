@@ -1042,11 +1042,14 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
     const isCorrect = pick.picked_team === winningTeam
     let points = isCorrect ? pointsPerCorrect : 0
 
-    // Series length bonus (only for best-of-7 and correct winner picks)
+    // Series length bonus (only for best-of-7 and correct winner picks).
+    // Bumped from 2/1 to 4/2 so series-length skill is meaningful enough to
+    // differentiate skilled predictors from chalk pickers — at 2/1 it was
+    // ~5% of the total ceiling and barely registered in standings.
     if (isBestOf7 && isCorrect && pick.series_length && actualSeriesLength) {
       const diff = Math.abs(pick.series_length - actualSeriesLength)
-      if (diff === 0) points += 2      // Exact prediction
-      else if (diff === 1) points += 1 // One game off
+      if (diff === 0) points += 4      // Exact prediction
+      else if (diff === 1) points += 2 // One game off
       // Two or more off: no bonus
     }
 

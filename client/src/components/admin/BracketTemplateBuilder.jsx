@@ -702,7 +702,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             </div>
             {seriesFormat === 'best_of_7' && (
               <div className="text-[10px] text-text-muted mt-1">
-                Users will predict series length (4-7 games) per matchup. Bonus: +2 exact, +1 one-off.
+                Users will predict series length (4-7 games) per matchup. Bonus: +4 exact, +2 one-off.
               </div>
             )}
           </div>

@@ -309,7 +309,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         .sort((a, b) => a.round_number - b.round_number)
         .map((r) => `${r.name}: ${r.points_per_correct} pts`)
         .join(', ')
-      const seriesBonus = isBo7 ? ' For each correct winner, predict the series length (4–7 games) for bonus points: +2 for exact, +1 for one game off.' : ''
+      const seriesBonus = isBo7 ? ' For each correct winner, predict the series length (4–7 games) for bonus points: +4 for exact, +2 for one game off.' : ''
       const globalImpact = `When the tournament ends, your finishing position affects your global score: top half earns points, bottom half loses points (N+1−2×rank). The winner earns a bonus that scales with league size: 5 or fewer members +10, 6–10 +20, 11–15 +30, 16–30 +50, 31–40 +75, 41+ +100.`
       return `Fill out your bracket before the lock deadline. Earn points for each correct pick — later rounds are worth more. ${roundScoring ? `Scoring: ${roundScoring}.` : ''}${seriesBonus} A tiebreaker score prediction on the championship game breaks ties in the standings. ${globalImpact}`
     }
