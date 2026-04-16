@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback, useEffect, Fragment } from 'react'
 import { usePickHistory, useBonusHistory } from '../hooks/usePicks'
 import { useParlayHistory } from '../hooks/useParlays'
-import { usePropPickHistory } from '../hooks/useProps'
+import { usePropPickHistory, useMyPropLiveStats } from '../hooks/useProps'
 import { useFuturesPickHistory } from '../hooks/useFutures'
 import { usePickReactionsBatch } from '../hooks/useSocial'
 import { useAuth } from '../hooks/useAuth'
@@ -109,12 +109,24 @@ export default function ResultsPage() {
   const { data: futuresPicks, isLoading: futuresLoading } = useFuturesPickHistory()
   const { data: bonuses } = useBonusHistory()
 
+  // Separate poll for live prop stats — only runs when there's at least one
+  // locked pick on a live game. Merged into propPicks at render time so
+  // PropCard's `pick.live_stat` access continues to work unchanged.
+  const hasLivePropGame = (propPicks || []).some(
+    (p) => p.status === 'locked' && p.player_props?.games?.status === 'live'
+  )
+  const { data: liveStatsMap } = useMyPropLiveStats({ hasLive: hasLivePropGame })
+
   const todayKey = useTodayKey()
 
   const { todayPicks, todayParlays, todayProps, liveFutures, olderSettledPicks, olderSettledParlays, olderSettledProps } = useMemo(() => {
     const allPicks = (picks || []).filter(p => p.status === 'locked' || p.status === 'settled')
     const allParlays = (parlays || []).filter(p => p.status === 'locked' || p.status === 'settled')
-    const allProps = (propPicks || []).filter(p => p.status === 'locked' || p.status === 'settled')
+    // Merge live stats into locked prop picks here so downstream code keeps
+    // reading `pick.live_stat` without changes.
+    const allProps = (propPicks || [])
+      .filter(p => p.status === 'locked' || p.status === 'settled')
+      .map(p => liveStatsMap?.[p.id] != null ? { ...p, live_stat: liveStatsMap[p.id] } : p)
 
     return {
       todayPicks: allPicks.filter(p => getLocalDateKey(p.games?.starts_at) === todayKey),
@@ -125,7 +137,7 @@ export default function ResultsPage() {
       olderSettledParlays: allParlays.filter(p => p.status === 'settled' && !parlayHasGameOnDate(p, todayKey)),
       olderSettledProps: allProps.filter(p => p.status === 'settled' && getLocalDateKey(p.player_props?.games?.starts_at || p.created_at) !== todayKey),
     }
-  }, [picks, parlays, propPicks, futuresPicks, todayKey])
+  }, [picks, parlays, propPicks, futuresPicks, todayKey, liveStatsMap])
 
   const settledFutures = useMemo(() => (futuresPicks || []).filter(p => p.status === 'settled'), [futuresPicks])
 

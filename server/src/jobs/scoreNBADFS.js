@@ -34,66 +34,78 @@ export async function fetchCompletedGameStats(date) {
   const playerStats = []
 
   for (const event of events) {
-    const competition = event.competitions?.[0]
-    if (!competition) continue
-
-    const statusType = competition.status?.type?.name || event.status?.type?.name
-    const isFinal = statusType === 'STATUS_FINAL'
-    const isLive = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME', 'STATUS_OVERTIME'].includes(statusType)
-
-    if (!isFinal && !isLive) {
-      allFinal = false
-      continue
-    }
-    if (!isFinal) allFinal = false
-
-    // Fetch box score for this game
-    const gameId = event.id
-    let boxScore
+    // Each game is wrapped in its own try/catch — a malformed box score for one
+    // game should never kill the whole scrape or leak an unhandled exception
+    // up into the cron runner. Log and move on.
     try {
-      const res = await fetch(`${ESPN_BASE}/basketball/nba/summary?event=${gameId}`)
-      if (!res.ok) continue
-      boxScore = await res.json()
-    } catch {
-      continue
-    }
+      const competition = event.competitions?.[0]
+      if (!competition) continue
 
-    // Extract player stats from box score
-    for (const team of boxScore.boxscore?.players || []) {
-      for (const statGroup of team.statistics || []) {
-        const headers = statGroup.labels || []
-        for (const athlete of statGroup.athletes || []) {
-          const espnId = athlete.athlete?.id
-          const name = athlete.athlete?.displayName
-          if (!espnId || !name) continue
+      const statusType = competition.status?.type?.name || event.status?.type?.name
+      const isFinal = statusType === 'STATUS_FINAL'
+      const isLive = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME', 'STATUS_OVERTIME'].includes(statusType)
 
-          const rawStats = athlete.stats || []
-          const statMap = {}
-          headers.forEach((h, i) => { statMap[h] = rawStats[i] })
+      if (!isFinal && !isLive) {
+        allFinal = false
+        continue
+      }
+      if (!isFinal) allFinal = false
 
-          // Parse ESPN stat abbreviations
-          const mins = statMap['MIN'] || '0'
-          const minsPlayed = parseInt(mins) || 0
+      // Fetch box score for this game
+      const gameId = event.id
+      let boxScore
+      try {
+        const res = await fetch(`${ESPN_BASE}/basketball/nba/summary?event=${gameId}`)
+        if (!res.ok) {
+          logger.warn({ gameId, status: res.status, date }, 'ESPN summary returned non-OK, skipping game')
+          continue
+        }
+        boxScore = await res.json()
+      } catch (err) {
+        logger.warn({ err, gameId, date }, 'ESPN summary fetch threw, skipping game')
+        continue
+      }
 
-          // Skip DNPs
-          if (minsPlayed === 0 && (mins === '0' || mins === '--' || !mins)) continue
+      // Extract player stats from box score
+      for (const team of boxScore.boxscore?.players || []) {
+        for (const statGroup of team.statistics || []) {
+          const headers = statGroup.labels || []
+          for (const athlete of statGroup.athletes || []) {
+            const espnId = athlete.athlete?.id
+            const name = athlete.athlete?.displayName
+            if (!espnId || !name) continue
 
-          playerStats.push({
-            espnPlayerId: espnId,
-            playerName: name,
-            stats: {
-              points: parseInt(statMap['PTS']) || 0,
-              rebounds: parseInt(statMap['REB']) || 0,
-              assists: parseInt(statMap['AST']) || 0,
-              steals: parseInt(statMap['STL']) || 0,
-              blocks: parseInt(statMap['BLK']) || 0,
-              turnovers: parseInt(statMap['TO']) || 0,
-              three_pointers_made: parseInt((statMap['3PT'] || '0').split('-')[0]) || 0,
-              minutes_played: minsPlayed,
-            },
-          })
+            const rawStats = athlete.stats || []
+            const statMap = {}
+            headers.forEach((h, i) => { statMap[h] = rawStats[i] })
+
+            // Parse ESPN stat abbreviations
+            const mins = statMap['MIN'] || '0'
+            const minsPlayed = parseInt(mins) || 0
+
+            // Skip DNPs
+            if (minsPlayed === 0 && (mins === '0' || mins === '--' || !mins)) continue
+
+            playerStats.push({
+              espnPlayerId: espnId,
+              playerName: name,
+              stats: {
+                points: parseInt(statMap['PTS']) || 0,
+                rebounds: parseInt(statMap['REB']) || 0,
+                assists: parseInt(statMap['AST']) || 0,
+                steals: parseInt(statMap['STL']) || 0,
+                blocks: parseInt(statMap['BLK']) || 0,
+                turnovers: parseInt(statMap['TO']) || 0,
+                three_pointers_made: parseInt((statMap['3PT'] || '0').split('-')[0]) || 0,
+                minutes_played: minsPlayed,
+              },
+            })
+          }
         }
       }
+    } catch (err) {
+      logger.error({ err, gameId: event?.id, date }, 'NBA box-score processing threw for game, skipping')
+      continue
     }
   }
 

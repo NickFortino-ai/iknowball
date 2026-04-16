@@ -23,9 +23,12 @@ export function useMyPropPicks(status) {
   return useQuery({
     queryKey: ['propPicks', 'me', status],
     queryFn: () => api.get(`/props/picks/me${params}`),
+    // The list query is now cheap (no ESPN round-trips) and only needs to
+    // catch status transitions, so we can poll it more conservatively. Live
+    // stats are served by useMyPropLiveStats on its own 30s cadence.
     refetchInterval: (query) => {
       const hasLive = query.state.data?.some((p) => p.status === 'locked' && p.player_props?.games?.status === 'live')
-      return hasLive ? 30000 : undefined
+      return hasLive ? 120000 : undefined
     },
   })
 }
@@ -36,8 +39,25 @@ export function usePropPickHistory() {
     queryFn: () => api.get('/props/picks/me/history'),
     refetchInterval: (query) => {
       const hasLive = query.state.data?.some((p) => p.status === 'locked' && p.player_props?.games?.status === 'live')
-      return hasLive ? 30000 : undefined
+      return hasLive ? 120000 : undefined
     },
+  })
+}
+
+/**
+ * Live prop-pick stats — polled separately from the pick list so the (heavier)
+ * ESPN fallback only runs on this cadence, not on every list refetch. Returns
+ * a `{ [pickId]: number }` map. Caller merges into picks at render time.
+ *
+ * `enabled` is gated on whether the caller actually has any locked picks
+ * with a live game, so this stays free for users with no active picks.
+ */
+export function useMyPropLiveStats({ hasLive } = {}) {
+  return useQuery({
+    queryKey: ['propPicks', 'liveStats'],
+    queryFn: () => api.get('/props/picks/me/live-stats'),
+    enabled: !!hasLive,
+    refetchInterval: hasLive ? 30000 : undefined,
   })
 }
 

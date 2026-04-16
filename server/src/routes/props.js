@@ -6,6 +6,7 @@ import {
   deletePropPick,
   getUserPropPicks,
   getUserPropPickHistory,
+  getUserLivePropStats,
   getPropPickById,
 } from '../services/propService.js'
 
@@ -50,6 +51,14 @@ router.get('/picks/me', async (req, res) => {
 router.get('/picks/me/history', async (req, res) => {
   const picks = await getUserPropPickHistory(req.user.id)
   res.json(picks)
+})
+
+// Get user's live prop stats — a compact {pickId: value} map for locked
+// picks only. Polled on its own cadence by the client so the main pick list
+// endpoint stays fast.
+router.get('/picks/me/live-stats', async (req, res) => {
+  const stats = await getUserLivePropStats(req.user.id)
+  res.json(stats)
 })
 
 // Get a single prop pick by ID (must be after /picks/me routes)

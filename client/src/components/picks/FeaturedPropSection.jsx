@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useFeaturedProps, useMyPropPicks, useSubmitPropPick, useDeletePropPick } from '../../hooks/useProps'
+import { useFeaturedProps, useMyPropPicks, useMyPropLiveStats, useSubmitPropPick, useDeletePropPick } from '../../hooks/useProps'
 import PropCard from './PropCard'
 import { toast } from '../ui/Toast'
 import { triggerHaptic } from '../../lib/haptics'
@@ -8,6 +8,11 @@ export default function FeaturedPropSection({ date, sportKey, fallback = false, 
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   const { data: props, isLoading } = useFeaturedProps(dateStr, { fallback })
   const { data: myPropPicks } = useMyPropPicks()
+  // Poll live stats only when we actually have a locked pick on a live game.
+  const hasLivePropGame = (myPropPicks || []).some(
+    (p) => p.status === 'locked' && p.player_props?.games?.status === 'live'
+  )
+  const { data: liveStatsMap } = useMyPropLiveStats({ hasLive: hasLivePropGame })
   const submitPick = useSubmitPropPick()
   const deletePick = useDeletePropPick()
   const [expanded, setExpanded] = useState(defaultExpanded)
@@ -25,7 +30,12 @@ export default function FeaturedPropSection({ date, sportKey, fallback = false, 
 
   function getPick(propId) {
     if (!myPropPicks) return null
-    return myPropPicks.find((p) => p.prop_id === propId) || null
+    const pick = myPropPicks.find((p) => p.prop_id === propId)
+    if (!pick) return null
+    // Splice live_stat in from the separate live-stats poll so PropCard's
+    // `pick.live_stat` rendering continues to work.
+    if (liveStatsMap?.[pick.id] != null) return { ...pick, live_stat: liveStatsMap[pick.id] }
+    return pick
   }
 
   async function handlePick(propId, side) {

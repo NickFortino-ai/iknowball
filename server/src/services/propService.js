@@ -661,10 +661,9 @@ export async function getUserPropPicks(userId, status) {
   const { data, error } = await query
   if (error) throw error
 
-  // Enrich all locked picks with live stats (no game status gate — if stats exist, show them)
-  const lockedPicks = (data || []).filter((p) => p.status === 'locked')
-  await enrichLockedPicksWithLiveStats(lockedPicks)
-
+  // Live-stat enrichment is now served by a separate lightweight endpoint
+  // (getUserLivePropStats) so this list query stays fast and ESPN round-trips
+  // happen on their own cadence rather than on every picks refetch.
   return data || []
 }
 
@@ -768,9 +767,34 @@ export async function getUserPropPickHistory(userId) {
 
   if (error) throw error
 
-  // Enrich all locked picks with live stats
-  const lockedPicks = (data || []).filter((p) => p.status === 'locked')
+  // Live-stat enrichment is served by getUserLivePropStats on its own cadence.
+  return data || []
+}
+
+/**
+ * Lightweight endpoint for the live-score polling loop.
+ * Returns a map of { [pickId]: live_stat } for the user's locked picks. The
+ * shared enrichLockedPicksWithLiveStats does the heavy lifting (DB lookup +
+ * ESPN fallback); we just surface its output as a compact map so clients can
+ * poll this on its own interval without re-fetching the whole pick list.
+ */
+export async function getUserLivePropStats(userId) {
+  const { data, error } = await supabase
+    .from('prop_picks')
+    .select('id, prop_id, player_props(player_name, market_key, games(sports(key)))')
+    .eq('user_id', userId)
+    .eq('status', 'locked')
+
+  if (error) throw error
+
+  const lockedPicks = data || []
+  if (!lockedPicks.length) return {}
+
   await enrichLockedPicksWithLiveStats(lockedPicks)
 
-  return data || []
+  const result = {}
+  for (const pick of lockedPicks) {
+    if (pick.live_stat != null) result[pick.id] = pick.live_stat
+  }
+  return result
 }

@@ -69,6 +69,8 @@ export async function fetchCompletedGameStats(date) {
   const playerStats = []
 
   for (const event of events) {
+    // Each game is wrapped so a malformed box score never kills the scrape.
+    try {
     const competition = event.competitions?.[0]
     if (!competition) continue
 
@@ -87,9 +89,13 @@ export async function fetchCompletedGameStats(date) {
     let boxScore
     try {
       const res = await fetch(`${ESPN_BASE}/baseball/mlb/summary?event=${gameId}`)
-      if (!res.ok) continue
+      if (!res.ok) {
+        logger.warn({ gameId, status: res.status, date }, 'ESPN MLB summary returned non-OK, skipping game')
+        continue
+      }
       boxScore = await res.json()
-    } catch {
+    } catch (err) {
+      logger.warn({ err, gameId, date }, 'ESPN MLB summary fetch threw, skipping game')
       continue
     }
 
@@ -166,6 +172,10 @@ export async function fetchCompletedGameStats(date) {
           }
         }
       }
+    }
+    } catch (err) {
+      logger.error({ err, gameId: event?.id, date }, 'MLB box-score processing threw for game, skipping')
+      continue
     }
   }
 
