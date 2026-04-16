@@ -10,6 +10,38 @@ export const config = {
   runtime: 'edge',
 }
 
+const SUPABASE_PUBLIC_BUCKET = 'backdrop-approved'
+
+function backdropToAbsoluteUrl(filename, host) {
+  if (!filename) return null
+  if (filename.startsWith('custom/')) {
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+    if (!supabaseUrl) return null
+    return `${supabaseUrl}/storage/v1/object/public/${SUPABASE_PUBLIC_BUCKET}/${filename.slice(7)}`
+  }
+  return `https://${host}/backdrops/${filename}`
+}
+
+// Pre-fetch the backdrop into a data URL. Satori chokes on cross-origin
+// <img> with subtle network/MIME issues, but giving it inline data
+// always works. We swallow errors and fall back to the solid bg.
+async function fetchBackdropAsDataUrl(url) {
+  if (!url) return null
+  try {
+    const res = await fetch(url, { cf: { cacheTtl: 300 } })
+    if (!res.ok) return null
+    const contentType = res.headers.get('content-type') || 'image/jpeg'
+    const buffer = await res.arrayBuffer()
+    // Edge runtime has btoa available
+    const base64 = btoa(
+      new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    )
+    return `data:${contentType};base64,${base64}`
+  } catch (_) {
+    return null
+  }
+}
+
 const FORMAT_LABELS = {
   pickem: "PICK'EM",
   survivor: 'SURVIVOR',
@@ -58,9 +90,12 @@ export default async function handler(req) {
       ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`
       : 'New league'
 
-    // Minimal, defensive layout. Satori is picky — no textShadow, no
-    // boxShadow, no em units, no implicit children. Solid colors only,
-    // explicit pixel sizes everywhere.
+    // Pre-fetch backdrop as data URL. Inline data is safer than a
+    // cross-origin <img> for Satori. Falls back to null on any failure
+    // and we render the solid-bg version.
+    const rawBackdropUrl = backdropToAbsoluteUrl(league?.backdrop_image, host)
+    const backdropDataUrl = await fetchBackdropAsDataUrl(rawBackdropUrl)
+
     return new ImageResponse(
       (
         <div
@@ -72,8 +107,41 @@ export default async function handler(req) {
             justifyContent: 'space-between',
             backgroundColor: '#0a0a0a',
             padding: '60px',
+            position: 'relative',
           }}
         >
+          {/* Backdrop layer (if available) — sits behind everything */}
+          {backdropDataUrl && (
+            <img
+              src={backdropDataUrl}
+              alt=""
+              width={1200}
+              height={630}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '1200px',
+                height: '630px',
+                objectFit: 'cover',
+                opacity: 0.55,
+              }}
+            />
+          )}
+          {/* Dark gradient overlay for text legibility */}
+          {backdropDataUrl && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '1200px',
+                height: '630px',
+                display: 'flex',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.2) 100%)',
+              }}
+            />
+          )}
           {/* Top row: IKB monogram */}
           <div
             style={{
