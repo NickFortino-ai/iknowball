@@ -121,7 +121,9 @@ export default async function handler(req) {
             flexDirection: 'column',
             justifyContent: 'space-between',
             backgroundColor: '#0a0a0a',
-            padding: '60px',
+            // Extra top/right padding so the IKB monogram doesn't get
+            // clipped by close-button overlays in iMessage / X previews.
+            padding: '90px 90px 60px 60px',
             position: 'relative',
           }}
         >
@@ -253,6 +255,10 @@ export default async function handler(req) {
         height: 630,
         headers: {
           'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
+          // Friendly inline filename so iMessage / Mail clients don't
+          // surface the raw path segment ("L76QN7XE") as the file name
+          // when they cache the image alongside the link preview.
+          'Content-Disposition': 'inline; filename="iknowball-league.png"',
         },
       },
     )
