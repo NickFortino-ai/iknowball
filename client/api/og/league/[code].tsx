@@ -49,37 +49,13 @@ function backdropToAbsoluteUrl(filename, host) {
   return `https://${host}/backdrops/${filename}`
 }
 
-// Load Oswald (display font, matches the IKB app's font-display class)
-// from Google Fonts. The brand lockup uses Oswald Light (300) for its
-// thin, narrow, condensed look. We also load Medium (500) for body
-// text on the card where we need a bit more presence.
-async function loadOswald() {
-  const css = await fetch(
-    'https://fonts.googleapis.com/css2?family=Oswald:wght@300;500&display=swap',
-    { headers: { 'User-Agent': 'Mozilla/5.0' } }
-  ).then((r) => r.text())
-
-  // Pull the woff2 URLs out of the CSS payload
-  const urls = [...css.matchAll(/url\((https:[^)]+\.woff2)\)/g)].map((m) => m[1])
-  if (!urls.length) return []
-
-  // First matching URL = 300, second = 500 (CSS declaration order)
-  const fontBuffers = await Promise.all(
-    urls.slice(0, 2).map((u) => fetch(u).then((r) => r.arrayBuffer()))
-  )
-
-  return [
-    { name: 'Oswald', data: fontBuffers[0], weight: 300, style: 'normal' },
-    fontBuffers[1] && { name: 'Oswald', data: fontBuffers[1], weight: 500, style: 'normal' },
-  ].filter(Boolean)
-}
-
 export default async function handler(req) {
   const url = new URL(req.url)
   // Vercel passes the dynamic segment via the URL path; pull from there.
   const code = url.pathname.split('/').pop()
   const host = req.headers.get('host') || 'iknowball.club'
 
+  try {
   // Fetch league preview
   let league = null
   try {
@@ -100,7 +76,11 @@ export default async function handler(req) {
 
   const backdropUrl = backdropToAbsoluteUrl(league?.backdrop_image, host)
 
-  const fonts = await loadOswald().catch(() => [])
+  // Use @vercel/og's default embedded font (Noto Sans). Loading Oswald from
+  // Google Fonts at the edge was producing 0-byte responses — too many
+  // failure modes (network, CSS parse, weight mismatch). Vercel's bundled
+  // font is reliable and we can layer on a vendored Oswald .ttf later if
+  // we want a truer brand match.
 
   return new ImageResponse(
     (
@@ -112,7 +92,6 @@ export default async function handler(req) {
           flexDirection: 'column',
           position: 'relative',
           backgroundColor: '#0a0a0a',
-          fontFamily: 'Oswald',
         }}
       >
         {/* Backdrop image, full bleed */}
@@ -274,7 +253,6 @@ export default async function handler(req) {
     {
       width: 1200,
       height: 630,
-      fonts,
       headers: {
         // Cache the generated image at the CDN — same league hits ~10ms
         // after first scrape. 5 min s-maxage keeps it fresh enough that
@@ -283,4 +261,17 @@ export default async function handler(req) {
       },
     },
   )
+  } catch (err) {
+    // Renderer threw — never serve a 0-byte response. Redirect scrapers and
+    // browsers to the static OG fallback instead. They'll re-scrape and get
+    // a valid image.
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `https://${host}/og-image.png`,
+        // Don't let CDNs cache the failure for long.
+        'Cache-Control': 'public, max-age=60',
+      },
+    })
+  }
 }
