@@ -2,7 +2,7 @@
   "rewrites": [
     { "source": "/join/:code", "destination": "/api/share/league/:code" },
     { "source": "/api/:path((?!og/|share/).*)", "destination": "https://iknowball.onrender.com/api/:path" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
