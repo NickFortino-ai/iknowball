@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getTier } from '../../lib/scoring'
 import EmptyState from '../ui/EmptyState'
+import Avatar from '../ui/Avatar'
 import GameCard from '../picks/GameCard'
 import GameIntelModal from '../picks/GameIntelModal'
 import { toast } from '../ui/Toast'
@@ -89,6 +90,7 @@ function StandingsTable({ standings, leagueId }) {
             <div className="flex items-center">
               <span className="px-4 py-3 text-text-muted font-semibold w-10">{s.rank}</span>
               <div className="px-4 py-3 flex-1 min-w-0 flex items-center gap-2">
+                <Avatar user={s.user} size="lg" className="shrink-0" />
                 <span className="font-semibold truncate">
                   {s.user?.display_name || s.user?.username}
                 </span>
@@ -132,6 +134,7 @@ function MiniLeaderboard({ standings, leagueId }) {
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-text-muted font-semibold w-4">{s.rank}</span>
+                <Avatar user={s.user} size="md" className="shrink-0" />
                 <span className="font-semibold truncate">
                   {s.user?.display_name || s.user?.username}
                 </span>
