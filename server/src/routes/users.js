@@ -326,9 +326,13 @@ router.get('/:id/bonuses', requireAuth, async (req, res) => {
   res.json(data || [])
 })
 
-// Search users by username or display name
+// Search users by username or display name.
+// Pass ?includeSelf=true for callers that legitimately want to find the
+// current user in results (e.g. leaderboard search). Default behavior
+// excludes self since most callers are invite/connection flows.
 router.get('/search', requireAuth, async (req, res) => {
   const q = req.query.q?.trim()
+  const includeSelf = req.query.includeSelf === 'true'
   if (!q || q.length < 2) {
     return res.json([])
   }
@@ -345,8 +349,11 @@ router.get('/search', requireAuth, async (req, res) => {
     .from('users')
     .select('id, username, display_name, avatar_url, avatar_emoji')
     .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
-    .neq('id', req.user.id)
     .limit(10)
+
+  if (!includeSelf) {
+    query = query.neq('id', req.user.id)
+  }
 
   if (blockedIds.length > 0) {
     for (const id of blockedIds) {

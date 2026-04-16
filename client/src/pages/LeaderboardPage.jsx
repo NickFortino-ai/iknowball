@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { useLeaderboard } from '../hooks/useLeaderboard'
+import { useLeaderboard, useUserRankOnLeaderboard } from '../hooks/useLeaderboard'
 import { useAuth } from '../hooks/useAuth'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
@@ -9,6 +9,7 @@ import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import Avatar from '../components/ui/Avatar'
+import LeaderboardSearch from '../components/leaderboard/LeaderboardSearch'
 
 function LeaguesScoringModal({ open, onClose }) {
   if (!open) return null
@@ -41,6 +42,78 @@ function LeaguesScoringModal({ open, onClose }) {
   )
 }
 
+// Renders the result of a leaderboard search — a banner with the
+// searched user's name + an X to clear, followed by a single row
+// showing their rank on the current tab. Styled to match the normal
+// leaderboard row so the user instantly recognizes the format.
+function SearchResultView({
+  searchedUser, rank, loading, error, isLeaguesTab, scope, currentUserId, onClear, onRowClick,
+}) {
+  const displayName = searchedUser.display_name || searchedUser.username
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 px-1">
+        <p className="text-sm text-text-muted">
+          Showing rank for <span className="font-semibold text-text-primary">{displayName}</span>
+        </p>
+        <button
+          onClick={onClear}
+          className="flex items-center gap-1 text-xs text-text-muted hover:text-text-primary transition-colors"
+        >
+          Clear
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      {isLeaguesTab ? (
+        <div className="bg-bg-primary rounded-2xl border border-text-primary/20 px-4 py-6 text-center text-sm text-text-muted">
+          Leaderboard search isn't available on the Leagues tab yet.
+        </div>
+      ) : loading ? (
+        <LoadingSpinner />
+      ) : error || !rank ? (
+        <div className="bg-bg-primary rounded-2xl border border-text-primary/20 px-4 py-6 text-center text-sm text-text-muted">
+          {displayName} hasn't appeared on this leaderboard yet.
+        </div>
+      ) : (
+        <div className="bg-bg-primary rounded-2xl border border-text-primary/20 overflow-hidden">
+          <div className="grid grid-cols-[2rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+            <span>#</span>
+            <span>Player</span>
+            <span>Tier</span>
+            <span className="text-right">Points</span>
+          </div>
+          <div
+            onClick={() => onRowClick(rank.id)}
+            className={`grid grid-cols-[2rem_1fr_auto_auto] gap-2 md:gap-4 px-4 py-3 items-center cursor-pointer hover:bg-text-primary/5 transition-colors ${
+              rank.id === currentUserId ? 'bg-accent/5' : ''
+            }`}
+          >
+            <span className={`font-display text-lg ${rank.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>
+              {rank.rank}
+            </span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Avatar user={rank} size="md" />
+              <div className="min-w-0">
+                <div className={`font-semibold truncate ${rank.id === currentUserId ? 'text-accent' : 'text-text-primary'}`}>
+                  {rank.display_name || rank.username}
+                </div>
+                <div className="text-xs text-text-muted">@{rank.username}</div>
+              </div>
+            </div>
+            <TierBadge tier={rank.tier} size="xs" />
+            <span className="font-display text-lg text-right">
+              {scope === 'sport' ? (rank.sport_points ?? 0) : scope === 'props' ? (rank.prop_points ?? 0) : scope === 'parlays' ? (rank.parlay_points ?? 0) : (rank.total_points ?? 0)}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const tabs = [
   { label: 'Global', scope: 'global', sport: null },
   { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
@@ -61,6 +134,10 @@ export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [scoringModalOpen, setScoringModalOpen] = useState(false)
+  // The user the search bar has filtered to. Stays set across tab
+  // switches so the user can compare one person across Global / NBA /
+  // MLB etc. Cleared via the X button in the search-result banner.
+  const [searchedUser, setSearchedUser] = useState(null)
   const tab = tabs[activeTab]
   const isLeaguesTab = tab.scope === 'leagues'
   const { data: leaders, isLoading, isError, refetch } = useLeaderboard(isLeaguesTab ? null : tab.scope, tab.sport)
@@ -69,11 +146,23 @@ export default function LeaderboardPage() {
     queryFn: () => api.get('/leaderboard/leagues'),
     enabled: isLeaguesTab,
   })
+  // Fetch rank for the searched user on whichever tab is active. Skipped
+  // for the Leagues tab for now (different data shape — can add later).
+  const rankScope = isLeaguesTab ? null : tab.scope
+  const { data: searchedRank, isLoading: rankLoading, isError: rankError } = useUserRankOnLeaderboard(
+    searchedUser?.id && !isLeaguesTab ? searchedUser.id : null,
+    rankScope,
+    tab.sport
+  )
   const { profile } = useAuth()
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-32">
-      <h1 className="font-display text-3xl mb-6">Leaderboard</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="font-display text-3xl">Leaderboard</h1>
+        <div className="flex-1" />
+        <LeaderboardSearch onSelect={setSearchedUser} />
+      </div>
 
       <div className="flex overflow-x-auto gap-2 pb-2 mb-6 scrollbar-hide -mx-4 px-4">
         {tabs.map((t, i) => (
@@ -108,7 +197,19 @@ export default function LeaderboardPage() {
         <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks only</p>
       )}
 
-      {isLeaguesTab ? (
+      {searchedUser ? (
+        <SearchResultView
+          searchedUser={searchedUser}
+          rank={searchedRank}
+          loading={rankLoading}
+          error={rankError}
+          isLeaguesTab={isLeaguesTab}
+          scope={tab.scope}
+          currentUserId={profile?.id}
+          onClear={() => setSearchedUser(null)}
+          onRowClick={(id) => setSelectedUserId(id)}
+        />
+      ) : isLeaguesTab ? (
         leaguesLoading ? (
           <LoadingSpinner />
         ) : !leagueLeaders?.length ? (

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
-import { getLeaderboard, getUsersByTier } from '../services/leaderboardService.js'
+import { getLeaderboard, getUsersByTier, getUserRankOnLeaderboard } from '../services/leaderboardService.js'
 import { getRoyaltyData } from '../services/recordService.js'
 import { fetchAll } from '../utils/fetchAll.js'
 
@@ -11,6 +11,17 @@ router.get('/', requireAuth, async (req, res) => {
   const { scope = 'global', sport } = req.query
   const data = await getLeaderboard(scope, sport)
   res.json(data)
+})
+
+// Find a user's rank on a specific leaderboard — used by the search
+// feature on the leaderboard page so users can look up players outside
+// the top 100.
+router.get('/user-rank', requireAuth, async (req, res) => {
+  const { userId, scope = 'global', sport } = req.query
+  if (!userId) return res.status(400).json({ error: 'userId is required' })
+  const result = await getUserRankOnLeaderboard(userId, scope, sport)
+  if (!result) return res.status(404).json({ error: 'User not found on this leaderboard' })
+  res.json(result)
 })
 
 router.get('/tier/:tierName', requireAuth, async (req, res) => {
