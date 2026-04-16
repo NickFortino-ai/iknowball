@@ -10,6 +10,51 @@ export const config = {
   runtime: 'edge',
 }
 
+// Resolve a league's backdrop_image filename to a URL we can fetch.
+// Preset backdrops have pre-generated 1000x525 JPEG thumbnails at
+// /backdrops/og/<name>.jpg (much smaller than the original WebP, so
+// inlining as a data URL stays well under Satori's practical limit).
+// Custom user backdrops live in Supabase Storage — we use Supabase's
+// built-in image transformation API to get a small variant on the fly.
+function resolveBackdropUrl(filename, host) {
+  if (!filename) return null
+  if (filename.startsWith('custom/')) {
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+    if (!supabaseUrl) return null
+    const objectPath = filename.slice(7)
+    return `${supabaseUrl}/storage/v1/render/image/public/backdrop-approved/${objectPath}?width=1000&height=525&resize=cover&quality=55`
+  }
+  // Preset backdrop — strip extension, swap to /backdrops/og/<name>.jpg
+  const baseName = filename.replace(/\.(webp|jpg|jpeg|png)$/i, '')
+  return `https://${host}/backdrops/og/${baseName}.jpg`
+}
+
+// Pre-fetch the backdrop and inline it as a data URL. Satori's <img>
+// loader is unreliable on cross-origin URLs; data URLs always render.
+// We cap response size at 250KB so a misbehaving asset can't blow past
+// the inline limit and break the whole card.
+async function fetchBackdropAsDataUrl(url) {
+  if (!url) return null
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const buffer = await res.arrayBuffer()
+    if (buffer.byteLength > 250_000) return null
+    const contentType = res.headers.get('content-type') || 'image/jpeg'
+    // Convert ArrayBuffer to base64 in chunks to avoid call-stack overflow
+    // on larger payloads (apply has an arg-count limit ~65k in some runtimes).
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    const chunkSize = 0x8000
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
+    }
+    return `data:${contentType};base64,${btoa(binary)}`
+  } catch (_) {
+    return null
+  }
+}
+
 const FORMAT_LABELS = {
   pickem: "PICK'EM",
   survivor: 'SURVIVOR',
@@ -58,9 +103,14 @@ export default async function handler(req) {
       ? `${memberCount} ${memberCount === 1 ? 'member' : 'members'}`
       : 'New league'
 
-    // Minimal, defensive layout. Satori is picky — no textShadow, no
-    // boxShadow, no em units, no implicit children. Solid colors only,
-    // explicit pixel sizes everywhere.
+    // Pre-fetch backdrop as data URL — fails gracefully to null on any
+    // size/network/parse issue, so a bad backdrop never breaks the card.
+    const backdropUrl = resolveBackdropUrl(league?.backdrop_image, host)
+    const backdropDataUrl = await fetchBackdropAsDataUrl(backdropUrl)
+
+    // Satori is picky — no textShadow, no boxShadow, no em units, no
+    // implicit children. Solid colors only, explicit pixel sizes
+    // everywhere. Backdrop sits behind everything via absolute position.
     return new ImageResponse(
       (
         <div
@@ -72,8 +122,39 @@ export default async function handler(req) {
             justifyContent: 'space-between',
             backgroundColor: '#0a0a0a',
             padding: '60px',
+            position: 'relative',
           }}
         >
+          {backdropDataUrl && (
+            <img
+              src={backdropDataUrl}
+              alt=""
+              width={1200}
+              height={630}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '1200px',
+                height: '630px',
+                objectFit: 'cover',
+                opacity: 0.55,
+              }}
+            />
+          )}
+          {backdropDataUrl && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '1200px',
+                height: '630px',
+                display: 'flex',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.2) 100%)',
+              }}
+            />
+          )}
           {/* Top row: IKB monogram */}
           <div
             style={{
