@@ -391,10 +391,10 @@ export default function Navbar() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                     location.pathname === link.to
-                      ? 'bg-accent/10 text-accent'
-                      : 'text-text-secondary hover:text-text-primary'
+                      ? 'border-accent text-accent'
+                      : 'border-transparent text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   {link.label}
