@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { useAuthStore } from '../../stores/authStore'
+import { useQueryClient } from '@tanstack/react-query'
+import { useProfile } from '../../hooks/useProfile'
+import { api } from '../../lib/api'
 
 // Explainer banner for the small green/yellow/red flag in the top-right
-// corner of each league card. User feedback asked for this to be
-// documented somewhere. Shows once per user; 'Understood' writes to
-// localStorage and dismisses forever.
+// corner of each league card. Dismissal persists on the user row
+// (users.has_dismissed_readiness_banner) so "Understood" clicked on
+// one device hides the banner on every other device too.
 
 const DOTS = [
   {
@@ -25,27 +26,28 @@ const DOTS = [
 ]
 
 export default function StatusFlagsBanner() {
-  const userId = useAuthStore((s) => s.session?.user?.id)
-  const storageKey = userId ? `ikb_readiness_banner_dismissed_${userId}` : null
+  const { data: profile } = useProfile()
+  const queryClient = useQueryClient()
 
-  // Lazy-init from localStorage so we never flash the banner on mount.
-  // Users logged in on this page already have their session hydrated
-  // synchronously, so this is reliable. React 19's new
-  // react-hooks/set-state-in-effect rule forbids doing this inside a
-  // useEffect, which is why we compute it at init.
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === 'undefined') return true
-    const key = storageKey
-    if (!key) return true
-    return localStorage.getItem(key) === '1'
-  })
+  // While the profile is loading, don't flash the banner — wait for
+  // the source of truth. This also prevents the banner from briefly
+  // appearing for users who have already dismissed it on another device.
+  if (!profile) return null
+  if (profile.has_dismissed_readiness_banner) return null
 
-  function handleDismiss() {
-    if (storageKey) localStorage.setItem(storageKey, '1')
-    setDismissed(true)
+  async function handleDismiss() {
+    // Optimistic update so the banner disappears immediately
+    queryClient.setQueryData(['profile'], (prev) =>
+      prev ? { ...prev, has_dismissed_readiness_banner: true } : prev
+    )
+    try {
+      await api.patch('/users/me', { has_dismissed_readiness_banner: true })
+    } catch (_) {
+      // If the PATCH fails, roll back the optimistic update so the user
+      // gets another chance. Rare; no toast needed.
+      queryClient.invalidateQueries({ queryKey: ['profile'] })
+    }
   }
-
-  if (dismissed || !storageKey) return null
 
   return (
     <div className="relative bg-bg-primary border border-text-primary/20 rounded-xl p-4 mb-4">
