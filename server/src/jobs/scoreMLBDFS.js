@@ -47,8 +47,10 @@ function calculateMLBFantasyPoints(stats) {
 
 /**
  * Fetch player box score stats from ESPN for MLB games on a given date.
+ * Exported so the player-prop live-score enrichment can fall back to a direct
+ * ESPN fetch when the mlb_dfs_player_stats table isn't populated for today.
  */
-async function fetchCompletedGameStats(date) {
+export async function fetchCompletedGameStats(date) {
   const dateStr = date.replace(/-/g, '')
   let events
   try {

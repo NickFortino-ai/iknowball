@@ -4,6 +4,8 @@ import { fetchPlayerProps } from './oddsService.js'
 import { getMarketLabel } from '../utils/propMarkets.js'
 import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
 import { checkRecordAfterSettle } from './recordService.js'
+import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreNBADFS.js'
+import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreMLBDFS.js'
 
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
@@ -545,6 +547,49 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
     const mlbByName = {}
     for (const s of mlbStats) mlbById[s.espn_player_id] = s
     for (const s of mlbStatsByName) mlbByName[normalizeName(s.player_name)] = s
+
+    // ESPN fallback — if the stats table is empty for a sport (DFS scoring job
+    // didn't run, failed, or feature flag is off), fetch directly from ESPN so
+    // props still get live scores. We only fetch the sport(s) that are actually
+    // needed based on what picks exist, and only when the DB is empty.
+    const hasNbaPick = lockedPicks.some((p) => p.player_props?.games?.sports?.key === 'basketball_nba')
+    const hasMlbPick = lockedPicks.some((p) => p.player_props?.games?.sports?.key === 'baseball_mlb')
+
+    if (hasNbaPick && nbaStatsByName.length === 0) {
+      try {
+        const { playerStats } = await fetchNbaStatsFromEspn(today)
+        for (const p of playerStats) {
+          const row = {
+            espn_player_id: p.espnPlayerId,
+            player_name: p.playerName,
+            ...p.stats,
+          }
+          nbaById[p.espnPlayerId] = row
+          nbaByName[normalizeName(p.playerName)] = row
+        }
+        logger.info({ count: playerStats.length }, 'Live stat enrichment: ESPN NBA fallback fetched')
+      } catch (err) {
+        logger.error({ err }, 'Live stat enrichment: ESPN NBA fallback failed')
+      }
+    }
+
+    if (hasMlbPick && mlbStatsByName.length === 0) {
+      try {
+        const { playerStats } = await fetchMlbStatsFromEspn(today)
+        for (const p of playerStats) {
+          const row = {
+            espn_player_id: p.espnPlayerId,
+            player_name: p.playerName,
+            ...p.stats,
+          }
+          mlbById[p.espnPlayerId] = row
+          mlbByName[normalizeName(p.playerName)] = row
+        }
+        logger.info({ count: playerStats.length }, 'Live stat enrichment: ESPN MLB fallback fetched')
+      } catch (err) {
+        logger.error({ err }, 'Live stat enrichment: ESPN MLB fallback failed')
+      }
+    }
 
     // Attach live stats to each locked pick
     for (const pick of lockedPicks) {

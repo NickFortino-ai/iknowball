@@ -116,7 +116,11 @@ export function startScheduler() {
     logger.info('Injury sync scheduled: every 10 minutes')
   }
 
-  if (env.ENABLE_NBA_DFS) {
+  // NBA/MLB DFS scoring jobs run unconditionally. The stats they scrape from
+  // ESPN also power player-prop live scores, so we want them running even if
+  // the DFS feature gate is off. The job handles the no-rosters/no-leagues
+  // case gracefully.
+  {
     // Generate salaries daily at 10:00 AM ET (before lineups lock) and score games every 10 min
     cron.schedule('0 10 * * *', async () => {
       try { await scoreNBADFS() } catch (err) { logger.error({ err }, 'NBA DFS salary generation failed') }
