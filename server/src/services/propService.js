@@ -481,6 +481,11 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
 
   try {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    // Also include yesterday: games that start before midnight ET but finish
+    // after it save their stats under yesterday's game_date, so post-midnight
+    // requests would miss them otherwise.
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const lookupDates = [today, yesterday]
     const playerNames = [...new Set(lockedPicks.map((p) => p.player_props?.player_name).filter(Boolean))]
 
     if (!playerNames.length) {
@@ -488,12 +493,12 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       return
     }
 
-    logger.info({ playerNames, today, pickCount: lockedPicks.length }, 'Live stat enrichment starting')
+    logger.info({ playerNames, today, yesterday, pickCount: lockedPicks.length }, 'Live stat enrichment starting')
 
     // Look up ESPN IDs from DFS salaries (both NBA and MLB)
     const [salaryRes1, salaryRes2] = await Promise.all([
-      supabase.from('nba_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).eq('game_date', today),
-      supabase.from('mlb_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).eq('game_date', today),
+      supabase.from('nba_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).in('game_date', lookupDates),
+      supabase.from('mlb_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).in('game_date', lookupDates),
     ])
 
     const nbaPlayers = salaryRes1.data || []
@@ -514,15 +519,15 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
     // Fetch stats from both tables (by ESPN ID if available, and by name as fallback)
     const queries = await Promise.all([
       espnIds.length
-        ? supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('espn_player_id', espnIds).eq('game_date', today)
+        ? supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('espn_player_id', espnIds).in('game_date', lookupDates)
         : { data: [], error: null },
       espnIds.length
-        ? supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').in('espn_player_id', espnIds).eq('game_date', today)
+        ? supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').in('espn_player_id', espnIds).in('game_date', lookupDates)
         : { data: [], error: null },
-      // Pull ALL stats for today for in-memory normalized matching
+      // Pull ALL stats for today+yesterday for in-memory normalized matching
       // (handles "Jaime Jaquez Jr" vs "Jaime Jaquez Jr." and similar drift).
-      supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').eq('game_date', today),
-      supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').eq('game_date', today),
+      supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('game_date', lookupDates),
+      supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').in('game_date', lookupDates),
     ])
 
     const nbaStats = queries[0].data || []
@@ -548,17 +553,36 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
     for (const s of mlbStats) mlbById[s.espn_player_id] = s
     for (const s of mlbStatsByName) mlbByName[normalizeName(s.player_name)] = s
 
-    // ESPN fallback — if the stats table is empty for a sport (DFS scoring job
-    // didn't run, failed, or feature flag is off), fetch directly from ESPN so
-    // props still get live scores. We only fetch the sport(s) that are actually
-    // needed based on what picks exist, and only when the DB is empty.
-    const hasNbaPick = lockedPicks.some((p) => p.player_props?.games?.sports?.key === 'basketball_nba')
-    const hasMlbPick = lockedPicks.some((p) => p.player_props?.games?.sports?.key === 'baseball_mlb')
+    // ESPN fallback — fire whenever we can't find stats for AT LEAST ONE locked
+    // pick's player in the DB. We can't rely on "DB is empty" because the
+    // scoring job might have picked up an earlier game's stats while a later
+    // game's players are still missing. Per-sport, we check each locked pick's
+    // player name against the DB's name map; if even one is missing, fetch
+    // ESPN directly. The fetched stats are merged into the in-memory maps.
+    const nbaLockedPicks = lockedPicks.filter((p) => p.player_props?.games?.sports?.key === 'basketball_nba')
+    const mlbLockedPicks = lockedPicks.filter((p) => p.player_props?.games?.sports?.key === 'baseball_mlb')
 
-    if (hasNbaPick && nbaStatsByName.length === 0) {
+    const nbaMissing = nbaLockedPicks.some((p) => {
+      const normName = normalizeName(p.player_props?.player_name)
+      const espnId = idMap[p.player_props?.player_name]
+      return !((espnId && nbaById[espnId]) || nbaByName[normName])
+    })
+    const mlbMissing = mlbLockedPicks.some((p) => {
+      const normName = normalizeName(p.player_props?.player_name)
+      const espnId = idMap[p.player_props?.player_name]
+      return !((espnId && mlbById[espnId]) || mlbByName[normName])
+    })
+
+    if (nbaLockedPicks.length && nbaMissing) {
       try {
-        const { playerStats } = await fetchNbaStatsFromEspn(today)
-        for (const p of playerStats) {
+        // Fetch both today and yesterday from ESPN — covers post-midnight case
+        // where a game that started last night is still wrapping up.
+        const [todayStats, yesterdayStats] = await Promise.all([
+          fetchNbaStatsFromEspn(today),
+          fetchNbaStatsFromEspn(yesterday),
+        ])
+        const allStats = [...(todayStats.playerStats || []), ...(yesterdayStats.playerStats || [])]
+        for (const p of allStats) {
           const row = {
             espn_player_id: p.espnPlayerId,
             player_name: p.playerName,
@@ -567,16 +591,20 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
           nbaById[p.espnPlayerId] = row
           nbaByName[normalizeName(p.playerName)] = row
         }
-        logger.info({ count: playerStats.length }, 'Live stat enrichment: ESPN NBA fallback fetched')
+        logger.info({ count: allStats.length }, 'Live stat enrichment: ESPN NBA fallback fetched')
       } catch (err) {
         logger.error({ err }, 'Live stat enrichment: ESPN NBA fallback failed')
       }
     }
 
-    if (hasMlbPick && mlbStatsByName.length === 0) {
+    if (mlbLockedPicks.length && mlbMissing) {
       try {
-        const { playerStats } = await fetchMlbStatsFromEspn(today)
-        for (const p of playerStats) {
+        const [todayStats, yesterdayStats] = await Promise.all([
+          fetchMlbStatsFromEspn(today),
+          fetchMlbStatsFromEspn(yesterday),
+        ])
+        const allStats = [...(todayStats.playerStats || []), ...(yesterdayStats.playerStats || [])]
+        for (const p of allStats) {
           const row = {
             espn_player_id: p.espnPlayerId,
             player_name: p.playerName,
@@ -585,7 +613,7 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
           mlbById[p.espnPlayerId] = row
           mlbByName[normalizeName(p.playerName)] = row
         }
-        logger.info({ count: playerStats.length }, 'Live stat enrichment: ESPN MLB fallback fetched')
+        logger.info({ count: allStats.length }, 'Live stat enrichment: ESPN MLB fallback fetched')
       } catch (err) {
         logger.error({ err }, 'Live stat enrichment: ESPN MLB fallback failed')
       }
