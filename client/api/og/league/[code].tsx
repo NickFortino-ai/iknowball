@@ -255,10 +255,10 @@ export default async function handler(req) {
         height: 630,
         headers: {
           'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
-          // Friendly inline filename so iMessage / Mail clients don't
-          // surface the raw path segment ("L76QN7XE") as the file name
-          // when they cache the image alongside the link preview.
-          'Content-Disposition': 'inline; filename="iknowball-league.png"',
+          // Friendly inline filename — iMessage surfaces this as the
+          // visible label below the card. Keep it action-oriented so it
+          // reinforces the CTA rather than exposing the raw invite code.
+          'Content-Disposition': 'inline; filename="Join this League.png"',
         },
       },
     )
