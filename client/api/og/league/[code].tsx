@@ -50,25 +50,27 @@ function backdropToAbsoluteUrl(filename, host) {
 }
 
 // Load Oswald (display font, matches the IKB app's font-display class)
-// from Google Fonts. Cached at the edge worker level.
+// from Google Fonts. The brand lockup uses Oswald Light (300) for its
+// thin, narrow, condensed look. We also load Medium (500) for body
+// text on the card where we need a bit more presence.
 async function loadOswald() {
   const css = await fetch(
-    'https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap',
+    'https://fonts.googleapis.com/css2?family=Oswald:wght@300;500&display=swap',
     { headers: { 'User-Agent': 'Mozilla/5.0' } }
   ).then((r) => r.text())
 
-  // Pull the woff2 URL out of the CSS payload
+  // Pull the woff2 URLs out of the CSS payload
   const urls = [...css.matchAll(/url\((https:[^)]+\.woff2)\)/g)].map((m) => m[1])
   if (!urls.length) return []
 
-  // Fetch the first two weights (500 + 700 typically)
+  // First matching URL = 300, second = 500 (CSS declaration order)
   const fontBuffers = await Promise.all(
     urls.slice(0, 2).map((u) => fetch(u).then((r) => r.arrayBuffer()))
   )
 
   return [
-    { name: 'Oswald', data: fontBuffers[0], weight: 500, style: 'normal' },
-    fontBuffers[1] && { name: 'Oswald', data: fontBuffers[1], weight: 700, style: 'normal' },
+    { name: 'Oswald', data: fontBuffers[0], weight: 300, style: 'normal' },
+    fontBuffers[1] && { name: 'Oswald', data: fontBuffers[1], weight: 500, style: 'normal' },
   ].filter(Boolean)
 }
 
@@ -159,10 +161,10 @@ export default async function handler(req) {
         >
           <span
             style={{
-              fontSize: '24px',
-              fontWeight: 700,
+              fontSize: '28px',
+              fontWeight: 300,
               color: '#FF4D00',
-              letterSpacing: '0.05em',
+              letterSpacing: '0.08em',
             }}
           >
             I KNOW BALL
@@ -194,25 +196,26 @@ export default async function handler(req) {
           >
             <span
               style={{
-                fontSize: '20px',
-                fontWeight: 700,
+                fontSize: '22px',
+                fontWeight: 500,
                 color: '#ffffff',
-                letterSpacing: '0.08em',
+                letterSpacing: '0.1em',
               }}
             >
               {tagLine}
             </span>
           </div>
 
-          {/* League name — limit to ~36 chars on a line, wrap if longer */}
+          {/* League name — brand-aligned thin Oswald for the condensed look */}
           <div
             style={{
               display: 'flex',
-              fontSize: leagueName.length > 28 ? '64px' : '84px',
-              fontWeight: 700,
+              fontSize: leagueName.length > 28 ? '76px' : '96px',
+              fontWeight: 300,
               color: '#ffffff',
               lineHeight: 1.0,
-              textShadow: '0 2px 12px rgba(0,0,0,0.6)',
+              letterSpacing: '0.02em',
+              textShadow: '0 2px 12px rgba(0,0,0,0.7)',
               maxWidth: '1080px',
               marginBottom: '28px',
             }}
@@ -232,9 +235,9 @@ export default async function handler(req) {
             <div
               style={{
                 display: 'flex',
-                fontSize: '26px',
+                fontSize: '28px',
                 fontWeight: 500,
-                color: 'rgba(255,255,255,0.85)',
+                color: 'rgba(255,255,255,0.9)',
                 letterSpacing: '0.02em',
               }}
             >
@@ -247,7 +250,7 @@ export default async function handler(req) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                padding: '16px 32px',
+                padding: '18px 36px',
                 backgroundColor: '#FF4D00',
                 borderRadius: '10px',
                 boxShadow: '0 4px 16px rgba(255,77,0,0.4)',
@@ -255,10 +258,10 @@ export default async function handler(req) {
             >
               <span
                 style={{
-                  fontSize: '28px',
-                  fontWeight: 700,
+                  fontSize: '32px',
+                  fontWeight: 500,
                   color: '#ffffff',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.08em',
                 }}
               >
                 JOIN NOW →
