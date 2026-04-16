@@ -238,11 +238,15 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     }
 
     if (league.format === 'survivor') {
+      const isTouchdown = settings.survivor_mode === 'touchdown'
       const lifeText = lives === 1 ? '1 life' : `${lives} lives`
       const allElimRule = settings.all_eliminated_survive
         ? ` If all remaining players are eliminated on the same ${freq}, everyone survives.`
         : ''
       const duration = durationSentence('until there is one last survivor')
+      if (isTouchdown) {
+        return `Pick one player each week to score a non-passing touchdown. You can never pick the same player twice. You have ${lifeText} — if your player doesn't score, you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
+      }
       return `Pick one winning team each ${freq}. You can only pick each team once unless you've used them all. You have ${lifeText} — pick wrong and you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
     }
 
@@ -252,7 +256,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         : `Pick as many games as you want each ${freq}.`
       const oddsText = settings.lock_odds_at === 'submission' ? ' Odds are locked at the time of submission.' : ''
       const duration = durationSentence(null)
-      return `${gamesText}${oddsText} The player with the most points at the end wins and earns bonus points on the global leaderboard. ${duration}`
+      return `${gamesText}${oddsText} Your net points from picks count toward your global score. The league winner also earns a bonus equal to the number of members. ${duration}`
     }
 
     if (league.format === 'fantasy') {
@@ -549,31 +553,34 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
         </div>
       </div>
 
-      {/* Custom date range */}
+      {/* Custom date range — full pickers */}
       {league.duration === 'custom_range' && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-text-muted mb-1">
-              Start Date
-              {hasLockedPicks && <span className="ml-1 italic">Locked</span>}
-            </label>
-            <input
-              type="date"
-              defaultValue={toDateInputValue(league.starts_at)}
-              onBlur={(e) => saveDate('starts_at', e.target.value)}
-              disabled={hasLockedPicks}
-              className={`w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-text-muted mb-1">End Date</label>
-            <input
-              type="date"
-              defaultValue={toDateInputValue(league.ends_at)}
-              onBlur={(e) => saveDate('ends_at', e.target.value)}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
-            />
-          </div>
+        <div>
+          <label className="block text-xs text-text-muted mb-1">
+            Start Date
+            {hasLockedPicks && <span className="ml-1 italic">Locked</span>}
+          </label>
+          <input
+            type="date"
+            defaultValue={toDateInputValue(league.starts_at)}
+            onBlur={(e) => saveDate('starts_at', e.target.value)}
+            disabled={hasLockedPicks}
+            className={`w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
+          />
+        </div>
+      )}
+
+      {/* End Date — always available so commissioners can extend/shorten */}
+      {league.ends_at && (
+        <div>
+          <label className="block text-xs text-text-muted mb-1">End Date</label>
+          <input
+            type="date"
+            defaultValue={toDateInputValue(league.ends_at)}
+            onBlur={(e) => saveDate('ends_at', e.target.value)}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+          />
+          <p className="text-[10px] text-text-muted mt-1">All games on this date are included. The league closes after the last game goes final.</p>
         </div>
       )}
       </>)}

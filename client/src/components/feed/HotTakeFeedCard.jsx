@@ -13,6 +13,13 @@ import RichContent from './RichContent'
 import PollDisplay from './PollDisplay'
 import LinkPreview from './LinkPreview'
 import { extractFirstUrl } from '../../lib/urlUtils'
+
+// Convert a Supabase storage public URL to a resized thumbnail URL.
+// Only works for Supabase-hosted images; external URLs pass through unchanged.
+function thumbUrl(url, width = 800) {
+  if (!url || !url.includes('/storage/v1/object/public/')) return url
+  return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') + `?width=${width}&resize=contain&quality=75`
+}
 import PickResultCard from '../picks/PickResultCard'
 
 // Module-level feed mute preference — resets when all FeedVideo instances unmount (navigation away)
@@ -712,8 +719,9 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                 className="block w-full"
               >
                 <img
-                  src={allImages[carouselIndex]}
+                  src={thumbUrl(allImages[carouselIndex])}
                   alt=""
+                  loading="lazy"
                   className="w-full rounded-lg"
                 />
               </button>
