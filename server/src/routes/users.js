@@ -470,6 +470,38 @@ router.delete('/me', requireAuth, async (req, res) => {
   res.status(204).end()
 })
 
+// Register or refresh a device token for native push. Called by the
+// native app on first launch (and whenever APNs issues a new token).
+// Upserts on (user_id, token) so repeated calls are idempotent.
+const deviceTokenSchema = z.object({
+  token: z.string().min(10).max(500),
+  platform: z.enum(['ios', 'android']),
+})
+router.post('/me/device-token', requireAuth, validate(deviceTokenSchema), async (req, res) => {
+  const { token, platform } = req.validated
+  const { error } = await supabase
+    .from('device_tokens')
+    .upsert(
+      { user_id: req.user.id, token, platform, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,token' }
+    )
+  if (error) throw error
+  res.status(204).end()
+})
+
+// Deregister a device token. Called by the client on logout so we don't
+// keep pushing to a device that's no longer signed in.
+router.delete('/me/device-token', requireAuth, async (req, res) => {
+  const { token } = req.body
+  if (!token) return res.status(400).json({ error: 'token is required' })
+  await supabase
+    .from('device_tokens')
+    .delete()
+    .eq('user_id', req.user.id)
+    .eq('token', token)
+  res.status(204).end()
+})
+
 router.patch('/me', requireAuth, validate(updateSchema), async (req, res) => {
   const { data, error } = await supabase
     .from('users')

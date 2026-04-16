@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { sendPushNotification } from './pushService.js'
+import { sendApnsToUser } from './apnsService.js'
 
 const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'headlines', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_waiver_failed', 'fantasy_stat_correction']
 
@@ -34,7 +35,13 @@ export async function createNotification(userId, type, message, metadata = {}) {
         const pushUrl = type === 'direct_message' ? '/messages'
         : type === 'record_broken' ? '/hall-of-fame?section=records'
         : metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
-        await sendPushNotification(userId, 'I KNOW BALL', message, pushUrl)
+        // Fan out to both transports. Web push → desktop PWA and Safari
+        // users, APNs → native iOS app. Failures are logged but don't
+        // block the notification row from being created.
+        await Promise.allSettled([
+          sendPushNotification(userId, 'I KNOW BALL', message, pushUrl),
+          sendApnsToUser(userId, 'I KNOW BALL', message, pushUrl),
+        ])
       }
     } catch (pushError) {
       logger.error({ error: pushError, userId, type }, 'Failed to send push notification')

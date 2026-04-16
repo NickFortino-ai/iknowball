@@ -32,4 +32,13 @@ export const env = {
   APPLE_IAP_ENVIRONMENT: process.env.APPLE_IAP_ENVIRONMENT || 'Production',
   STRIPE_MONTHLY_PRICE_ID: process.env.STRIPE_MONTHLY_PRICE_ID,
   STRIPE_YEARLY_PRICE_ID: process.env.STRIPE_YEARLY_PRICE_ID,
+  // Apple Push Notifications (APNs) — key-based auth (token provider). The
+  // .p8 private key content (multi-line PEM block) goes in APNS_KEY. Defaults
+  // to production APNs gateway; flip APNS_PRODUCTION=false for sandbox
+  // (development device builds) if ever needed.
+  APNS_KEY_ID: process.env.APNS_KEY_ID,
+  APNS_TEAM_ID: process.env.APNS_TEAM_ID,
+  APNS_BUNDLE_ID: process.env.APNS_BUNDLE_ID || 'com.iknowball.app',
+  APNS_KEY: process.env.APNS_KEY,
+  APNS_PRODUCTION: process.env.APNS_PRODUCTION !== 'false',
 }
