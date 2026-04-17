@@ -34,32 +34,54 @@ function splitTeamName(fullName) {
   return { city: words[0], name: words.slice(1).join(' ') }
 }
 
-function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord, seriesPrediction, seriesWins }) {
+function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord, seriesPrediction, seriesWins, mirrored }) {
   const { city, name } = splitTeamName(team)
   const padding = size === 'xl' ? 'px-3 py-2.5' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'
-  return (
-    <div className={`flex items-center gap-1.5 ${padding} ${className}`}>
-      <TeamLogo team={team} sportKey={sportKey} size={size} />
-      {seed != null && (
-        <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{seed}</span>
-      )}
-      {team ? (
-        <div className="flex flex-col min-w-0 flex-1 leading-tight">
-          <span className={`truncate ${size === 'xl' ? 'text-xs' : 'text-[11px]'} text-text-muted`}>{city}</span>
-          <span className={`truncate font-semibold ${size === 'xl' ? 'text-base' : 'text-sm'}`}>{name}</span>
-        </div>
-      ) : (
-        <span className="truncate flex-1">TBD</span>
-      )}
+
+  const logoEl = <TeamLogo team={team} sportKey={sportKey} size={size} />
+  const seedEl = seed != null && (
+    <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} ${mirrored ? 'text-left' : 'text-right'} shrink-0`}>{seed}</span>
+  )
+  const nameEl = team ? (
+    <div className={`flex flex-col min-w-0 flex-1 leading-tight ${mirrored ? 'items-end' : ''}`}>
+      <span className={`truncate ${size === 'xl' ? 'text-xs' : 'text-[11px]'} text-text-muted`}>{city}</span>
+      <span className={`truncate font-semibold ${size === 'xl' ? 'text-base' : 'text-sm'}`}>{name}</span>
+    </div>
+  ) : (
+    <span className={`truncate flex-1 ${mirrored ? 'text-right' : ''}`}>TBD</span>
+  )
+
+  const rightBadges = (
+    <>
       {seriesPrediction && <span className="text-[9px] text-accent/70 shrink-0">in {seriesPrediction}</span>}
-      {seriesWins != null && <span className="text-[11px] font-bold text-white shrink-0 w-4 text-center">{seriesWins}</span>}
+      {seriesWins != null && <span className="text-[11px] font-bold text-accent shrink-0 w-4 text-center">{seriesWins}</span>}
       {showWin && <span className="text-correct shrink-0">W</span>}
       {seriesRecord && <span className="text-[9px] text-text-muted shrink-0">{seriesRecord}</span>}
+    </>
+  )
+
+  return (
+    <div className={`flex items-center gap-1.5 ${padding} ${className}`}>
+      {mirrored ? (
+        <>
+          {rightBadges}
+          {nameEl}
+          {seedEl}
+          {logoEl}
+        </>
+      ) : (
+        <>
+          {logoEl}
+          {seedEl}
+          {nameEl}
+          {rightBadges}
+        </>
+      )}
     </div>
   )
 }
 
-function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey }) {
+function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey, mirrored = false }) {
   const [showScore, setShowScore] = useState(false)
 
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
@@ -111,6 +133,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         seed={matchup.seed_top}
         sportKey={sportKey}
         size={size}
+        mirrored={mirrored}
         className={`border-b border-text-primary/10 ${teamClass(matchup.team_top, true)}`}
         showWin={showPick ? (topCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'top')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'top' ? `${matchup.series_wins_top}-${matchup.series_wins_bottom}` : null}
@@ -122,6 +145,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         seed={matchup.seed_bottom}
         sportKey={sportKey}
         size={size}
+        mirrored={mirrored}
         className={teamClass(matchup.team_bottom, false)}
         showWin={showPick ? (bottomCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'bottom')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
@@ -441,7 +465,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
 
   // ── Helper: render a matchup card with resolved data ──
 
-  function renderCard(matchup, size) {
+  function renderCard(matchup, size, mirrored = false) {
     const resolved = resolvedMatchups?.[matchup.id]
     const dm = resolved
       ? {
@@ -466,6 +490,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         playInPickResults={playInPickResults}
         isBestOf7={isBestOf7}
         sportKey={sportKey}
+        mirrored={mirrored}
       />
     )
   }
@@ -564,7 +589,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                 className="flex items-center"
                 style={{ gridRow: facingGridRow(idx, span) }}
               >
-                {renderCard(matchup, 'default')}
+                {renderCard(matchup, 'default', mirrored)}
               </div>
             ))}
           </div>
