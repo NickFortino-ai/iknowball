@@ -794,6 +794,7 @@ const submitBracketSchema = z.object({
     z.object({
       template_matchup_id: z.string().uuid(),
       picked_team: z.string().min(1),
+      series_length: z.number().int().min(4).max(7).optional(),
     })
   ).min(1),
   entry_name: z.string().max(50).optional(),
