@@ -34,7 +34,7 @@ function splitTeamName(fullName) {
   return { city: words[0], name: words.slice(1).join(' ') }
 }
 
-function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord, seriesPrediction }) {
+function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord, seriesPrediction, seriesWins }) {
   const { city, name } = splitTeamName(team)
   const padding = size === 'xl' ? 'px-3 py-2.5' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'
   return (
@@ -52,6 +52,7 @@ function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord,
         <span className="truncate flex-1">TBD</span>
       )}
       {seriesPrediction && <span className="text-[9px] text-accent/70 shrink-0">in {seriesPrediction}</span>}
+      {seriesWins != null && <span className="text-[11px] font-bold text-white shrink-0 w-4 text-center">{seriesWins}</span>}
       {showWin && <span className="text-correct shrink-0">W</span>}
       {seriesRecord && <span className="text-[9px] text-text-muted shrink-0">{seriesRecord}</span>}
     </div>
@@ -68,6 +69,8 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
 
   const hasScores = matchup.status === 'completed' && matchup.score_top != null && matchup.score_bottom != null
   const hasSeriesRecord = isBestOf7 && matchup.status === 'completed' && matchup.series_wins_top != null && matchup.series_wins_bottom != null
+  // Live series: series has started (at least 1 win) but not yet completed
+  const hasLiveSeries = isBestOf7 && matchup.status !== 'completed' && (matchup.series_wins_top > 0 || matchup.series_wins_bottom > 0)
   const canExpand = !onTap && (hasScores || hasSeriesRecord)
 
   function handleClick() {
@@ -112,6 +115,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         showWin={showPick ? (topCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'top')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'top' ? `${matchup.series_wins_top}-${matchup.series_wins_bottom}` : null}
         seriesPrediction={isBestOf7 && showPick && pick === matchup.team_top && pickData?.series_length && matchup.status !== 'completed' ? pickData.series_length : null}
+        seriesWins={hasLiveSeries ? (matchup.series_wins_top || 0) : null}
       />
       <TeamRow
         team={matchup.team_bottom}
@@ -122,6 +126,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         showWin={showPick ? (bottomCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'bottom')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
         seriesPrediction={isBestOf7 && showPick && pick === matchup.team_bottom && pickData?.series_length && matchup.status !== 'completed' ? pickData.series_length : null}
+        seriesWins={hasLiveSeries ? (matchup.series_wins_bottom || 0) : null}
       />
       {showScore && (
         <div className="border-t border-text-primary/10 bg-text-primary/5 px-2 py-1 flex items-center justify-center gap-2 text-text-muted">
