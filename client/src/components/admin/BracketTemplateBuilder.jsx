@@ -132,6 +132,20 @@ const NCAA_BRACKET_SEEDS_16 = [
   [6, 11], [3, 14], [7, 10], [2, 15],
 ]
 
+// Standard bracket seed order for 8-team conferences (NHL, NBA):
+// 1v8, 4v5, 3v6, 2v7
+// Top half: 1v8 winner meets 4v5 winner. Bottom half: 3v6 winner meets 2v7 winner.
+// Seeds 1 and 2 are on opposite sides, meeting only in the conference finals.
+const BRACKET_SEEDS_8 = [
+  [1, 8], [4, 5], [3, 6], [2, 7],
+]
+
+// Standard bracket seed order for 4-team brackets:
+// 1v4, 2v3 — seeds 1 and 2 on opposite sides
+const BRACKET_SEEDS_4 = [
+  [1, 4], [2, 3],
+]
+
 function generateMatchups(teamCount, regions, rounds) {
   const effectiveTeamCount = teamCount === 68 ? 64 : teamCount
   const matchups = []
@@ -146,10 +160,14 @@ function generateMatchups(teamCount, regions, rounds) {
   const teamsPerRegion = effectiveTeamCount / regionsToUse.length
   const matchupsPerRegionR1 = teamsPerRegion / 2
 
-  // Generate round 1 matchups per region using NCAA bracket seed order
+  // Generate round 1 matchups per region using correct bracket seed order
   const seedPairs = teamsPerRegion === 16
     ? NCAA_BRACKET_SEEDS_16
-    : Array.from({ length: matchupsPerRegionR1 }, (_, m) => [m + 1, teamsPerRegion - m])
+    : teamsPerRegion === 8
+      ? BRACKET_SEEDS_8
+      : teamsPerRegion === 4
+        ? BRACKET_SEEDS_4
+        : Array.from({ length: matchupsPerRegionR1 }, (_, m) => [m + 1, teamsPerRegion - m])
 
   for (const region of regionsToUse) {
     for (let m = 0; m < matchupsPerRegionR1; m++) {
