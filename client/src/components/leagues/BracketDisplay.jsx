@@ -715,7 +715,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         </div>
       )}
 
-      <div ref={ref} className={`overflow-x-auto ${useFacing ? 'bg-black rounded-xl' : ''}`}>
+      <div ref={ref} className="overflow-x-auto">
         {useFacing ? (
           /* ── Facing bracket layout ── */
           <div className="relative flex min-w-max py-2">
