@@ -5,8 +5,56 @@ function TeamLogo({ team, sportKey, size }) {
   const [err, setErr] = useState(false)
   const url = getTeamLogoUrl(team, sportKey)
   if (!url || err) return null
-  const px = size === 'xl' ? 'w-5 h-5' : size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'
+  const px = size === 'xl' ? 'w-7 h-7' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'
   return <img src={url} alt="" className={`${px} object-contain shrink-0`} onError={() => setErr(true)} />
+}
+
+// Split "Colorado Avalanche" → { city: "Colorado", name: "Avalanche" }
+// Handles multi-word cities like "Los Angeles", "New York", "San Jose", etc.
+const MULTI_WORD_CITIES = new Set([
+  'Los Angeles', 'New York', 'New Jersey', 'San Jose', 'San Antonio', 'San Francisco',
+  'San Diego', 'St. Louis', 'St Louis', 'Las Vegas', 'New Orleans', 'Oklahoma City',
+  'Kansas City', 'Salt Lake', 'Green Bay', 'Tampa Bay', 'Golden State',
+])
+
+function splitTeamName(fullName) {
+  if (!fullName) return { city: '', name: fullName || 'TBD' }
+  const words = fullName.split(' ')
+  if (words.length <= 1) return { city: '', name: fullName }
+  // Try 3-word city, then 2-word city
+  for (const len of [3, 2]) {
+    if (words.length > len) {
+      const candidate = words.slice(0, len).join(' ')
+      if (MULTI_WORD_CITIES.has(candidate)) {
+        return { city: candidate, name: words.slice(len).join(' ') }
+      }
+    }
+  }
+  // Default: first word is city, rest is team name
+  return { city: words[0], name: words.slice(1).join(' ') }
+}
+
+function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord }) {
+  const { city, name } = splitTeamName(team)
+  const padding = size === 'xl' ? 'px-3 py-2.5' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'
+  return (
+    <div className={`flex items-center gap-1.5 ${padding} ${className}`}>
+      <TeamLogo team={team} sportKey={sportKey} size={size} />
+      {seed != null && (
+        <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{seed}</span>
+      )}
+      {team ? (
+        <div className="flex flex-col min-w-0 flex-1 leading-tight">
+          <span className={`truncate ${size === 'xl' ? 'text-[10px]' : 'text-[9px]'} text-text-muted`}>{city}</span>
+          <span className="truncate font-semibold">{name}</span>
+        </div>
+      ) : (
+        <span className="truncate flex-1">TBD</span>
+      )}
+      {showWin && <span className="text-correct shrink-0">W</span>}
+      {seriesRecord && <span className="text-[9px] text-text-muted shrink-0">{seriesRecord}</span>}
+    </div>
+  )
 }
 
 function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey }) {
@@ -54,36 +102,24 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
       className={`bg-bg-card border border-border rounded-lg ${size === 'xl' ? 'w-56 text-base' : size === 'lg' ? 'w-48 text-sm' : 'w-44 text-xs'} overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
       onClick={isClickable ? handleClick : undefined}
     >
-      <div className={`flex items-center gap-1 ${size === 'xl' ? 'px-3 py-3' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'} border-b border-border ${teamClass(matchup.team_top, true)}`}>
-        <TeamLogo team={matchup.team_top} sportKey={sportKey} size={size} />
-        {matchup.seed_top != null && (
-          <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{matchup.seed_top}</span>
-        )}
-        <span className="truncate flex-1">{matchup.team_top || 'TBD'}</span>
-        {showPick ? (
-          topCorrect && !eliminated && <span className="text-correct shrink-0">W</span>
-        ) : (
-          matchup.status === 'completed' && matchup.winner === 'top' && <span className="text-correct shrink-0">W</span>
-        )}
-        {hasSeriesRecord && matchup.winner === 'top' && (
-          <span className="text-[9px] text-text-muted shrink-0">{matchup.series_wins_top}-{matchup.series_wins_bottom}</span>
-        )}
-      </div>
-      <div className={`flex items-center gap-1 ${size === 'xl' ? 'px-3 py-3' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'} ${teamClass(matchup.team_bottom, false)}`}>
-        <TeamLogo team={matchup.team_bottom} sportKey={sportKey} size={size} />
-        {matchup.seed_bottom != null && (
-          <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} text-right shrink-0`}>{matchup.seed_bottom}</span>
-        )}
-        <span className="truncate flex-1">{matchup.team_bottom || 'TBD'}</span>
-        {showPick ? (
-          bottomCorrect && !eliminated && <span className="text-correct shrink-0">W</span>
-        ) : (
-          matchup.status === 'completed' && matchup.winner === 'bottom' && <span className="text-correct shrink-0">W</span>
-        )}
-        {hasSeriesRecord && matchup.winner === 'bottom' && (
-          <span className="text-[9px] text-text-muted shrink-0">{matchup.series_wins_bottom}-{matchup.series_wins_top}</span>
-        )}
-      </div>
+      <TeamRow
+        team={matchup.team_top}
+        seed={matchup.seed_top}
+        sportKey={sportKey}
+        size={size}
+        className={`border-b border-border ${teamClass(matchup.team_top, true)}`}
+        showWin={showPick ? (topCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'top')}
+        seriesRecord={hasSeriesRecord && matchup.winner === 'top' ? `${matchup.series_wins_top}-${matchup.series_wins_bottom}` : null}
+      />
+      <TeamRow
+        team={matchup.team_bottom}
+        seed={matchup.seed_bottom}
+        sportKey={sportKey}
+        size={size}
+        className={teamClass(matchup.team_bottom, false)}
+        showWin={showPick ? (bottomCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'bottom')}
+        seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
+      />
       {showScore && (
         <div className="border-t border-border bg-bg-card-hover px-2 py-1 flex items-center justify-center gap-2 text-text-muted">
           {hasSeriesRecord && <span className="font-semibold">{matchup.series_wins_top}-{matchup.series_wins_bottom}</span>}
