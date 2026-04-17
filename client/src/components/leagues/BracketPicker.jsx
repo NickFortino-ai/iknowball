@@ -743,7 +743,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
         {/* Tiebreaker score prediction — shown on championship step */}
         {currentStep && championshipMatchup && currentStep.matchups.some((m) => m.id === championshipMatchup.id) && (
-          <div className="bg-bg-card rounded-xl border border-accent/30 p-4 mt-1">
+          <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mt-1">
             <label className="block text-xs text-text-muted mb-2">
               Predict the Final Score <span className="text-incorrect">*</span>
             </label>
@@ -756,7 +756,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                   placeholder="Score"
                   min={0}
                   max={250}
-                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                  className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
                 />
                 <p className="text-[10px] text-text-muted mt-1 truncate text-center">
                   {championshipTeams.top || 'Team 1'}
@@ -771,7 +771,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                   placeholder="Score"
                   min={0}
                   max={250}
-                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                  className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
                 />
                 <p className="text-[10px] text-text-muted mt-1 truncate text-center">
                   {championshipTeams.bottom || 'Team 2'}
