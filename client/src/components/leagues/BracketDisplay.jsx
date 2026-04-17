@@ -589,20 +589,45 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
       }
     })
 
-    // Merge-to-center connector (last regional round → FF)
+    // Merge-to-center connector (last regional round → center)
+    // If the last regional round has only 1 matchup per side (e.g. semifinals
+    // in a 2-conference bracket), draw a straight line instead of a fork.
+    const lastRegRound = regionalRounds[regionalRounds.length - 1]
+    const lastRoundCount = (halfByRound[lastRegRound] || []).length
     const fullSpanRow = (_, __) => '1 / -1'
-    const mergeConn = renderConnectorColumn(
-      1,
-      0,
-      facingGridTemplate,
-      fullSpanRow,
-      mirrored,
-      `${side}-merge`
-    )
-    if (mirrored) {
-      elements.unshift(mergeConn)
+
+    if (lastRoundCount <= 1) {
+      // Straight horizontal line
+      const lineConn = (
+        <div key={`${side}-merge`} className="flex flex-col">
+          <div className="text-xs font-semibold mb-1 invisible">&nbsp;</div>
+          <div className="text-[10px] mb-3 invisible">&nbsp;</div>
+          <div className="grid gap-y-2" style={{ gridTemplateRows: facingGridTemplate }}>
+            <div style={{ gridRow: '1 / -1' }} className="flex items-center">
+              <div className="w-6 h-px bg-border/70" />
+            </div>
+          </div>
+        </div>
+      )
+      if (mirrored) {
+        elements.unshift(lineConn)
+      } else {
+        elements.push(lineConn)
+      }
     } else {
-      elements.push(mergeConn)
+      const mergeConn = renderConnectorColumn(
+        1,
+        0,
+        facingGridTemplate,
+        fullSpanRow,
+        mirrored,
+        `${side}-merge`
+      )
+      if (mirrored) {
+        elements.unshift(mergeConn)
+      } else {
+        elements.push(mergeConn)
+      }
     }
 
     return elements
