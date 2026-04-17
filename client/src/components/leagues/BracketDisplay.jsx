@@ -45,8 +45,8 @@ function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord 
       )}
       {team ? (
         <div className="flex flex-col min-w-0 flex-1 leading-tight">
-          <span className={`truncate ${size === 'xl' ? 'text-[10px]' : 'text-[9px]'} text-text-muted`}>{city}</span>
-          <span className="truncate font-semibold">{name}</span>
+          <span className={`truncate ${size === 'xl' ? 'text-xs' : 'text-[11px]'} text-text-muted`}>{city}</span>
+          <span className={`truncate font-semibold ${size === 'xl' ? 'text-base' : 'text-sm'}`}>{name}</span>
         </div>
       ) : (
         <span className="truncate flex-1">TBD</span>
@@ -99,7 +99,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
 
   return (
     <div
-      className={`bg-bg-card border border-border rounded-lg ${size === 'xl' ? 'w-56 text-base' : size === 'lg' ? 'w-48 text-sm' : 'w-44 text-xs'} overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
+      className={`bg-bg-primary border border-text-primary/20 rounded-lg ${size === 'xl' ? 'w-52 text-sm' : size === 'lg' ? 'w-44 text-xs' : 'w-40 text-xs'} overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
       onClick={isClickable ? handleClick : undefined}
     >
       <TeamRow
@@ -107,7 +107,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         seed={matchup.seed_top}
         sportKey={sportKey}
         size={size}
-        className={`border-b border-border ${teamClass(matchup.team_top, true)}`}
+        className={`border-b border-text-primary/10 ${teamClass(matchup.team_top, true)}`}
         showWin={showPick ? (topCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'top')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'top' ? `${matchup.series_wins_top}-${matchup.series_wins_bottom}` : null}
       />
@@ -121,7 +121,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
       />
       {showScore && (
-        <div className="border-t border-border bg-bg-card-hover px-2 py-1 flex items-center justify-center gap-2 text-text-muted">
+        <div className="border-t border-text-primary/10 bg-text-primary/5 px-2 py-1 flex items-center justify-center gap-2 text-text-muted">
           {hasSeriesRecord && <span className="font-semibold">{matchup.series_wins_top}-{matchup.series_wins_bottom}</span>}
           {hasScores && <span>{matchup.score_top} - {matchup.score_bottom}</span>}
           {pickData?.is_correct && pickData.points_earned > 0 && (
