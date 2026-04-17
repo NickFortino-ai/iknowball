@@ -725,10 +725,10 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                       <button
                         key={n}
                         onClick={() => setSeriesLengths((prev) => ({ ...prev, [matchup.template_matchup_id]: n }))}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
                           seriesLengths[matchup.template_matchup_id] === n
                             ? 'bg-accent/20 border border-accent text-accent'
-                            : 'bg-bg-card-hover text-text-secondary hover:bg-bg-card-hover/80'
+                            : 'bg-bg-primary border border-text-primary/20 text-white hover:border-text-primary/40'
                         }`}
                       >
                         {n}
