@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useMyRankings, useSetMyRankings, useResetMyRankings, useDraftBoard } from '../../hooks/useLeagues'
-import { useDraftPrepRankings, useSetDraftPrepRankings, useResetDraftPrepRankings } from '../../hooks/useDraftPrep'
+import { useDraftPrepRankings, useSetDraftPrepRankings, useResetDraftPrepRankings, useDraftPrepSync } from '../../hooks/useDraftPrep'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 
@@ -19,8 +19,12 @@ const POS_COLORS = {
  * - League mode: pass { league } — reads/writes fantasy_user_rankings (or draft_prep if synced)
  * - Draft Prep mode: pass { draftPrepConfig: { scoringFormat, configHash } }
  */
-export default function FantasyMyRankings({ league, draftPrepConfig, syncBadge }) {
+export default function FantasyMyRankings({ league, draftPrepConfig }) {
   const isDraftPrep = !!draftPrepConfig
+
+  // Check if this league is synced with Draft Prep
+  const { data: syncList } = useDraftPrepSync()
+  const isSynced = !isDraftPrep && league && syncList?.some(s => s.league_id === league.id)
 
   // League-mode hooks (only called when league is provided)
   const leagueRankings = useMyRankings(isDraftPrep ? null : league?.id)
@@ -138,7 +142,7 @@ export default function FantasyMyRankings({ league, draftPrepConfig, syncBadge }
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-display text-base text-text-primary">My Rankings</h3>
-              {syncBadge && (
+              {isSynced && (
                 <span className="text-[10px] font-semibold text-accent bg-accent/10 border border-accent/30 rounded-full px-2 py-0.5">
                   Synced with Draft Prep
                 </span>
