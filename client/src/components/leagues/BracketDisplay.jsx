@@ -370,8 +370,8 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
   const regionsPerSide = facingLayout ? facingLayout.left.length : 1
   const perRegionCount = regionsPerSide > 1 ? halfR1Count / regionsPerSide : halfR1Count
   const facingGridTemplate = regionsPerSide > 1
-    ? `repeat(${perRegionCount}, minmax(60px, 1fr)) 20px repeat(${perRegionCount}, minmax(60px, 1fr))`
-    : `repeat(${halfR1Count}, minmax(60px, 1fr))`
+    ? `repeat(${perRegionCount}, minmax(80px, 1fr)) 20px repeat(${perRegionCount}, minmax(80px, 1fr))`
+    : `repeat(${halfR1Count}, minmax(80px, 1fr))`
 
   function facingGridRow(idx, span) {
     if (regionsPerSide <= 1) {
@@ -734,7 +734,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                     <div
                       className="grid gap-y-1"
                       style={{
-                        gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
+                        gridTemplateRows: `repeat(${firstRoundCount}, minmax(80px, 1fr))`,
                       }}
                     >
                       {matchupsList.map((matchup, idx) => {
@@ -779,7 +779,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
                       <div
                         className="grid gap-y-1"
                         style={{
-                          gridTemplateRows: `repeat(${firstRoundCount}, minmax(60px, 1fr))`,
+                          gridTemplateRows: `repeat(${firstRoundCount}, minmax(80px, 1fr))`,
                         }}
                       >
                         {Array.from({ length: nextMatchupCount }, (_, idx) => (
