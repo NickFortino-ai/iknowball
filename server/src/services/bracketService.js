@@ -1321,7 +1321,7 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore
   // Find unsettled template matchups where both teams match this game
   let query = supabase
     .from('bracket_template_matchups')
-    .select('*, bracket_templates!inner(id, is_active, sport)')
+    .select('*, bracket_templates!inner(id, is_active, sport, series_format)')
     .is('winner', null)
     .not('team_top', 'is', null)
     .not('team_bottom', 'is', null)
@@ -1343,6 +1343,7 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore
     if (!teams.includes(homeTeam) || !teams.includes(awayTeam)) continue
 
     const winnerSlot = matchup.team_top === winningTeam ? 'top' : 'bottom'
+    const isBestOf7 = matchup.bracket_templates.series_format === 'best_of_7'
 
     // Map home/away scores to top/bottom based on team positions
     let scoreTop, scoreBottom
@@ -1352,8 +1353,33 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore
     }
 
     try {
-      await enterTemplateResult(matchup.bracket_templates.id, matchup.id, winnerSlot, scoreTop, scoreBottom)
-      logger.info({ matchupId: matchup.id, winningTeam, winnerSlot }, 'Auto-settled bracket matchup')
+      if (isBestOf7) {
+        // Increment series wins — only settle when a team reaches 4
+        const currentWinsTop = matchup.series_wins_top || 0
+        const currentWinsBottom = matchup.series_wins_bottom || 0
+        const newWinsTop = winnerSlot === 'top' ? currentWinsTop + 1 : currentWinsTop
+        const newWinsBottom = winnerSlot === 'bottom' ? currentWinsBottom + 1 : currentWinsBottom
+
+        if (newWinsTop >= 4 || newWinsBottom >= 4) {
+          // Series is over — settle the matchup with final series record
+          await enterTemplateResult(
+            matchup.bracket_templates.id, matchup.id, winnerSlot,
+            scoreTop, scoreBottom, newWinsTop, newWinsBottom
+          )
+          logger.info({ matchupId: matchup.id, winningTeam, series: `${newWinsTop}-${newWinsBottom}` }, 'Auto-settled bracket series')
+        } else {
+          // Series still in progress — just update the series wins on the template matchup
+          await supabase
+            .from('bracket_template_matchups')
+            .update({ series_wins_top: newWinsTop, series_wins_bottom: newWinsBottom })
+            .eq('id', matchup.id)
+          logger.info({ matchupId: matchup.id, winningTeam, series: `${newWinsTop}-${newWinsBottom}` }, 'Updated bracket series score')
+        }
+      } else {
+        // Single-game matchup — settle immediately
+        await enterTemplateResult(matchup.bracket_templates.id, matchup.id, winnerSlot, scoreTop, scoreBottom)
+        logger.info({ matchupId: matchup.id, winningTeam, winnerSlot }, 'Auto-settled bracket matchup')
+      }
     } catch (err) {
       logger.error({ err, matchupId: matchup.id }, 'Failed to auto-settle bracket matchup')
     }
