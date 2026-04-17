@@ -2,6 +2,14 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import BracketDisplay from './BracketDisplay'
+import { getTeamLogoUrl } from '../../lib/teamLogos'
+
+function PickerTeamLogo({ team, sportKey }) {
+  const [err, setErr] = useState(false)
+  const url = getTeamLogoUrl(team, sportKey)
+  if (!url || err) return null
+  return <img src={url} alt="" className="w-5 h-5 object-contain shrink-0" onError={() => setErr(true)} />
+}
 
 export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose, ffOnlyMode = false }) {
   const submitBracket = useSubmitBracket()
@@ -627,13 +635,14 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
           // Settled Round 0 matchups: show result as locked, not pickable
           if (matchup.round_number === 0 && matchup.winner) {
             return (
-              <div key={matchup.id} className="bg-bg-card rounded-xl border border-border overflow-hidden opacity-70">
+              <div key={matchup.id} className="bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden opacity-70">
                 {matchup.region && !currentStep.region && (
                   <div className="text-[10px] text-text-muted text-center pt-2">{matchup.region}</div>
                 )}
                 <div className="px-3 py-1 text-[10px] text-text-muted text-center">Result</div>
                 <div className="p-1">
                   <div className="flex items-center gap-2 px-3 py-2.5 text-sm">
+                    <PickerTeamLogo team={matchup.team_top} sportKey={league.sport} />
                     {matchup.seed_top != null && (
                       <span className="text-xs text-text-muted w-5 text-right">{matchup.seed_top}</span>
                     )}
@@ -641,8 +650,9 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                       {matchup.team_top}
                     </span>
                   </div>
-                  <div className="border-t border-border mx-3" />
+                  <div className="border-t border-text-primary/10 mx-3" />
                   <div className="flex items-center gap-2 px-3 py-2.5 text-sm">
+                    <PickerTeamLogo team={matchup.team_bottom} sportKey={league.sport} />
                     {matchup.seed_bottom != null && (
                       <span className="text-xs text-text-muted w-5 text-right">{matchup.seed_bottom}</span>
                     )}
@@ -659,7 +669,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
           const currentPick = picks[matchup.template_matchup_id]
 
           return (
-            <div key={matchup.id} className="bg-bg-card rounded-xl border border-border overflow-hidden">
+            <div key={matchup.id} className="bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden">
               {matchup.region && !currentStep.region && (
                 <div className="text-[10px] text-text-muted text-center pt-2">{matchup.region}</div>
               )}
@@ -671,10 +681,11 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                     currentPick === top && top
                       ? 'bg-accent/20 border border-accent text-accent font-semibold'
                       : top
-                        ? 'hover:bg-bg-card-hover text-text-primary'
+                        ? 'hover:bg-text-primary/5 text-text-primary'
                         : 'text-text-muted cursor-not-allowed'
                   }`}
                 >
+                  <PickerTeamLogo team={top} sportKey={league.sport} />
                   {seedTop != null && (
                     <span className="text-xs text-text-muted w-5 text-right">{seedTop}</span>
                   )}
@@ -683,7 +694,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                     <span className="text-accent text-xs">Selected</span>
                   )}
                 </button>
-                <div className="border-t border-border mx-3" />
+                <div className="border-t border-text-primary/10 mx-3" />
                 <button
                   onClick={() => bottom && handlePick(matchup, bottom)}
                   disabled={!bottom}
@@ -691,10 +702,11 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                     currentPick === bottom && bottom
                       ? 'bg-accent/20 border border-accent text-accent font-semibold'
                       : bottom
-                        ? 'hover:bg-bg-card-hover text-text-primary'
+                        ? 'hover:bg-text-primary/5 text-text-primary'
                         : 'text-text-muted cursor-not-allowed'
                   }`}
                 >
+                  <PickerTeamLogo team={bottom} sportKey={league.sport} />
                   {seedBottom != null && (
                     <span className="text-xs text-text-muted w-5 text-right">{seedBottom}</span>
                   )}
