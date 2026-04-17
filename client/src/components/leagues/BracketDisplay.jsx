@@ -34,7 +34,7 @@ function splitTeamName(fullName) {
   return { city: words[0], name: words.slice(1).join(' ') }
 }
 
-function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord }) {
+function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord, seriesPrediction }) {
   const { city, name } = splitTeamName(team)
   const padding = size === 'xl' ? 'px-3 py-2.5' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'
   return (
@@ -51,6 +51,7 @@ function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord 
       ) : (
         <span className="truncate flex-1">TBD</span>
       )}
+      {seriesPrediction && <span className="text-[9px] text-accent/70 shrink-0">in {seriesPrediction}</span>}
       {showWin && <span className="text-correct shrink-0">W</span>}
       {seriesRecord && <span className="text-[9px] text-text-muted shrink-0">{seriesRecord}</span>}
     </div>
@@ -110,6 +111,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         className={`border-b border-text-primary/10 ${teamClass(matchup.team_top, true)}`}
         showWin={showPick ? (topCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'top')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'top' ? `${matchup.series_wins_top}-${matchup.series_wins_bottom}` : null}
+        seriesPrediction={isBestOf7 && showPick && pick === matchup.team_top && pickData?.series_length && matchup.status !== 'completed' ? pickData.series_length : null}
       />
       <TeamRow
         team={matchup.team_bottom}
@@ -119,6 +121,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         className={teamClass(matchup.team_bottom, false)}
         showWin={showPick ? (bottomCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'bottom')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
+        seriesPrediction={isBestOf7 && showPick && pick === matchup.team_bottom && pickData?.series_length && matchup.status !== 'completed' ? pickData.series_length : null}
       />
       {showScore && (
         <div className="border-t border-text-primary/10 bg-text-primary/5 px-2 py-1 flex items-center justify-center gap-2 text-text-muted">
