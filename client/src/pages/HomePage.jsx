@@ -416,7 +416,7 @@ export default function HomePage() {
           {/* Row 2: Pick'em + Survivor + Brackets */}
           <div className="grid sm:grid-cols-3 gap-4 mb-4">
             {[
-              { title: "Pick'em", desc: 'Pick the winner of every game using real Vegas odds. Underdogs pay more, favorites pay less. Compete for the best record all season.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA' },
+              { title: "Pick'em", desc: 'Pick the winner of every game using real Vegas odds. Underdogs earn more points, favorites earn fewer. Compete for the best record all season.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA' },
               { title: 'Survivor', desc: "Pick one team to win each day (or week). If they lose, you lose a life. Can't reuse a team. Last one standing wins.", gradient: 'from-red-800/25 via-red-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA' },
               { title: 'Brackets', desc: 'Fill out a bracket and compete with your league. March Madness, NFL playoffs, NBA playoffs — every major tournament covered.', gradient: 'from-violet-800/25 via-violet-900/15 to-transparent', sports: 'NCAAB · NFL · NBA · All Playoffs' },
             ].map((mode) => (
@@ -502,10 +502,10 @@ export default function HomePage() {
                   <span className="text-xs text-accent font-semibold">Risk 10 → Win 6</span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-text-primary/10 text-center">
-                  <span className="text-xs text-text-muted">Underdogs pay more · Favorites pay less</span>
+                  <span className="text-xs text-text-muted">Underdogs earn more points · Favorites pay less</span>
                 </div>
               </div>
-              <p className="text-sm text-text-secondary mt-4 leading-relaxed">Pick the winner of any game, any sport. Underdogs pay more. Every correct pick earns points — every miss costs 10.</p>
+              <p className="text-sm text-text-secondary mt-4 leading-relaxed">Pick the winner of any game, any sport. Underdogs earn more points. Every correct pick earns points — every miss costs 10.</p>
             </div>
 
             {/* Prop Pick Preview */}
