@@ -334,7 +334,7 @@ export default function FantasyDraftRoom({ league }) {
               <button
                 onClick={handleInitDraft}
                 disabled={initDraft.isPending || !isFull}
-                className="px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 mb-3"
+                className="mt-4 px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 mb-3"
               >
                 {initDraft.isPending ? 'Randomizing...' : 'Randomize Draft Order'}
               </button>
