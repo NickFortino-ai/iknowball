@@ -84,6 +84,14 @@ export default async function handler(req) {
   const code = url.pathname.split('/').pop()
   const host = req.headers.get('host') || 'iknowball.club'
 
+  // Load Oswald font from our own static assets — same-origin fetch
+  // is reliable in Vercel Edge, unlike cross-origin Google Fonts.
+  let fontData: ArrayBuffer | null = null
+  try {
+    const fontRes = await fetch(`https://${host}/fonts/Oswald-500.ttf`)
+    if (fontRes.ok) fontData = await fontRes.arrayBuffer()
+  } catch (_) { /* proceed without custom font */ }
+
   try {
     // Fetch league preview
     let league = null
@@ -172,6 +180,7 @@ export default async function handler(req) {
                 border: '2px solid #FF4D00',
                 borderRadius: '10px',
                 fontSize: '28px',
+                fontFamily: 'Oswald',
                 color: '#FF4D00',
                 letterSpacing: '4px',
               }}
@@ -206,6 +215,7 @@ export default async function handler(req) {
               style={{
                 display: 'flex',
                 fontSize: leagueName.length > 28 ? '78px' : '108px',
+                fontFamily: 'Oswald',
                 color: '#ffffff',
                 lineHeight: '1',
                 maxWidth: '1080px',
@@ -253,6 +263,9 @@ export default async function handler(req) {
       {
         width: 1200,
         height: 630,
+        fonts: fontData
+          ? [{ name: 'Oswald', data: fontData, weight: 500 as const, style: 'normal' as const }]
+          : undefined,
         headers: {
           'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
           // Friendly inline filename — iMessage surfaces this as the
