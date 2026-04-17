@@ -58,14 +58,6 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     return cleaned
   })
 
-  // Auto-save draft to localStorage
-  useEffect(() => {
-    if (Object.keys(picks).length === 0 && !entryName && !tiebreakerTop && !tiebreakerBottom) return
-    try {
-      localStorage.setItem(draftKey, JSON.stringify({ picks, entryName, tiebreakerTop, tiebreakerBottom, seriesLengths }))
-    } catch {}
-  }, [picks, entryName, tiebreakerTop, tiebreakerBottom, seriesLengths, draftKey])
-
   const rounds = tournament?.bracket_templates?.rounds || []
   const regions = tournament?.bracket_templates?.regions || []
   const isBestOf7 = tournament?.bracket_templates?.series_format === 'best_of_7'
@@ -83,6 +75,14 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     }
     return map
   })
+
+  // Auto-save draft to localStorage
+  useEffect(() => {
+    if (Object.keys(picks).length === 0 && !entryName && !tiebreakerTop && !tiebreakerBottom) return
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ picks, entryName, tiebreakerTop, tiebreakerBottom, seriesLengths }))
+    } catch {}
+  }, [picks, entryName, tiebreakerTop, tiebreakerBottom, seriesLengths, draftKey])
 
   function getRoundName(roundNum) {
     const r = rounds.find((r) => r.round_number === roundNum)
