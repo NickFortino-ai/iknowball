@@ -5,6 +5,16 @@ import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import DraftPlayerPreview from './DraftPlayerPreview'
 
+// ── Position colors ──────────────────────────────────────────────────
+const POS_BG = {
+  QB: 'bg-red-500/25 text-red-200 border-red-500/40',
+  RB: 'bg-green-500/25 text-green-200 border-green-500/40',
+  WR: 'bg-yellow-500/25 text-yellow-200 border-yellow-500/40',
+  TE: 'bg-blue-500/25 text-blue-200 border-blue-500/40',
+  K: 'bg-gray-500/25 text-gray-200 border-gray-500/40',
+  DEF: 'bg-purple-500/25 text-purple-200 border-purple-500/40',
+}
+
 // ── Bot logic (mirrored from MockDraftPage) ──────────────────────────
 
 const PERSONALITIES = ['Best Available', 'Zero RB', 'RB Heavy', 'Early QB', 'Reacher']
@@ -632,8 +642,10 @@ function MockBoard({ picks, numTeams, userSlot, teamNames, rounds }) {
               <td className="px-1 py-1 text-center text-text-muted font-semibold border border-border bg-bg-secondary sticky left-0 z-10">
                 {roundIdx + 1}
               </td>
-              {row.map((pick, colIdx) => (
-                <td key={colIdx} className="px-2 py-2 border border-border min-w-[120px]">
+              {row.map((pick, colIdx) => {
+                const posCls = pick?.player?.position ? POS_BG[pick.player.position] || '' : ''
+                return (
+                <td key={colIdx} className={`px-2 py-2 border border-text-primary/15 min-w-[120px] ${posCls}`}>
                   {pick?.player ? (
                     <div className="min-w-0">
                       <div className="font-semibold truncate text-[11px]">{pick.player.full_name}</div>
@@ -643,7 +655,8 @@ function MockBoard({ picks, numTeams, userSlot, teamNames, rounds }) {
                     <div className="text-text-muted text-center">{'\u2014'}</div>
                   )}
                 </td>
-              ))}
+                )
+              })}
             </tr>
           ))}
         </tbody>
