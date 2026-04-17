@@ -487,7 +487,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
     try {
       await updateLeague.mutateAsync({
         leagueId: league.id,
-        [field]: new Date(value + 'T12:00:00Z').toISOString(),
+        [field]: value,
       })
       toast('Date saved', 'success')
     } catch (err) {
