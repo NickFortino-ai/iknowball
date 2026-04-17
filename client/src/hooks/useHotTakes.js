@@ -300,8 +300,8 @@ export function useHotTakeVideoUpload() {
       toast('Please convert your video to MP4 before uploading. Most video converter apps on iPhone can do this in seconds.', 'error')
       return
     }
-    if (file.size > 100 * 1024 * 1024) {
-      toast('Video must be under 100MB', 'error')
+    if (file.size > 200 * 1024 * 1024) {
+      toast('Video must be under 200MB', 'error')
       return
     }
 

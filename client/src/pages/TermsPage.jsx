@@ -36,7 +36,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-display text-lg text-accent mb-2">5. Video Content Guidelines</h2>
-          <p>Video uploads are limited to 100MB. Short highlight clips shared for commentary, criticism, or discussion purposes are permitted. Full-length game recordings, broadcasts, or extended copyrighted content are prohibited and will be removed.</p>
+          <p>Video uploads are limited to 200MB. Short highlight clips shared for commentary, criticism, or discussion purposes are permitted. Full-length game recordings, broadcasts, or extended copyrighted content are prohibited and will be removed.</p>
         </section>
 
         <section>
