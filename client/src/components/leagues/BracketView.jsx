@@ -245,29 +245,8 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
   return (
     <div className="relative z-10">
-      {/* Hero area with optional centerpiece image */}
+      {/* Hero area */}
       <div className="relative rounded-xl mb-4 overflow-hidden">
-        {hasTemplateImage && (
-          <>
-            <img
-              src={templateImage}
-              alt=""
-              draggable={false}
-              style={{
-                position: 'absolute',
-                left: `${template.bracket_image_x ?? 50}%`,
-                top: `${template.bracket_image_y ?? 50}%`,
-                transform: `translate(-50%, -50%) scale(${template.bracket_image_scale ?? 1})`,
-                opacity: template.bracket_image_opacity ?? 0.4,
-                maxWidth: '80%',
-                maxHeight: '100%',
-                zIndex: template.bracket_image_position === 'above_finals' ? 20 : 1,
-                pointerEvents: 'none',
-                userSelect: 'none',
-              }}
-            />
-          </>
-        )}
         {showCourtBg && (
           <>
             <img
@@ -413,15 +392,36 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             </button>
           </div>
 
-          <BracketDisplay
-            ref={bracketRef}
-            matchups={tournament.matchups}
-            picks={viewingUserId ? displayPicks : null}
-            rounds={rounds}
-            regions={tournament.bracket_templates?.regions}
-            seriesFormat={tournament.bracket_templates?.series_format}
-            sportKey={league.sport}
-          />
+          <div className="relative">
+            {hasTemplateImage && (
+              <img
+                src={templateImage}
+                alt=""
+                draggable={false}
+                style={{
+                  position: 'absolute',
+                  left: `${template.bracket_image_x ?? 50}%`,
+                  top: `${template.bracket_image_y ?? 50}%`,
+                  transform: `translate(-50%, -50%) scale(${template.bracket_image_scale ?? 1})`,
+                  opacity: template.bracket_image_opacity ?? 0.4,
+                  maxWidth: '80%',
+                  maxHeight: '100%',
+                  zIndex: template.bracket_image_position === 'above_finals' ? 20 : 1,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              />
+            )}
+            <BracketDisplay
+              ref={bracketRef}
+              matchups={tournament.matchups}
+              picks={viewingUserId ? displayPicks : null}
+              rounds={rounds}
+              regions={tournament.bracket_templates?.regions}
+              seriesFormat={tournament.bracket_templates?.series_format}
+              sportKey={league.sport}
+            />
+          </div>
         </div>
       )}
 

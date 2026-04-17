@@ -257,10 +257,10 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
   const facingLayout = useMemo(() => {
     if (selectedRegion || !regions || regions.length < 2) return null
 
-    // 2 regions: second region left, first region right (West left, East right for NBA)
+    // 2 regions: first region left, second region right (matches admin ordering)
     // 4 regions: first 2 left, last 2 right (NCAA-style)
-    const left = regions.length === 2 ? [regions[1]] : [regions[0], regions[1]]
-    const right = regions.length === 2 ? [regions[0]] : [regions[2], regions[3]]
+    const left = regions.length === 2 ? [regions[0]] : [regions[0], regions[1]]
+    const right = regions.length === 2 ? [regions[1]] : [regions[2], regions[3]]
 
     // Determine which rounds have regional matchups vs cross-region
     const regionalRoundSet = new Set()
