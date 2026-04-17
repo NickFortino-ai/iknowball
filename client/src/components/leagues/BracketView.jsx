@@ -244,7 +244,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
   const isBestOf7 = template.series_format === 'best_of_7'
 
   return (
-    <div className="relative z-10">
+    <div className="relative z-10" style={{ overflowX: 'clip' }}>
       {/* Hero area */}
       <div className="relative rounded-xl mb-4 overflow-hidden">
         {showCourtBg && (

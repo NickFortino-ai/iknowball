@@ -1146,7 +1146,7 @@ export default function LeagueDetailPage() {
         </div>
       )}
 
-      <div className="mx-auto px-4 py-6 relative max-w-2xl lg:max-w-6xl">
+      <div className="mx-auto px-4 py-6 relative max-w-2xl lg:max-w-6xl overflow-x-hidden">
 
       {/* Header */}
       <div className="mb-6 relative z-10">
