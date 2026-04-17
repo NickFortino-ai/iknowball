@@ -99,7 +99,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
 
   return (
     <div
-      className={`bg-bg-primary border border-text-primary/20 rounded-lg ${size === 'xl' ? 'w-52 text-sm' : size === 'lg' ? 'w-44 text-xs' : 'w-40 text-xs'} overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
+      className={`bg-bg-primary/80 backdrop-blur-sm border border-text-primary/20 rounded-lg ${size === 'xl' ? 'w-52 text-sm' : size === 'lg' ? 'w-44 text-xs' : 'w-40 text-xs'} overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
       onClick={isClickable ? handleClick : undefined}
     >
       <TeamRow
