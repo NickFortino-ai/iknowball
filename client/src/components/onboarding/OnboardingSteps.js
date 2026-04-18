@@ -8,6 +8,13 @@ const ONBOARDING_STEPS = [
     buttonText: "Let's Go",
   },
   {
+    page: null,
+    targetSelector: '[data-onboarding="home-logo"]',
+    title: 'Home Button',
+    body: "Tap \"I KNOW BALL\" in the top left to return to your home page from anywhere in the app.",
+    position: 'bottom',
+  },
+  {
     page: '/picks',
     targetSelector: '[data-onboarding="game-card"]',
     title: 'Make Your Picks',

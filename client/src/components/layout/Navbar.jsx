@@ -379,7 +379,7 @@ export default function Navbar() {
     <>
     <nav className="bg-bg-secondary border-b border-border sticky top-0 z-50 touch-manipulation" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="px-4 h-14 flex items-center justify-between">
-        <Link to="/" className="font-display text-xl text-accent tracking-tight">
+        <Link to="/" data-onboarding="home-logo" className="font-display text-xl text-accent tracking-tight">
           I KNOW BALL
         </Link>
 
