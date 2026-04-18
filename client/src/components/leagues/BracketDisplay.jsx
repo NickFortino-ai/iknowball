@@ -34,7 +34,7 @@ function splitTeamName(fullName) {
   return { city: words[0], name: words.slice(1).join(' ') }
 }
 
-function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord, seriesPrediction, seriesWins, mirrored }) {
+function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord, seriesPrediction, seriesPredictionColor, mirrored }) {
   const { city, name } = splitTeamName(team)
   const padding = size === 'xl' ? 'px-3 py-2.5' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'
 
@@ -53,8 +53,7 @@ function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord,
 
   const rightBadges = (
     <>
-      {seriesWins != null && <span className="text-[11px] font-bold text-accent shrink-0 w-4 text-center">{seriesWins}</span>}
-      {seriesPrediction && <span className="text-[9px] text-accent/70 shrink-0">in {seriesPrediction}</span>}
+      {seriesPrediction && <span className={`text-[9px] shrink-0 ${seriesPredictionColor}`}>in {seriesPrediction}</span>}
       {showWin && <span className="text-correct shrink-0">W</span>}
       {seriesRecord && <span className="text-[9px] text-text-muted shrink-0">{seriesRecord}</span>}
     </>
@@ -82,27 +81,32 @@ function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord,
 }
 
 function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, showPick, onTap, size = 'default', playInPickResults = {}, isBestOf7 = false, sportKey, mirrored = false }) {
-  const [showScore, setShowScore] = useState(false)
-
   const topCorrect = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'top'
   const bottomCorrect = pick && matchup.status === 'completed' && pick === matchup.team_bottom && matchup.winner === 'bottom'
   const topWrong = pick && matchup.status === 'completed' && pick === matchup.team_top && matchup.winner === 'bottom'
   const bottomWrong = pick && matchup.status === 'completed' && pick === matchup.team_bottom && matchup.winner === 'top'
 
-  const hasScores = matchup.status === 'completed' && matchup.score_top != null && matchup.score_bottom != null
   const hasSeriesRecord = isBestOf7 && matchup.status === 'completed' && matchup.series_wins_top != null && matchup.series_wins_bottom != null
   // Live series: series has started (at least 1 win) but not yet completed
   const hasLiveSeries = isBestOf7 && matchup.status !== 'completed' && (matchup.series_wins_top > 0 || matchup.series_wins_bottom > 0)
-  const canExpand = !onTap && (hasScores || hasSeriesRecord)
   // Only show tap affordance for matchups with series data (at least 1 game played)
   const canTap = !!onTap && (hasLiveSeries || hasSeriesRecord)
 
-  function handleClick() {
-    if (canTap) return onTap(matchup)
-    if (canExpand) setShowScore((s) => !s)
+  // Series length prediction color: white during series, green/orange/red after completion
+  let predictionColor = 'text-text-primary'
+  if (hasSeriesRecord && pickData?.series_length) {
+    const actualLength = (matchup.series_wins_top || 0) + (matchup.series_wins_bottom || 0)
+    const diff = Math.abs(pickData.series_length - actualLength)
+    if (diff === 0) predictionColor = 'text-correct'
+    else if (diff === 1) predictionColor = 'text-accent'
+    else predictionColor = 'text-incorrect'
   }
 
-  const isClickable = canTap || canExpand
+  function handleClick() {
+    if (canTap) return onTap(matchup)
+  }
+
+  const isClickable = canTap
 
   function teamClass(team, isTop) {
     if (!team) return 'text-text-muted'
@@ -139,8 +143,8 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         className={`border-b border-text-primary/10 ${teamClass(matchup.team_top, true)}`}
         showWin={showPick ? (topCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'top')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'top' ? `${matchup.series_wins_top}-${matchup.series_wins_bottom}` : null}
-        seriesPrediction={isBestOf7 && showPick && pick === matchup.team_top && pickData?.series_length && matchup.status !== 'completed' ? pickData.series_length : null}
-        seriesWins={hasLiveSeries ? (matchup.series_wins_top || 0) : null}
+        seriesPrediction={isBestOf7 && showPick && pick === matchup.team_top && pickData?.series_length ? pickData.series_length : null}
+        seriesPredictionColor={predictionColor}
       />
       <TeamRow
         team={matchup.team_bottom}
@@ -151,21 +155,9 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         className={teamClass(matchup.team_bottom, false)}
         showWin={showPick ? (bottomCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'bottom')}
         seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
-        seriesPrediction={isBestOf7 && showPick && pick === matchup.team_bottom && pickData?.series_length && matchup.status !== 'completed' ? pickData.series_length : null}
-        seriesWins={hasLiveSeries ? (matchup.series_wins_bottom || 0) : null}
+        seriesPrediction={isBestOf7 && showPick && pick === matchup.team_bottom && pickData?.series_length ? pickData.series_length : null}
+        seriesPredictionColor={predictionColor}
       />
-      {showScore && (
-        <div className="border-t border-text-primary/10 bg-text-primary/5 px-2 py-1 flex items-center justify-center gap-2 text-text-muted">
-          {hasSeriesRecord && <span className="font-semibold">{matchup.series_wins_top}-{matchup.series_wins_bottom}</span>}
-          {hasScores && <span>{matchup.score_top} - {matchup.score_bottom}</span>}
-          {pickData?.is_correct && pickData.points_earned > 0 && (
-            <span className="text-correct font-semibold">+{pickData.points_earned}</span>
-          )}
-          {isBestOf7 && pickData?.series_length && (
-            <span className="text-[10px]">predicted {pickData.series_length} games</span>
-          )}
-        </div>
-      )}
     </div>
   )
 }
