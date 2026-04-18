@@ -561,7 +561,7 @@ export default function SettingsPage() {
       </Section>
 
       {/* Notifications */}
-      <Section label="Notifications">
+      <Section label="Notifications" defaultOpen={false}>
         {/* Web-only master subscribe toggle. Native iOS handles the master
             permission at the OS level (Settings → Notifications → IKB).
             Per-type preferences below work on both platforms. */}
