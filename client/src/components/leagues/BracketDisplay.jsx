@@ -94,13 +94,15 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   // Live series: series has started (at least 1 win) but not yet completed
   const hasLiveSeries = isBestOf7 && matchup.status !== 'completed' && (matchup.series_wins_top > 0 || matchup.series_wins_bottom > 0)
   const canExpand = !onTap && (hasScores || hasSeriesRecord)
+  // Only show tap affordance for matchups with series data (at least 1 game played)
+  const canTap = !!onTap && (hasLiveSeries || hasSeriesRecord)
 
   function handleClick() {
-    if (onTap) return onTap(matchup)
+    if (canTap) return onTap(matchup)
     if (canExpand) setShowScore((s) => !s)
   }
 
-  const isClickable = !!onTap || canExpand
+  const isClickable = canTap || canExpand
 
   function teamClass(team, isTop) {
     if (!team) return 'text-text-muted'

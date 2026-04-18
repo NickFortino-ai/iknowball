@@ -1334,13 +1334,26 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore
 
   const { data: matchups, error } = await query
 
-  if (error || !matchups?.length) return
+  if (error) {
+    logger.error({ error }, 'Failed to query bracket matchups for scoring')
+    return
+  }
+
+  logger.info({ homeTeam, awayTeam, sportKey, matchupCount: matchups?.length || 0 }, 'scoreBracketMatchups: searching for matchups')
+
+  if (!matchups?.length) {
+    logger.info({ homeTeam, awayTeam, sportKey }, 'scoreBracketMatchups: no unsettled matchups found for sport')
+    return
+  }
 
   const winningTeam = winner === 'home' ? homeTeam : awayTeam
 
   for (const matchup of matchups) {
     const teams = [matchup.team_top, matchup.team_bottom]
-    if (!teams.includes(homeTeam) || !teams.includes(awayTeam)) continue
+    if (!teams.includes(homeTeam) || !teams.includes(awayTeam)) {
+      logger.debug({ homeTeam, awayTeam, team_top: matchup.team_top, team_bottom: matchup.team_bottom }, 'scoreBracketMatchups: team name mismatch, skipping')
+      continue
+    }
 
     const winnerSlot = matchup.team_top === winningTeam ? 'top' : 'bottom'
     const isBestOf7 = matchup.bracket_templates.series_format === 'best_of_7'
