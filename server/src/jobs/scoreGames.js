@@ -5,6 +5,7 @@ import { scoreCompletedGame, scoreParlayLegs } from '../services/scoringService.
 import { scoreSurvivorPicks, scoreTouchdownSurvivorPicks } from '../services/survivorService.js'
 import { scoreLeaguePicks } from '../services/leaguePickService.js'
 import { scoreBracketMatchups } from '../services/bracketService.js'
+import { findESPNEventId, fetchGameTopScorers } from '../services/espnService.js'
 
 async function scoreSport(sportKey) {
   // Smart gate: only call API if there are games that need scoring
@@ -145,6 +146,30 @@ async function scoreSport(sportKey) {
         .eq('id', game.id)
       continue
     }
+
+    // Fetch top scorers from ESPN box score (fire-and-forget, don't block scoring)
+    ;(async () => {
+      try {
+        const espnEventId = await findESPNEventId(sportKey, game.home_team, game.away_team, game.starts_at)
+        if (!espnEventId) return
+        const scorers = await fetchGameTopScorers(sportKey, espnEventId)
+        if (!scorers.length) return
+        for (const s of scorers) {
+          await supabase
+            .from('game_top_scorers')
+            .upsert({
+              game_id: game.id,
+              team: s.team,
+              player_name: s.playerName,
+              points: s.points,
+              headshot_url: s.headshotUrl,
+            }, { onConflict: 'game_id,team' })
+        }
+        logger.info({ gameId: game.id, count: scorers.length }, 'Stored top scorers from ESPN')
+      } catch (err) {
+        logger.warn({ err: err.message, gameId: game.id }, 'Failed to fetch top scorers')
+      }
+    })()
 
     scored++
   }

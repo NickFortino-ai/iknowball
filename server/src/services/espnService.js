@@ -185,3 +185,106 @@ export function getPlayerHeadshotUrl(playerName, sportPath = 'basketball/nba') {
   const normalized = normalizePlayerName(playerName)
   return playerHeadshotCaches[sportPath]?.[normalized] || null
 }
+
+/**
+ * Fetch the ESPN event ID for a game by matching teams + start time against
+ * the ESPN scoreboard for that date.
+ */
+export async function findESPNEventId(sportKey, homeTeam, awayTeam, startsAt) {
+  const sport = SPORT_TO_ESPN[sportKey]
+  if (!sport) return null
+
+  const gameDate = new Date(startsAt)
+  const dateStr = `${gameDate.getFullYear()}${String(gameDate.getMonth() + 1).padStart(2, '0')}${String(gameDate.getDate()).padStart(2, '0')}`
+
+  const params = []
+  if (sport.params) params.push(sport.params)
+  params.push(`dates=${dateStr}`)
+  const qs = `?${params.join('&')}`
+  const url = `${ESPN_BASE}/${sport.path}/scoreboard${qs}`
+
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+
+    for (const event of data.events || []) {
+      const comp = event.competitions?.[0]
+      if (!comp) continue
+      const home = comp.competitors?.find((c) => c.homeAway === 'home')
+      const away = comp.competitors?.find((c) => c.homeAway === 'away')
+      if (!home || !away) continue
+
+      const homeName = home.team?.displayName || home.team?.name || ''
+      const awayName = away.team?.displayName || away.team?.name || ''
+      if (teamsMatch(homeName, homeTeam) && teamsMatch(awayName, awayTeam)) {
+        // Time proximity check for doubleheaders
+        if (event.date && startsAt) {
+          const diff = Math.abs(new Date(event.date).getTime() - gameDate.getTime())
+          if (diff > 4 * 60 * 60 * 1000) continue
+        }
+        return event.id
+      }
+    }
+  } catch (err) {
+    logger.warn({ err: err.message, sportKey }, 'Failed to find ESPN event ID')
+  }
+  return null
+}
+
+/**
+ * Fetch the leading scorer per team from an ESPN game summary.
+ * Returns: [{ team, playerName, points, headshotUrl }, ...]
+ */
+export async function fetchGameTopScorers(sportKey, espnEventId) {
+  const sport = SPORT_TO_ESPN[sportKey]
+  if (!sport || !espnEventId) return []
+
+  const url = `${ESPN_BASE}/${sport.path}/summary?event=${espnEventId}`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return []
+    const data = await res.json()
+
+    const results = []
+    const boxscore = data.boxscore
+    if (!boxscore?.players) return []
+
+    for (const teamBox of boxscore.players) {
+      const teamName = teamBox.team?.displayName || teamBox.team?.name || ''
+      // Find the scoring statistics section
+      const stats = teamBox.statistics?.find((s) =>
+        s.labels?.includes('PTS') || s.labels?.includes('G') || s.labels?.includes('P')
+      )
+      if (!stats?.athletes?.length) continue
+
+      // Find the PTS column index
+      const ptsIdx = stats.labels?.indexOf('PTS')
+      // For hockey, goals are 'G'
+      const goalsIdx = stats.labels?.indexOf('G')
+      const scoreIdx = ptsIdx >= 0 ? ptsIdx : goalsIdx
+
+      if (scoreIdx < 0) continue
+
+      let topScorer = null
+      let topPoints = -1
+      for (const athlete of stats.athletes) {
+        const pts = parseInt(athlete.stats?.[scoreIdx] || '0', 10)
+        if (pts > topPoints) {
+          topPoints = pts
+          topScorer = {
+            team: teamName,
+            playerName: athlete.athlete?.displayName || '',
+            points: pts,
+            headshotUrl: athlete.athlete?.headshot?.href || null,
+          }
+        }
+      }
+      if (topScorer) results.push(topScorer)
+    }
+    return results
+  } catch (err) {
+    logger.warn({ err: err.message, espnEventId }, 'Failed to fetch ESPN box score')
+    return []
+  }
+}

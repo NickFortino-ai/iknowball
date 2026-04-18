@@ -809,6 +809,22 @@ router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
     const gameDate = new Date(g.starts_at)
     return now - gameDate < 180 * 24 * 60 * 60 * 1000
   })
+  // Attach top scorers for each game
+  if (filtered.length) {
+    const gameIds = filtered.map((g) => g.id)
+    const { data: scorers } = await supabase
+      .from('game_top_scorers')
+      .select('game_id, team, player_name, points, headshot_url')
+      .in('game_id', gameIds)
+    const scorerMap = {}
+    for (const s of scorers || []) {
+      if (!scorerMap[s.game_id]) scorerMap[s.game_id] = []
+      scorerMap[s.game_id].push(s)
+    }
+    for (const g of filtered) {
+      g.top_scorers = scorerMap[g.id] || []
+    }
+  }
   res.json(filtered)
 })
 

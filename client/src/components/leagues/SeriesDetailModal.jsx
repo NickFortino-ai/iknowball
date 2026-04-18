@@ -131,38 +131,74 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                 const topWon = (topIsHome && game.winner === 'home') || (!topIsHome && game.winner === 'away')
                 const gameDate = new Date(game.starts_at)
 
+                // Find top scorers for each team in this game
+                const topScorers = game.top_scorers || []
+                const homeScorer = topScorers.find((s) => s.team === game.home_team)
+                const awayScorer = topScorers.find((s) => s.team === game.away_team)
+                const scorerForTop = topIsHome ? homeScorer : awayScorer
+                const scorerForBottom = topIsHome ? awayScorer : homeScorer
+
                 return (
                   <div
                     key={game.id}
-                    className="flex items-center gap-3 bg-bg-primary/60 border border-text-primary/10 rounded-lg px-3 py-2.5"
+                    className="bg-bg-primary/60 border border-text-primary/10 rounded-lg px-3 py-2.5"
                   >
-                    {/* Game number */}
-                    <div className="shrink-0 w-14">
-                      <div className="text-xs font-semibold text-text-secondary">Game {idx + 1}</div>
-                      <div className="text-[10px] text-text-muted">
-                        {gameDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {/* Score row */}
+                    <div className="flex items-center gap-3">
+                      {/* Game number */}
+                      <div className="shrink-0 w-14">
+                        <div className="text-xs font-semibold text-text-secondary">Game {idx + 1}</div>
+                        <div className="text-[10px] text-text-muted">
+                          {gameDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+
+                      {/* Scores */}
+                      <div className="flex-1 flex items-center justify-center gap-2">
+                        <div className={`flex items-center gap-1.5 ${topWon ? 'text-text-primary' : 'text-text-muted'}`}>
+                          <TeamLogo team={teamTop} sportKey={sportKey} className="w-5 h-5" />
+                          <span className={`text-lg font-bold ${topWon ? '' : 'opacity-60'}`}>{scoreTop}</span>
+                        </div>
+                        <span className="text-text-muted text-xs">-</span>
+                        <div className={`flex items-center gap-1.5 ${!topWon ? 'text-text-primary' : 'text-text-muted'}`}>
+                          <span className={`text-lg font-bold ${!topWon ? '' : 'opacity-60'}`}>{scoreBottom}</span>
+                          <TeamLogo team={teamBottom} sportKey={sportKey} className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      {/* Location */}
+                      <div className="shrink-0 text-right">
+                        <div className="text-[10px] text-text-muted">
+                          {topIsHome ? `@${topInfo.name}` : `@${bottomInfo.name}`}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Scores */}
-                    <div className="flex-1 flex items-center justify-center gap-2">
-                      <div className={`flex items-center gap-1.5 ${topWon ? 'text-text-primary' : 'text-text-muted'}`}>
-                        <TeamLogo team={teamTop} sportKey={sportKey} className="w-5 h-5" />
-                        <span className={`text-lg font-bold ${topWon ? '' : 'opacity-60'}`}>{scoreTop}</span>
+                    {/* Top scorers row */}
+                    {(scorerForTop || scorerForBottom) && (
+                      <div className="flex items-center justify-center gap-6 mt-2 pt-2 border-t border-text-primary/5">
+                        {scorerForTop && (
+                          <div className="flex items-center gap-1.5">
+                            {scorerForTop.headshot_url && (
+                              <img src={scorerForTop.headshot_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            )}
+                            <span className="text-[10px] text-text-secondary">
+                              {scorerForTop.player_name} <span className="text-text-muted">{scorerForTop.points} pts</span>
+                            </span>
+                          </div>
+                        )}
+                        {scorerForBottom && (
+                          <div className="flex items-center gap-1.5">
+                            {scorerForBottom.headshot_url && (
+                              <img src={scorerForBottom.headshot_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            )}
+                            <span className="text-[10px] text-text-secondary">
+                              {scorerForBottom.player_name} <span className="text-text-muted">{scorerForBottom.points} pts</span>
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <span className="text-text-muted text-xs">-</span>
-                      <div className={`flex items-center gap-1.5 ${!topWon ? 'text-text-primary' : 'text-text-muted'}`}>
-                        <span className={`text-lg font-bold ${!topWon ? '' : 'opacity-60'}`}>{scoreBottom}</span>
-                        <TeamLogo team={teamBottom} sportKey={sportKey} className="w-5 h-5" />
-                      </div>
-                    </div>
-
-                    {/* Location */}
-                    <div className="shrink-0 text-right">
-                      <div className="text-[10px] text-text-muted">
-                        {topIsHome ? `@${topInfo.name}` : `@${bottomInfo.name}`}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 )
               })}
