@@ -775,7 +775,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               type="datetime-local"
               defaultValue={toDateTimeLocalValue(tournament.locks_at)}
               onBlur={(e) => saveBracketLockTime(e.target.value)}
-              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+              className="w-full max-w-full box-border bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
             />
             <div className="text-[10px] text-text-muted mt-1">Users must submit brackets before this time</div>
           </div>

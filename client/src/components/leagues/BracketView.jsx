@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth'
 import BracketDisplay from './BracketDisplay'
 import BracketPicker from './BracketPicker'
 import BracketStandings from './BracketStandings'
+import SeriesDetailModal from './SeriesDetailModal'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
@@ -33,6 +34,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
   const [showPicker, setShowPicker] = useState(!!savedDraft)
   const [viewingUserId, setViewingUserId] = useState(null)
   const [hasDefaulted, setHasDefaulted] = useState(false)
+  const [seriesMatchup, setSeriesMatchup] = useState(null)
   const viewTab = tab
 
   // Default to user's own bracket once data loads
@@ -420,6 +422,14 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
               regions={tournament.bracket_templates?.regions}
               seriesFormat={tournament.bracket_templates?.series_format}
               sportKey={league.sport}
+              onMatchupTap={isBestOf7 ? (displayMatchup) => {
+                // Use original matchup data for real team names and series wins
+                const original = tournament.matchups.find((m) => m.id === displayMatchup.id)
+                const m = original || displayMatchup
+                if (m.team_top && m.team_bottom && (m.series_wins_top > 0 || m.series_wins_bottom > 0)) {
+                  setSeriesMatchup(m)
+                }
+              } : undefined}
             />
           </div>
         </div>
@@ -434,6 +444,15 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             setViewingUserId(userId)
             onTabChange?.('bracket')
           } : null}
+        />
+      )}
+
+      {seriesMatchup && (
+        <SeriesDetailModal
+          matchup={seriesMatchup}
+          sportKey={league.sport}
+          leagueId={league.id}
+          onClose={() => setSeriesMatchup(null)}
         />
       )}
     </div>

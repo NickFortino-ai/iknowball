@@ -472,6 +472,14 @@ export function useViewBracketEntry(leagueId, userId) {
   })
 }
 
+export function useSeriesGames(leagueId, team1, team2) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'bracket', 'series-games', team1, team2],
+    queryFn: () => api.get(`/leagues/${leagueId}/bracket/series-games?team1=${encodeURIComponent(team1)}&team2=${encodeURIComponent(team2)}`),
+    enabled: !!leagueId && !!team1 && !!team2,
+  })
+}
+
 export function useMyOtherBracketEntries(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'bracket', 'my-other-entries'],

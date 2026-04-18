@@ -779,6 +779,39 @@ router.get('/:id/bracket/entries/:userId', requireAuth, async (req, res) => {
   res.json(entry)
 })
 
+router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
+  const { team1, team2 } = req.query
+  if (!team1 || !team2) return res.status(400).json({ error: 'team1 and team2 required' })
+  const league = await getLeagueDetails(req.params.id, req.user.id)
+  // Find the sport_id for this league's sport
+  const { data: sport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', league.sport)
+    .single()
+  if (!sport) return res.json([])
+  // Query completed games between these two teams, ordered by date
+  const { data: games } = await supabase
+    .from('games')
+    .select('id, home_team, away_team, home_score, away_score, winner, starts_at, status, season')
+    .eq('sport_id', sport.id)
+    .eq('status', 'final')
+    .or(`and(home_team.eq.${team1},away_team.eq.${team2}),and(home_team.eq.${team2},away_team.eq.${team1})`)
+    .order('starts_at', { ascending: true })
+  // Filter to current season (playoff games)
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const seasonStr = String(currentYear)
+  const filtered = (games || []).filter((g) => {
+    // NBA season spans two calendar years — 2025-26 season = "2025" or "2026"
+    if (g.season === seasonStr || g.season === String(currentYear - 1)) return true
+    // Fallback: games from the last 6 months
+    const gameDate = new Date(g.starts_at)
+    return now - gameDate < 180 * 24 * 60 * 60 * 1000
+  })
+  res.json(filtered)
+})
+
 router.get('/:id/bracket/my-other-entries', requireAuth, async (req, res) => {
   const tournament = await getTournament(req.params.id)
   const entries = await getUserEntriesForTemplate(

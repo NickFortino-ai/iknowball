@@ -524,7 +524,7 @@ export async function completeLeagues() {
   // Activate open leagues whose start date has passed
   const { data: openLeagues, error: openErr } = await supabase
     .from('leagues')
-    .select('id')
+    .select('id, format')
     .eq('status', 'open')
     .not('starts_at', 'is', null)
     .lte('starts_at', now)
@@ -532,13 +532,30 @@ export async function completeLeagues() {
   if (openErr) {
     logger.error({ error: openErr }, 'Failed to fetch open leagues for activation')
   } else if (openLeagues?.length) {
+    const toActivate = []
     for (const league of openLeagues) {
-      await supabase
-        .from('leagues')
-        .update({ status: 'active', updated_at: new Date().toISOString() })
-        .eq('id', league.id)
+      // Bracket leagues stay open until their lock time passes
+      if (league.format === 'bracket') {
+        const { data: tourney } = await supabase
+          .from('bracket_tournaments')
+          .select('locks_at')
+          .eq('league_id', league.id)
+          .single()
+        if (tourney?.locks_at && new Date(tourney.locks_at) > new Date(now)) {
+          continue // lock time hasn't passed yet — stay open
+        }
+      }
+      toActivate.push(league.id)
     }
-    logger.info({ count: openLeagues.length }, 'Activated open leagues past start date')
+    if (toActivate.length) {
+      for (const id of toActivate) {
+        await supabase
+          .from('leagues')
+          .update({ status: 'active', updated_at: new Date().toISOString() })
+          .eq('id', id)
+      }
+      logger.info({ count: toActivate.length }, 'Activated open leagues past start date')
+    }
   }
 
   // Clamp full_season leagues to season end dates (if admin has set them)
