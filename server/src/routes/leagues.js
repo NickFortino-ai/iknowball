@@ -304,9 +304,7 @@ router.get('/backdrops', requireAuth, async (req, res) => {
 
   if (!backdrops?.length) return res.json([])
 
-  // formats column stores sport keys (e.g. basketball_nba) or special tags (e.g. touchdown_survivor)
-  // touchdown_survivor also gets general NFL backdrops
-  // Exclusive filters: these should ONLY show their own tagged backdrops, not generic/untagged ones
+  // Exclusive filters: only show backdrops specifically tagged with this format
   const exclusiveFilters = ['touchdown_survivor', 'td_pass_competition']
   const isExclusive = exclusiveFilters.includes(sport)
 
@@ -314,7 +312,6 @@ router.get('/backdrops', requireAuth, async (req, res) => {
     ? backdrops.filter((b) => {
         if (b.formats.includes(sport)) return true
         if (!isExclusive && (!b.formats?.length)) return true
-        if (sport === 'touchdown_survivor' && b.formats.includes('americanfootball_nfl')) return true
         return false
       })
     : backdrops
