@@ -384,7 +384,7 @@ export default function SettingsPage() {
       </Section>
 
       {/* Profile Backdrop */}
-      <Section label="Profile Backdrop" defaultOpen={false}>
+      <Section label="Profile Backdrop" defaultOpen={true}>
         <p className="text-xs text-text-muted mb-3">Shows on your profile card and profile modal.</p>
         {/* Sport filter */}
         <div className="flex gap-1.5 flex-wrap mb-3">
