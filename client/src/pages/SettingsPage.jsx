@@ -603,7 +603,7 @@ export default function SettingsPage() {
       <button
         onClick={handleSave}
         disabled={saving || !hasChanges}
-        className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
+        className={`w-full font-semibold py-3 rounded-xl transition-colors ${saving || !hasChanges ? 'bg-text-muted/30 text-text-muted cursor-not-allowed' : 'bg-accent hover:bg-accent-hover text-white'}`}
       >
         {saving ? 'Saving...' : 'Save Settings'}
       </button>
