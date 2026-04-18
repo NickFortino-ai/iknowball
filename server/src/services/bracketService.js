@@ -714,7 +714,6 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
 
   // Calculate possible points
   const rounds = tournament.bracket_templates?.rounds || []
-  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
   let possiblePoints = 0
   for (const pick of picks) {
     const matchup = matchupMap[pick.template_matchup_id]
