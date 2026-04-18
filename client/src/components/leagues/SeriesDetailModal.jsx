@@ -176,25 +176,27 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
 
                     {/* Top scorers row */}
                     {(scorerForTop || scorerForBottom) && (
-                      <div className="flex items-center justify-center gap-6 mt-2 pt-2 border-t border-text-primary/5">
+                      <div className="flex items-center justify-between gap-4 mt-2 pt-2 border-t border-text-primary/5 mx-2">
                         {scorerForTop && (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
                             {scorerForTop.headshot_url && (
-                              <img src={scorerForTop.headshot_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                              <img src={scorerForTop.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
                             )}
-                            <span className="text-[10px] text-text-secondary">
-                              {scorerForTop.player_name} <span className="text-text-muted">{scorerForTop.points} pts</span>
-                            </span>
+                            <div className="min-w-0">
+                              <div className="text-xs text-text-secondary font-semibold truncate">{scorerForTop.player_name}</div>
+                              <div className="text-[11px] text-text-muted">{scorerForTop.points} pts</div>
+                            </div>
                           </div>
                         )}
                         {scorerForBottom && (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                            <div className="min-w-0 text-right">
+                              <div className="text-xs text-text-secondary font-semibold truncate">{scorerForBottom.player_name}</div>
+                              <div className="text-[11px] text-text-muted">{scorerForBottom.points} pts</div>
+                            </div>
                             {scorerForBottom.headshot_url && (
-                              <img src={scorerForBottom.headshot_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                              <img src={scorerForBottom.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
                             )}
-                            <span className="text-[10px] text-text-secondary">
-                              {scorerForBottom.player_name} <span className="text-text-muted">{scorerForBottom.points} pts</span>
-                            </span>
                           </div>
                         )}
                       </div>
