@@ -406,7 +406,7 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-2 max-h-[480px] overflow-y-auto rounded-lg pr-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[60vh] overflow-y-auto rounded-lg pr-1">
           {/* Upload your own */}
           <button
             type="button"
