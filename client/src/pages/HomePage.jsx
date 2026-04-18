@@ -31,11 +31,23 @@ function WelcomeCard({ userId }) {
 
   // Re-check localStorage when returning to this page (e.g. after making a pick)
   useEffect(() => {
-    setChecklist({
-      first_pick: localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1',
-      read_faq: localStorage.getItem(`ikb_welcome_read_faq_${userId}`) === '1',
-      setup_profile: localStorage.getItem(`ikb_welcome_setup_profile_${userId}`) === '1',
-    })
+    function refresh() {
+      setChecklist({
+        first_pick: localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1',
+        read_faq: localStorage.getItem(`ikb_welcome_read_faq_${userId}`) === '1',
+        setup_profile: localStorage.getItem(`ikb_welcome_setup_profile_${userId}`) === '1',
+      })
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    // Also catch in-app SPA navigations back to this page
+    const id = setInterval(refresh, 2000)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+      clearInterval(id)
+    }
   }, [userId])
 
   const allDone = checklist.first_pick && checklist.read_faq && checklist.setup_profile
