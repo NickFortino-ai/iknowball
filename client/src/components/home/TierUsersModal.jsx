@@ -66,7 +66,7 @@ export default function TierUsersModal({ tier, onClose }) {
 
           {/* Tier blurb */}
           {TIER_BLURBS[tier.name] && (
-            <div className="text-xs text-text-muted italic mb-3">{TIER_BLURBS[tier.name]}</div>
+            <div className="text-xs text-text-primary italic mb-3">{TIER_BLURBS[tier.name]}</div>
           )}
 
           {/* User count */}
