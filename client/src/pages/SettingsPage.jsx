@@ -233,6 +233,23 @@ export default function SettingsPage() {
     )
   }
 
+  const hasChanges = profile && (
+    displayName !== (profile.display_name || '') ||
+    bio !== (profile.bio || '') ||
+    avatarEmoji !== (profile.avatar_emoji || '') ||
+    JSON.stringify(selectedSports) !== JSON.stringify(profile.sports_interests || []) ||
+    titlePreference !== (profile.title_preference ?? null) ||
+    xHandle !== (profile.x_handle || '') ||
+    instagramHandle !== (profile.instagram_handle || '') ||
+    tiktokHandle !== (profile.tiktok_handle || '') ||
+    snapchatHandle !== (profile.snapchat_handle || '') ||
+    youtubeHandle !== (profile.youtube_handle || '') ||
+    venmoHandle !== (profile.venmo_handle || '') ||
+    threadsHandle !== (profile.threads_handle || '') ||
+    backdropImage !== (profile.backdrop_image || '') ||
+    customBackdropFile !== null
+  )
+
   async function handleSave() {
     setSaving(true)
     try {
@@ -582,7 +599,7 @@ export default function SettingsPage() {
       {/* Save */}
       <button
         onClick={handleSave}
-        disabled={saving}
+        disabled={saving || !hasChanges}
         className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
       >
         {saving ? 'Saving...' : 'Save Settings'}
