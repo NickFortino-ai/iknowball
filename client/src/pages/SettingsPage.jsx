@@ -326,7 +326,7 @@ export default function SettingsPage() {
       </Section>
 
       {/* Avatar Emoji */}
-      <Section label="Profile Icon">
+      <Section label="Profile Picture">
         {/* Photo upload */}
         <div className="flex items-center gap-4 mb-4 pb-4 border-b border-border">
           <Avatar user={profile} size="2xl" />
