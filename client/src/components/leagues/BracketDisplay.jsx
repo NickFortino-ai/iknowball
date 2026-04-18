@@ -53,8 +53,8 @@ function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord,
 
   const rightBadges = (
     <>
-      {seriesPrediction && <span className="text-[9px] text-accent/70 shrink-0">in {seriesPrediction}</span>}
       {seriesWins != null && <span className="text-[11px] font-bold text-accent shrink-0 w-4 text-center">{seriesWins}</span>}
+      {seriesPrediction && <span className="text-[9px] text-accent/70 shrink-0">in {seriesPrediction}</span>}
       {showWin && <span className="text-correct shrink-0">W</span>}
       {seriesRecord && <span className="text-[9px] text-text-muted shrink-0">{seriesRecord}</span>}
     </>
