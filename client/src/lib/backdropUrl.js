@@ -3,7 +3,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 // Bump when any preset backdrop image is added, renamed, or re-encoded
 // so browsers invalidate their cached copies. Custom (user-uploaded)
 // backdrops have unique UUID filenames and don't need versioning.
-const BACKDROP_VERSION = 'v2'
+const BACKDROP_VERSION = 'v3'
 
 export function getBackdropUrl(filename) {
   if (!filename) return null

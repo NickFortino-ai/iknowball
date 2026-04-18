@@ -393,6 +393,7 @@ export default function SettingsPage() {
             { key: 'basketball_nba', label: 'NBA' },
             { key: 'americanfootball_nfl', label: 'NFL' },
             { key: 'touchdown_survivor', label: 'TD Legends' },
+            { key: 'td_pass_competition', label: 'QBs' },
             { key: 'baseball_mlb', label: 'MLB' },
           ].map((s) => (
             <button
