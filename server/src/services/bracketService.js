@@ -714,12 +714,15 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
 
   // Calculate possible points
   const rounds = tournament.bracket_templates?.rounds || []
+  const isBestOf7 = tournament.bracket_templates?.series_format === 'best_of_7'
   let possiblePoints = 0
   for (const pick of picks) {
     const matchup = matchupMap[pick.template_matchup_id]
     if (matchup) {
       const roundConfig = rounds.find((r) => r.round_number === matchup.round_number)
       possiblePoints += roundConfig?.points_per_correct || 0
+      // Include max series length bonus (+4 for exact prediction)
+      if (isBestOf7 && pick.series_length) possiblePoints += 4
     }
   }
 
@@ -1066,7 +1069,7 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
     }
   }
 
-  await recalculateEntryPoints(tournamentId, rounds)
+  await recalculateEntryPoints(tournamentId, rounds, tournament.bracket_templates?.series_format === 'best_of_7')
   await updateTournamentStatus(tournamentId)
 }
 
@@ -1131,7 +1134,7 @@ async function eliminateDownstreamPicks(entryId, teamName, fromRound, tournament
   }
 }
 
-async function recalculateEntryPoints(tournamentId, rounds) {
+async function recalculateEntryPoints(tournamentId, rounds, isBestOf7 = false) {
   const { data: entries } = await supabase
     .from('bracket_entries')
     .select('id')
@@ -1155,6 +1158,8 @@ async function recalculateEntryPoints(tournamentId, rounds) {
       } else if (pick.is_correct === null && !pick.is_eliminated) {
         const roundConfig = rounds.find((r) => r.round_number === pick.round_number)
         possiblePoints += roundConfig?.points_per_correct || 0
+        // Include max series length bonus for unscored picks
+        if (isBestOf7 && pick.series_length) possiblePoints += 4
       }
     }
 
@@ -1309,7 +1314,7 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
 
   // Recalculate points
   const rounds = tournament.bracket_templates?.rounds || []
-  await recalculateEntryPoints(tournamentId, rounds)
+  await recalculateEntryPoints(tournamentId, rounds, tournament.bracket_templates?.series_format === 'best_of_7')
   await updateTournamentStatus(tournamentId)
 }
 
