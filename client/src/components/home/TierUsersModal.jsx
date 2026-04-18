@@ -6,6 +6,15 @@ import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import UserProfileModal from '../profile/UserProfileModal'
 
+const TIER_COLORS = {
+  Lost: 'var(--color-tier-lost)',
+  Rookie: 'var(--color-tier-rookie)',
+  Baller: 'var(--color-tier-baller)',
+  Elite: 'var(--color-tier-elite)',
+  'Hall of Famer': 'var(--color-tier-hof)',
+  GOAT: 'var(--color-tier-goat)',
+}
+
 export default function TierUsersModal({ tier, onClose }) {
   const [profileUserId, setProfileUserId] = useState(null)
   const { data: users, isLoading } = useTierUsers(tier?.name)
@@ -18,12 +27,21 @@ export default function TierUsersModal({ tier, onClose }) {
 
   if (!tier) return null
 
+  const tierColor = TIER_COLORS[tier.name] || 'var(--color-tier-rookie)'
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
         <div
-          className="relative bg-bg-card border border-border w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 pb-20 md:pb-6 max-h-[85vh] md:max-h-[75vh] flex flex-col"
+          className="relative w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 pb-20 md:pb-6 max-h-[85vh] md:max-h-[75vh] flex flex-col"
+          style={{
+            backgroundColor: 'var(--color-bg-primary)',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            borderColor: tierColor,
+            boxShadow: `inset 0 0 80px -20px color-mix(in srgb, ${tierColor} 15%, transparent)`,
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
