@@ -578,14 +578,16 @@ export async function completeLeagues() {
     }
   }
 
-  // Find non-bracket leagues past their end date that haven't been completed
+  // Find non-bracket leagues that are either past their end date OR approaching
+  // it within 24h (so we can complete early if all games are already final).
+  const earlyWindow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
     .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'td_pass'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
-    .lte('ends_at', now)
+    .lte('ends_at', earlyWindow)
 
   if (error) {
     logger.error({ error }, 'Failed to fetch leagues for completion')
@@ -623,28 +625,49 @@ export async function completeLeagues() {
           continue
         }
       } else {
-        // Non-bracket leagues: check for unfinished games within the league's date range
-        let gamesQuery = supabase
-          .from('games')
-          .select('id', { count: 'exact', head: true })
-          .gte('starts_at', league.starts_at)
-          .lte('starts_at', league.ends_at)
-          .neq('status', 'final')
+        const isPastEndDate = new Date(league.ends_at) <= new Date(now)
 
+        // Non-bracket leagues: check for unfinished games within the league's date range
+        let sportId = null
         if (league.sport && league.sport !== 'all') {
           const { data: sportRow } = await supabase
             .from('sports')
             .select('id')
             .eq('key', league.sport)
             .single()
-          if (sportRow) gamesQuery = gamesQuery.eq('sport_id', sportRow.id)
+          if (sportRow) sportId = sportRow.id
         }
 
-        const { count: unfinished } = await gamesQuery
+        let unfinishedQuery = supabase
+          .from('games')
+          .select('id', { count: 'exact', head: true })
+          .gte('starts_at', league.starts_at)
+          .lte('starts_at', league.ends_at)
+          .neq('status', 'final')
+        if (sportId) unfinishedQuery = unfinishedQuery.eq('sport_id', sportId)
+        const { count: unfinished } = await unfinishedQuery
 
         if (unfinished > 0) {
           logger.info({ leagueId: league.id, unfinished }, 'Skipping league completion — unfinished games remain')
           continue
+        }
+
+        // Early completion: if ends_at hasn't passed yet, only complete if there
+        // are actual final games in the range (avoid closing on an empty range)
+        if (!isPastEndDate) {
+          let totalQuery = supabase
+            .from('games')
+            .select('id', { count: 'exact', head: true })
+            .gte('starts_at', league.starts_at)
+            .lte('starts_at', league.ends_at)
+          if (sportId) totalQuery = totalQuery.eq('sport_id', sportId)
+          const { count: totalGames } = await totalQuery
+
+          if (!totalGames || totalGames === 0) {
+            logger.info({ leagueId: league.id }, 'Skipping early completion — no games in range yet')
+            continue
+          }
+          logger.info({ leagueId: league.id, totalGames }, 'Early completion — all games final before ends_at')
         }
       }
 
