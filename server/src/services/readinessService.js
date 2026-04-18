@@ -90,8 +90,9 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
   const result = new Map()
   if (!leagues?.length) return result
 
-  // Skip non-active leagues entirely
-  const activeLeagues = leagues.filter((l) => l.status === 'active')
+  // Skip completed leagues entirely. Brackets also show readiness when open
+  // (so users know whether they've filled out their bracket before lock).
+  const activeLeagues = leagues.filter((l) => l.status === 'active' || (l.status === 'open' && l.format === 'bracket'))
   if (!activeLeagues.length) return result
 
   // Group by format for batched queries
