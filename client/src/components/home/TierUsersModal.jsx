@@ -6,6 +6,10 @@ import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import UserProfileModal from '../profile/UserProfileModal'
 
+const TIER_BLURBS = {
+  Lost: "They're finding their way. First step toward knowing ball is realizing you don't know ball yet.",
+}
+
 const TIER_COLORS = {
   Lost: 'var(--color-tier-lost)',
   Rookie: 'var(--color-tier-rookie)',
@@ -59,6 +63,11 @@ export default function TierUsersModal({ tier, onClose }) {
               <div className="text-xs text-text-muted">{tier.points} pts — {tier.desc}</div>
             </div>
           </div>
+
+          {/* Tier blurb */}
+          {TIER_BLURBS[tier.name] && (
+            <div className="text-xs text-text-muted italic mb-3">{TIER_BLURBS[tier.name]}</div>
+          )}
 
           {/* User count */}
           {!isLoading && users && (
