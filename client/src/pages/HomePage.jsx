@@ -21,37 +21,31 @@ const tiers = [
   { name: 'GOAT', points: '3,000+', color: 'border-tier-goat text-tier-goat', desc: 'Undisputed' },
 ]
 
-function WelcomeCard({ userId }) {
+function WelcomeCard({ userId, profile }) {
   const navigate = useNavigate()
-  const [checklist, setChecklist] = useState(() => ({
-    first_pick: localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1',
-    read_faq: localStorage.getItem(`ikb_welcome_read_faq_${userId}`) === '1',
-    setup_profile: localStorage.getItem(`ikb_welcome_setup_profile_${userId}`) === '1',
-  }))
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(`ikb_welcome_dismissed_${userId}`) === '1')
 
-  // Re-check localStorage when returning to this page (e.g. after making a pick)
+  // Derive checklist from actual user data so it survives localStorage clears
+  const hasProfile = !!(profile?.avatar_url || profile?.display_name || profile?.bio)
+  const hasPicks = (profile?.total_points != null && profile.total_points !== 0) || localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1'
+  const readFaq = localStorage.getItem(`ikb_welcome_read_faq_${userId}`) === '1'
+
+  const checklist = { first_pick: hasPicks, read_faq: readFaq, setup_profile: hasProfile }
+
+  const [, forceUpdate] = useState(0)
+  // Re-check when returning to this page
   useEffect(() => {
-    function refresh() {
-      setChecklist({
-        first_pick: localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1',
-        read_faq: localStorage.getItem(`ikb_welcome_read_faq_${userId}`) === '1',
-        setup_profile: localStorage.getItem(`ikb_welcome_setup_profile_${userId}`) === '1',
-      })
-    }
-    refresh()
+    function refresh() { forceUpdate((n) => n + 1) }
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', refresh)
-    // Also catch in-app SPA navigations back to this page
-    const id = setInterval(refresh, 2000)
     return () => {
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', refresh)
-      clearInterval(id)
     }
-  }, [userId])
+  }, [])
 
   const allDone = checklist.first_pick && checklist.read_faq && checklist.setup_profile
-  if (allDone) return null
+  if (allDone || dismissed) return null
 
   const items = [
     {
@@ -106,6 +100,15 @@ function WelcomeCard({ userId }) {
           </button>
         ))}
       </div>
+      <button
+        onClick={() => {
+          localStorage.setItem(`ikb_welcome_dismissed_${userId}`, '1')
+          setDismissed(true)
+        }}
+        className="mt-4 text-xs text-text-muted hover:text-text-primary transition-colors"
+      >
+        Dismiss
+      </button>
     </div>
   )
 }
@@ -366,7 +369,7 @@ export default function HomePage() {
 
       {/* Welcome Card — new users only (account < 7 days old, not all tasks done) */}
       {isAuthenticated && profile?.created_at && (Date.now() - new Date(profile.created_at).getTime() < 7 * 24 * 60 * 60 * 1000) && (
-        <WelcomeCard userId={session?.user?.id} />
+        <WelcomeCard userId={session?.user?.id} profile={profile} />
       )}
 
       {/* Logged-in: Open Leagues + Active Leagues + Headlines */}
