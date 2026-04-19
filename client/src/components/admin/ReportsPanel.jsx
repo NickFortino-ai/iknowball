@@ -21,7 +21,7 @@ export default function ReportsPanel() {
   const muteUser = useMuteUser()
 
   async function handleMuteUser(userId, username) {
-    if (!confirm(`Mute @${username}? They will not be able to post hot takes or comments.`)) return
+    if (!confirm(`Mute @${username}? They will not be able to post or comment.`)) return
     try {
       await muteUser.mutateAsync(userId)
       toast(`@${username} has been muted`, 'success')

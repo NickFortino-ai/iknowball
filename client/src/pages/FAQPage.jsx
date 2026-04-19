@@ -29,7 +29,7 @@ It costs real money to run this app. Servers, APIs, live odds, real-time scoring
 
 Here\u2019s what else costs about a dollar: one third of a gas station coffee. One gumball machine gumball. A third of a banana at Whole Foods. A <em>shot</em> of beer. A pickle. Half a Snickers bar.
 
-We wholeheartedly believe I KNOW BALL will far over-deliver on your monthly dollar investment. This app is super fun and can do it all. We monitor its functionality meticulously and will be very quick to respond to any issues that arise in your user experience. This app comes from the experience and expertise of avid sports lovers and serious fantasy competitors who\u2019ve been at it for 25 years. You\u2019re getting live odds, fantasy leagues, social feeds, leaderboards, records, hot takes, and bragging rights for less than the cost of a vending machine Snickers.
+We wholeheartedly believe I KNOW BALL will far over-deliver on your monthly dollar investment. This app is super fun and can do it all. We monitor its functionality meticulously and will be very quick to respond to any issues that arise in your user experience. This app comes from the experience and expertise of avid sports lovers and serious fantasy competitors who\u2019ve been at it for 25 years. You\u2019re getting live odds, fantasy leagues, social feeds, leaderboards, records, predictions, and bragging rights for less than the cost of a vending machine Snickers.
 
 You can also go yearly for $10 and save a little. Join the movement. This is I KNOW BALL.`,
       },

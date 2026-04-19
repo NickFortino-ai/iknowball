@@ -140,7 +140,7 @@ export async function createReminder(actorId, hotTakeId, comment) {
     .single()
 
   if (!hotTake) {
-    const err = new Error('Hot take not found')
+    const err = new Error('Post not found')
     err.status = 404
     throw err
   }
@@ -170,7 +170,7 @@ export async function createReminder(actorId, hotTakeId, comment) {
         .eq('id', actorId)
         .single()
       const username = actor?.username || 'Someone'
-      await createNotification(hotTake.user_id, 'hot_take_reminder', `${username} reminded you of your hot take`, {
+      await createNotification(hotTake.user_id, 'hot_take_reminder', `${username} reminded you of your post`, {
         actorId,
         hotTakeId,
       })
@@ -182,7 +182,7 @@ export async function createReminder(actorId, hotTakeId, comment) {
 
 export async function askForHotTakes(actorId, targetUserId) {
   if (actorId === targetUserId) {
-    const err = new Error('You cannot ask yourself for hot takes')
+    const err = new Error('You cannot ask yourself for posts')
     err.status = 400
     throw err
   }
@@ -195,7 +195,7 @@ export async function askForHotTakes(actorId, targetUserId) {
 
   const username = actor?.username || 'Someone'
 
-  await createNotification(targetUserId, 'hot_take_ask', `@${username} wants to hear your hot takes!`, {
+  await createNotification(targetUserId, 'hot_take_ask', `@${username} wants to hear your takes!`, {
     actorId,
   })
 
@@ -210,13 +210,13 @@ export async function updateHotTake(userId, hotTakeId, content, teamTags, sportK
     .single()
 
   if (!hotTake) {
-    const err = new Error('Hot take not found')
+    const err = new Error('Post not found')
     err.status = 404
     throw err
   }
 
   if (hotTake.user_id !== userId) {
-    const err = new Error('You can only edit your own hot takes')
+    const err = new Error('You can only edit your own posts')
     err.status = 403
     throw err
   }
@@ -263,13 +263,13 @@ export async function deleteHotTake(userId, hotTakeId) {
     .single()
 
   if (!hotTake) {
-    const err = new Error('Hot take not found')
+    const err = new Error('Post not found')
     err.status = 404
     throw err
   }
 
   if (hotTake.user_id !== userId) {
-    const err = new Error('You can only delete your own hot takes')
+    const err = new Error('You can only delete your own posts')
     err.status = 403
     throw err
   }

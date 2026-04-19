@@ -58,7 +58,7 @@ const ONBOARDING_STEPS = [
     page: '/hall-of-fame',
     targetSelector: null,
     title: 'Hall of Fame & Record Book',
-    body: "The record book, weekly headlines, and hot takes all live here. See who holds the crown, check out all-time records, and drop your own hot takes.",
+    body: "The record book, weekly headlines, and posts all live here. See who holds the crown, check out all-time records, and drop your own takes.",
     position: 'center',
     freeScroll: true,
   },

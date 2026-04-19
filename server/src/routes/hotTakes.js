@@ -415,7 +415,7 @@ router.get('/:id', requireAuth, async (req, res) => {
     .single()
 
   if (error || !take) {
-    return res.status(404).json({ error: 'Hot take not found' })
+    return res.status(404).json({ error: 'Post not found' })
   }
 
   const { data: user } = await supabase

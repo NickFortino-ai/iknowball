@@ -73,7 +73,7 @@ async function getTargetOwner(targetType, targetId) {
   return data[ownerCol]
 }
 
-const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'hot take', head_to_head: 'head-to-head', hot_take_reminder: 'hot take reminder' }
+const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'post', head_to_head: 'head-to-head', hot_take_reminder: 'post' }
 
 export async function toggleReaction(userId, pickId, reactionType) {
   // Unified: use feed_reactions with target_type='pick'

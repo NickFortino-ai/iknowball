@@ -8,7 +8,7 @@ export default function GuidelinesPage() {
         <section>
           <h2 className="font-display text-xl text-correct mb-3">What's encouraged</h2>
           <ul className="space-y-2 text-sm text-text-secondary">
-            <li className="flex gap-2"><span className="text-correct shrink-0">+</span>Hot takes, trash talk, and bold predictions</li>
+            <li className="flex gap-2"><span className="text-correct shrink-0">+</span>Trash talk, bold predictions, and strong opinions</li>
             <li className="flex gap-2"><span className="text-correct shrink-0">+</span>Celebrating wins and clowning losses (it's part of the game)</li>
             <li className="flex gap-2"><span className="text-correct shrink-0">+</span>Friendly competition and banter with your squad</li>
           </ul>
