@@ -654,9 +654,9 @@ export default function HomePage() {
               className={`rounded-xl border-2 p-4 text-center ${tier.color} bg-bg-card ${isAuthenticated ? 'cursor-pointer hover:scale-105 hover:shadow-lg transition-transform' : ''}`}
               onClick={isAuthenticated ? () => setSelectedTier(tier) : undefined}
             >
-              <div className="font-display text-lg mb-1">{tier.name}</div>
-              <div className="text-xs opacity-70 mb-2">{tier.points} pts</div>
-              <div className="text-xs text-text-muted">{tier.desc}</div>
+              <div className="font-display text-xl mb-1">{tier.name}</div>
+              <div className="text-sm text-text-primary mb-2">{tier.points} pts</div>
+              <div className="text-sm text-text-primary">{tier.desc}</div>
             </div>
           ))}
         </div>

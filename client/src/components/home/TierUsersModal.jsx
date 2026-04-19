@@ -59,14 +59,14 @@ export default function TierUsersModal({ tier, onClose }) {
           <div className="flex items-center gap-3 mb-4">
             <TierBadge tier={tier.name} size="md" />
             <div>
-              <div className="font-display text-lg">{tier.name}</div>
-              <div className="text-xs text-text-muted">{tier.points} pts — {tier.desc}</div>
+              <div className="font-display text-xl">{tier.name}</div>
+              <div className="text-sm text-text-primary">{tier.points} pts — {tier.desc}</div>
             </div>
           </div>
 
           {/* Tier blurb */}
           {TIER_BLURBS[tier.name] && (
-            <div className="text-xs text-text-primary italic mb-3">{TIER_BLURBS[tier.name]}</div>
+            <div className="text-sm text-text-primary italic mb-3">{TIER_BLURBS[tier.name]}</div>
           )}
 
           {/* User count */}
