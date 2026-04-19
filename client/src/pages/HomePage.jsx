@@ -27,7 +27,11 @@ function WelcomeCard({ userId, profile }) {
 
   // Derive checklist from actual user data so it survives localStorage clears
   const hasProfile = !!(profile?.avatar_url || profile?.display_name || profile?.bio)
-  const hasPicks = (profile?.total_points != null && profile.total_points !== 0) || localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1'
+  // Latch first_pick: once points go non-zero, persist the flag so returning to 0 doesn't reset it
+  if (profile?.total_points != null && profile.total_points !== 0) {
+    localStorage.setItem(`ikb_welcome_first_pick_${userId}`, '1')
+  }
+  const hasPicks = localStorage.getItem(`ikb_welcome_first_pick_${userId}`) === '1'
   const readFaq = localStorage.getItem(`ikb_welcome_read_faq_${userId}`) === '1'
 
   const checklist = { first_pick: hasPicks, read_faq: readFaq, setup_profile: hasProfile }
