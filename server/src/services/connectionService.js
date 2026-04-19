@@ -841,6 +841,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
           market_title: fp.futures_markets?.title,
           sport_key: fp.futures_markets?.sport_key,
           odds_at_submission: fp.odds_at_submission,
+          reward_at_submission: fp.reward_at_submission,
           points_earned: fp.points_earned,
           pick_date: fp.created_at,
           status: fp.status,

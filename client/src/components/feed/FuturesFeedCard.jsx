@@ -1,11 +1,7 @@
 import FeedCardWrapper from './FeedCardWrapper'
 import Avatar from '../ui/Avatar'
 import { getTeamLogoUrl } from '../../lib/teamLogos'
-
-function formatOdds(odds) {
-  if (odds == null) return ''
-  return odds > 0 ? `+${odds}` : `${odds}`
-}
+import { getPronouns } from '../../lib/pronouns'
 
 function formatPickDate(dateStr) {
   if (!dateStr) return ''
@@ -17,6 +13,7 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
   const { futures } = item
   const isHit = item.type === 'futures_hit'
   const logoUrl = getTeamLogoUrl(futures.picked_outcome, futures.sport_key)
+  const pronouns = getPronouns(item.title_preference)
 
   if (isHit) {
     return (
@@ -64,7 +61,12 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
     )
   }
 
-  // Pending futures pick — simpler display
+  // Pending futures pick
+  const rewardPts = futures.reward_at_submission
+  const winLine = rewardPts
+    ? `${pronouns.subject === 'they' ? pronouns.subject.charAt(0).toUpperCase() + pronouns.subject.slice(1) + "'ll" : pronouns.subject.charAt(0).toUpperCase() + pronouns.subject.slice(1) + "'ll"} win ${rewardPts} points if ${pronouns.subject === 'they' ? "they're" : pronouns.subject === 'he' ? "he's" : "she's"} right`
+    : null
+
   return (
     <FeedCardWrapper
       item={item}
@@ -75,24 +77,21 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
       onUserTap={onUserTap}
       commentCount={item.commentCount}
     >
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">{'\uD83D\uDD2E'}</span>
         <span className="font-semibold text-sm text-text-secondary">Futures Pick</span>
       </div>
 
-      <div className="bg-bg-secondary rounded-lg px-3 py-2.5">
-        <div className="flex items-center gap-3">
+      <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-4">
+        <div className="flex flex-col items-center text-center">
           {logoUrl && (
-            <img src={logoUrl} alt="" className="w-8 h-8 object-contain shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+            <img src={logoUrl} alt="" className="w-12 h-12 object-contain mb-2" onError={(e) => { e.target.style.display = 'none' }} />
           )}
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm text-text-primary">{futures.picked_outcome}</div>
-            <div className="text-xs text-text-muted mt-0.5">{futures.market_title}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 mt-2 text-xs">
-          <span className="text-accent font-bold">{formatOdds(futures.odds_at_submission)}</span>
-          <span className="text-text-muted">locked in</span>
+          <div className="font-display text-lg text-text-primary">{futures.picked_outcome}</div>
+          <div className="text-xs text-text-muted mt-1">{futures.market_title}</div>
+          {winLine && (
+            <div className="text-sm text-correct font-semibold mt-2">{winLine}</div>
+          )}
         </div>
       </div>
     </FeedCardWrapper>
