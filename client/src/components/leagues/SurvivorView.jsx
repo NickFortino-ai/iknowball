@@ -181,7 +181,7 @@ export default function SurvivorView({ league }) {
         const dateKeys = Object.keys(grouped).sort()
 
         return (
-          <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-primary">
+          <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-primary/30">
             {poolExpanded && (
               <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3 text-center">
                 <div className="text-xs text-text-secondary font-semibold mb-0.5">Pool Expanded</div>
