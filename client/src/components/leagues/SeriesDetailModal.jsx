@@ -166,12 +166,6 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                         </div>
                       </div>
 
-                      {/* Location */}
-                      <div className="shrink-0 text-right">
-                        <div className="text-xs text-text-primary">
-                          {topIsHome ? `@${topInfo.name}` : `@${bottomInfo.name}`}
-                        </div>
-                      </div>
                     </div>
 
                     {/* Top scorers row */}
