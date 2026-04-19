@@ -358,7 +358,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                 <button
                   onClick={() => setViewingUserId(null)}
                   className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    !viewingUserId ? 'bg-bg-primary border border-accent text-accent' : 'bg-bg-primary border border-text-primary/20 text-text-secondary hover:border-text-primary/40'
+                    !viewingUserId ? 'bg-bg-primary/50 border border-accent text-accent' : 'bg-bg-primary/50 border border-text-primary/20 text-text-primary hover:border-text-primary/40'
                   }`}
                 >
                   Master
@@ -368,7 +368,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                     key={e.user_id}
                     onClick={() => setViewingUserId(e.user_id)}
                     className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                      viewingUserId === e.user_id ? 'bg-bg-primary border border-accent text-accent' : 'bg-bg-primary border border-text-primary/20 text-text-secondary hover:border-text-primary/40'
+                      viewingUserId === e.user_id ? 'bg-bg-primary/50 border border-accent text-accent' : 'bg-bg-primary/50 border border-text-primary/20 text-text-primary hover:border-text-primary/40'
                     }`}
                   >
                     {e.user_id === profile?.id ? 'My Bracket' : e.users?.display_name || e.users?.username}
