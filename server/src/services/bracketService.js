@@ -1385,11 +1385,16 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore
           )
           logger.info({ matchupId: matchup.id, winningTeam, series: `${newWinsTop}-${newWinsBottom}` }, 'Auto-settled bracket series')
         } else {
-          // Series still in progress — just update the series wins on the template matchup
+          // Series still in progress — update series wins on template AND tournament matchups
           await supabase
             .from('bracket_template_matchups')
             .update({ series_wins_top: newWinsTop, series_wins_bottom: newWinsBottom })
             .eq('id', matchup.id)
+          // Cascade to all tournament matchups referencing this template matchup
+          await supabase
+            .from('bracket_matchups')
+            .update({ series_wins_top: newWinsTop, series_wins_bottom: newWinsBottom })
+            .eq('template_matchup_id', matchup.id)
           logger.info({ matchupId: matchup.id, winningTeam, series: `${newWinsTop}-${newWinsBottom}` }, 'Updated bracket series score')
         }
       } else {
