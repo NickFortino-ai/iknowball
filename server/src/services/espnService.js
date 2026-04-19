@@ -195,39 +195,49 @@ export async function findESPNEventId(sportKey, homeTeam, awayTeam, startsAt) {
   if (!sport) return null
 
   const gameDate = new Date(startsAt)
-  const dateStr = `${gameDate.getFullYear()}${String(gameDate.getMonth() + 1).padStart(2, '0')}${String(gameDate.getDate()).padStart(2, '0')}`
 
-  const params = []
-  if (sport.params) params.push(sport.params)
-  params.push(`dates=${dateStr}`)
-  const qs = `?${params.join('&')}`
-  const url = `${ESPN_BASE}/${sport.path}/scoreboard${qs}`
+  // Try the game's UTC date and the previous day (late-night games in US timezones
+  // can land on the next UTC day but ESPN lists them under the US calendar date)
+  const datesToTry = [
+    gameDate,
+    new Date(gameDate.getTime() - 24 * 60 * 60 * 1000),
+  ]
 
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const data = await res.json()
+  for (const d of datesToTry) {
+    const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
 
-    for (const event of data.events || []) {
-      const comp = event.competitions?.[0]
-      if (!comp) continue
-      const home = comp.competitors?.find((c) => c.homeAway === 'home')
-      const away = comp.competitors?.find((c) => c.homeAway === 'away')
-      if (!home || !away) continue
+    const params = []
+    if (sport.params) params.push(sport.params)
+    params.push(`dates=${dateStr}`)
+    const qs = `?${params.join('&')}`
+    const url = `${ESPN_BASE}/${sport.path}/scoreboard${qs}`
 
-      const homeName = home.team?.displayName || home.team?.name || ''
-      const awayName = away.team?.displayName || away.team?.name || ''
-      if (teamsMatch(homeName, homeTeam) && teamsMatch(awayName, awayTeam)) {
-        // Time proximity check for doubleheaders
-        if (event.date && startsAt) {
-          const diff = Math.abs(new Date(event.date).getTime() - gameDate.getTime())
-          if (diff > 4 * 60 * 60 * 1000) continue
+    try {
+      const res = await fetch(url)
+      if (!res.ok) continue
+      const data = await res.json()
+
+      for (const event of data.events || []) {
+        const comp = event.competitions?.[0]
+        if (!comp) continue
+        const home = comp.competitors?.find((c) => c.homeAway === 'home')
+        const away = comp.competitors?.find((c) => c.homeAway === 'away')
+        if (!home || !away) continue
+
+        const homeName = home.team?.displayName || home.team?.name || ''
+        const awayName = away.team?.displayName || away.team?.name || ''
+        if (teamsMatch(homeName, homeTeam) && teamsMatch(awayName, awayTeam)) {
+          // Time proximity check for doubleheaders
+          if (event.date && startsAt) {
+            const diff = Math.abs(new Date(event.date).getTime() - gameDate.getTime())
+            if (diff > 4 * 60 * 60 * 1000) continue
+          }
+          return event.id
         }
-        return event.id
       }
+    } catch (err) {
+      logger.warn({ err: err.message, sportKey, dateStr }, 'Failed to find ESPN event ID')
     }
-  } catch (err) {
-    logger.warn({ err: err.message, sportKey }, 'Failed to find ESPN event ID')
   }
   return null
 }
