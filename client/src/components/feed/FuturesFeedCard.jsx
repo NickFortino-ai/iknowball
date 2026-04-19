@@ -1,6 +1,6 @@
 import FeedCardWrapper from './FeedCardWrapper'
 import Avatar from '../ui/Avatar'
-import { getTeamLogoUrl } from '../../lib/teamLogos'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import { getPronouns } from '../../lib/pronouns'
 
 function formatPickDate(dateStr) {
@@ -36,7 +36,7 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
         {/* Centered team logo / visual */}
         <div className="flex flex-col items-center py-4 bg-gradient-to-b from-yellow-500/10 to-transparent rounded-xl mb-3">
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="w-20 h-20 object-contain mb-3" onError={(e) => { e.target.style.display = 'none' }} />
+            <img src={logoUrl} alt="" className="w-20 h-20 object-contain mb-3" onError={(e) => { const fb = getTeamLogoFallbackUrl(futures.picked_outcome, futures.sport_key); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />
           ) : (
             <div className="text-5xl mb-3">{'\uD83C\uDFC6'}</div>
           )}
@@ -85,7 +85,7 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
       <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-4">
         <div className="flex flex-col items-center text-center">
           {logoUrl && (
-            <img src={logoUrl} alt="" className="w-12 h-12 object-contain mb-2" onError={(e) => { e.target.style.display = 'none' }} />
+            <img src={logoUrl} alt="" className="w-12 h-12 object-contain mb-2" onError={(e) => { const fb = getTeamLogoFallbackUrl(futures.picked_outcome, futures.sport_key); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />
           )}
           <div className="font-display text-lg text-text-primary">{futures.picked_outcome}</div>
           <div className="text-sm text-text-primary mt-1">{futures.market_title}</div>
@@ -120,7 +120,7 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
 
           {/* Team logo or trophy */}
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="w-24 h-24 object-contain mx-auto mb-3" onError={(e) => { e.target.style.display = 'none' }} />
+            <img src={logoUrl} alt="" className="w-24 h-24 object-contain mx-auto mb-3" onError={(e) => { const fb = getTeamLogoFallbackUrl(pick.picked_outcome, market?.sport_key); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />
           ) : (
             <div className="text-6xl mb-3">{'\uD83C\uDFC6'}</div>
           )}

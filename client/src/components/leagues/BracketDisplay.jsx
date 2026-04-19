@@ -1,12 +1,16 @@
 import { useMemo, useState, useRef, forwardRef, useImperativeHandle, Fragment } from 'react'
-import { getTeamLogoUrl } from '../../lib/teamLogos'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 function TeamLogo({ team, sportKey, size }) {
-  const [err, setErr] = useState(false)
-  const url = getTeamLogoUrl(team, sportKey)
-  if (!url || err) return null
+  const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
+  const [hidden, setHidden] = useState(false)
+  if (!src || hidden) return null
   const px = size === 'xl' ? 'w-7 h-7' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'
-  return <img src={url} alt="" className={`${px} object-contain shrink-0`} onError={() => setErr(true)} />
+  return <img src={src} alt="" className={`${px} object-contain shrink-0`} onError={() => {
+    const fallback = getTeamLogoFallbackUrl(team, sportKey)
+    if (fallback && fallback !== src) setSrc(fallback)
+    else setHidden(true)
+  }} />
 }
 
 // Split "Colorado Avalanche" → { city: "Colorado", name: "Avalanche" }

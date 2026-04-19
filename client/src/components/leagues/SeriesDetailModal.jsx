@@ -1,12 +1,16 @@
 import { useState } from 'react'
-import { getTeamLogoUrl } from '../../lib/teamLogos'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import { useSeriesGames } from '../../hooks/useLeagues'
 
 function TeamLogo({ team, sportKey, className }) {
-  const [err, setErr] = useState(false)
-  const url = getTeamLogoUrl(team, sportKey)
-  if (!url || err) return null
-  return <img src={url} alt="" className={`object-contain ${className}`} onError={() => setErr(true)} />
+  const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
+  const [hidden, setHidden] = useState(false)
+  if (!src || hidden) return null
+  return <img src={src} alt="" className={`object-contain ${className}`} onError={() => {
+    const fallback = getTeamLogoFallbackUrl(team, sportKey)
+    if (fallback && fallback !== src) setSrc(fallback)
+    else setHidden(true)
+  }} />
 }
 
 function splitTeamName(fullName) {

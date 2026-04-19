@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import OddsDisplay from './OddsDisplay'
-import { getTeamLogoUrl } from '../../lib/teamLogos'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 const stateStyles = {
   default: 'bg-bg-primary hover:bg-bg-card-hover border-border hover:border-border-hover',
@@ -13,10 +13,14 @@ const stateStyles = {
 }
 
 function PickLogo({ team, sportKey }) {
-  const [err, setErr] = useState(false)
-  const url = getTeamLogoUrl(team, sportKey)
-  if (!url || err) return null
-  return <img src={url} alt="" className="w-10 h-10 object-contain mx-auto my-1.5" onError={() => setErr(true)} />
+  const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
+  const [hidden, setHidden] = useState(false)
+  if (!src || hidden) return null
+  return <img src={src} alt="" className="w-10 h-10 object-contain mx-auto my-1.5" onError={() => {
+    const fallback = getTeamLogoFallbackUrl(team, sportKey)
+    if (fallback && fallback !== src) setSrc(fallback)
+    else setHidden(true)
+  }} />
 }
 
 export default function PickButton({ team, odds, score, isLive, state = 'default', onClick, disabled, sportKey }) {

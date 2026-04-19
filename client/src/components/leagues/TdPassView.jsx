@@ -12,7 +12,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 import UserProfileModal from '../profile/UserProfileModal'
-import { getTeamLogoUrl } from '../../lib/teamLogos'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 export default function TdPassView({ league, tab = 'picks' }) {
   const { profile } = useAuth()
@@ -244,10 +244,10 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   <div className="text-base font-display text-text-primary">{qb.full_name}</div>
                   {qb.matchup ? (
                     <div className="flex items-center gap-2 text-xs text-text-secondary">
-                      {teamLogo && <img src={teamLogo} alt={qb.team} className="w-5 h-5 object-contain" onError={(e) => { e.target.style.display = 'none' }} />}
+                      {teamLogo && <img src={teamLogo} alt={qb.team} className="w-5 h-5 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(qb.team, 'americanfootball_nfl'); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
                       <span className="font-semibold">{qb.team}</span>
                       <span className="text-text-muted">{qb.matchup.home_away === 'home' ? 'vs' : '@'}</span>
-                      {oppLogo && <img src={oppLogo} alt={qb.matchup.opponent} className="w-5 h-5 object-contain" onError={(e) => { e.target.style.display = 'none' }} />}
+                      {oppLogo && <img src={oppLogo} alt={qb.matchup.opponent} className="w-5 h-5 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(qb.matchup.opponent, 'americanfootball_nfl'); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
                       <span className="font-semibold">{qb.matchup.opponent}</span>
                       {qb.matchup.starts_at && (
                         <span className="text-text-muted">

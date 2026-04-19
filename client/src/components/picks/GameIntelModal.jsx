@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useInjuryDetail } from '../../hooks/useInjuries'
-import { getTeamLogoUrl } from '../../lib/teamLogos'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
 function TeamLogo({ team, sportKey }) {
-  const [err, setErr] = useState(false)
-  const url = getTeamLogoUrl(team, sportKey)
-  if (!url || err) return null
-  return <img src={url} alt="" className="w-12 h-12 object-contain mx-auto mb-1" onError={() => setErr(true)} />
+  const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
+  const [hidden, setHidden] = useState(false)
+  if (!src || hidden) return null
+  return <img src={src} alt="" className="w-12 h-12 object-contain mx-auto mb-1" onError={() => {
+    const fallback = getTeamLogoFallbackUrl(team, sportKey)
+    if (fallback && fallback !== src) setSrc(fallback)
+    else setHidden(true)
+  }} />
 }
 
 const STATUS_STYLES = {

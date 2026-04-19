@@ -113,6 +113,20 @@ export function getTeamLogoUrl(teamName, sportKey) {
   if (config.ids) {
     const id = config.ids[teamName]
     if (!id) return null
+    return `https://a.espncdn.com/i/teamlogos/${config.sport}/500-dark/${id}.png`
+  }
+  const abbr = config.abbrs[teamName]
+  if (!abbr) return null
+  return `https://a.espncdn.com/i/teamlogos/${config.sport}/500-dark/${abbr}.png`
+}
+
+// Standard (non-dark) URL as fallback
+export function getTeamLogoFallbackUrl(teamName, sportKey) {
+  const config = SPORT_MAP[sportKey]
+  if (!config) return null
+  if (config.ids) {
+    const id = config.ids[teamName]
+    if (!id) return null
     return `https://a.espncdn.com/i/teamlogos/${config.sport}/500/${id}.png`
   }
   const abbr = config.abbrs[teamName]

@@ -6,7 +6,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
-import { getTeamLogoUrl } from '../../lib/teamLogos'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import Avatar from '../ui/Avatar'
 import TouchdownPicker from './TouchdownPicker'
 
@@ -225,7 +225,7 @@ export default function SurvivorView({ league }) {
                                     : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
-                              {awayLogo && <img src={awayLogo} alt="" className="w-8 h-8 object-contain" />}
+                              {awayLogo && <img src={awayLogo} alt="" className="w-8 h-8 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(game.away_team, league.sport === 'all' ? game.sport_key : league.sport); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
                               <span>{game.away_team}</span>
                               {game.away_odds != null && (
                                 <span className="text-xs font-normal text-text-muted">{formatOdds(game.away_odds)}</span>
@@ -243,7 +243,7 @@ export default function SurvivorView({ league }) {
                                     : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
                               }`}
                             >
-                              {homeLogo && <img src={homeLogo} alt="" className="w-8 h-8 object-contain" />}
+                              {homeLogo && <img src={homeLogo} alt="" className="w-8 h-8 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(game.home_team, league.sport === 'all' ? game.sport_key : league.sport); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
                               <span>{game.home_team}</span>
                               {game.home_odds != null && (
                                 <span className="text-xs font-normal text-text-muted">{formatOdds(game.home_odds)}</span>

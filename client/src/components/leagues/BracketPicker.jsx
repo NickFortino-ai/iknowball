@@ -2,13 +2,17 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useSubmitBracket, useMyOtherBracketEntries } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import BracketDisplay from './BracketDisplay'
-import { getTeamLogoUrl } from '../../lib/teamLogos'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 function PickerTeamLogo({ team, sportKey }) {
-  const [err, setErr] = useState(false)
-  const url = getTeamLogoUrl(team, sportKey)
-  if (!url || err) return null
-  return <img src={url} alt="" className="w-5 h-5 object-contain shrink-0" onError={() => setErr(true)} />
+  const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
+  const [hidden, setHidden] = useState(false)
+  if (!src || hidden) return null
+  return <img src={src} alt="" className="w-5 h-5 object-contain shrink-0" onError={() => {
+    const fallback = getTeamLogoFallbackUrl(team, sportKey)
+    if (fallback && fallback !== src) setSrc(fallback)
+    else setHidden(true)
+  }} />
 }
 
 export default function BracketPicker({ league, tournament, matchups, existingPicks, existingTiebreakerScore, onClose, ffOnlyMode = false }) {
