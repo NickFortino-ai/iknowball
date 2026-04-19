@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import { useSeriesGames } from '../../hooks/useLeagues'
 
 function TeamLogo({ team, sportKey, className }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
   const [hidden, setHidden] = useState(false)
+  useEffect(() => { setSrc(getTeamLogoUrl(team, sportKey)); setHidden(false) }, [team, sportKey])
   if (!src || hidden) return null
   return <img src={src} alt="" className={`object-contain ${className}`} onError={() => {
     const fallback = getTeamLogoFallbackUrl(team, sportKey)

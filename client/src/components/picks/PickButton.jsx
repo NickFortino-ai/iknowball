@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import OddsDisplay from './OddsDisplay'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
@@ -15,6 +15,7 @@ const stateStyles = {
 function PickLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
   const [hidden, setHidden] = useState(false)
+  useEffect(() => { setSrc(getTeamLogoUrl(team, sportKey)); setHidden(false) }, [team, sportKey])
   if (!src || hidden) return null
   return <img src={src} alt="" className="w-10 h-10 object-contain mx-auto my-1.5" onError={() => {
     const fallback = getTeamLogoFallbackUrl(team, sportKey)

@@ -7,6 +7,7 @@ import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 function PickerTeamLogo({ team, sportKey }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
   const [hidden, setHidden] = useState(false)
+  useEffect(() => { setSrc(getTeamLogoUrl(team, sportKey)); setHidden(false) }, [team, sportKey])
   if (!src || hidden) return null
   return <img src={src} alt="" className="w-5 h-5 object-contain shrink-0" onError={() => {
     const fallback = getTeamLogoFallbackUrl(team, sportKey)

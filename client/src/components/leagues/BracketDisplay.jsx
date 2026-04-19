@@ -1,9 +1,11 @@
-import { useMemo, useState, useRef, forwardRef, useImperativeHandle, Fragment } from 'react'
+import { useEffect, useMemo, useState, useRef, forwardRef, useImperativeHandle, Fragment } from 'react'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 function TeamLogo({ team, sportKey, size }) {
-  const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
+  const url = getTeamLogoUrl(team, sportKey)
+  const [src, setSrc] = useState(url)
   const [hidden, setHidden] = useState(false)
+  useEffect(() => { setSrc(getTeamLogoUrl(team, sportKey)); setHidden(false) }, [team, sportKey])
   if (!src || hidden) return null
   const px = size === 'xl' ? 'w-7 h-7' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'
   return <img src={src} alt="" className={`${px} object-contain shrink-0`} onError={() => {
