@@ -81,10 +81,10 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
             <div className="flex flex-col items-center flex-1 min-w-0">
               <TeamLogo team={teamTop} sportKey={sportKey} className="w-14 h-14 mb-2" />
               {matchup.seed_top != null && (
-                <span className="text-[10px] text-text-muted mb-0.5">#{matchup.seed_top} seed</span>
+                <span className="text-xs text-text-primary mb-0.5">#{matchup.seed_top} seed</span>
               )}
-              <span className="text-xs text-text-muted">{topInfo.city}</span>
-              <span className="text-sm font-bold text-text-primary">{topInfo.name}</span>
+              <span className="text-sm text-text-primary">{topInfo.city}</span>
+              <span className="text-base font-bold text-text-primary">{topInfo.name}</span>
             </div>
 
             {/* Series score */}
@@ -98,17 +98,17 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                   {seriesWinsBottom}
                 </span>
               </div>
-              <span className="text-[11px] text-text-muted text-center">{seriesLabel}</span>
+              <span className="text-xs text-text-primary text-center">{seriesLabel}</span>
             </div>
 
             {/* Bottom team */}
             <div className="flex flex-col items-center flex-1 min-w-0">
               <TeamLogo team={teamBottom} sportKey={sportKey} className="w-14 h-14 mb-2" />
               {matchup.seed_bottom != null && (
-                <span className="text-[10px] text-text-muted mb-0.5">#{matchup.seed_bottom} seed</span>
+                <span className="text-xs text-text-primary mb-0.5">#{matchup.seed_bottom} seed</span>
               )}
-              <span className="text-xs text-text-muted">{bottomInfo.city}</span>
-              <span className="text-sm font-bold text-text-primary">{bottomInfo.name}</span>
+              <span className="text-sm text-text-primary">{bottomInfo.city}</span>
+              <span className="text-base font-bold text-text-primary">{bottomInfo.name}</span>
             </div>
           </div>
         </div>
@@ -146,9 +146,9 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                     {/* Score row */}
                     <div className="flex items-center gap-3">
                       {/* Game number */}
-                      <div className="shrink-0 w-14">
-                        <div className="text-xs font-semibold text-text-secondary">Game {idx + 1}</div>
-                        <div className="text-[10px] text-text-muted">
+                      <div className="shrink-0 w-16">
+                        <div className="text-sm font-semibold text-text-primary">Game {idx + 1}</div>
+                        <div className="text-xs text-text-primary">
                           {gameDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </div>
                       </div>
@@ -156,19 +156,19 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                       {/* Scores */}
                       <div className="flex-1 flex items-center justify-center gap-2">
                         <div className={`flex items-center gap-1.5 ${topWon ? 'text-text-primary' : 'text-text-muted'}`}>
-                          <TeamLogo team={teamTop} sportKey={sportKey} className="w-5 h-5" />
-                          <span className={`text-lg font-bold ${topWon ? '' : 'opacity-60'}`}>{scoreTop}</span>
+                          <TeamLogo team={teamTop} sportKey={sportKey} className="w-6 h-6" />
+                          <span className={`text-xl font-bold ${topWon ? '' : 'opacity-60'}`}>{scoreTop}</span>
                         </div>
-                        <span className="text-text-muted text-xs">-</span>
+                        <span className="text-text-muted text-sm">-</span>
                         <div className={`flex items-center gap-1.5 ${!topWon ? 'text-text-primary' : 'text-text-muted'}`}>
-                          <span className={`text-lg font-bold ${!topWon ? '' : 'opacity-60'}`}>{scoreBottom}</span>
-                          <TeamLogo team={teamBottom} sportKey={sportKey} className="w-5 h-5" />
+                          <span className={`text-xl font-bold ${!topWon ? '' : 'opacity-60'}`}>{scoreBottom}</span>
+                          <TeamLogo team={teamBottom} sportKey={sportKey} className="w-6 h-6" />
                         </div>
                       </div>
 
                       {/* Location */}
                       <div className="shrink-0 text-right">
-                        <div className="text-[10px] text-text-muted">
+                        <div className="text-xs text-text-primary">
                           {topIsHome ? `@${topInfo.name}` : `@${bottomInfo.name}`}
                         </div>
                       </div>
@@ -180,22 +180,22 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                         {scorerForTop && (
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             {scorerForTop.headshot_url && (
-                              <img src={scorerForTop.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                              <img src={scorerForTop.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                             )}
                             <div className="min-w-0">
-                              <div className="text-xs text-text-secondary font-semibold truncate">{scorerForTop.player_name}</div>
-                              <div className="text-[11px] text-text-muted">{scorerForTop.points} pts</div>
+                              <div className="text-sm text-text-primary font-semibold truncate">{scorerForTop.player_name}</div>
+                              <div className="text-xs text-text-primary">{scorerForTop.points} pts</div>
                             </div>
                           </div>
                         )}
                         {scorerForBottom && (
                           <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
                             <div className="min-w-0 text-right">
-                              <div className="text-xs text-text-secondary font-semibold truncate">{scorerForBottom.player_name}</div>
-                              <div className="text-[11px] text-text-muted">{scorerForBottom.points} pts</div>
+                              <div className="text-sm text-text-primary font-semibold truncate">{scorerForBottom.player_name}</div>
+                              <div className="text-xs text-text-primary">{scorerForBottom.points} pts</div>
                             </div>
                             {scorerForBottom.headshot_url && (
-                              <img src={scorerForBottom.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                              <img src={scorerForBottom.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                             )}
                           </div>
                         )}

@@ -783,6 +783,12 @@ router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
   const { team1, team2 } = req.query
   if (!team1 || !team2) return res.status(400).json({ error: 'team1 and team2 required' })
   const league = await getLeagueDetails(req.params.id, req.user.id)
+  // Get the bracket tournament's lock time — only show games after this (playoff games)
+  const { data: tournament } = await supabase
+    .from('bracket_tournaments')
+    .select('locks_at')
+    .eq('league_id', league.id)
+    .single()
   // Find the sport_id for this league's sport
   const { data: sport } = await supabase
     .from('sports')
@@ -790,25 +796,18 @@ router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
     .eq('key', league.sport)
     .single()
   if (!sport) return res.json([])
-  // Query completed games between these two teams, ordered by date
-  const { data: games } = await supabase
+  // Query completed games between these two teams after the bracket locked (playoff games only)
+  let query = supabase
     .from('games')
     .select('id, home_team, away_team, home_score, away_score, winner, starts_at, status, season')
     .eq('sport_id', sport.id)
     .eq('status', 'final')
     .or(`and(home_team.eq.${team1},away_team.eq.${team2}),and(home_team.eq.${team2},away_team.eq.${team1})`)
     .order('starts_at', { ascending: true })
-  // Filter to current season (playoff games)
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const seasonStr = String(currentYear)
-  const filtered = (games || []).filter((g) => {
-    // NBA season spans two calendar years — 2025-26 season = "2025" or "2026"
-    if (g.season === seasonStr || g.season === String(currentYear - 1)) return true
-    // Fallback: games from the last 6 months
-    const gameDate = new Date(g.starts_at)
-    return now - gameDate < 180 * 24 * 60 * 60 * 1000
-  })
+  if (tournament?.locks_at) {
+    query = query.gte('starts_at', tournament.locks_at)
+  }
+  const { data: filtered } = await query
   // Attach top scorers for each game
   if (filtered.length) {
     const gameIds = filtered.map((g) => g.id)
