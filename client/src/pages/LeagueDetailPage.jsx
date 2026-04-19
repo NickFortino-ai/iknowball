@@ -580,7 +580,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
             onBlur={(e) => saveDate('ends_at', e.target.value)}
             className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
           />
-          <p className="text-[10px] text-text-muted mt-1">All games on this date are included. The league closes after the last game goes final.</p>
+          <p className="text-[10px] text-text-primary mt-1">All games on this date are included. The league closes after the last game goes final.</p>
         </div>
       )}
       </>)}
@@ -605,7 +605,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-text-muted mt-1">
+            <p className="text-[10px] text-text-primary mt-1">
               Locked once the draft is completed.
             </p>
           </div>
@@ -624,7 +624,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               }}
               className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
             />
-            <p className="text-[10px] text-text-muted mt-1">
+            <p className="text-[10px] text-text-primary mt-1">
               Shown in your local time. Every member sees this in their own timezone. Leave blank to start the draft manually.
             </p>
           </div>
@@ -777,7 +777,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               onBlur={(e) => saveBracketLockTime(e.target.value)}
               className="w-full max-w-full box-border bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
             />
-            <div className="text-[10px] text-text-muted mt-1">Users must submit brackets before this time</div>
+            <div className="text-[10px] text-text-primary mt-1">Users must submit brackets before this time</div>
           </div>
         </>
       )}
