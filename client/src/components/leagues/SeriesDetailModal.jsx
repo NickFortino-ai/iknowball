@@ -164,12 +164,12 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
 
                     {/* Top scorers row */}
                     {(scorerForTop || scorerForBottom) && (
-                      <div className="flex items-start justify-between gap-4 mt-2 pt-2 border-t border-text-primary/5">
+                      <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-text-primary/5">
                         <div className="flex-1 min-w-0">
                           {scorerForTop && (
                             <div className="flex items-center gap-2">
                               {scorerForTop.headshot_url && (
-                                <img src={scorerForTop.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                <img src={scorerForTop.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
                               )}
                               <div className="min-w-0">
                                 <div className="text-sm text-text-primary font-semibold truncate">{scorerForTop.player_name}</div>
@@ -186,7 +186,7 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                                 <div className="text-xs text-text-primary">{scorerForBottom.points} pts</div>
                               </div>
                               {scorerForBottom.headshot_url && (
-                                <img src={scorerForBottom.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                <img src={scorerForBottom.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
                               )}
                             </div>
                           )}
