@@ -135,7 +135,7 @@ export async function createReminder(actorId, hotTakeId, comment) {
   // Fetch the hot take
   const { data: hotTake } = await supabase
     .from('hot_takes')
-    .select('id, user_id, content')
+    .select('id, user_id, content, post_type')
     .eq('id', hotTakeId)
     .single()
 
@@ -170,7 +170,8 @@ export async function createReminder(actorId, hotTakeId, comment) {
         .eq('id', actorId)
         .single()
       const username = actor?.username || 'Someone'
-      await createNotification(hotTake.user_id, 'hot_take_reminder', `${username} reminded you of your post`, {
+      const label = hotTake.post_type === 'prediction' ? 'prediction' : hotTake.post_type === 'poll' ? 'poll' : 'post'
+      await createNotification(hotTake.user_id, 'hot_take_reminder', `${username} reminded you of your ${label}`, {
         actorId,
         hotTakeId,
       })

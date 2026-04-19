@@ -178,7 +178,13 @@ export async function addComment(userId, targetType, targetId, content, parentId
 
   if (notifyUserId && userId !== notifyUserId) {
     try {
-      const label = NOTIFICATION_LABELS[targetType]
+      let label = NOTIFICATION_LABELS[targetType]
+      // For hot_takes, use the actual post_type (post, prediction, poll)
+      if (targetType === 'hot_take') {
+        const { data: ht } = await supabase.from('hot_takes').select('post_type').eq('id', targetId).single()
+        if (ht?.post_type === 'prediction') label = 'prediction'
+        else if (ht?.post_type === 'poll') label = 'poll'
+      }
       const username = data.users?.username || 'Someone'
       const metadata = { actorId: userId, targetType, targetId }
       if (targetType === 'pick') metadata.pickId = targetId
