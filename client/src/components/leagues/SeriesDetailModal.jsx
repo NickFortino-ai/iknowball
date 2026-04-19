@@ -141,58 +141,56 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                 return (
                   <div
                     key={game.id}
-                    className="bg-bg-primary/60 border border-text-primary/10 rounded-lg px-3 py-2.5"
+                    className="bg-bg-primary/60 border border-text-primary/10 rounded-lg px-4 py-3"
                   >
-                    {/* Score row */}
-                    <div className="flex items-center gap-3">
-                      {/* Game number */}
-                      <div className="shrink-0 w-16">
-                        <div className="text-sm font-semibold text-text-primary">Game {idx + 1}</div>
-                        <div className="text-xs text-text-primary">
-                          {gameDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </div>
-                      </div>
+                    {/* Game label centered */}
+                    <div className="text-center mb-2">
+                      <span className="text-sm font-semibold text-text-primary">Game {idx + 1}</span>
+                      <span className="text-xs text-text-muted ml-2">
+                        {gameDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
 
-                      {/* Scores */}
-                      <div className="flex-1 flex items-center justify-center gap-2">
-                        <div className={`flex items-center gap-1.5 ${topWon ? 'text-text-primary' : 'text-text-muted'}`}>
-                          <TeamLogo team={teamTop} sportKey={sportKey} className="w-6 h-6" />
-                          <span className={`text-xl font-bold ${topWon ? '' : 'opacity-60'}`}>{scoreTop}</span>
-                        </div>
-                        <span className="text-text-muted text-sm">-</span>
-                        <div className={`flex items-center gap-1.5 ${!topWon ? 'text-text-primary' : 'text-text-muted'}`}>
-                          <span className={`text-xl font-bold ${!topWon ? '' : 'opacity-60'}`}>{scoreBottom}</span>
-                          <TeamLogo team={teamBottom} sportKey={sportKey} className="w-6 h-6" />
-                        </div>
+                    {/* Scores aligned under team headers */}
+                    <div className="flex items-center">
+                      <div className="flex-1 text-center">
+                        <span className={`text-2xl font-bold ${topWon ? 'text-text-primary' : 'text-text-muted opacity-60'}`}>{scoreTop}</span>
                       </div>
-
+                      <span className="text-text-muted text-sm px-2">-</span>
+                      <div className="flex-1 text-center">
+                        <span className={`text-2xl font-bold ${!topWon ? 'text-text-primary' : 'text-text-muted opacity-60'}`}>{scoreBottom}</span>
+                      </div>
                     </div>
 
                     {/* Top scorers row */}
                     {(scorerForTop || scorerForBottom) && (
-                      <div className="flex items-center justify-between gap-4 mt-2 pt-2 border-t border-text-primary/5 mx-2">
-                        {scorerForTop && (
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            {scorerForTop.headshot_url && (
-                              <img src={scorerForTop.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                            )}
-                            <div className="min-w-0">
-                              <div className="text-sm text-text-primary font-semibold truncate">{scorerForTop.player_name}</div>
-                              <div className="text-xs text-text-primary">{scorerForTop.points} pts</div>
+                      <div className="flex items-start justify-between gap-4 mt-2 pt-2 border-t border-text-primary/5">
+                        <div className="flex-1 min-w-0">
+                          {scorerForTop && (
+                            <div className="flex items-center gap-2">
+                              {scorerForTop.headshot_url && (
+                                <img src={scorerForTop.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <div className="text-sm text-text-primary font-semibold truncate">{scorerForTop.player_name}</div>
+                                <div className="text-xs text-text-primary">{scorerForTop.points} pts</div>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        {scorerForBottom && (
-                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                            <div className="min-w-0 text-right">
-                              <div className="text-sm text-text-primary font-semibold truncate">{scorerForBottom.player_name}</div>
-                              <div className="text-xs text-text-primary">{scorerForBottom.points} pts</div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {scorerForBottom && (
+                            <div className="flex items-center gap-2 justify-end">
+                              <div className="min-w-0 text-right">
+                                <div className="text-sm text-text-primary font-semibold truncate">{scorerForBottom.player_name}</div>
+                                <div className="text-xs text-text-primary">{scorerForBottom.points} pts</div>
+                              </div>
+                              {scorerForBottom.headshot_url && (
+                                <img src={scorerForBottom.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                              )}
                             </div>
-                            {scorerForBottom.headshot_url && (
-                              <img src={scorerForBottom.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                            )}
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

@@ -90,7 +90,8 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   // Live series: series has started (at least 1 win) but not yet completed
   const hasLiveSeries = isBestOf7 && matchup.status !== 'completed' && (matchup.series_wins_top > 0 || matchup.series_wins_bottom > 0)
   // Only show tap affordance for matchups with series data (at least 1 game played)
-  const canTap = !!onTap && (hasLiveSeries || hasSeriesRecord)
+  const hasCompletedScore = !isBestOf7 && matchup.status === 'completed' && matchup.score_top != null
+  const canTap = !!onTap && (hasLiveSeries || hasSeriesRecord || hasCompletedScore)
 
   // Series length prediction color: white during series, green/orange/red after completion
   let predictionColor = 'text-text-primary'

@@ -422,14 +422,20 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
               regions={tournament.bracket_templates?.regions}
               seriesFormat={tournament.bracket_templates?.series_format}
               sportKey={league.sport}
-              onMatchupTap={isBestOf7 ? (displayMatchup) => {
+              onMatchupTap={(displayMatchup) => {
                 // Use original matchup data for real team names and series wins
                 const original = tournament.matchups.find((m) => m.id === displayMatchup.id)
                 const m = original || displayMatchup
-                if (m.team_top && m.team_bottom && (m.series_wins_top > 0 || m.series_wins_bottom > 0)) {
+                if (!m.team_top || !m.team_bottom) return
+                // Best-of-7: tappable once a game has been played
+                if (isBestOf7 && (m.series_wins_top > 0 || m.series_wins_bottom > 0)) {
                   setSeriesMatchup(m)
                 }
-              } : undefined}
+                // Single-game: tappable once completed
+                if (!isBestOf7 && m.status === 'completed') {
+                  setSeriesMatchup(m)
+                }
+              }}
             />
           </div>
         </div>
