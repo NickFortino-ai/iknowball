@@ -43,7 +43,7 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
           <div className="font-display text-lg text-text-primary text-center px-4">
             {futures.picked_outcome}
           </div>
-          <div className="text-xs text-text-muted mt-1">{futures.market_title}</div>
+          <div className="text-sm text-text-primary mt-1">{futures.market_title}</div>
         </div>
 
         {/* Narrative subtext */}
@@ -88,7 +88,7 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
             <img src={logoUrl} alt="" className="w-12 h-12 object-contain mb-2" onError={(e) => { e.target.style.display = 'none' }} />
           )}
           <div className="font-display text-lg text-text-primary">{futures.picked_outcome}</div>
-          <div className="text-xs text-text-muted mt-1">{futures.market_title}</div>
+          <div className="text-sm text-text-primary mt-1">{futures.market_title}</div>
           {winLine && (
             <div className="text-sm text-correct font-semibold mt-2">{winLine}</div>
           )}
