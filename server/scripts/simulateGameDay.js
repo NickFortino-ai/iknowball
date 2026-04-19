@@ -33,14 +33,18 @@
  *   --dry-run               Print what would happen without writing anything
  */
 import { createClient } from '@supabase/supabase-js'
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+const __dirname = dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: join(__dirname, '..', '.env') })
 
 // ============================================================
 // IMMUTABLE SAFETY CONSTANTS — never change these
 // ============================================================
 const TEST_LEAGUE_ID = 'feedface-feed-face-feed-facefeedface'
-const TEST_COMMISH_ID = 'feedface-feed-face-feed-facefeedca5e'
-const TEST_OPPONENT_ID = 'feedface-feed-face-feed-facefeedca7e'
+const TEST_COMMISH_ID = 'f45f8a06-b9bd-4ced-bd21-3f443385da16' // mossyou
+const TEST_OPPONENT_ID = 'f149c685-99e9-4c31-800c-d23d3e4d21a3' // userpick
 const SIM_SEASON = 9999
 const SIM_WEEK = 1
 
@@ -63,11 +67,12 @@ const DRY_RUN = process.argv.includes('--dry-run')
 if (SOURCE_SEASON === SIM_SEASON) {
   throw new Error(`source-season cannot equal simulation season ${SIM_SEASON}`)
 }
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY env vars required')
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!process.env.SUPABASE_URL || !SERVICE_KEY) {
+  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_SERVICE_ROLE_KEY) env vars required')
 }
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+const supabase = createClient(process.env.SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
 })
 
@@ -106,19 +111,8 @@ async function verifySourceData() {
 // 2. Test league + users + roster setup
 // ============================================================
 async function ensureTestUsers() {
-  const users = [
-    { id: TEST_COMMISH_ID, username: 'sim_commish', display_name: 'Sim Commish' },
-    { id: TEST_OPPONENT_ID, username: 'sim_opponent', display_name: 'Sim Opponent' },
-  ]
-  for (const u of users) {
-    if (DRY_RUN) { log('[dry] would upsert user', u.id); continue }
-    const { error } = await supabase
-      .from('users')
-      .upsert({ ...u, total_points: 0 }, { onConflict: 'id' })
-    if (error) {
-      log('user upsert error (continuing):', error.message)
-    }
-  }
+  // Using real user accounts — no upsert needed
+  log('Using real accounts: mossyou (commish) + userpick (opponent)')
 }
 
 async function ensureTestLeague() {
@@ -135,6 +129,8 @@ async function ensureTestLeague() {
       status: 'active',
       commissioner_id: TEST_COMMISH_ID,
       visibility: 'closed',
+      duration: 'full_season',
+      invite_code: 'SIMTEST',
       starts_at: new Date().toISOString(),
     }, { onConflict: 'id' })
   if (leagueErr) throw new Error(`Failed to create test league: ${leagueErr.message}`)
@@ -274,7 +270,7 @@ async function applyTick(sourceStats, fraction) {
       const v = row[col]
       if (v == null) continue
       out[col] = typeof v === 'number'
-        ? Math.round(v * fraction * 100) / 100
+        ? Math.round(v * fraction)
         : v
     }
     return out

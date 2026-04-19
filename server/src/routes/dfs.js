@@ -161,7 +161,7 @@ router.get('/live', async (req, res) => {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .eq('week', w)
       .eq('season', s)
       .in('player_id', [...new Set(allPlayerIds)])
@@ -391,7 +391,7 @@ router.get('/matchup-live', async (req, res) => {
   if (allPlayerIds.length) {
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
       .eq('week', w)
       .eq('season', s)
       .in('player_id', [...new Set(allPlayerIds)])
@@ -542,7 +542,7 @@ router.get('/matchup-live', async (req, res) => {
         rec_yds: Number(stat.rec_yd) || 0,
         rec_td: stat.rec_td || 0,
         fum: stat.fum_lost || 0,
-        fgm: stat.fgm || 0,
+        fgm: stat.fgm || ((stat.fgm_0_39 || 0) + (stat.fgm_40_49 || 0) + (stat.fgm_50_plus || 0)),
         fgm_50_plus: stat.fgm_50_plus || 0,
         xpm: stat.xpm || 0,
         def_td: stat.def_td || 0,
