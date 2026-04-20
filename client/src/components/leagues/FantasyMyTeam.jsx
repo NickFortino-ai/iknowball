@@ -6,7 +6,7 @@ import { toast } from '../ui/Toast'
 import Avatar from '../ui/Avatar'
 import PlayerDetailModal from './PlayerDetailModal'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
-import { ProposeTradeModal } from './FantasyTrades'
+// import { ProposeTradeModal } from './FantasyTrades' // TODO: re-enable counter trades
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
 const INJURY_COLORS = {
@@ -557,14 +557,7 @@ export default function FantasyMyTeam({ league }) {
         </div>
       )}
 
-      {showCounterTrade && (
-        <ProposeTradeModal
-          league={league}
-          currentUserId={profile?.id}
-          initialReceiverId={showCounterTrade.proposer_user_id}
-          onClose={() => setShowCounterTrade(null)}
-        />
-      )}
+      {/* Counter trade modal temporarily disabled */}
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
