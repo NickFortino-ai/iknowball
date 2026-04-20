@@ -362,13 +362,13 @@ export default function FantasyPlayerBrowser({ league }) {
               {!isDraftPhase && roster?.length > 0 && !isClaimed && (
                 <button
                   onClick={() => setAddingPlayer(player)}
-                  className={`text-xs font-semibold px-2 py-1.5 rounded-lg transition-colors ${
+                  className={`text-lg font-bold w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
                     onWaivers
-                      ? 'bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25'
-                      : 'bg-accent/15 text-accent hover:bg-accent/25'
+                      ? 'text-yellow-500 hover:bg-yellow-500/15'
+                      : 'text-correct hover:bg-correct/15'
                   }`}
                 >
-                  {onWaivers ? '+ Claim' : '+ Add'}
+                  +
                 </button>
               )}
               {!isDraftPhase && isClaimed && (
