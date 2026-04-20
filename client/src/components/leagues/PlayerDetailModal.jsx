@@ -89,23 +89,46 @@ function columnsFor(position) {
   ]
 }
 
-function CurrentWeekStatLine({ position, week }) {
+function CurrentWeekNarrative({ position, week }) {
   if (!week) {
-    return <p className="text-xs text-text-muted text-center">No stats yet this week.</p>
+    return <p className="text-sm text-text-muted text-center">No stats yet this week.</p>
   }
-  const columns = columnsFor(position)
+  const pts = week.pts != null ? Number(week.pts).toFixed(1) : null
+  const parts = []
+
+  if (position === 'QB') {
+    if (week.pass_cmp && week.pass_att) parts.push(`Completed ${week.pass_cmp} of ${week.pass_att} pass attempts for ${week.pass_yd || 0} yards and ${week.pass_td || 0} touchdown${week.pass_td !== 1 ? 's' : ''}`)
+    if (week.pass_int) parts.push(`${week.pass_int} interception${week.pass_int !== 1 ? 's' : ''}`)
+    if (week.rush_yd) parts.push(`${week.rush_yd} rushing yards on ${week.rush_att || '?'} carries${week.rush_td ? `, ${week.rush_td} rushing TD` : ''}`)
+  } else if (position === 'K') {
+    if (week.fgm != null) parts.push(`${week.fgm} field goal${week.fgm !== 1 ? 's' : ''} made${week.fgm_50_plus ? ` (${week.fgm_50_plus} from 50+)` : ''}`)
+    if (week.xpm != null) parts.push(`${week.xpm} extra point${week.xpm !== 1 ? 's' : ''} made`)
+  } else if (position === 'DEF') {
+    const items = []
+    if (week.def_sack) items.push(`${week.def_sack} sack${week.def_sack !== 1 ? 's' : ''}`)
+    if (week.def_int) items.push(`${week.def_int} interception${week.def_int !== 1 ? 's' : ''}`)
+    if (week.def_fum_rec) items.push(`${week.def_fum_rec} fumble recovery${week.def_fum_rec !== 1 ? 'ies' : ''}`)
+    if (week.def_td) items.push(`${week.def_td} defensive TD`)
+    if (week.def_safety) items.push(`${week.def_safety} safety${week.def_safety !== 1 ? 's' : ''}`)
+    if (items.length) parts.push(items.join(', '))
+    if (week.def_pts_allowed != null) parts.push(`Allowed ${week.def_pts_allowed} points`)
+  } else if (position === 'RB') {
+    if (week.rush_att) parts.push(`${week.rush_yd || 0} rushing yards on ${week.rush_att} carries${week.rush_td ? `, ${week.rush_td} TD` : ''}`)
+    if (week.rec) parts.push(`${week.rec} reception${week.rec !== 1 ? 's' : ''} for ${week.rec_yd || 0} yards${week.rec_td ? `, ${week.rec_td} TD` : ''}`)
+    if (week.fum_lost) parts.push(`${week.fum_lost} fumble${week.fum_lost !== 1 ? 's' : ''} lost`)
+  } else {
+    // WR / TE
+    if (week.rec != null) parts.push(`${week.rec} reception${week.rec !== 1 ? 's' : ''} for ${week.rec_yd || 0} yards${week.rec_td ? `, ${week.rec_td} TD` : ''} on ${week.rec_tgt || '?'} targets`)
+    if (week.rush_yd) parts.push(`${week.rush_yd} rushing yards${week.rush_td ? `, ${week.rush_td} rushing TD` : ''}`)
+    if (week.fum_lost) parts.push(`${week.fum_lost} fumble${week.fum_lost !== 1 ? 's' : ''} lost`)
+  }
+
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-      {columns.map((col) => {
-        const val = week[col.key]
-        const display = val == null ? '—' : col.key === 'pts' ? Number(val).toFixed(1) : val
-        return (
-          <div key={col.key} className="bg-bg-card rounded-lg border border-text-primary/10 px-3 py-2 text-center">
-            <div className="text-[10px] uppercase text-text-muted tracking-wider">{col.label}</div>
-            <div className={`font-display text-base ${col.key === 'pts' ? 'text-accent' : 'text-text-primary'}`}>{display}</div>
-          </div>
-        )
-      })}
+    <div>
+      {pts && <div className="font-display text-lg text-accent mb-1">{pts} pts</div>}
+      <p className="text-sm text-text-primary leading-relaxed">
+        {parts.length > 0 ? parts.join('. ') + '.' : 'No significant stats recorded.'}
+      </p>
     </div>
   )
 }
@@ -218,14 +241,6 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
               )}
             </div>
 
-            {/* Player Notes (published blurb) */}
-            {data.blurb && (
-              <div className="rounded-xl border border-text-primary/20 bg-bg-card/50 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1.5">Player Notes</div>
-                <p className="text-sm text-text-secondary leading-relaxed">{data.blurb.content}</p>
-              </div>
-            )}
-
             {/* Injury update */}
             {data.injury_detail && (
               <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3">
@@ -247,16 +262,25 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
               </div>
             )}
 
-            {/* Current week stat line */}
+            {/* Current week narrative */}
             <div>
-              <div className="flex items-baseline justify-between mb-2">
-                <h3 className="text-xs uppercase text-text-muted tracking-wider">
-                  {data.current_week ? `Week ${data.current_week.week}` : 'Latest Week'}
-                </h3>
-                <span className="text-[9px] text-text-muted italic">Pts shown in this league's scoring</span>
-              </div>
-              <CurrentWeekStatLine position={data.player.position} week={data.current_week} />
+              <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">
+                {data.current_week ? `Week ${data.current_week.week}` : 'This Week'}
+              </h3>
+              <CurrentWeekNarrative position={data.player.position} week={data.current_week} />
             </div>
+
+            <div className="border-t border-text-primary/10" />
+
+            {/* Player Notes (published blurb) */}
+            {data.blurb && (
+              <div>
+                <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-1.5">Player Notes</div>
+                <p className="text-sm text-text-primary leading-relaxed">{data.blurb.content}</p>
+              </div>
+            )}
+
+            <div className="border-t border-text-primary/10" />
 
             {/* Previous games table */}
             <div>
@@ -270,32 +294,35 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
 
             {/* News & Updates */}
             {data.news && data.news.length > 0 && (
-              <div>
-                <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">News & Updates</h3>
-                <div className="space-y-2">
-                  {data.news.map((article, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-xl border border-text-primary/10 bg-bg-card p-3"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h4 className="text-sm font-bold text-text-primary leading-snug">{article.headline}</h4>
-                        {article.type && (
-                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-accent/20 text-accent shrink-0">{article.type}</span>
+              <>
+                <div className="border-t border-text-primary/10" />
+                <div>
+                  <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">News & Updates</h3>
+                  <div className="space-y-2">
+                    {data.news.map((article, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-xl border border-text-primary/10 bg-bg-primary p-3"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h4 className="text-sm font-bold text-text-primary leading-snug">{article.headline}</h4>
+                          {article.type && (
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-accent/20 text-accent shrink-0">{article.type}</span>
+                          )}
+                        </div>
+                        {article.description && (
+                          <p className="text-xs text-text-secondary leading-relaxed">{article.description}</p>
+                        )}
+                        {article.published && (
+                          <div className="text-[10px] text-text-muted mt-1.5">
+                            {new Date(article.published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </div>
                         )}
                       </div>
-                      {article.description && (
-                        <p className="text-xs text-text-secondary leading-relaxed">{article.description}</p>
-                      )}
-                      {article.published && (
-                        <div className="text-[10px] text-text-muted mt-1.5">
-                          {new Date(article.published).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
             {/* Contextual action button */}
             {playerContext && (
