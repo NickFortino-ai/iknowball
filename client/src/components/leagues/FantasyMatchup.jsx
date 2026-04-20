@@ -75,61 +75,60 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
     }`}>
       {/* Matchup header — always visible */}
       <button onClick={onToggle} className="w-full p-4 hover:bg-text-primary/5 transition-colors">
-        <div className="flex items-center gap-3">
-          {/* Home user */}
-          <div className="flex-1 flex items-center gap-3 min-w-0">
-            <Avatar user={matchup.home_user} size="lg" />
-            <div className="min-w-0 text-left">
-              <div className={`text-base font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
-                {matchup.home_user?.fantasy_team_name || matchup.home_user?.display_name || matchup.home_user?.username}
-              </div>
-              <div className="text-xs text-text-primary truncate">
-                {matchup.home_user?.fantasy_team_name ? (matchup.home_user?.display_name || matchup.home_user?.username) : ''}
-                {matchup.home_user?.record && <span className={matchup.home_user?.fantasy_team_name ? ' ml-1' : ''}>{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</span>}
-              </div>
+        {/* Names row */}
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1 min-w-0 text-left">
+            <div className={`text-sm font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+              {matchup.home_user?.display_name || matchup.home_user?.username}
             </div>
-          </div>
-
-          {/* Scores */}
-          <div className="text-center shrink-0 px-3">
-            {hasScores || isCompleted ? (
-              <div className="flex items-center gap-3">
-                <span className={`font-display text-2xl ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
-                  {(matchup.home_points || 0).toFixed(1)}
-                </span>
-                <span className="text-text-muted text-sm">-</span>
-                <span className={`font-display text-2xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
-                  {(matchup.away_points || 0).toFixed(1)}
-                </span>
-              </div>
-            ) : weekStatus === 'future' && totalProj > 0 ? (
-              <div className="flex items-center gap-3">
-                <span className="font-display text-xl text-text-muted">{hProj.toFixed(1)}</span>
-                <span className="text-text-muted text-xs">proj</span>
-                <span className="font-display text-xl text-text-muted">{aProj.toFixed(1)}</span>
-              </div>
-            ) : (
-              <span className="text-text-muted text-sm">vs</span>
+            {matchup.home_user?.fantasy_team_name && (
+              <div className="text-[11px] text-text-primary/70 uppercase italic font-semibold tracking-wide truncate">{matchup.home_user.fantasy_team_name}</div>
             )}
-            {isCompleted && (
-              <div className="text-xs text-text-muted mt-0.5">Final</div>
+            {matchup.home_user?.record && (
+              <div className="text-[10px] text-text-muted">{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</div>
             )}
           </div>
-
-          {/* Away user */}
-          <div className="flex-1 flex items-center gap-3 justify-end min-w-0">
-            <div className="min-w-0 text-right">
-              <div className={`text-base font-bold truncate ${isCompleted && !homeWinning ? 'text-correct' : matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
-                {matchup.away_user?.fantasy_team_name || matchup.away_user?.display_name || matchup.away_user?.username}
-              </div>
-              <div className="text-xs text-text-primary truncate">
-                {matchup.away_user?.record && <span>{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</span>}
-                {matchup.away_user?.fantasy_team_name ? <span className="ml-1">{matchup.away_user?.display_name || matchup.away_user?.username}</span> : ''}
-              </div>
+          <div className="flex-1 min-w-0 text-right">
+            <div className={`text-sm font-bold truncate ${isCompleted && !homeWinning ? 'text-correct' : matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+              {matchup.away_user?.display_name || matchup.away_user?.username}
             </div>
-            <Avatar user={matchup.away_user} size="lg" />
+            {matchup.away_user?.fantasy_team_name && (
+              <div className="text-[11px] text-text-primary/70 uppercase italic font-semibold tracking-wide truncate">{matchup.away_user.fantasy_team_name}</div>
+            )}
+            {matchup.away_user?.record && (
+              <div className="text-[10px] text-text-muted">{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</div>
+            )}
           </div>
         </div>
+
+        {/* Scores row with avatars */}
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <Avatar user={matchup.home_user} size="md" />
+          {hasScores || isCompleted ? (
+            <>
+              <span className={`font-display text-2xl ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
+                {(matchup.home_points || 0).toFixed(1)}
+              </span>
+              <span className="text-text-muted text-sm">-</span>
+              <span className={`font-display text-2xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
+                {(matchup.away_points || 0).toFixed(1)}
+              </span>
+            </>
+          ) : weekStatus === 'future' && totalProj > 0 ? (
+            <>
+              <span className="font-display text-xl text-text-muted">{hProj.toFixed(1)}</span>
+              <span className="text-text-muted text-xs">proj</span>
+              <span className="font-display text-xl text-text-muted">{aProj.toFixed(1)}</span>
+            </>
+          ) : (
+            <span className="text-text-muted text-lg font-display">vs</span>
+          )}
+          <Avatar user={matchup.away_user} size="md" />
+        </div>
+
+        {isCompleted && hasScores && (
+          <div className="text-xs text-text-muted text-center mb-1">Final</div>
+        )}
 
         {/* Win probability bar (live/future) or result bar (completed) */}
         {isCompleted && hasScores ? (
