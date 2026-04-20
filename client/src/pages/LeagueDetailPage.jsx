@@ -1530,7 +1530,7 @@ export default function LeagueDetailPage() {
       {/* Team name settings modal */}
       {showTeamNameModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={() => setShowTeamNameModal(false)}>
-          <div className="bg-bg-secondary rounded-2xl p-6 max-w-sm mx-4 w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-bg-primary border border-text-primary/20 rounded-2xl p-6 max-w-sm mx-4 w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-lg text-text-primary mb-4">Team Name</h3>
             <input
               type="text"
