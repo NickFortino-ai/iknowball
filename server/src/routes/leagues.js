@@ -820,6 +820,37 @@ router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
       if (!scorerMap[s.game_id]) scorerMap[s.game_id] = []
       scorerMap[s.game_id].push(s)
     }
+
+    // On-demand backfill: fetch top scorers for final games that are missing them
+    const { findESPNEventId, fetchGameTopScorers } = await import('../services/espnService.js')
+    const missingGames = filtered.filter((g) => !scorerMap[g.id] && g.status === 'final')
+    for (const g of missingGames) {
+      try {
+        const espnEventId = await findESPNEventId(league.sport, g.home_team, g.away_team, g.starts_at)
+        if (!espnEventId) continue
+        const fetched = await fetchGameTopScorers(league.sport, espnEventId)
+        if (!fetched.length) continue
+        for (const s of fetched) {
+          await supabase
+            .from('game_top_scorers')
+            .upsert({
+              game_id: g.id,
+              team: s.team,
+              player_name: s.playerName,
+              points: s.points,
+              headshot_url: s.headshotUrl,
+            }, { onConflict: 'game_id,team' })
+        }
+        scorerMap[g.id] = fetched.map((s) => ({
+          game_id: g.id,
+          team: s.team,
+          player_name: s.playerName,
+          points: s.points,
+          headshot_url: s.headshotUrl,
+        }))
+      } catch {}
+    }
+
     for (const g of filtered) {
       g.top_scorers = scorerMap[g.id] || []
     }

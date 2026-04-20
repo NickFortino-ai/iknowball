@@ -239,6 +239,7 @@ export async function findESPNEventId(sportKey, homeTeam, awayTeam, startsAt) {
       logger.warn({ err: err.message, sportKey, dateStr }, 'Failed to find ESPN event ID')
     }
   }
+  logger.info({ sportKey, homeTeam, awayTeam, startsAt }, 'Could not find ESPN event ID for game')
   return null
 }
 
@@ -268,11 +269,12 @@ export async function fetchGameTopScorers(sportKey, espnEventId) {
       )
       if (!stats?.athletes?.length) continue
 
-      // Find the PTS column index
+      // Find the scoring column index (sport-specific)
       const ptsIdx = stats.labels?.indexOf('PTS')
-      // For hockey, goals are 'G'
+      // For hockey: 'P' = points (goals+assists), 'G' = goals only
+      const hockeyPtsIdx = stats.labels?.indexOf('P')
       const goalsIdx = stats.labels?.indexOf('G')
-      const scoreIdx = ptsIdx >= 0 ? ptsIdx : goalsIdx
+      const scoreIdx = ptsIdx >= 0 ? ptsIdx : hockeyPtsIdx >= 0 ? hockeyPtsIdx : goalsIdx
 
       if (scoreIdx < 0) continue
 
