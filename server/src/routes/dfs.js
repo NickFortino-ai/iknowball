@@ -783,14 +783,44 @@ router.get('/lineup-history', async (req, res) => {
 
   if (!rows?.length) return res.json({ roster: [], week: w, season: s })
 
-  const roster = rows.map((r) => ({
-    player_id: r.player_id,
-    slot: r.slot,
-    locked_at: r.locked_at,
-    nfl_players: r.nfl_players,
-  }))
+  // Fetch league scoring rules and player stats for this week to calculate points
+  const { applyScoringRules: applyRulesHist, buildScoringRulesFromPreset: buildRulesHist } = await import('../services/fantasyService.js')
+  const { data: leagueSettings } = await supabase
+    .from('fantasy_settings')
+    .select('scoring_format, scoring_rules')
+    .eq('league_id', league_id)
+    .single()
+  const rules = leagueSettings?.scoring_rules || buildRulesHist(leagueSettings?.scoring_format)
 
-  res.json({ roster, week: w, season: s })
+  const playerIds = rows.map((r) => r.player_id)
+  const statsMap = {}
+  if (playerIds.length) {
+    const { data: stats } = await supabase
+      .from('nfl_player_stats')
+      .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+      .eq('week', w)
+      .eq('season', s)
+      .in('player_id', playerIds)
+    for (const st of stats || []) statsMap[st.player_id] = st
+  }
+
+  const STARTER_KEYS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
+  let teamTotal = 0
+
+  const roster = rows.map((r) => {
+    const stat = statsMap[r.player_id]
+    const pts = stat ? Math.round(applyRulesHist(stat, rules) * 100) / 100 : 0
+    if (STARTER_KEYS.has(r.slot)) teamTotal += pts
+    return {
+      player_id: r.player_id,
+      slot: r.slot,
+      locked_at: r.locked_at,
+      nfl_players: r.nfl_players,
+      points: pts,
+    }
+  })
+
+  res.json({ roster, week: w, season: s, team_total: Math.round(teamTotal * 100) / 100 })
 })
 
 export default router

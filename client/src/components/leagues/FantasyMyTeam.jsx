@@ -78,9 +78,9 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           </div>
           <div className="text-xs text-text-primary">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
-        {row?.live_points != null && row?.nfl_players && (
+        {(row?.live_points != null || row?.points != null) && row?.nfl_players && (
           <div className="text-right shrink-0 mr-1">
-            <div className="text-lg font-display tabular-nums text-white leading-none">{row.live_points.toFixed(2)}</div>
+            <div className="text-lg font-display tabular-nums text-white leading-none">{(row.live_points ?? row.points ?? 0).toFixed(2)}</div>
             <div className="text-[10px] uppercase text-text-muted">pts</div>
           </div>
         )}
@@ -486,9 +486,14 @@ export default function FantasyMyTeam({ league }) {
         </button>
       </div>
 
-      {/* Past week: read-only notice */}
+      {/* Past week: read-only notice + total */}
       {isPastWeek && historyData?.roster?.length > 0 && (
-        <div className="text-center text-xs text-text-muted">Lineup as locked for Week {activeWeek}</div>
+        <div className="text-center text-xs text-text-muted">
+          Lineup as locked for Week {activeWeek}
+          {historyData.team_total != null && (
+            <span className="ml-2 text-text-primary font-semibold">{historyData.team_total.toFixed(2)} pts</span>
+          )}
+        </div>
       )}
       {isPastWeek && (!historyData?.roster?.length) && (
         <div className="text-center text-sm text-text-muted py-8">No lineup history for this week</div>
