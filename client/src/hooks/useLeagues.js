@@ -453,6 +453,8 @@ export function useBracketEntry(leagueId) {
     queryKey: ['leagues', leagueId, 'bracket', 'entry'],
     queryFn: () => api.get(`/leagues/${leagueId}/bracket/entry`),
     enabled: !!leagueId,
+    retry: 3,
+    staleTime: 30000,
   })
 }
 

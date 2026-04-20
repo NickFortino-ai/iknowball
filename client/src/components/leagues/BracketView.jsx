@@ -17,7 +17,7 @@ import { toast } from '../ui/Toast'
 export default function BracketView({ league, tab = 'bracket', onTabChange, tabs: heroTabs, activeTabIndex, onTabSelect, threadUnread }) {
   const { profile } = useAuth()
   const { data: tournament, isLoading: tournamentLoading } = useBracketTournament(league.id)
-  const { data: myEntry } = useBracketEntry(league.id)
+  const { data: myEntry, isLoading: entryLoading } = useBracketEntry(league.id)
   const { data: entries } = useBracketEntries(league.id)
 
   // Check for saved draft
@@ -38,12 +38,17 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
   const viewTab = tab
 
   // Default to user's own bracket once data loads
+  // Don't default while still loading — a transient failure could show Master instead
   useEffect(() => {
-    if (!hasDefaulted && myEntry && profile?.id) {
+    if (hasDefaulted || entryLoading) return
+    if (myEntry && profile?.id) {
       setViewingUserId(profile.id)
       setHasDefaulted(true)
+    } else if (!entryLoading && !myEntry) {
+      // Only default to Master once we're sure the user has no entry
+      setHasDefaulted(true)
     }
-  }, [myEntry, profile?.id, hasDefaulted])
+  }, [myEntry, profile?.id, hasDefaulted, entryLoading])
 
   const { data: viewedEntry } = useViewBracketEntry(
     league.id,
@@ -316,7 +321,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             </div>
           )}
 
-          {isLocked && !hasSubmitted && (
+          {isLocked && !hasSubmitted && !entryLoading && (
             <div className={`${showCourtBg ? '' : 'bg-bg-card border border-border rounded-xl'} p-5 text-center`}>
               <div className="text-sm text-text-primary font-semibold mb-2">Bracket not submitted in time</div>
               <div className="text-xs text-text-muted leading-relaxed">

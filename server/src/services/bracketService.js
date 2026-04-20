@@ -839,13 +839,19 @@ export async function submitBracket(tournamentId, userId, picks, entryName, tieb
 }
 
 export async function getBracketEntry(tournamentId, userId) {
-  const { data: entry } = await supabase
+  const { data: entry, error } = await supabase
     .from('bracket_entries')
     .select('*')
     .eq('tournament_id', tournamentId)
     .eq('user_id', userId)
     .single()
 
+  // PGRST116 = "no rows found" — that's a legitimate empty result.
+  // Any other error (RLS, network, etc.) should throw so the client retries
+  // instead of silently caching null and showing "not submitted in time."
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(error.message || 'Failed to fetch bracket entry')
+  }
   if (!entry) return null
 
   const { data: picks } = await supabase
