@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-bg-primary rounded-2xl p-8 border border-text-primary/20">
         <h1 className="font-display text-3xl text-center mb-2">Welcome Back</h1>
-        <p className="text-text-secondary text-center mb-8">Sign in to make your picks</p>
+        <p className="text-text-secondary text-center mb-8">Sign in to get back in the game</p>
 
         {error && (
           <div className="bg-incorrect-muted border border-incorrect rounded-lg p-3 mb-6 text-sm text-incorrect">
