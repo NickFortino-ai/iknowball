@@ -484,8 +484,13 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               matchup={mine}
               myId={profile?.id}
               weekStatus={weekStatus}
-              isExpanded={true}
-              onToggle={() => {}}
+              isExpanded={!expandedMatchups.has('my-collapsed')}
+              onToggle={() => setExpandedMatchups((prev) => {
+                const next = new Set(prev)
+                if (next.has('my-collapsed')) next.delete('my-collapsed')
+                else next.add('my-collapsed')
+                return next
+              })}
               onPlayerClick={openPlayerDetail}
               blurbIds={blurbIds}
             />
@@ -497,7 +502,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
         // All Matchups view — user's matchup expanded, others collapsed
         sorted.map((matchup) => {
           const isMyMatchup = matchup.home_user?.id === profile?.id || matchup.away_user?.id === profile?.id
-          const isExpanded = isMyMatchup || expandedMatchups.has(matchup.id)
+          const isExpanded = (isMyMatchup && !expandedMatchups.has(`collapse-${matchup.id}`)) || expandedMatchups.has(matchup.id)
           return (
             <MatchupCard
               key={matchup.id}
@@ -507,8 +512,14 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               isExpanded={isExpanded}
               onToggle={() => setExpandedMatchups((prev) => {
                 const next = new Set(prev)
-                if (next.has(matchup.id)) next.delete(matchup.id)
-                else next.add(matchup.id)
+                if (isMyMatchup) {
+                  const key = `collapse-${matchup.id}`
+                  if (next.has(key)) next.delete(key)
+                  else next.add(key)
+                } else {
+                  if (next.has(matchup.id)) next.delete(matchup.id)
+                  else next.add(matchup.id)
+                }
                 return next
               })}
               onPlayerClick={openPlayerDetail}
