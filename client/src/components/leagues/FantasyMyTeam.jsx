@@ -205,6 +205,19 @@ export default function FantasyMyTeam({ league }) {
     return map
   }, [roster, draftSlots, hasWeeklyLineup, weeklyRoster])
 
+  const isDirty = useMemo(() => {
+    if (!draftSlots || !roster) return false
+    if (hasWeeklyLineup) {
+      const weeklyMap = {}
+      for (const r of roster) weeklyMap[r.player_id] = 'bench'
+      for (const w of weeklyRoster) {
+        if (weeklyMap[w.player_id] !== undefined) weeklyMap[w.player_id] = w.slot
+      }
+      return Object.keys(draftSlots).some((pid) => draftSlots[pid] !== weeklyMap[pid])
+    }
+    return roster.some((r) => draftSlots[r.player_id] !== r.slot)
+  }, [draftSlots, roster, hasWeeklyLineup, weeklyRoster])
+
   if (isLoading) return (
     <div className="space-y-4">
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
@@ -444,20 +457,6 @@ export default function FantasyMyTeam({ league }) {
     setSelected(null)
   }
 
-  const isDirty = useMemo(() => {
-    if (!draftSlots) return false
-    if (hasWeeklyLineup) {
-      // Compare against weekly lineup
-      const weeklyMap = {}
-      for (const r of roster) weeklyMap[r.player_id] = 'bench'
-      for (const w of weeklyRoster) {
-        if (weeklyMap[w.player_id] !== undefined) weeklyMap[w.player_id] = w.slot
-      }
-      return Object.keys(draftSlots).some((pid) => draftSlots[pid] !== weeklyMap[pid])
-    }
-    // For current week or future week with no saved lineup, compare against current roster
-    return roster.some((r) => draftSlots[r.player_id] !== r.slot)
-  }, [draftSlots, roster, hasWeeklyLineup, weeklyRoster])
 
   return (
     <div className="space-y-4">
