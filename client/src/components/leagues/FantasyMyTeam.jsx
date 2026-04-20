@@ -40,7 +40,7 @@ function InjuryBadge({ status }) {
   )
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, onDrop, blurbIds }) {
+function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds }) {
   const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
   const isInIR = row?.slot === 'ir'
   return (
@@ -91,16 +91,6 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             className="text-[10px] font-bold px-2 py-1 rounded bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors shrink-0 cursor-pointer"
           >
             ← Bench
-          </span>
-        )}
-        {onDrop && (
-          <span
-            role="button"
-            onClick={(e) => { e.stopPropagation(); onDrop(row) }}
-            className="text-[10px] font-bold px-2 py-1 rounded bg-incorrect/15 text-incorrect hover:bg-incorrect/25 transition-colors shrink-0 cursor-pointer"
-            title="Drop player"
-          >
-            Drop
           </span>
         )}
       </button>
@@ -489,7 +479,7 @@ export default function FantasyMyTeam({ league }) {
                       isSelected={selected?.type === 'player' && selected.key === occupant.player_id}
                       onTap={() => handlePlayerTap(occupant.player_id)}
                       onViewDetail={openPlayerDetail}
-                      onDrop={setConfirmDrop}
+
                       blurbIds={blurbIds}
                     />
                   ) : (
@@ -569,7 +559,16 @@ export default function FantasyMyTeam({ league }) {
       )}
 
       {detailPlayerId && (
-        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+        <PlayerDetailModal
+          leagueId={league.id}
+          playerId={detailPlayerId}
+          onClose={() => setDetailPlayerId(null)}
+          playerContext="my_roster"
+          onDrop={(pid) => {
+            const row = roster?.find((r) => r.player_id === pid)
+            if (row) { setDetailPlayerId(null); setConfirmDrop(row) }
+          }}
+        />
       )}
 
       {confirmDrop && (

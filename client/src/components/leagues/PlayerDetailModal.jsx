@@ -152,7 +152,7 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
   )
 }
 
-export default function PlayerDetailModal({ leagueId, playerId, onClose }) {
+export default function PlayerDetailModal({ leagueId, playerId, onClose, playerContext, onDrop, onTrade, onClaim, onAdd }) {
   const { data, isLoading } = usePlayerDetail(leagueId, playerId)
   const contentRef = useRef(null)
 
@@ -175,12 +175,12 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose} onTouchMove={handleTouchMove}>
       <div
         ref={contentRef}
-        className="bg-bg-secondary w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-bg-primary border border-text-primary/20 w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
         {/* Close */}
-        <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 flex items-center justify-end z-10">
+        <div className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-end z-10">
           <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -295,6 +295,52 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose }) {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            {/* Contextual action button */}
+            {playerContext && (
+              <div className="flex justify-center pt-2 pb-1">
+                {playerContext === 'my_roster' && onDrop && (
+                  <button
+                    onClick={() => onDrop(playerId)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-incorrect/15 text-incorrect hover:bg-incorrect/25 transition-colors font-semibold text-sm"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-incorrect/30 flex items-center justify-center text-lg leading-none">−</span>
+                    Drop
+                  </button>
+                )}
+                {playerContext === 'opponent' && onTrade && (
+                  <button
+                    onClick={() => onTrade(playerId)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent/15 text-accent hover:bg-accent/25 transition-colors font-semibold text-sm"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                      <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                    </svg>
+                    Propose Trade
+                  </button>
+                )}
+                {playerContext === 'waiver' && onClaim && (
+                  <button
+                    onClick={() => onClaim(playerId)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25 transition-colors font-semibold text-sm"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    Claim
+                  </button>
+                )}
+                {playerContext === 'free_agent' && onAdd && (
+                  <button
+                    onClick={() => onAdd(playerId)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-correct/15 text-correct hover:bg-correct/25 transition-colors font-semibold text-sm"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-correct/30 flex items-center justify-center text-lg leading-none">+</span>
+                    Add
+                  </button>
+                )}
               </div>
             )}
           </div>

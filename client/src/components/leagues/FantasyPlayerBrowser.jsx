@@ -442,9 +442,26 @@ export default function FantasyPlayerBrowser({ league }) {
         </div>
       )}
 
-      {detailPlayerId && (
-        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
-      )}
+      {detailPlayerId && (() => {
+        const detailPlayer = sortedPlayers?.find((p) => p.id === detailPlayerId)
+        const ctx = detailPlayer?.on_waivers ? 'waiver' : 'free_agent'
+        return (
+          <PlayerDetailModal
+            leagueId={league.id}
+            playerId={detailPlayerId}
+            onClose={() => setDetailPlayerId(null)}
+            playerContext={ctx}
+            onClaim={(pid) => {
+              const p = sortedPlayers?.find((pl) => pl.id === pid)
+              if (p) { setDetailPlayerId(null); setAddingPlayer(p) }
+            }}
+            onAdd={(pid) => {
+              const p = sortedPlayers?.find((pl) => pl.id === pid)
+              if (p) { setDetailPlayerId(null); setAddingPlayer(p) }
+            }}
+          />
+        )
+      })()}
     </>}
     </div>
   )
