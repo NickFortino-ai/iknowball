@@ -277,113 +277,118 @@ export default function FantasyPlayerBrowser({ league }) {
         </div>
       )}
       {/* Single horizontal scroll container for header + rows */}
-      <div className="overflow-x-auto">
-        <div className="min-w-[700px]">
-          {/* Stat-column header */}
-          <div className="border-b border-border bg-bg-primary/40">
-            <div className="flex items-center px-4 py-1.5 text-[10px] font-bold text-text-muted uppercase tracking-wider">
+      <div className="relative">
+        {/* Header */}
+        <div className="border-b border-border bg-bg-primary/40 flex text-[10px] font-bold text-text-muted uppercase tracking-wider">
+          {/* Sticky left: rank + player + action */}
+          <div className="sticky left-0 z-20 bg-bg-primary/95 flex items-center shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSort('rank')}
+              className={`w-8 text-center px-1 py-1.5 rounded transition-colors ${
+                sortKey === 'rank' ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
+              }`}
+            >
+              {sortKey === 'rank' ? '#↓' : '#'}
+            </button>
+            <div className="w-[200px] lg:w-[260px] px-1 py-1.5">Player</div>
+            <div className="w-8" />
+          </div>
+          {/* Scrollable stats */}
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide py-1.5">
+            {statColumns.map((col) => (
               <button
+                key={col.key}
                 type="button"
-                onClick={() => handleSort('rank')}
-                className={`w-10 shrink-0 text-center px-1 py-0.5 rounded transition-colors sticky left-0 bg-bg-primary/40 z-10 ${
-                  sortKey === 'rank' ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
+                onClick={() => handleSort(col.key)}
+                className={`w-14 shrink-0 text-center px-1 py-0.5 rounded transition-colors ${
+                  sortKey === col.key ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
                 }`}
               >
-                {sortKey === 'rank' ? '#↓' : '#'}
+                {col.label}{sortKey === col.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
               </button>
-              <div className="w-[170px] shrink-0 px-1">Player</div>
-              <div className="flex gap-1 flex-1">
-                {statColumns.map((col) => (
-                  <button
-                    key={col.key}
-                    type="button"
-                    onClick={() => handleSort(col.key)}
-                    className={`w-12 text-center px-1 py-0.5 rounded transition-colors ${
-                      sortKey === col.key ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
-                    }`}
-                  >
-                    {col.label}{sortKey === col.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
-                  </button>
-                ))}
-              </div>
-              <div className="w-[64px] shrink-0" />
-            </div>
+            ))}
           </div>
-          <div className="max-h-[60vh] overflow-y-auto">
-            {isLoading ? (
-              <div className="text-center text-sm text-text-muted py-8">Loading...</div>
-            ) : (players || []).map((player, idx) => {
-              const isClaimed = claimedPlayerIds.has(player.id)
-              const onWaivers = !!player.on_waivers
-              const stats = player.stats || {}
-              return (
-              <div key={player.id} className="flex items-center px-4 py-2.5 border-b border-border last:border-0">
-                <div className="w-10 shrink-0 text-center text-xs font-bold text-text-muted sticky left-0 bg-bg-primary z-10">
-                  {player.adp_rank || idx + 1}
-                </div>
-                <div className="w-[170px] shrink-0 flex items-center gap-2 px-1">
-                  {player.headshot_url && (
-                    <img
-                      src={player.headshot_url}
-                      alt=""
-                      className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => openPlayerDetail(player.id)}
-                      onError={(e) => { e.target.style.display = 'none' }}
-                    />
-                  )}
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openPlayerDetail(player.id)}>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
-                      <InjuryBadge status={player.injury_status} />
-                      <BlurbDot playerId={player.id} blurbIds={blurbIds} />
-                      {onWaivers && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers — must submit a claim">W</span>
-                      )}
-                      {isClaimed && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="You have a pending claim on this player">C</span>
-                      )}
+        </div>
+        {/* Rows */}
+        <div className="max-h-[60vh] overflow-y-auto">
+          {isLoading ? (
+            <div className="text-center text-sm text-text-muted py-8">Loading...</div>
+          ) : (players || []).map((player, idx) => {
+            const isClaimed = claimedPlayerIds.has(player.id)
+            const onWaivers = !!player.on_waivers
+            const pStats = player.stats || {}
+            return (
+              <div key={player.id} className="flex border-b border-border last:border-0">
+                {/* Sticky left: rank + player + action */}
+                <div className="sticky left-0 z-10 bg-bg-primary flex items-center shrink-0">
+                  <div className="w-8 text-center text-xs font-bold text-text-muted">
+                    {player.adp_rank || idx + 1}
+                  </div>
+                  <div className="w-[200px] lg:w-[260px] flex items-center gap-2 px-1 py-2.5">
+                    {player.headshot_url && (
+                      <img
+                        src={player.headshot_url}
+                        alt=""
+                        className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => openPlayerDetail(player.id)}
+                        onError={(e) => { e.target.style.display = 'none' }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openPlayerDetail(player.id)}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
+                        <InjuryBadge status={player.injury_status} />
+                        <BlurbDot playerId={player.id} blurbIds={blurbIds} />
+                        {onWaivers && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers">W</span>
+                        )}
+                        {isClaimed && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="Pending claim">C</span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
                     </div>
-                    <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                  </div>
+                  <div className="w-8 flex items-center justify-center">
+                    {!isDraftPhase && roster?.length > 0 && !isClaimed && (
+                      <button
+                        onClick={() => setAddingPlayer(player)}
+                        className={`text-lg font-bold w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                          onWaivers
+                            ? 'text-accent hover:bg-accent/15'
+                            : 'text-correct hover:bg-correct/15'
+                        }`}
+                      >
+                        +
+                      </button>
+                    )}
+                    {!isDraftPhase && isClaimed && (
+                      <span className="text-[9px] font-semibold text-text-muted">...</span>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-1 flex-1">
+                {/* Scrollable stats */}
+                <div className="flex gap-1 overflow-x-auto scrollbar-hide items-center">
                   {statColumns.map((col) => (
                     <div
                       key={col.key}
-                      className={`w-12 text-center text-xs tabular-nums py-1 rounded ${
+                      className={`w-14 shrink-0 text-center text-xs tabular-nums py-1 rounded ${
                         sortKey === col.key ? 'bg-accent/10 text-text-primary font-bold' : 'text-text-secondary'
                       }`}
                     >
-                      {stats[col.key] ?? 0}
+                      {pStats[col.key] ?? 0}
                     </div>
                   ))}
                 </div>
-            <div className="w-[64px] shrink-0 flex justify-end">
-              {!isDraftPhase && roster?.length > 0 && !isClaimed && (
-                <button
-                  onClick={() => setAddingPlayer(player)}
-                  className={`text-lg font-bold w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
-                    onWaivers
-                      ? 'text-yellow-500 hover:bg-yellow-500/15'
-                      : 'text-correct hover:bg-correct/15'
-                  }`}
-                >
-                  +
-                </button>
-              )}
-              {!isDraftPhase && isClaimed && (
-                <span className="text-[10px] font-semibold text-text-muted">Pending</span>
-              )}
-            </div>
-          </div>
-          )
-        })}
-        {!isLoading && players?.length === 0 && (
-          <div className="text-center text-sm text-text-muted py-8">No players found</div>
-        )}
+              </div>
+            )
+          })}
+          {!isLoading && players?.length === 0 && (
+            <div className="text-center text-sm text-text-muted py-8">No players found</div>
+          )}
+        </div>
       </div>
-    </div>
-    </div>
     </div>
 
       {/* Add/drop confirm modal */}
