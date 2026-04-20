@@ -151,6 +151,7 @@ export default function FantasyMyTeam({ league }) {
   const { data: globalRankData } = useGlobalRank(league.id)
   const hasGlobalRank = globalRankData?.status === 'ok' && globalRankData?.format?.team_count > 1
   const [expandedTradeId, setExpandedTradeId] = useState(null)
+  const [tradeAcceptedModal, setTradeAcceptedModal] = useState(false)
 
   // For past weeks, use lineup history; for current/future, use current roster
   const displayRoster = isPastWeek && historyData?.roster?.length ? historyData.roster : roster
@@ -245,8 +246,6 @@ export default function FantasyMyTeam({ league }) {
       </div>
     )
   }
-
-  const [tradeAcceptedModal, setTradeAcceptedModal] = useState(false)
 
   async function handleTradeAction(tradeId, action) {
     try {
