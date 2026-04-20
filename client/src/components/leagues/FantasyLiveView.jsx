@@ -306,9 +306,9 @@ function MatchupLive({ league, week, season }) {
               {/* Win probability bar */}
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-[10px] font-bold ${homeProb >= 50 ? 'text-correct' : 'text-text-muted'}`}>{homeProb}%</span>
-                  <span className="text-[10px] text-text-muted uppercase tracking-wider">Win Prob</span>
-                  <span className={`text-[10px] font-bold ${awayProb > 50 ? 'text-correct' : 'text-text-muted'}`}>{awayProb}%</span>
+                  <span className={`text-xs font-bold ${homeProb >= 50 ? 'text-correct' : 'text-text-muted'}`}>{homeProb}%</span>
+                  <span className="text-xs text-text-muted uppercase tracking-wider">Win Prob</span>
+                  <span className={`text-xs font-bold ${awayProb > 50 ? 'text-correct' : 'text-text-muted'}`}>{awayProb}%</span>
                 </div>
                 <div className="flex h-1.5 rounded-full overflow-hidden bg-text-primary/10">
                   <div
@@ -323,33 +323,33 @@ function MatchupLive({ league, week, season }) {
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  <Avatar user={matchup.home_user} size="md" />
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Avatar user={matchup.home_user} size="lg" />
                   <div className="min-w-0">
-                    <span className={`text-sm font-bold truncate block ${homeWinning ? 'text-text-primary' : 'text-text-muted'}`}>
+                    <span className={`text-base font-bold truncate block ${homeWinning ? 'text-text-primary' : 'text-text-muted'}`}>
                       {matchup.home_user?.display_name || matchup.home_user?.username}
                     </span>
                     {matchup.home_projected > 0 && (
-                      <span className="text-[10px] text-text-muted">Proj: {matchup.home_projected.toFixed(1)}</span>
+                      <span className="text-xs text-text-primary">Proj: {matchup.home_projected.toFixed(1)}</span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 px-3 shrink-0">
-                  <span className={`font-display text-xl ${homeWinning ? 'text-white' : 'text-text-muted'}`}>
+                <div className="flex items-center gap-4 px-4 shrink-0">
+                  <span className={`font-display text-2xl ${homeWinning ? 'text-white' : 'text-text-muted'}`}>
                     {matchup.home_points.toFixed(1)}
                   </span>
-                  <span className="text-xs text-text-muted">vs</span>
-                  <span className={`font-display text-xl ${!homeWinning ? 'text-white' : 'text-text-muted'}`}>
+                  <span className="text-sm text-text-muted">vs</span>
+                  <span className={`font-display text-2xl ${!homeWinning ? 'text-white' : 'text-text-muted'}`}>
                     {matchup.away_points.toFixed(1)}
                   </span>
                 </div>
-                <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
+                <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
                   <div className="min-w-0 text-right">
-                    <span className={`text-sm font-bold truncate block ${!homeWinning ? 'text-text-primary' : 'text-text-muted'}`}>
+                    <span className={`text-base font-bold truncate block ${!homeWinning ? 'text-text-primary' : 'text-text-muted'}`}>
                       {matchup.away_user?.display_name || matchup.away_user?.username}
                     </span>
                     {matchup.away_projected > 0 && (
-                      <span className="text-[10px] text-text-muted">Proj: {matchup.away_projected.toFixed(1)}</span>
+                      <span className="text-xs text-text-primary">Proj: {matchup.away_projected.toFixed(1)}</span>
                     )}
                   </div>
                   <Avatar user={matchup.away_user} size="md" />
@@ -367,13 +367,13 @@ function MatchupLive({ league, week, season }) {
                       const statLine = buildStatLine(slot.stats, slot.position)
                       const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
                       return (
-                        <div key={slot.slot} className={`flex items-center gap-2 px-3 py-2.5 border-b border-text-primary/5 border-l-2 ${slotBorder}`}>
-                          <span className="text-[10px] font-bold text-text-muted w-6 shrink-0">{H2H_SLOT_LABELS[slot.slot] || slot.slot.toUpperCase()}</span>
+                        <div key={slot.slot} className={`flex items-center gap-3 px-4 py-3 border-b border-text-primary/5 border-l-2 ${slotBorder}`}>
+                          <span className="text-xs font-bold text-text-muted w-7 shrink-0">{H2H_SLOT_LABELS[slot.slot] || slot.slot.toUpperCase()}</span>
                           {slot.headshot_url && (
                             <img
                               src={slot.headshot_url}
                               alt=""
-                              className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                              className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
                               onError={(e) => { e.target.style.display = 'none' }}
                             />
@@ -382,10 +382,10 @@ function MatchupLive({ league, week, season }) {
                             className="flex-1 min-w-0 cursor-pointer"
                             onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
                           >
-                            <div className="text-xs font-bold text-text-primary truncate flex items-center gap-1">
+                            <div className="text-sm font-bold text-text-primary truncate flex items-center gap-1">
                               <span className="truncate hover:text-accent transition-colors">{slot.player_name}</span>
                               {slot.injury_status && (
-                                <span className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 ${
+                                <span className={`text-[10px] font-bold px-1 py-0.5 rounded shrink-0 ${
                                   slot.injury_status === 'Out' || slot.injury_status === 'IR'
                                     ? 'bg-incorrect/20 text-incorrect'
                                     : 'bg-yellow-500/20 text-yellow-500'
@@ -394,7 +394,7 @@ function MatchupLive({ league, week, season }) {
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted truncate">
+                            <div className="flex items-center gap-1.5 text-xs text-text-primary truncate">
                               {statLine && <span className="truncate">{statLine}</span>}
                               {gameClockLabel(slot) && (
                                 <span className={`shrink-0 ${slot.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
@@ -404,11 +404,11 @@ function MatchupLive({ league, week, season }) {
                             </div>
                           </div>
                           <div className="flex flex-col items-end shrink-0">
-                            <span className={`text-xs font-display ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
+                            <span className={`text-sm font-display font-bold ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
                               {slot.points > 0 ? slot.points.toFixed(1) : '—'}
                             </span>
                             {slot.projected != null && slot.game_status !== 'final' && (
-                              <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
+                              <span className="text-[10px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
                             )}
                           </div>
                         </div>
@@ -421,13 +421,13 @@ function MatchupLive({ league, week, season }) {
                       const statLine = buildStatLine(slot.stats, slot.position)
                       const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
                       return (
-                        <div key={slot.slot} className={`flex items-center gap-2 px-3 py-2.5 border-b border-text-primary/5 border-l-2 ${slotBorder}`}>
-                          <span className="text-[10px] font-bold text-text-muted w-6 shrink-0">{H2H_SLOT_LABELS[slot.slot] || slot.slot.toUpperCase()}</span>
+                        <div key={slot.slot} className={`flex items-center gap-3 px-4 py-3 border-b border-text-primary/5 border-l-2 ${slotBorder}`}>
+                          <span className="text-xs font-bold text-text-muted w-7 shrink-0">{H2H_SLOT_LABELS[slot.slot] || slot.slot.toUpperCase()}</span>
                           {slot.headshot_url && (
                             <img
                               src={slot.headshot_url}
                               alt=""
-                              className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                              className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
                               onError={(e) => { e.target.style.display = 'none' }}
                             />
@@ -436,10 +436,10 @@ function MatchupLive({ league, week, season }) {
                             className="flex-1 min-w-0 cursor-pointer"
                             onClick={() => slot.player_id && setDetailPlayerId(slot.player_id)}
                           >
-                            <div className="text-xs font-bold text-text-primary truncate flex items-center gap-1">
+                            <div className="text-sm font-bold text-text-primary truncate flex items-center gap-1">
                               <span className="truncate hover:text-accent transition-colors">{slot.player_name}</span>
                               {slot.injury_status && (
-                                <span className={`text-[9px] font-bold px-1 py-0.5 rounded shrink-0 ${
+                                <span className={`text-[10px] font-bold px-1 py-0.5 rounded shrink-0 ${
                                   slot.injury_status === 'Out' || slot.injury_status === 'IR'
                                     ? 'bg-incorrect/20 text-incorrect'
                                     : 'bg-yellow-500/20 text-yellow-500'
@@ -448,7 +448,7 @@ function MatchupLive({ league, week, season }) {
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-text-muted truncate">
+                            <div className="flex items-center gap-1.5 text-xs text-text-primary truncate">
                               {statLine && <span className="truncate">{statLine}</span>}
                               {gameClockLabel(slot) && (
                                 <span className={`shrink-0 ${slot.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
@@ -458,11 +458,11 @@ function MatchupLive({ league, week, season }) {
                             </div>
                           </div>
                           <div className="flex flex-col items-end shrink-0">
-                            <span className={`text-xs font-display ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
+                            <span className={`text-sm font-display font-bold ${slot.points > 0 ? 'text-white' : 'text-text-muted'}`}>
                               {slot.points > 0 ? slot.points.toFixed(1) : '—'}
                             </span>
                             {slot.projected != null && slot.game_status !== 'final' && (
-                              <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
+                              <span className="text-[10px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
                             )}
                           </div>
                         </div>
