@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory } from '../../hooks/useLeagues'
+import { useState, useMemo, useEffect } from 'react'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
@@ -132,9 +132,12 @@ export default function FantasyMyTeam({ league }) {
   const activeWeek = viewWeek ?? currentWeek
   const isCurrentWeek = activeWeek === currentWeek
   const isPastWeek = activeWeek < currentWeek
+  const isFutureWeek = activeWeek > currentWeek
 
   const { data: roster, isLoading } = useFantasyRoster(league.id)
   const { data: historyData } = useFantasyLineupHistory(league.id, isPastWeek ? activeWeek : null, isPastWeek ? season : null)
+  const { data: weeklyLineupData } = useFantasyWeeklyLineup(league.id, isFutureWeek ? activeWeek : null)
+  const setWeeklyLineup = useSetFantasyWeeklyLineup(league.id)
   const { data: trades } = useFantasyTrades(league.id)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
   const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
@@ -153,8 +156,21 @@ export default function FantasyMyTeam({ league }) {
   const [expandedTradeId, setExpandedTradeId] = useState(null)
   const [tradeAcceptedModal, setTradeAcceptedModal] = useState(false)
 
-  // For past weeks, use lineup history; for current/future, use current roster
-  const displayRoster = isPastWeek && historyData?.roster?.length ? historyData.roster : roster
+  // Reset edit state when navigating weeks
+  useEffect(() => {
+    setEditMode(false)
+    setDraftSlots(null)
+    setSelected(null)
+  }, [activeWeek])
+
+  // For past weeks, use lineup history; for future weeks with saved lineup, use that; otherwise current roster
+  const weeklyRoster = weeklyLineupData?.roster
+  const hasWeeklyLineup = isFutureWeek && weeklyRoster && weeklyRoster.length > 0
+  const displayRoster = isPastWeek && historyData?.roster?.length
+    ? historyData.roster
+    : hasWeeklyLineup
+      ? weeklyRoster
+      : roster
 
   function openPlayerDetail(playerId) {
     if (playerId) markBlurbSeen(playerId)
@@ -165,14 +181,29 @@ export default function FantasyMyTeam({ league }) {
   const incomingTrades = (trades || []).filter((t) => t.status === 'pending' && t.receiver_user_id === profile?.id)
 
   // Build a working slot-by-player map (server slot or draftSlots override)
+  // For future weeks with a saved weekly lineup, use those slots as the base
   const slotByPlayer = useMemo(() => {
     if (!roster) return {}
     const map = {}
-    for (const r of roster) {
-      map[r.player_id] = (draftSlots && draftSlots[r.player_id]) || r.slot
+    // Start from weekly lineup if viewing a future week with saved data
+    if (hasWeeklyLineup) {
+      // Initialize all current roster players as bench
+      for (const r of roster) map[r.player_id] = 'bench'
+      // Override with weekly lineup slots (only players still on roster)
+      for (const w of weeklyRoster) {
+        if (map[w.player_id] !== undefined) map[w.player_id] = w.slot
+      }
+    } else {
+      for (const r of roster) map[r.player_id] = r.slot
+    }
+    // Apply draft overrides on top
+    if (draftSlots) {
+      for (const pid of Object.keys(draftSlots)) {
+        if (map[pid] !== undefined) map[pid] = draftSlots[pid]
+      }
     }
     return map
-  }, [roster, draftSlots])
+  }, [roster, draftSlots, hasWeeklyLineup, weeklyRoster])
 
   if (isLoading) return (
     <div className="space-y-4">
@@ -275,7 +306,15 @@ export default function FantasyMyTeam({ league }) {
   function ensureDraft() {
     if (draftSlots) return draftSlots
     const initial = {}
-    for (const r of roster) initial[r.player_id] = r.slot
+    if (hasWeeklyLineup) {
+      // Start from weekly lineup: bench everyone, then overlay saved slots
+      for (const r of roster) initial[r.player_id] = 'bench'
+      for (const w of weeklyRoster) {
+        if (initial[w.player_id] !== undefined) initial[w.player_id] = w.slot
+      }
+    } else {
+      for (const r of roster) initial[r.player_id] = r.slot
+    }
     setDraftSlots(initial)
     return initial
   }
@@ -373,7 +412,11 @@ export default function FantasyMyTeam({ league }) {
     if (!draftSlots) return
     const slots = Object.entries(draftSlots).map(([player_id, slot]) => ({ player_id, slot }))
     try {
-      await setLineup.mutateAsync(slots)
+      if (isFutureWeek) {
+        await setWeeklyLineup.mutateAsync({ week: activeWeek, slots })
+      } else {
+        await setLineup.mutateAsync(slots)
+      }
       toast('Lineup saved', 'success')
       setDraftSlots(null)
       setSelected(null)
@@ -401,7 +444,20 @@ export default function FantasyMyTeam({ league }) {
     setSelected(null)
   }
 
-  const isDirty = !!draftSlots && roster.some((r) => draftSlots[r.player_id] !== r.slot)
+  const isDirty = useMemo(() => {
+    if (!draftSlots) return false
+    if (hasWeeklyLineup) {
+      // Compare against weekly lineup
+      const weeklyMap = {}
+      for (const r of roster) weeklyMap[r.player_id] = 'bench'
+      for (const w of weeklyRoster) {
+        if (weeklyMap[w.player_id] !== undefined) weeklyMap[w.player_id] = w.slot
+      }
+      return Object.keys(draftSlots).some((pid) => draftSlots[pid] !== weeklyMap[pid])
+    }
+    // For current week or future week with no saved lineup, compare against current roster
+    return roster.some((r) => draftSlots[r.player_id] !== r.slot)
+  }, [draftSlots, roster, hasWeeklyLineup, weeklyRoster])
 
   return (
     <div className="space-y-4">
@@ -418,7 +474,8 @@ export default function FantasyMyTeam({ league }) {
           <span className="font-display text-lg text-text-primary">Week {activeWeek}</span>
           {isCurrentWeek && <span className="text-xs text-accent ml-2">Current</span>}
           {isPastWeek && <span className="text-xs text-text-muted ml-2">Final</span>}
-          {!isCurrentWeek && !isPastWeek && <span className="text-xs text-text-muted ml-2">Upcoming</span>}
+          {isFutureWeek && hasWeeklyLineup && <span className="text-xs text-correct ml-2">Set</span>}
+          {isFutureWeek && !hasWeeklyLineup && <span className="text-xs text-text-muted ml-2">Upcoming</span>}
         </div>
         <button
           onClick={() => setViewWeek(Math.min(totalWeeks, activeWeek + 1))}
@@ -435,6 +492,13 @@ export default function FantasyMyTeam({ league }) {
       )}
       {isPastWeek && (!historyData?.roster?.length) && (
         <div className="text-center text-sm text-text-muted py-8">No lineup history for this week</div>
+      )}
+
+      {/* Future week: invalidation warning if players no longer on roster */}
+      {hasWeeklyLineup && weeklyRoster.some((w) => w.still_on_roster === false) && (
+        <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-xs text-accent text-center">
+          Some players in this lineup are no longer on your roster. Edit to fix.
+        </div>
       )}
 
       {/* Incoming trade proposals */}
@@ -568,7 +632,7 @@ export default function FantasyMyTeam({ league }) {
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
-          {isCurrentWeek && !editMode && (
+          {(isCurrentWeek || isFutureWeek) && !editMode && (
             <button
               onClick={() => setEditMode(true)}
               className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors px-3 py-1 rounded-lg border border-accent/30 hover:border-accent"
@@ -652,7 +716,7 @@ export default function FantasyMyTeam({ league }) {
         </div>
       )}
 
-      {editMode && isCurrentWeek && (
+      {editMode && (isCurrentWeek || isFutureWeek) && (
         <div className="sticky bottom-4 flex gap-2 px-2">
           <button
             type="button"
@@ -664,10 +728,10 @@ export default function FantasyMyTeam({ league }) {
           <button
             type="button"
             onClick={async () => { await handleSave(); setSelected(null); setEditMode(false) }}
-            disabled={setLineup.isPending || !isDirty}
+            disabled={(isFutureWeek ? setWeeklyLineup.isPending : setLineup.isPending) || !isDirty}
             className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${isDirty ? 'bg-accent text-white hover:bg-accent-hover' : 'bg-text-muted/30 text-text-muted'}`}
           >
-            {setLineup.isPending ? 'Saving…' : 'Save Lineup'}
+            {(isFutureWeek ? setWeeklyLineup.isPending : setLineup.isPending) ? 'Saving…' : 'Save Lineup'}
           </button>
         </div>
       )}

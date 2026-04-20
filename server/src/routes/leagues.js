@@ -946,6 +946,9 @@ import {
   resizeFantasyLeague,
   cancelFantasyLeague,
   computeFantasyUnderfillState,
+  setFantasyWeeklyLineup,
+  getFantasyWeeklyLineup,
+  promoteWeeklyLineup,
 } from '../services/fantasyService.js'
 
 // Get fantasy settings
@@ -1191,8 +1194,15 @@ router.put('/:id/fantasy/draft/queue', requireAuth, async (req, res) => {
   res.json(result)
 })
 
-// Get user's roster
+// Get user's roster (with lazy promotion of pre-set weekly lineup)
 router.get('/:id/fantasy/roster', requireAuth, async (req, res) => {
+  try {
+    // Promote pre-set weekly lineup if one exists for the current week
+    const settings = await getFantasySettings(req.params.id)
+    if (settings?.current_week && settings?.season) {
+      await promoteWeeklyLineup(req.params.id, req.user.id, settings.current_week, settings.season)
+    }
+  } catch {}
   const data = await getRoster(req.params.id, req.user.id)
   res.json(data)
 })
@@ -1248,7 +1258,7 @@ router.patch('/:id/fantasy/team-name', requireAuth, async (req, res) => {
   res.json({ updated: true })
 })
 
-// Set starting lineup
+// Set starting lineup (current week)
 router.post('/:id/fantasy/lineup', requireAuth, async (req, res) => {
   try {
     const { slots } = req.body
@@ -1256,6 +1266,34 @@ router.post('/:id/fantasy/lineup', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'slots array required: [{ player_id, slot }, ...]' })
     }
     const result = await setFantasyLineup(req.params.id, req.user.id, slots)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Get pre-set weekly lineup for a future week
+router.get('/:id/fantasy/lineup/week/:week', requireAuth, async (req, res) => {
+  try {
+    const settings = await getFantasySettings(req.params.id)
+    const season = settings?.season || new Date().getUTCFullYear()
+    const result = await getFantasyWeeklyLineup(req.params.id, req.user.id, parseInt(req.params.week), season)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// Save pre-set weekly lineup for a future week
+router.post('/:id/fantasy/lineup/week/:week', requireAuth, async (req, res) => {
+  try {
+    const { slots } = req.body
+    if (!Array.isArray(slots)) {
+      return res.status(400).json({ error: 'slots array required: [{ player_id, slot }, ...]' })
+    }
+    const settings = await getFantasySettings(req.params.id)
+    const season = settings?.season || new Date().getUTCFullYear()
+    const result = await setFantasyWeeklyLineup(req.params.id, req.user.id, parseInt(req.params.week), season, slots)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

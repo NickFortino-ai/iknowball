@@ -628,6 +628,25 @@ export function useSetFantasyLineup(leagueId) {
   })
 }
 
+export function useFantasyWeeklyLineup(leagueId, week) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'weeklyLineup', week],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/lineup/week/${week}`),
+    enabled: !!leagueId && !!week,
+  })
+}
+
+export function useSetFantasyWeeklyLineup(leagueId) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ week, slots }) =>
+      api.post(`/leagues/${leagueId}/fantasy/lineup/week/${week}`, { slots }),
+    onSuccess: (_d, { week }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'weeklyLineup', week] })
+    },
+  })
+}
+
 export function useDropRosterPlayer(leagueId) {
   const queryClient = useQueryClient()
   const rosterKey = ['leagues', leagueId, 'fantasy', 'roster']

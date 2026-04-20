@@ -2375,6 +2375,196 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
 }
 
 /**
+ * Save a pre-set lineup for a future week.
+ * The weekly lineup is stored separately from fantasy_rosters and will be
+ * applied (promoted) when the week becomes current or used directly at scoring time.
+ */
+export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slotAssignments) {
+  if (!Array.isArray(slotAssignments) || !slotAssignments.length) {
+    const err = new Error('slotAssignments required')
+    err.status = 400
+    throw err
+  }
+
+  // Validate week is in the future
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('current_week')
+    .eq('league_id', leagueId)
+    .single()
+  const currentWeek = settings?.current_week || 1
+  if (week <= currentWeek) {
+    const err = new Error('Weekly lineups can only be set for future weeks')
+    err.status = 400
+    throw err
+  }
+
+  // Get the user's current roster for ownership + position validation
+  const { data: roster } = await supabase
+    .from('fantasy_rosters')
+    .select('id, player_id, slot, nfl_players(id, position, team)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+
+  if (!roster?.length) {
+    const err = new Error('You do not have a roster in this league')
+    err.status = 404
+    throw err
+  }
+
+  const rosterByPlayerId = {}
+  for (const r of roster) rosterByPlayerId[r.player_id] = r
+
+  // Validate each assignment
+  for (const a of slotAssignments) {
+    const r = rosterByPlayerId[a.player_id]
+    if (!r) {
+      const err = new Error(`Player ${a.player_id} is not on your roster`)
+      err.status = 400
+      throw err
+    }
+    const allowed = SLOT_POSITIONS[a.slot]
+    if (!allowed) {
+      const err = new Error(`Invalid slot: ${a.slot}`)
+      err.status = 400
+      throw err
+    }
+    if (!allowed.includes(r.nfl_players?.position)) {
+      const err = new Error(`Player ${r.nfl_players?.position} cannot fill slot ${a.slot}`)
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Validate no duplicate starter slots
+  const starterCounts = {}
+  for (const slot of STARTER_SLOTS_TRAD) starterCounts[slot] = 0
+  for (const a of slotAssignments) {
+    if (STARTER_SLOTS_TRAD.includes(a.slot)) starterCounts[a.slot]++
+  }
+  for (const [slot, count] of Object.entries(starterCounts)) {
+    if (count > 1) {
+      const err = new Error(`Multiple players assigned to ${slot}`)
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Delete existing weekly lineup for this week, then insert new set
+  await supabase
+    .from('fantasy_weekly_lineups')
+    .delete()
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('week', week)
+    .eq('season', season)
+
+  const rows = slotAssignments.map((a) => ({
+    league_id: leagueId,
+    user_id: userId,
+    week,
+    season,
+    player_id: a.player_id,
+    slot: a.slot,
+  }))
+  const { error } = await supabase.from('fantasy_weekly_lineups').insert(rows)
+  if (error) {
+    logger.error({ error }, 'Failed to save weekly lineup')
+    const err = new Error('Failed to save weekly lineup')
+    err.status = 500
+    throw err
+  }
+
+  return { saved: rows.length }
+}
+
+/**
+ * Fetch a pre-set weekly lineup for a future week.
+ * Cross-checks against current roster to flag players no longer owned.
+ */
+export async function getFantasyWeeklyLineup(leagueId, userId, week, season) {
+  const { data: rows } = await supabase
+    .from('fantasy_weekly_lineups')
+    .select('player_id, slot, nfl_players(id, full_name, position, team, headshot_url, injury_status)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('week', week)
+    .eq('season', season)
+
+  if (!rows?.length) return { roster: null, week, season }
+
+  // Cross-check against current roster
+  const { data: currentRoster } = await supabase
+    .from('fantasy_rosters')
+    .select('player_id')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+  const ownedIds = new Set((currentRoster || []).map((r) => r.player_id))
+
+  const roster = rows.map((r) => ({
+    player_id: r.player_id,
+    slot: r.slot,
+    nfl_players: r.nfl_players,
+    still_on_roster: ownedIds.has(r.player_id),
+  }))
+
+  return { roster, week, season }
+}
+
+/**
+ * Promote a pre-set weekly lineup into fantasy_rosters when the week becomes current.
+ * Called lazily on roster fetch. One-time per user per week.
+ */
+export async function promoteWeeklyLineup(leagueId, userId, currentWeek, season) {
+  const { data: weeklyRows } = await supabase
+    .from('fantasy_weekly_lineups')
+    .select('player_id, slot')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('week', currentWeek)
+    .eq('season', season)
+
+  if (!weeklyRows?.length) return false
+
+  // Get current roster to validate players are still owned
+  const { data: roster } = await supabase
+    .from('fantasy_rosters')
+    .select('id, player_id, slot')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+
+  if (!roster?.length) return false
+
+  const rosterById = {}
+  for (const r of roster) rosterById[r.player_id] = r
+
+  // Apply weekly lineup slots to fantasy_rosters (only for players still on roster)
+  let applied = 0
+  for (const w of weeklyRows) {
+    const r = rosterById[w.player_id]
+    if (!r) continue // player no longer on roster
+    if (r.slot === w.slot) continue // already correct
+    await supabase
+      .from('fantasy_rosters')
+      .update({ slot: w.slot })
+      .eq('id', r.id)
+    applied++
+  }
+
+  // Clean up the weekly lineup rows
+  await supabase
+    .from('fantasy_weekly_lineups')
+    .delete()
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('week', currentWeek)
+    .eq('season', season)
+
+  logger.info({ leagueId, userId, currentWeek, applied }, 'Promoted weekly lineup to roster')
+  return true
+}
+
+/**
  * Add a free-agent player to a user's roster, optionally swapping out a player.
  *
  * Validates:
@@ -4392,6 +4582,49 @@ export async function scoreFantasyMatchupsWeek(week, season) {
     .select('league_id, user_id, player_id, slot')
     .in('league_id', leagueIds)
     .in('user_id', userIds)
+
+  // 3a. Check for pre-set weekly lineups and override slots where applicable
+  const { data: weeklyRows } = await supabase
+    .from('fantasy_weekly_lineups')
+    .select('league_id, user_id, player_id, slot')
+    .in('league_id', leagueIds)
+    .in('user_id', userIds)
+    .eq('week', week)
+    .eq('season', season)
+
+  if (weeklyRows?.length) {
+    // Build lookup: league|user|player → weekly slot
+    const weeklySlotMap = {}
+    for (const w of weeklyRows) {
+      weeklySlotMap[`${w.league_id}|${w.user_id}|${w.player_id}`] = w.slot
+    }
+    // Build set of users who have weekly lineups
+    const usersWithWeekly = new Set(weeklyRows.map((w) => `${w.league_id}|${w.user_id}`))
+
+    // For users with a weekly lineup, override their roster slots
+    // Players not in the weekly lineup (e.g. traded away then re-acquired) keep their roster slot
+    for (const r of rosterRows || []) {
+      const userKey = `${r.league_id}|${r.user_id}`
+      if (!usersWithWeekly.has(userKey)) continue
+      const weeklySlot = weeklySlotMap[`${r.league_id}|${r.user_id}|${r.player_id}`]
+      if (weeklySlot) {
+        r.slot = weeklySlot
+      } else {
+        // Player is on roster but not in weekly lineup — bench them
+        r.slot = 'bench'
+      }
+    }
+
+    // Clean up used weekly lineup rows
+    await supabase
+      .from('fantasy_weekly_lineups')
+      .delete()
+      .in('league_id', leagueIds)
+      .eq('week', week)
+      .eq('season', season)
+
+    logger.info({ week, season, weeklyUsers: usersWithWeekly.size }, 'Applied weekly lineup overrides for scoring')
+  }
 
   // 3b. Snapshot rosters to lineup history (idempotent — ON CONFLICT DO NOTHING)
   if (rosterRows?.length) {
