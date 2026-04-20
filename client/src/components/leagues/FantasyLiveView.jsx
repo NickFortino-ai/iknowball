@@ -137,7 +137,7 @@ function SalaryCapLive({ league, week, season }) {
                   const statLine = buildStatLine(slot.stats, slot.position)
 
                   return (
-                    <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-3.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
+                    <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-3.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary/30`}>
                       <span className="text-sm font-bold text-text-muted w-8 shrink-0">{SLOT_LABELS[slot.roster_slot] || slot.roster_slot}</span>
                       {hidden ? (
                         <span className="flex-1 text-base text-text-muted font-mono">????</span>
