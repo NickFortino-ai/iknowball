@@ -66,16 +66,16 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
       isMyMatchup ? 'border-accent/40' : 'border-text-primary/20'
     }`}>
       {/* Matchup header — always visible */}
-      <button onClick={onToggle} className="w-full p-3 hover:bg-text-primary/5 transition-colors">
+      <button onClick={onToggle} className="w-full p-4 hover:bg-text-primary/5 transition-colors">
         <div className="flex items-center gap-3">
           {/* Home user */}
-          <div className="flex-1 flex items-center gap-2 min-w-0">
-            <Avatar user={matchup.home_user} size="sm" />
+          <div className="flex-1 flex items-center gap-3 min-w-0">
+            <Avatar user={matchup.home_user} size="lg" />
             <div className="min-w-0 text-left">
-              <div className={`text-sm font-semibold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+              <div className={`text-base font-bold truncate ${isCompleted && homeWinning ? 'text-correct' : matchup.home_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
                 {matchup.home_user?.fantasy_team_name || matchup.home_user?.display_name || matchup.home_user?.username}
               </div>
-              <div className="text-[10px] text-text-muted truncate">
+              <div className="text-xs text-text-primary truncate">
                 {matchup.home_user?.fantasy_team_name ? (matchup.home_user?.display_name || matchup.home_user?.username) : ''}
                 {matchup.home_user?.record && <span className={matchup.home_user?.fantasy_team_name ? ' ml-1' : ''}>{matchup.home_user.record.wins}-{matchup.home_user.record.losses}</span>}
               </div>
@@ -83,50 +83,50 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           </div>
 
           {/* Scores */}
-          <div className="text-center shrink-0 px-2">
+          <div className="text-center shrink-0 px-3">
             {hasScores || isCompleted ? (
-              <div className="flex items-center gap-2">
-                <span className={`font-display text-xl ${isCompleted && homeWinning ? 'text-correct' : 'text-text-primary'}`}>
+              <div className="flex items-center gap-3">
+                <span className={`font-display text-2xl ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
                   {(matchup.home_points || 0).toFixed(1)}
                 </span>
-                <span className="text-text-muted text-xs">-</span>
-                <span className={`font-display text-xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-text-primary'}`}>
+                <span className="text-text-muted text-sm">-</span>
+                <span className={`font-display text-2xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
                   {(matchup.away_points || 0).toFixed(1)}
                 </span>
               </div>
             ) : weekStatus === 'future' && totalProj > 0 ? (
-              <div className="flex items-center gap-2">
-                <span className="font-display text-lg text-text-muted">{hProj.toFixed(1)}</span>
-                <span className="text-text-muted text-[10px]">proj</span>
-                <span className="font-display text-lg text-text-muted">{aProj.toFixed(1)}</span>
+              <div className="flex items-center gap-3">
+                <span className="font-display text-xl text-text-muted">{hProj.toFixed(1)}</span>
+                <span className="text-text-muted text-xs">proj</span>
+                <span className="font-display text-xl text-text-muted">{aProj.toFixed(1)}</span>
               </div>
             ) : (
               <span className="text-text-muted text-sm">vs</span>
             )}
             {isCompleted && (
-              <div className="text-[9px] text-text-muted mt-0.5">Final</div>
+              <div className="text-xs text-text-muted mt-0.5">Final</div>
             )}
           </div>
 
           {/* Away user */}
-          <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
+          <div className="flex-1 flex items-center gap-3 justify-end min-w-0">
             <div className="min-w-0 text-right">
-              <div className={`text-sm font-semibold truncate ${isCompleted && !homeWinning ? 'text-correct' : matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
+              <div className={`text-base font-bold truncate ${isCompleted && !homeWinning ? 'text-correct' : matchup.away_user?.id === myId ? 'text-accent' : 'text-text-primary'}`}>
                 {matchup.away_user?.fantasy_team_name || matchup.away_user?.display_name || matchup.away_user?.username}
               </div>
-              <div className="text-[10px] text-text-muted truncate">
+              <div className="text-xs text-text-primary truncate">
                 {matchup.away_user?.record && <span>{matchup.away_user.record.wins}-{matchup.away_user.record.losses}</span>}
                 {matchup.away_user?.fantasy_team_name ? <span className="ml-1">{matchup.away_user?.display_name || matchup.away_user?.username}</span> : ''}
               </div>
             </div>
-            <Avatar user={matchup.away_user} size="sm" />
+            <Avatar user={matchup.away_user} size="lg" />
           </div>
         </div>
 
         {/* Win probability bar (live/future) or result bar (completed) */}
         {isCompleted && hasScores ? (
-          <div className="mt-2">
-            <div className="h-1.5 rounded-full overflow-hidden">
+          <div className="mt-3">
+            <div className="h-2 rounded-full overflow-hidden">
               <div className={`h-full rounded-full ${homeWinning ? 'bg-correct' : 'bg-correct float-right'}`} style={{ width: '100%' }} />
             </div>
             <div className="flex justify-between mt-1">
@@ -148,7 +148,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
         <div className="border-t border-text-primary/10 p-3">
           {/* Desktop: full table with stat lines and projections */}
           <div className="hidden lg:block">
-            <div className="grid grid-cols-[1fr_3rem_3.5rem_2.5rem_3.5rem_3rem_1fr] gap-1 text-[10px] text-text-muted uppercase tracking-wider px-1 pb-2 border-b border-text-primary/10 mb-1">
+            <div className="grid grid-cols-[1fr_3.5rem_4rem_3rem_4rem_3.5rem_1fr] gap-1 text-xs text-text-muted uppercase tracking-wider px-1 pb-2 border-b border-text-primary/10 mb-1">
               <span>Player</span>
               <span className="text-right">Proj</span>
               <span className="text-right font-semibold">Pts</span>
@@ -164,53 +164,53 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
               const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
               return (
-                <div key={i} className="grid grid-cols-[1fr_3rem_3.5rem_2.5rem_3.5rem_3rem_1fr] gap-1 items-center text-xs py-1.5 border-b border-text-primary/5 last:border-0">
+                <div key={i} className="grid grid-cols-[1fr_3.5rem_4rem_3rem_4rem_3.5rem_1fr] gap-1 items-center text-sm py-2.5 border-b border-text-primary/5 last:border-0">
                   {/* Home player */}
                   <div
-                    className="flex items-center gap-2 min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
+                    className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
                     onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
                   >
                     {hp?.headshot_url ? (
-                      <img src={hp.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[10px] text-text-muted font-bold">{hp?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
+                      <img src={hp.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                    ) : <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">{hp?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
-                        <span className="font-semibold text-text-primary truncate">{hp?.player_name || '--'}</span>
+                        <span className="font-bold text-text-primary truncate">{hp?.player_name || '--'}</span>
                         {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
                       </div>
-                      {hStat && <div className="text-[10px] text-text-muted truncate">{hStat}</div>}
-                      {hp?.on_bye && <div className="text-[9px] text-text-muted font-bold">BYE</div>}
+                      {hStat && <div className="text-xs text-text-primary truncate">{hStat}</div>}
+                      {hp?.on_bye && <div className="text-[10px] text-text-muted font-bold">BYE</div>}
                     </div>
                   </div>
-                  <div className="text-right text-text-muted text-[11px]">{hp?.projected?.toFixed(1) || '--'}</div>
-                  <div className={`text-right font-bold ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
+                  <div className="text-right text-text-muted text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
+                  <div className={`text-right font-bold text-sm ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
                     {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                   </div>
                   <div className="text-center">
-                    <span className="text-[10px] font-semibold text-text-muted bg-bg-secondary rounded px-1 py-0.5">
+                    <span className="text-xs font-semibold text-text-muted bg-bg-secondary rounded px-1.5 py-0.5">
                       {SLOT_LABELS[hp?.slot] || '?'}
                     </span>
                   </div>
-                  <div className={`text-left font-bold ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
+                  <div className={`text-left font-bold text-sm ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
                     {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                   </div>
-                  <div className="text-left text-text-muted text-[11px]">{ap?.projected?.toFixed(1) || '--'}</div>
+                  <div className="text-left text-text-muted text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
                   {/* Away player */}
                   <div
-                    className="flex items-center gap-2 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
+                    className="flex items-center gap-2.5 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
                     onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
                   >
                     <div className="min-w-0 text-right">
                       <div className="flex items-center gap-1 justify-end">
                         {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
-                        <span className="font-semibold text-text-primary truncate">{ap?.player_name || '--'}</span>
+                        <span className="font-bold text-text-primary truncate">{ap?.player_name || '--'}</span>
                       </div>
-                      {aStat && <div className="text-[10px] text-text-muted truncate">{aStat}</div>}
-                      {ap?.on_bye && <div className="text-[9px] text-text-muted font-bold">BYE</div>}
+                      {aStat && <div className="text-xs text-text-primary truncate">{aStat}</div>}
+                      {ap?.on_bye && <div className="text-[10px] text-text-muted font-bold">BYE</div>}
                     </div>
                     {ap?.headshot_url ? (
-                      <img src={ap.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : <div className="w-7 h-7 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[10px] text-text-muted font-bold">{ap?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
+                      <img src={ap.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                    ) : <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">{ap?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
                   </div>
                 </div>
               )
