@@ -919,7 +919,8 @@ export default function LeagueDetailPage() {
   const { data: bracketTournament } = useBracketTournament(league?.format === 'bracket' ? id : null)
   const { data: bracketEntries } = useBracketEntries(league?.format === 'bracket' ? id : null)
   const { data: threadUnread } = useThreadUnread(id)
-  const pendingReviewCount = 0 // TODO: re-enable useFantasyTrades for badge
+  const { data: fantasyTradesData } = useFantasyTrades(league?.format === 'fantasy' ? id : null)
+  const pendingReviewCount = Array.isArray(fantasyTradesData) ? fantasyTradesData.filter((t) => t.status === 'pending_review').length : 0
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
   const todayDate = new Date().toLocaleDateString('en-CA')
