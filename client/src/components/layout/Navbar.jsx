@@ -50,7 +50,10 @@ const navLinks = [
 function getNotificationIcon(n) {
   switch (n.type) {
     // Social
-    case 'reaction': return '\uD83D\uDD25' // 🔥
+    case 'reaction': {
+      const reactionEmojis = { fire: '🔥', clown: '🤡', goat: '🐐', clap: '👏' }
+      return reactionEmojis[n.metadata?.reactionType] || '🔥'
+    }
     case 'comment': return '\uD83D\uDCAC' // 💬
     case 'hot_take_callout': return '\uD83C\uDFF7\uFE0F' // 🏷️
     case 'connection_request': return '\uD83E\uDD1D' // 🤝
