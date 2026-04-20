@@ -6,6 +6,7 @@ import { toast } from '../ui/Toast'
 import Avatar from '../ui/Avatar'
 import PlayerDetailModal from './PlayerDetailModal'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
+import { ProposeTradeModal } from './FantasyTrades'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
 const INJURY_COLORS = {
@@ -144,6 +145,7 @@ export default function FantasyMyTeam({ league }) {
   const [draftSlots, setDraftSlots] = useState(null) // { [player_id]: slot }
   const [selected, setSelected] = useState(null) // { type: 'slot'|'player', key: string }
   const [editMode, setEditMode] = useState(false)
+  const [showCounterTrade, setShowCounterTrade] = useState(null)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
   const { data: globalRankData } = useGlobalRank(league.id)
@@ -457,37 +459,48 @@ export default function FantasyMyTeam({ league }) {
               <div className="px-4 pb-4">
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
-                    <div className="text-[10px] uppercase text-text-muted mb-1">You receive</div>
-                    <div className="space-y-1">
+                    <div className="text-sm font-semibold text-text-primary mb-2">You receive</div>
+                    <div className="space-y-1.5">
                       {proposerItems.map((item) => (
-                        <div key={item.player_id} className="flex items-center gap-2 rounded-lg bg-bg-primary border border-text-primary/10 px-2 py-1.5">
-                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />}
-                          <div className="text-xs font-semibold text-text-primary truncate">{item.nfl_players?.full_name}</div>
+                        <div key={item.player_id} className="flex items-center gap-2.5 rounded-lg bg-bg-primary border border-text-primary/10 px-3 py-2">
+                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />}
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-text-primary truncate">{item.nfl_players?.full_name}</div>
+                            <div className="text-xs text-text-primary">{item.nfl_players?.position} · {item.nfl_players?.team}</div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase text-text-muted mb-1">You give up</div>
-                    <div className="space-y-1">
+                    <div className="text-sm font-semibold text-text-primary mb-2">You give up</div>
+                    <div className="space-y-1.5">
                       {receiverItems.map((item) => (
-                        <div key={item.player_id} className="flex items-center gap-2 rounded-lg bg-bg-primary border border-text-primary/10 px-2 py-1.5">
-                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />}
-                          <div className="text-xs font-semibold text-text-primary truncate">{item.nfl_players?.full_name}</div>
+                        <div key={item.player_id} className="flex items-center gap-2.5 rounded-lg bg-bg-primary border border-text-primary/10 px-3 py-2">
+                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />}
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-text-primary truncate">{item.nfl_players?.full_name}</div>
+                            <div className="text-xs text-text-primary">{item.nfl_players?.position} · {item.nfl_players?.team}</div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
                 {trade.message && (
-                  <div className="text-xs text-text-secondary italic mb-3">"{trade.message}"</div>
+                  <div className="text-sm text-text-primary italic mb-3">"{trade.message}"</div>
                 )}
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <button
                     onClick={() => handleTradeAction(trade.id, 'accept')}
                     disabled={respond.isPending}
                     className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-correct text-white hover:bg-correct/90 transition-colors disabled:opacity-50"
                   >Accept</button>
+                  <button
+                    onClick={() => { setExpandedTradeId(null); setShowCounterTrade(trade) }}
+                    disabled={respond.isPending}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+                  >Counter</button>
                   <button
                     onClick={() => handleTradeAction(trade.id, 'decline')}
                     disabled={respond.isPending}
@@ -518,6 +531,15 @@ export default function FantasyMyTeam({ league }) {
 
       {showGlobalRank && (
         <FantasyGlobalRankModal leagueId={league.id} onClose={() => setShowGlobalRank(false)} />
+      )}
+
+      {showCounterTrade && (
+        <ProposeTradeModal
+          league={league}
+          currentUserId={profile?.id}
+          initialReceiverId={showCounterTrade.proposer_user_id}
+          onClose={() => setShowCounterTrade(null)}
+        />
       )}
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">

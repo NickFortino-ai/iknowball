@@ -3719,10 +3719,12 @@ async function _executeTrade(tradeId, trade, actorId) {
   try {
     const { createNotification } = await import('./notificationService.js')
     const { data: league } = await supabase.from('leagues').select('name').eq('id', trade.league_id).single()
+    const { data: accepter } = await supabase.from('users').select('display_name, username').eq('id', actorId).single()
+    const accepterName = accepter?.display_name || accepter?.username || 'a manager'
     await createNotification(
       trade.proposer_user_id,
       'fantasy_trade_accepted',
-      `Your trade in ${league?.name || 'your league'} was accepted`,
+      `Your trade proposal in ${league?.name || 'your league'} was accepted by ${accepterName}`,
       { leagueId: trade.league_id, tradeId, actorId },
     )
   } catch (err) {
@@ -3877,10 +3879,12 @@ export async function declineTrade(tradeId, userId) {
   try {
     const { createNotification } = await import('./notificationService.js')
     const { data: league } = await supabase.from('leagues').select('name').eq('id', trade.league_id).single()
+    const { data: decliner } = await supabase.from('users').select('display_name, username').eq('id', userId).single()
+    const declinerName = decliner?.display_name || decliner?.username || 'a manager'
     await createNotification(
       trade.proposer_user_id,
       'fantasy_trade_declined',
-      `Your trade in ${league?.name || 'your league'} was declined`,
+      `Your trade proposal in ${league?.name || 'your league'} was declined by ${declinerName}`,
       { leagueId: trade.league_id, tradeId, actorId: userId },
     )
   } catch (err) {

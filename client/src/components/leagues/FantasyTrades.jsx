@@ -223,8 +223,8 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
-      <div className="bg-bg-secondary w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
+      <div className="bg-bg-primary border border-text-primary/20 w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
           <h3 className="font-display text-lg">Propose Trade</h3>
           <button onClick={onClose} className="text-text-muted p-1">&times;</button>
         </div>
@@ -232,18 +232,18 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
         <div className="p-4 space-y-4">
           <div>
             <label className="block text-xs uppercase text-text-muted mb-2">Trade with</label>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="grid grid-cols-3 gap-2">
               {otherMembers.map((m) => (
                 <button
                   key={m.user_id}
                   type="button"
                   onClick={() => { setReceiverId(m.user_id); setTheirPlayerIds([]) }}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                    receiverId === m.user_id ? 'border-accent bg-accent/10' : 'border-border bg-bg-card hover:bg-bg-card-hover'
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors ${
+                    receiverId === m.user_id ? 'border-accent bg-accent/10' : 'border-text-primary/20 bg-bg-primary hover:bg-bg-card-hover'
                   }`}
                 >
-                  <Avatar user={m.users || m} size="xs" />
-                  <span className="text-xs font-semibold truncate">{m.users?.display_name || m.users?.username || m.username}</span>
+                  <Avatar user={m.users || m} size="sm" />
+                  <span className="text-sm font-semibold truncate">{m.users?.display_name || m.users?.username || m.username}</span>
                 </button>
               ))}
             </div>
