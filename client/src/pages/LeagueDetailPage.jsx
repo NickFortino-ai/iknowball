@@ -126,6 +126,7 @@ function formatDateRange(startsAt, endsAt) {
 function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
+  const { profile } = useAuth()
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
