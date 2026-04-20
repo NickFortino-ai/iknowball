@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
@@ -138,6 +138,8 @@ export default function FantasyMyTeam({ league }) {
   const [selected, setSelected] = useState(null) // { type: 'slot'|'player', key: string }
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
+  const { data: globalRankData } = useGlobalRank(league.id)
+  const hasGlobalRank = globalRankData?.status === 'ok' && globalRankData?.format?.team_count > 1
   const [expandedTradeId, setExpandedTradeId] = useState(null)
 
   function openPlayerDetail(playerId) {
@@ -448,19 +450,21 @@ export default function FantasyMyTeam({ league }) {
         )
       })}
 
-      <button
-        onClick={() => setShowGlobalRank(true)}
-        className="w-full rounded-xl border border-text-primary/20 bg-bg-primary p-3 flex items-center justify-between hover:bg-bg-secondary transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🏆</span>
-          <div className="text-left">
-            <div className="text-sm font-semibold text-text-primary">Global Rank</div>
-            <div className="text-[11px] text-text-muted">See how your team stacks up across IKB</div>
+      {hasGlobalRank && (
+        <button
+          onClick={() => setShowGlobalRank(true)}
+          className="w-full rounded-xl border border-text-primary/20 bg-bg-primary p-3 flex items-center justify-between hover:bg-bg-secondary transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏆</span>
+            <div className="text-left">
+              <div className="text-sm font-semibold text-text-primary">Global Rank</div>
+              <div className="text-xs text-text-primary">See where your team ranks across all IKB leagues with the same roster and scoring settings.</div>
+            </div>
           </div>
-        </div>
-        <span className="text-text-muted">→</span>
-      </button>
+          <span className="text-text-muted">→</span>
+        </button>
+      )}
 
       {showGlobalRank && (
         <FantasyGlobalRankModal leagueId={league.id} onClose={() => setShowGlobalRank(false)} />

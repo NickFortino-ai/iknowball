@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import Avatar from '../ui/Avatar'
 import RosterModal from './RosterModal'
-import { useFantasyStandings } from '../../hooks/useLeagues'
+import FantasyGlobalRankModal from './FantasyGlobalRankModal'
+import { useFantasyStandings, useGlobalRank } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 
 export default function FantasyStandings({ league, isSalaryCap }) {
   const [selectedUser, setSelectedUser] = useState(null)
+  const [showGlobalRank, setShowGlobalRank] = useState(false)
   const [sortCol, setSortCol] = useState(null) // null = default (W-L), 'pf', 'pa'
   const [sortDir, setSortDir] = useState('desc')
   const { data: serverStandings } = useFantasyStandings(league.id)
   const { profile } = useAuth()
+  const { data: globalRankData } = useGlobalRank(league.id)
+  const hasGlobalRank = globalRankData?.status === 'ok' && globalRankData?.format?.team_count > 1
 
   const standings = (serverStandings && serverStandings.length)
     ? serverStandings.map((s) => ({
@@ -131,6 +135,27 @@ export default function FantasyStandings({ league, isSalaryCap }) {
           <div className="text-center py-8 text-text-muted text-sm">No members yet</div>
         )}
       </div>
+
+      {hasGlobalRank && (
+        <button
+          onClick={() => setShowGlobalRank(true)}
+          className="w-full mt-4 rounded-xl border border-text-primary/20 bg-bg-primary p-4 flex items-center justify-between hover:bg-bg-secondary transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏆</span>
+            <div className="text-left">
+              <div className="text-sm font-semibold text-text-primary">Global Rank</div>
+              <div className="text-xs text-text-primary">See where your team ranks across all IKB leagues with the same roster and scoring settings.</div>
+            </div>
+          </div>
+          <span className="text-text-muted">→</span>
+        </button>
+      )}
+
+      {showGlobalRank && (
+        <FantasyGlobalRankModal leagueId={league.id} onClose={() => setShowGlobalRank(false)} />
+      )}
+
       {selectedUser && (
         <RosterModal
           league={league}
