@@ -267,7 +267,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             })}
           </div>
 
-          {/* Mobile: FanDuel-inspired card view */}
+          {/* Mobile: position-centered H2H card view */}
           <div className="lg:hidden">
             {homeStarters.map((hp, i) => {
               const ap = awayStarters[i]
@@ -280,10 +280,9 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 if (!p?.opponent) return null
                 const teamScore = p.team_score ?? ''
                 const oppScore = p.opp_score ?? ''
-                const gameStr = p.is_home
+                return p.is_home
                   ? `${p.team} ${teamScore} vs ${p.opponent} ${oppScore}`
                   : `${p.team} ${teamScore} @ ${p.opponent} ${oppScore}`
-                return gameStr
               }
 
               function gameClockLine(p) {
@@ -293,64 +292,91 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 return null
               }
 
+              function abbrevName(name) {
+                if (!name) return '--'
+                const parts = name.split(' ')
+                if (parts.length < 2) return name
+                return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
+              }
+
+              const slotLabel = SLOT_LABELS[hp?.slot] || '?'
+
               return (
-                <div key={i} className="grid grid-cols-2 gap-px border-b border-text-primary/10">
-                  {/* Home player card */}
-                  {[hp, ap].map((p, side) => {
-                    const stat = side === 0 ? hStat : aStat
-                    const isLive = side === 0 ? hLive : aLive
-                    const slotLabel = SLOT_LABELS[p?.slot] || '?'
-                    return (
-                      <div
-                        key={side}
-                        className="p-3 cursor-pointer hover:bg-text-primary/5 transition-colors"
-                        onClick={() => p?.player_id && onPlayerClick(p.player_id)}
-                      >
-                        {/* Name + Points row */}
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-text-muted">{slotLabel}</span>
-                              <span className="text-sm font-bold text-text-primary truncate">
-                                {p?.player_name ? `${p.player_name.split(' ')[0][0]}. ${p.player_name.split(' ').slice(1).join(' ')}` : '--'}
-                              </span>
-                              {p?.injury_status && <InjuryBadge status={p.injury_status} />}
-                            </div>
-                          </div>
-                          <span className={`text-lg font-display font-bold shrink-0 ${
-                            p?.game_status === 'live' ? 'text-accent' : isLive || weekStatus === 'past' ? 'text-white' : 'text-text-muted'
-                          }`}>
-                            {isLive || weekStatus === 'past' ? (p?.points || 0).toFixed(1) : '--'}
-                          </span>
-                        </div>
-
-                        {/* Game score line */}
-                        {(isLive || weekStatus === 'past') && p?.opponent ? (
-                          <div className="text-xs text-text-primary mb-0.5">
-                            {gameScoreLine(p)}
-                          </div>
-                        ) : p?.on_bye ? (
-                          <div className="text-xs text-text-muted font-bold mb-0.5">BYE</div>
-                        ) : p?.projected != null ? (
-                          <div className="text-xs text-text-primary/60 mb-0.5">Proj: {p.projected.toFixed(1)}</div>
-                        ) : null}
-
-                        {/* Game clock / Final */}
-                        {gameClockLine(p) && (
-                          <div className={`text-[11px] font-semibold mb-0.5 ${
-                            p.game_status === 'live' ? 'text-accent' : 'text-text-muted'
-                          }`}>
-                            {gameClockLine(p)}
-                          </div>
-                        )}
-
-                        {/* Stat line */}
-                        {stat && (isLive || weekStatus === 'past') && (
-                          <div className="text-xs text-text-primary/70">{stat}</div>
-                        )}
+                <div key={i} className="flex border-b border-text-primary/10">
+                  {/* Home player — left aligned */}
+                  <div
+                    className="flex-1 p-3 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0"
+                    onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
+                  >
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <span className="text-sm font-bold text-text-primary truncate">{abbrevName(hp?.player_name)}</span>
+                      {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
+                    </div>
+                    {(hLive || weekStatus === 'past') && hp?.opponent ? (
+                      <div className="text-[11px] text-text-primary">{gameScoreLine(hp)}</div>
+                    ) : hp?.on_bye ? (
+                      <div className="text-[11px] text-text-muted font-bold">BYE</div>
+                    ) : hp?.projected != null ? (
+                      <div className="text-[11px] text-text-primary/60">Proj: {hp.projected.toFixed(1)}</div>
+                    ) : null}
+                    {gameClockLine(hp) && (
+                      <div className={`text-[11px] font-semibold ${hp.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
+                        {gameClockLine(hp)}
                       </div>
-                    )
-                  })}
+                    )}
+                    {hStat && (hLive || weekStatus === 'past') && (
+                      <div className="text-[11px] text-text-primary/70 mt-0.5">{hStat}</div>
+                    )}
+                  </div>
+
+                  {/* Home points */}
+                  <div className="w-11 flex items-start justify-end pt-3 shrink-0">
+                    <span className={`text-base font-display font-bold ${
+                      hp?.game_status === 'live' ? 'text-accent' : hLive || weekStatus === 'past' ? 'text-white' : 'text-text-muted'
+                    }`}>
+                      {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
+                    </span>
+                  </div>
+
+                  {/* Position center column */}
+                  <div className="w-9 flex items-start justify-center pt-3.5 shrink-0">
+                    <span className="text-[10px] font-bold text-text-muted bg-bg-secondary rounded px-1.5 py-0.5">{slotLabel}</span>
+                  </div>
+
+                  {/* Away points */}
+                  <div className="w-11 flex items-start justify-start pt-3 shrink-0">
+                    <span className={`text-base font-display font-bold ${
+                      ap?.game_status === 'live' ? 'text-accent' : aLive || weekStatus === 'past' ? 'text-white' : 'text-text-muted'
+                    }`}>
+                      {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
+                    </span>
+                  </div>
+
+                  {/* Away player — right aligned */}
+                  <div
+                    className="flex-1 p-3 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0 text-right"
+                    onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
+                  >
+                    <div className="flex items-center gap-1 justify-end mb-0.5">
+                      {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
+                      <span className="text-sm font-bold text-text-primary truncate">{abbrevName(ap?.player_name)}</span>
+                    </div>
+                    {(aLive || weekStatus === 'past') && ap?.opponent ? (
+                      <div className="text-[11px] text-text-primary">{gameScoreLine(ap)}</div>
+                    ) : ap?.on_bye ? (
+                      <div className="text-[11px] text-text-muted font-bold">BYE</div>
+                    ) : ap?.projected != null ? (
+                      <div className="text-[11px] text-text-primary/60">Proj: {ap.projected.toFixed(1)}</div>
+                    ) : null}
+                    {gameClockLine(ap) && (
+                      <div className={`text-[11px] font-semibold ${ap.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
+                        {gameClockLine(ap)}
+                      </div>
+                    )}
+                    {aStat && (aLive || weekStatus === 'past') && (
+                      <div className="text-[11px] text-text-primary/70 mt-0.5">{aStat}</div>
+                    )}
+                  </div>
                 </div>
               )
             })}
