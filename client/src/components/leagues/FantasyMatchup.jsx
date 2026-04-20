@@ -49,11 +49,19 @@ function buildStatLine(stats, position) {
   return parts.length ? parts.join(', ') : null
 }
 
+const STARTER_SET = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
+
 function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds }) {
   const isMyMatchup = matchup.home_user?.id === myId || matchup.away_user?.id === myId
   const isCompleted = matchup.status === 'completed' || weekStatus === 'past'
   const homeWinning = (matchup.home_points || 0) >= (matchup.away_points || 0)
   const hasScores = (matchup.home_points || 0) > 0 || (matchup.away_points || 0) > 0
+  const [showBench, setShowBench] = useState(false)
+
+  const homeStarters = (matchup.home_roster || []).filter((r) => STARTER_SET.has(r.slot))
+  const awayStarters = (matchup.away_roster || []).filter((r) => STARTER_SET.has(r.slot))
+  const homeBench = (matchup.home_roster || []).filter((r) => !STARTER_SET.has(r.slot))
+  const awayBench = (matchup.away_roster || []).filter((r) => !STARTER_SET.has(r.slot))
 
   // Win probability from projections
   const hProj = matchup.home_projected || 0
@@ -157,8 +165,8 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               <span className="text-left">Proj</span>
               <span className="text-right">Player</span>
             </div>
-            {(matchup.home_roster || []).map((hp, i) => {
-              const ap = matchup.away_roster?.[i]
+            {homeStarters.map((hp, i) => {
+              const ap = awayStarters[i]
               const hStat = buildStatLine(hp?.stats, hp?.position)
               const aStat = buildStatLine(ap?.stats, ap?.position)
               const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
@@ -215,27 +223,55 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 </div>
               )
             })}
-            {/* Totals */}
-            <div className="grid grid-cols-[1fr_3rem_3.5rem_2.5rem_3.5rem_3rem_1fr] gap-1 items-center text-xs mt-1 pt-2 border-t border-text-primary/10 font-display">
-              <div />
-              <div />
-              <div className="text-right font-bold text-text-primary">
-                {(matchup.home_points || matchup.home_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
-              </div>
-              <div className="text-center text-text-muted text-[10px]">Total</div>
-              <div className="text-left font-bold text-text-primary">
-                {(matchup.away_points || matchup.away_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
-              </div>
-              <div />
-              <div />
-            </div>
+            {/* Bench dropdown */}
+            {(homeBench.length > 0 || awayBench.length > 0) && (
+              <button
+                onClick={() => setShowBench(!showBench)}
+                className="w-full mt-1 pt-2 border-t border-text-primary/10 flex items-center justify-center gap-2 text-xs text-text-muted hover:text-text-primary transition-colors py-1"
+              >
+                <span className="font-semibold">Bench</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${showBench ? 'rotate-180' : ''}`}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            )}
+            {showBench && homeBench.map((hp, i) => {
+              const ap = awayBench[i]
+              const hStat = buildStatLine(hp?.stats, hp?.position)
+              const aStat = buildStatLine(ap?.stats, ap?.position)
+              const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
+              const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
+              return (
+                <div key={`bench-${i}`} className="grid grid-cols-[1fr_3.5rem_4rem_3rem_4rem_3.5rem_1fr] gap-1 items-center text-sm py-2 opacity-60">
+                  <div className="flex items-center gap-2 min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5" onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}>
+                    {hp?.headshot_url ? <img src={hp.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} /> : <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" />}
+                    <div className="min-w-0">
+                      <span className="font-semibold text-text-primary truncate block text-xs">{hp?.player_name || '--'}</span>
+                      {hStat && <div className="text-[10px] text-text-primary truncate">{hStat}</div>}
+                    </div>
+                  </div>
+                  <div className="text-right text-text-primary/40 text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
+                  <div className="text-right text-text-muted text-xs">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</div>
+                  <div className="text-center"><span className="text-[10px] font-semibold text-text-muted">BN</span></div>
+                  <div className="text-left text-text-muted text-xs">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</div>
+                  <div className="text-left text-text-primary/40 text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
+                  <div className="flex items-center gap-2 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5" onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}>
+                    <div className="min-w-0 text-right">
+                      <span className="font-semibold text-text-primary truncate block text-xs">{ap?.player_name || '--'}</span>
+                      {aStat && <div className="text-[10px] text-text-primary truncate">{aStat}</div>}
+                    </div>
+                    {ap?.headshot_url ? <img src={ap.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} /> : ap ? <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" /> : null}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           {/* Mobile: enhanced compact view */}
           <div className="lg:hidden">
             <div className="space-y-0.5">
-              {(matchup.home_roster || []).map((hp, i) => {
-                const ap = matchup.away_roster?.[i]
+              {homeStarters.map((hp, i) => {
+                const ap = awayStarters[i]
                 const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
                 const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
                 return (
