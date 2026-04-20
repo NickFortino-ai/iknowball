@@ -43,8 +43,12 @@ dotenv.config({ path: join(__dirname, '..', '.env') })
 // IMMUTABLE SAFETY CONSTANTS — never change these
 // ============================================================
 const TEST_LEAGUE_ID = 'feedface-feed-face-feed-facefeedface'
-const TEST_COMMISH_ID = 'f45f8a06-b9bd-4ced-bd21-3f443385da16' // mossyou
-const TEST_OPPONENT_ID = 'f149c685-99e9-4c31-800c-d23d3e4d21a3' // userpick
+const SIM_USERS = [
+  { id: 'f45f8a06-b9bd-4ced-bd21-3f443385da16', name: 'mossyou', role: 'commissioner' },
+  { id: '2305ae26-9927-415f-a61f-78b0cc09c18e', name: 'Himmy', role: 'member' },
+  { id: 'f8fef0b6-ed5e-42f4-a1bb-8479e32aac39', name: 'admin', role: 'member' },
+  { id: 'f149c685-99e9-4c31-800c-d23d3e4d21a3', name: 'userpick', role: 'member' },
+]
 const SIM_SEASON = 9999
 const SIM_WEEK = 1
 
@@ -111,8 +115,7 @@ async function verifySourceData() {
 // 2. Test league + users + roster setup
 // ============================================================
 async function ensureTestUsers() {
-  // Using real user accounts — no upsert needed
-  log('Using real accounts: mossyou (commish) + userpick (opponent)')
+  log(`Using real accounts: ${SIM_USERS.map((u) => u.name).join(', ')}`)
 }
 
 async function ensureTestLeague() {
@@ -127,7 +130,7 @@ async function ensureTestLeague() {
       format: 'fantasy',
       sport: 'americanfootball_nfl',
       status: 'active',
-      commissioner_id: TEST_COMMISH_ID,
+      commissioner_id: SIM_USERS[0].id,
       visibility: 'closed',
       duration: 'full_season',
       invite_code: 'SIMTEST',
@@ -136,23 +139,22 @@ async function ensureTestLeague() {
   if (leagueErr) throw new Error(`Failed to create test league: ${leagueErr.message}`)
 
   // Members
-  for (const uid of [TEST_COMMISH_ID, TEST_OPPONENT_ID]) {
+  for (const u of SIM_USERS) {
     await supabase.from('league_members').upsert({
       league_id: TEST_LEAGUE_ID,
-      user_id: uid,
-      role: uid === TEST_COMMISH_ID ? 'commissioner' : 'member',
+      user_id: u.id,
+      role: u.role,
     }, { onConflict: 'league_id,user_id' })
   }
 
-  // Fantasy settings — the critical bit: season=9999 so this league only
-  // sees simulated stats and never touches real data.
+  // Fantasy settings — season=9999 so this league only sees simulated stats
   const { error: settingsErr } = await supabase
     .from('fantasy_settings')
     .upsert({
       league_id: TEST_LEAGUE_ID,
       format: 'traditional',
       scoring_format: 'half_ppr',
-      num_teams: 2,
+      num_teams: SIM_USERS.length,
       season: SIM_SEASON,
       current_week: SIM_WEEK,
       draft_status: 'completed',
@@ -161,77 +163,111 @@ async function ensureTestLeague() {
 }
 
 async function ensureRosters() {
-  // Pull a fake roster from real player IDs that have stats in the source week
-  const { data: starters } = await supabase
+  // Pull players sorted by points scored in the source week (highest first)
+  // so each team gets real contributors, not zero-stat players
+  const { data: allStats } = await supabase
     .from('nfl_player_stats')
-    .select('player_id, nfl_players!inner(position)')
+    .select('player_id, pass_td, rush_td, rec_td, pass_yd, rush_yd, rec_yd, fgm, xpm, nfl_players!inner(position, full_name)')
     .eq('season', SOURCE_SEASON)
     .eq('week', SOURCE_WEEK)
-    .limit(500)
-  if (!starters?.length) throw new Error('No starters available from source week')
+
+  if (!allStats?.length) throw new Error('No stats available from source week')
+
+  // Score each player roughly to sort by production
+  function roughScore(s) {
+    return (s.pass_td || 0) * 4 + (s.rush_td || 0) * 6 + (s.rec_td || 0) * 6 +
+      (Number(s.pass_yd) || 0) * 0.04 + (Number(s.rush_yd) || 0) * 0.1 + (Number(s.rec_yd) || 0) * 0.1 +
+      (s.fgm || 0) * 3 + (s.xpm || 0) * 1
+  }
 
   const byPos = {}
-  for (const s of starters) {
+  for (const s of allStats) {
     const pos = s.nfl_players?.position
     if (!pos) continue
     if (!byPos[pos]) byPos[pos] = []
-    byPos[pos].push(s.player_id)
+    byPos[pos].push({ player_id: s.player_id, name: s.nfl_players.full_name, score: roughScore(s) })
+  }
+  // Sort each position by score descending (best producers first)
+  for (const pos of Object.keys(byPos)) {
+    byPos[pos].sort((a, b) => b.score - a.score)
   }
 
-  // Two simple lineups: 2 RB, 2 WR, 1 TE, 1 QB, 1 K, 1 DEF each
-  function buildLineup() {
-    return [
-      { slot: 'qb', player_id: byPos.QB?.shift() },
-      { slot: 'rb1', player_id: byPos.RB?.shift() },
-      { slot: 'rb2', player_id: byPos.RB?.shift() },
-      { slot: 'wr1', player_id: byPos.WR?.shift() },
-      { slot: 'wr2', player_id: byPos.WR?.shift() },
-      { slot: 'te', player_id: byPos.TE?.shift() },
-      { slot: 'k', player_id: byPos.K?.shift() },
-      { slot: 'def', player_id: byPos.DEF?.shift() },
-    ].filter((s) => s.player_id)
+  // Build lineup for each user: 8 starters + 3 bench (leave 1 bench slot open for free agent pickup)
+  // Starters: QB, RB1, RB2, WR1, WR2, TE, K, DEF
+  // Bench: 1 extra RB, 1 extra WR, 1 extra QB/TE (3 bench, 1 open)
+  const STARTER_TEMPLATE = [
+    { slot: 'qb', pos: 'QB' },
+    { slot: 'rb1', pos: 'RB' },
+    { slot: 'rb2', pos: 'RB' },
+    { slot: 'wr1', pos: 'WR' },
+    { slot: 'wr2', pos: 'WR' },
+    { slot: 'te', pos: 'TE' },
+    { slot: 'k', pos: 'K' },
+    { slot: 'def', pos: 'DEF' },
+  ]
+  const BENCH_TEMPLATE = [
+    { slot: 'bench', pos: 'RB' },
+    { slot: 'bench', pos: 'WR' },
+    { slot: 'bench', pos: 'TE' },
+  ]
+
+  function buildLineup(teamIdx) {
+    const lineup = []
+    for (const t of STARTER_TEMPLATE) {
+      const pool = byPos[t.pos]
+      if (pool?.length) lineup.push({ slot: t.slot, player_id: pool.shift().player_id })
+    }
+    for (const t of BENCH_TEMPLATE) {
+      const pool = byPos[t.pos]
+      if (pool?.length) lineup.push({ slot: t.slot, player_id: pool.shift().player_id })
+    }
+    return lineup
   }
-  const commishLineup = buildLineup()
-  const opponentLineup = buildLineup()
+
+  const rosters = SIM_USERS.map((u, i) => ({ userId: u.id, name: u.name, lineup: buildLineup(i) }))
 
   if (DRY_RUN) {
-    log('[dry] would set rosters:', { commishLineup, opponentLineup })
+    for (const r of rosters) log(`[dry] ${r.name}: ${r.lineup.length} players`)
     return
   }
-  // Wipe existing test league rosters first
+
   assertTestLeague(TEST_LEAGUE_ID)
   await supabase.from('fantasy_rosters').delete().eq('league_id', TEST_LEAGUE_ID)
 
-  for (const slot of commishLineup) {
-    await supabase.from('fantasy_rosters').insert({
-      league_id: TEST_LEAGUE_ID,
-      user_id: TEST_COMMISH_ID,
-      ...slot,
-      acquired_via: 'draft',
-    })
+  for (const r of rosters) {
+    for (const slot of r.lineup) {
+      await supabase.from('fantasy_rosters').insert({
+        league_id: TEST_LEAGUE_ID,
+        user_id: r.userId,
+        ...slot,
+        acquired_via: 'draft',
+      })
+    }
+    log(`${r.name}: ${r.lineup.length} players (${r.lineup.filter((s) => s.slot !== 'bench').length} starters, ${r.lineup.filter((s) => s.slot === 'bench').length} bench)`)
   }
-  for (const slot of opponentLineup) {
-    await supabase.from('fantasy_rosters').insert({
-      league_id: TEST_LEAGUE_ID,
-      user_id: TEST_OPPONENT_ID,
-      ...slot,
-      acquired_via: 'draft',
-    })
-  }
-  log(`Rosters set: ${commishLineup.length} starters per side`)
 }
 
 async function ensureMatchup() {
-  if (DRY_RUN) { log('[dry] would create matchup'); return }
+  if (DRY_RUN) { log('[dry] would create matchups'); return }
   assertTestLeague(TEST_LEAGUE_ID)
   await supabase.from('fantasy_matchups').delete().eq('league_id', TEST_LEAGUE_ID).eq('week', SIM_WEEK)
+
+  // 2 matchups: user 0 vs user 1, user 2 vs user 3
   await supabase.from('fantasy_matchups').insert({
     league_id: TEST_LEAGUE_ID,
     week: SIM_WEEK,
-    home_user_id: TEST_COMMISH_ID,
-    away_user_id: TEST_OPPONENT_ID,
+    home_user_id: SIM_USERS[0].id,
+    away_user_id: SIM_USERS[1].id,
     status: 'pending',
   })
+  await supabase.from('fantasy_matchups').insert({
+    league_id: TEST_LEAGUE_ID,
+    week: SIM_WEEK,
+    home_user_id: SIM_USERS[2].id,
+    away_user_id: SIM_USERS[3].id,
+    status: 'pending',
+  })
+  log('Created 2 matchups: mossyou vs Himmy, admin vs userpick')
 }
 
 // ============================================================
@@ -303,12 +339,15 @@ async function rescore() {
 async function showMatchup(label) {
   const { data: matchups } = await supabase
     .from('fantasy_matchups')
-    .select('home_points, away_points, status')
+    .select('home_user_id, away_user_id, home_points, away_points, status')
     .eq('league_id', TEST_LEAGUE_ID)
     .eq('week', SIM_WEEK)
-  if (!matchups?.length) { log(label, '— no matchup'); return }
-  const m = matchups[0]
-  log(`${label} — Commish ${m.home_points} vs Opponent ${m.away_points} (${m.status})`)
+  if (!matchups?.length) { log(label, '— no matchups'); return }
+  for (const m of matchups) {
+    const home = SIM_USERS.find((u) => u.id === m.home_user_id)?.name || '?'
+    const away = SIM_USERS.find((u) => u.id === m.away_user_id)?.name || '?'
+    log(`${label} — ${home} ${m.home_points} vs ${away} ${m.away_points} (${m.status})`)
+  }
 }
 
 // ============================================================
@@ -322,9 +361,11 @@ async function resetTestLeague() {
 
   // Stats first (FK cascade safety)
   await supabase.from('nfl_player_stats').delete().eq('season', SIM_SEASON).eq('week', SIM_WEEK)
+  await supabase.from('fantasy_lineup_history').delete().eq('league_id', TEST_LEAGUE_ID)
   await supabase.from('fantasy_matchups').delete().eq('league_id', TEST_LEAGUE_ID)
   await supabase.from('fantasy_rosters').delete().eq('league_id', TEST_LEAGUE_ID)
-  // Leave league + settings + members so the matchup ID stays stable across runs
+  await supabase.from('league_members').delete().eq('league_id', TEST_LEAGUE_ID)
+  // League + settings will be re-upserted
 }
 
 // ============================================================

@@ -252,6 +252,8 @@ export default function FantasyMyTeam({ league }) {
     playersBySlot[slot].push(r)
   }
   const benchPlayers = playersBySlot.bench || []
+  const benchSlots = fantasySettings?.roster_slots?.bench || 6
+  const emptyBenchCount = Math.max(0, benchSlots - benchPlayers.length)
   const irPlayers = playersBySlot.ir || []
 
   function ensureDraft() {
@@ -538,25 +540,24 @@ export default function FantasyMyTeam({ league }) {
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-base font-semibold text-text-primary">Bench ({benchPlayers.length})</h3>
+          <h3 className="text-base font-semibold text-text-primary">Bench</h3>
         </div>
         <div className="p-3 space-y-2">
-          {benchPlayers.length === 0 ? (
-            <p className="text-xs text-text-muted text-center py-2">Bench is empty</p>
-          ) : (
-            benchPlayers.map((r) => (
-              <PlayerRow
-                key={r.id}
-                row={r}
-                isSelected={selected?.type === 'player' && selected.key === r.player_id}
-                onTap={() => handlePlayerTap(r.player_id)}
-                onViewDetail={openPlayerDetail}
-                onMoveToIR={handleMoveToIR}
-                onDrop={setConfirmDrop}
-                blurbIds={blurbIds}
-              />
-            ))
-          )}
+          {benchPlayers.map((r) => (
+            <PlayerRow
+              key={r.id}
+              row={r}
+              isSelected={selected?.type === 'player' && selected.key === r.player_id}
+              onTap={() => handlePlayerTap(r.player_id)}
+              onViewDetail={openPlayerDetail}
+              onMoveToIR={handleMoveToIR}
+
+              blurbIds={blurbIds}
+            />
+          ))}
+          {Array.from({ length: emptyBenchCount }, (_, i) => (
+            <EmptySlot key={`bench-empty-${i}`} slotLabel="BN" onTap={() => {}} isSelected={false} />
+          ))}
         </div>
       </div>
 
