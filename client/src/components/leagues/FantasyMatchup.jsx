@@ -399,27 +399,25 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
                   const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
                   return (
-                    <div key={`mb-${i}`} className="grid grid-cols-2 gap-px border-b border-text-primary/5 opacity-60">
-                      {[hp, ap].map((p, side) => {
-                        const stat = side === 0 ? hStat : aStat
-                        const isLive = side === 0 ? hLive : aLive
-                        return p ? (
-                          <div key={side} className="p-2 cursor-pointer" onClick={() => p?.player_id && onPlayerClick(p.player_id)}>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-text-primary truncate">
-                                <span className="text-text-muted font-bold mr-1">BN</span>
-                                {p.player_name || '--'}
-                              </span>
-                              <span className="text-sm font-display text-text-muted shrink-0 ml-1">
-                                {isLive || weekStatus === 'past' ? (p.points || 0).toFixed(1) : '--'}
-                              </span>
-                            </div>
-                            {stat && (isLive || weekStatus === 'past') && (
-                              <div className="text-[10px] text-text-primary/50 mt-0.5">{stat}</div>
-                            )}
-                          </div>
-                        ) : <div key={side} className="p-2" />
-                      })}
+                    <div key={`mb-${i}`} className="flex border-b border-text-primary/5 opacity-60">
+                      {/* Home bench player */}
+                      <div className="flex-1 p-2 min-w-0 cursor-pointer" onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}>
+                        <span className="text-xs font-semibold text-text-primary truncate block">{hp?.player_name || '--'}</span>
+                        {hStat && (hLive || weekStatus === 'past') && <div className="text-[10px] text-text-primary/50">{hStat}</div>}
+                      </div>
+                      <div className="w-11 flex items-start justify-end pt-2 shrink-0">
+                        <span className="text-sm font-display text-text-muted">{hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}</span>
+                      </div>
+                      <div className="w-9 flex items-start justify-center pt-2.5 shrink-0">
+                        <span className="text-[10px] font-bold text-text-muted">BN</span>
+                      </div>
+                      <div className="w-11 flex items-start justify-start pt-2 shrink-0">
+                        <span className="text-sm font-display text-text-muted">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</span>
+                      </div>
+                      <div className="flex-1 p-2 min-w-0 text-right cursor-pointer" onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}>
+                        <span className="text-xs font-semibold text-text-primary truncate block">{ap?.player_name || '--'}</span>
+                        {aStat && (aLive || weekStatus === 'past') && <div className="text-[10px] text-text-primary/50">{aStat}</div>}
+                      </div>
                     </div>
                   )
                 })}
