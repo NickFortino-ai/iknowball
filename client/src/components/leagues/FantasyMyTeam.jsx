@@ -40,14 +40,23 @@ function InjuryBadge({ status }) {
   )
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds }) {
+function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode }) {
   const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
   const isInIR = row?.slot === 'ir'
+
+  function handleRowClick() {
+    if (editMode) {
+      onTap?.()
+    } else {
+      onViewDetail?.(row?.player_id)
+    }
+  }
+
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={onTap}
+        onClick={handleRowClick}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors text-left ${
           isSelected ? 'border-accent bg-accent/10' : 'border-text-primary/10 bg-bg-primary hover:bg-bg-card-hover'
         } ${dimmed ? 'opacity-40' : ''}`}
@@ -56,8 +65,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <img
             src={row.nfl_players.headshot_url}
             alt=""
-            className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={(e) => { e.stopPropagation(); onViewDetail?.(row.player_id) }}
+            className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0"
             onError={(e) => { e.target.style.display = 'none' }}
           />
         )}
@@ -75,7 +83,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             <div className="text-[10px] uppercase text-text-muted">pts</div>
           </div>
         )}
-        {(canIR && !isInIR && onMoveToIR) && (
+        {editMode && (canIR && !isInIR && onMoveToIR) && (
           <span
             role="button"
             onClick={(e) => { e.stopPropagation(); onMoveToIR(row.player_id) }}
@@ -84,7 +92,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             → IR
           </span>
         )}
-        {isInIR && onMoveOutOfIR && (
+        {editMode && isInIR && onMoveOutOfIR && (
           <span
             role="button"
             onClick={(e) => { e.stopPropagation(); onMoveOutOfIR(row.player_id) }}
@@ -135,6 +143,7 @@ export default function FantasyMyTeam({ league }) {
   const [confirmDrop, setConfirmDrop] = useState(null) // roster row being dropped
   const [draftSlots, setDraftSlots] = useState(null) // { [player_id]: slot }
   const [selected, setSelected] = useState(null) // { type: 'slot'|'player', key: string }
+  const [editMode, setEditMode] = useState(false)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
   const { data: globalRankData } = useGlobalRank(league.id)
@@ -268,39 +277,44 @@ export default function FantasyMyTeam({ league }) {
     // target = { type: 'slot', key } or { type: 'player', key: player_id }
     const next = { ...ensureDraft() }
     if (selected?.type === 'player' && target.type === 'slot') {
-      // Move selected player INTO this starter slot, sending the existing
-      // occupant of that slot back to bench
       const playerId = selected.key
       const slotKey = target.key
-      const player = roster.find((r) => r.player_id === playerId)
-      const slotDef = STARTER_SLOTS.find((s) => s.key === slotKey)
-      if (!slotDef.positions.includes(player?.nfl_players?.position)) {
-        toast(`${player?.nfl_players?.position || 'Player'} can't fill ${slotDef.label}`, 'error')
-        return
-      }
-      // Find current occupant of slotKey (other than selected)
-      for (const r of roster) {
-        if (r.player_id !== playerId && next[r.player_id] === slotKey) {
-          next[r.player_id] = 'bench'
+      // Benching: just move to bench, no position check
+      if (slotKey === 'bench') {
+        next[playerId] = 'bench'
+      } else {
+        const player = roster.find((r) => r.player_id === playerId)
+        const slotDef = STARTER_SLOTS.find((s) => s.key === slotKey)
+        if (!slotDef?.positions.includes(player?.nfl_players?.position)) {
+          toast(`${player?.nfl_players?.position || 'Player'} can't fill ${slotDef?.label || slotKey}`, 'error')
+          return
         }
+        for (const r of roster) {
+          if (r.player_id !== playerId && next[r.player_id] === slotKey) {
+            next[r.player_id] = 'bench'
+          }
+        }
+        next[playerId] = slotKey
       }
-      next[playerId] = slotKey
     } else if (selected?.type === 'slot' && target.type === 'player') {
-      // Same as above with reversed roles
       const slotKey = selected.key
       const playerId = target.key
-      const player = roster.find((r) => r.player_id === playerId)
-      const slotDef = STARTER_SLOTS.find((s) => s.key === slotKey)
-      if (!slotDef.positions.includes(player?.nfl_players?.position)) {
-        toast(`${player?.nfl_players?.position || 'Player'} can't fill ${slotDef.label}`, 'error')
-        return
-      }
-      for (const r of roster) {
-        if (r.player_id !== playerId && next[r.player_id] === slotKey) {
-          next[r.player_id] = 'bench'
+      if (slotKey === 'bench') {
+        next[playerId] = 'bench'
+      } else {
+        const player = roster.find((r) => r.player_id === playerId)
+        const slotDef = STARTER_SLOTS.find((s) => s.key === slotKey)
+        if (!slotDef?.positions.includes(player?.nfl_players?.position)) {
+          toast(`${player?.nfl_players?.position || 'Player'} can't fill ${slotDef?.label || slotKey}`, 'error')
+          return
         }
+        for (const r of roster) {
+          if (r.player_id !== playerId && next[r.player_id] === slotKey) {
+            next[r.player_id] = 'bench'
+          }
+        }
+        next[playerId] = slotKey
       }
-      next[playerId] = slotKey
     } else if (selected?.type === 'player' && target.type === 'player') {
       // Swap two players' slots
       const a = selected.key, b = target.key
@@ -509,7 +523,17 @@ export default function FantasyMyTeam({ league }) {
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
-          <span className="text-[10px] text-text-muted">Tap a slot or player to swap</span>
+          {isCurrentWeek && !editMode && (
+            <button
+              onClick={() => setEditMode(true)}
+              className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors px-3 py-1 rounded-lg border border-accent/30 hover:border-accent"
+            >
+              Edit
+            </button>
+          )}
+          {editMode && (
+            <span className="text-[10px] text-text-muted">Tap a slot or player to swap</span>
+          )}
         </div>
         <div className="p-3 space-y-2">
           {STARTER_SLOTS.map((slotDef) => {
@@ -522,14 +546,14 @@ export default function FantasyMyTeam({ league }) {
                   {occupant ? (
                     <PlayerRow
                       row={occupant}
-                      isSelected={selected?.type === 'player' && selected.key === occupant.player_id}
+                      isSelected={editMode && selected?.type === 'player' && selected.key === occupant.player_id}
                       onTap={() => handlePlayerTap(occupant.player_id)}
                       onViewDetail={openPlayerDetail}
-
+                      editMode={editMode}
                       blurbIds={blurbIds}
                     />
                   ) : (
-                    <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} />
+                    editMode ? <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} /> : <EmptySlot slotLabel={slotDef.label} onTap={() => {}} isSelected={false} />
                   )}
                 </div>
               </div>
@@ -547,16 +571,16 @@ export default function FantasyMyTeam({ league }) {
             <PlayerRow
               key={r.id}
               row={r}
-              isSelected={selected?.type === 'player' && selected.key === r.player_id}
+              isSelected={editMode && selected?.type === 'player' && selected.key === r.player_id}
               onTap={() => handlePlayerTap(r.player_id)}
               onViewDetail={openPlayerDetail}
               onMoveToIR={handleMoveToIR}
-
+              editMode={editMode}
               blurbIds={blurbIds}
             />
           ))}
           {Array.from({ length: emptyBenchCount }, (_, i) => (
-            <EmptySlot key={`bench-empty-${i}`} slotLabel="BN" onTap={() => {}} isSelected={false} />
+            <EmptySlot key={`bench-empty-${i}`} slotLabel="BN" onTap={editMode ? () => handleSlotTap('bench') : () => {}} isSelected={editMode && selected?.type === 'slot' && selected.key === 'bench'} />
           ))}
         </div>
       </div>
@@ -571,11 +595,11 @@ export default function FantasyMyTeam({ league }) {
               <PlayerRow
                 key={r.id}
                 row={r}
-                isSelected={selected?.type === 'player' && selected.key === r.player_id}
+                isSelected={editMode && selected?.type === 'player' && selected.key === r.player_id}
                 onTap={() => handlePlayerTap(r.player_id)}
                 onViewDetail={openPlayerDetail}
                 onMoveOutOfIR={handleMoveOutOfIR}
-                onDrop={setConfirmDrop}
+                editMode={editMode}
                 blurbIds={blurbIds}
               />
             ))}
@@ -583,20 +607,20 @@ export default function FantasyMyTeam({ league }) {
         </div>
       )}
 
-      {isDirty && isCurrentWeek && (
+      {editMode && isCurrentWeek && (
         <div className="sticky bottom-4 flex gap-2 px-2">
           <button
             type="button"
-            onClick={handleReset}
+            onClick={() => { handleReset(); setSelected(null); setEditMode(false) }}
             className="flex-1 py-3 rounded-xl text-sm font-semibold bg-bg-card text-text-secondary border border-border hover:bg-bg-card-hover transition-colors"
           >
-            Reset
+            Cancel
           </button>
           <button
             type="button"
-            onClick={handleSave}
-            disabled={setLineup.isPending}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+            onClick={async () => { await handleSave(); setSelected(null); setEditMode(false) }}
+            disabled={setLineup.isPending || !isDirty}
+            className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 ${isDirty ? 'bg-accent text-white hover:bg-accent-hover' : 'bg-text-muted/30 text-text-muted'}`}
           >
             {setLineup.isPending ? 'Saving…' : 'Save Lineup'}
           </button>
