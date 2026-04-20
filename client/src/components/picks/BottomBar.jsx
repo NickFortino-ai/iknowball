@@ -251,7 +251,7 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
                         <span className="text-text-muted font-semibold">Final</span>
                       </div>
                     ) : (
-                      <div className="text-xs text-text-muted text-center">
+                      <div className="text-sm text-text-primary text-center">
                         {new Date(game.starts_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </div>
                     )}
