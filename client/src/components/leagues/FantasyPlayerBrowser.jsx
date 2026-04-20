@@ -144,7 +144,7 @@ export default function FantasyPlayerBrowser({ league }) {
     // whether the league uses waivers or instant adds.
     const playerOnWaivers = !!addingPlayer.on_waivers
     try {
-      if (playerOnWaivers || isWaiver) {
+      if (playerOnWaivers) {
         await submitClaim.mutateAsync({
           add_player_id: addingPlayer.id,
           drop_player_id: dropPlayerId || null,
@@ -390,7 +390,7 @@ export default function FantasyPlayerBrowser({ league }) {
       {addingPlayer && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={() => { setAddingPlayer(null); setBidAmount(0) }}>
           <div className="bg-bg-secondary w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg mb-4">{(addingPlayer?.on_waivers || isWaiver) ? 'Claim' : 'Add'} {addingPlayer.full_name}</h3>
+            <h3 className="font-display text-lg mb-4">{addingPlayer?.on_waivers ? 'Claim' : 'Add'} {addingPlayer.full_name}</h3>
             {isFaab && (
               <div className="mb-4">
                 <label className="block text-xs uppercase text-text-muted mb-1.5">FAAB Bid (you have ${myWaiverState?.faab_remaining ?? 0})</label>
@@ -435,7 +435,7 @@ export default function FantasyPlayerBrowser({ league }) {
                 disabled={addDrop.isPending || submitClaim.isPending}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
               >
-                {(addDrop.isPending || submitClaim.isPending) ? 'Submitting…' : (addingPlayer?.on_waivers || isWaiver) ? 'Submit Claim' : 'Confirm'}
+                {(addDrop.isPending || submitClaim.isPending) ? 'Submitting…' : addingPlayer?.on_waivers ? 'Submit Claim' : 'Confirm'}
               </button>
             </div>
           </div>
