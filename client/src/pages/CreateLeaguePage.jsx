@@ -504,12 +504,12 @@ export default function CreateLeaguePage() {
                     <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-base leading-relaxed text-text-primary border-t border-text-primary/10">
                       <div className="whitespace-pre-line">{opt.details}</div>
                       {[opt.bonusTable, opt.bonusTable2].filter(Boolean).map((tbl) => (
-                        <div key={tbl.title} className="mt-4 rounded-xl border border-text-primary/20 overflow-hidden">
-                          <div className="px-4 py-2 bg-bg-card border-b border-text-primary/10 text-xs md:text-sm font-display text-text-primary">
+                        <div key={tbl.title} className="mt-4 rounded-xl bg-bg-primary border border-text-primary/20 overflow-hidden">
+                          <div className="px-4 py-3 border-b border-text-primary/20 text-sm md:text-base font-display text-text-primary">
                             {tbl.title}
                           </div>
                           {tbl.intro && (
-                            <div className="px-4 py-3 text-sm md:text-base leading-relaxed text-text-primary border-b border-text-primary/10">
+                            <div className="px-4 py-3 text-sm md:text-base leading-7 text-text-primary border-b border-text-primary/20">
                               {tbl.intro}
                             </div>
                           )}
