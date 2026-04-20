@@ -40,11 +40,13 @@ export async function fetchGameLog(espnId, sportPath, season) {
  * @param {Function} calcFppgForGame - function that takes a statMap and returns fantasy points for that game
  * @param {Array} gameLog - array of per-game statMaps (most recent first)
  * @param {number} seasonAvgFppg - full season average FPPG (fallback)
- * @param {Object} opts - { recentN, midN } — e.g. NBA: {recentN: 10, midN: 20}, NFL: {recentN: 4, midN: 8}
+ * @param {Object} opts - { recentN, midN, wRecent, wMid, wFull } — e.g. NBA: {recentN: 10, midN: 20}, NFL: {recentN: 4, midN: 8}
+ *   Optional weights (wRecent, wMid, wFull) default to 0.5 / 0.3 / 0.2.
+ *   MLB uses 0.25 / 0.30 / 0.45 to keep established stars priced higher.
  * @returns {number} weighted FPPG
  */
 export function calcWeightedFppg(calcFppgForGame, gameLog, seasonAvgFppg, opts) {
-  const { recentN, midN } = opts
+  const { recentN, midN, wRecent = 0.5, wMid = 0.3, wFull = 0.2 } = opts
   const earlyFullThreshold = recentN // need at least this many games for full weighting
   const earlyBlendThreshold = Math.ceil(recentN * 0.3) // 3 for NBA/MLB, 2 for NFL
 
@@ -74,7 +76,7 @@ export function calcWeightedFppg(calcFppgForGame, gameLog, seasonAvgFppg, opts) 
   const midAvg = avg(gameFpts.slice(0, midN))
   const fullAvg = seasonAvgFppg || avg(gameFpts)
 
-  return recentAvg * 0.5 + midAvg * 0.3 + fullAvg * 0.2
+  return recentAvg * wRecent + midAvg * wMid + fullAvg * wFull
 }
 
 /**

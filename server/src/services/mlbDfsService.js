@@ -138,32 +138,38 @@ function mlbPitcherGameFpts(statMap) {
  * Calculate salary from MLB batter FPPG.
  * $2,500 base + $700/fppg, capped at $8,500.
  *
- * Previous tuning (base $3k + $500/fppg, cap $5.5k) compressed elite and
- * average hitters into the same price — anyone FPPG 5+ hit the cap, so
- * an elite bat at 12 FPPG was priced the same as an average 5 FPPG hitter.
- * Widening the slope and lifting the cap spreads the curve out:
- *   elite 12 FPPG → $8,500 (cap)
- *   strong 9 FPPG → $8,800 → capped to $8,500
- *   solid 7 FPPG  → $7,400
- *   average 5 FPPG → $6,000
- *   value 3 FPPG → $4,600
- *   replacement 1 FPPG → $3,200
+ * Calibrated to match FanDuel-style distribution scaled for a $60k cap.
+ * FanDuel ($35k cap): batters range $2,500-$4,600, tight clustering.
+ * Scaled to $60k (1.71x): batters should range ~$4,500-$8,000.
+ *
+ * Lower multiplier prevents hot-streak players from outpricing stars.
+ *   elite 15 FPPG → $8,000
+ *   strong 12 FPPG → $7,200
+ *   solid 9 FPPG  → $6,400
+ *   average 6 FPPG → $5,600
+ *   value 3 FPPG → $4,800
+ *   replacement 0 FPPG → $4,200
  */
 function mlbFppgToSalary(fppg) {
-  if (!fppg || fppg <= 0) return 3000
-  const salary = Math.round((2500 + fppg * 700) / 100) * 100
-  return Math.max(3000, Math.min(8500, salary))
+  if (!fppg || fppg <= 0) return 4200
+  const salary = Math.round((4200 + fppg * 260) / 100) * 100
+  return Math.max(4200, Math.min(8500, salary))
 }
 
 /**
  * Calculate salary from MLB pitcher FPPG.
- * $6,000 base + $250/fppg, capped at $12,000.
- * Targets: elite SP ~$11,000-12,000, solid SP ~$8,000-10,000
+ * FanDuel ($35k cap): pitchers range $6,000-$10,400.
+ * Scaled to $60k (1.71x): pitchers should range ~$10,000-$18,000.
+ *   elite 38 FPPG → $17,800
+ *   strong 30 FPPG → $15,800
+ *   solid 23 FPPG → $14,000
+ *   average 15 FPPG → $12,000
+ *   replacement 0 FPPG → $10,000
  */
 function mlbPitcherFppgToSalary(fppg) {
-  if (!fppg || fppg <= 0) return 6000
-  const salary = Math.round((6000 + fppg * 250) / 100) * 100
-  return Math.max(6000, Math.min(12000, salary))
+  if (!fppg || fppg <= 0) return 10000
+  const salary = Math.round((10000 + fppg * 200) / 100) * 100
+  return Math.max(10000, Math.min(18000, salary))
 }
 
 /**
@@ -176,15 +182,15 @@ function mlbPitcherFppgToSalary(fppg) {
  * Other positions unchanged.
  */
 const POSITION_SCARCITY = {
-  C: 0.70,
-  SS: 0.90,
-  '2B': 0.90,
+  C: 0.85,
+  SS: 0.95,
+  '2B': 0.95,
   '1B': 1.00,
   '3B': 1.00,
   OF: 1.00,
   UTIL: 1.00,
-  SP: 1.10,
-  RP: 1.00,
+  SP: 1.00,
+  RP: 0.90,
 }
 
 /**
@@ -296,7 +302,9 @@ export async function generateMLBSalaries(date, season = 2026) {
 
         const gameLog = await fetchGameLog(espnId, 'baseball/mlb', season)
         const gameFptsFn = isPitcher ? mlbPitcherGameFpts : mlbBatterGameFpts
-        const fppg = calcWeightedFppg(gameFptsFn, gameLog, seasonFppg, { recentN: 10, midN: 20 })
+        // Season-heavy weights: 25% recent, 30% mid, 45% full season
+        // Prevents hot-streak players from outpricing established stars
+        const fppg = calcWeightedFppg(gameFptsFn, gameLog, seasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
 
         const displayPos = isPitcher ? 'SP' : position
         let salary = isPitcher ? mlbPitcherFppgToSalary(fppg) : mlbFppgToSalary(fppg)
