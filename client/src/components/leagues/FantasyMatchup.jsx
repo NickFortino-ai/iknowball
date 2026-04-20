@@ -267,110 +267,139 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
             })}
           </div>
 
-          {/* Mobile: enhanced compact view */}
+          {/* Mobile: FanDuel-inspired card view */}
           <div className="lg:hidden">
-            <div className="space-y-0.5">
-              {homeStarters.map((hp, i) => {
-                const ap = awayStarters[i]
-                const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
-                const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
-                return (
-                  <div key={i} className="flex items-start gap-1 text-xs border-b border-text-primary/5 last:border-0 py-1.5">
-                    {/* Home player */}
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer px-1"
-                      onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {hp?.headshot_url ? (
-                          <img src={hp.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                        ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[9px] text-text-muted font-bold">{hp?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold text-text-primary truncate">{hp?.player_name || '--'}</span>
-                            {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
-                          </div>
-                          <div className="text-[10px] text-text-muted">
-                            {hp?.team} - {hp?.position}
-                            {hp?.on_bye && <span className="font-bold ml-1">BYE</span>}
-                          </div>
-                          {(hLive || weekStatus === 'past') && hp?.opponent && (
-                            <div className="text-[10px] text-text-muted">
-                              {hp.game_status === 'final' ? 'Final' : `Q${hp.game_period || '?'}`}
-                              {hp.team_score != null && ` ${hp.team_score > hp.opp_score ? '(W)' : hp.team_score < hp.opp_score ? '(L)' : '(T)'} ${hp.team_score}-${hp.opp_score}`}
-                              {hp.is_home ? ` vs ${hp.opponent}` : ` @ ${hp.opponent}`}
+            {homeStarters.map((hp, i) => {
+              const ap = awayStarters[i]
+              const hStat = buildStatLine(hp?.stats, hp?.position)
+              const aStat = buildStatLine(ap?.stats, ap?.position)
+              const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
+              const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
+
+              function gameScoreLine(p) {
+                if (!p?.opponent) return null
+                const teamScore = p.team_score ?? ''
+                const oppScore = p.opp_score ?? ''
+                const gameStr = p.is_home
+                  ? `${p.team} ${teamScore} vs ${p.opponent} ${oppScore}`
+                  : `${p.team} ${teamScore} @ ${p.opponent} ${oppScore}`
+                return gameStr
+              }
+
+              function gameClockLine(p) {
+                if (!p) return null
+                if (p.game_status === 'final') return 'Final'
+                if (p.game_status === 'live') return `Q${p.game_period || '?'} ${p.game_clock || ''}`
+                return null
+              }
+
+              return (
+                <div key={i} className="grid grid-cols-2 gap-px border-b border-text-primary/10">
+                  {/* Home player card */}
+                  {[hp, ap].map((p, side) => {
+                    const stat = side === 0 ? hStat : aStat
+                    const isLive = side === 0 ? hLive : aLive
+                    const slotLabel = SLOT_LABELS[p?.slot] || '?'
+                    return (
+                      <div
+                        key={side}
+                        className="p-3 cursor-pointer hover:bg-text-primary/5 transition-colors"
+                        onClick={() => p?.player_id && onPlayerClick(p.player_id)}
+                      >
+                        {/* Name + Points row */}
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-text-muted">{slotLabel}</span>
+                              <span className="text-sm font-bold text-text-primary truncate">
+                                {p?.player_name ? `${p.player_name.split(' ')[0][0]}. ${p.player_name.split(' ').slice(1).join(' ')}` : '--'}
+                              </span>
+                              {p?.injury_status && <InjuryBadge status={p.injury_status} />}
                             </div>
-                          )}
+                          </div>
+                          <span className={`text-lg font-display font-bold shrink-0 ${
+                            p?.game_status === 'live' ? 'text-accent' : isLive || weekStatus === 'past' ? 'text-white' : 'text-text-muted'
+                          }`}>
+                            {isLive || weekStatus === 'past' ? (p?.points || 0).toFixed(1) : '--'}
+                          </span>
                         </div>
-                      </div>
-                    </div>
-                    {/* Home points + projection */}
-                    <div className="w-12 text-right shrink-0 pt-0.5">
-                      <div className={`font-bold ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
-                        {hLive || weekStatus === 'past' ? (hp?.points?.toFixed(1) || '0.0') : '--'}
-                      </div>
-                      {hp?.projected != null && !hp?.on_bye && (
-                        <div className="text-[10px] text-text-primary/60">{hp.projected.toFixed(1)}</div>
-                      )}
-                    </div>
-                    {/* Position */}
-                    <div className="w-8 text-center pt-1 shrink-0">
-                      <span className="text-[10px] font-semibold text-text-muted bg-bg-secondary rounded px-1 py-0.5">
-                        {SLOT_LABELS[hp?.slot] || '?'}
-                      </span>
-                    </div>
-                    {/* Away points + projection */}
-                    <div className="w-12 text-left shrink-0 pt-0.5">
-                      <div className={`font-bold ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-text-primary' : 'text-text-muted'}`}>
-                        {aLive || weekStatus === 'past' ? (ap?.points?.toFixed(1) || '0.0') : '--'}
-                      </div>
-                      {ap?.projected != null && !ap?.on_bye && (
-                        <div className="text-[10px] text-text-primary/60">{ap.projected.toFixed(1)}</div>
-                      )}
-                    </div>
-                    {/* Away player */}
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer px-1"
-                      onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
-                    >
-                      <div className="flex items-center gap-1.5 justify-end">
-                        <div className="min-w-0 flex-1 text-right">
-                          <div className="flex items-center gap-1 justify-end">
-                            {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
-                            <span className="font-semibold text-text-primary truncate">{ap?.player_name || '--'}</span>
+
+                        {/* Game score line */}
+                        {(isLive || weekStatus === 'past') && p?.opponent ? (
+                          <div className="text-xs text-text-primary mb-0.5">
+                            {gameScoreLine(p)}
                           </div>
-                          <div className="text-[10px] text-text-muted">
-                            {ap?.team} - {ap?.position}
-                            {ap?.on_bye && <span className="font-bold ml-1">BYE</span>}
+                        ) : p?.on_bye ? (
+                          <div className="text-xs text-text-muted font-bold mb-0.5">BYE</div>
+                        ) : p?.projected != null ? (
+                          <div className="text-xs text-text-primary/60 mb-0.5">Proj: {p.projected.toFixed(1)}</div>
+                        ) : null}
+
+                        {/* Game clock / Final */}
+                        {gameClockLine(p) && (
+                          <div className={`text-[11px] font-semibold mb-0.5 ${
+                            p.game_status === 'live' ? 'text-accent' : 'text-text-muted'
+                          }`}>
+                            {gameClockLine(p)}
                           </div>
-                          {(aLive || weekStatus === 'past') && ap?.opponent && (
-                            <div className="text-[10px] text-text-muted">
-                              {ap.game_status === 'final' ? 'Final' : `Q${ap.game_period || '?'}`}
-                              {ap.team_score != null && ` ${ap.team_score > ap.opp_score ? '(W)' : ap.team_score < ap.opp_score ? '(L)' : '(T)'} ${ap.team_score}-${ap.opp_score}`}
-                              {ap.is_home ? ` vs ${ap.opponent}` : ` @ ${ap.opponent}`}
+                        )}
+
+                        {/* Stat line */}
+                        {stat && (isLive || weekStatus === 'past') && (
+                          <div className="text-xs text-text-primary/70">{stat}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+
+            {/* Mobile bench dropdown */}
+            {(homeBench.length > 0 || awayBench.length > 0) && (
+              <>
+                <button
+                  onClick={() => setShowBench(!showBench)}
+                  className="w-full py-2 flex items-center justify-center gap-2 text-xs text-text-muted hover:text-text-primary transition-colors border-b border-text-primary/10"
+                >
+                  <span className="font-semibold">Bench</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${showBench ? 'rotate-180' : ''}`}>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {showBench && homeBench.map((hp, i) => {
+                  const ap = awayBench[i]
+                  const hStat = buildStatLine(hp?.stats, hp?.position)
+                  const aStat = buildStatLine(ap?.stats, ap?.position)
+                  const hLive = hp?.game_status === 'live' || hp?.game_status === 'final'
+                  const aLive = ap?.game_status === 'live' || ap?.game_status === 'final'
+                  return (
+                    <div key={`mb-${i}`} className="grid grid-cols-2 gap-px border-b border-text-primary/5 opacity-60">
+                      {[hp, ap].map((p, side) => {
+                        const stat = side === 0 ? hStat : aStat
+                        const isLive = side === 0 ? hLive : aLive
+                        return p ? (
+                          <div key={side} className="p-2 cursor-pointer" onClick={() => p?.player_id && onPlayerClick(p.player_id)}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-text-primary truncate">
+                                <span className="text-text-muted font-bold mr-1">BN</span>
+                                {p.player_name || '--'}
+                              </span>
+                              <span className="text-sm font-display text-text-muted shrink-0 ml-1">
+                                {isLive || weekStatus === 'past' ? (p.points || 0).toFixed(1) : '--'}
+                              </span>
                             </div>
-                          )}
-                        </div>
-                        {ap?.headshot_url ? (
-                          <img src={ap.headshot_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                        ) : <div className="w-6 h-6 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-[9px] text-text-muted font-bold">{ap?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
-                      </div>
+                            {stat && (isLive || weekStatus === 'past') && (
+                              <div className="text-[10px] text-text-primary/50 mt-0.5">{stat}</div>
+                            )}
+                          </div>
+                        ) : <div key={side} className="p-2" />
+                      })}
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="flex items-center gap-1 text-xs mt-2 pt-2 border-t border-text-primary/10 font-display">
-              <div className="flex-1 text-right text-text-muted">Total</div>
-              <div className="w-10 text-right font-bold text-text-primary">
-                {(matchup.home_points || matchup.home_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
-              </div>
-              <div className="w-8" />
-              <div className="w-10 text-left font-bold text-text-primary">
-                {(matchup.away_points || matchup.away_roster?.reduce((s, r) => s + (r.points || 0), 0) || 0).toFixed(1)}
-              </div>
-              <div className="flex-1" />
-            </div>
+                  )
+                })}
+              </>
+            )}
           </div>
         </div>
       )}
