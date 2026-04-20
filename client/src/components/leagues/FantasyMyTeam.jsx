@@ -246,10 +246,16 @@ export default function FantasyMyTeam({ league }) {
     )
   }
 
+  const [tradeAcceptedModal, setTradeAcceptedModal] = useState(false)
+
   async function handleTradeAction(tradeId, action) {
     try {
       await respond.mutateAsync({ tradeId, action })
-      toast(`Trade ${action}ed`, 'success')
+      if (action === 'accept') {
+        setTradeAcceptedModal(true)
+      } else {
+        toast(`Trade ${action}d`, 'success')
+      }
     } catch (err) {
       toast(err.message || `Failed to ${action} trade`, 'error')
     }
@@ -531,6 +537,24 @@ export default function FantasyMyTeam({ league }) {
 
       {showGlobalRank && (
         <FantasyGlobalRankModal leagueId={league.id} onClose={() => setShowGlobalRank(false)} />
+      )}
+
+      {tradeAcceptedModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={() => setTradeAcceptedModal(false)}>
+          <div className="bg-bg-primary border border-text-primary/20 rounded-2xl p-6 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="text-3xl mb-3">&#9989;</div>
+            <h3 className="font-display text-xl text-text-primary mb-2">Trade Accepted</h3>
+            <p className="text-sm text-text-primary leading-relaxed mb-4">
+              This trade will be reviewed by the commissioner of this league. Upon approval, the trade will be processed.
+            </p>
+            <button
+              onClick={() => setTradeAcceptedModal(false)}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
 
       {showCounterTrade && (
