@@ -276,11 +276,11 @@ export default function FantasyPlayerBrowser({ league }) {
           2025 Stats
         </div>
       )}
-      {/* Single horizontal scroll container for header + rows */}
-      <div className="relative">
+      {/* Single horizontal scroll container — header + all rows scroll together */}
+      <div className="overflow-x-auto scrollbar-hide">
+        <div className="min-w-[900px]">
         {/* Header */}
         <div className="border-b border-border bg-bg-primary/40 flex text-[10px] font-bold text-text-muted uppercase tracking-wider">
-          {/* Sticky left: rank + player + action */}
           <div className="sticky left-0 z-20 bg-bg-primary/95 flex items-center shrink-0">
             <button
               type="button"
@@ -294,8 +294,7 @@ export default function FantasyPlayerBrowser({ league }) {
             <div className="w-[200px] lg:w-[260px] px-1 py-1.5">Player</div>
             <div className="w-8" />
           </div>
-          {/* Scrollable stats */}
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide py-1.5">
+          <div className="flex gap-1 py-1.5">
             {statColumns.map((col) => (
               <button
                 key={col.key}
@@ -320,7 +319,6 @@ export default function FantasyPlayerBrowser({ league }) {
             const pStats = player.stats || {}
             return (
               <div key={player.id} className="flex border-b border-border last:border-0">
-                {/* Sticky left: rank + player + action */}
                 <div className="sticky left-0 z-10 bg-bg-primary flex items-center shrink-0">
                   <div className="w-8 text-center text-xs font-bold text-text-muted">
                     {player.adp_rank || idx + 1}
@@ -368,8 +366,7 @@ export default function FantasyPlayerBrowser({ league }) {
                     )}
                   </div>
                 </div>
-                {/* Scrollable stats */}
-                <div className="flex gap-1 overflow-x-auto scrollbar-hide items-center">
+                <div className="flex gap-1 items-center">
                   {statColumns.map((col) => (
                     <div
                       key={col.key}
@@ -389,6 +386,7 @@ export default function FantasyPlayerBrowser({ league }) {
           )}
         </div>
       </div>
+    </div>
     </div>
 
       {/* Add/drop confirm modal */}
