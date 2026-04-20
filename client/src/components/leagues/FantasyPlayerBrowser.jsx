@@ -256,7 +256,7 @@ export default function FantasyPlayerBrowser({ league }) {
           placeholder="Search players..."
           className="w-full bg-bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
         />
-        <div className="flex gap-1 mt-2 overflow-x-auto">
+        <div className="flex gap-1 mt-2 overflow-x-auto scrollbar-hide">
           {POSITION_FILTERS.map((pos) => (
             <button
               key={pos}
