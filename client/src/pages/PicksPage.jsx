@@ -277,7 +277,7 @@ export default function PicksPage() {
           className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
             isFuturesMode
               ? 'bg-accent text-white'
-              : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+              : 'bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40'
           }`}
         >
           Futures
