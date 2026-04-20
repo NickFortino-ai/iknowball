@@ -771,7 +771,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
                 <button
                   key={tag}
                   onClick={(e) => { e.stopPropagation(); navigate(`/hub?tab=team_feed&team=${encodeURIComponent(tag)}`) }}
-                  className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full hover:bg-accent/25 transition-colors"
+                  className="text-[10px] font-semibold uppercase tracking-wider text-accent px-2 py-0.5 rounded-full hover:bg-accent/10 transition-colors"
                 >
                   {tag}
                 </button>

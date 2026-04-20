@@ -171,7 +171,7 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
               {(hotTake.team_tags?.length > 0 || hotTake.tagged_users?.length > 0) && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {hotTake.team_tags?.map((tag) => (
-                    <span key={tag} className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full">
+                    <span key={tag} className="text-[10px] font-semibold uppercase tracking-wider text-accent px-2 py-0.5 rounded-full">
                       {tag}
                     </span>
                   ))}
