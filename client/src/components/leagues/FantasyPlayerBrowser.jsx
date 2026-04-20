@@ -286,7 +286,7 @@ export default function FantasyPlayerBrowser({ league }) {
               type="button"
               onClick={() => handleSort('rank')}
               className={`w-8 text-center px-1 py-1.5 rounded transition-colors ${
-                sortKey === 'rank' ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
+                sortKey === 'rank' ? 'border border-accent text-accent' : 'hover:bg-bg-card'
               }`}
             >
               {sortKey === 'rank' ? '#↓' : '#'}
@@ -302,7 +302,7 @@ export default function FantasyPlayerBrowser({ league }) {
                 type="button"
                 onClick={() => handleSort(col.key)}
                 className={`w-14 shrink-0 text-center px-1 py-0.5 rounded transition-colors ${
-                  sortKey === col.key ? 'bg-accent/20 text-accent' : 'hover:bg-bg-card'
+                  sortKey === col.key ? 'border border-accent text-accent' : 'hover:bg-bg-card'
                 }`}
               >
                 {col.label}{sortKey === col.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
