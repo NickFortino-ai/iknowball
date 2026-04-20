@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
@@ -48,7 +48,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
       <button
         type="button"
         onClick={onTap}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors text-left ${
+        className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors text-left ${
           isSelected ? 'border-accent bg-accent/10' : 'border-text-primary/10 bg-bg-primary hover:bg-bg-card-hover'
         } ${dimmed ? 'opacity-40' : ''}`}
       >
@@ -56,30 +56,30 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <img
             src={row.nfl_players.headshot_url}
             alt=""
-            className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+            className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={(e) => { e.stopPropagation(); onViewDetail?.(row.player_id) }}
             onError={(e) => { e.target.style.display = 'none' }}
           />
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-sm font-semibold text-text-primary truncate">{row?.nfl_players?.full_name || 'Empty'}</span>
+            <span className="text-base font-bold text-text-primary truncate">{row?.nfl_players?.full_name || 'Empty'}</span>
             <InjuryBadge status={row?.nfl_players?.injury_status} />
             {blurbIds && <BlurbDot playerId={row?.player_id} blurbIds={blurbIds} />}
           </div>
-          <div className="text-xs text-text-muted">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
+          <div className="text-xs text-text-primary">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
         {row?.live_points != null && row?.nfl_players && (
           <div className="text-right shrink-0 mr-1">
-            <div className="text-base font-display tabular-nums text-text-primary leading-none">{row.live_points.toFixed(2)}</div>
-            <div className="text-[9px] uppercase text-text-muted">pts</div>
+            <div className="text-lg font-display tabular-nums text-white leading-none">{row.live_points.toFixed(2)}</div>
+            <div className="text-[10px] uppercase text-text-muted">pts</div>
           </div>
         )}
         {(canIR && !isInIR && onMoveToIR) && (
           <span
             role="button"
             onClick={(e) => { e.stopPropagation(); onMoveToIR(row.player_id) }}
-            className="text-[10px] font-bold px-2 py-1 rounded bg-incorrect/20 text-incorrect hover:bg-incorrect/30 transition-colors shrink-0 cursor-pointer"
+            className="text-xs font-bold px-2 py-1 rounded bg-incorrect/20 text-incorrect hover:bg-incorrect/30 transition-colors shrink-0 cursor-pointer"
           >
             → IR
           </span>
@@ -88,7 +88,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <span
             role="button"
             onClick={(e) => { e.stopPropagation(); onMoveOutOfIR(row.player_id) }}
-            className="text-[10px] font-bold px-2 py-1 rounded bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors shrink-0 cursor-pointer"
+            className="text-xs font-bold px-2 py-1 rounded bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors shrink-0 cursor-pointer"
           >
             ← Bench
           </span>
@@ -115,8 +115,17 @@ function EmptySlot({ slotLabel, onTap, isSelected }) {
 
 export default function FantasyMyTeam({ league }) {
   const { profile } = useAuth()
-  const { data: roster, isLoading } = useFantasyRoster(league.id)
   const { data: fantasySettings } = useFantasySettings(league.id)
+  const currentWeek = fantasySettings?.current_week || 1
+  const season = fantasySettings?.season || 2026
+  const totalWeeks = 17
+  const [viewWeek, setViewWeek] = useState(null) // null = current week
+  const activeWeek = viewWeek ?? currentWeek
+  const isCurrentWeek = activeWeek === currentWeek
+  const isPastWeek = activeWeek < currentWeek
+
+  const { data: roster, isLoading } = useFantasyRoster(league.id)
+  const { data: historyData } = useFantasyLineupHistory(league.id, isPastWeek ? activeWeek : null, isPastWeek ? season : null)
   const { data: trades } = useFantasyTrades(league.id)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
   const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
@@ -131,6 +140,9 @@ export default function FantasyMyTeam({ league }) {
   const { data: globalRankData } = useGlobalRank(league.id)
   const hasGlobalRank = globalRankData?.status === 'ok' && globalRankData?.format?.team_count > 1
   const [expandedTradeId, setExpandedTradeId] = useState(null)
+
+  // For past weeks, use lineup history; for current/future, use current roster
+  const displayRoster = isPastWeek && historyData?.roster?.length ? historyData.roster : roster
 
   function openPlayerDetail(playerId) {
     if (playerId) markBlurbSeen(playerId)
@@ -191,12 +203,12 @@ export default function FantasyMyTeam({ league }) {
         </p>
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-text-primary">{isSalaryCap ? 'Lineup' : 'Starters'}</h3>
+            <h3 className="text-base font-semibold text-text-primary">{isSalaryCap ? 'Lineup' : 'Starters'}</h3>
           </div>
           <div className="divide-y divide-text-primary/10">
             {starterSlots.map((label, i) => (
               <div key={i} className="flex items-center gap-3 px-3 py-2.5">
-                <span className="text-[10px] font-bold text-text-muted w-10 shrink-0">{label}</span>
+                <span className="text-xs font-bold text-text-muted w-8 shrink-0">{label}</span>
                 <div className="w-9 h-9 rounded-full border border-text-primary/20 shrink-0" />
                 <div className="flex-1 text-xs text-text-muted italic">Empty</div>
               </div>
@@ -206,12 +218,12 @@ export default function FantasyMyTeam({ league }) {
         {benchCount > 0 && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-text-primary">Bench</h3>
+            <h3 className="text-base font-semibold text-text-primary">Bench</h3>
           </div>
           <div className="divide-y divide-text-primary/10">
             {Array.from({ length: benchCount }, (_, i) => (
               <div key={i} className="flex items-center gap-3 px-3 py-2.5">
-                <span className="text-[10px] font-bold text-text-muted w-10 shrink-0">BN</span>
+                <span className="text-xs font-bold text-text-muted w-8 shrink-0">BN</span>
                 <div className="w-9 h-9 rounded-full border border-text-primary/20 shrink-0" />
                 <div className="flex-1 text-xs text-text-muted italic">Empty</div>
               </div>
@@ -370,6 +382,38 @@ export default function FantasyMyTeam({ league }) {
 
   return (
     <div className="space-y-4">
+      {/* Week navigator */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={() => setViewWeek(Math.max(1, activeWeek - 1))}
+          disabled={activeWeek <= 1}
+          className="text-text-muted hover:text-text-primary disabled:opacity-30 transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div className="text-center">
+          <span className="font-display text-lg text-text-primary">Week {activeWeek}</span>
+          {isCurrentWeek && <span className="text-xs text-accent ml-2">Current</span>}
+          {isPastWeek && <span className="text-xs text-text-muted ml-2">Final</span>}
+          {!isCurrentWeek && !isPastWeek && <span className="text-xs text-text-muted ml-2">Upcoming</span>}
+        </div>
+        <button
+          onClick={() => setViewWeek(Math.min(totalWeeks, activeWeek + 1))}
+          disabled={activeWeek >= totalWeeks}
+          className="text-text-muted hover:text-text-primary disabled:opacity-30 transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+        </button>
+      </div>
+
+      {/* Past week: read-only notice */}
+      {isPastWeek && historyData?.roster?.length > 0 && (
+        <div className="text-center text-xs text-text-muted">Lineup as locked for Week {activeWeek}</div>
+      )}
+      {isPastWeek && (!historyData?.roster?.length) && (
+        <div className="text-center text-sm text-text-muted py-8">No lineup history for this week</div>
+      )}
+
       {/* Incoming trade proposals */}
       {incomingTrades.map((trade) => {
         const proposer = trade.proposer || trade.proposer_user
@@ -462,7 +506,7 @@ export default function FantasyMyTeam({ league }) {
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-text-primary">Starting Lineup</h3>
+          <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
           <span className="text-[10px] text-text-muted">Tap a slot or player to swap</span>
         </div>
         <div className="p-3 space-y-2">
@@ -470,8 +514,8 @@ export default function FantasyMyTeam({ league }) {
             const occupant = playersBySlot[slotDef.key]?.[0]
             const isSlotSelected = selected?.type === 'slot' && selected.key === slotDef.key
             return (
-              <div key={slotDef.key} className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-text-muted w-10 shrink-0">{slotDef.label}</span>
+              <div key={slotDef.key} className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-text-muted w-8 shrink-0">{slotDef.label}</span>
                 <div className="flex-1">
                   {occupant ? (
                     <PlayerRow
@@ -494,7 +538,7 @@ export default function FantasyMyTeam({ league }) {
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-text-primary">Bench ({benchPlayers.length})</h3>
+          <h3 className="text-base font-semibold text-text-primary">Bench ({benchPlayers.length})</h3>
         </div>
         <div className="p-3 space-y-2">
           {benchPlayers.length === 0 ? (
@@ -519,7 +563,7 @@ export default function FantasyMyTeam({ league }) {
       {irPlayers.length > 0 && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold text-text-primary">IR ({irPlayers.length})</h3>
+            <h3 className="text-base font-semibold text-text-primary">IR ({irPlayers.length})</h3>
           </div>
           <div className="p-3 space-y-2">
             {irPlayers.map((r) => (
@@ -538,7 +582,7 @@ export default function FantasyMyTeam({ league }) {
         </div>
       )}
 
-      {isDirty && (
+      {isDirty && isCurrentWeek && (
         <div className="sticky bottom-4 flex gap-2 px-2">
           <button
             type="button"

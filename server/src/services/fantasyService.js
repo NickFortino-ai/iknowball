@@ -4389,6 +4389,25 @@ export async function scoreFantasyMatchupsWeek(week, season) {
     .in('league_id', leagueIds)
     .in('user_id', userIds)
 
+  // 3b. Snapshot rosters to lineup history (idempotent — ON CONFLICT DO NOTHING)
+  if (rosterRows?.length) {
+    const historyRows = rosterRows.map((r) => ({
+      league_id: r.league_id,
+      user_id: r.user_id,
+      week,
+      season,
+      player_id: r.player_id,
+      slot: r.slot,
+    }))
+    // Upsert in chunks to avoid statement size limits
+    const CHUNK = 500
+    for (let i = 0; i < historyRows.length; i += CHUNK) {
+      await supabase
+        .from('fantasy_lineup_history')
+        .upsert(historyRows.slice(i, i + CHUNK), { onConflict: 'league_id,user_id,week,player_id', ignoreDuplicates: true })
+    }
+  }
+
   // 4. Fetch stats for all rostered starting players
   const allPlayerIds = [...new Set((rosterRows || [])
     .filter((r) => STARTER_SLOT_KEYS.has((r.slot || '').toLowerCase()))

@@ -680,11 +680,21 @@ router.get('/matchup-week', async (req, res) => {
   // For past weeks: use stored matchup scores + historical player stats
   if (isPast) {
     const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
-    const { data: rosters } = await supabase
-      .from('fantasy_rosters')
+    // Try lineup history first (accurate), fall back to current roster (legacy)
+    const { data: historyRows } = await supabase
+      .from('fantasy_lineup_history')
       .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url)')
       .eq('league_id', league_id)
+      .eq('week', w)
+      .eq('season', s)
       .in('user_id', userIds)
+    const rosters = historyRows?.length
+      ? historyRows
+      : (await supabase
+          .from('fantasy_rosters')
+          .select('user_id, player_id, slot, nfl_players(id, full_name, position, team, headshot_url)')
+          .eq('league_id', league_id)
+          .in('user_id', userIds)).data
 
     const allPlayerIds = (rosters || []).map((r) => r.player_id)
     const statsMap = {}
@@ -753,6 +763,34 @@ router.get('/matchup-week', async (req, res) => {
     away_points: Number(m.away_points) || 0,
   }))
   res.json({ matchups: enriched, weekStatus: 'current' })
+})
+
+// Historical lineup for a specific week (from fantasy_lineup_history)
+router.get('/lineup-history', async (req, res) => {
+  const { league_id, week, season, user_id } = req.query
+  if (!league_id || !week) return res.status(400).json({ error: 'league_id and week required' })
+  const w = parseInt(week)
+  const s = parseInt(season || '2026')
+  const uid = user_id || req.user.id
+
+  const { data: rows } = await supabase
+    .from('fantasy_lineup_history')
+    .select('player_id, slot, locked_at, nfl_players(id, full_name, position, team, headshot_url, injury_status)')
+    .eq('league_id', league_id)
+    .eq('user_id', uid)
+    .eq('week', w)
+    .eq('season', s)
+
+  if (!rows?.length) return res.json({ roster: [], week: w, season: s })
+
+  const roster = rows.map((r) => ({
+    player_id: r.player_id,
+    slot: r.slot,
+    locked_at: r.locked_at,
+    nfl_players: r.nfl_players,
+  }))
+
+  res.json({ roster, week: w, season: s })
 })
 
 export default router

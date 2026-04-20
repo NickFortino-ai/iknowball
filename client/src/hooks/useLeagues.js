@@ -610,6 +610,14 @@ export function useFantasyRoster(leagueId) {
   })
 }
 
+export function useFantasyLineupHistory(leagueId, week, season) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'lineupHistory', week, season],
+    queryFn: () => api.get(`/dfs/lineup-history?league_id=${leagueId}&week=${week}&season=${season}`),
+    enabled: !!leagueId && !!week,
+  })
+}
+
 export function useSetFantasyLineup(leagueId) {
   const queryClient = useQueryClient()
   return useMutation({
