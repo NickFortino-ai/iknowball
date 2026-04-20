@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades } from '../hooks/useLeagues'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -919,6 +919,8 @@ export default function LeagueDetailPage() {
   const { data: bracketTournament } = useBracketTournament(league?.format === 'bracket' ? id : null)
   const { data: bracketEntries } = useBracketEntries(league?.format === 'bracket' ? id : null)
   const { data: threadUnread } = useThreadUnread(id)
+  const { data: fantasyTrades } = useFantasyTrades(league?.format === 'fantasy' ? id : null)
+  const pendingReviewCount = (fantasyTrades || []).filter((t) => t.status === 'pending_review').length
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
   const todayDate = new Date().toLocaleDateString('en-CA')
@@ -1593,6 +1595,11 @@ export default function LeagueDetailPage() {
             )}
             {tab === 'Thread' && threadUnread?.unread && activeTab !== i && (
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
+            )}
+            {tab === 'Transactions' && isCommissioner && pendingReviewCount > 0 && activeTab !== i && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-incorrect text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                {pendingReviewCount}
+              </span>
             )}
           </button>
           )
