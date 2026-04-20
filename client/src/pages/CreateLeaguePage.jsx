@@ -476,7 +476,7 @@ export default function CreateLeaguePage() {
                       className="flex-1 text-left p-4 md:p-5 min-w-0"
                     >
                       <div className="font-semibold text-base md:text-lg text-text-primary">{opt.label}</div>
-                      <div className="text-sm md:text-base text-text-secondary mt-1">{opt.description}</div>
+                      <div className="text-sm md:text-base text-text-primary mt-1">{opt.description}</div>
                     </button>
                     {/* Right side: tap to toggle the description dropdown */}
                     <button
@@ -501,7 +501,7 @@ export default function CreateLeaguePage() {
                     </button>
                   </div>
                   {isExpanded && (
-                    <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-[15px] leading-relaxed text-text-secondary border-t border-text-primary/10">
+                    <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-base leading-relaxed text-text-primary border-t border-text-primary/10">
                       <div className="whitespace-pre-line">{opt.details}</div>
                       {[opt.bonusTable, opt.bonusTable2].filter(Boolean).map((tbl) => (
                         <div key={tbl.title} className="mt-4 rounded-xl border border-text-primary/20 overflow-hidden">
@@ -509,25 +509,25 @@ export default function CreateLeaguePage() {
                             {tbl.title}
                           </div>
                           {tbl.intro && (
-                            <div className="px-4 py-3 text-xs md:text-sm leading-relaxed text-text-secondary border-b border-text-primary/10">
+                            <div className="px-4 py-3 text-sm md:text-base leading-relaxed text-text-primary border-b border-text-primary/10">
                               {tbl.intro}
                             </div>
                           )}
-                          <div className="grid grid-cols-4 text-xs md:text-sm">
-                            <div className="px-4 py-2 font-semibold text-text-muted">League Size</div>
-                            <div className="px-2 py-2 font-semibold text-text-muted text-center">1st</div>
-                            <div className="px-2 py-2 font-semibold text-text-muted text-center">2nd</div>
-                            <div className="px-2 py-2 font-semibold text-text-muted text-center">3rd</div>
+                          <div className="grid grid-cols-4 text-sm md:text-base">
+                            <div className="px-4 py-2 font-semibold text-text-primary">League Size</div>
+                            <div className="px-2 py-2 font-semibold text-text-primary text-center">1st</div>
+                            <div className="px-2 py-2 font-semibold text-text-primary text-center">2nd</div>
+                            <div className="px-2 py-2 font-semibold text-text-primary text-center">3rd</div>
                             {tbl.rows.map((r) => (
                               <div key={r.size} className="contents">
-                                <div className="px-4 py-2 border-t border-text-primary/10 text-text-secondary">{r.size}</div>
+                                <div className="px-4 py-2 border-t border-text-primary/10 text-text-primary">{r.size}</div>
                                 <div className="px-2 py-2 border-t border-text-primary/10 text-center text-correct font-semibold tabular-nums">{r.first}</div>
                                 <div className="px-2 py-2 border-t border-text-primary/10 text-center text-text-primary font-semibold tabular-nums">{r.second}</div>
                                 <div className="px-2 py-2 border-t border-text-primary/10 text-center text-text-primary font-semibold tabular-nums">{r.third}</div>
                               </div>
                             ))}
                           </div>
-                          <div className="px-4 py-2 text-[11px] md:text-xs text-text-muted border-t border-text-primary/10">
+                          <div className="px-4 py-2 text-xs md:text-sm text-text-primary/70 border-t border-text-primary/10">
                             {tbl.footnote || 'Position points (n+1−2×rank) are still applied on top of these bonuses. Non-standard team counts use the closest configured size.'}
                           </div>
                         </div>
