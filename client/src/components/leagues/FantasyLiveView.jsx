@@ -293,8 +293,9 @@ function MatchupLive({ league, week, season }) {
         const isExpanded = expandedMatchup === matchup.id
         const homeWinning = matchup.home_points >= matchup.away_points
 
-        const homeProb = matchup.home_win_prob ?? 50
-        const awayProb = matchup.away_win_prob ?? 50
+        const isCompleted = matchup.status === 'completed'
+        const homeProb = isCompleted ? (homeWinning ? 100 : 0) : (matchup.home_win_prob ?? 50)
+        const awayProb = isCompleted ? (!homeWinning ? 100 : 0) : (matchup.away_win_prob ?? 50)
 
         return (
           <div key={matchup.id} className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary">
@@ -310,7 +311,7 @@ function MatchupLive({ league, week, season }) {
                   <span className="text-xs text-text-muted uppercase tracking-wider">Win Prob</span>
                   <span className={`text-xs font-bold ${awayProb > 50 ? 'text-correct' : 'text-text-muted'}`}>{awayProb}%</span>
                 </div>
-                <div className="flex h-1.5 rounded-full overflow-hidden bg-text-primary/10">
+                <div className="flex h-2 rounded-full overflow-hidden bg-text-primary/10">
                   <div
                     className={`transition-all duration-500 ${homeProb >= 50 ? 'bg-correct' : 'bg-text-muted/40'}`}
                     style={{ width: `${homeProb}%` }}
