@@ -182,7 +182,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       {hp?.on_bye && <div className="text-[10px] text-text-muted font-bold">BYE</div>}
                     </div>
                   </div>
-                  <div className="text-right text-text-muted text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
+                  <div className="text-right text-text-primary/60 text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
                   <div className={`text-right font-bold text-sm ${hp?.game_status === 'live' ? 'text-orange-400' : hp?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
                     {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                   </div>
@@ -194,7 +194,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   <div className={`text-left font-bold text-sm ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
                     {aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}
                   </div>
-                  <div className="text-left text-text-muted text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
+                  <div className="text-left text-text-primary/60 text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
                   {/* Away player */}
                   <div
                     className="flex items-center gap-2.5 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5"
@@ -274,7 +274,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         {hLive || weekStatus === 'past' ? (hp?.points?.toFixed(1) || '0.0') : '--'}
                       </div>
                       {hp?.projected != null && !hp?.on_bye && (
-                        <div className="text-[9px] text-text-muted">{hp.projected.toFixed(1)}</div>
+                        <div className="text-[10px] text-text-primary/60">{hp.projected.toFixed(1)}</div>
                       )}
                     </div>
                     {/* Position */}
@@ -289,7 +289,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         {aLive || weekStatus === 'past' ? (ap?.points?.toFixed(1) || '0.0') : '--'}
                       </div>
                       {ap?.projected != null && !ap?.on_bye && (
-                        <div className="text-[9px] text-text-muted">{ap.projected.toFixed(1)}</div>
+                        <div className="text-[10px] text-text-primary/60">{ap.projected.toFixed(1)}</div>
                       )}
                     </div>
                     {/* Away player */}

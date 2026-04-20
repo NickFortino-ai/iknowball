@@ -117,7 +117,7 @@ function SalaryCapLive({ league, week, season }) {
                   {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
                 </div>
                 {m.projected_points != null && m.status !== 'final' && (
-                  <span className="text-[10px] text-text-muted shrink-0">Proj {m.projected_points.toFixed(1)}</span>
+                  <span className="text-[10px] text-text-primary/60 shrink-0">Proj {m.projected_points.toFixed(1)}</span>
                 )}
                 <span className={`font-display ${all_final && idx === 0 ? 'text-2xl' : 'text-xl'} text-white`}>
                   {Math.round(m.total_points * 10) / 10}
@@ -192,7 +192,7 @@ function SalaryCapLive({ league, week, season }) {
                                 {Math.round((slot.points_earned || 0) * 10) / 10}
                               </span>
                               {slot.projected != null && slot.game_status !== 'final' && (
-                                <span className="text-[9px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
+                                <span className="text-[10px] text-text-primary/60">/ {slot.projected.toFixed(1)}</span>
                               )}
                             </div>
                           )}
@@ -409,7 +409,7 @@ function MatchupLive({ league, week, season }) {
                               {slot.points > 0 ? slot.points.toFixed(1) : '—'}
                             </span>
                             {slot.projected != null && slot.game_status !== 'final' && (
-                              <span className="text-[10px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
+                              <span className="text-[10px] text-text-primary/60">/ {slot.projected.toFixed(1)}</span>
                             )}
                           </div>
                         </div>
@@ -463,7 +463,7 @@ function MatchupLive({ league, week, season }) {
                               {slot.points > 0 ? slot.points.toFixed(1) : '—'}
                             </span>
                             {slot.projected != null && slot.game_status !== 'final' && (
-                              <span className="text-[10px] text-text-muted">/ {slot.projected.toFixed(1)}</span>
+                              <span className="text-[10px] text-text-primary/60">/ {slot.projected.toFixed(1)}</span>
                             )}
                           </div>
                         </div>
