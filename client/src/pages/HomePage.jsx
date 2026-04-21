@@ -216,7 +216,7 @@ function MyActiveLeagues() {
             className="relative flex-shrink-0 w-52 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/40 transition-colors"
           >
             {/* Readiness color clip */}
-            {league.readiness && (
+            {league.readiness && !league.survivor_eliminated && (
               <span className={`absolute top-0 right-0 w-2.5 h-2.5 rounded-bl-md z-20 ${
                 league.readiness === 'ready' ? 'bg-correct'
                   : league.readiness === 'attention' ? 'bg-yellow-500'
@@ -240,6 +240,9 @@ function MyActiveLeagues() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-muted">{league.member_count} members</span>
               </div>
+              {league.format === 'survivor' && league.status === 'active' && league.survivor_alive != null && (
+                <div className="mt-2 text-xs text-correct font-semibold text-right">{league.survivor_alive} still alive</div>
+              )}
               {league.draft_status === 'in_progress' ? (
                 <div className="mt-2 text-center font-display text-sm font-bold text-correct uppercase tracking-wide">Drafting Now</div>
               ) : league.draft_date && league.draft_status === 'pending' && (

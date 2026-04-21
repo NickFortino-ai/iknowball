@@ -135,6 +135,9 @@ export default function MessagesPage() {
   const [selectedPartnerId, setSelectedPartnerId] = useState(null)
   const navigate = useNavigate()
 
+  // Scroll to top on mount so header isn't cut off
+  useEffect(() => { window.scrollTo(0, 0) }, [])
+
   useRealtimeMessages(profile?.id)
 
   const existingPartnerIds = new Set((conversations || []).map((c) => c.partnerId))

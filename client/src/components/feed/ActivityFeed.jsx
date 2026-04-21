@@ -214,10 +214,7 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
       ) : (
         <div>
           {groupedItems.map((group, groupIdx) => (
-            <div key={group.dateKey} className={groupIdx > 0 ? 'mt-6' : ''}>
-              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-2 px-1">
-                {group.label}
-              </h3>
+            <div key={group.dateKey} className={groupIdx > 0 ? '' : ''}>
               <div className="space-y-3">
                 {group.items.map((item) => {
                   const targetKey = getFeedItemTargetKey(item)

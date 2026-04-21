@@ -132,7 +132,7 @@ export default function SurvivorView({ league }) {
           <div className="text-sm text-text-primary font-semibold mb-1">
             You were eliminated in {isDaily ? 'Day' : 'Week'} {me?.eliminated_week || '?'}
           </div>
-          <div className="text-xs text-text-muted">
+          <div className="text-base text-white font-medium">
             {aliveCount === 1 ? '1 player is' : `${aliveCount} players are`} still alive. Check back to see who wins!
           </div>
         </div>

@@ -39,6 +39,9 @@ export default function MessageThreadPage() {
 
   useRealtimeMessages(profile?.id)
 
+  // Scroll to top on mount so the header isn't pushed off-screen
+  useEffect(() => { window.scrollTo(0, 0) }, [])
+
   const messages = data?.pages?.flatMap((p) => p.messages) || []
   const partner = data?.pages?.[0]?.partner
 
@@ -93,9 +96,9 @@ export default function MessageThreadPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
-      {/* Header — centered like iMessage */}
-      <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10 px-4">
+    <div className="max-w-lg mx-auto flex flex-col bg-bg-primary overflow-hidden" style={{ height: 'calc(100dvh - 7rem)', marginTop: 0 }}>
+      {/* Header — centered like iMessage, sticky */}
+      <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10 px-4 shrink-0">
         <button
           onClick={() => navigate('/messages')}
           className="p-1 text-accent hover:text-accent-hover transition-colors shrink-0"
@@ -188,7 +191,7 @@ export default function MessageThreadPage() {
       </div>
 
       {/* Input — iMessage style: textarea + send inside one bordered container */}
-      <form onSubmit={handleSend} className="flex items-end px-2 py-1.5 bg-bg-primary/60 backdrop-blur-2xl border-t border-text-primary/15">
+      <form onSubmit={handleSend} className="flex items-end px-2 py-1.5 bg-bg-primary/60 backdrop-blur-2xl border-t border-text-primary/15 shrink-0">
         <div className={`flex-1 flex items-end border border-text-primary/25 bg-text-primary/5 transition-all ${isMultiline ? 'rounded-2xl' : 'rounded-full'}`}>
           <textarea
             ref={textareaRef}

@@ -668,8 +668,9 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       away_team: leg.games?.away_team,
     }))
 
-    // Only feature parlays with 4+ legs; "all" scope requires 4x+ multiplier
-    if (parlay.leg_count < 4) continue
+    // Feature parlays with 4+ legs, or 3 legs if they earned 75+ points; "all" scope requires 4x+ multiplier
+    if (parlay.leg_count < 3) continue
+    if (parlay.leg_count === 3 && (parlay.points_earned || 0) < 75) continue
     if (isAll && (parlay.combined_multiplier || 0) < 4) continue
 
     if (parlay.is_correct) {
