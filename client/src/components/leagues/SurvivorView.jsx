@@ -106,12 +106,16 @@ export default function SurvivorView({ league }) {
   if (isLoading) return <LoadingSpinner />
   if (!board) return <EmptyState title="No data" message="Board not available" />
 
+  const me = board.members?.find((m) => m.user_id === currentUserId)
+  const userIsAlive = me?.is_alive !== false
+  const aliveCount = board.members?.filter((m) => m.is_alive).length || 0
+
   return (
     <div>
       {/* Status summary */}
       <div className="flex justify-center gap-2 md:gap-3 mb-4">
         {[
-          { value: board.members?.filter((m) => m.is_alive).length || 0, label: 'Alive', color: 'text-correct' },
+          { value: aliveCount, label: 'Alive', color: 'text-correct' },
           { value: board.members?.filter((m) => !m.is_alive).length || 0, label: 'Eliminated', color: 'text-incorrect' },
           { value: board.display_period_number || currentWeek?.week_number || '—', label: periodLabel, color: 'text-text-primary' },
         ].map((stat) => (
@@ -122,17 +126,28 @@ export default function SurvivorView({ league }) {
         ))}
       </div>
 
+      {/* Eliminated banner — replaces pick form for eliminated users */}
+      {!userIsAlive && !leagueCompleted && (
+        <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-4 mb-4 text-center relative z-10">
+          <div className="text-sm text-text-primary font-semibold mb-1">
+            You were eliminated in {isDaily ? 'Day' : 'Week'} {me?.eliminated_week || '?'}
+          </div>
+          <div className="text-xs text-text-muted">
+            {aliveCount === 1 ? '1 player is' : `${aliveCount} players are`} still alive. Check back to see who wins!
+          </div>
+        </div>
+      )}
 
       {/* No active period */}
-      {!pickWeek && (
+      {!pickWeek && userIsAlive && (
         <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-4 text-center relative z-10">
           <p className="text-sm text-text-primary">No active {periodLabel.toLowerCase()} right now.</p>
           <p className="text-xs text-text-secondary mt-1">Picks will be available when the next {periodLabel.toLowerCase()} begins.</p>
         </div>
       )}
 
-      {/* Make pick button */}
-      {pickWeek && !leagueCompleted && (
+      {/* Make pick button — only for alive users */}
+      {pickWeek && !leagueCompleted && userIsAlive && (
         <div className="flex justify-center mb-4 relative z-10">
           <button
             onClick={() => setShowPickForm(!showPickForm)}

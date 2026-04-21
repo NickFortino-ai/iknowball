@@ -141,6 +141,11 @@ export default function LeagueCard({ league, noLink }) {
             <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} />
           </div>
         )}
+        {league.format === 'survivor' && league.status === 'active' && league.survivor_alive != null && (
+          <div className="absolute right-5 bottom-4 text-right pointer-events-none">
+            <span className="text-xs text-correct font-semibold">{league.survivor_alive} still alive</span>
+          </div>
+        )}
       </div>
     </Wrapper>
   )

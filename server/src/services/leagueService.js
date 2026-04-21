@@ -600,6 +600,22 @@ export async function getMyLeagues(userId, userTz) {
     }
   }
 
+  // Pull alive count for survivor leagues
+  const survivorLeagueIds = (leagues || [])
+    .filter((l) => l.format === 'survivor' && l.status === 'active')
+    .map((l) => l.id)
+  const survivorAlive = {}
+  if (survivorLeagueIds.length) {
+    const { data: aliveRows } = await supabase
+      .from('league_members')
+      .select('league_id, is_alive')
+      .in('league_id', survivorLeagueIds)
+      .eq('is_alive', true)
+    for (const row of aliveRows || []) {
+      survivorAlive[row.league_id] = (survivorAlive[row.league_id] || 0) + 1
+    }
+  }
+
   const result = leagues.map((league) => ({
     ...league,
     member_count: countMap[league.id] || 0,
@@ -607,6 +623,7 @@ export async function getMyLeagues(userId, userTz) {
     display_order: orderMap[league.id] ?? null,
     draft_date: fantasyMeta[league.id]?.draft_date || null,
     draft_status: fantasyMeta[league.id]?.draft_status || null,
+    survivor_alive: survivorAlive[league.id] ?? null,
   }))
 
   // Compute per-league readiness (green/yellow/red corner clip)
