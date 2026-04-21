@@ -249,7 +249,7 @@ export default function LeagueThread({ league }) {
           This thread is archived
         </div>
       ) : (
-        <div className="px-3 py-1.5 bg-bg-primary/80 backdrop-blur-xl border-t border-text-primary/10 relative">
+        <div className="px-3 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] bg-bg-primary/60 backdrop-blur-2xl border-t border-text-primary/15 relative">
           {/* Mention autocomplete */}
           {mentionActive && searchResults?.length > 0 && (
             <div className="absolute bottom-full left-3 right-3 bg-bg-primary border border-text-primary/20 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto">

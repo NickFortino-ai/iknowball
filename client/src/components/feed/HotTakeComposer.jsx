@@ -306,7 +306,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
 
   return (
     <div
-      className={`bg-bg-primary border rounded-xl px-4 py-3 mb-4 transition-all ${
+      className={`bg-bg-primary/60 backdrop-blur-2xl border rounded-xl px-4 py-3 mb-4 transition-all ${
         dragging ? 'border-accent border-dashed bg-accent/5' : expanded ? 'border-accent/20' : 'border-text-primary/20'
       }`}
       onDragOver={handleDragOver}
