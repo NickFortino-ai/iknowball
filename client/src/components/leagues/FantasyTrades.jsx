@@ -121,7 +121,7 @@ function TransactionRow({ txn }) {
 
   return (
     <div className="flex items-center gap-3 py-3.5 border-b border-text-primary/10 last:border-0">
-      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${cfg.color} bg-text-primary/10`}>
+      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold shrink-0 ${cfg.color}`}>
         {cfg.icon}
       </span>
       {player.headshot_url ? (
