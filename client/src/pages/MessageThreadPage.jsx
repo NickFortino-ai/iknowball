@@ -185,7 +185,7 @@ export default function MessageThreadPage() {
       </div>
 
       {/* Input — glass edge bar like iMessage */}
-      <form onSubmit={handleSend} className="flex items-end gap-2 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] bg-bg-primary/60 backdrop-blur-2xl border-t border-text-primary/15">
+      <form onSubmit={handleSend} className="flex items-end gap-2 px-2 py-1.5 bg-bg-primary/60 backdrop-blur-2xl border-t border-text-primary/15">
         <textarea
           ref={textareaRef}
           value={input}

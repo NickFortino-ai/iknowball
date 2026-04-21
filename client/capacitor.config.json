@@ -10,7 +10,8 @@
       "showSpinner": false
     },
     "Keyboard": {
-      "resize": "ionic",
+      "resize": "native",
+      "style": "DARK",
       "hideFormAccessoryBar": true
     }
   }
