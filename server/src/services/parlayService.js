@@ -19,6 +19,23 @@ export async function createParlay(userId, legs) {
     throw err
   }
 
+  // Prevent duplicate parlays — reject if user already has a pending parlay with the exact same legs
+  const sortedLegKey = legs.map((l) => `${l.game_id}:${l.picked_team}`).sort().join('|')
+  const { data: existingParlays } = await supabase
+    .from('parlays')
+    .select('id, parlay_legs(game_id, picked_team)')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .eq('leg_count', legs.length)
+  for (const ep of existingParlays || []) {
+    const epKey = (ep.parlay_legs || []).map((l) => `${l.game_id}:${l.picked_team}`).sort().join('|')
+    if (epKey === sortedLegKey) {
+      const err = new Error('You already have this parlay')
+      err.status = 409
+      throw err
+    }
+  }
+
   // Fetch all games and verify they're upcoming
   const { data: games, error: gamesError } = await supabase
     .from('games')

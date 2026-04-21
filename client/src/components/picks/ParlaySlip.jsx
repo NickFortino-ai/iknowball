@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { usePickStore } from '../../stores/pickStore'
 import { useCreateParlay } from '../../hooks/useParlays'
 import { americanToMultiplier, formatOdds, BASE_RISK_POINTS } from '../../lib/scoring'
@@ -7,6 +7,7 @@ import { triggerHaptic } from '../../lib/haptics'
 
 export default function ParlaySlip() {
   const [expanded, setExpanded] = useState(false)
+  const submittingRef = useRef(false)
   const parlayLegs = usePickStore((s) => s.parlayLegs)
   const clearParlayLegs = usePickStore((s) => s.clearParlayLegs)
   const removeParlayLeg = usePickStore((s) => s.removeParlayLeg)
@@ -24,6 +25,8 @@ export default function ParlaySlip() {
   const reward = Math.max(1, Math.round(BASE_RISK_POINTS * (combinedMultiplier - 1)))
 
   async function handleSubmit() {
+    if (submittingRef.current) return
+    submittingRef.current = true
     try {
       const legs = parlayLegs.map((l) => ({
         game_id: l.gameId,
@@ -35,6 +38,8 @@ export default function ParlaySlip() {
       toast('Parlay locked in!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to create parlay', 'error')
+    } finally {
+      submittingRef.current = false
     }
   }
 
