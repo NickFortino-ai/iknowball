@@ -90,9 +90,9 @@ export default function MessageThreadPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col px-4" style={{ height: 'calc(100vh - 8rem)' }}>
+    <div className="max-w-lg mx-auto flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
       {/* Header — centered like iMessage */}
-      <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10">
+      <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10 px-4">
         <button
           onClick={() => navigate('/messages')}
           className="p-1 text-accent hover:text-accent-hover transition-colors shrink-0"
@@ -112,7 +112,7 @@ export default function MessageThreadPage() {
       </div>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-2 pt-2">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-2 pb-1 px-4">
         {hasNextPage && (
           <div className="text-center py-2">
             <button
@@ -184,8 +184,8 @@ export default function MessageThreadPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input — pill shape like iMessage */}
-      <form onSubmit={handleSend} className="flex items-end gap-2 py-2">
+      {/* Input — glass edge bar like iMessage */}
+      <form onSubmit={handleSend} className="flex items-end gap-2 px-2 py-1.5 bg-bg-primary/80 backdrop-blur-xl border-t border-text-primary/10">
         <textarea
           ref={textareaRef}
           value={input}
@@ -195,13 +195,13 @@ export default function MessageThreadPage() {
           placeholder="Message"
           maxLength={2000}
           rows={1}
-          className="flex-1 bg-[#1c1c1e] border border-text-primary/20 rounded-full px-4 py-2 text-[15px] text-text-primary placeholder-text-muted focus:outline-none focus:border-text-primary/40 transition-colors resize-none max-h-32 overflow-y-auto"
+          className="flex-1 bg-text-primary/10 border border-text-primary/20 rounded-full px-4 py-2 text-[15px] text-text-primary placeholder-text-muted focus:outline-none focus:border-text-primary/40 transition-colors resize-none max-h-32 overflow-y-auto"
           style={{ minHeight: '2.5rem' }}
         />
         <button
           type="submit"
           disabled={!input.trim() || sendMessage.isPending}
-          className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
+          className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity mb-0.5"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />

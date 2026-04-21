@@ -249,7 +249,7 @@ export default function LeagueThread({ league }) {
           This thread is archived
         </div>
       ) : (
-        <div className="px-3 py-2 relative">
+        <div className="px-3 py-1.5 bg-bg-primary/80 backdrop-blur-xl border-t border-text-primary/10 relative">
           {/* Mention autocomplete */}
           {mentionActive && searchResults?.length > 0 && (
             <div className="absolute bottom-full left-3 right-3 bg-bg-primary border border-text-primary/20 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto">
@@ -279,7 +279,7 @@ export default function LeagueThread({ league }) {
               onFocus={handleInputFocus}
               placeholder="Message"
               rows={1}
-              className="flex-1 bg-[#1c1c1e] border border-text-primary/20 rounded-full px-4 py-2 text-[15px] text-text-primary placeholder-text-muted resize-none focus:outline-none focus:border-text-primary/40 transition-colors max-h-24 overflow-y-auto"
+              className="flex-1 bg-text-primary/10 border border-text-primary/20 rounded-full px-4 py-2 text-[15px] text-text-primary placeholder-text-muted resize-none focus:outline-none focus:border-text-primary/40 transition-colors max-h-24 overflow-y-auto"
               style={{ minHeight: '2.5rem' }}
             />
             <button
