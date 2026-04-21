@@ -301,7 +301,6 @@ export default function FantasyDraftRoom({ league }) {
 
     return (
       <div className="text-center py-8">
-        <div className="text-4xl mb-3">{'\uD83C\uDFC8'}</div>
         <h3 className="font-display text-lg text-text-primary mb-2">
           {settings?.draft_mode === 'offline' ? 'Offline Draft' : 'Draft Room'}
         </h3>
