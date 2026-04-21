@@ -53,12 +53,23 @@ export default function MessageThreadPage() {
     didMarkRead.current = true
   }, [messages.length])
 
-  // When the input is focused (keyboard opens on mobile), scroll to bottom
-  // so the latest message stays visible above the keyboard
-  function handleInputFocus() {
-    setTimeout(() => {
+  // When the keyboard opens on mobile, scroll to the latest message.
+  // The visualViewport resize event fires after the keyboard finishes
+  // animating, so we get the final layout before scrolling.
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    function onResize() {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, 300) // Delay to let keyboard animation finish
+    }
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [])
+
+  function handleInputFocus() {
+    // Fire multiple times to cover different keyboard animation speeds
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 400)
   }
 
   function handleSend(e) {
