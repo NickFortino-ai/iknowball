@@ -33,6 +33,13 @@ export async function submitPick(userId, gameId, pickedTeam, multiplier = 1) {
     await validateMultiplierBudget(userId, gameId, multiplier, game, pickedTeam)
   }
 
+  // Block picks on games where both sides have positive odds (broken market / 3-way moneyline)
+  if (game.home_odds > 0 && game.away_odds > 0) {
+    const err = new Error('Picks are not available for this game — odds are still loading')
+    err.status = 400
+    throw err
+  }
+
   // Snapshot odds at submission time
   const odds = pickedTeam === 'home' ? game.home_odds : game.away_odds
   const oddsAtSubmission = odds || null

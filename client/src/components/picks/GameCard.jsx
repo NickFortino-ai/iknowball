@@ -41,6 +41,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
   const isFinal = game.status === 'final'
   const isLive = game.status === 'live'
   const isPostponed = game.status === 'postponed'
+  const isBrokenMarket = game.home_odds > 0 && game.away_odds > 0
   const hasLiveScores = isLive && game.live_home_score != null
 
   function getButtonState(side) {
@@ -109,7 +110,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             score={isFinal ? game.away_score : hasLiveScores ? game.live_away_score : null}
             isLive={hasLiveScores && !isFinal}
             state={getButtonState('away')}
-            disabled={isLocked || isSubmitting}
+            disabled={isLocked || isSubmitting || isBrokenMarket}
             onClick={(e) => handleClick('away', e)}
             sportKey={sportKey}
           />
@@ -131,7 +132,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
             score={isFinal ? game.home_score : hasLiveScores ? game.live_home_score : null}
             isLive={hasLiveScores && !isFinal}
             state={getButtonState('home')}
-            disabled={isLocked || isSubmitting}
+            disabled={isLocked || isSubmitting || isBrokenMarket}
             onClick={(e) => handleClick('home', e)}
             sportKey={sportKey}
           />

@@ -59,6 +59,12 @@ export async function createParlay(userId, legs) {
   }
 
   for (const game of games) {
+    // Block legs on games where both sides have positive odds (broken market)
+    if (game.home_odds > 0 && game.away_odds > 0) {
+      const err = new Error('One or more games have invalid odds — picks not available')
+      err.status = 400
+      throw err
+    }
     if (game.status !== 'upcoming') {
       const err = new Error('One or more games have already started')
       err.status = 400
