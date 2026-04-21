@@ -53,6 +53,14 @@ export default function MessageThreadPage() {
     didMarkRead.current = true
   }, [messages.length])
 
+  // When the input is focused (keyboard opens on mobile), scroll to bottom
+  // so the latest message stays visible above the keyboard
+  function handleInputFocus() {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 300) // Delay to let keyboard animation finish
+  }
+
   function handleSend(e) {
     e.preventDefault()
     const content = input.trim()
@@ -142,6 +150,7 @@ export default function MessageThreadPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
+          onFocus={handleInputFocus}
           placeholder="Type a message..."
           maxLength={2000}
           rows={1}
