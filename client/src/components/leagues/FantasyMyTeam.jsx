@@ -535,12 +535,10 @@ export default function FantasyMyTeam({ league }) {
                     <div className="text-sm font-semibold text-text-primary mb-2">You receive</div>
                     <div className="space-y-1.5">
                       {proposerItems.map((item) => (
-                        <div key={item.player_id} className="flex items-center gap-2.5 rounded-lg bg-bg-primary border border-text-primary/10 px-3 py-2">
-                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />}
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-text-primary truncate">{item.nfl_players?.full_name}</div>
-                            <div className="text-xs text-text-primary">{item.nfl_players?.position} · {item.nfl_players?.team}</div>
-                          </div>
+                        <div key={item.player_id} className="flex flex-col items-center rounded-lg bg-bg-primary/60 border border-text-primary/10 px-2 py-3 text-center">
+                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-14 h-14 rounded-full object-cover mb-1.5" />}
+                          <div className="text-sm font-bold text-text-primary leading-tight">{item.nfl_players?.full_name}</div>
+                          <div className="text-[11px] text-text-muted mt-0.5">{item.nfl_players?.position} · {item.nfl_players?.team}</div>
                         </div>
                       ))}
                     </div>
@@ -549,12 +547,10 @@ export default function FantasyMyTeam({ league }) {
                     <div className="text-sm font-semibold text-text-primary mb-2">You give up</div>
                     <div className="space-y-1.5">
                       {receiverItems.map((item) => (
-                        <div key={item.player_id} className="flex items-center gap-2.5 rounded-lg bg-bg-primary border border-text-primary/10 px-3 py-2">
-                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />}
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-text-primary truncate">{item.nfl_players?.full_name}</div>
-                            <div className="text-xs text-text-primary">{item.nfl_players?.position} · {item.nfl_players?.team}</div>
-                          </div>
+                        <div key={item.player_id} className="flex flex-col items-center rounded-lg bg-bg-primary/60 border border-text-primary/10 px-2 py-3 text-center">
+                          {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-14 h-14 rounded-full object-cover mb-1.5" />}
+                          <div className="text-sm font-bold text-text-primary leading-tight">{item.nfl_players?.full_name}</div>
+                          <div className="text-[11px] text-text-muted mt-0.5">{item.nfl_players?.position} · {item.nfl_players?.team}</div>
                         </div>
                       ))}
                     </div>
