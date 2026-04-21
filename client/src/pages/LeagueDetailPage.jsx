@@ -811,7 +811,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
       {expanded && (
         <div className="mt-4">
           <label className="block text-xs text-text-muted mb-2">League Backdrop</label>
-          <div className="grid grid-cols-3 gap-2 max-h-[240px] overflow-y-auto scrollbar-hide rounded-lg">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[240px] overflow-y-auto scrollbar-hide rounded-lg">
             {/* Submit custom */}
             <button
               type="button"
