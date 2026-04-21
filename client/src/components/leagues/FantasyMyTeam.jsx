@@ -107,7 +107,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
   )
 }
 
-function EmptySlot({ slotLabel, onTap, isSelected }) {
+function EmptySlot({ slotLabel, onTap, isSelected, editMode }) {
   return (
     <button
       type="button"
@@ -117,7 +117,7 @@ function EmptySlot({ slotLabel, onTap, isSelected }) {
       }`}
     >
       <div className="w-9 h-9 rounded-full bg-bg-secondary/40 shrink-0" />
-      <div className="flex-1 text-xs text-text-muted">Empty {slotLabel} — tap to assign</div>
+      <div className="flex-1 text-xs text-text-muted">Empty {slotLabel}{editMode ? ' — tap to assign' : ''}</div>
     </button>
   )
 }
@@ -666,7 +666,7 @@ export default function FantasyMyTeam({ league }) {
                       blurbIds={blurbIds}
                     />
                   ) : (
-                    editMode ? <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} /> : <EmptySlot slotLabel={slotDef.label} onTap={() => {}} isSelected={false} />
+                    editMode ? <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} editMode /> : <EmptySlot slotLabel={slotDef.label} onTap={() => {}} isSelected={false} />
                   )}
                 </div>
               </div>
@@ -693,7 +693,7 @@ export default function FantasyMyTeam({ league }) {
             />
           ))}
           {Array.from({ length: emptyBenchCount }, (_, i) => (
-            <EmptySlot key={`bench-empty-${i}`} slotLabel="BN" onTap={editMode ? () => handleSlotTap('bench') : () => {}} isSelected={editMode && selected?.type === 'slot' && selected.key === 'bench'} />
+            <EmptySlot key={`bench-empty-${i}`} slotLabel="BN" onTap={editMode ? () => handleSlotTap('bench') : () => {}} isSelected={editMode && selected?.type === 'slot' && selected.key === 'bench'} editMode={editMode} />
           ))}
         </div>
       </div>
