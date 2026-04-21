@@ -64,6 +64,7 @@ export default function LeagueThread({ league }) {
   }, [league.id])
 
   const [input, setInput] = useState('')
+  const [isMultiline, setIsMultiline] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionActive, setMentionActive] = useState(false)
   const [taggedUsers, setTaggedUsers] = useState([])
@@ -161,6 +162,7 @@ export default function LeagueThread({ league }) {
         user_tags: userTagIds.length > 0 ? userTagIds : undefined,
       })
       setInput('')
+      setIsMultiline(false)
       setTaggedUsers([])
       setAutoScroll(true)
     } catch (err) {
@@ -266,30 +268,32 @@ export default function LeagueThread({ league }) {
               ))}
             </div>
           )}
-          <div className="flex items-end gap-2">
+          <div className={`flex-1 flex items-end border border-text-primary/25 bg-text-primary/5 transition-all ${isMultiline ? 'rounded-2xl' : 'rounded-full'}`}>
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => {
                 handleInputChange(e)
                 e.target.style.height = 'auto'
-                e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px'
+                const h = Math.min(e.target.scrollHeight, 96)
+                e.target.style.height = h + 'px'
+                setIsMultiline(h > 44)
               }}
               onKeyDown={handleKeyDown}
               onFocus={handleInputFocus}
               placeholder="Message"
               rows={1}
-              className="flex-1 bg-text-primary/10 border border-text-primary/20 rounded-full px-4 py-2 text-[15px] text-text-primary placeholder-text-muted resize-none focus:outline-none focus:border-text-primary/40 transition-colors max-h-24 overflow-y-auto"
-              style={{ minHeight: '2.5rem' }}
+              className="flex-1 bg-transparent pl-4 pr-1 py-2 text-[16px] text-text-primary placeholder-text-muted resize-none focus:outline-none max-h-24 overflow-y-auto"
+              style={{ minHeight: '2.25rem' }}
             />
             <button
               onClick={handleSend}
               onMouseDown={(e) => e.preventDefault()}
               disabled={!input.trim() || sendMessage.isPending}
-              className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
+              className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-0 transition-opacity m-0.5"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none">
+                <path d="M3.4 20.4L20.85 12.92a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z" />
               </svg>
             </button>
           </div>

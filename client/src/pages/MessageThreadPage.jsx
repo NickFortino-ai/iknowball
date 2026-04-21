@@ -31,6 +31,7 @@ export default function MessageThreadPage() {
   const sendMessage = useSendMessage()
   const markRead = useMarkThreadRead()
   const [input, setInput] = useState('')
+  const [isMultiline, setIsMultiline] = useState(false)
   const messagesEndRef = useRef(null)
   const scrollContainerRef = useRef(null)
   const didMarkRead = useRef(false)
@@ -76,7 +77,7 @@ export default function MessageThreadPage() {
     if (!content) return
     sendMessage.mutate({ partnerId, content })
     setInput('')
-    // Reset textarea height
+    setIsMultiline(false)
     if (textareaRef.current) {
       textareaRef.current.style.height = '2.5rem'
     }
@@ -86,7 +87,9 @@ export default function MessageThreadPage() {
     setInput(e.target.value)
     const el = e.target
     el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 128) + 'px'
+    const h = Math.min(el.scrollHeight, 128)
+    el.style.height = h + 'px'
+    setIsMultiline(h > 44) // more than one line
   }
 
   return (
@@ -184,30 +187,32 @@ export default function MessageThreadPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input — glass edge bar like iMessage */}
-      <form onSubmit={handleSend} className="flex items-end gap-2 px-2 py-1.5 bg-bg-primary/60 backdrop-blur-2xl border-t border-text-primary/15">
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={handleTextareaChange}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
-          onFocus={handleInputFocus}
-          placeholder="Message"
-          maxLength={2000}
-          rows={1}
-          className="flex-1 bg-text-primary/10 border border-text-primary/20 rounded-full px-4 py-2 text-[15px] text-text-primary placeholder-text-muted focus:outline-none focus:border-text-primary/40 transition-colors resize-none max-h-32 overflow-y-auto"
-          style={{ minHeight: '2.5rem' }}
-        />
-        <button
-          type="submit"
-          onMouseDown={(e) => e.preventDefault()}
-          disabled={!input.trim() || sendMessage.isPending}
-          className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity mb-0.5"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-          </svg>
-        </button>
+      {/* Input — iMessage style: textarea + send inside one bordered container */}
+      <form onSubmit={handleSend} className="flex items-end px-2 py-1.5 bg-bg-primary/60 backdrop-blur-2xl border-t border-text-primary/15">
+        <div className={`flex-1 flex items-end border border-text-primary/25 bg-text-primary/5 transition-all ${isMultiline ? 'rounded-2xl' : 'rounded-full'}`}>
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleTextareaChange}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
+            onFocus={handleInputFocus}
+            placeholder="Message"
+            maxLength={2000}
+            rows={1}
+            className="flex-1 bg-transparent pl-4 pr-1 py-2 text-[16px] text-text-primary placeholder-text-muted focus:outline-none resize-none max-h-32 overflow-y-auto"
+            style={{ minHeight: '2.25rem' }}
+          />
+          <button
+            type="submit"
+            onMouseDown={(e) => e.preventDefault()}
+            disabled={!input.trim() || sendMessage.isPending}
+            className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-0 transition-opacity m-0.5"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none">
+              <path d="M3.4 20.4L20.85 12.92a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z" />
+            </svg>
+          </button>
+        </div>
       </form>
     </div>
   )
