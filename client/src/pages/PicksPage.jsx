@@ -1,7 +1,6 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useGames, useActiveSports } from '../hooks/useGames'
 import { useMyPicks, useSubmitPick, useDeletePick, useUpdatePickMultiplier } from '../hooks/usePicks'
-import { useSharePickToSquad } from '../hooks/useConnections'
 import { useMyParlays, useDeleteParlay } from '../hooks/useParlays'
 import { useMyPropPicks } from '../hooks/useProps'
 import { usePickStore } from '../stores/pickStore'
@@ -94,10 +93,8 @@ export default function PicksPage() {
   const { data: myPicks, isLoading: picksLoading } = useMyPicks()
   const submitPick = useSubmitPick()
   const deletePick = useDeletePick()
-  const sharePick = useSharePickToSquad()
   const updateMultiplier = useUpdatePickMultiplier()
   const profile = useAuthStore((s) => s.profile)
-  const [sharedPickIds, setSharedPickIds] = useState(new Set())
   const [injuryGameId, setInjuryGameId] = useState(null)
   const [detailGameId, setDetailGameId] = useState(null)
 
@@ -175,19 +172,6 @@ export default function PicksPage() {
       toast(err.message || 'Failed to undo pick', 'error')
     }
   }
-
-  const handleShare = useCallback(async (pickId) => {
-    try {
-      await sharePick.mutateAsync(pickId)
-      setSharedPickIds((prev) => new Set([...prev, pickId]))
-      toast('Shared to squad!', 'success')
-    } catch (err) {
-      if (err.message?.includes('already shared')) {
-        setSharedPickIds((prev) => new Set([...prev, pickId]))
-      }
-      toast(err.message || 'Failed to share', 'error')
-    }
-  }, [sharePick])
 
   const parlayLegsMap = useMemo(() => {
     const map = {}

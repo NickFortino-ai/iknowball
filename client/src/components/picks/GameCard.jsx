@@ -36,7 +36,7 @@ function formatLiveStatus(game) {
   return parts.join(' · ')
 }
 
-export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, onShare, isShared, parlayMode, parlayPickedTeam, onParlayToggle, onCardClick, isFirstCard, hasInjuryData, onInjuryClick, transparent, sportKey }) {
+export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitting, reactions, parlayMode, parlayPickedTeam, onParlayToggle, onCardClick, isFirstCard, hasInjuryData, onInjuryClick, transparent, sportKey }) {
   const isLocked = game.status !== 'upcoming'
   const isFinal = game.status === 'final'
   const isLive = game.status === 'live'
