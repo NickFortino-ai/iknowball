@@ -15,7 +15,7 @@ function PlayerChip({ player }) {
         <img src={player.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
       )}
       <div className="min-w-0">
-        <div className="text-sm font-bold text-text-primary truncate">{player?.full_name}</div>
+        <div className="text-sm font-bold text-text-primary line-clamp-2 leading-tight">{player?.full_name}</div>
         <div className="text-xs text-text-primary">{player?.position} · {player?.team}</div>
       </div>
     </div>
