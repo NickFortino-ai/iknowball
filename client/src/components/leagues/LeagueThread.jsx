@@ -180,7 +180,7 @@ export default function LeagueThread({ league }) {
   if (isLoading) return <LoadingSpinner />
 
   return (
-    <div className="flex flex-col h-[60vh] rounded-xl border border-text-primary/20 overflow-hidden">
+    <div className="flex flex-col h-[50vh] md:h-[60vh] rounded-xl border border-text-primary/20 overflow-hidden">
       {/* Messages area */}
       <div
         ref={scrollRef}

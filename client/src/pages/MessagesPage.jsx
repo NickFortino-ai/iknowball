@@ -114,7 +114,7 @@ function InlineThread({ partnerId, profile }) {
           value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
           placeholder="Type a message..." maxLength={2000} rows={1}
-          className="flex-1 bg-bg-input border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 transition-colors resize-none max-h-32 overflow-y-auto"
+          className="flex-1 bg-bg-input border border-border rounded-xl px-4 py-2.5 text-base text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 transition-colors resize-none max-h-32 overflow-y-auto"
           style={{ height: 'auto', minHeight: '2.5rem' }}
           ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 128) + 'px' } }}
         />

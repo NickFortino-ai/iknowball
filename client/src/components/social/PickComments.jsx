@@ -165,7 +165,7 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
           maxLength={280}
           rows={1}
           onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-          className="w-full bg-bg-input border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none"
+          className="w-full bg-bg-input border border-border rounded-lg px-3 py-1.5 text-base text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none"
         />
       </div>
       <button
