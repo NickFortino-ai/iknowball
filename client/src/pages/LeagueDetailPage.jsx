@@ -1177,7 +1177,7 @@ export default function LeagueDetailPage() {
         </div>
         <div className="flex items-center justify-center gap-5 mt-2">
           {isCommissioner && (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-tier-hof/20 text-tier-hof">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded text-tier-hof">
               Commissioner
             </span>
           )}
