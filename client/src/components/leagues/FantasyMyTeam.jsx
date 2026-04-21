@@ -717,7 +717,7 @@ export default function FantasyMyTeam({ league }) {
       )}
 
       {editMode && (isCurrentWeek || isFutureWeek) && (
-        <div className="sticky bottom-4 flex gap-2 px-2">
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-2 px-4 py-3 bg-bg-primary/90 backdrop-blur-xl border-t border-text-primary/15 md:sticky md:bottom-4 md:border-0 md:bg-transparent md:backdrop-blur-none md:px-2 md:py-0">
           <button
             type="button"
             onClick={() => { handleReset(); setSelected(null); setEditMode(false) }}
