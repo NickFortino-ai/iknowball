@@ -373,7 +373,7 @@ function nflGameFpts(statMap) {
 function nflFppgToSalary(fppg, position) {
   if (!fppg || fppg <= 0) {
     if (position === 'QB') return 5500
-    if (position === 'TE') return 3000
+    if (position === 'TE') return 3500
     return 3500
   }
 
@@ -381,11 +381,11 @@ function nflFppgToSalary(fppg, position) {
   if (position === 'QB') {
     raw = 5000 + fppg * 150
     floor = 5500
-    cap = 9000
+    cap = 10000
   } else if (position === 'TE') {
-    raw = 2500 + fppg * 400
-    floor = 3000
-    cap = 8200
+    raw = 3000 + fppg * 400
+    floor = 3500
+    cap = 8500
   } else if (position === 'WR') {
     raw = 3000 + fppg * 325
     floor = 3500
