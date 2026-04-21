@@ -128,7 +128,7 @@ export default function SurvivorView({ league }) {
 
       {/* Eliminated banner — replaces pick form for eliminated users */}
       {!userIsAlive && !leagueCompleted && (
-        <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-4 mb-4 text-center relative z-10">
+        <div className="bg-bg-primary/60 border border-text-primary/20 rounded-xl p-4 mb-4 text-center relative z-10">
           <div className="text-sm text-text-primary font-semibold mb-1">
             You were eliminated in {isDaily ? 'Day' : 'Week'} {me?.eliminated_week || '?'}
           </div>
@@ -167,7 +167,7 @@ export default function SurvivorView({ league }) {
       )}
 
       {/* Touchdown pick form */}
-      {showPickForm && !leagueCompleted && isTouchdown && pickWeek && (
+      {showPickForm && !leagueCompleted && userIsAlive && isTouchdown && pickWeek && (
         <TouchdownPicker
           league={league}
           pickWeek={pickWeek}
@@ -179,12 +179,12 @@ export default function SurvivorView({ league }) {
       )}
 
       {/* Standard team pick form */}
-      {showPickForm && !leagueCompleted && !isTouchdown && pickWeekGames.length === 0 && (
+      {showPickForm && !leagueCompleted && userIsAlive && !isTouchdown && pickWeekGames.length === 0 && (
         <div className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10">
           <p className="text-sm text-text-primary text-center">No upcoming games available right now. Check back closer to game time.</p>
         </div>
       )}
-      {showPickForm && !leagueCompleted && !isTouchdown && pickWeekGames.length > 0 && (() => {
+      {showPickForm && !leagueCompleted && userIsAlive && !isTouchdown && pickWeekGames.length > 0 && (() => {
         // Group games by date
         const grouped = pickWeekGames.reduce((acc, game) => {
           const d = new Date(game.starts_at)

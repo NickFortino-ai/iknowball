@@ -549,7 +549,7 @@ export async function joinLeague(userId, inviteCode) {
 export async function getMyLeagues(userId, userTz) {
   const { data: memberships, error } = await supabase
     .from('league_members')
-    .select('league_id, role, display_order')
+    .select('league_id, role, display_order, is_alive')
     .eq('user_id', userId)
 
   if (error) throw error
@@ -578,9 +578,11 @@ export async function getMyLeagues(userId, userTz) {
 
   const roleMap = {}
   const orderMap = {}
+  const aliveMap = {}
   for (const m of memberships) {
     roleMap[m.league_id] = m.role
     orderMap[m.league_id] = m.display_order
+    aliveMap[m.league_id] = m.is_alive
   }
 
   // Pull draft_date + draft_status for fantasy leagues so the My Leagues
@@ -624,6 +626,7 @@ export async function getMyLeagues(userId, userTz) {
     draft_date: fantasyMeta[league.id]?.draft_date || null,
     draft_status: fantasyMeta[league.id]?.draft_status || null,
     survivor_alive: survivorAlive[league.id] ?? null,
+    survivor_eliminated: league.format === 'survivor' && league.status === 'active' && aliveMap[league.id] === false ? true : undefined,
   }))
 
   // Compute per-league readiness (green/yellow/red corner clip)

@@ -55,7 +55,7 @@ export default function LeagueCard({ league, noLink }) {
       className="block relative bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden hover:bg-text-primary/5 transition-colors"
     >
       {/* Readiness corner clip — tiny color flag with hover popover */}
-      {league.readiness && (
+      {league.readiness && !league.survivor_eliminated && (
         <div className="absolute top-0 right-0 z-20 group">
           <span
             className={`block w-3 h-3 rounded-bl-md ${
@@ -109,9 +109,11 @@ export default function LeagueCard({ league, noLink }) {
         )}
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-display text-lg truncate text-white">{league.name}</h3>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
-            {league.status}
-          </span>
+          {!league.survivor_eliminated && (
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
+              {league.status}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-text-muted min-h-[3.25rem] sm:min-h-0 content-start">
           <span className="font-semibold text-accent">
@@ -143,7 +145,7 @@ export default function LeagueCard({ league, noLink }) {
         )}
         {league.format === 'survivor' && league.status === 'active' && league.survivor_alive != null && (
           <div className="absolute right-5 bottom-4 text-right pointer-events-none">
-            <span className="text-xs text-correct font-semibold">{league.survivor_alive} still alive</span>
+            <span className="text-sm text-correct font-semibold">{league.survivor_alive} still alive</span>
           </div>
         )}
       </div>
