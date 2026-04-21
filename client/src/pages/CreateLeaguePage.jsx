@@ -1744,10 +1744,17 @@ export default function CreateLeaguePage() {
         )}
 
         {/* Submit */}
+        {!canSubmit && !createLeague.isPending && (
+          <p className="text-xs text-text-muted text-center mb-2">Fill out all required fields above to create your league</p>
+        )}
         <button
           type="submit"
           disabled={!canSubmit || createLeague.isPending}
-          className="w-full py-3 rounded-xl font-display text-lg bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`w-full py-3 rounded-xl font-display text-lg transition-colors ${
+            canSubmit && !createLeague.isPending
+              ? 'bg-accent text-white hover:bg-accent-hover'
+              : 'bg-text-muted/30 text-text-muted cursor-not-allowed'
+          }`}
         >
           {createLeague.isPending ? 'Creating...' : 'Create League'}
         </button>
