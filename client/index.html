@@ -36,6 +36,19 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Reset zoom on orientation change — iOS Safari auto-zooms on
+      // landscape and doesn't reset when returning to portrait.
+      window.addEventListener('orientationchange', function () {
+        var viewport = document.querySelector('meta[name=viewport]');
+        if (!viewport) return;
+        var original = viewport.getAttribute('content');
+        viewport.setAttribute('content', original + ', maximum-scale=1.0');
+        setTimeout(function () {
+          viewport.setAttribute('content', original);
+        }, 100);
+      });
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
