@@ -30,7 +30,7 @@ function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, 
   const receiverItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.receiver_user_id)
 
   const statusColors = {
-    pending: 'text-yellow-500 bg-yellow-500/10',
+    pending: 'text-yellow-500',
     pending_review: 'text-accent bg-accent/10',
     accepted: 'text-correct bg-correct/10',
     declined: 'text-incorrect bg-incorrect/10',
