@@ -172,21 +172,6 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
         </div>
       )}
 
-      {!parlayMode && onShare && userPick && (userPick.status === 'pending' || userPick.status === 'locked') && (
-        <div className="mt-3 text-center">
-          <button
-            onClick={(e) => { e.stopPropagation(); onShare(userPick.id) }}
-            disabled={isShared}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-              isShared
-                ? 'bg-bg-secondary text-text-muted cursor-default'
-                : 'bg-accent/10 text-accent hover:bg-accent/20'
-            }`}
-          >
-            {isShared ? 'Shared to Squad' : 'Share to Squad'}
-          </button>
-        </div>
-      )}
 
       {reactions?.length > 0 && (
         <div className="mt-2">

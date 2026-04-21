@@ -363,8 +363,6 @@ export default function PicksPage() {
                   onPick={handlePick}
                   onUndoPick={handleUndoPick}
                   isSubmitting={submitPick.isPending || deletePick.isPending}
-                  onShare={handleShare}
-                  isShared={sharedPickIds.has(picksMap[game.id]?.id)}
                   parlayMode={parlayMode}
                   parlayPickedTeam={parlayLegsMap[game.id] || null}
                   onParlayToggle={handleParlayToggle}
