@@ -120,22 +120,22 @@ function TransactionRow({ txn }) {
   const cfg = typeConfig[txn.type] || { icon: '?', color: 'text-text-muted', label: txn.type }
 
   return (
-    <div className="flex items-center gap-2.5 py-2.5 border-b border-text-primary/5 last:border-0">
-      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${cfg.color} bg-bg-secondary`}>
+    <div className="flex items-center gap-3 py-3.5 border-b border-text-primary/10 last:border-0">
+      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${cfg.color} bg-text-primary/10`}>
         {cfg.icon}
       </span>
       {player.headshot_url ? (
-        <img src={player.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+        <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
       ) : (
-        <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" />
+        <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0" />
       )}
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-text-primary">
+        <div className="text-base text-text-primary">
           <span className="font-semibold">{user.display_name || user.username}</span>
-          {' '}<span className="text-text-muted">{cfg.label}</span>{' '}
+          {' '}<span className="text-text-primary/60">{cfg.label}</span>{' '}
           <span className="font-semibold">{player.full_name}</span>
         </div>
-        <div className="text-[10px] text-text-muted">
+        <div className="text-xs text-text-muted">
           {player.position} · {player.team || 'FA'}
           {txn.bid_amount > 0 && <span> · ${txn.bid_amount} FAAB</span>}
           {' · '}{formatTimeAgo(txn.created_at)}
@@ -164,9 +164,9 @@ function TradeTransactionRow({ items, timestamp }) {
   )
 
   return (
-    <div className="py-2.5 border-b border-text-primary/5 last:border-0">
-      <div className="flex items-center gap-2.5">
-        <span className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0 text-accent bg-bg-secondary">
+    <div className="py-3.5 border-b border-text-primary/10 last:border-0">
+      <div className="flex items-center gap-3">
+        <span className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 text-accent bg-text-primary/10">
           {'\u21C4'}
         </span>
         <div className="flex-1 min-w-0">
@@ -367,11 +367,11 @@ export default function FantasyTrades({ league }) {
         <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>
       ) : activeView === 'activity' ? (
         /* Activity log */
-        <div className="rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden">
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 overflow-hidden">
           {!transactions?.length ? (
             <div className="text-center py-8 text-sm text-text-muted">No transactions yet.</div>
           ) : (
-            <div className="px-3">
+            <div className="px-4">
               {(() => {
                 // Group trade_send/trade_receive by trade_id into single entries
                 const rendered = new Set()
