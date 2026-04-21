@@ -89,6 +89,25 @@ export default function LeagueThread({ league }) {
     }
   }, [messages.length, autoScroll])
 
+  // When the keyboard opens on mobile, scroll to latest message
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    function onResize() {
+      if (autoScroll && bottomRef.current) {
+        bottomRef.current.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [autoScroll])
+
+  function handleInputFocus() {
+    setAutoScroll(true)
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 400)
+  }
+
   // Detect if user scrolled up
   function handleScroll() {
     const el = scrollRef.current
@@ -230,15 +249,15 @@ export default function LeagueThread({ league }) {
           This thread is archived
         </div>
       ) : (
-        <div className="border-t border-border px-4 py-3 relative">
+        <div className="px-3 py-2 relative">
           {/* Mention autocomplete */}
           {mentionActive && searchResults?.length > 0 && (
-            <div className="absolute bottom-full left-4 right-4 bg-bg-card border border-border rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto">
+            <div className="absolute bottom-full left-3 right-3 bg-bg-primary border border-text-primary/20 rounded-lg shadow-lg mb-1 max-h-40 overflow-y-auto">
               {searchResults.map((user) => (
                 <button
                   key={user.id}
                   onClick={() => insertMention(user)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-bg-card-hover text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-text-primary/5 text-left"
                 >
                   <Avatar user={user} size="xs" />
                   <span className="text-text-primary font-medium">{user.display_name || user.username}</span>
@@ -253,22 +272,24 @@ export default function LeagueThread({ league }) {
               value={input}
               onChange={(e) => {
                 handleInputChange(e)
-                // Auto-grow
                 e.target.style.height = 'auto'
                 e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px'
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Message the thread..."
+              onFocus={handleInputFocus}
+              placeholder="Message"
               rows={1}
-              className="flex-1 bg-bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
-              style={{ minHeight: '2.5rem', maxHeight: '6rem' }}
+              className="flex-1 bg-[#1c1c1e] border border-text-primary/20 rounded-full px-4 py-2 text-[15px] text-text-primary placeholder-text-muted resize-none focus:outline-none focus:border-text-primary/40 transition-colors max-h-24 overflow-y-auto"
+              style={{ minHeight: '2.5rem' }}
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || sendMessage.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
             >
-              Send
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
             </button>
           </div>
         </div>

@@ -340,7 +340,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
               placeholder={POST_TYPES.find((t) => t.key === postType)?.placeholder || 'Talk to us.'}
               maxLength={MAX_CHARS}
               rows={expanded ? 3 : 1}
-              className="w-full bg-transparent text-sm text-text-primary placeholder-text-muted resize-none outline-none transition-all"
+              className="w-full bg-transparent text-base text-text-primary placeholder-text-muted resize-none outline-none transition-all"
             />
 
             {/* Inline team autocomplete dropdown */}
