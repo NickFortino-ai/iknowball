@@ -43,7 +43,7 @@ function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, 
   }
 
   return (
-    <div className={`rounded-xl border border-text-primary/20 p-4 bg-bg-primary`}>
+    <div className={`rounded-xl border border-text-primary/20 p-4 bg-bg-primary/40`}>
       <div className="flex items-center gap-3 mb-3">
         <Avatar user={trade.proposer} size="sm" />
         <svg className="w-5 h-5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -344,7 +344,7 @@ export default function FantasyTrades({ league }) {
             key={v}
             onClick={() => setActiveView(v)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              activeView === v ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
+              activeView === v ? 'bg-accent text-white' : 'bg-bg-primary border border-text-primary/20 text-text-secondary'
             }`}
           >
             {v === 'activity' ? 'Activity' : `Trades${pending.length ? ` (${pending.length})` : ''}`}
@@ -369,7 +369,7 @@ export default function FantasyTrades({ league }) {
           {!transactions?.length ? (
             <div className="text-center py-8 text-sm text-text-muted">No transactions yet.</div>
           ) : (
-            <div className="px-4">
+            <div className="px-4 bg-bg-primary/30 rounded-xl border border-text-primary/10">
               {(() => {
                 // Group trade_send/trade_receive by trade_id into single entries
                 const rendered = new Set()
