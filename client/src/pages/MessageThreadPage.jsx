@@ -34,6 +34,7 @@ export default function MessageThreadPage() {
   const messagesEndRef = useRef(null)
   const scrollContainerRef = useRef(null)
   const didMarkRead = useRef(false)
+  const textareaRef = useRef(null)
 
   useRealtimeMessages(profile?.id)
 
@@ -53,9 +54,7 @@ export default function MessageThreadPage() {
     didMarkRead.current = true
   }, [messages.length])
 
-  // When the keyboard opens on mobile, scroll to the latest message.
-  // The visualViewport resize event fires after the keyboard finishes
-  // animating, so we get the final layout before scrolling.
+  // When the keyboard opens on mobile, scroll to the latest message
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
@@ -67,7 +66,6 @@ export default function MessageThreadPage() {
   }, [])
 
   function handleInputFocus() {
-    // Fire multiple times to cover different keyboard animation speeds
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 400)
   }
@@ -78,34 +76,43 @@ export default function MessageThreadPage() {
     if (!content) return
     sendMessage.mutate({ partnerId, content })
     setInput('')
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '2.5rem'
+    }
+  }
+
+  function handleTextareaChange(e) {
+    setInput(e.target.value)
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 128) + 'px'
   }
 
   return (
     <div className="max-w-lg mx-auto flex flex-col px-4" style={{ height: 'calc(100vh - 8rem)' }}>
-      {/* Header */}
-      <div className="flex items-center gap-3 pt-4 pb-3 border-b border-border mb-3">
+      {/* Header — centered like iMessage */}
+      <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10">
         <button
           onClick={() => navigate('/messages')}
-          className="p-1 rounded-lg text-text-muted hover:text-text-primary transition-colors"
+          className="p-1 text-accent hover:text-accent-hover transition-colors shrink-0"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5" />
-            <path d="M12 19l-7-7 7-7" />
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
         {partner && (
-          <>
-            <Avatar user={partner} size="md" />
-            <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">{partner.display_name || partner.username}</div>
-              <div className="text-xs text-text-muted">@{partner.username}</div>
-            </div>
-          </>
+          <div className="flex-1 flex flex-col items-center min-w-0">
+            <Avatar user={partner} size="lg" />
+            <div className="text-sm font-semibold text-text-primary mt-1 truncate">{partner.display_name || partner.username}</div>
+          </div>
         )}
+        {/* Spacer to balance the back button */}
+        <div className="w-[30px] shrink-0" />
       </div>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-1 pb-2">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-2 pt-2">
         {hasNextPage && (
           <div className="text-center py-2">
             <button
@@ -128,21 +135,43 @@ export default function MessageThreadPage() {
           messages.map((msg, i) => {
             const isMe = msg.sender_id === profile?.id
             const prev = messages[i - 1]
+            const next = messages[i + 1]
             const showTime = shouldShowTimestamp(msg.created_at, prev?.created_at)
+            const sameSenderAsPrev = prev && prev.sender_id === msg.sender_id && !showTime
+            const sameSenderAsNext = next && next.sender_id === msg.sender_id && !shouldShowTimestamp(next.created_at, msg.created_at)
+
+            // iMessage-style corner rounding:
+            // Solo or last in group: full tail corner (rounded-br-sm for me, rounded-bl-sm for them)
+            // First/middle in group: all corners rounded
+            const isLastInGroup = !sameSenderAsNext
+            const isFirstInGroup = !sameSenderAsPrev
+
+            let bubbleCorners
+            if (isMe) {
+              if (isFirstInGroup && isLastInGroup) bubbleCorners = 'rounded-2xl rounded-br-sm'
+              else if (isLastInGroup) bubbleCorners = 'rounded-2xl rounded-br-sm'
+              else if (isFirstInGroup) bubbleCorners = 'rounded-2xl rounded-br-lg'
+              else bubbleCorners = 'rounded-2xl rounded-br-lg'
+            } else {
+              if (isFirstInGroup && isLastInGroup) bubbleCorners = 'rounded-2xl rounded-bl-sm'
+              else if (isLastInGroup) bubbleCorners = 'rounded-2xl rounded-bl-sm'
+              else if (isFirstInGroup) bubbleCorners = 'rounded-2xl rounded-bl-lg'
+              else bubbleCorners = 'rounded-2xl rounded-bl-lg'
+            }
 
             return (
               <div key={msg.id}>
                 {showTime && (
-                  <div className="text-center text-[10px] text-text-muted py-2">
+                  <div className="text-center text-[11px] text-text-muted py-3">
                     {formatDate(msg.created_at)} {formatTime(msg.created_at)}
                   </div>
                 )}
-                <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} ${sameSenderAsPrev ? 'mt-[3px]' : 'mt-2'}`}>
                   <div
-                    className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm break-words ${
+                    className={`max-w-[75%] px-4 py-2.5 text-[15px] leading-snug break-words ${bubbleCorners} ${
                       isMe
-                        ? 'bg-accent text-white rounded-br-md'
-                        : 'bg-bg-card border border-border text-text-primary rounded-bl-md'
+                        ? 'bg-accent text-white'
+                        : 'bg-[#2a2a2e] text-text-primary'
                     }`}
                   >
                     {msg.content}
@@ -155,26 +184,28 @@ export default function MessageThreadPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSend} className="flex items-end gap-2 pt-3 border-t border-border">
+      {/* Input — pill shape like iMessage */}
+      <form onSubmit={handleSend} className="flex items-end gap-2 py-2">
         <textarea
+          ref={textareaRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleTextareaChange}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
           onFocus={handleInputFocus}
-          placeholder="Type a message..."
+          placeholder="Message"
           maxLength={2000}
           rows={1}
-          className="flex-1 bg-bg-input border border-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 transition-colors resize-none max-h-32 overflow-y-auto"
-          style={{ height: 'auto', minHeight: '2.5rem' }}
-          ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 128) + 'px' } }}
+          className="flex-1 bg-[#1c1c1e] border border-text-primary/20 rounded-full px-4 py-2 text-[15px] text-text-primary placeholder-text-muted focus:outline-none focus:border-text-primary/40 transition-colors resize-none max-h-32 overflow-y-auto"
+          style={{ minHeight: '2.5rem' }}
         />
         <button
           type="submit"
           disabled={!input.trim() || sendMessage.isPending}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+          className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
         >
-          Send
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+          </svg>
         </button>
       </form>
     </div>
