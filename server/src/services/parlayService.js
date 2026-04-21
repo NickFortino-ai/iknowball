@@ -59,9 +59,11 @@ export async function createParlay(userId, legs) {
   }
 
   for (const game of games) {
-    // Block legs on games where both sides have positive odds (broken market)
+    // Block parlay legs on games where both sides have reward > risk.
+    // Straight picks are fine, but in parlays the multiplier effect means
+    // picking all outcome combinations guarantees profit — an infinite points exploit.
     if (game.home_odds > 0 && game.away_odds > 0) {
-      const err = new Error('One or more games have invalid odds — picks not available')
+      const err = new Error('This game can\'t be included in a parlay because both sides have positive odds. Covering all outcomes would guarantee profit — which isn\'t fair to the competition. You can still make a straight pick on this game.')
       err.status = 400
       throw err
     }

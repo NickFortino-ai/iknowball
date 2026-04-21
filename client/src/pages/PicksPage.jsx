@@ -200,6 +200,11 @@ export default function PicksPage() {
   }
 
   function handleParlayToggle(gameId, side, game) {
+    // Block parlay legs on games where both sides have positive odds
+    if (game.home_odds > 0 && game.away_odds > 0) {
+      toast('This game can\'t be added to a parlay — both sides have positive odds, which would allow guaranteed profit. You can still make a straight pick.', 'error')
+      return
+    }
     const existing = parlayLegsMap[gameId]
     if (existing === side) {
       removeParlayLeg(gameId)
