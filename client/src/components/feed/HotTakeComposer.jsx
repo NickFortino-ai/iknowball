@@ -509,7 +509,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                     className={`px-2.5 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap transition-colors ${
                       selectedSport === sport.key
                         ? 'bg-accent text-white'
-                        : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                        : 'bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40'
                     }`}
                   >
                     {sport.label}

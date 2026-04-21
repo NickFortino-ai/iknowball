@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useMyInvitations } from '../../hooks/useInvitations'
@@ -63,8 +64,30 @@ export default function BottomTabBar() {
   const location = useLocation()
   const { data: invitations } = useMyInvitations(isAuthenticated)
   const pendingCount = invitations?.length || 0
+  const [inputFocused, setInputFocused] = useState(false)
+
+  // Hide the tab bar when any text input is focused (keyboard is open)
+  useEffect(() => {
+    function onFocus(e) {
+      if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) {
+        setInputFocused(true)
+      }
+    }
+    function onBlur(e) {
+      if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) {
+        setInputFocused(false)
+      }
+    }
+    document.addEventListener('focusin', onFocus)
+    document.addEventListener('focusout', onBlur)
+    return () => {
+      document.removeEventListener('focusin', onFocus)
+      document.removeEventListener('focusout', onBlur)
+    }
+  }, [])
 
   if (!isAuthenticated) return null
+  if (inputFocused) return null
 
   return (
     <nav className="flex-shrink-0 bg-bg-secondary border-t border-border md:hidden pb-[env(safe-area-inset-bottom)]">
