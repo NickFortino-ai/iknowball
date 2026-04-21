@@ -17,7 +17,7 @@ function LeaguesScoringModal({ open, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-card border border-border rounded-2xl shadow-lg max-w-md w-full p-6"
+        className="relative bg-bg-primary border border-text-primary/20 rounded-2xl shadow-lg max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <button onClick={onClose} className="absolute top-4 right-4 text-text-muted hover:text-text-primary transition-colors">
