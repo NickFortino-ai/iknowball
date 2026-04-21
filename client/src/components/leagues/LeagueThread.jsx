@@ -284,6 +284,7 @@ export default function LeagueThread({ league }) {
             />
             <button
               onClick={handleSend}
+              onMouseDown={(e) => e.preventDefault()}
               disabled={!input.trim() || sendMessage.isPending}
               className="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity"
             >
