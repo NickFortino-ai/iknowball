@@ -813,24 +813,26 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           <label className="block text-xs text-text-muted mb-2">League Backdrop</label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[240px] overflow-y-auto scrollbar-hide rounded-lg">
             {/* Submit custom */}
-            <button
-              type="button"
-              onClick={() => backdropFileRef.current?.click()}
-              className={`relative rounded-lg overflow-hidden border-2 border-dashed transition-all aspect-[16/9] flex flex-col items-center justify-center gap-1 ${
-                customBackdropFile ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-accent/50 bg-bg-primary'
-              }`}
-            >
-              {customBackdropPreview ? (
-                <img src={customBackdropPreview} alt="Custom" className="absolute inset-0 w-full h-full object-cover" />
-              ) : (
-                <>
-                  <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span className="text-[9px] text-text-muted font-semibold leading-tight text-center px-1">Submit your own</span>
-                </>
-              )}
-            </button>
+            <div className="relative" style={{ paddingBottom: '56.25%' }}>
+              <button
+                type="button"
+                onClick={() => backdropFileRef.current?.click()}
+                className={`absolute inset-0 rounded-lg overflow-hidden border-2 border-dashed transition-all flex flex-col items-center justify-center gap-1 ${
+                  customBackdropFile ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-accent/50 bg-bg-primary'
+                }`}
+              >
+                {customBackdropPreview ? (
+                  <img src={customBackdropPreview} alt="Custom" className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-[9px] text-text-muted font-semibold leading-tight text-center px-1">Submit your own</span>
+                  </>
+                )}
+              </button>
+            </div>
             <input
               ref={backdropFileRef}
               type="file"
@@ -854,50 +856,53 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               }}
             />
             {/* No backdrop option */}
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await updateLeague.mutateAsync({ leagueId: league.id, backdrop_image: null })
-                  setCustomBackdropFile(null)
-                  setCustomBackdropPreview(null)
-                  toast('Backdrop removed', 'success')
-                } catch (err) { toast(err.message || 'Failed', 'error') }
-              }}
-              className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-[16/9] flex items-center justify-center ${
-                !league.backdrop_image ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
-              } bg-bg-primary`}
-            >
-              <span className="text-[10px] text-text-muted font-semibold">None</span>
-            </button>
-            {(availableBackdrops || []).map((b) => (
+            <div className="relative" style={{ paddingBottom: '56.25%' }}>
               <button
-                key={b.filename}
                 type="button"
                 onClick={async () => {
                   try {
-                    await updateLeague.mutateAsync({ leagueId: league.id, backdrop_image: b.filename })
+                    await updateLeague.mutateAsync({ leagueId: league.id, backdrop_image: null })
                     setCustomBackdropFile(null)
                     setCustomBackdropPreview(null)
-                    toast('Backdrop updated!', 'success')
+                    toast('Backdrop removed', 'success')
                   } catch (err) { toast(err.message || 'Failed', 'error') }
                 }}
-                className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-[16/9] ${
-                  league.backdrop_image === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
-                }`}
+                className={`absolute inset-0 rounded-lg overflow-hidden border-2 transition-all flex items-center justify-center ${
+                  !league.backdrop_image ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
+                } bg-bg-primary`}
               >
-                <img src={getBackdropUrl(b.filename)} alt={b.label} className="w-full h-full object-cover" />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
-                  <span className="text-[10px] text-white font-medium">{b.label}</span>
-                </div>
-                {league.backdrop_image === b.filename && (
-                  <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                )}
+                <span className="text-[10px] text-text-muted font-semibold">None</span>
               </button>
+            </div>
+            {(availableBackdrops || []).map((b) => (
+              <div key={b.filename} className="relative" style={{ paddingBottom: '56.25%' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await updateLeague.mutateAsync({ leagueId: league.id, backdrop_image: b.filename })
+                      setCustomBackdropFile(null)
+                      setCustomBackdropPreview(null)
+                      toast('Backdrop updated!', 'success')
+                    } catch (err) { toast(err.message || 'Failed', 'error') }
+                  }}
+                  className={`absolute inset-0 rounded-lg overflow-hidden border-2 transition-all ${
+                    league.backdrop_image === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
+                  }`}
+                >
+                  <img src={getBackdropUrl(b.filename)} alt={b.label} className="w-full h-full object-cover" />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                    <span className="text-[10px] text-white font-medium">{b.label}</span>
+                  </div>
+                  {league.backdrop_image === b.filename && (
+                    <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              </div>
             ))}
           </div>
           <p className="text-xs text-text-muted mt-1.5">Custom images submitted for admin review.</p>
