@@ -32,7 +32,7 @@ function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, 
   const statusColors = {
     pending: 'text-yellow-500',
     pending_review: 'text-accent',
-    accepted: 'text-correct bg-correct/10',
+    accepted: 'text-correct',
     declined: 'text-incorrect bg-incorrect/10',
     cancelled: 'text-text-muted bg-text-primary/5',
     vetoed: 'text-incorrect bg-incorrect/10',
