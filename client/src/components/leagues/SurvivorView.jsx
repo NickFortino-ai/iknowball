@@ -119,7 +119,7 @@ export default function SurvivorView({ league }) {
           { value: board.members?.filter((m) => !m.is_alive).length || 0, label: 'Eliminated', color: 'text-incorrect' },
           { value: board.display_period_number || currentWeek?.week_number || '—', label: periodLabel, color: 'text-text-primary' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-bg-card/50 md:bg-bg-card/30 backdrop-blur-sm rounded-xl border border-text-primary/20 w-[5.5rem] md:w-24 py-2 text-center">
+          <div key={stat.label} className="bg-bg-card/10 backdrop-blur-sm rounded-xl border border-text-primary/10 w-[5.5rem] md:w-24 py-2 text-center">
             <div className={`font-display text-xl md:text-2xl ${stat.color}`}>{stat.value}</div>
             <div className="text-[10px] text-text-muted">{stat.label}</div>
           </div>
