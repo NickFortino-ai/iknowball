@@ -1602,7 +1602,7 @@ export default function LeagueDetailPage() {
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
             )}
             {tab === 'Transactions' && isCommissioner && pendingReviewCount > 0 && activeTab !== i && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-incorrect text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+              <span className="absolute top-0.5 right-0.5 min-w-[16px] h-[16px] bg-incorrect text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
                 {pendingReviewCount}
               </span>
             )}

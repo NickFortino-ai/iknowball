@@ -319,7 +319,8 @@ export default function FantasyTrades({ league }) {
   const { data: transactions, isLoading: txnLoading } = useFantasyTransactions(league.id)
   const respond = useRespondToTrade(league.id)
   const [showProposeModal, setShowProposeModal] = useState(false)
-  const [activeView, setActiveView] = useState('activity') // 'activity' | 'trades'
+  const subtab = new URLSearchParams(window.location.search).get('subtab')
+  const [activeView, setActiveView] = useState(subtab === 'trades' ? 'trades' : 'activity') // 'activity' | 'trades'
 
   const isLoading = tradesLoading || txnLoading
 
