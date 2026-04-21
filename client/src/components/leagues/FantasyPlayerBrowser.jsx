@@ -276,12 +276,12 @@ export default function FantasyPlayerBrowser({ league }) {
           2025 Stats
         </div>
       )}
-      {/* Single horizontal scroll container — header + all rows scroll together */}
-      <div className="overflow-x-auto scrollbar-hide">
+      {/* Single scroll container — header sticks at top, everything scrolls horizontally together */}
+      <div className="overflow-x-auto scrollbar-hide max-h-[65vh] overflow-y-auto">
         <div className="min-w-[900px]">
-        {/* Header */}
-        <div className="border-b border-border bg-bg-primary/40 flex text-[10px] font-bold text-text-muted uppercase tracking-wider">
-          <div className="sticky left-0 z-20 bg-bg-primary/95 flex items-center shrink-0">
+        {/* Header — sticky top so it stays visible during vertical scroll */}
+        <div className="border-b border-border bg-bg-primary flex text-[10px] font-bold text-text-muted uppercase tracking-wider sticky top-0 z-30">
+          <div className="sticky left-0 z-20 bg-bg-primary flex items-center shrink-0">
             <button
               type="button"
               onClick={() => handleSort('rank')}
@@ -310,7 +310,7 @@ export default function FantasyPlayerBrowser({ league }) {
           </div>
         </div>
         {/* Rows */}
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div>
           {isLoading ? (
             <div className="text-center text-sm text-text-muted py-8">Loading...</div>
           ) : (players || []).map((player, idx) => {
