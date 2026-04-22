@@ -9,10 +9,8 @@ export default function FeaturedPropSection({ date, sportKey, fallback = false, 
   const { data: props, isLoading } = useFeaturedProps(dateStr, { fallback })
   const { data: myPropPicks } = useMyPropPicks()
   // Poll live stats only when we actually have a locked pick on a live game.
-  const hasLivePropGame = (myPropPicks || []).some(
-    (p) => p.status === 'locked' && p.player_props?.games?.status === 'live'
-  )
-  const { data: liveStatsMap } = useMyPropLiveStats({ hasLive: hasLivePropGame })
+  const hasLockedProps = (myPropPicks || []).some((p) => p.status === 'locked')
+  const { data: liveStatsMap } = useMyPropLiveStats({ hasLive: hasLockedProps })
   const submitPick = useSubmitPropPick()
   const deletePick = useDeletePropPick()
   const [expanded, setExpanded] = useState(defaultExpanded)

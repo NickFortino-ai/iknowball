@@ -112,10 +112,8 @@ export default function ResultsPage() {
   // Separate poll for live prop stats — only runs when there's at least one
   // locked pick on a live game. Merged into propPicks at render time so
   // PropCard's `pick.live_stat` access continues to work unchanged.
-  const hasLivePropGame = (propPicks || []).some(
-    (p) => p.status === 'locked' && p.player_props?.games?.status === 'live'
-  )
-  const { data: liveStatsMap } = useMyPropLiveStats({ hasLive: hasLivePropGame })
+  const hasLockedProps = (propPicks || []).some((p) => p.status === 'locked')
+  const { data: liveStatsMap } = useMyPropLiveStats({ hasLive: hasLockedProps })
 
   const todayKey = useTodayKey()
 
