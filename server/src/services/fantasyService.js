@@ -2018,13 +2018,12 @@ export async function getRoster(leagueId, userId) {
 
   // Enrich with cumulative season stats + total season fantasy points
   try {
-    const { getCurrentNflWeek } = await import('./tdPassService.js')
-    const { season } = await getCurrentNflWeek()
     const { data: settings } = await supabase
       .from('fantasy_settings')
-      .select('scoring_format, scoring_rules')
+      .select('scoring_format, scoring_rules, season')
       .eq('league_id', leagueId)
       .single()
+    const season = settings?.season || new Date().getFullYear()
     const rules = settings?.scoring_rules || buildScoringRulesFromPreset(settings?.scoring_format)
     const playerIds = rows.map((r) => r.player_id).filter(Boolean)
     if (playerIds.length) {
