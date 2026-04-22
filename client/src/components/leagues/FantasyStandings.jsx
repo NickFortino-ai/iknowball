@@ -62,31 +62,94 @@ export default function FantasyStandings({ league, isSalaryCap }) {
     return [...standings].sort((a, b) => sortDir === 'desc' ? b[key] - a[key] : a[key] - b[key])
   })()
 
+  const StandingsRow = ({ s }) => (
+    <>
+      <td className="py-3.5 px-2 text-center w-8">
+        <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
+      </td>
+      <td className="py-3.5 px-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Avatar user={s.user} size="lg" className="shrink-0" />
+          <div className="min-w-0 overflow-hidden">
+            <div className="font-bold text-sm md:text-base text-text-primary truncate">
+              {s.user?.display_name || s.user?.username}
+            </div>
+            {s.fantasyTeamName && (
+              <div className="text-[10px] text-text-muted italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
+            )}
+          </div>
+        </div>
+      </td>
+      <td className="py-3.5 px-3 text-center text-text-primary text-sm md:text-base font-semibold whitespace-nowrap">
+        {isSalaryCap
+          ? (s.wins > 0 ? s.wins : '--')
+          : (s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}${s.ties ? `-${s.ties}` : ''}` : '--')}
+      </td>
+      <td className="py-3.5 px-3 text-center text-white font-display text-sm md:text-base whitespace-nowrap">
+        {s.pointsFor > 0 ? s.pointsFor.toFixed(1) : '--'}
+      </td>
+      {!isSalaryCap && (
+        <td className="py-3.5 px-3 text-center text-text-primary text-sm md:text-base whitespace-nowrap">
+          {s.pointsAgainst > 0 ? s.pointsAgainst.toFixed(1) : '--'}
+        </td>
+      )}
+      {!isSalaryCap && (
+        <td className="py-3.5 px-3 text-center text-text-muted text-sm">{s.streak}</td>
+      )}
+    </>
+  )
+
   return (
     <div>
-      <div className="flex">
-        {/* Sticky left: rank + manager */}
+      {/* Desktop: full-width table */}
+      <div className="hidden md:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-text-primary/10 text-text-muted text-xs">
+              <th className="py-3 px-2 text-center font-semibold w-10">#</th>
+              <th className="py-3 px-2 text-left font-semibold">Manager</th>
+              <th className="py-3 px-3 text-center font-semibold">{isSalaryCap ? 'Wins' : 'W-L'}</th>
+              <th
+                className={`py-3 px-3 text-center font-semibold ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`}
+                onClick={() => !isSalaryCap && handleSortClick('pf')}
+              >
+                {isSalaryCap ? 'Points' : 'PF'}{sortCol === 'pf' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+              </th>
+              {!isSalaryCap && (
+                <th className="py-3 px-3 text-center font-semibold cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('pa')}>
+                  PA{sortCol === 'pa' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+              )}
+              {!isSalaryCap && <th className="py-3 px-3 text-center font-semibold">Streak</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedStandings.map((s) => (
+              <tr key={s.userId} onClick={() => setSelectedUser(s)} className="border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer">
+                <StandingsRow s={s} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile: sticky left + scrollable right */}
+      <div className="md:hidden flex">
         <div className="shrink-0">
           <div className="flex border-b border-text-primary/10 text-text-muted text-xs">
             <div className="py-3 px-2 text-center font-semibold w-8">#</div>
-            <div className="py-3 px-2 text-left font-semibold w-36 md:w-48">Manager</div>
+            <div className="py-3 px-2 text-left font-semibold w-36">Manager</div>
           </div>
           {sortedStandings.map((s) => (
-            <div
-              key={s.userId}
-              onClick={() => setSelectedUser(s)}
-              className="flex items-center border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer"
-            >
+            <div key={s.userId} onClick={() => setSelectedUser(s)} className="flex items-center border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer">
               <div className="py-3.5 px-2 text-center w-8">
                 <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
               </div>
-              <div className="py-3.5 px-2 w-36 md:w-48">
+              <div className="py-3.5 px-2 w-36">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Avatar user={s.user} size="lg" className="shrink-0" />
                   <div className="min-w-0 overflow-hidden">
-                    <div className="font-bold text-sm text-text-primary truncate">
-                      {s.user?.display_name || s.user?.username}
-                    </div>
+                    <div className="font-bold text-sm text-text-primary truncate">{s.user?.display_name || s.user?.username}</div>
                     {s.fantasyTeamName && (
                       <div className="text-[10px] text-text-muted italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
                     )}
@@ -96,53 +159,32 @@ export default function FantasyStandings({ league, isSalaryCap }) {
             </div>
           ))}
         </div>
-
-        {/* Scrollable right: stats columns */}
         <div className="flex-1 overflow-x-auto">
           <div className="flex border-b border-text-primary/10 text-text-muted text-xs min-w-max">
             <div className="py-3 px-3 text-center font-semibold w-16">{isSalaryCap ? 'Wins' : 'W-L'}</div>
-            <div
-              className={`py-3 px-3 text-center font-semibold w-16 ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`}
-              onClick={() => !isSalaryCap && handleSortClick('pf')}
-            >
+            <div className={`py-3 px-3 text-center font-semibold w-16 ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`} onClick={() => !isSalaryCap && handleSortClick('pf')}>
               {isSalaryCap ? 'Points' : 'PF'}{sortCol === 'pf' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
             </div>
             {!isSalaryCap && (
-              <div
-                className="py-3 px-3 text-center font-semibold w-16 cursor-pointer select-none hover:text-text-primary"
-                onClick={() => handleSortClick('pa')}
-              >
+              <div className="py-3 px-3 text-center font-semibold w-16 cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('pa')}>
                 PA{sortCol === 'pa' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
               </div>
             )}
             {!isSalaryCap && <div className="py-3 px-3 text-center font-semibold w-16">Streak</div>}
           </div>
           {sortedStandings.map((s) => (
-            <div
-              key={s.userId}
-              onClick={() => setSelectedUser(s)}
-              className="flex items-center border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer min-w-max"
-            >
+            <div key={s.userId} onClick={() => setSelectedUser(s)} className="flex items-center border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer min-w-max">
               <div className="py-3.5 px-3 text-center text-text-primary text-sm w-16">
-                {isSalaryCap
-                  ? (s.wins > 0 ? s.wins : '--')
-                  : (s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}${s.ties ? `-${s.ties}` : ''}` : '--')}
+                {isSalaryCap ? (s.wins > 0 ? s.wins : '--') : (s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}${s.ties ? `-${s.ties}` : ''}` : '--')}
               </div>
-              <div className="py-3.5 px-3 text-center text-white font-display text-sm w-16">
-                {s.pointsFor > 0 ? s.pointsFor.toFixed(1) : '--'}
-              </div>
-              {!isSalaryCap && (
-                <div className="py-3.5 px-3 text-center text-text-primary text-sm w-16">
-                  {s.pointsAgainst > 0 ? s.pointsAgainst.toFixed(1) : '--'}
-                </div>
-              )}
-              {!isSalaryCap && (
-                <div className="py-3.5 px-3 text-center text-text-muted text-sm w-16">{s.streak}</div>
-              )}
+              <div className="py-3.5 px-3 text-center text-white font-display text-sm w-16">{s.pointsFor > 0 ? s.pointsFor.toFixed(1) : '--'}</div>
+              {!isSalaryCap && <div className="py-3.5 px-3 text-center text-text-primary text-sm w-16">{s.pointsAgainst > 0 ? s.pointsAgainst.toFixed(1) : '--'}</div>}
+              {!isSalaryCap && <div className="py-3.5 px-3 text-center text-text-muted text-sm w-16">{s.streak}</div>}
             </div>
           ))}
         </div>
       </div>
+
       {sortedStandings.length === 0 && (
         <div className="text-center py-8 text-text-muted text-sm">No members yet</div>
       )}
