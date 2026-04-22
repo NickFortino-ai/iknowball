@@ -33,39 +33,39 @@ const STARTER_SLOTS = [
 
 const POSITION_STAT_CONFIG = {
   QB: [
-    { key: 'pass_yd', label: 'yd', comma: true },
-    { key: 'pass_td', label: 'td' },
-    { key: 'pass_int', label: 'int' },
-    { key: 'rush_yd', label: 'rush' },
+    { key: 'pass_yd', label: 'PYD', comma: true },
+    { key: 'pass_td', label: 'PTD' },
+    { key: 'pass_int', label: 'INT' },
+    { key: 'rush_yd', label: 'RYD' },
   ],
   RB: [
-    { key: 'rush_yd', label: 'rush', comma: true },
-    { key: 'rush_td', label: 'td' },
-    { key: 'rec', label: 'rec' },
-    { key: 'rec_yd', label: 'reyd' },
+    { key: 'rush_yd', label: 'RYD', comma: true },
+    { key: 'rush_td', label: 'RTD' },
+    { key: 'rec', label: 'REC' },
+    { key: 'rec_yd', label: 'REYD' },
   ],
   WR: [
-    { key: 'rec', label: 'rec' },
-    { key: 'rec_yd', label: 'yd', comma: true },
-    { key: 'rec_td', label: 'td' },
-    { key: 'rec_tgt', label: 'tgt' },
+    { key: 'rec', label: 'REC' },
+    { key: 'rec_yd', label: 'REYD', comma: true },
+    { key: 'rec_td', label: 'RETD' },
+    { key: 'rec_tgt', label: 'TGT' },
   ],
   TE: [
-    { key: 'rec', label: 'rec' },
-    { key: 'rec_yd', label: 'yd', comma: true },
-    { key: 'rec_td', label: 'td' },
-    { key: 'rec_tgt', label: 'tgt' },
+    { key: 'rec', label: 'REC' },
+    { key: 'rec_yd', label: 'REYD', comma: true },
+    { key: 'rec_td', label: 'RETD' },
+    { key: 'rec_tgt', label: 'TGT' },
   ],
   K: [
-    { key: 'fgm', label: 'fg' },
+    { key: 'fgm', label: 'FGM' },
     { key: 'fgm_50_plus', label: '50+' },
-    { key: 'xpm', label: 'xp' },
+    { key: 'xpm', label: 'XPM' },
   ],
   DEF: [
-    { key: 'def_sack', label: 'sk' },
-    { key: 'def_int', label: 'int' },
-    { key: 'def_fum_rec', label: 'fr' },
-    { key: 'def_td', label: 'td' },
+    { key: 'def_sack', label: 'SCK' },
+    { key: 'def_int', label: 'INT' },
+    { key: 'def_fum_rec', label: 'FR' },
+    { key: 'def_td', label: 'DTD' },
   ],
 }
 
@@ -699,8 +699,8 @@ export default function FantasyMyTeam({ league }) {
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
-          <span className="hidden md:block text-[10px] uppercase tracking-wider text-text-muted/60 mr-auto ml-4">Season Stats</span>
+          <h3 className="text-base font-semibold text-text-primary flex-1">Starting Lineup</h3>
+          <span className="hidden md:block text-[9px] uppercase tracking-wider text-white/50 mr-20">Season Stats</span>
           {(isCurrentWeek || isFutureWeek) && !editMode && (
             <button
               onClick={() => setEditMode(true)}

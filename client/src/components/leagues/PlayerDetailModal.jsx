@@ -125,7 +125,7 @@ function CurrentWeekNarrative({ position, week }) {
 
   return (
     <div>
-      {pts && <div className="font-display text-lg text-accent mb-1">{pts} pts</div>}
+      {pts && <div className="font-display text-lg text-white mb-1">{pts} pts</div>}
       <p className="text-sm text-text-primary leading-relaxed">
         {parts.length > 0 ? parts.join('. ') + '.' : 'No significant stats recorded.'}
       </p>
@@ -161,7 +161,7 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
                 return (
                   <td
                     key={c.key}
-                    className={`px-2 py-2 text-right whitespace-nowrap ${c.key === 'pts' ? 'text-accent font-semibold' : 'text-text-primary'}`}
+                    className={`px-2 py-2 text-right whitespace-nowrap ${c.key === 'pts' ? 'text-white font-semibold' : 'text-text-primary'}`}
                   >
                     {display}
                   </td>
