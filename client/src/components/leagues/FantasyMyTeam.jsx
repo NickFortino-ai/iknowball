@@ -109,7 +109,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
         type="button"
         onClick={handleRowClick}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors text-left ${
-          isSelected ? 'border-accent bg-accent/10' : 'border-text-primary/10 bg-bg-primary hover:bg-bg-card-hover'
+          isSelected ? 'border-accent bg-accent/10' : 'border-text-primary/10 bg-bg-primary/40 hover:bg-bg-card-hover'
         } ${dimmed ? 'opacity-40' : ''}`}
       >
         {row?.nfl_players?.headshot_url && (
@@ -133,9 +133,8 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           const statLine = formatSeasonStats(row.nfl_players.position, row.season_stats)
           if (!statLine) return null
           return (
-            <div className="hidden md:flex flex-col items-end shrink-0 mr-3">
-              <div className="text-[9px] uppercase tracking-wider text-text-muted/60 mb-0.5">Season Stats</div>
-              <div className="text-xs text-text-muted tabular-nums whitespace-nowrap">{statLine}</div>
+            <div className="hidden md:block shrink-0 mr-4">
+              <div className="text-sm text-white tabular-nums whitespace-nowrap">{statLine}</div>
             </div>
           )
         })()}
@@ -701,6 +700,7 @@ export default function FantasyMyTeam({ league }) {
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
+          <span className="hidden md:block text-[10px] uppercase tracking-wider text-text-muted/60 mr-auto ml-4">Season Stats</span>
           {(isCurrentWeek || isFutureWeek) && !editMode && (
             <button
               onClick={() => setEditMode(true)}
