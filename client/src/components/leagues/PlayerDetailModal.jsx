@@ -184,23 +184,12 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
     return () => unlockScroll()
   }, [])
 
-  // Prevent background scroll on touch when modal content doesn't overflow
-  const handleTouchMove = useCallback((e) => {
-    const el = contentRef.current
-    if (!el) return
-    const hasOverflow = el.scrollHeight > el.clientHeight
-    if (!hasOverflow) {
-      e.preventDefault()
-    }
-  }, [])
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose} onTouchMove={handleTouchMove}>
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
       <div
         ref={contentRef}
-        className="bg-bg-primary border border-text-primary/20 w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-bg-primary border border-text-primary/20 w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[85vh] overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
-        onTouchMove={(e) => e.stopPropagation()}
       >
         {/* Close */}
         <div className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-end z-10">
