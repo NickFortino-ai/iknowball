@@ -546,12 +546,20 @@ export default function FantasyMyTeam({ league }) {
         </button>
       </div>
 
-      {/* Past week: read-only notice + total */}
+      {/* Past week: win/loss result + total */}
       {isPastWeek && historyData?.roster?.length > 0 && (
-        <div className="text-center text-xs text-text-muted">
-          Lineup as locked for Week {activeWeek}
+        <div className="text-center text-sm">
+          {historyData.matchup_result === 'win' ? (
+            <span className="text-correct font-semibold">You won Week {activeWeek}</span>
+          ) : historyData.matchup_result === 'loss' ? (
+            <span className="text-incorrect font-semibold">You lost Week {activeWeek}</span>
+          ) : historyData.matchup_result === 'tie' ? (
+            <span className="text-text-muted font-semibold">Week {activeWeek} was a tie</span>
+          ) : (
+            <span className="text-text-muted">Week {activeWeek} Final</span>
+          )}
           {historyData.team_total != null && (
-            <span className="ml-2 text-text-primary font-semibold">{historyData.team_total.toFixed(2)} pts</span>
+            <span className="ml-2 text-white font-display">{historyData.team_total.toFixed(2)} pts</span>
           )}
         </div>
       )}

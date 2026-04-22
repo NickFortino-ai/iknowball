@@ -856,7 +856,23 @@ router.get('/lineup-history', async (req, res) => {
     }
   })
 
-  res.json({ roster, week: w, season: s, team_total: Math.round(teamTotal * 100) / 100 })
+  // Determine win/loss result for this week
+  let matchup_result = null
+  const { data: matchup } = await supabase
+    .from('fantasy_matchups')
+    .select('home_user_id, away_user_id, home_points, away_points, status')
+    .eq('league_id', league_id)
+    .eq('week', w)
+    .or(`home_user_id.eq.${uid},away_user_id.eq.${uid}`)
+    .single()
+  if (matchup && matchup.status === 'completed') {
+    const isHome = matchup.home_user_id === uid
+    const myPts = isHome ? matchup.home_points : matchup.away_points
+    const oppPts = isHome ? matchup.away_points : matchup.home_points
+    matchup_result = myPts > oppPts ? 'win' : myPts < oppPts ? 'loss' : 'tie'
+  }
+
+  res.json({ roster, week: w, season: s, team_total: Math.round(teamTotal * 100) / 100, matchup_result })
 })
 
 export default router
