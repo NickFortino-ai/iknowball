@@ -699,19 +699,19 @@ export default function FantasyMyTeam({ league }) {
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-base font-semibold text-text-primary flex-1">Starting Lineup</h3>
-          <span className="hidden md:block text-[9px] uppercase tracking-wider text-white/50 mr-20">Season Stats</span>
+          <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
           {(isCurrentWeek || isFutureWeek) && !editMode && (
             <button
               onClick={() => setEditMode(true)}
-              className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors px-3 py-1 rounded-lg border border-accent/30 hover:border-accent"
+              className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors px-3 py-1 rounded-lg border border-accent/30 hover:border-accent ml-3"
             >
               Edit
             </button>
           )}
           {editMode && (
-            <span className="text-[10px] text-text-muted">Tap a slot or player to swap</span>
+            <span className="text-[10px] text-text-muted ml-3">Tap a slot or player to swap</span>
           )}
+          <span className="hidden md:block text-[10px] uppercase tracking-wider text-white/70 font-semibold ml-auto">Season Totals</span>
         </div>
         <div className="p-3 space-y-2">
           {STARTER_SLOTS.map((slotDef) => {
