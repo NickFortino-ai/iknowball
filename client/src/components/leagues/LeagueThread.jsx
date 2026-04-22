@@ -207,18 +207,10 @@ export default function LeagueThread({ league }) {
 
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
-          const showDate = shouldShowDate(msg.created_at, prev?.created_at)
-          const showTime = shouldShowTimestamp(msg.created_at, prev?.created_at)
-          const sameAuthor = prev && prev.user_id === msg.user_id && !showTime
+          const sameAuthor = prev && prev.user_id === msg.user_id
 
           return (
             <div key={msg.id}>
-              {showDate && (
-                <div className="text-center text-xs text-text-muted py-2">
-                  {formatDate(msg.created_at)}
-                </div>
-              )}
-
               <div className={`flex gap-2.5 ${sameAuthor ? 'mt-0.5' : 'mt-3'}`}>
                 {sameAuthor ? (
                   <div className="w-7 shrink-0" />
@@ -231,7 +223,6 @@ export default function LeagueThread({ league }) {
                       <span className="text-xs font-semibold text-text-primary">
                         {msg.user?.display_name || msg.user?.username}
                       </span>
-                      <span className="text-xs text-text-muted">{formatTime(msg.created_at)}</span>
                     </div>
                   )}
                   <div className="text-sm text-text-primary leading-relaxed">
