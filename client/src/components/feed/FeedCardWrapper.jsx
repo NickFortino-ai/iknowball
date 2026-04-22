@@ -56,7 +56,7 @@ export default function FeedCardWrapper({
           <span className="text-xs text-text-muted">
             @{item.username}
             {streakCount >= 3 && (
-              <span className="ml-1.5 inline-flex items-center text-[10px] font-bold bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded-full">{'\uD83D\uDD25'}{streakCount}</span>
+              <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-orange-400 px-1.5 py-0.5 rounded-full">{'\uD83D\uDD25'}{streakCount}</span>
             )}
           </span>
         </div>

@@ -68,8 +68,8 @@ export default function StreakDetailModal({ streakId, onClose }) {
             {/* Status */}
             <div className={`text-sm font-medium px-3 py-2 rounded-lg ${
               data.isActive
-                ? 'bg-correct/10 text-correct'
-                : 'bg-bg-secondary text-text-muted'
+                ? 'text-correct'
+                : 'text-text-muted'
             }`}>
               {data.isActive
                 ? 'Streak is still active!'

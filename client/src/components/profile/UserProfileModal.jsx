@@ -609,7 +609,7 @@ export default function UserProfileModal({ userId, onClose }) {
                   return (
                     <span
                       key={crown}
-                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-accent/15 text-accent text-xs font-semibold"
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-accent text-xs font-semibold"
                     >
                       <span>👑</span>
                       {label}
@@ -625,7 +625,7 @@ export default function UserProfileModal({ userId, onClose }) {
                 {user.records.map((record) => (
                   <span
                     key={record.key}
-                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-500/15 text-yellow-500 text-xs font-semibold"
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-yellow-500 text-xs font-semibold"
                   >
                     <span>🏆</span>
                     {record.label} — {record.value}

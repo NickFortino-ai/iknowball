@@ -34,7 +34,7 @@ export default function ParlayFeedCard({ item, reactions, onUserTap }) {
             {isDogParlay ? `${'\uD83D\uDC36'} Dog Parlay` : `${parlay.leg_count}-Leg Parlay`}
           </span>
           <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-            won ? 'bg-correct/20 text-correct' : 'bg-incorrect/20 text-incorrect'
+            won ? 'text-correct' : 'text-incorrect'
           }`}>
             {won ? 'WON' : 'LOST'}
           </span>

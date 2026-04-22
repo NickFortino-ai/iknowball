@@ -48,7 +48,7 @@ export default function PickFeedCard({ item, reactions, onUserTap }) {
           <span className="font-semibold text-sm">{pick.picked_team_name}</span>
           <span className="text-xs text-text-muted">{formatOdds(pick.odds_at_pick)}</span>
           {pick.multiplier > 1 && (
-            <span className="text-[10px] font-bold bg-accent/20 text-accent px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-bold text-accent px-1.5 py-0.5 rounded">
               {pick.multiplier}x
             </span>
           )}

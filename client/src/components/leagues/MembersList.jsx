@@ -28,7 +28,7 @@ export default function MembersList({ members, pendingInvitations, commissionerI
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm truncate">{user.display_name || user.username}</span>
                   {isComm && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-tier-hof/20 text-tier-hof flex-shrink-0">
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-tier-hof flex-shrink-0">
                       Commish
                     </span>
                   )}
@@ -38,14 +38,14 @@ export default function MembersList({ members, pendingInvitations, commissionerI
             </div>
             <div className="flex items-center gap-2">
               {m.is_alive === false && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-incorrect/20 text-incorrect">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded text-incorrect">
                   Eliminated
                 </span>
               )}
               {bracketSubmittedIds && (
                 bracketSubmittedIds.has(m.user_id)
-                  ? <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-correct/15 text-correct">Complete</span>
-                  : <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-text-muted/15 text-text-muted">Incomplete</span>
+                  ? <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-correct">Complete</span>
+                  : <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-text-muted">Incomplete</span>
               )}
             </div>
           </div>

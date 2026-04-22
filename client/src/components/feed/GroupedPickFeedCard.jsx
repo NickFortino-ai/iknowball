@@ -99,7 +99,7 @@ export default function GroupedPickFeedCard({ item, reactions, onUserTap }) {
           <div className="text-sm font-medium text-text-primary leading-tight">
             {getDescriptiveText(type, users.length)}
             {item.current_streak >= 3 && (
-              <span className="ml-1.5 inline-flex items-center text-[10px] font-bold bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded-full">{'\uD83D\uDD25'}{item.current_streak}</span>
+              <span className="ml-1.5 inline-flex items-center text-[10px] font-bold text-orange-400 px-1.5 py-0.5 rounded-full">{'\uD83D\uDD25'}{item.current_streak}</span>
             )}
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function GroupedPickFeedCard({ item, reactions, onUserTap }) {
             <span className="font-semibold text-sm">{pick.picked_team_name}</span>
             <span className="text-xs text-text-muted">{formatOdds(pick.odds_at_pick)}</span>
             {type === 'pick' && pick.multiplier > 1 && (
-              <span className="text-[10px] font-bold bg-accent/20 text-accent px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-bold text-accent px-1.5 py-0.5 rounded">
                 {pick.multiplier}x
               </span>
             )}
@@ -193,8 +193,8 @@ function MultiplierBanner({ pick, isHit }) {
     <div className="flex items-center gap-3 mb-2">
       <span className={`text-sm font-bold px-3 py-1 rounded-full ${
         isHit
-          ? 'bg-correct/20 text-correct'
-          : 'bg-incorrect/20 text-incorrect'
+          ? 'text-correct'
+          : 'text-incorrect'
       }`}>
         {pick.multiplier}x
       </span>

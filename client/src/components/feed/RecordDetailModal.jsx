@@ -14,8 +14,8 @@ function StreakDetail({ picks, isActive, recordValue }) {
       {/* Status */}
       <div className={`text-sm font-medium px-3 py-2 rounded-lg ${
         isActive
-          ? 'bg-correct/10 text-correct'
-          : 'bg-bg-secondary text-text-muted'
+          ? 'text-correct'
+          : 'text-text-muted'
       }`}>
         {isActive
           ? `${recordValue} win streak is still active!`

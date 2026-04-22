@@ -165,7 +165,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
           {' / '}
           <span className="text-correct">+{userPick.reward_at_submission || calculateRewardPoints(userPick.odds_at_pick)}</span>
           {userPick.multiplier > 1 && (
-            <span className="ml-1.5 text-[10px] font-bold bg-accent/20 text-accent px-1.5 py-0.5 rounded">
+            <span className="ml-1.5 text-[10px] font-bold text-accent px-1.5 py-0.5 rounded">
               {userPick.multiplier}x
             </span>
           )}

@@ -24,8 +24,8 @@ export default function MultiplierFeedCard({ item, reactions, onUserTap }) {
       <div className="flex items-center gap-3 mb-2">
         <span className={`text-sm font-bold px-3 py-1 rounded-full ${
           isHit
-            ? 'bg-correct/20 text-correct'
-            : 'bg-incorrect/20 text-incorrect'
+            ? 'text-correct'
+            : 'text-incorrect'
         }`}>
           {pick.multiplier}x
         </span>

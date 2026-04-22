@@ -423,8 +423,8 @@ export default function GamePicksModal({ game, userPick, onClose }) {
                       </div>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                         pick.picked_team === 'home'
-                          ? 'bg-text-secondary/15 text-text-secondary'
-                          : 'bg-accent/15 text-accent'
+                          ? 'text-text-secondary'
+                          : 'text-accent'
                       }`}>
                         {pick.picked_team === 'home' ? game.home_team : game.away_team}
                       </span>

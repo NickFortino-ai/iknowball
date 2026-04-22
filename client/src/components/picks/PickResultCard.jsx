@@ -71,10 +71,10 @@ export default function PickResultCard({ pick, game, totalCounts }) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-              isPostponed ? 'bg-yellow-500/20 text-yellow-500'
-              : isCorrect ? 'bg-correct/20 text-correct'
-              : isLost ? 'bg-incorrect/20 text-incorrect'
-              : 'bg-text-muted/20 text-text-muted'
+              isPostponed ? 'text-yellow-500'
+              : isCorrect ? 'text-correct'
+              : isLost ? 'text-incorrect'
+              : 'text-text-muted'
             }`}>
               {isPostponed ? '⏸' : isPush ? '—' : isCorrect ? '✓' : isLost ? '✗' : '?'}
             </span>

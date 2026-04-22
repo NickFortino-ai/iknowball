@@ -45,7 +45,7 @@ function FlexTargetCard({ hot_take }) {
       <div className="bg-bg-primary/50 border border-correct rounded-xl p-4 mb-2 parlay-win-glow">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-sm font-semibold text-text-primary">{parlay.leg_count}-Leg Parlay</span>
-          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-correct/20 text-correct">Won</span>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full text-correct">Won</span>
           <span className="text-sm font-bold text-correct ml-auto">+{parlay.points_earned} pts</span>
         </div>
         <div className="space-y-1">
@@ -669,7 +669,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           {/* Viral badge */}
           {item.viral && (
             <div className="mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 px-2 py-0.5 rounded-full">
                 {'\uD83D\uDD25'} {item.remindCount}+ reminds
               </span>
             </div>
@@ -677,13 +677,13 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
           {/* Post type badge */}
           {hot_take.post_type === 'prediction' && (
-            <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 mb-1">Prediction</span>
+            <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full text-green-400 mb-1">Prediction</span>
           )}
           {hot_take.post_type === 'poll' && (
-            <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 mb-1">Poll</span>
+            <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full text-orange-400 mb-1">Poll</span>
           )}
           {hot_take.post_type === 'flex' && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-accent/20 text-accent mb-1">
+            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full text-accent mb-1">
               <img src="/flex-button.png" alt="" className="w-3 h-3 object-contain" />
               Flex
             </span>

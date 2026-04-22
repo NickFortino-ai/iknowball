@@ -5,9 +5,9 @@ import { toast } from '../ui/Toast'
 import Avatar from '../ui/Avatar'
 
 const STATUS_STYLES = {
-  pending: 'bg-accent/20 text-accent',
-  accepted: 'bg-correct/20 text-correct',
-  declined: 'bg-text-muted/20 text-text-muted',
+  pending: 'text-accent',
+  accepted: 'text-correct',
+  declined: 'text-text-muted',
 }
 
 export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, format, memberIds = [], onClose }) {

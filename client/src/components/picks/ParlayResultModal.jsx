@@ -47,7 +47,7 @@ export default function ParlayResultModal({ parlayId, onClose }) {
   const isPush = parlay?.is_correct === null && parlay?.status === 'settled'
 
   const borderColor = isWon ? 'border-correct' : isLost ? 'border-incorrect' : 'border-border'
-  const badgeColor = isWon ? 'bg-correct/20 text-correct' : isLost ? 'bg-incorrect/20 text-incorrect' : 'bg-bg-secondary text-text-muted'
+  const badgeColor = isWon ? 'text-correct' : isLost ? 'text-incorrect' : 'text-text-muted'
   const badgeLabel = isWon ? 'Won' : isLost ? 'Lost' : isPush ? 'Push' : ''
 
   return (
