@@ -104,6 +104,8 @@ const SPORT_MAP = {
   americanfootball_nfl: { abbrs: NFL_ABBRS, sport: 'nfl' },
   basketball_wnba: { abbrs: WNBA_ABBRS, sport: 'wnba' },
   americanfootball_ncaaf: { ids: NCAAF_IDS, sport: 'ncaa' },
+  basketball_ncaab: { ids: NCAAF_IDS, sport: 'ncaa' },
+  basketball_wncaab: { ids: NCAAF_IDS, sport: 'ncaa' },
 }
 
 export function getTeamLogoUrl(teamName, sportKey) {
