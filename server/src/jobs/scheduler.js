@@ -212,11 +212,10 @@ export function startScheduler() {
     }, { timezone: 'America/New_York' })
     logger.info('Fantasy waivers scheduled: Wednesdays 3:00 AM ET')
 
-    // NBA prop auto-settlement suspended — settling manually via admin
-    // cron.schedule('*/2 * * * *', async () => {
-    //   try { await settleNBAProps() } catch (err) { logger.error({ err }, 'NBA prop auto-settlement failed') }
-    // })
-    // logger.info('NBA prop auto-settlement scheduled: every 2 minutes')
+    cron.schedule('*/2 * * * *', async () => {
+      try { await settleNBAProps() } catch (err) { logger.error({ err }, 'NBA prop auto-settlement failed') }
+    })
+    logger.info('NBA prop auto-settlement scheduled: every 2 minutes')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues
