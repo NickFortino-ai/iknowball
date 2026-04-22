@@ -3095,6 +3095,36 @@ export async function getPlayerDetail(leagueId, playerId) {
     }
   }
 
+  // Position rank — rank this player among all players at the same position
+  // based on total fantasy points using this league's scoring rules
+  let positionRank = null
+  if (player.position && gamesPlayed > 0) {
+    try {
+      const { data: posPlayers } = await supabase
+        .from('nfl_players')
+        .select('id')
+        .eq('position', player.position)
+        .not('team', 'is', null)
+      const posPlayerIds = (posPlayers || []).map((p) => p.id)
+      if (posPlayerIds.length) {
+        const { data: posStats } = await supabase
+          .from('nfl_player_stats')
+          .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+          .eq('season', season)
+          .in('player_id', posPlayerIds)
+        const totals = {}
+        for (const st of posStats || []) {
+          totals[st.player_id] = (totals[st.player_id] || 0) + applyScoringRules(st, leagueRules)
+        }
+        const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1])
+        const idx = sorted.findIndex(([pid]) => pid === playerId)
+        if (idx >= 0) positionRank = idx + 1
+      }
+    } catch (err) {
+      // non-critical, skip
+    }
+  }
+
   // ESPN player news (commentary, recaps, analysis, fantasy notes)
   const news = await fetchEspnPlayerNews(player.espn_id)
 
@@ -3120,6 +3150,7 @@ export async function getPlayerDetail(leagueId, playerId) {
       games_played: gamesPlayed,
       total_pts: Math.round(totalPts * 10) / 10,
       avg_pts: Math.round(avgPts * 10) / 10,
+      position_rank: positionRank,
     },
     current_week: currentWeek,
     weekly_stats: weeklyStats,

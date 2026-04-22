@@ -226,6 +226,15 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
                   <span className="text-text-primary font-semibold">{data.season_summary.avg_pts} avg</span>
                   {' · '}
                   <span className="text-text-primary font-semibold">{data.season_summary.games_played} GP</span>
+                  {data.season_summary.position_rank && (
+                    <>
+                      {' · '}
+                      <span className="text-accent font-semibold">
+                        <span className="md:hidden">{data.player.position}{data.season_summary.position_rank}</span>
+                        <span className="hidden md:inline">{data.player.position} Rank #{data.season_summary.position_rank}</span>
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
