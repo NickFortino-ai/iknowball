@@ -60,7 +60,11 @@ function getNotificationIcon(n) {
     case 'connection_accepted': return '\uD83E\uDD1D' // 🤝
     case 'league_invitation': return '\uD83D\uDCE8' // 📨
 
-    // Survivor / league wins
+    // Survivor
+    case 'survivor_result':
+      if (n.message?.includes('eliminated')) return '\u274C' // ❌
+      if (n.message?.includes('lost a life')) return '\u26A0\uFE0F' // ⚠️
+      return '\u2705' // ✅ survived
     case 'survivor_win': return '\uD83D\uDC51' // 👑
     case 'league_report': return '\uD83D\uDCCB' // 📋
     case 'league_win':

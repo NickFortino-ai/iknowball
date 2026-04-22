@@ -639,6 +639,11 @@ export async function scoreSurvivorPicks(gameId, winner) {
 
   if (!picks?.length) return
 
+  // Collect deferred notifications — we send them AFTER checkSurvivorWinner
+  // so that if all users are eliminated and revived, we don't send false
+  // elimination notifications.
+  const deferredNotifications = []
+
   for (const pick of picks) {
     // Skip picks for members already eliminated (e.g. by missed pick or earlier game)
     const { data: memberCheck } = await supabase
@@ -663,9 +668,8 @@ export async function scoreSurvivorPicks(gameId, winner) {
         .update({ status: 'survived', updated_at: new Date().toISOString() })
         .eq('id', pick.id)
 
-      await createNotification(pick.user_id, 'survivor_result',
-        `You survived ${periodLabel} ${periodNum} in ${leagueName}!`,
-        { leagueId: pick.league_id })
+      deferredNotifications.push({ userId: pick.user_id, leagueId: pick.league_id,
+        message: `You survived ${periodLabel} ${periodNum} in ${leagueName}!`, onlyIfAlive: false })
       continue
     }
 
@@ -680,9 +684,8 @@ export async function scoreSurvivorPicks(gameId, winner) {
       .eq('id', pick.id)
 
     if (survived) {
-      await createNotification(pick.user_id, 'survivor_result',
-        `You survived ${periodLabel} ${periodNum} in ${leagueName}!`,
-        { leagueId: pick.league_id })
+      deferredNotifications.push({ userId: pick.user_id, leagueId: pick.league_id,
+        message: `You survived ${periodLabel} ${periodNum} in ${leagueName}!`, onlyIfAlive: false })
     }
 
     if (!survived) {
@@ -714,9 +717,11 @@ export async function scoreSurvivorPicks(gameId, winner) {
           .eq('league_id', pick.league_id)
           .eq('user_id', pick.user_id)
 
-        await createNotification(pick.user_id, 'survivor_result',
-          `You were eliminated in ${periodLabel} ${periodNum} of ${leagueName}`,
-          { leagueId: pick.league_id })
+        // Defer elimination notification — only send if user is still eliminated
+        // after checkSurvivorWinner (which may revive everyone)
+        deferredNotifications.push({ userId: pick.user_id, leagueId: pick.league_id,
+          message: `You were eliminated in ${periodLabel} ${periodNum} of ${leagueName}`,
+          onlyIfEliminated: true })
 
         // Delete any pending future picks
         await supabase
@@ -732,17 +737,38 @@ export async function scoreSurvivorPicks(gameId, winner) {
           .eq('league_id', pick.league_id)
           .eq('user_id', pick.user_id)
 
-        await createNotification(pick.user_id, 'survivor_result',
-          `You lost a life in ${periodLabel} ${periodNum} of ${leagueName} (${newLives} remaining)`,
-          { leagueId: pick.league_id })
+        deferredNotifications.push({ userId: pick.user_id, leagueId: pick.league_id,
+          message: `You lost a life in ${periodLabel} ${periodNum} of ${leagueName} (${newLives} remaining)`,
+          onlyIfAlive: false })
       }
     }
   }
 
-  // Check for winner after processing all picks for each league
+  // Check for winner after processing all picks — this may revive all-eliminated users
   const leagueIds = [...new Set(picks.map((p) => p.league_id))]
   for (const leagueId of leagueIds) {
     await checkSurvivorWinner(leagueId)
+  }
+
+  // Now send deferred notifications, checking current alive status for elimination ones
+  for (const n of deferredNotifications) {
+    if (n.onlyIfEliminated) {
+      // Re-check if user is actually still eliminated (may have been revived)
+      const { data: check } = await supabase
+        .from('league_members')
+        .select('is_alive')
+        .eq('league_id', n.leagueId)
+        .eq('user_id', n.userId)
+        .single()
+      if (check?.is_alive) {
+        // User was revived — send survival notification instead
+        await createNotification(n.userId, 'survivor_result',
+          'Everyone was eliminated — you all survive! Pick again next round.',
+          { leagueId: n.leagueId })
+        continue
+      }
+    }
+    await createNotification(n.userId, 'survivor_result', n.message, { leagueId: n.leagueId })
   }
 
   logger.info({ gameId, picksScored: picks.length }, 'Survivor picks scored')
