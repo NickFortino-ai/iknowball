@@ -129,15 +129,20 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <div className="text-xs text-text-primary">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
         {/* Season stats — desktop only */}
-        {row?.season_stats && row?.nfl_players?.position && !editMode && (
-          <div className="hidden md:block text-xs text-text-muted shrink-0 tabular-nums whitespace-nowrap mr-3">
-            {formatSeasonStats(row.nfl_players.position, row.season_stats)}
-          </div>
-        )}
-        {(row?.live_points != null || row?.points != null) && row?.nfl_players && (
+        {row?.season_stats && row?.nfl_players?.position && !editMode && (() => {
+          const statLine = formatSeasonStats(row.nfl_players.position, row.season_stats)
+          if (!statLine) return null
+          return (
+            <div className="hidden md:flex flex-col items-end shrink-0 mr-3">
+              <div className="text-[9px] uppercase tracking-wider text-text-muted/60 mb-0.5">Season Stats</div>
+              <div className="text-xs text-text-muted tabular-nums whitespace-nowrap">{statLine}</div>
+            </div>
+          )
+        })()}
+        {row?.nfl_players && (
           <div className="text-right shrink-0 mr-1">
-            <div className="text-lg font-display tabular-nums text-white leading-none">{(row.live_points ?? row.points ?? 0).toFixed(2)}</div>
-            <div className="text-[10px] uppercase text-text-muted">pts</div>
+            <div className="text-lg font-display tabular-nums text-white leading-none">{(row.season_points ?? row.live_points ?? 0).toFixed(2)}</div>
+            <div className="text-[10px] uppercase text-text-muted">{row.season_points != null ? 'season' : 'pts'}</div>
           </div>
         )}
         {editMode && (canIR && !isInIR && onMoveToIR) && (

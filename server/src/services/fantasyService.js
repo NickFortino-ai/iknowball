@@ -2016,18 +2016,25 @@ export async function getRoster(leagueId, userId) {
     logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with live points')
   }
 
-  // Enrich with cumulative season stats for desktop display
+  // Enrich with cumulative season stats + total season fantasy points
   try {
     const { getCurrentNflWeek } = await import('./tdPassService.js')
     const { season } = await getCurrentNflWeek()
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('scoring_format, scoring_rules')
+      .eq('league_id', leagueId)
+      .single()
+    const rules = settings?.scoring_rules || buildScoringRulesFromPreset(settings?.scoring_format)
     const playerIds = rows.map((r) => r.player_id).filter(Boolean)
     if (playerIds.length) {
       const { data: allStats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td')
+        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
         .eq('season', season)
         .in('player_id', playerIds)
       const agg = {}
+      const seasonPts = {}
       for (const st of allStats || []) {
         if (!agg[st.player_id]) agg[st.player_id] = {}
         const a = agg[st.player_id]
@@ -2035,6 +2042,8 @@ export async function getRoster(leagueId, userId) {
           if (key === 'player_id') continue
           a[key] = (a[key] || 0) + (Number(st[key]) || 0)
         }
+        // Accumulate per-week fantasy points using league scoring rules
+        seasonPts[st.player_id] = (seasonPts[st.player_id] || 0) + applyScoringRules(st, rules)
       }
       // Compute fgm from component fields
       for (const pid of Object.keys(agg)) {
@@ -2042,6 +2051,7 @@ export async function getRoster(leagueId, userId) {
       }
       for (const r of rows) {
         r.season_stats = agg[r.player_id] || null
+        r.season_points = seasonPts[r.player_id] != null ? Math.round(seasonPts[r.player_id] * 100) / 100 : null
       }
     }
   } catch (err) {

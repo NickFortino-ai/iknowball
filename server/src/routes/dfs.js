@@ -556,14 +556,41 @@ router.get('/matchup-live', async (req, res) => {
   }
 
   const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
+  const SLOT_LABELS = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
+
+  // Build a structured roster that always includes all starter slots, with
+  // empty placeholders for unfilled positions. This prevents players from
+  // visually shifting into wrong slots when a starter spot is empty.
+  function buildStructuredRoster(rawRoster) {
+    const bySlot = {}
+    for (const r of rawRoster) bySlot[r.slot] = r
+    const starters = SLOT_ORDER.map((slot) => bySlot[slot] || {
+      slot,
+      player_id: null,
+      player_name: null,
+      position: SLOT_LABELS[slot],
+      team: null,
+      headshot_url: null,
+      injury_status: null,
+      game_status: null,
+      points: 0,
+      projected: 0,
+      stats: null,
+      empty: true,
+    })
+    const bench = rawRoster.filter((r) => !SLOT_ORDER.includes(r.slot))
+    return [...starters, ...bench]
+  }
 
   const enrichedMatchups = matchups.map((m) => {
-    const homeRoster = (userRosters[m.home_user_id] || []).sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
-    const awayRoster = (userRosters[m.away_user_id] || []).sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
-    const homePoints = homeRoster.reduce((sum, s) => sum + (s.points || 0), 0)
-    const awayPoints = awayRoster.reduce((sum, s) => sum + (s.points || 0), 0)
-    const homeProjected = homeRoster.reduce((sum, s) => sum + (s.projected || 0), 0)
-    const awayProjected = awayRoster.reduce((sum, s) => sum + (s.projected || 0), 0)
+    const homeRoster = buildStructuredRoster(userRosters[m.home_user_id] || [])
+    const awayRoster = buildStructuredRoster(userRosters[m.away_user_id] || [])
+    const homeStarters = homeRoster.filter((s) => SLOT_ORDER.includes(s.slot))
+    const awayStarters = awayRoster.filter((s) => SLOT_ORDER.includes(s.slot))
+    const homePoints = homeStarters.reduce((sum, s) => sum + (s.points || 0), 0)
+    const awayPoints = awayStarters.reduce((sum, s) => sum + (s.points || 0), 0)
+    const homeProjected = homeStarters.reduce((sum, s) => sum + (s.projected || 0), 0)
+    const awayProjected = awayStarters.reduce((sum, s) => sum + (s.projected || 0), 0)
 
     // Win probability using projected point differential
     // Sigma ~20 pts represents typical fantasy score variance for a full roster
@@ -643,24 +670,28 @@ router.get('/matchup-week', async (req, res) => {
     const STARTER_SLOTS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
     const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
 
+    const SLOT_LABELS_F = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
     const enriched = matchups.map((m) => {
-      const buildRoster = (userId) => (rosters || [])
-        .filter((r) => r.user_id === userId && STARTER_SLOTS.has((r.slot || '').toLowerCase()))
-        .map((r) => {
-          const p = r.nfl_players || {}
-          const onBye = p.bye_week === w
-          const seasonProj = onBye ? 0 : (Number(p[projCol]) || 0)
-          // Season-long projection is total season — estimate weekly by dividing by 17
-          const weeklyEst = onBye ? 0 : Math.round((seasonProj / 17) * 100) / 100
-          return {
-            slot: r.slot, player_id: r.player_id,
-            player_name: p.full_name || '?', position: p.position || '?',
-            team: p.team || '', headshot_url: p.headshot_url || null,
-            projected: weeklyEst, points: 0, game_status: 'upcoming',
-            on_bye: onBye,
-          }
-        })
-        .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
+      const buildRoster = (userId) => {
+        const filled = (rosters || [])
+          .filter((r) => r.user_id === userId && STARTER_SLOTS.has((r.slot || '').toLowerCase()))
+          .map((r) => {
+            const p = r.nfl_players || {}
+            const onBye = p.bye_week === w
+            const seasonProj = onBye ? 0 : (Number(p[projCol]) || 0)
+            const weeklyEst = onBye ? 0 : Math.round((seasonProj / 17) * 100) / 100
+            return {
+              slot: r.slot, player_id: r.player_id,
+              player_name: p.full_name || '?', position: p.position || '?',
+              team: p.team || '', headshot_url: p.headshot_url || null,
+              projected: weeklyEst, points: 0, game_status: 'upcoming',
+              on_bye: onBye,
+            }
+          })
+        const bySlot = {}
+        for (const r of filled) bySlot[r.slot] = r
+        return SLOT_ORDER.map((slot) => bySlot[slot] || { slot, player_id: null, player_name: null, position: SLOT_LABELS_F[slot], points: 0, projected: 0, game_status: 'upcoming', empty: true })
+      }
 
       const homeRoster = buildRoster(m.home_user_id)
       const awayRoster = buildRoster(m.away_user_id)
@@ -718,22 +749,27 @@ router.get('/matchup-week', async (req, res) => {
     const STARTER_SLOTS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
     const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
 
+    const SLOT_LABELS_P = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
     const enriched = matchups.map((m) => {
-      const buildRoster = (userId) => (rosters || [])
-        .filter((r) => r.user_id === userId && STARTER_SLOTS.has((r.slot || '').toLowerCase()))
-        .map((r) => {
-          const p = r.nfl_players || {}
-          const stat = statsMap[r.player_id]
-          const pts = applyRules(stat, leagueRules)
-          return {
-            slot: r.slot, player_id: r.player_id,
-            player_name: p.full_name || '?', position: p.position || '?',
-            team: p.team || '', headshot_url: p.headshot_url || null,
-            points: Math.round(pts * 100) / 100, projected: Math.round(pts * 100) / 100,
-            game_status: 'final',
-          }
-        })
-        .sort((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot))
+      const buildRoster = (userId) => {
+        const filled = (rosters || [])
+          .filter((r) => r.user_id === userId && STARTER_SLOTS.has((r.slot || '').toLowerCase()))
+          .map((r) => {
+            const p = r.nfl_players || {}
+            const stat = statsMap[r.player_id]
+            const pts = applyRules(stat, leagueRules)
+            return {
+              slot: r.slot, player_id: r.player_id,
+              player_name: p.full_name || '?', position: p.position || '?',
+              team: p.team || '', headshot_url: p.headshot_url || null,
+              points: Math.round(pts * 100) / 100, projected: Math.round(pts * 100) / 100,
+              game_status: 'final',
+            }
+          })
+        const bySlot = {}
+        for (const r of filled) bySlot[r.slot] = r
+        return SLOT_ORDER.map((slot) => bySlot[slot] || { slot, player_id: null, player_name: null, position: SLOT_LABELS_P[slot], points: 0, projected: 0, game_status: 'final', empty: true })
+      }
 
       const homeRoster = buildRoster(m.home_user_id)
       const awayRoster = buildRoster(m.away_user_id)
