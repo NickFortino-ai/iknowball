@@ -164,7 +164,7 @@ function TradeTransactionRow({ items, timestamp }) {
   return (
     <div className="py-3.5 border-b border-text-primary/10 last:border-0">
       <div className="flex items-center gap-3">
-        <span className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 text-accent bg-text-primary/10">
+        <span className="flex items-center justify-center text-lg font-bold shrink-0 text-accent">
           {'\u21C4'}
         </span>
         <div className="flex-1 min-w-0">
