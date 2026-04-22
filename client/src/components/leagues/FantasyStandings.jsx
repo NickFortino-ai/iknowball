@@ -57,7 +57,13 @@ export default function FantasyStandings({ league, isSalaryCap }) {
     if (!seasonStarted) {
       return [...standings].sort((a, b) => (a.userId === profile?.id ? -1 : b.userId === profile?.id ? 1 : 0))
     }
-    if (!sortCol) return standings // default server order (W-L record)
+    if (!sortCol || sortCol === 'wl') return standings // default server order (W-L record)
+    if (sortCol === 'streak') {
+      return [...standings].sort((a, b) => {
+        const parseStreak = (s) => { const m = (s || '').match(/([WL])(\d+)/); return m ? (m[1] === 'W' ? parseInt(m[2]) : -parseInt(m[2])) : 0 }
+        return sortDir === 'desc' ? parseStreak(b.streak) - parseStreak(a.streak) : parseStreak(a.streak) - parseStreak(b.streak)
+      })
+    }
     const key = sortCol === 'pf' ? 'pointsFor' : 'pointsAgainst'
     return [...standings].sort((a, b) => sortDir === 'desc' ? b[key] - a[key] : a[key] - b[key])
   })()
@@ -108,7 +114,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
             <tr className="border-b border-text-primary/10 text-text-muted text-xs">
               <th className="py-3 px-2 text-center font-semibold w-10">#</th>
               <th className="py-3 px-2 text-left font-semibold">Manager</th>
-              <th className="py-3 px-3 text-center font-semibold">{isSalaryCap ? 'Wins' : 'W-L'}</th>
+              <th className="py-3 px-3 text-center font-semibold cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('wl')}>{isSalaryCap ? 'Wins' : 'W-L'}{sortCol === 'wl' || !sortCol ? '' : ''}</th>
               <th
                 className={`py-3 px-3 text-center font-semibold ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`}
                 onClick={() => !isSalaryCap && handleSortClick('pf')}
@@ -120,7 +126,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                   PA{sortCol === 'pa' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
                 </th>
               )}
-              {!isSalaryCap && <th className="py-3 px-3 text-center font-semibold">Streak</th>}
+              {!isSalaryCap && <th className="py-3 px-3 text-center font-semibold cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('streak')}>Streak{sortCol === 'streak' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</th>}
             </tr>
           </thead>
           <tbody>
@@ -161,7 +167,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
         </div>
         <div className="flex-1 overflow-x-auto">
           <div className="flex border-b border-text-primary/10 text-text-muted text-xs min-w-max">
-            <div className="py-3 px-3 text-center font-semibold w-16">{isSalaryCap ? 'Wins' : 'W-L'}</div>
+            <div className="py-3 px-3 text-center font-semibold w-16 cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('wl')}>{isSalaryCap ? 'Wins' : 'W-L'}</div>
             <div className={`py-3 px-3 text-center font-semibold w-16 ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`} onClick={() => !isSalaryCap && handleSortClick('pf')}>
               {isSalaryCap ? 'Points' : 'PF'}{sortCol === 'pf' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
             </div>
@@ -170,7 +176,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                 PA{sortCol === 'pa' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
               </div>
             )}
-            {!isSalaryCap && <div className="py-3 px-3 text-center font-semibold w-16">Streak</div>}
+            {!isSalaryCap && <div className="py-3 px-3 text-center font-semibold w-16 cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('streak')}>Streak{sortCol === 'streak' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</div>}
           </div>
           {sortedStandings.map((s) => (
             <div key={s.userId} onClick={() => setSelectedUser(s)} className="flex items-center border-b border-text-primary/10 last:border-0 hover:bg-text-primary/5 transition-colors cursor-pointer min-w-max">
