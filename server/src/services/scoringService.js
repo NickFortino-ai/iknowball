@@ -176,32 +176,45 @@ export async function scoreParlayLegs(gameId, winner) {
     return
   }
 
-  if (!legs?.length) return
+  // Score any locked legs
+  if (legs?.length) {
+    for (const leg of legs) {
+      let legStatus
+      if (winner === null) {
+        legStatus = 'push'
+      } else if (leg.picked_team === winner) {
+        legStatus = 'won'
+      } else {
+        legStatus = 'lost'
+      }
 
-  // Determine outcome for each leg
-  for (const leg of legs) {
-    let legStatus
-    if (winner === null) {
-      legStatus = 'push'
-    } else if (leg.picked_team === winner) {
-      legStatus = 'won'
-    } else {
-      legStatus = 'lost'
+      await supabase
+        .from('parlay_legs')
+        .update({ status: legStatus, updated_at: new Date().toISOString() })
+        .eq('id', leg.id)
     }
 
-    await supabase
-      .from('parlay_legs')
-      .update({ status: legStatus, updated_at: new Date().toISOString() })
-      .eq('id', leg.id)
+    logger.info({ gameId, legsScored: legs.length, winner }, 'Parlay legs scored')
   }
 
-  // Try to settle each affected parlay
-  const parlayIds = [...new Set(legs.map((l) => l.parlay_id))]
-  for (const parlayId of parlayIds) {
+  // Always try to settle parlays that have legs on this game — covers the case
+  // where a leg was scored on a previous run but trySettleParlay failed or was
+  // interrupted, leaving the parlay stuck in "locked" status.
+  const { data: allLegs } = await supabase
+    .from('parlay_legs')
+    .select('parlay_id, parlays(status)')
+    .eq('game_id', gameId)
+    .in('status', ['won', 'lost', 'push'])
+
+  const unsettledParlayIds = [...new Set(
+    (allLegs || [])
+      .filter((l) => l.parlays?.status === 'locked')
+      .map((l) => l.parlay_id)
+  )]
+
+  for (const parlayId of unsettledParlayIds) {
     await trySettleParlay(parlayId)
   }
-
-  logger.info({ gameId, legsScored: legs.length, winner }, 'Parlay legs scored')
 }
 
 export async function trySettleParlay(parlayId) {
