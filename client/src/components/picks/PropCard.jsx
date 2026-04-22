@@ -76,11 +76,6 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
           <span className="font-semibold text-sm text-text-primary">
             Will {prop.player_name} go over or under {prop.line} {prop.market_label}?
           </span>
-          {isSettled && prop.actual_value !== null && prop.actual_value !== undefined && (
-            <span className="text-xs text-text-muted ml-2">
-              Actual: <span className="font-semibold text-accent">{prop.actual_value}</span>
-            </span>
-          )}
         </div>
         {prop.games && (
           <div className="text-right whitespace-nowrap ml-2">
