@@ -2016,6 +2016,38 @@ export async function getRoster(leagueId, userId) {
     logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with live points')
   }
 
+  // Enrich with cumulative season stats for desktop display
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const { season } = await getCurrentNflWeek()
+    const playerIds = rows.map((r) => r.player_id).filter(Boolean)
+    if (playerIds.length) {
+      const { data: allStats } = await supabase
+        .from('nfl_player_stats')
+        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td')
+        .eq('season', season)
+        .in('player_id', playerIds)
+      const agg = {}
+      for (const st of allStats || []) {
+        if (!agg[st.player_id]) agg[st.player_id] = {}
+        const a = agg[st.player_id]
+        for (const key of Object.keys(st)) {
+          if (key === 'player_id') continue
+          a[key] = (a[key] || 0) + (Number(st[key]) || 0)
+        }
+      }
+      // Compute fgm from component fields
+      for (const pid of Object.keys(agg)) {
+        agg[pid].fgm = (agg[pid].fgm_0_39 || 0) + (agg[pid].fgm_40_49 || 0) + (agg[pid].fgm_50_plus || 0)
+      }
+      for (const r of rows) {
+        r.season_stats = agg[r.player_id] || null
+      }
+    }
+  } catch (err) {
+    logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with season stats')
+  }
+
   return rows
 }
 

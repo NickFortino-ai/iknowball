@@ -31,6 +31,56 @@ const STARTER_SLOTS = [
   { key: 'def', label: 'DEF', positions: ['DEF'] },
 ]
 
+const POSITION_STAT_CONFIG = {
+  QB: [
+    { key: 'pass_yd', label: 'yd', comma: true },
+    { key: 'pass_td', label: 'td' },
+    { key: 'pass_int', label: 'int' },
+    { key: 'rush_yd', label: 'rush' },
+  ],
+  RB: [
+    { key: 'rush_yd', label: 'rush', comma: true },
+    { key: 'rush_td', label: 'td' },
+    { key: 'rec', label: 'rec' },
+    { key: 'rec_yd', label: 'reyd' },
+  ],
+  WR: [
+    { key: 'rec', label: 'rec' },
+    { key: 'rec_yd', label: 'yd', comma: true },
+    { key: 'rec_td', label: 'td' },
+    { key: 'rec_tgt', label: 'tgt' },
+  ],
+  TE: [
+    { key: 'rec', label: 'rec' },
+    { key: 'rec_yd', label: 'yd', comma: true },
+    { key: 'rec_td', label: 'td' },
+    { key: 'rec_tgt', label: 'tgt' },
+  ],
+  K: [
+    { key: 'fgm', label: 'fg' },
+    { key: 'fgm_50_plus', label: '50+' },
+    { key: 'xpm', label: 'xp' },
+  ],
+  DEF: [
+    { key: 'def_sack', label: 'sk' },
+    { key: 'def_int', label: 'int' },
+    { key: 'def_fum_rec', label: 'fr' },
+    { key: 'def_td', label: 'td' },
+  ],
+}
+
+function formatSeasonStats(position, stats) {
+  if (!stats || !position) return null
+  const config = POSITION_STAT_CONFIG[position]
+  if (!config) return null
+  const hasAny = config.some((c) => (stats[c.key] || 0) > 0)
+  if (!hasAny) return null
+  return config.map((c) => {
+    const val = stats[c.key] || 0
+    return `${c.comma ? val.toLocaleString() : val} ${c.label}`
+  }).join(' · ')
+}
+
 function InjuryBadge({ status }) {
   if (!status) return null
   const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
@@ -78,6 +128,12 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           </div>
           <div className="text-xs text-text-primary">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
+        {/* Season stats — desktop only */}
+        {row?.season_stats && row?.nfl_players?.position && !editMode && (
+          <div className="hidden md:block text-xs text-text-muted shrink-0 tabular-nums whitespace-nowrap mr-3">
+            {formatSeasonStats(row.nfl_players.position, row.season_stats)}
+          </div>
+        )}
         {(row?.live_points != null || row?.points != null) && row?.nfl_players && (
           <div className="text-right shrink-0 mr-1">
             <div className="text-lg font-display tabular-nums text-white leading-none">{(row.live_points ?? row.points ?? 0).toFixed(2)}</div>
