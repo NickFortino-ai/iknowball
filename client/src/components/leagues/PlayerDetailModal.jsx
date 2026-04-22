@@ -220,7 +220,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
                 <InjuryBadge status={data.player.injury_status} />
               </div>
               {data.season_summary && data.season_summary.games_played > 0 && (
-                <div className="mt-2 text-xs text-text-muted">
+                <div className="mt-2 text-xs md:text-sm text-text-muted">
                   Season: <span className="text-text-primary font-semibold">{data.season_summary.total_pts} pts</span>
                   {' · '}
                   <span className="text-text-primary font-semibold">{data.season_summary.avg_pts} avg</span>
@@ -328,9 +328,9 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
                 {playerContext === 'my_roster' && onDrop && (
                   <button
                     onClick={() => onDrop(playerId)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-incorrect/15 text-incorrect hover:bg-incorrect/25 transition-colors font-semibold text-sm"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-incorrect hover:bg-incorrect/10 transition-colors font-semibold text-xs"
                   >
-                    <span className="w-6 h-6 rounded-full bg-incorrect/30 flex items-center justify-center text-lg leading-none">−</span>
+                    <span className="text-sm leading-none">−</span>
                     Drop
                   </button>
                 )}
