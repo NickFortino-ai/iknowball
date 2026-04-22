@@ -123,6 +123,103 @@ function formatDateRange(startsAt, endsAt) {
   return null
 }
 
+function ScoringRulesDisplay({ rules, format }) {
+  const [open, setOpen] = useState(false)
+  if (!rules) return null
+
+  const formatLabel = format === 'ppr' ? 'PPR' : format === 'half_ppr' ? 'Half PPR' : format === 'standard' ? 'Standard' : 'Custom'
+
+  const Row = ({ label, value }) => (
+    <div className="flex justify-between py-1.5 border-b border-text-primary/5 last:border-0">
+      <span className="text-xs text-text-muted">{label}</span>
+      <span className={`text-xs font-semibold tabular-nums ${value > 0 ? 'text-correct' : value < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+        {value > 0 ? '+' : ''}{value}
+      </span>
+    </div>
+  )
+
+  return (
+    <div className="mt-3 pt-3 border-t border-text-primary/10">
+      <button onClick={() => setOpen(!open)} className="flex items-center justify-between w-full">
+        <span className="text-xs font-semibold text-text-secondary">Scoring Rules <span className="text-text-muted font-normal">({formatLabel})</span></span>
+        <svg className={`w-4 h-4 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Passing</div>
+            <Row label="Passing Yard" value={rules.pass_yd} />
+            <Row label="Passing TD" value={rules.pass_td} />
+            <Row label="Interception" value={rules.pass_int} />
+            <Row label="2-Pt Conversion" value={rules.pass_2pt} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Rushing</div>
+            <Row label="Rushing Yard" value={rules.rush_yd} />
+            <Row label="Rushing TD" value={rules.rush_td} />
+            <Row label="2-Pt Conversion" value={rules.rush_2pt} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Receiving</div>
+            <Row label="Reception" value={rules.rec} />
+            <Row label="Receiving Yard" value={rules.rec_yd} />
+            <Row label="Receiving TD" value={rules.rec_td} />
+            <Row label="2-Pt Conversion" value={rules.rec_2pt} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Misc</div>
+            <Row label="Fumble Lost" value={rules.fum_lost} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Kicking</div>
+            <Row label="FG 0-39 Yards" value={rules.fgm_0_39} />
+            <Row label="FG 40-49 Yards" value={rules.fgm_40_49} />
+            <Row label="FG 50+ Yards" value={rules.fgm_50_plus} />
+            <Row label="Extra Point" value={rules.xpm} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Team Defense</div>
+            <Row label="Sack" value={rules.def_sack} />
+            <Row label="Interception" value={rules.def_int} />
+            <Row label="Fumble Recovery" value={rules.def_fum_rec} />
+            <Row label="Defensive TD" value={rules.def_td} />
+            <Row label="Safety" value={rules.def_safety} />
+            {rules.def_pa_brackets?.length > 0 && (
+              <div className="mt-1.5">
+                <div className="text-[10px] text-text-muted mb-1">Points Allowed</div>
+                {rules.def_pa_brackets.map((b, i) => (
+                  <div key={i} className="flex justify-between py-0.5">
+                    <span className="text-[11px] text-text-muted">{i === 0 ? '0' : (rules.def_pa_brackets[i - 1].max + 1)}–{b.max >= 999 ? '99+' : b.max} pts allowed</span>
+                    <span className={`text-[11px] font-semibold tabular-nums ${b.pts > 0 ? 'text-correct' : b.pts < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+                      {b.pts > 0 ? '+' : ''}{b.pts}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {rules.bonuses_enabled && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Yardage Bonuses</div>
+              {(rules.pass_yd_bonuses || []).map((b, i) => (
+                <Row key={`p${i}`} label={`${b.threshold}+ Pass Yards`} value={b.points} />
+              ))}
+              {(rules.rush_yd_bonuses || []).map((b, i) => (
+                <Row key={`r${i}`} label={`${b.threshold}+ Rush Yards`} value={b.points} />
+              ))}
+              {(rules.rec_yd_bonuses || []).map((b, i) => (
+                <Row key={`c${i}`} label={`${b.threshold}+ Rec Yards`} value={b.points} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
@@ -408,6 +505,11 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
             </div>
           )}
         </div>
+      {/* Scoring rules display — visible to all members in fantasy leagues */}
+      {league.format === 'fantasy' && fantasySettings?.scoring_rules && !collapsed && (
+        <ScoringRulesDisplay rules={fantasySettings.scoring_rules} format={fantasySettings.scoring_format} />
+      )}
+
       {league.status !== 'completed' && !league.all_members_connected && (
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <span className="text-xs text-text-muted">Add league mates to squad when league ends</span>
