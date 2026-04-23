@@ -963,6 +963,7 @@ import {
   proposeTrade,
   acceptTrade,
   declineTrade,
+  counterTrade,
   cancelTrade,
   approveTrade,
   vetoTrade,
@@ -1401,6 +1402,15 @@ router.post('/:id/fantasy/trades/:tradeId/accept', requireAuth, async (req, res)
 router.post('/:id/fantasy/trades/:tradeId/decline', requireAuth, async (req, res) => {
   try {
     const result = await declineTrade(req.params.tradeId, req.user.id)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+router.post('/:id/fantasy/trades/:tradeId/counter', requireAuth, async (req, res) => {
+  try {
+    const result = await counterTrade(req.params.tradeId, req.user.id)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

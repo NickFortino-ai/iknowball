@@ -4238,6 +4238,51 @@ export async function declineTrade(tradeId, userId) {
   return { declined: true }
 }
 
+export async function counterTrade(tradeId, userId) {
+  const { data: trade } = await supabase
+    .from('fantasy_trades')
+    .select('*')
+    .eq('id', tradeId)
+    .single()
+  if (!trade) {
+    const err = new Error('Trade not found')
+    err.status = 404
+    throw err
+  }
+  if (trade.status !== 'pending') {
+    const err = new Error(`Trade is already ${trade.status}`)
+    err.status = 400
+    throw err
+  }
+  if (trade.receiver_user_id !== userId) {
+    const err = new Error('Only the receiver can counter this trade')
+    err.status = 403
+    throw err
+  }
+
+  await supabase
+    .from('fantasy_trades')
+    .update({ status: 'countered', responded_at: new Date().toISOString() })
+    .eq('id', tradeId)
+
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    const { data: league } = await supabase.from('leagues').select('name').eq('id', trade.league_id).single()
+    const { data: counterer } = await supabase.from('users').select('display_name, username').eq('id', userId).single()
+    const countererName = counterer?.display_name || counterer?.username || 'a manager'
+    await createNotification(
+      trade.proposer_user_id,
+      'fantasy_trade_proposed',
+      `${countererName} countered your trade in ${league?.name || 'your league'}`,
+      { leagueId: trade.league_id, tradeId, actorId: userId },
+    )
+  } catch (err) {
+    logger.error({ err }, 'Failed to send trade-countered notification')
+  }
+
+  return { countered: true }
+}
+
 export async function cancelTrade(tradeId, userId) {
   const { data: trade } = await supabase.from('fantasy_trades').select('*').eq('id', tradeId).single()
   if (!trade) {

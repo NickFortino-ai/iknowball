@@ -634,7 +634,15 @@ export default function FantasyMyTeam({ league }) {
                     className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-correct text-white hover:bg-correct/90 transition-colors disabled:opacity-50"
                   >Accept</button>
                   <button
-                    onClick={() => { setExpandedTradeId(null); setShowCounterTrade(trade) }}
+                    onClick={async () => {
+                      try {
+                        await respond.mutateAsync({ tradeId: trade.id, action: 'counter' })
+                        setExpandedTradeId(null)
+                        setShowCounterTrade(trade)
+                      } catch (err) {
+                        toast(err.message || 'Failed to counter trade', 'error')
+                      }
+                    }}
                     disabled={respond.isPending}
                     className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
                   >Counter</button>
