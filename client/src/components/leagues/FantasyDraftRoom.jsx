@@ -762,12 +762,12 @@ export default function FantasyDraftRoom({ league }) {
                         {player.bye_week && <span className="text-text-muted">· Bye {player.bye_week}</span>}
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      {player.projected_pts_half_ppr != null && (
+                    {player.projected_pts_half_ppr != null && Number(player.projected_pts_half_ppr) > 0 && (
+                      <div className="text-right shrink-0">
                         <div className="text-sm font-display text-accent">{Number(player.projected_pts_half_ppr).toFixed(1)}</div>
-                      )}
-                      <div className="text-[10px] text-text-muted">proj</div>
-                    </div>
+                        <div className="text-[10px] text-text-muted">proj</div>
+                      </div>
+                    )}
                   </button>
                   {(isMyTurn || offlineMode) && (
                     <button
