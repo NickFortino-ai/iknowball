@@ -248,28 +248,29 @@ export default function AdminPage() {
       <h1 className="font-display text-3xl mb-4">Admin Panel</h1>
 
       {/* Top-level section tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pt-2 -mt-2">
+      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-6">
         {[
           { key: 'dashboard', label: 'Dashboard' },
-          { key: 'props', label: 'Props Manager' },
+          { key: 'props', label: 'Props' },
           { key: 'brackets', label: 'Brackets' },
           { key: 'futures', label: 'Futures' },
-          { key: 'email', label: 'Email Blast' },
+          { key: 'email', label: 'Email' },
           { key: 'reports', label: 'Reports', badge: pendingCounts?.reports },
           { key: 'moderation', label: 'Moderation' },
           { key: 'backdrops', label: 'Backdrops', badge: pendingCounts?.backdrops },
           { key: 'positions', label: 'Positions' },
-          { key: 'playerblurbs', label: 'Player Blurbs' },
+          { key: 'playerblurbs', label: 'Blurbs' },
           { key: 'seasons', label: 'Seasons' },
           { key: 'tools', label: 'Tools' },
+          { key: 'overrides', label: 'Overrides' },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setAdminSection(tab.key)}
-            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors relative ${
+            className={`relative px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors text-center ${
               adminSection === tab.key
-                ? 'bg-accent text-white'
-                : 'bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 text-text-primary hover:bg-bg-primary/70'
+                ? 'bg-accent text-white border border-accent'
+                : 'bg-bg-primary/60 backdrop-blur-sm border border-text-primary/20 text-text-primary hover:bg-bg-primary/80'
             }`}
           >
             {tab.label}
@@ -828,49 +829,49 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* System Actions — manual overrides, rarely needed */}
-      <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mt-8">
-        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Manual Overrides</h2>
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide">
+      </>}
+
+      {adminSection === 'overrides' && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button
             onClick={handleSyncOdds}
             disabled={syncOdds.isPending}
-            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {syncOdds.isPending ? 'Syncing...' : 'Sync Odds'}
           </button>
           <button
             onClick={handleSyncInjuries}
             disabled={syncInjuries.isPending}
-            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {syncInjuries.isPending ? 'Syncing...' : 'Sync Injuries'}
           </button>
           <button
             onClick={handleScoreGames}
             disabled={scoreGames.isPending}
-            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {scoreGames.isPending ? 'Scoring...' : 'Score Games'}
           </button>
           <button
             onClick={handleRecalculatePoints}
             disabled={recalculatePoints.isPending}
-            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {recalculatePoints.isPending ? 'Recalculating...' : 'Recalculate Points'}
           </button>
           <button
             onClick={handleRecalculateRecords}
             disabled={recalculateRecords.isPending}
-            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {recalculateRecords.isPending ? 'Recalculating...' : 'Recalculate Records'}
           </button>
           <button
             onClick={handleGenerateRecap}
             disabled={generateRecap.isPending}
-            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {generateRecap.isPending ? 'Generating...' : 'Generate Recap'}
           </button>
@@ -883,7 +884,7 @@ export default function AdminPage() {
               } catch (err) { toast(err.message || 'Failed', 'error') }
             }}
             disabled={syncNBASalaries.isPending}
-            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {syncNBASalaries.isPending ? 'Syncing...' : 'Sync NBA Salaries'}
           </button>
@@ -896,13 +897,12 @@ export default function AdminPage() {
               } catch (err) { toast(err.message || 'Failed', 'error') }
             }}
             disabled={syncMLBSalaries.isPending}
-            className="shrink-0 bg-bg-card-hover hover:bg-border text-text-secondary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {syncMLBSalaries.isPending ? 'Syncing...' : 'Sync MLB Salaries'}
           </button>
         </div>
-      </div>
-      </>}
+      )}
       </>}
     </div>
   )
