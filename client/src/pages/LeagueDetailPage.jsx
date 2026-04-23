@@ -220,7 +220,7 @@ function ScoringRulesDisplay({ rules, format }) {
   )
 }
 
-function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament, fantasySettings }) {
+function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament, fantasySettings: parentFantasySettings }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
   const { profile } = useAuth()
