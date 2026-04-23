@@ -1327,6 +1327,11 @@ async function cascadeUndoToTournament(tournament, templateMatchup) {
 // Standings
 // ============================================
 
+// Strip accents for team name comparison (e.g. Montréal → Montreal)
+function normalizeTeam(name) {
+  return name?.normalize('NFD').replace(/[\u0300-\u036f]/g, '') || ''
+}
+
 export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore, awayScore, sportKey) {
   // Find unsettled template matchups where both teams match this game
   let query = supabase
@@ -1359,20 +1364,25 @@ export async function scoreBracketMatchups(homeTeam, awayTeam, winner, homeScore
   const winningTeam = winner === 'home' ? homeTeam : awayTeam
 
   for (const matchup of matchups) {
-    const teams = [matchup.team_top, matchup.team_bottom]
-    if (!teams.includes(homeTeam) || !teams.includes(awayTeam)) {
+    const nTop = normalizeTeam(matchup.team_top)
+    const nBottom = normalizeTeam(matchup.team_bottom)
+    const nHome = normalizeTeam(homeTeam)
+    const nAway = normalizeTeam(awayTeam)
+    const teamsMatch = (nTop === nHome && nBottom === nAway) || (nTop === nAway && nBottom === nHome)
+    if (!teamsMatch) {
       logger.debug({ homeTeam, awayTeam, team_top: matchup.team_top, team_bottom: matchup.team_bottom }, 'scoreBracketMatchups: team name mismatch, skipping')
       continue
     }
 
-    const winnerSlot = matchup.team_top === winningTeam ? 'top' : 'bottom'
+    const nWinner = normalizeTeam(winningTeam)
+    const winnerSlot = nTop === nWinner ? 'top' : 'bottom'
     const isBestOf7 = matchup.bracket_templates.series_format === 'best_of_7'
 
     // Map home/away scores to top/bottom based on team positions
     let scoreTop, scoreBottom
     if (homeScore != null && awayScore != null) {
-      scoreTop = matchup.team_top === homeTeam ? homeScore : awayScore
-      scoreBottom = matchup.team_bottom === homeTeam ? homeScore : awayScore
+      scoreTop = nTop === nHome ? homeScore : awayScore
+      scoreBottom = nBottom === nHome ? homeScore : awayScore
     }
 
     try {
