@@ -2,9 +2,42 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { getMLBPlayerPool } from '../services/mlbDfsService.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 router.use(requireAuth)
+
+// Cache ESPN HR leaders (refreshed every 30 min)
+let hrLeadersCache = null
+let hrLeadersCacheTime = 0
+const HR_CACHE_TTL = 30 * 60 * 1000
+
+async function getSeasonHRLeaders() {
+  if (hrLeadersCache && Date.now() - hrLeadersCacheTime < HR_CACHE_TTL) return hrLeadersCache
+  try {
+    const res = await fetch('https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/seasons/2026/types/2/leaders?limit=200')
+    if (!res.ok) throw new Error(`ESPN returned ${res.status}`)
+    const data = await res.json()
+    const hrMap = {}
+    for (const cat of data.categories || []) {
+      if (cat.abbreviation === 'HR') {
+        for (const leader of cat.leaders || []) {
+          const ref = leader.athlete?.$ref || ''
+          const match = ref.match(/\/athletes\/(\d+)/)
+          if (match) hrMap[match[1]] = Math.round(leader.value)
+        }
+        break
+      }
+    }
+    hrLeadersCache = hrMap
+    hrLeadersCacheTime = Date.now()
+    logger.info({ count: Object.keys(hrMap).length }, 'Refreshed ESPN HR leaders cache')
+    return hrMap
+  } catch (err) {
+    logger.error({ err }, 'Failed to fetch ESPN HR leaders')
+    return hrLeadersCache || {}
+  }
+}
 
 // Get Monday of the week for a given date
 function getWeekStart(dateStr) {
@@ -24,17 +57,10 @@ router.get('/players', async (req, res) => {
   // Filter out pitchers — HR derby only cares about hitters
   const hitters = pool.filter((p) => !p.is_pitcher)
 
-  // Fetch season HR totals from mlb_dfs_player_stats
-  const espnIds = hitters.map((p) => p.espn_player_id).filter(Boolean)
-  let hrMap = {}
-  if (espnIds.length) {
-    const { data: hrData } = await supabase.rpc('aggregate_season_hrs', { p_espn_ids: espnIds, p_season: 2026 })
-    if (hrData) {
-      for (const row of hrData) hrMap[row.espn_player_id] = row.total_hrs
-    }
-  }
+  // Fetch season HR leaders from ESPN
+  const hrMap = await getSeasonHRLeaders()
 
-  // Attach season_hrs and sort by it (desc), then salary as tiebreaker
+  // Attach season_hrs and sort by HRs desc, then salary as tiebreaker
   const enriched = hitters.map((p) => ({
     ...p,
     season_hrs: hrMap[p.espn_player_id] || 0,
