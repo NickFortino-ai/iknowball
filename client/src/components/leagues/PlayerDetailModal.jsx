@@ -134,8 +134,8 @@ function CurrentWeekNarrative({ position, week }) {
 }
 
 function PreviousGamesTable({ position, weeks, currentWeek }) {
-  // Show all weeks that have stats, excluding the current week (which is shown above)
-  const previous = (weeks || []).filter((w) => !currentWeek || w.week !== currentWeek.week)
+  // Show all weeks that have stats
+  const previous = weeks || []
   if (!previous.length) {
     return <p className="text-xs text-text-muted text-center py-3">No previous games.</p>
   }
@@ -185,10 +185,10 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div
         ref={contentRef}
-        className="bg-bg-primary border border-text-primary/20 w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[85vh] overflow-y-auto overscroll-contain"
+        className="bg-bg-primary border border-text-primary/20 w-full max-w-xl rounded-2xl max-h-[85vh] overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
