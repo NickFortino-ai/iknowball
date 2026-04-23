@@ -2109,14 +2109,19 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // a unified query with limit 500 + ADP sort would sink DEFs (which all
   // default to _adp=9999) below the slice cutoff and leave them out.
   const PLAYER_SELECT = 'id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week, adp_ppr, adp_half_ppr'
-  const [offensiveRes, defRes] = await Promise.all([
+  const [offensiveRes, kickerRes, defRes] = await Promise.all([
     supabase
       .from('nfl_players')
       .select(PLAYER_SELECT)
-      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+      .in('position', ['QB', 'RB', 'WR', 'TE'])
       .not('team', 'is', null)
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(800),
+    supabase
+      .from('nfl_players')
+      .select(PLAYER_SELECT)
+      .eq('position', 'K')
+      .not('team', 'is', null),
     supabase
       .from('nfl_players')
       .select(PLAYER_SELECT)
@@ -2124,8 +2129,9 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       .not('team', 'is', null),
   ])
   if (offensiveRes.error) throw offensiveRes.error
+  if (kickerRes.error) throw kickerRes.error
   if (defRes.error) throw defRes.error
-  const allPlayers = [...(offensiveRes.data || []), ...(defRes.data || [])]
+  const allPlayers = [...(offensiveRes.data || []), ...(kickerRes.data || []), ...(defRes.data || [])]
   const error = null
 
   // YTD aggregate stats for browse + sorting.
