@@ -13,6 +13,7 @@ const SPORT_TO_ESPN = {
   baseball_mlb: { path: 'baseball/mlb' },
   icehockey_nhl: { path: 'hockey/nhl' },
   soccer_usa_mls: { path: 'soccer/usa.1' },
+  americanfootball_ufl: { path: 'football/ufl' },
 }
 
 function normalizeTeamName(name) {

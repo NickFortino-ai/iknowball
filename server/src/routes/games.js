@@ -13,6 +13,7 @@ const ESPN_PATHS = {
   baseball_mlb: 'baseball/mlb',
   icehockey_nhl: 'hockey/nhl',
   soccer_usa_mls: 'soccer/usa.1',
+  americanfootball_ufl: 'football/ufl',
 }
 
 const router = Router()

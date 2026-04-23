@@ -118,6 +118,16 @@ export const ESPN_TEAMS = {
     '15': 'Washington Capitals',
     '27': 'Winnipeg Jets',
   },
+  americanfootball_ufl: {
+    '126073': 'Birmingham Stallions',
+    '132261': 'Columbus Aviators',
+    '112646': 'DC Defenders',
+    '112647': 'Dallas Renegades',
+    '126075': 'Houston Gamblers',
+    '132262': 'Louisville Kings',
+    '132263': 'Orlando Storm',
+    '112651': 'St. Louis Battlehawks',
+  },
 }
 
 // Reverse lookup: ODDS_TO_ESPN[sportKey][teamName] → espnId

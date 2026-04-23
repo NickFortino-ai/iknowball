@@ -139,6 +139,7 @@ const SPORT_OPTIONS = [
   { value: 'baseball_mlb', label: 'MLB' },
   { value: 'basketball_ncaab', label: 'NCAAB' },
   { value: 'basketball_wncaab', label: 'WNCAAB' },
+  { value: 'americanfootball_ufl', label: 'UFL' },
   { value: 'americanfootball_ncaaf', label: 'NCAAF' },
   { value: 'basketball_wnba', label: 'WNBA' },
   { value: 'icehockey_nhl', label: 'NHL' },
@@ -148,7 +149,7 @@ const SPORT_OPTIONS = [
 // Sports where daily picks make sense (games happen most days during season)
 const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wncaab', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl', 'all'])
 // Sports where weekly picks make sense (NFL is the obvious one — games only on weekends)
-const WEEKLY_ELIGIBLE_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf', 'all'])
+const WEEKLY_ELIGIBLE_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf', 'americanfootball_ufl', 'all'])
 
 function allowedFrequencies(sport) {
   const allowed = []
@@ -176,6 +177,7 @@ function getSeasonEndDate(sportKey) {
     baseball_mlb: `${year}-09-29`,          // MLB reg season ends ~Sept 29
     basketball_ncaab: `${year}-03-08`,      // NCAAB reg season ends ~early March (before conf tourneys)
     basketball_wncaab: `${year}-03-08`,
+    americanfootball_ufl: `${year}-06-15`,   // UFL reg season ends ~mid June
     americanfootball_ncaaf: `${year}-12-07`, // NCAAF reg season ends ~Dec 7
     basketball_wnba: `${year}-09-14`,       // WNBA reg season ends ~mid Sept
     icehockey_nhl: `${year}-04-18`,         // NHL reg season ends ~April 18

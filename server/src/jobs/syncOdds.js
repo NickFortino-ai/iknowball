@@ -223,7 +223,7 @@ async function syncSport(sportKey, { force = false } = {}) {
 export async function syncOdds({ force = false } = {}) {
   logger.info({ force }, 'Starting odds sync...')
 
-  const sports = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'basketball_wncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'icehockey_nhl', 'soccer_usa_mls']
+  const sports = ['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'basketball_wncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'icehockey_nhl', 'soccer_usa_mls', 'americanfootball_ufl']
   const results = []
 
   for (const sportKey of sports) {

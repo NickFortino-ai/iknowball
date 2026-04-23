@@ -24,6 +24,7 @@ const sportTabs = [
   { label: 'NCAAB', key: 'basketball_ncaab' },
   { label: 'WNCAAB', key: 'basketball_wncaab' },
   { label: 'MLB', key: 'baseball_mlb' },
+  { label: 'UFL', key: 'americanfootball_ufl' },
   { label: 'NFL', key: 'americanfootball_nfl' },
   { label: 'NHL', key: 'icehockey_nhl' },
   { label: 'MLS', key: 'soccer_usa_mls' },
