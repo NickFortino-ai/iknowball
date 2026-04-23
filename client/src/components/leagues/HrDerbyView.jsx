@@ -283,6 +283,9 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                     <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
                     <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
                   </div>
+                  {player.season_hrs > 0 && (
+                    <span className="text-xs font-display text-text-muted whitespace-nowrap shrink-0">{player.season_hrs} HR</span>
+                  )}
                 </div>
                 <button
                   onClick={() => addPlayer(player)}

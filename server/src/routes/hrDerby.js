@@ -15,12 +15,33 @@ function getWeekStart(dateStr) {
   return d.toLocaleDateString('en-CA')
 }
 
-// Get available MLB players for a date (reuse MLB DFS player pool)
+// Get available MLB hitters for HR derby (filtered, sorted by season HRs)
 router.get('/players', async (req, res) => {
   const { date } = req.query
   if (!date) return res.status(400).json({ error: 'date required' })
-  const data = await getMLBPlayerPool(date)
-  res.json(data)
+  const pool = await getMLBPlayerPool(date)
+
+  // Filter out pitchers — HR derby only cares about hitters
+  const hitters = pool.filter((p) => !p.is_pitcher)
+
+  // Fetch season HR totals from mlb_dfs_player_stats
+  const espnIds = hitters.map((p) => p.espn_player_id).filter(Boolean)
+  let hrMap = {}
+  if (espnIds.length) {
+    const { data: hrData } = await supabase.rpc('aggregate_season_hrs', { p_espn_ids: espnIds, p_season: 2026 })
+    if (hrData) {
+      for (const row of hrData) hrMap[row.espn_player_id] = row.total_hrs
+    }
+  }
+
+  // Attach season_hrs and sort by it (desc), then salary as tiebreaker
+  const enriched = hitters.map((p) => ({
+    ...p,
+    season_hrs: hrMap[p.espn_player_id] || 0,
+  }))
+  enriched.sort((a, b) => b.season_hrs - a.season_hrs || b.salary - a.salary)
+
+  res.json(enriched)
 })
 
 // Get my picks for a date
