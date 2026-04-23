@@ -28,9 +28,10 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
   const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   if (!league || league.format !== 'fantasy') return null
+  if (!fantasySettings) return null // Still loading — don't flash the banner
 
   // No draft date set — show combined message if also underfilled
-  if (!fantasySettings?.draft_date) {
+  if (!fantasySettings.draft_date) {
     const isUnderfilled = state && state.state !== 'ok'
     return (
       <div className="rounded-xl border-2 border-accent/50 bg-accent/10 p-4 mb-4 relative z-10">
