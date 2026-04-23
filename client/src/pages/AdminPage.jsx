@@ -267,10 +267,10 @@ export default function AdminPage() {
           <button
             key={tab.key}
             onClick={() => setAdminSection(tab.key)}
-            className={`relative px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors text-center ${
+            className={`relative px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-center ${
               adminSection === tab.key
-                ? 'bg-accent text-white border border-accent'
-                : 'bg-bg-primary/60 backdrop-blur-sm border border-text-primary/20 text-text-primary hover:bg-bg-primary/80'
+                ? 'bg-accent text-white border border-accent shadow-lg shadow-accent/20'
+                : 'bg-bg-primary/60 backdrop-blur-sm border border-text-primary/20 text-text-primary hover:bg-bg-primary/80 hover:border-text-primary/40 hover:scale-[1.03]'
             }`}
           >
             {tab.label}
