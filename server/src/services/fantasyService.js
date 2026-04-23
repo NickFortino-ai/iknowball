@@ -1255,10 +1255,12 @@ export async function getDraftPlayerDetail(playerId, { leagueId = null, scoringF
   }
 
   // Find the most recent season for which we have stats for this player
+  // Exclude season 9999 (reserved for gameday simulator)
   const { data: latestRow } = await supabase
     .from('nfl_player_stats')
     .select('season')
     .eq('player_id', playerId)
+    .lt('season', 9999)
     .order('season', { ascending: false })
     .limit(1)
     .maybeSingle()
