@@ -42,6 +42,19 @@ export default function MessageThreadPage() {
   // Scroll to top on mount so the header isn't pushed off-screen
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
+  // Keep input visible when iOS keyboard opens — resize the container to visual viewport
+  useEffect(() => {
+    const vv = window.visualViewport
+    const container = scrollContainerRef.current?.parentElement
+    if (!vv || !container) return
+    function syncHeight() {
+      container.style.height = `${vv.height}px`
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+    vv.addEventListener('resize', syncHeight)
+    return () => vv.removeEventListener('resize', syncHeight)
+  }, [])
+
   const messages = data?.pages?.flatMap((p) => p.messages) || []
   const partner = data?.pages?.[0]?.partner
 
@@ -58,16 +71,6 @@ export default function MessageThreadPage() {
     didMarkRead.current = true
   }, [messages.length])
 
-  // When the keyboard opens on mobile, scroll to the latest message
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-    function onResize() {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-    vv.addEventListener('resize', onResize)
-    return () => vv.removeEventListener('resize', onResize)
-  }, [])
 
   function handleInputFocus() {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
@@ -96,9 +99,9 @@ export default function MessageThreadPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col bg-bg-primary overflow-hidden h-full">
-      {/* Header — centered like iMessage, pinned */}
-      <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10 px-4 shrink-0">
+    <div className="max-w-lg mx-auto flex flex-col bg-bg-primary overflow-hidden" style={{ height: '100dvh' }}>
+      {/* Header — centered like iMessage, pinned with transparency */}
+      <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10 px-4 shrink-0 bg-bg-primary/80 backdrop-blur-md">
         <button
           onClick={() => navigate('/messages')}
           className="p-1 text-accent hover:text-accent-hover transition-colors shrink-0"
@@ -118,7 +121,7 @@ export default function MessageThreadPage() {
       </div>
 
       {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-2 pb-1 px-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-2 pb-1 px-4 overscroll-contain">
         {hasNextPage && (
           <div className="text-center py-2">
             <button
