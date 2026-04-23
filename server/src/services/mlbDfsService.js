@@ -306,6 +306,9 @@ export async function generateMLBSalaries(date, season = 2026) {
         // Apply position scarcity multiplier
         const scarcity = POSITION_SCARCITY[displayPos] || 1.0
         salary = Math.round(salary * scarcity / 100) * 100
+        // Re-clamp after adjustments to enforce hard caps
+        if (isPitcher) salary = Math.max(5500, Math.min(11200, salary))
+        else salary = Math.max(2000, Math.min(5000, salary))
 
         salaries.push({
           player_name: name,
