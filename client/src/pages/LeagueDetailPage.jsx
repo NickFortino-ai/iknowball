@@ -131,8 +131,8 @@ function ScoringRulesDisplay({ rules, format }) {
 
   const Row = ({ label, value }) => (
     <div className="flex justify-between py-1.5 border-b border-text-primary/5 last:border-0">
-      <span className="text-xs text-text-muted">{label}</span>
-      <span className={`text-xs font-semibold tabular-nums ${value > 0 ? 'text-correct' : value < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+      <span className="text-sm text-text-primary">{label}</span>
+      <span className={`text-sm font-semibold tabular-nums ${value > 0 ? 'text-correct' : value < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
         {value > 0 ? '+' : ''}{value}
       </span>
     </div>
@@ -149,38 +149,38 @@ function ScoringRulesDisplay({ rules, format }) {
       {open && (
         <div className="mt-3 space-y-3">
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Passing</div>
+            <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Passing</div>
             <Row label="Passing Yard" value={rules.pass_yd} />
             <Row label="Passing TD" value={rules.pass_td} />
             <Row label="Interception" value={rules.pass_int} />
             <Row label="2-Pt Conversion" value={rules.pass_2pt} />
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Rushing</div>
+            <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Rushing</div>
             <Row label="Rushing Yard" value={rules.rush_yd} />
             <Row label="Rushing TD" value={rules.rush_td} />
             <Row label="2-Pt Conversion" value={rules.rush_2pt} />
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Receiving</div>
+            <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Receiving</div>
             <Row label="Reception" value={rules.rec} />
             <Row label="Receiving Yard" value={rules.rec_yd} />
             <Row label="Receiving TD" value={rules.rec_td} />
             <Row label="2-Pt Conversion" value={rules.rec_2pt} />
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Misc</div>
+            <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Misc</div>
             <Row label="Fumble Lost" value={rules.fum_lost} />
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Kicking</div>
+            <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Kicking</div>
             <Row label="FG 0-39 Yards" value={rules.fgm_0_39} />
             <Row label="FG 40-49 Yards" value={rules.fgm_40_49} />
             <Row label="FG 50+ Yards" value={rules.fgm_50_plus} />
             <Row label="Extra Point" value={rules.xpm} />
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Team Defense</div>
+            <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Team Defense</div>
             <Row label="Sack" value={rules.def_sack} />
             <Row label="Interception" value={rules.def_int} />
             <Row label="Fumble Recovery" value={rules.def_fum_rec} />
@@ -202,7 +202,7 @@ function ScoringRulesDisplay({ rules, format }) {
           </div>
           {rules.bonuses_enabled && (
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Yardage Bonuses</div>
+              <div className="text-xs uppercase tracking-wider text-text-primary font-bold mb-1.5">Yardage Bonuses</div>
               {(rules.pass_yd_bonuses || []).map((b, i) => (
                 <Row key={`p${i}`} label={`${b.threshold}+ Pass Yards`} value={b.points} />
               ))}
