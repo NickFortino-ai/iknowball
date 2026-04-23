@@ -673,9 +673,8 @@ router.get('/matchup-week', async (req, res) => {
     const SLOT_LABELS_F = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
     const enriched = matchups.map((m) => {
       const buildRoster = (userId) => {
-        const filled = (rosters || [])
-          .filter((r) => r.user_id === userId && STARTER_SLOTS.has((r.slot || '').toLowerCase()))
-          .map((r) => {
+        const userRows = (rosters || []).filter((r) => r.user_id === userId)
+        const filled = userRows.map((r) => {
             const p = r.nfl_players || {}
             const onBye = p.bye_week === w
             const seasonProj = onBye ? 0 : (Number(p[projCol]) || 0)
@@ -690,17 +689,21 @@ router.get('/matchup-week', async (req, res) => {
           })
         const bySlot = {}
         for (const r of filled) bySlot[r.slot] = r
-        return SLOT_ORDER.map((slot) => bySlot[slot] || { slot, player_id: null, player_name: null, position: SLOT_LABELS_F[slot], points: 0, projected: 0, game_status: 'upcoming', empty: true })
+        const starters = SLOT_ORDER.map((slot) => bySlot[slot] || { slot, player_id: null, player_name: null, position: SLOT_LABELS_F[slot], points: 0, projected: 0, game_status: 'upcoming', empty: true })
+        const bench = filled.filter((r) => !SLOT_ORDER.includes(r.slot))
+        return [...starters, ...bench]
       }
 
       const homeRoster = buildRoster(m.home_user_id)
       const awayRoster = buildRoster(m.away_user_id)
+      const homeStarters = homeRoster.filter((r) => SLOT_ORDER.includes(r.slot))
+      const awayStarters = awayRoster.filter((r) => SLOT_ORDER.includes(r.slot))
       return {
         id: m.id, status: m.status,
         home_user: m.home_user, away_user: m.away_user,
         home_points: 0, away_points: 0,
-        home_projected: Math.round(homeRoster.reduce((s, r) => s + r.projected, 0) * 100) / 100,
-        away_projected: Math.round(awayRoster.reduce((s, r) => s + r.projected, 0) * 100) / 100,
+        home_projected: Math.round(homeStarters.reduce((s, r) => s + r.projected, 0) * 100) / 100,
+        away_projected: Math.round(awayStarters.reduce((s, r) => s + r.projected, 0) * 100) / 100,
         home_roster: homeRoster, away_roster: awayRoster,
       }
     })
@@ -752,9 +755,8 @@ router.get('/matchup-week', async (req, res) => {
     const SLOT_LABELS_P = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
     const enriched = matchups.map((m) => {
       const buildRoster = (userId) => {
-        const filled = (rosters || [])
-          .filter((r) => r.user_id === userId && STARTER_SLOTS.has((r.slot || '').toLowerCase()))
-          .map((r) => {
+        const userRows = (rosters || []).filter((r) => r.user_id === userId)
+        const filled = userRows.map((r) => {
             const p = r.nfl_players || {}
             const stat = statsMap[r.player_id]
             const pts = applyRules(stat, leagueRules)
@@ -768,13 +770,17 @@ router.get('/matchup-week', async (req, res) => {
           })
         const bySlot = {}
         for (const r of filled) bySlot[r.slot] = r
-        return SLOT_ORDER.map((slot) => bySlot[slot] || { slot, player_id: null, player_name: null, position: SLOT_LABELS_P[slot], points: 0, projected: 0, game_status: 'final', empty: true })
+        const starters = SLOT_ORDER.map((slot) => bySlot[slot] || { slot, player_id: null, player_name: null, position: SLOT_LABELS_P[slot], points: 0, projected: 0, game_status: 'final', empty: true })
+        const bench = filled.filter((r) => !SLOT_ORDER.includes(r.slot))
+        return [...starters, ...bench]
       }
 
       const homeRoster = buildRoster(m.home_user_id)
       const awayRoster = buildRoster(m.away_user_id)
-      const hp = Number(m.home_points) || homeRoster.reduce((s, r) => s + r.points, 0)
-      const ap = Number(m.away_points) || awayRoster.reduce((s, r) => s + r.points, 0)
+      const homeStarters = homeRoster.filter((r) => SLOT_ORDER.includes(r.slot))
+      const awayStarters = awayRoster.filter((r) => SLOT_ORDER.includes(r.slot))
+      const hp = Number(m.home_points) || homeStarters.reduce((s, r) => s + r.points, 0)
+      const ap = Number(m.away_points) || awayStarters.reduce((s, r) => s + r.points, 0)
       return {
         id: m.id, status: m.status || 'completed',
         home_user: m.home_user, away_user: m.away_user,

@@ -148,7 +148,7 @@ export default function FantasyMyRankings({ league, draftPrepConfig }) {
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-text-muted">
+            <p className="text-xs text-text-primary/70">
               {editMode
                 ? 'Use the arrows to reorder. Tap Save when done.'
                 : 'Your personal big board. Tap Edit to reorder.'}
@@ -194,7 +194,7 @@ export default function FantasyMyRankings({ league, draftPrepConfig }) {
             <button
               key={pos}
               onClick={() => setPosFilter(pos)}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
                 posFilter === pos ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary'
               }`}
             >{pos}</button>

@@ -91,7 +91,7 @@ function InjuryBadge({ status }) {
   )
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode }) {
+function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode, showSeasonStats = true }) {
   const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
   const isInIR = row?.slot === 'ir'
 
@@ -129,7 +129,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <div className="text-xs text-text-primary">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
         {/* Season stats — desktop only */}
-        {row?.season_stats && row?.nfl_players?.position && !editMode && (() => {
+        {showSeasonStats && row?.season_stats && row?.nfl_players?.position && !editMode && (() => {
           const statLine = formatSeasonStats(row.nfl_players.position, row.season_stats)
           if (!statLine) return null
           return (
@@ -140,8 +140,8 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
         })()}
         {row?.nfl_players && (
           <div className="text-right shrink-0 mr-1">
-            <div className="text-lg font-display tabular-nums text-white leading-none">{(row.season_points ?? row.live_points ?? 0).toFixed(2)}</div>
-            <div className="text-[10px] uppercase text-text-muted">{row.season_points != null ? 'season' : 'pts'}</div>
+            <div className="text-lg font-display tabular-nums text-white leading-none">{(showSeasonStats && row.season_points != null ? row.season_points : row.live_points ?? 0).toFixed(2)}</div>
+            <div className="text-[10px] uppercase text-text-muted">{showSeasonStats && row.season_points != null ? 'season' : 'pts'}</div>
           </div>
         )}
         {editMode && (canIR && !isInIR && onMoveToIR) && (
@@ -711,7 +711,7 @@ export default function FantasyMyTeam({ league }) {
           {editMode && (
             <span className="text-[10px] text-text-muted ml-3">Tap a slot or player to swap</span>
           )}
-          <span className="hidden md:block text-[10px] uppercase tracking-wider text-white/70 font-semibold ml-auto">Season Totals</span>
+          {isCurrentWeek && <span className="hidden md:block text-[10px] uppercase tracking-wider text-white/70 font-semibold ml-auto">Season Totals</span>}
         </div>
         <div className="p-3 space-y-2">
           {STARTER_SLOTS.map((slotDef) => {
@@ -729,6 +729,7 @@ export default function FantasyMyTeam({ league }) {
                       onViewDetail={openPlayerDetail}
                       editMode={editMode}
                       blurbIds={blurbIds}
+                      showSeasonStats={isCurrentWeek}
                     />
                   ) : (
                     editMode ? <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} editMode /> : <EmptySlot slotLabel={slotDef.label} onTap={() => {}} isSelected={false} />
@@ -755,6 +756,7 @@ export default function FantasyMyTeam({ league }) {
               onMoveToIR={handleMoveToIR}
               editMode={editMode}
               blurbIds={blurbIds}
+              showSeasonStats={isCurrentWeek}
             />
           ))}
           {Array.from({ length: emptyBenchCount }, (_, i) => (
@@ -779,6 +781,7 @@ export default function FantasyMyTeam({ league }) {
                 onMoveOutOfIR={handleMoveOutOfIR}
                 editMode={editMode}
                 blurbIds={blurbIds}
+                showSeasonStats={isCurrentWeek}
               />
             ))}
           </div>

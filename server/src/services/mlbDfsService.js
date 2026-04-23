@@ -136,40 +136,34 @@ function mlbPitcherGameFpts(statMap) {
 
 /**
  * Calculate salary from MLB batter FPPG.
- * $2,500 base + $700/fppg, capped at $8,500.
- *
- * Calibrated to match FanDuel-style distribution scaled for a $60k cap.
- * FanDuel ($35k cap): batters range $2,500-$4,600, tight clustering.
- * Scaled to $60k (1.71x): batters should range ~$4,500-$8,000.
- *
- * Lower multiplier prevents hot-streak players from outpricing stars.
- *   elite 15 FPPG → $8,000
- *   strong 12 FPPG → $7,200
- *   solid 9 FPPG  → $6,400
- *   average 6 FPPG → $5,600
- *   value 3 FPPG → $4,800
- *   replacement 0 FPPG → $4,200
+ * Matches FanDuel ranges directly. Independent of salary cap.
+ *   elite 15 FPPG → $4,500
+ *   strong 12 FPPG → $4,000
+ *   solid 9 FPPG  → $3,400
+ *   average 6 FPPG → $2,900
+ *   value 3 FPPG  → $2,300
+ *   replacement 0 FPPG → $2,000
  */
 function mlbFppgToSalary(fppg) {
-  if (!fppg || fppg <= 0) return 4200
-  const salary = Math.round((4200 + fppg * 260) / 100) * 100
-  return Math.max(4200, Math.min(8500, salary))
+  if (!fppg || fppg <= 0) return 2000
+  const salary = Math.round((2000 + fppg * 170) / 100) * 100
+  return Math.max(2000, Math.min(5000, salary))
 }
 
 /**
  * Calculate salary from MLB pitcher FPPG.
- * FanDuel ($35k cap): pitchers range $6,000-$10,400.
- * Scaled to $60k (1.71x): pitchers should range ~$10,000-$18,000.
- *   elite 38 FPPG → $17,800
- *   strong 30 FPPG → $15,800
- *   solid 23 FPPG → $14,000
- *   average 15 FPPG → $12,000
- *   replacement 0 FPPG → $10,000
+ * Matches FanDuel ranges directly.
+ *   elite 38 FPPG → $10,900
+ *   strong 30 FPPG → $9,600
+ *   solid 23 FPPG → $8,500
+ *   average 15 FPPG → $7,200
+ *   value 8 FPPG  → $6,100
+ *   replacement 0 FPPG → $5,500
  */
 function mlbPitcherFppgToSalary(fppg) {
-  if (!fppg || fppg <= 0) return 10000
-  const salary = Math.round((10000 + fppg * 200) / 100) * 100
-  return Math.max(10000, Math.min(18000, salary))
+  if (!fppg || fppg <= 0) return 5500
+  const salary = Math.round((5500 + fppg * 140) / 100) * 100
+  return Math.max(5500, Math.min(11200, salary))
 }
 
 /**

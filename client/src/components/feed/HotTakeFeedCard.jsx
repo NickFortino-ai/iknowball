@@ -791,7 +791,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
               {!reminded && !showRemindInput && hot_take.post_type === 'prediction' && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowRemindInput(true) }}
-                  className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full border border-text-primary/30 text-text-primary hover:border-text-primary/50 transition-colors"
                 >
                   {isOwnTake ? 'Called It' : 'Remind'}
                 </button>

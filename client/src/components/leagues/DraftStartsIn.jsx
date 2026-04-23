@@ -62,7 +62,7 @@ export default function DraftStartsIn({ draftDate, draftStatus, compact = true }
 
   if (compact) {
     return (
-      <div className="text-[11px] font-semibold text-accent uppercase tracking-wider">
+      <div className="text-sm font-semibold text-accent uppercase tracking-wider">
         {label}
       </div>
     )

@@ -246,7 +246,7 @@ function MyActiveLeagues() {
               {league.draft_status === 'in_progress' ? (
                 <div className="mt-2 text-center font-display text-sm font-bold text-correct uppercase tracking-wide">Drafting Now</div>
               ) : league.draft_date && league.draft_status === 'pending' && (
-                <div className="mt-2 text-center font-semibold text-xs text-accent uppercase tracking-wide">
+                <div className="mt-2 text-center font-semibold text-sm text-accent uppercase tracking-wide">
                   {(() => {
                     const target = new Date(league.draft_date)
                     const dayDiff = Math.round((target.setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000)

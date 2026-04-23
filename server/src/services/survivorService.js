@@ -643,6 +643,7 @@ export async function scoreSurvivorPicks(gameId, winner) {
   // so that if all users are eliminated and revived, we don't send false
   // elimination notifications.
   const deferredNotifications = []
+  const deferredPickDeletions = []
 
   for (const pick of picks) {
     // Skip picks for members already eliminated (e.g. by missed pick or earlier game)
@@ -723,13 +724,9 @@ export async function scoreSurvivorPicks(gameId, winner) {
           message: `You were eliminated in ${periodLabel} ${periodNum} of ${leagueName}`,
           onlyIfEliminated: true })
 
-        // Delete any pending future picks
-        await supabase
-          .from('survivor_picks')
-          .delete()
-          .eq('league_id', pick.league_id)
-          .eq('user_id', pick.user_id)
-          .eq('status', 'pending')
+        // Defer pending pick deletion — only delete if user stays eliminated
+        // (if all users are eliminated and revived, their future picks should remain)
+        deferredPickDeletions.push({ userId: pick.user_id, leagueId: pick.league_id })
       } else {
         await supabase
           .from('league_members')
@@ -748,6 +745,24 @@ export async function scoreSurvivorPicks(gameId, winner) {
   const leagueIds = [...new Set(picks.map((p) => p.league_id))]
   for (const leagueId of leagueIds) {
     await checkSurvivorWinner(leagueId)
+  }
+
+  // Delete pending future picks only for users who are still eliminated
+  for (const d of deferredPickDeletions) {
+    const { data: check } = await supabase
+      .from('league_members')
+      .select('is_alive')
+      .eq('league_id', d.leagueId)
+      .eq('user_id', d.userId)
+      .single()
+    if (!check?.is_alive) {
+      await supabase
+        .from('survivor_picks')
+        .delete()
+        .eq('league_id', d.leagueId)
+        .eq('user_id', d.userId)
+        .eq('status', 'pending')
+    }
   }
 
   // Now send deferred notifications, checking current alive status for elimination ones

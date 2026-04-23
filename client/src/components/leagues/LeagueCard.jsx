@@ -131,7 +131,7 @@ export default function LeagueCard({ league, noLink }) {
           <div className="text-xs text-text-muted mt-1.5">
             Starts <span className="text-yellow-500 font-semibold">{new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}</span>
           </div>
-        ) : formatRunsUntil(league) ? (
+        ) : league.format !== 'fantasy' && !league.draft_date && formatRunsUntil(league) ? (
           <div className="text-xs text-text-muted mt-1.5">
             Runs until <span className="text-text-secondary font-medium">{formatRunsUntil(league)}</span>
           </div>

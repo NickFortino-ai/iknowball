@@ -21,6 +21,12 @@ function InjuryBadge({ status }) {
   return <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${colors[status] || 'bg-yellow-500/20 text-yellow-500'}`}>{status[0]}</span>
 }
 
+// Strip " D/ST" suffix — slot label already shows position
+function displayName(name) {
+  if (!name) return '--'
+  return name.endsWith(' D/ST') ? name.replace(' D/ST', '') : name
+}
+
 function buildStatLine(stats, position) {
   if (!stats) return null
   const parts = []
@@ -130,24 +136,35 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           <div className="text-xs text-text-muted text-center mb-1">Final</div>
         )}
 
-        {/* Win probability bar (live/future) or result bar (completed) */}
-        {isCompleted && hasScores ? (
-          <div className="mt-3">
-            <div className="h-2 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${homeWinning ? 'bg-correct' : 'bg-correct float-right'}`} style={{ width: '100%' }} />
+        {/* Win probability bar (live) or result bar (completed) or projection bar (future) */}
+        {isCompleted && hasScores ? (() => {
+          // My matchup: green if I won, gray if I lost. Others: green for winner.
+          const iWon = isMyMatchup && ((matchup.home_user?.id === myId && homeWinning) || (matchup.away_user?.id === myId && !homeWinning))
+          const iLost = isMyMatchup && !iWon
+          const barColor = iLost ? 'bg-text-muted/40' : 'bg-correct'
+          return (
+            <div className="mt-3">
+              <div className="h-2 rounded-full overflow-hidden bg-bg-card">
+                <div className={`h-full rounded-full ${barColor}`} />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className={`text-[9px] md:text-xs font-semibold ${homeWinning ? 'text-correct' : 'text-text-muted'}`}>{homeWinning ? 'Winner' : 'Loser'}</span>
+                <span className={`text-[9px] md:text-xs font-semibold ${!homeWinning ? 'text-correct' : 'text-text-muted'}`}>{!homeWinning ? 'Winner' : 'Loser'}</span>
+              </div>
             </div>
-            <div className="flex justify-between mt-1">
-              <span className={`text-[9px] font-semibold ${homeWinning ? 'text-correct' : 'text-text-muted'}`}>{homeWinning ? 'Winner' : 'Loser'}</span>
-              <span className="text-[9px] text-text-muted">Final</span>
-              <span className={`text-[9px] font-semibold ${!homeWinning ? 'text-correct' : 'text-text-muted'}`}>{!homeWinning ? 'Winner' : 'Loser'}</span>
+          )
+        })() : !isCompleted && (hasScores || totalProj > 0) ? (() => {
+          // Live/future: orange for "my" side (or home for others), gray for opponent
+          const winProb = matchup.home_win_prob ?? homePct
+          // For my matchup: orange = my probability. For others: orange = home.
+          const myIsHome = matchup.home_user?.id === myId
+          const orangePct = isMyMatchup ? (myIsHome ? winProb : 100 - winProb) : winProb
+          return (
+            <div className="mt-2 h-1.5 rounded-full bg-text-muted/30 overflow-hidden flex">
+              <div className="bg-accent/60 rounded-l-full transition-all" style={{ width: `${orangePct}%` }} />
             </div>
-          </div>
-        ) : !isCompleted && totalProj > 0 ? (
-          <div className="mt-2 h-1.5 rounded-full bg-bg-card overflow-hidden flex">
-            <div className="bg-accent/60 rounded-l-full transition-all" style={{ width: `${homePct}%` }} />
-            <div className="bg-text-muted/30 rounded-r-full flex-1" />
-          </div>
-        ) : null}
+          )
+        })() : null}
       </button>
 
       {/* Expanded roster comparison */}
@@ -179,10 +196,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   >
                     {hp?.headshot_url ? (
                       <img src={hp.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">{hp?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
+                    ) : <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">{displayName(hp?.player_name).split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
-                        <span className="font-bold text-text-primary truncate">{hp?.player_name || '--'}</span>
+                        <span className="font-bold text-text-primary truncate">{displayName(hp?.player_name)}</span>
                         {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
                       </div>
                       {hStat && <div className="text-xs text-text-primary truncate">{hStat}</div>}
@@ -210,14 +227,14 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     <div className="min-w-0 text-right">
                       <div className="flex items-center gap-1 justify-end">
                         {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
-                        <span className="font-bold text-text-primary truncate">{ap?.player_name || '--'}</span>
+                        <span className="font-bold text-text-primary truncate">{displayName(ap?.player_name)}</span>
                       </div>
                       {aStat && <div className="text-xs text-text-primary truncate">{aStat}</div>}
                       {ap?.on_bye && <div className="text-[10px] text-text-muted font-bold">BYE</div>}
                     </div>
                     {ap?.headshot_url ? (
                       <img src={ap.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">{ap?.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
+                    ) : <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">{displayName(ap?.player_name).split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
                   </div>
                 </div>
               )
@@ -245,7 +262,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   <div className="flex items-center gap-2 min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5" onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}>
                     {hp?.headshot_url ? <img src={hp.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} /> : <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" />}
                     <div className="min-w-0">
-                      <span className="font-semibold text-text-primary truncate block text-xs">{hp?.player_name || '--'}</span>
+                      <span className="font-semibold text-text-primary truncate block text-xs">{displayName(hp?.player_name)}</span>
                       {hStat && <div className="text-[10px] text-text-primary truncate">{hStat}</div>}
                     </div>
                   </div>
@@ -256,7 +273,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   <div className="text-left text-text-primary/40 text-xs">{ap?.projected?.toFixed(1) || '--'}</div>
                   <div className="flex items-center gap-2 justify-end min-w-0 cursor-pointer hover:bg-text-primary/5 rounded px-1 py-0.5" onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}>
                     <div className="min-w-0 text-right">
-                      <span className="font-semibold text-text-primary truncate block text-xs">{ap?.player_name || '--'}</span>
+                      <span className="font-semibold text-text-primary truncate block text-xs">{displayName(ap?.player_name)}</span>
                       {aStat && <div className="text-[10px] text-text-primary truncate">{aStat}</div>}
                     </div>
                     {ap?.headshot_url ? <img src={ap.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} /> : ap ? <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0" /> : null}
@@ -293,6 +310,8 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
 
               function abbrevName(name) {
                 if (!name) return '--'
+                // D/ST names like "Titans D/ST" — just show "Titans"
+                if (name.endsWith(' D/ST')) return name.replace(' D/ST', '')
                 const parts = name.split(' ')
                 if (parts.length < 2) return name
                 return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
@@ -402,7 +421,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     <div key={`mb-${i}`} className="flex border-b border-text-primary/5 opacity-60">
                       {/* Home bench player */}
                       <div className="flex-1 p-2 min-w-0 cursor-pointer" onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}>
-                        <span className="text-xs font-semibold text-text-primary truncate block">{hp?.player_name || '--'}</span>
+                        <span className="text-xs font-semibold text-text-primary truncate block">{displayName(hp?.player_name)}</span>
                         {hStat && (hLive || weekStatus === 'past') && <div className="text-[10px] text-text-primary/50">{hStat}</div>}
                       </div>
                       <div className="w-11 flex items-start justify-end pt-2 shrink-0">
@@ -415,7 +434,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         <span className="text-sm font-display text-text-muted">{aLive || weekStatus === 'past' ? (ap?.points || 0).toFixed(1) : '--'}</span>
                       </div>
                       <div className="flex-1 p-2 min-w-0 text-right cursor-pointer" onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}>
-                        <span className="text-xs font-semibold text-text-primary truncate block">{ap?.player_name || '--'}</span>
+                        <span className="text-xs font-semibold text-text-primary truncate block">{displayName(ap?.player_name)}</span>
                         {aStat && (aLive || weekStatus === 'past') && <div className="text-[10px] text-text-primary/50">{aStat}</div>}
                       </div>
                     </div>
