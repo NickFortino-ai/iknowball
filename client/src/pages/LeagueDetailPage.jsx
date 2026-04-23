@@ -474,7 +474,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
           {!collapsed && narrative && !editingNarrative && (
             <div className="mt-3 flex items-start gap-2">
               {Array.isArray(narrative) ? (
-                <ul className="text-sm text-text-primary leading-relaxed flex-1 space-y-1.5 list-disc list-inside">
+                <ul className="text-sm text-text-primary leading-relaxed flex-1 space-y-1.5 list-disc list-outside pl-5">
                   {narrative.map((item, i) => <li key={i}>{item}</li>)}
                 </ul>
               ) : (
