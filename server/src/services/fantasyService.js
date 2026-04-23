@@ -3880,7 +3880,7 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
 /**
  * Accept a pending trade. Atomically swaps player ownership.
  */
-export async function acceptTrade(tradeId, userId) {
+export async function acceptTrade(tradeId, userId, dropPlayerIds = []) {
   const { data: trade } = await supabase
     .from('fantasy_trades')
     .select('*, fantasy_trade_items(*)')
@@ -3905,13 +3905,72 @@ export async function acceptTrade(tradeId, userId) {
   // Check trade deadline
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('trade_deadline, trade_review')
+    .select('trade_deadline, trade_review, roster_slots')
     .eq('league_id', trade.league_id)
     .maybeSingle()
   if (settings?.trade_deadline) {
     const deadline = new Date(settings.trade_deadline + 'T23:59:59Z')
     if (new Date() > deadline) {
       const err = new Error('The trade deadline has passed')
+      err.status = 400
+      throw err
+    }
+  }
+
+  // Check if either side would exceed roster cap after the trade
+  const items = trade.fantasy_trade_items || []
+  const receiverGets = items.filter((i) => i.to_user_id === userId).length
+  const receiverSends = items.filter((i) => i.from_user_id === userId).length
+  const netGain = receiverGets - receiverSends - dropPlayerIds.length
+
+  if (netGain > 0) {
+    // Count receiver's current active roster (exclude IR)
+    const { count: currentCount } = await supabase
+      .from('fantasy_rosters')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', trade.league_id)
+      .eq('user_id', userId)
+      .neq('slot', 'ir')
+
+    const slots = settings?.roster_slots
+    let rosterCap = 16
+    if (slots) {
+      rosterCap = 0
+      for (const [k, v] of Object.entries(slots)) {
+        if (k === 'ir') continue
+        rosterCap += Number(v) || 0
+      }
+    }
+
+    const afterTrade = (currentCount || 0) + netGain
+    if (afterTrade > rosterCap) {
+      const dropsNeeded = afterTrade - rosterCap
+      const err = new Error(`You need to drop ${dropsNeeded} player${dropsNeeded > 1 ? 's' : ''} to accept this trade`)
+      err.status = 400
+      err.requires_drop = true
+      err.drops_needed = dropsNeeded
+      throw err
+    }
+  }
+
+  // Validate drop players belong to the user and aren't part of the trade
+  if (dropPlayerIds.length > 0) {
+    const tradePlayerIds = new Set(items.map((i) => i.player_id))
+    for (const dpId of dropPlayerIds) {
+      if (tradePlayerIds.has(dpId)) {
+        const err = new Error('Cannot drop a player involved in this trade')
+        err.status = 400
+        throw err
+      }
+    }
+    const { data: dropRows } = await supabase
+      .from('fantasy_rosters')
+      .select('player_id')
+      .eq('league_id', trade.league_id)
+      .eq('user_id', userId)
+      .in('player_id', dropPlayerIds)
+    if ((dropRows || []).length !== dropPlayerIds.length) {
+      const err = new Error('One or more drop players are not on your roster')
       err.status = 400
       throw err
     }
@@ -3951,14 +4010,33 @@ export async function acceptTrade(tradeId, userId) {
   }
 
   // No review needed — execute immediately
-  return _executeTrade(tradeId, trade, userId)
+  return _executeTrade(tradeId, trade, userId, dropPlayerIds)
 }
 
 /**
  * Execute a trade: swap player ownership and log transactions.
  * Called by acceptTrade (when no review) or approveTrade (commissioner approval).
  */
-async function _executeTrade(tradeId, trade, actorId) {
+async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
+  // Drop players if required to make room
+  if (dropPlayerIds.length > 0) {
+    await supabase
+      .from('fantasy_rosters')
+      .delete()
+      .eq('league_id', trade.league_id)
+      .in('player_id', dropPlayerIds)
+
+    // Log drop transactions
+    const dropTxns = dropPlayerIds.map((pid) => ({
+      league_id: trade.league_id,
+      user_id: actorId,
+      type: 'drop',
+      player_id: pid,
+      trade_id: tradeId,
+    }))
+    await supabase.from('fantasy_transactions').insert(dropTxns)
+  }
+
   // Apply the swap: update fantasy_rosters.user_id for each item
   for (const item of trade.fantasy_trade_items || []) {
     const { error } = await supabase

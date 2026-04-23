@@ -310,6 +310,77 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
 }
 
 // =====================================================================
+// Drop Player Modal (shown when accepting a trade that would overflow roster)
+// =====================================================================
+
+function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPending }) {
+  const [selected, setSelected] = useState([])
+
+  // Players eligible to drop: user's roster minus players involved in the trade
+  const tradePlayerIds = new Set((trade.fantasy_trade_items || []).map((i) => i.player_id))
+  const droppable = (roster || [])
+    .filter((r) => !tradePlayerIds.has(r.player_id) && r.slot !== 'ir')
+    .sort((a, b) => (a.nfl_players?.full_name || '').localeCompare(b.nfl_players?.full_name || ''))
+
+  function toggle(pid) {
+    setSelected((prev) =>
+      prev.includes(pid) ? prev.filter((id) => id !== pid) : prev.length < dropsNeeded ? [...prev, pid] : prev
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="p-4 border-b border-text-primary/10">
+          <h3 className="text-base font-bold text-text-primary">Drop {dropsNeeded} Player{dropsNeeded > 1 ? 's' : ''} to Accept</h3>
+          <p className="text-sm text-text-primary/70 mt-1">
+            This trade adds more players than it sends. Select {dropsNeeded} player{dropsNeeded > 1 ? 's' : ''} to drop.
+          </p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          {droppable.map((r) => {
+            const p = r.nfl_players || {}
+            const isSelected = selected.includes(r.player_id)
+            return (
+              <button
+                key={r.player_id}
+                onClick={() => toggle(r.player_id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                  isSelected ? 'bg-incorrect/15 border border-incorrect/40' : 'hover:bg-text-primary/5 border border-transparent'
+                }`}
+              >
+                {p.headshot_url ? (
+                  <img src={p.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-bg-secondary shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-text-primary truncate">{p.full_name}</div>
+                  <div className="text-xs text-text-muted">{p.position} · {p.team || 'FA'}</div>
+                </div>
+                {isSelected && (
+                  <span className="text-xs font-bold text-incorrect">DROP</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <div className="p-4 border-t border-text-primary/10 flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-text-primary/20">Cancel</button>
+          <button
+            onClick={() => onConfirm(selected)}
+            disabled={selected.length !== dropsNeeded || isPending}
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-correct text-white disabled:opacity-50"
+          >
+            {isPending ? 'Accepting...' : `Drop & Accept`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =====================================================================
 // Main Transactions Component
 // =====================================================================
 
@@ -317,8 +388,10 @@ export default function FantasyTrades({ league }) {
   const { profile } = useAuth()
   const { data: trades, isLoading: tradesLoading } = useFantasyTrades(league.id)
   const { data: transactions, isLoading: txnLoading } = useFantasyTransactions(league.id)
+  const { data: roster } = useFantasyRoster(league.id)
   const respond = useRespondToTrade(league.id)
   const [showProposeModal, setShowProposeModal] = useState(false)
+  const [dropModal, setDropModal] = useState(null) // { tradeId, dropsNeeded }
   const subtab = new URLSearchParams(window.location.search).get('subtab')
   const [activeView, setActiveView] = useState(subtab === 'trades' ? 'trades' : 'activity') // 'activity' | 'trades'
 
@@ -327,12 +400,18 @@ export default function FantasyTrades({ league }) {
   const isCommissioner = league.commissioner_id === profile?.id
   const pending = (trades || []).filter((t) => t.status === 'pending' || t.status === 'pending_review')
 
-  async function handleAction(tradeId, action) {
+  async function handleAction(tradeId, action, dropPlayerIds) {
     try {
-      await respond.mutateAsync({ tradeId, action })
+      await respond.mutateAsync({ tradeId, action, drop_player_ids: dropPlayerIds })
       toast(`Trade ${action}ed`, 'success')
+      setDropModal(null)
     } catch (err) {
-      toast(err.message || `Failed to ${action} trade`, 'error')
+      const body = err?.response || err
+      if (body?.requires_drop && action === 'accept') {
+        setDropModal({ tradeId, dropsNeeded: body.drops_needed || 1 })
+      } else {
+        toast(err.message || `Failed to ${action} trade`, 'error')
+      }
     }
   }
 
@@ -425,6 +504,21 @@ export default function FantasyTrades({ league }) {
           )}
         </div>
       )}
+
+      {dropModal && (() => {
+        const trade = (trades || []).find((t) => t.id === dropModal.tradeId)
+        if (!trade) return null
+        return (
+          <TradeDropModal
+            roster={roster}
+            trade={trade}
+            dropsNeeded={dropModal.dropsNeeded}
+            onConfirm={(dropIds) => handleAction(dropModal.tradeId, 'accept', dropIds)}
+            onCancel={() => setDropModal(null)}
+            isPending={respond.isPending}
+          />
+        )
+      })()}
     </div>
   )
 }

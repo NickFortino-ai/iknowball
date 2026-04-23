@@ -100,6 +100,7 @@ async function request(path, options = {}) {
     const error = new Error(body.error || `Request failed: ${res.status}`)
     error.status = res.status
     error.details = body.details
+    error.response = body
     throw error
   }
 

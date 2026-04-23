@@ -707,7 +707,7 @@ export function useProposeTrade(leagueId) {
 export function useRespondToTrade(leagueId) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ tradeId, action }) => api.post(`/leagues/${leagueId}/fantasy/trades/${tradeId}/${action}`),
+    mutationFn: ({ tradeId, action, drop_player_ids }) => api.post(`/leagues/${leagueId}/fantasy/trades/${tradeId}/${action}`, drop_player_ids?.length ? { drop_player_ids } : undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'trades'] })
       queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'roster'] })

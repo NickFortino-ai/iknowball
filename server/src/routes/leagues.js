@@ -1390,10 +1390,11 @@ router.post('/:id/fantasy/trades', requireAuth, async (req, res) => {
 
 router.post('/:id/fantasy/trades/:tradeId/accept', requireAuth, async (req, res) => {
   try {
-    const result = await acceptTrade(req.params.tradeId, req.user.id)
+    const dropPlayerIds = req.body?.drop_player_ids || []
+    const result = await acceptTrade(req.params.tradeId, req.user.id, dropPlayerIds)
     res.json(result)
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message })
+    res.status(err.status || 500).json({ error: err.message, requires_drop: err.requires_drop, drops_needed: err.drops_needed })
   }
 })
 
