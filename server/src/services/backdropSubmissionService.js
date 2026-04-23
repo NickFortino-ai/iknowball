@@ -112,12 +112,17 @@ export async function approveSubmission(submissionId, adminUserId) {
   // Build the public URL path
   const publicPath = `custom/${approvedFilename}`
 
-  // Update the league's backdrop if linked to a league
+  // Set the backdrop on the league or user profile
   if (sub.league_id) {
     await supabase
       .from('leagues')
       .update({ backdrop_image: publicPath, updated_at: new Date().toISOString() })
       .eq('id', sub.league_id)
+  } else {
+    await supabase
+      .from('users')
+      .update({ backdrop_image: publicPath })
+      .eq('id', sub.user_id)
   }
 
   // Update submission status
@@ -131,8 +136,10 @@ export async function approveSubmission(submissionId, adminUserId) {
     .eq('id', submissionId)
 
   // Notify submitter
-  await createNotification(sub.user_id, 'comment',
-    'Your backdrop submission was approved and is now live on your league!',
+  const notifMsg = sub.league_id
+    ? 'Your backdrop submission was approved and is now live on your league!'
+    : 'Your custom profile backdrop was approved and is now live!'
+  await createNotification(sub.user_id, 'comment', notifMsg,
     { leagueId: sub.league_id })
 
   logger.info({ submissionId, approvedFilename, leagueId: sub.league_id }, 'Backdrop submission approved')
