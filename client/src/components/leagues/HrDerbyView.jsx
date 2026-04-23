@@ -52,11 +52,13 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
   const [standingsUserId, setStandingsUserId] = useState(null)
   const [initialized, setInitialized] = useState(false)
   const [initDate, setInitDate] = useState(null)
+  const [editing, setEditing] = useState(false)
 
   if (initDate !== date) {
     setInitDate(date)
     setSelected([])
     setInitialized(false)
+    setEditing(false)
   }
 
   // Initialize from existing picks
@@ -120,6 +122,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
         })),
       })
       toast('Picks submitted!', 'success')
+      setEditing(false)
     } catch (err) {
       toast(err.message || 'Failed to submit picks', 'error')
     }
@@ -211,25 +214,36 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                     <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
                     <div className="text-xs text-text-muted">{player.team} · {player.opponent || ''}</div>
                   </div>
-                  <button
-                    onClick={() => removePlayer(player.espn_player_id)}
-                    className="p-2 text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
-                  >
-                    &times;
-                  </button>
+                  {(!hasSavedPicks || editing) && (
+                    <button
+                      onClick={() => removePlayer(player.espn_player_id)}
+                      className="p-2 text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
+                    >
+                      &times;
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={selected.length === 0 || submitPicks.isPending}
-          className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
-        >
-          {submitPicks.isPending ? 'Submitting...' : hasSavedPicks ? 'Update Picks' : 'Submit Picks'}
-        </button>
+        {hasSavedPicks && !editing ? (
+          <button
+            onClick={() => setEditing(true)}
+            className="w-full py-3 rounded-xl font-display border-2 border-accent text-accent hover:bg-accent/10 transition-colors mb-6"
+          >
+            Edit Picks
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            disabled={selected.length === 0 || submitPicks.isPending}
+            className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+          >
+            {submitPicks.isPending ? 'Saving...' : hasSavedPicks ? 'Save Picks' : 'Submit Picks'}
+          </button>
+        )}
 
         {/* Used this week */}
         {usedPlayers?.length > 0 && (
@@ -246,8 +260,8 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
         )}
       </div>
 
-      {/* Right: Player pool */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      {/* Right: Player pool — hidden when picks are locked */}
+      {(!hasSavedPicks || editing) && <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Hitters</h3>
           <input
@@ -303,7 +317,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             ))}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   )
 }
