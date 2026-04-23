@@ -260,8 +260,8 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
         )}
       </div>
 
-      {/* Right: Player pool — hidden when picks are locked */}
-      {(!hasSavedPicks || editing) && <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      {/* Right: Player pool */}
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Hitters</h3>
           <input
@@ -306,18 +306,20 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                   </div>
                   <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_hrs || 0} HR</span>
                 </div>
-                <button
-                  onClick={() => addPlayer(player)}
-                  disabled={selected.length >= 3}
-                  className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none disabled:opacity-30"
-                >
-                  +
-                </button>
+                {(!hasSavedPicks || editing) && (
+                  <button
+                    onClick={() => addPlayer(player)}
+                    disabled={selected.length >= 3}
+                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none disabled:opacity-30"
+                  >
+                    +
+                  </button>
+                )}
               </div>
             ))}
           </div>
         )}
-      </div>}
+      </div>
     </div>
   )
 }
