@@ -333,9 +333,6 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
         </div>
         <RosterView slotPlan={slotPlan} />
         <div className="flex gap-2">
-          <button onClick={() => { setReviewMock(null); setJustBookmarked(false) }} className="flex-1 py-3 rounded-xl bg-bg-card border border-text-primary/20 text-text-secondary font-semibold text-sm hover:bg-bg-card-hover transition-colors">
-            Back
-          </button>
           {!justBookmarked && !savedMocks.some((m) => m.id === reviewMock.id) ? (
             <button onClick={() => bookmarkMock(reviewMock)} className="flex-1 py-3 rounded-xl border border-accent text-accent font-semibold text-sm hover:bg-accent/10 transition-colors">
               Save Mock
