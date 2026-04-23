@@ -446,7 +446,7 @@ export default function FantasyPlayerBrowser({ league }) {
       )}
 
       {detailPlayerId && (() => {
-        const detailPlayer = sortedPlayers?.find((p) => p.id === detailPlayerId)
+        const detailPlayer = players?.find((p) => p.id === detailPlayerId)
         const ctx = detailPlayer?.on_waivers ? 'waiver' : 'free_agent'
         return (
           <PlayerDetailModal
@@ -455,11 +455,11 @@ export default function FantasyPlayerBrowser({ league }) {
             onClose={() => setDetailPlayerId(null)}
             playerContext={ctx}
             onClaim={(pid) => {
-              const p = sortedPlayers?.find((pl) => pl.id === pid)
+              const p = players?.find((pl) => pl.id === pid)
               if (p) { setDetailPlayerId(null); setAddingPlayer(p) }
             }}
             onAdd={(pid) => {
-              const p = sortedPlayers?.find((pl) => pl.id === pid)
+              const p = players?.find((pl) => pl.id === pid)
               if (p) { setDetailPlayerId(null); setAddingPlayer(p) }
             }}
           />
