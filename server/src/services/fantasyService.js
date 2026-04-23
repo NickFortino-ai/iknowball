@@ -294,7 +294,7 @@ export async function initializeDraft(leagueId) {
 
   const numTeams = members.length
   const rosterSlots = settings.roster_slots
-  const totalRosterSize = Object.values(rosterSlots).reduce((a, b) => a + b, 0)
+  const totalRosterSize = Object.entries(rosterSlots).reduce((a, [k, v]) => a + (k === 'ir' ? 0 : v), 0)
 
   // Randomize draft order
   const shuffled = members.map((m) => m.user_id).sort(() => Math.random() - 0.5)

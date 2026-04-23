@@ -205,7 +205,7 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
     if (!fantasySettings) return null
     const rosterSlots = fantasySettings.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
     const numTeams = fantasySettings.num_teams || 10
-    const totalSlots = Object.values(rosterSlots).reduce((a, b) => a + b, 0)
+    const totalSlots = Object.entries(rosterSlots).reduce((a, [k, v]) => a + (k === 'ir' ? 0 : v), 0)
 
     // Draft position: use actual position if draft order is set, random otherwise
     let userSlot
