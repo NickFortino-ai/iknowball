@@ -173,7 +173,7 @@ export default function FantasyPlayerBrowser({ league }) {
     <div className="space-y-3">
       {/* ADP / My Ranks toggle */}
       {showRankingsToggle && (
-        <div className="flex gap-1 bg-bg-secondary rounded-lg p-1">
+        <div className="flex gap-1 bg-bg-primary/40 rounded-lg p-1 border border-text-primary/10">
           {['ADP', 'My Ranks'].map((v) => (
             <button
               key={v}
@@ -212,8 +212,8 @@ export default function FantasyPlayerBrowser({ league }) {
 
       {/* Pending claims */}
       {pendingClaims.length > 0 && (
-        <div className="rounded-xl border border-text-primary/20 overflow-hidden">
-          <div className="px-4 py-2 border-b border-border">
+        <div className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary/40">
+          <div className="px-4 py-2 border-b border-text-primary/10">
             <h4 className="text-xs text-text-muted uppercase tracking-wider">Your Pending Claims</h4>
           </div>
           <div className="divide-y divide-border">
@@ -248,13 +248,13 @@ export default function FantasyPlayerBrowser({ league }) {
         </div>
       )}
 
-    <div className="rounded-xl border border-text-primary/20 overflow-hidden">
-      <div className="p-3 border-b border-border">
+    <div className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary/40">
+      <div className="p-3 border-b border-text-primary/10">
         <input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search players..."
-          className="w-full bg-bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+          className="w-full bg-text-primary/5 border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
         />
         <div className="flex gap-1 mt-2 overflow-x-auto scrollbar-hide">
           {POSITION_FILTERS.map((pos) => (
@@ -280,8 +280,8 @@ export default function FantasyPlayerBrowser({ league }) {
       <div className="overflow-x-auto scrollbar-hide max-h-[65vh] overflow-y-auto">
         <div className="min-w-[900px]">
         {/* Header — sticky top so it stays visible during vertical scroll */}
-        <div className="border-b border-border bg-bg-primary flex text-[10px] font-bold text-text-muted uppercase tracking-wider sticky top-0 z-30">
-          <div className="sticky left-0 z-20 bg-bg-primary flex items-center shrink-0">
+        <div className="border-b border-text-primary/10 bg-bg-card/60 backdrop-blur-sm flex text-[10px] font-bold text-text-muted uppercase tracking-wider sticky top-0 z-30">
+          <div className="sticky left-0 z-20 bg-bg-card/80 backdrop-blur-sm flex items-center shrink-0">
             <button
               type="button"
               onClick={() => handleSort('rank')}
@@ -319,7 +319,7 @@ export default function FantasyPlayerBrowser({ league }) {
             const pStats = player.stats || {}
             return (
               <div key={player.id} className="flex border-b border-border last:border-0">
-                <div className="sticky left-0 z-10 bg-bg-primary flex items-center shrink-0">
+                <div className="sticky left-0 z-10 bg-bg-card/60 backdrop-blur-sm flex items-center shrink-0">
                   <div className="w-8 text-center text-xs font-bold text-text-muted">
                     {player.adp_rank || idx + 1}
                   </div>
