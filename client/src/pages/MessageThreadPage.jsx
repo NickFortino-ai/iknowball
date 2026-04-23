@@ -42,13 +42,15 @@ export default function MessageThreadPage() {
   // Scroll to top on mount so the header isn't pushed off-screen
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
-  // Keep input visible when iOS keyboard opens — resize the container to visual viewport
+  // Keep input visible when iOS keyboard opens
+  const containerRef = useRef(null)
   useEffect(() => {
     const vv = window.visualViewport
-    const container = scrollContainerRef.current?.parentElement
-    if (!vv || !container) return
+    if (!vv) return
     function syncHeight() {
-      container.style.height = `${vv.height}px`
+      if (containerRef.current) {
+        containerRef.current.style.height = `${vv.height}px`
+      }
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
     vv.addEventListener('resize', syncHeight)
@@ -99,7 +101,7 @@ export default function MessageThreadPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col bg-bg-primary overflow-hidden" style={{ height: '100dvh' }}>
+    <div ref={containerRef} className="fixed inset-0 z-40 flex flex-col bg-bg-primary overflow-hidden max-w-lg mx-auto">
       {/* Header — centered like iMessage, pinned with transparency */}
       <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10 px-4 shrink-0 bg-bg-primary/80 backdrop-blur-md">
         <button
