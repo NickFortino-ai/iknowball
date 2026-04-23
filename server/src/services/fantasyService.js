@@ -223,6 +223,10 @@ export async function getFantasySettings(leagueId) {
     .maybeSingle()
 
   if (error) throw error
+  // Ensure scoring_rules is always populated (build from preset if not stored)
+  if (data && !data.scoring_rules) {
+    data.scoring_rules = buildScoringRulesFromPreset(data.scoring_format)
+  }
   return data
 }
 
