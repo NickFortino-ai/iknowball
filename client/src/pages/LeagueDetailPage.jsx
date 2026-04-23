@@ -415,7 +415,14 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     }
 
     if (league.format === 'hr_derby') {
-      return `Pick up to 3 MLB hitters each day that you think will hit a home run. Each player can only be used once per week (Monday–Sunday) — once you pick someone, they're locked out for the rest of that week. All players reset on Monday. You can change your picks for the current day until games start. The more homers your picks hit, the more points you earn. Your finishing position affects your global IKB score (N+1−2×rank). The winner earns a bonus that scales with league size: ≤5 members +10, 6–10 +20, 11–15 +30, 16–30 +50, 31–40 +75, 41+ +100.`
+      return [
+        'Pick up to 3 MLB hitters each day that you think will hit a home run.',
+        'Each player can only be used once per week (Monday–Sunday). All players reset on Monday.',
+        'You can change your picks for the current day until games start.',
+        'The more homers your picks hit, the more points you earn.',
+        'Your finishing position affects your global IKB score (N+1−2×rank).',
+        'The winner earns a bonus that scales with league size: ≤5 members +10, 6–10 +20, 11–15 +30, 16–30 +50, 31–40 +75, 41+ +100.',
+      ]
     }
 
     if (league.format === 'td_pass') {
@@ -466,7 +473,13 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
           </button>
           {!collapsed && narrative && !editingNarrative && (
             <div className="mt-3 flex items-start gap-2">
-              <p className="text-sm text-text-primary leading-relaxed flex-1">{narrative}</p>
+              {Array.isArray(narrative) ? (
+                <ul className="text-sm text-text-primary leading-relaxed flex-1 space-y-1.5 list-disc list-inside">
+                  {narrative.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              ) : (
+                <p className="text-sm text-text-primary leading-relaxed flex-1">{narrative}</p>
+              )}
               {isCommissioner && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setNarrativeText(narrative); setEditingNarrative(true) }}

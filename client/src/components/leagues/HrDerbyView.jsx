@@ -249,7 +249,10 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
       {/* Right: Player pool */}
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
-          <h3 className="text-sm font-semibold text-text-primary mb-3">Available Hitters</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-text-primary">Available Hitters</h3>
+            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Season</span>
+          </div>
           <input
             type="text"
             value={search}
@@ -283,7 +286,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                     <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
                     <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
                   </div>
-                  <span className="text-xs font-display text-text-muted whitespace-nowrap shrink-0">{player.season_hrs || 0} HR</span>
+                  <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_hrs || 0} HR</span>
                 </div>
                 <button
                   onClick={() => addPlayer(player)}
