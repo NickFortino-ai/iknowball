@@ -81,7 +81,7 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
     .select('team_name')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .in('status', ['locked', 'survived', 'eliminated'])
+    .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
 
   const usedTeams = (usedPicks || []).map((p) => p.team_name)
   if (usedTeams.includes(teamName)) {
@@ -216,7 +216,7 @@ export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
     .select('player_id')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .in('status', ['locked', 'survived', 'eliminated'])
+    .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
 
   const usedPlayerIds = new Set((usedPicks || []).map((p) => p.player_id).filter(Boolean))
   if (usedPlayerIds.has(playerId)) {
@@ -460,7 +460,7 @@ export async function getUsedTeams(leagueId, userId) {
     .select('team_name, status')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .in('status', ['locked', 'survived', 'eliminated'])
+    .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
 
   if (error) throw error
   return (data || []).map((p) => p.team_name)
@@ -910,7 +910,7 @@ export async function autoEliminateMissedPicks() {
           .select('team_name')
           .eq('league_id', league.id)
           .eq('user_id', member.user_id)
-          .in('status', ['locked', 'survived', 'eliminated'])
+          .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
 
         const memberUsedTeams = new Set((memberUsedPicks || []).map((p) => p.team_name))
         const hadAvailableTeam = [...periodTeamNames].some((t) => !memberUsedTeams.has(t))
@@ -1207,10 +1207,11 @@ async function checkSurvivorWinner(leagueId) {
             .eq('league_id', leagueId)
             .eq('user_id', m.user_id)
 
-          // Also revert the pick status
+          // Revert the pick status — mark as survived_wrong so the UI
+          // can distinguish "correct pick" from "wrong but everyone lost"
           await supabase
             .from('survivor_picks')
-            .update({ status: 'survived', updated_at: new Date().toISOString() })
+            .update({ status: 'survived_wrong', updated_at: new Date().toISOString() })
             .eq('league_id', leagueId)
             .eq('user_id', m.user_id)
             .eq('status', 'eliminated')

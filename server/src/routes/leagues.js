@@ -650,7 +650,7 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     .select('player_id')
     .eq('league_id', req.params.id)
     .eq('user_id', req.user.id)
-    .in('status', ['locked', 'survived', 'eliminated'])
+    .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
 
   const usedIds = new Set((usedPicks || []).map((p) => p.player_id).filter(Boolean))
 

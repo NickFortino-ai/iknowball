@@ -12,6 +12,7 @@ import TouchdownPicker from './TouchdownPicker'
 
 const STATUS_STYLES = {
   survived: 'bg-correct/20 text-correct',
+  survived_wrong: 'bg-yellow-500/20 text-yellow-500',
   eliminated: 'bg-incorrect/20 text-incorrect',
   locked: 'bg-accent/20 text-accent',
   pending: 'bg-tier-hof/20 text-tier-hof',
@@ -337,9 +338,11 @@ export default function SurvivorView({ league }) {
                     ? 'bg-white/5 text-text-muted italic border border-white/10'
                     : p.status === 'survived'
                       ? 'bg-correct/20 text-correct border border-correct/30'
-                      : p.status === 'eliminated'
-                        ? 'bg-incorrect/20 text-incorrect border border-incorrect/30'
-                        : 'bg-white/10 text-text-primary border border-white/20'
+                      : p.status === 'survived_wrong'
+                        ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'
+                        : p.status === 'eliminated'
+                          ? 'bg-incorrect/20 text-incorrect border border-incorrect/30'
+                          : 'bg-white/10 text-text-primary border border-white/20'
                   return (
                     <span
                       key={p.id}
