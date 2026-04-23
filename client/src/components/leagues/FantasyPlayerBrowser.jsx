@@ -102,7 +102,7 @@ export default function FantasyPlayerBrowser({ league }) {
         return sortDir === 'desc' ? bv - av : av - bv
       })
     }
-    return sorted.slice(0, 200)
+    return sorted.slice(0, 300)
   }, [rawPlayers, sortKey, sortDir])
   const { data: roster } = useFantasyRoster(league.id)
   const { data: settings } = useFantasySettings(league.id)
