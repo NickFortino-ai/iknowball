@@ -97,12 +97,21 @@ const NCAAF_IDS = {
   'Washington Huskies': 264, 'Washington State Cougars': 265, 'West Virginia Mountaineers': 277,
 }
 
+const UFL_ABBRS = {
+  'Birmingham Stallions': 'bham', 'Columbus Aviators': 'clb',
+  'DC Defenders': 'dc', 'DC DEFENDERS': 'dc',
+  'Dallas Renegades': 'dal', 'Houston Gamblers': 'hou',
+  'Louisville Kings': 'lou', 'Orlando Storm': 'orl',
+  'St. Louis Battlehawks': 'stl', 'St Louis Battlehawks': 'stl',
+}
+
 const SPORT_MAP = {
   icehockey_nhl: { abbrs: NHL_ABBRS, sport: 'nhl' },
   basketball_nba: { abbrs: NBA_ABBRS, sport: 'nba' },
   baseball_mlb: { abbrs: MLB_ABBRS, sport: 'mlb' },
   americanfootball_nfl: { abbrs: NFL_ABBRS, sport: 'nfl' },
   basketball_wnba: { abbrs: WNBA_ABBRS, sport: 'wnba' },
+  americanfootball_ufl: { abbrs: UFL_ABBRS, sport: 'ufl' },
   americanfootball_ncaaf: { ids: NCAAF_IDS, sport: 'ncaa' },
   basketball_ncaab: { ids: NCAAF_IDS, sport: 'ncaa' },
   basketball_wncaab: { ids: NCAAF_IDS, sport: 'ncaa' },
