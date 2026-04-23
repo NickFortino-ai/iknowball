@@ -249,10 +249,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
       {/* Right: Player pool */}
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-text-primary">Available Hitters</h3>
-            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Season</span>
-          </div>
+          <h3 className="text-sm font-semibold text-text-primary mb-3">Available Hitters</h3>
           <input
             type="text"
             value={search}
@@ -261,6 +258,13 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             className="w-full bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
+
+        {filteredPlayers.length > 0 && (
+          <div className="flex items-center px-4 py-1.5 border-b border-text-primary/10">
+            <div className="flex-1" />
+            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Season</span>
+          </div>
+        )}
 
         {!filteredPlayers.length ? (
           <div className="px-4 py-6 text-center text-xs text-text-muted">
