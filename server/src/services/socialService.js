@@ -373,7 +373,7 @@ export async function getBookmarkStatusBatch(userId, hotTakeIds) {
 export async function getBookmarkedHotTakes(userId, before = null) {
   let query = supabase
     .from('hot_take_bookmarks')
-    .select('hot_take_id, created_at, hot_takes(id, user_id, content, team_tags, image_url, video_url, created_at)')
+    .select('hot_take_id, created_at, hot_takes(id, user_id, content, team_tags, image_url, image_urls, video_url, post_type, user_tags, created_at)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(20)
@@ -431,6 +431,10 @@ export async function getBookmarkedHotTakes(userId, before = null) {
         content: take.content,
         team_tags: take.team_tags,
         image_url: take.image_url,
+        image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
+        video_url: take.video_url,
+        post_type: take.post_type || 'post',
+        user_tags: take.user_tags,
       },
     }
   })
