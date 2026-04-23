@@ -191,7 +191,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           ))}
         </div>
 
-        <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 mb-4">
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-text-primary">Today's HR Picks</h3>
             <span className="text-xs text-text-muted">{selected.length}/3 picks</span>
@@ -202,7 +202,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           ) : (
             <div className="space-y-2">
               {selected.map((player) => (
-                <div key={player.espn_player_id} className="flex items-center gap-3 bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2.5">
+                <div key={player.espn_player_id} className="flex items-center gap-3 bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2.5">
                   {player.headshot_url && (
                     <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                       onError={(e) => { e.target.style.display = 'none' }} />
@@ -247,7 +247,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
       </div>
 
       {/* Right: Player pool */}
-      <div className="rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Hitters</h3>
           <input
@@ -255,7 +255,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search players..."
-            className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            className="w-full bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -268,7 +268,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             {filteredPlayers.map((player) => (
               <div
                 key={player.espn_player_id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {player.headshot_url ? (
@@ -283,9 +283,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                     <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
                     <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
                   </div>
-                  {player.season_hrs > 0 && (
-                    <span className="text-xs font-display text-text-muted whitespace-nowrap shrink-0">{player.season_hrs} HR</span>
-                  )}
+                  <span className="text-xs font-display text-text-muted whitespace-nowrap shrink-0">{player.season_hrs || 0} HR</span>
                 </div>
                 <button
                   onClick={() => addPlayer(player)}
