@@ -220,7 +220,7 @@ function ScoringRulesDisplay({ rules, format }) {
   )
 }
 
-function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament }) {
+function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament, fantasySettings }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
   const { profile } = useAuth()
@@ -692,8 +692,8 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
         </div>
       )}
 
-      {/* End Date — always available so commissioners can extend/shorten */}
-      {league.ends_at && (
+      {/* End Date — hidden for traditional fantasy (completion is driven by championship matchup) */}
+      {league.ends_at && !(league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap') && (
         <div>
           <label className="block text-xs text-text-muted mb-1">End Date</label>
           <input
@@ -1901,7 +1901,7 @@ export default function LeagueDetailPage() {
               </button>
             </div>
 
-            <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} bracketTournament={bracketTournament} />
+            <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} bracketTournament={bracketTournament} fantasySettings={fantasySettings} />
 
             {isCommissioner && league.settings_editable && (
               <div className="mt-4">
