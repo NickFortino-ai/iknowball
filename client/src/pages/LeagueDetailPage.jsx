@@ -363,7 +363,26 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
         return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Top finishers earn bonus points on the global leaderboard.`
       }
-      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster through trades, free-agent pickups, and IR moves. Dropped players go on waivers for 24 hours — during that window, any manager can place a claim (highest priority or FAAB bid wins). Unclaimed players become free agents. The weekly waiver run processes all pending claims Wednesday at 3 AM ET. Tap any player to view their stats, game log, injury status, and analysis. Your finishing position affects your global IKB score. Every player earns position points (N+1−2×rank where N = league size), and the top 3 earn bonus points that scale with league size: 6-team (1st +30, 2nd +12, 3rd +6), 8-team (+50/+20/+10), 10-team (+75/+30/+15), 12-team (+100/+40/+20), 14-team (+150/+60/+30), 16-team (+175/+70/+35), 20-team (+200/+80/+40).`
+      // Build dynamic narrative based on league settings
+      const n = fantasySettings?.num_teams || league.member_count || 10
+      const waiverType = fantasySettings?.waiver_type
+      let waiverText = 'Dropped players go on waivers for 24 hours — during that window, any manager can place a claim.'
+      if (waiverType === 'faab') {
+        waiverText = 'Dropped players go on waivers for 24 hours — during that window, any manager can bid using their FAAB budget (highest bid wins).'
+      } else if (waiverType === 'priority' || waiverType === 'rolling') {
+        waiverText = 'Dropped players go on waivers for 24 hours — during that window, any manager can place a claim (highest waiver priority wins).'
+      }
+
+      // Bonus table — snap to closest standard size
+      const BONUSES = { 6: [30,12,6], 8: [50,20,10], 10: [75,30,15], 12: [100,40,20], 14: [150,60,30], 16: [175,70,35], 20: [200,80,40] }
+      const sizes = Object.keys(BONUSES).map(Number)
+      const closest = sizes.reduce((a, b) => Math.abs(b - n) < Math.abs(a - n) ? b : a)
+      const [b1, b2, b3] = BONUSES[closest]
+      const bonusText = `In this ${n}-team league, the top 3 earn bonus points: 1st +${b1}, 2nd +${b2}, 3rd +${b3}.`
+
+      const tradeReview = fantasySettings?.trade_review === 'commissioner' ? ' Trades require commissioner approval.' : ''
+
+      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster through trades, free-agent pickups, and IR moves.${tradeReview} ${waiverText} Unclaimed players become free agents. The weekly waiver run processes all pending claims Wednesday at 3 AM ET. Tap any player to view their stats, game log, injury status, and analysis. Your finishing position affects your global IKB score — every player earns position points, and ${bonusText}`
     }
 
     if (league.format === 'squares') {
