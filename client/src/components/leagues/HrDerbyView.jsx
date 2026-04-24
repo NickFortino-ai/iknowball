@@ -186,7 +186,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
               key={d}
               onClick={() => setSelectedDate(d)}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                d === date ? 'border-2 border-accent text-accent bg-transparent' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+                d === date ? 'border-2 border-accent text-accent bg-accent/10' : 'border border-text-primary/20 bg-bg-primary/40 text-text-primary hover:bg-text-primary/10'
               }`}
             >
               {formatDateLabel(d)}
@@ -255,7 +255,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
         {hasSavedPicks && !editing ? (
           <button
             onClick={() => setEditing(true)}
-            className="w-full py-3 rounded-xl font-display border-2 border-accent text-accent hover:bg-accent/10 transition-colors mb-6"
+            className="w-full py-3 rounded-xl font-display border-2 border-accent text-accent bg-accent/5 hover:bg-accent/10 transition-colors mb-6"
           >
             Edit Picks
           </button>
@@ -275,7 +275,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Used This Week</div>
             <div className="flex flex-wrap gap-1.5">
               {usedPlayers.filter((u) => !todayPickIds.has(u.espn_player_id)).map((u) => (
-                <span key={u.espn_player_id} className="text-[10px] bg-text-primary/10 text-text-muted px-2 py-1 rounded-full">
+                <span key={u.espn_player_id} className="text-[10px] bg-bg-primary/40 border border-text-primary/10 text-text-muted px-2 py-1 rounded-full">
                   {u.player_name}
                 </span>
               ))}
@@ -313,7 +313,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             {filteredPlayers.map((player) => (
               <div
                 key={player.espn_player_id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0"
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 hover:bg-text-primary/5 transition-colors"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {player.headshot_url ? (
