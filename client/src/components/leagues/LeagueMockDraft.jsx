@@ -351,39 +351,58 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
   // Pre-start screen
   if (!started) {
     const hasOrder = fantasySettings?.draft_order?.length > 0
+    const scoringLabel = config.scoring === 'ppr' ? 'PPR' : config.scoring === 'half_ppr' ? 'Half-PPR' : 'Standard'
+
     return (
-      <div className="space-y-4 py-4">
-        <div className="text-center space-y-4">
-          <div className="text-4xl">{'\uD83C\uDFC8'}</div>
-          <h3 className="font-display text-lg text-text-primary">Mock Draft</h3>
-          <div className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 max-w-md mx-auto text-sm text-text-secondary">
-            This mock draft uses your league's settings — {config.numTeams} teams, {config.scoring === 'ppr' ? 'PPR' : config.scoring === 'half_ppr' ? 'Half-PPR' : 'Standard'} scoring, {config.rounds} rounds.
-            {hasOrder && (
-              <span className="block mt-1 text-accent font-semibold">
-                Your draft position: #{config.userSlot + 1} (based on your league's draft order)
-              </span>
-            )}
-            {!hasOrder && (
-              <span className="block mt-1 text-text-muted">
-                Draft position will be randomized (draft order not set yet).
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => setStarted(true)}
-            className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
-          >
-            Start Mock Draft
-          </button>
+      <div className="max-w-xl mx-auto py-6 md:py-8 space-y-6">
+        <div className="text-center">
+          <h3 className="font-display text-2xl md:text-3xl text-text-primary mb-2">Mock Draft</h3>
+          <p className="text-sm text-text-primary">Practice drafting with your league's exact settings before the real thing.</p>
         </div>
+
+        {/* League settings summary */}
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4">
+          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">League Settings</div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <div className="font-display text-2xl text-white">{config.numTeams}</div>
+              <div className="text-[10px] text-text-muted uppercase mt-0.5">Teams</div>
+            </div>
+            <div>
+              <div className="font-display text-2xl text-white">{config.rounds}</div>
+              <div className="text-[10px] text-text-muted uppercase mt-0.5">Rounds</div>
+            </div>
+            <div>
+              <div className="font-display text-2xl text-white">{scoringLabel}</div>
+              <div className="text-[10px] text-text-muted uppercase mt-0.5">Scoring</div>
+            </div>
+          </div>
+          {hasOrder && (
+            <div className="mt-3 pt-3 border-t border-text-primary/10 text-center text-sm text-accent font-semibold">
+              Your draft position: #{config.userSlot + 1}
+            </div>
+          )}
+          {!hasOrder && (
+            <div className="mt-3 pt-3 border-t border-text-primary/10 text-center text-xs text-text-muted">
+              Draft position will be randomized (draft order not set yet)
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={() => setStarted(true)}
+          className="w-full py-3 rounded-xl font-display text-base bg-accent text-white hover:bg-accent-hover transition-colors"
+        >
+          Start Mock Draft
+        </button>
 
         {/* Saved mocks */}
         {savedMocks.length > 0 && (
-          <div className="mt-6">
-            <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">Saved Mocks</h4>
+          <div>
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Saved Mocks</div>
             <div className="space-y-2">
               {savedMocks.map((mock) => (
-                <div key={mock.id} className="rounded-xl border border-accent/30 bg-bg-primary px-4 py-3 flex items-center justify-between">
+                <div key={mock.id} className="rounded-xl border border-accent/30 bg-bg-primary/60 backdrop-blur-sm px-4 py-3 flex items-center justify-between">
                   <button onClick={() => { setReviewMock(mock); setJustBookmarked(true) }} className="flex-1 text-left min-w-0">
                     <div className="text-sm font-semibold text-text-primary">
                       Pick #{mock.draftPosition}
@@ -405,11 +424,11 @@ export default function LeagueMockDraft({ league, fantasySettings }) {
 
         {/* Recent mocks */}
         {recentMocks.length > 0 && (
-          <div className="mt-6">
-            <h4 className="text-xs text-text-muted uppercase tracking-wider mb-2">Recent Mocks</h4>
+          <div>
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Recent Mocks</div>
             <div className="space-y-2">
               {recentMocks.map((mock) => (
-                <div key={mock.id} className="rounded-xl border border-text-primary/20 bg-bg-primary px-4 py-3 flex items-center justify-between">
+                <div key={mock.id} className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm px-4 py-3 flex items-center justify-between">
                   <button onClick={() => { setReviewMock(mock); setJustBookmarked(false) }} className="flex-1 text-left min-w-0">
                     <div className="text-sm font-semibold text-text-primary">
                       Pick #{mock.draftPosition}
