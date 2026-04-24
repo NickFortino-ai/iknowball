@@ -1066,8 +1066,24 @@ async function checkSurvivorWinner(leagueId) {
     .single()
 
   if (aliveMembers.length === 1 && !bonusExists) {
-    // First time single survivor — award bonus, send win notification, but do NOT mark league completed
     const winnerId = aliveMembers[0].user_id
+
+    // Don't declare a winner if their current pick is still pending — their game
+    // hasn't finished yet and they could still lose. Wait for the pick to settle.
+    const { data: pendingPicks } = await supabase
+      .from('survivor_picks')
+      .select('id')
+      .eq('league_id', leagueId)
+      .eq('user_id', winnerId)
+      .eq('status', 'pending')
+      .limit(1)
+
+    if (pendingPicks?.length > 0) {
+      logger.info({ leagueId, winnerId }, 'Last survivor standing has unsettled pick — waiting before declaring winner')
+      return
+    }
+
+    // First time single survivor — award bonus, send win notification, but do NOT mark league completed
 
     const { count: memberCount } = await supabase
       .from('league_members')
