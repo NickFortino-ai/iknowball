@@ -136,7 +136,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/20 overflow-hidden">
+          <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden">
             <div className="grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
