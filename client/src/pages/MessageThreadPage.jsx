@@ -102,6 +102,8 @@ export default function MessageThreadPage() {
 
   return (
     <div ref={containerRef} className="fixed inset-0 z-40 flex flex-col bg-bg-primary overflow-hidden max-w-lg mx-auto">
+      {/* Spacer to push content below the app navbar */}
+      <div className="shrink-0" style={{ height: 'calc(env(safe-area-inset-top, 0px) + 3.5rem)' }} />
       {/* Header — centered like iMessage, pinned with transparency */}
       <div className="flex items-center gap-3 pt-3 pb-2 border-b border-text-primary/10 px-4 shrink-0 bg-bg-primary/80 backdrop-blur-md">
         <button
@@ -185,7 +187,7 @@ export default function MessageThreadPage() {
                         : 'bg-[#2a2a2e] text-text-primary'
                     }`}
                   >
-                    {msg.content}
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
                   </div>
                 </div>
               </div>
@@ -196,13 +198,19 @@ export default function MessageThreadPage() {
       </div>
 
       {/* Input — iMessage style: textarea + send inside one bordered container */}
-      <form onSubmit={handleSend} className="flex items-end px-2 py-1 pb-[env(safe-area-inset-bottom,4px)] bg-bg-primary border-t border-text-primary/15 shrink-0">
+      <form onSubmit={handleSend} className="flex items-end px-2 py-1 bg-bg-primary border-t border-text-primary/15 shrink-0">
         <div className={`flex-1 flex items-end border border-text-primary/25 bg-text-primary/5 transition-all ${isMultiline ? 'rounded-2xl' : 'rounded-full'}`}>
           <textarea
             ref={textareaRef}
             value={input}
             onChange={handleTextareaChange}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e) } }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                // On mobile/touch devices, Enter creates a newline; on desktop it sends
+                const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+                if (!isMobile) { e.preventDefault(); handleSend(e) }
+              }
+            }}
             onFocus={handleInputFocus}
             placeholder="Message"
             maxLength={2000}
