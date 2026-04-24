@@ -178,10 +178,10 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
           <span className="text-xs text-text-muted ml-1.5">{prop.market_label}</span>
         </div>
       )}
-      {(pick?.actual_value != null || (pick?.live_stat != null && pick?.status === 'settled')) && pick?.status === 'settled' && (
+      {(prop?.actual_value != null || pick?.actual_value != null || (pick?.live_stat != null && pick?.status === 'settled')) && pick?.status === 'settled' && (
         <div className="mt-3 pt-3 border-t border-text-primary/10 text-center">
           <span className="text-xs text-text-muted mr-1.5">Actual:</span>
-          <span className="font-display text-xl text-white">{pick.actual_value ?? pick.live_stat}</span>
+          <span className="font-display text-xl text-white">{prop.actual_value ?? pick.actual_value ?? pick.live_stat}</span>
           <span className="text-xs text-text-muted ml-1.5">{prop.market_label}</span>
         </div>
       )}
