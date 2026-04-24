@@ -380,11 +380,57 @@ function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPen
   )
 }
 
+function TransactionsOnboarding({ fantasySettings }) {
+  const isFaab = fantasySettings?.waiver_type === 'faab'
+  const isCommReview = fantasySettings?.trade_review === 'commissioner'
+  const faabBudget = fantasySettings?.faab_budget || 100
+
+  return (
+    <div className="px-4 py-6 md:py-8 md:px-6">
+      <div className="text-center mb-5">
+        <div className="text-sm text-text-muted mb-1">No transactions yet.</div>
+        <div className="text-base font-semibold text-text-primary">While you're here, here's how transactions work in this league.</div>
+      </div>
+      <div className="max-w-xl mx-auto">
+        <p className="text-xs text-text-muted mb-4">This tab shows all league transactions — trades, waiver claims, free agent pickups, and drops. Once the first move is made, this guide disappears and the activity feed takes over.</p>
+        <ul className="space-y-3 text-sm text-text-primary list-none">
+          <li className="flex gap-3">
+            <span className="text-accent font-bold shrink-0 mt-0.5">→</span>
+            <div>
+              <span className="font-semibold">Trades</span> — Propose a trade to any manager by selecting players from both rosters. {isCommReview ? 'Trades require commissioner approval before they process.' : 'Once accepted, trades process immediately.'}
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-accent font-bold shrink-0 mt-0.5">→</span>
+            <div>
+              <span className="font-semibold">Waivers</span> — When a player is dropped, they go on waivers for 24 hours. During that window, any manager can place a claim. {isFaab
+                ? `Claims are resolved by blind bid — you have a $${faabBudget} budget for the season. Highest bid wins the player.`
+                : 'Claims are resolved by waiver priority — lower priority number wins. After a successful claim, you move to the back of the line.'}
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-accent font-bold shrink-0 mt-0.5">→</span>
+            <div>
+              <span className="font-semibold">Free Agents</span> — Players not on any roster and not on waivers are free agents. You can pick them up instantly — no waiting, first come first served.
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-accent font-bold shrink-0 mt-0.5">→</span>
+            <div>
+              <span className="font-semibold">Drops</span> — Drop a player from your roster to free up a spot. The dropped player enters the waiver wire for 24 hours before becoming a free agent.
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 // =====================================================================
 // Main Transactions Component
 // =====================================================================
 
-export default function FantasyTrades({ league }) {
+export default function FantasyTrades({ league, fantasySettings }) {
   const { profile } = useAuth()
   const { data: trades, isLoading: tradesLoading } = useFantasyTrades(league.id)
   const { data: transactions, isLoading: txnLoading } = useFantasyTransactions(league.id)
@@ -447,7 +493,7 @@ export default function FantasyTrades({ league }) {
         /* Activity log */
         <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 overflow-hidden">
           {!transactions?.length ? (
-            <div className="text-center py-8 text-sm text-text-muted">No transactions yet.</div>
+            <TransactionsOnboarding fantasySettings={fantasySettings} />
           ) : (
             <div className="px-4 bg-bg-primary/30 rounded-xl border border-text-primary/10">
               {(() => {

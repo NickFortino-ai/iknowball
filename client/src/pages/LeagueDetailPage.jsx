@@ -1853,7 +1853,7 @@ export default function LeagueDetailPage() {
       )}
 
       {(tabs[activeTab] === 'Trades' || tabs[activeTab] === 'Transactions') && league.format === 'fantasy' && (
-        <div className="relative z-10"><FantasyTrades league={league} /></div>
+        <div className="relative z-10"><FantasyTrades league={league} fantasySettings={fantasySettings} /></div>
       )}
 
       {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (
