@@ -392,7 +392,7 @@ function TransactionsOnboarding({ fantasySettings }) {
         <div className="text-base font-semibold text-text-primary">While you're here, here's how transactions work in this league.</div>
       </div>
       <div className="max-w-xl mx-auto">
-        <p className="text-xs text-text-muted mb-4">This tab shows all league transactions — trades, waiver claims, free agent pickups, and drops. Once the first move is made, this guide disappears and the activity feed takes over.</p>
+        <p className="text-sm text-text-primary mb-5">This tab shows all league transactions — trades, waiver claims, free agent pickups, and drops. Once the first move is made, this guide disappears and the activity feed takes over.</p>
         <ul className="space-y-3 text-sm text-text-primary list-none">
           <li className="flex gap-3">
             <span className="text-accent font-bold shrink-0 mt-0.5">→</span>
