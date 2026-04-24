@@ -948,6 +948,8 @@ import {
   setDraftQueue,
   pauseDraft,
   resumeDraft,
+  setUserAutoDraft,
+  cancelMyAutoDraft,
   getMyRankings,
   setMyRankings,
   resetMyRankings,
@@ -1223,6 +1225,24 @@ router.get('/:id/fantasy/draft/queue', requireAuth, async (req, res) => {
 router.put('/:id/fantasy/draft/queue', requireAuth, async (req, res) => {
   const { playerIds } = req.body
   const result = await setDraftQueue(req.params.id, req.user.id, playerIds || [])
+  res.json(result)
+})
+
+// Commissioner sets autodraft status for a user
+router.post('/:id/fantasy/draft/autodraft', requireAuth, async (req, res) => {
+  const { data: league } = await supabase.from('leagues').select('commissioner_id').eq('id', req.params.id).single()
+  if (!league || league.commissioner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only the commissioner can set autodraft' })
+  }
+  const { userId, enabled } = req.body
+  if (!userId || typeof enabled !== 'boolean') return res.status(400).json({ error: 'userId and enabled are required' })
+  const result = await setUserAutoDraft(req.params.id, userId, enabled)
+  res.json(result)
+})
+
+// User cancels their own autodraft
+router.post('/:id/fantasy/draft/autodraft/cancel', requireAuth, async (req, res) => {
+  const result = await cancelMyAutoDraft(req.params.id, req.user.id)
   res.json(result)
 })
 

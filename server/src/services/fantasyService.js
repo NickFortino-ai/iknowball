@@ -1068,6 +1068,52 @@ export async function resumeDraft(leagueId) {
 }
 
 /**
+ * Commissioner sets a user's autodraft status.
+ * When enabled, the user's picks fire immediately (no timer wait).
+ */
+export async function setUserAutoDraft(leagueId, userId, enabled) {
+  const settings = await getFantasySettings(leagueId)
+  if (settings.draft_status !== 'in_progress') {
+    const err = new Error('Draft must be in progress')
+    err.status = 400
+    throw err
+  }
+  const current = settings.auto_drafting_users || []
+  let updated
+  if (enabled) {
+    updated = current.includes(userId) ? current : [...current, userId]
+  } else {
+    updated = current.filter((id) => id !== userId)
+  }
+  await supabase
+    .from('fantasy_settings')
+    .update({ auto_drafting_users: updated })
+    .eq('league_id', leagueId)
+  logger.info({ leagueId, userId, enabled }, 'Autodraft status updated')
+  return { auto_drafting_users: updated }
+}
+
+/**
+ * User cancels their own autodraft. Also resets the timer baseline
+ * so they get a fresh pick clock if they're currently on the clock.
+ */
+export async function cancelMyAutoDraft(leagueId, userId) {
+  const settings = await getFantasySettings(leagueId)
+  if (settings.draft_status !== 'in_progress') {
+    const err = new Error('Draft must be in progress')
+    err.status = 400
+    throw err
+  }
+  const updated = (settings.auto_drafting_users || []).filter((id) => id !== userId)
+  await supabase
+    .from('fantasy_settings')
+    .update({ auto_drafting_users: updated, draft_resumed_at: new Date().toISOString() })
+    .eq('league_id', leagueId)
+  logger.info({ leagueId, userId }, 'User cancelled autodraft')
+  return { auto_drafting_users: updated }
+}
+
+/**
  * Get a user's pre-rank draft queue (ordered).
  */
 export async function getDraftQueue(leagueId, userId) {
@@ -1510,7 +1556,7 @@ export async function processScheduledDraftStarts() {
 export async function processDraftAutopicks() {
   const { data: liveDrafts } = await supabase
     .from('fantasy_settings')
-    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at, draft_mode')
+    .select('league_id, draft_pick_timer, draft_started_at, draft_resumed_at, draft_mode, auto_drafting_users')
     .eq('draft_status', 'in_progress')
 
   if (!liveDrafts?.length) return 0
@@ -1532,6 +1578,14 @@ export async function processDraftAutopicks() {
         .maybeSingle()
 
       if (!nextPick) continue
+
+      // If on-the-clock user is flagged as auto-drafting, pick immediately (no timer wait)
+      if ((d.auto_drafting_users || []).includes(nextPick.user_id)) {
+        logger.info({ leagueId: d.league_id, userId: nextPick.user_id, pickNumber: nextPick.pick_number }, 'Auto-drafting user on clock — instant pick')
+        await autoDraftPick(d.league_id, nextPick.user_id)
+        autopicks++
+        continue
+      }
 
       // Most recent completed pick (for the deadline baseline)
       const { data: lastPick } = await supabase

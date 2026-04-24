@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings } from '../../hooks/useLeagues'
+import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft } from '../../hooks/useLeagues'
 import DraftPlayerPreview from './DraftPlayerPreview'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
@@ -98,6 +98,9 @@ export default function FantasyDraftRoom({ league }) {
   const setQueue = useSetDraftQueue()
   const pauseDraftMut = usePauseDraft()
   const resumeDraftMut = useResumeDraft()
+  const setAutoDraftMut = useSetAutoDraft()
+  const cancelAutoDraftMut = useCancelAutoDraft()
+  const [autoDraftPrompt, setAutoDraftPrompt] = useState(null)
   useRealtimeDraft(league.id)
 
   const queuedIds = useMemo(() => new Set((queue || []).map((q) => q.player_id)), [queue])
@@ -258,6 +261,28 @@ export default function FantasyDraftRoom({ league }) {
       pickListRef.current.scrollTop = pickListRef.current.scrollHeight
     }
   }, [completedPicks.length])
+
+  // Commissioner: detect autopicks and prompt to flag user as autodrafting
+  const prevPickCountRef = useRef(completedPicks.length)
+  useEffect(() => {
+    if (!isCommissioner || draftStatus !== 'in_progress') return
+    if (completedPicks.length <= prevPickCountRef.current) {
+      prevPickCountRef.current = completedPicks.length
+      return
+    }
+    prevPickCountRef.current = completedPicks.length
+    const lastPick = completedPicks[completedPicks.length - 1]
+    if (lastPick?.is_auto_pick && !(settings?.auto_drafting_users || []).includes(lastPick.user_id)) {
+      setAutoDraftPrompt({
+        userId: lastPick.user_id,
+        displayName: lastPick.users?.display_name || lastPick.users?.username || 'Unknown',
+        pickNumber: lastPick.pick_number,
+      })
+    }
+  }, [completedPicks.length])
+
+  const amAutoDrafting = (settings?.auto_drafting_users || []).includes(profile?.id)
+  const onClockIsAutoDrafting = currentPick && (settings?.auto_drafting_users || []).includes(currentPick.user_id)
 
   async function handlePick(playerId) {
     if (offlineMode) {
@@ -618,6 +643,25 @@ export default function FantasyDraftRoom({ league }) {
   // Live draft
   return (
     <div className="space-y-3 md:space-y-4">
+      {/* "I'm here" banner for autodrafting users */}
+      {amAutoDrafting && (
+        <div className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 flex items-center justify-between gap-3">
+          <span className="text-sm text-yellow-400">You are set to autodraft. Your picks are being made automatically.</span>
+          <button
+            onClick={async () => {
+              try {
+                await cancelAutoDraftMut.mutateAsync(league.id)
+                toast("Welcome back! You're drafting manually now.", 'success')
+              } catch (err) { toast(err.message || 'Failed', 'error') }
+            }}
+            disabled={cancelAutoDraftMut.isPending}
+            className="shrink-0 px-4 py-1.5 rounded-lg text-xs font-semibold bg-yellow-500 text-black hover:bg-yellow-400 transition-colors disabled:opacity-50"
+          >
+            I'm here
+          </button>
+        </div>
+      )}
+
       {/* Sticky pick banner — glass edge */}
       <div className="sticky top-0 z-20 -mx-2 px-2 pt-1 md:static md:mx-0 md:px-0 md:pt-0">
       <div className={`rounded-xl px-4 py-2.5 flex items-center justify-center gap-3 flex-wrap bg-bg-primary border ${isMyTurn ? 'border-accent' : 'border-text-primary/20'}`}>
@@ -627,11 +671,13 @@ export default function FantasyDraftRoom({ league }) {
         <div className="font-display text-sm md:text-base text-text-secondary">
           {isMyTurn ? "You're on the clock!" : `${currentPick?.users?.display_name || 'Someone'} is picking...`}
         </div>
-        {timerSeconds != null && (
+        {onClockIsAutoDrafting ? (
+          <div className="font-display text-base md:text-lg text-yellow-400">AUTO</div>
+        ) : timerSeconds != null ? (
           <div className={`font-display text-base md:text-lg ${timerSeconds <= 10 ? 'text-incorrect' : 'text-text-primary'}`}>
             {Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')}
           </div>
-        )}
+        ) : null}
         {isCommissioner && (
           <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
             <button
@@ -905,6 +951,36 @@ export default function FantasyDraftRoom({ league }) {
             <h3 className="text-sm font-semibold text-text-primary">Draft Log</h3>
           </div>
           <DraftLogList completedPicks={completedPicks} numTeams={settings?.num_teams || 10} profileId={profile?.id} listRef={pickListRef} />
+        </div>
+      )}
+
+      {/* Commissioner: autodraft prompt after an autopick */}
+      {autoDraftPrompt && isCommissioner && (
+        <div className="fixed bottom-4 right-4 z-50 rounded-xl border border-accent/40 bg-bg-card shadow-xl p-4 max-w-sm">
+          <div className="text-sm text-text-primary mb-3">
+            <span className="font-semibold">{autoDraftPrompt.displayName}</span> was auto-picked (pick #{autoDraftPrompt.pickNumber}). Are they autodrafting?
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  await setAutoDraftMut.mutateAsync({ leagueId: league.id, userId: autoDraftPrompt.userId, enabled: true })
+                  toast(`${autoDraftPrompt.displayName} set to autodraft`, 'success')
+                } catch (err) { toast(err.message || 'Failed', 'error') }
+                setAutoDraftPrompt(null)
+              }}
+              disabled={setAutoDraftMut.isPending}
+              className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+            >
+              Yes, autodraft
+            </button>
+            <button
+              onClick={() => setAutoDraftPrompt(null)}
+              className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-secondary border border-text-primary/20 hover:bg-bg-card-hover transition-colors"
+            >
+              No
+            </button>
+          </div>
         </div>
       )}
 

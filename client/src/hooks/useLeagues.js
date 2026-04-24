@@ -850,6 +850,22 @@ export function useResumeDraft() {
   })
 }
 
+export function useSetAutoDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, userId, enabled }) => api.post(`/leagues/${leagueId}/fantasy/draft/autodraft`, { userId, enabled }),
+    onSuccess: (_d, { leagueId }) => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] }),
+  })
+}
+
+export function useCancelAutoDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/fantasy/draft/autodraft/cancel`),
+    onSuccess: (_d, leagueId) => queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] }),
+  })
+}
+
 export function useFantasyStandings(leagueId) {
   return useQuery({
     queryKey: ['leagues', leagueId, 'fantasy', 'standings'],
