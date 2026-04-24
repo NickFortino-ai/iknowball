@@ -204,29 +204,53 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             <p className="text-sm text-text-muted text-center py-4">Pick up to 3 hitters you think will hit a home run today</p>
           ) : (
             <div className="space-y-2">
-              {selected.map((player) => (
-                <div key={player.espn_player_id} className="flex items-center gap-3 bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2.5">
-                  {player.headshot_url && (
-                    <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                      onError={(e) => { e.target.style.display = 'none' }} />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
-                    <div className="text-xs text-text-muted">{player.team} · {player.opponent || ''}</div>
+              {selected.map((player) => {
+                // Merge scored data from saved picks
+                const savedPick = (myPicks || []).find((p) => p.espn_player_id === player.espn_player_id)
+                const hrs = savedPick?.home_runs || 0
+                const dist = savedPick?.hr_distance_total || 0
+                return (
+                  <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2.5">
+                    {player.headshot_url && (
+                      <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                        onError={(e) => { e.target.style.display = 'none' }} />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
+                      <div className="text-xs text-text-muted">{player.team} · {player.opponent || ''}</div>
+                    </div>
+                    {hasSavedPicks && !editing && (
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`font-display text-lg ${hrs > 0 ? 'text-correct' : 'text-text-muted'}`}>{hrs} HR</span>
+                        <span className="text-[11px] text-text-muted w-10 text-right">{dist ? `${dist}ft` : '\u2014'}</span>
+                      </div>
+                    )}
+                    {(!hasSavedPicks || editing) && (
+                      <button
+                        onClick={() => removePlayer(player.espn_player_id)}
+                        className="p-2 text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
+                      >
+                        &times;
+                      </button>
+                    )}
                   </div>
-                  {(!hasSavedPicks || editing) && (
-                    <button
-                      onClick={() => removePlayer(player.espn_player_id)}
-                      className="p-2 text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
-                    >
-                      &times;
-                    </button>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
+
+        {hasSavedPicks && !editing && (() => {
+          const dayHRs = (myPicks || []).reduce((sum, p) => sum + (p.home_runs || 0), 0)
+          const dayDist = (myPicks || []).reduce((sum, p) => sum + (p.hr_distance_total || 0), 0)
+          return (
+            <div className="flex items-center justify-end gap-4 px-1 mb-2 -mt-1">
+              <span className="text-xs text-text-muted uppercase tracking-wider">Today</span>
+              <span className={`font-display text-sm ${dayHRs > 0 ? 'text-correct' : 'text-text-muted'}`}>{dayHRs} HR</span>
+              <span className="text-[11px] text-text-muted">{dayDist ? `${dayDist}ft` : '\u2014'}</span>
+            </div>
+          )
+        })()}
 
         {hasSavedPicks && !editing ? (
           <button

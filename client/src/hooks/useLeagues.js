@@ -1212,6 +1212,7 @@ export function useHrDerbyPicks(leagueId, date) {
     queryKey: ['hr-derby', leagueId, 'picks', date],
     queryFn: () => api.get(`/hr-derby/picks?league_id=${leagueId}&date=${date}`),
     enabled: !!leagueId && !!date,
+    refetchInterval: 2 * 60 * 1000, // refresh every 2 min to pick up scored HRs
   })
 }
 
