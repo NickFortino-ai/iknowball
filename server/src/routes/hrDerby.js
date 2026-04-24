@@ -194,16 +194,27 @@ router.get('/standings', async (req, res) => {
   const { league_id } = req.query
   if (!league_id) return res.status(400).json({ error: 'league_id required' })
 
+  // Get all league members
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', league_id)
+
+  if (!members?.length) return res.json({ standings: [] })
+
+  const allMemberIds = members.map((m) => m.user_id)
+
   // Aggregate all picks with HRs
   const { data: picks } = await supabase
     .from('hr_derby_picks')
     .select('user_id, home_runs, hr_distance_total')
     .eq('league_id', league_id)
 
-  if (!picks?.length) return res.json({ standings: [] })
-
   const userMap = {}
-  for (const p of picks) {
+  for (const uid of allMemberIds) {
+    userMap[uid] = { totalHRs: 0, totalDistance: 0 }
+  }
+  for (const p of (picks || [])) {
     if (!userMap[p.user_id]) userMap[p.user_id] = { totalHRs: 0, totalDistance: 0 }
     userMap[p.user_id].totalHRs += p.home_runs || 0
     userMap[p.user_id].totalDistance += p.hr_distance_total || 0

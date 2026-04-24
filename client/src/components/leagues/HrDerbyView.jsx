@@ -137,7 +137,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
           <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+            <div className="grid grid-cols-[1.5rem_1fr_2.5rem_3rem] gap-1.5 px-3 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
               <span className="text-right">HRs</span>
@@ -149,17 +149,17 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                 <button
                   key={s.user?.id}
                   onClick={() => setStandingsUserId(s.user?.id)}
-                  className={`w-full grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
+                  className={`w-full grid grid-cols-[1.5rem_1fr_2.5rem_3rem] gap-1.5 px-3 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
                 >
-                  <span className={`font-display text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar user={s.user} size="lg" />
-                    <span className={`font-bold truncate text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+                  <span className={`font-display text-lg ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar user={s.user} size="md" />
+                    <span className={`font-bold truncate text-sm ${isMe ? 'text-accent' : 'text-text-primary'}`}>
                       {s.user?.display_name || s.user?.username}
                     </span>
                   </div>
-                  <span className="font-display text-xl text-white text-right">{s.totalHRs}</span>
-                  <span className="text-sm text-text-muted text-right">{s.totalDistance ? `${s.totalDistance}ft` : '\u2014'}</span>
+                  <span className="font-display text-lg text-white text-right">{s.totalHRs}</span>
+                  <span className="text-[11px] text-text-muted text-right">{s.totalDistance ? `${s.totalDistance}ft` : '\u2014'}</span>
                 </button>
               )
             })}
