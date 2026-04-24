@@ -39,8 +39,12 @@ export default function MessageThreadPage() {
 
   useRealtimeMessages(profile?.id)
 
-  // Scroll to top on mount so the header isn't pushed off-screen
-  useEffect(() => { window.scrollTo(0, 0) }, [])
+  // Lock body scroll and reset position so the fixed container can't be dragged
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   // Keep input visible when iOS keyboard opens
   const containerRef = useRef(null)
