@@ -316,7 +316,7 @@ export default function FantasyDraftRoom({ league }) {
 
     const numTeams = settings?.num_teams || 10
     const memberCount = league.members?.length || 0
-    const rounds = settings?.roster_slots ? Object.values(settings.roster_slots).reduce((a, b) => a + b, 0) : (picks.length / numTeams || 15)
+    const rounds = settings?.roster_slots ? Object.entries(settings.roster_slots).reduce((sum, [k, v]) => sum + (k === 'ir' ? 0 : v), 0) : (picks.length / numTeams || 15)
     const scoringLabel = settings?.scoring_format === 'ppr' ? 'PPR' : settings?.scoring_format === 'half_ppr' ? 'Half-PPR' : 'Standard'
     const isSnake = true // default draft type
 
