@@ -40,7 +40,7 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
             key={pos}
             onClick={() => setPosFilter(pos)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              posFilter === pos ? 'bg-accent text-white' : 'bg-bg-primary/50 text-text-secondary hover:bg-bg-primary/70 border border-text-primary/15'
+              posFilter === pos ? 'bg-accent text-white' : 'bg-bg-primary/40 text-text-secondary hover:bg-bg-primary/60 border border-text-primary/20'
             }`}
           >
             {pos}
@@ -54,7 +54,7 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search players..."
-        className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
+        className="w-full bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
       />
 
       {/* Player list */}

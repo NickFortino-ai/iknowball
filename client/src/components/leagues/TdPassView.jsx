@@ -70,7 +70,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No picks yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/20 overflow-hidden">
+          <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden">
             <div className="grid grid-cols-[2.5rem_1fr_3rem_4rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
@@ -114,7 +114,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
     return (
       <div className="space-y-4">
         {groupedHistory.map((group) => (
-          <div key={group.week} className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary">
+          <div key={group.week} className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary/60 backdrop-blur-sm">
             <div className="px-4 py-2 border-b border-text-primary/10 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-text-primary">Week {group.week}</h3>
               <span className="text-[10px] text-text-muted">{group.picks.length} picks</span>
@@ -160,7 +160,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
     <div className="lg:grid lg:grid-cols-2 lg:gap-6 pb-24 lg:pb-0">
       {/* Left: current pick + my history summary */}
       <div>
-        <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 mb-4">
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-text-primary">Week {currentWeek || '—'} Pick</h3>
             <span className="text-[10px] text-text-muted">Season {currentSeason || ''}</span>
@@ -190,7 +190,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
             <div className="text-xs text-text-muted uppercase tracking-wider mb-2">QBs You've Used</div>
             <div className="flex flex-wrap gap-1.5">
               {(myPicks || []).map((p) => (
-                <span key={p.id} className="text-[10px] bg-text-primary/10 text-text-muted px-2 py-1 rounded-full">
+                <span key={p.id} className="text-[10px] bg-bg-primary/40 border border-text-primary/10 text-text-muted px-2 py-1 rounded-full">
                   W{p.week} · {p.qb_name} · {p.td_count} TD
                 </span>
               ))}
@@ -200,7 +200,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
       </div>
 
       {/* Right: QB pool */}
-      <div className="rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available QBs</h3>
           <input
@@ -208,7 +208,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search QBs..."
-            className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            className="w-full bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -229,7 +229,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   type="button"
                   onClick={() => handlePick(qb)}
                   disabled={submit.isPending}
-                  className="w-full flex flex-col items-center text-center gap-2 px-4 py-5 rounded-2xl border border-text-primary/20 bg-bg-primary hover:border-accent hover:bg-accent/5 active:scale-[0.98] transition-all disabled:opacity-50"
+                  className="w-full flex flex-col items-center text-center gap-2 px-4 py-5 rounded-2xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-sm hover:border-accent hover:bg-accent/5 active:scale-[0.98] transition-all disabled:opacity-50"
                 >
                   {qb.headshot_url ? (
                     <img
