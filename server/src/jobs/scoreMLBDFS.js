@@ -353,6 +353,46 @@ async function tightenMLBJoinLocks() {
 }
 
 /**
+ * Score HR Derby picks: pull home_runs from mlb_dfs_player_stats into hr_derby_picks.
+ */
+async function scoreHRDerbyPicks(date) {
+  // Get all hr_derby_picks for this date that haven't been scored yet
+  const { data: picks } = await supabase
+    .from('hr_derby_picks')
+    .select('id, espn_player_id')
+    .eq('game_date', date)
+
+  if (!picks?.length) return
+
+  // Get HR stats for all relevant players on this date
+  const espnIds = [...new Set(picks.map((p) => p.espn_player_id))]
+  const { data: stats } = await supabase
+    .from('mlb_dfs_player_stats')
+    .select('espn_player_id, home_runs')
+    .eq('game_date', date)
+    .in('espn_player_id', espnIds)
+
+  if (!stats?.length) return
+
+  const hrMap = {}
+  for (const s of stats) {
+    hrMap[s.espn_player_id] = s.home_runs || 0
+  }
+
+  // Update each pick with the player's HR count
+  for (const pick of picks) {
+    const hrs = hrMap[pick.espn_player_id]
+    if (hrs === undefined) continue
+    await supabase
+      .from('hr_derby_picks')
+      .update({ home_runs: hrs })
+      .eq('id', pick.id)
+  }
+
+  logger.info({ date, picks: picks.length }, 'Scored HR Derby picks')
+}
+
+/**
  * Main job: generate MLB salaries for today/tomorrow, score games.
  */
 export async function scoreMLBDFS() {
@@ -407,6 +447,7 @@ export async function scoreMLBDFS() {
   if (playerStats.length > 0) {
     await upsertPlayerStats(playerStats, today, season)
     await scoreRosters(today, season, allFinal)
+    await scoreHRDerbyPicks(today)
     logger.info({ date: today, players: playerStats.length, allFinal }, 'MLB DFS scoring pass complete')
   }
 
@@ -427,6 +468,7 @@ export async function scoreMLBDFS() {
     if (yester.playerStats.length > 0) {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
       await scoreRosters(yesterdayStr, season, yester.allFinal)
+      await scoreHRDerbyPicks(yesterdayStr)
       logger.info({ date: yesterdayStr, players: yester.playerStats.length, allFinal: yester.allFinal }, 'Scored yesterday MLB DFS games')
     }
   }
