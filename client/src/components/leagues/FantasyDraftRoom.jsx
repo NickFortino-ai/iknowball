@@ -48,22 +48,37 @@ function DraftCountdown({ date }) {
   })
   if (remaining === 0) {
     return (
-      <div className="mb-4 px-4 py-3 rounded-xl border border-correct/40 bg-correct/10 text-correct text-sm font-semibold">
+      <div className="mb-6 px-6 py-4 rounded-2xl border border-correct/40 bg-correct/10 text-correct text-base font-display text-center">
         Draft is starting any moment…
       </div>
     )
   }
   return (
-    <div className="mb-4 px-4 py-3 rounded-xl border border-accent/40 bg-accent/10 inline-block">
-      <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Draft scheduled</div>
-      <div className="text-sm text-text-primary font-semibold mb-2">{localDate}</div>
-      <div className="flex items-center justify-center gap-3 font-display text-text-primary">
+    <div className="mb-6 rounded-2xl border border-accent/40 bg-accent/5 backdrop-blur-sm p-5 md:p-6">
+      <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1 text-center">Draft Countdown</div>
+      <div className="text-sm md:text-base text-text-primary font-semibold mb-4 text-center">{localDate}</div>
+      <div className="flex items-center justify-center gap-3 md:gap-5 font-display text-text-primary">
         {days > 0 && (
-          <div className="text-center"><div className="text-xl tabular-nums">{days}</div><div className="text-[9px] uppercase text-text-muted">days</div></div>
+          <div className="text-center">
+            <div className="text-3xl md:text-5xl tabular-nums text-white">{days}</div>
+            <div className="text-[10px] md:text-xs uppercase text-text-muted mt-1">days</div>
+          </div>
         )}
-        <div className="text-center"><div className="text-xl tabular-nums">{String(hours).padStart(2, '0')}</div><div className="text-[9px] uppercase text-text-muted">hr</div></div>
-        <div className="text-center"><div className="text-xl tabular-nums">{String(mins).padStart(2, '0')}</div><div className="text-[9px] uppercase text-text-muted">min</div></div>
-        <div className="text-center"><div className="text-xl tabular-nums">{String(secs).padStart(2, '0')}</div><div className="text-[9px] uppercase text-text-muted">sec</div></div>
+        <div className="text-xl md:text-3xl text-text-muted/40 font-light">:</div>
+        <div className="text-center">
+          <div className="text-3xl md:text-5xl tabular-nums text-white">{String(hours).padStart(2, '0')}</div>
+          <div className="text-[10px] md:text-xs uppercase text-text-muted mt-1">hrs</div>
+        </div>
+        <div className="text-xl md:text-3xl text-text-muted/40 font-light">:</div>
+        <div className="text-center">
+          <div className="text-3xl md:text-5xl tabular-nums text-white">{String(mins).padStart(2, '0')}</div>
+          <div className="text-[10px] md:text-xs uppercase text-text-muted mt-1">min</div>
+        </div>
+        <div className="text-xl md:text-3xl text-text-muted/40 font-light">:</div>
+        <div className="text-center">
+          <div className="text-3xl md:text-5xl tabular-nums text-white">{String(secs).padStart(2, '0')}</div>
+          <div className="text-[10px] md:text-xs uppercase text-text-muted mt-1">sec</div>
+        </div>
       </div>
     </div>
   )
@@ -299,92 +314,132 @@ export default function FantasyDraftRoom({ league }) {
       return <DraftBoardPreview settings={settings} picks={picks} draftDate={draftDate} profileId={profile?.id} league={league} isCommissioner={isCommissioner} onStartDraft={handleStartDraft} startDraftPending={startDraft.isPending} />
     }
 
+    const numTeams = settings?.num_teams || 10
+    const memberCount = league.members?.length || 0
+    const rounds = settings?.roster_slots ? Object.values(settings.roster_slots).reduce((a, b) => a + b, 0) : (picks.length / numTeams || 15)
+    const scoringLabel = settings?.scoring_format === 'ppr' ? 'PPR' : settings?.scoring_format === 'half_ppr' ? 'Half-PPR' : 'Standard'
+    const isSnake = true // default draft type
+
     return (
-      <div className="text-center py-8">
-        <h3 className="font-display text-lg text-text-primary mb-2">
-          {settings?.draft_mode === 'offline' ? 'Offline Draft' : 'Draft Room'}
-        </h3>
-        <p className="text-sm text-text-secondary mb-4">
-          {hasPickSlots
-            ? `Draft order is set. ${league.members?.length || 0} teams, ${picks.length} total picks.`
-            : `${league.members?.length || 0} teams joined. The commissioner needs to set the draft order.`}
-        </p>
+      <div className="max-w-xl mx-auto py-6 md:py-8 space-y-6">
+        <div className="text-center">
+          <h3 className="font-display text-2xl md:text-3xl text-text-primary mb-2">
+            {settings?.draft_mode === 'offline' ? 'Offline Draft' : 'Draft Room'}
+          </h3>
+          <p className="text-sm text-text-primary">
+            {hasPickSlots
+              ? `Draft order is set. ${memberCount} teams, ${rounds} rounds, ${picks.length} total picks.`
+              : `${memberCount} teams joined. The commissioner needs to set the draft order.`}
+          </p>
+        </div>
+
         {settings?.draft_location && (
-          <div className="mb-3 text-sm text-text-secondary">
+          <div className="text-center text-sm text-text-secondary">
             <span className="text-text-muted">Location:</span> <span className="font-semibold text-text-primary">{settings.draft_location}</span>
           </div>
         )}
+
         {draftDateValid && settings?.draft_mode === 'offline' ? (
-          <div className="mb-4 px-4 py-3 rounded-xl border border-accent/40 bg-accent/10 inline-block">
-            <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Draft date</div>
-            <div className="text-sm text-text-primary font-semibold">
+          <div className="rounded-2xl border border-accent/40 bg-accent/5 backdrop-blur-sm p-5 text-center">
+            <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">Draft Date</div>
+            <div className="text-base text-text-primary font-semibold">
               {draftDate.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
             </div>
           </div>
         ) : draftDateValid ? (
           <DraftCountdown date={draftDate} />
         ) : null}
-        {isCommissioner && !hasPickSlots && (() => {
-          const memberCount = league.members?.length || 0
-          const numTeams = settings?.num_teams || 10
-          const isFull = memberCount >= numTeams
-          return (
-            <>
-              <button
-                onClick={handleInitDraft}
-                disabled={initDraft.isPending || !isFull}
-                className="block mx-auto mt-4 px-6 py-2 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 mb-3"
-              >
-                {initDraft.isPending ? 'Randomizing...' : 'Randomize Draft Order'}
-              </button>
-              {!isFull && (
-                <p className="text-xs text-text-muted mb-3">
-                  {memberCount}/{numTeams} members joined — league must be full before setting draft order.
-                </p>
-              )}
-            </>
-          )
-        })()}
-        {isCommissioner && hasPickSlots && settings?.draft_mode === 'offline' && (
-          <button
-            onClick={async () => {
-              try {
-                await startOffline.mutateAsync(league.id)
-                toast('Offline draft started — enter your results', 'success')
-              } catch (err) {
-                toast(err.message || 'Failed to start offline draft', 'error')
-              }
-            }}
-            disabled={startOffline.isPending}
-            className="px-6 py-2 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
-          >
-            {startOffline.isPending ? 'Starting...' : 'Enter Draft Results'}
-          </button>
-        )}
-        {isCommissioner && hasPickSlots && settings?.draft_mode !== 'offline' && (
-          <button
-            onClick={handleStartDraft}
-            disabled={startDraft.isPending}
-            className="px-6 py-2 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
-          >
-            {startDraft.isPending ? 'Starting...' : 'Start Draft'}
-          </button>
-        )}
+
+        {/* Commissioner actions */}
+        <div className="text-center space-y-3">
+          {isCommissioner && !hasPickSlots && (() => {
+            const isFull = memberCount >= numTeams
+            return (
+              <>
+                <button
+                  onClick={handleInitDraft}
+                  disabled={initDraft.isPending || !isFull}
+                  className="px-6 py-3 rounded-xl text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+                >
+                  {initDraft.isPending ? 'Randomizing...' : 'Randomize Draft Order'}
+                </button>
+                {!isFull && (
+                  <p className="text-xs text-text-muted">
+                    {memberCount}/{numTeams} members joined — league must be full before setting draft order.
+                  </p>
+                )}
+              </>
+            )
+          })()}
+          {isCommissioner && hasPickSlots && settings?.draft_mode === 'offline' && (
+            <button
+              onClick={async () => {
+                try {
+                  await startOffline.mutateAsync(league.id)
+                  toast('Offline draft started — enter your results', 'success')
+                } catch (err) {
+                  toast(err.message || 'Failed to start offline draft', 'error')
+                }
+              }}
+              disabled={startOffline.isPending}
+              className="px-6 py-3 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
+            >
+              {startOffline.isPending ? 'Starting...' : 'Enter Draft Results'}
+            </button>
+          )}
+          {isCommissioner && hasPickSlots && settings?.draft_mode !== 'offline' && (
+            <button
+              onClick={handleStartDraft}
+              disabled={startDraft.isPending}
+              className="px-6 py-3 rounded-xl text-sm font-semibold bg-correct text-white hover:bg-correct/80 transition-colors disabled:opacity-50"
+            >
+              {startDraft.isPending ? 'Starting...' : 'Start Draft'}
+            </button>
+          )}
+        </div>
+
+        {/* Draft order */}
         {hasPickSlots && (
-          <div className="mt-4 text-left max-w-sm mx-auto">
-            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Draft Order</div>
-            {settings?.draft_order?.map((userId, i) => {
-              const member = picks.find((p) => p.user_id === userId)?.users
-              return (
-                <div key={userId} className="flex items-center gap-2 py-1">
-                  <span className="text-xs text-text-muted w-5">{i + 1}.</span>
-                  {member && <Avatar user={member} size="xs" />}
-                  <span className="text-sm text-text-primary">{member?.display_name || member?.username || 'Unknown'}</span>
-                </div>
-              )
-            })}
+          <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4">
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Draft Order</div>
+            <div className="space-y-1.5">
+              {settings?.draft_order?.map((userId, i) => {
+                const member = picks.find((p) => p.user_id === userId)?.users
+                const isYou = userId === profile?.id
+                return (
+                  <div key={userId} className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg ${isYou ? 'bg-accent/10' : ''}`}>
+                    <span className={`text-sm font-display w-6 ${isYou ? 'text-accent' : 'text-text-muted'}`}>{i + 1}</span>
+                    {member && <Avatar user={member} size="xs" />}
+                    <span className={`text-sm ${isYou ? 'text-accent font-semibold' : 'text-text-primary'}`}>{member?.display_name || member?.username || 'Unknown'}{isYou ? ' (you)' : ''}</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
+
+        {/* How it works */}
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4">
+          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">How the Draft Works</div>
+          <ul className="space-y-2.5 text-sm text-text-primary">
+            <li className="flex gap-3">
+              <span className="text-accent font-bold shrink-0">→</span>
+              <span>This is a <span className="font-semibold">snake draft</span> — the order reverses each round so the last pick in round 1 gets the first pick in round 2.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-accent font-bold shrink-0">→</span>
+              <span>Each pick is on a <span className="font-semibold">90-second timer</span>. If time runs out, the best available player by ADP is auto-drafted for you.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-accent font-bold shrink-0">→</span>
+              <span>Scoring format: <span className="font-semibold">{scoringLabel}</span>. {numTeams} teams, {rounds} rounds.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="text-accent font-bold shrink-0">→</span>
+              <span>Use the <span className="font-semibold">Mock Draft</span> tab to practice before the real thing.</span>
+            </li>
+          </ul>
+        </div>
       </div>
     )
   }
