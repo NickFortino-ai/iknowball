@@ -386,7 +386,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/20 overflow-hidden">
+          <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden">
             <div className={`grid ${gridCols} gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider`}>
               <span>#</span>
               <span>Player</span>
@@ -470,7 +470,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
         </div>
 
         {/* My Roster */}
-        <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden mb-4">
           <div className="px-4 py-3 border-b border-text-primary/10">
             <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
           </div>
@@ -557,7 +557,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
       </div>
 
       {/* Right column: player pool */}
-      <div className={`rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4 ${isViewMode ? 'hidden lg:block' : ''}`}>
+      <div className={`rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4 ${isViewMode ? 'hidden lg:block' : ''}`}>
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
           <input
@@ -565,7 +565,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search players..."
-            className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
+            className="w-full bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
           />
           <div className="flex gap-1.5 flex-wrap">
             {POSITION_FILTERS.map((pos) => (
