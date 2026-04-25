@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import {
   useTdPassQbs,
   useTdPassMyPicks,
-  useTdPassLeaguePicks,
   useTdPassStandings,
   useTdPassCurrentWeek,
   useSubmitTdPassPick,
@@ -11,7 +10,6 @@ import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
-import UserProfileModal from '../profile/UserProfileModal'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 export default function TdPassView({ league, tab = 'picks' }) {
@@ -22,7 +20,6 @@ export default function TdPassView({ league, tab = 'picks' }) {
 
   const { data: qbs, isLoading: qbsLoading } = useTdPassQbs(league.id)
   const { data: myPicks } = useTdPassMyPicks(league.id)
-  const { data: leaguePicks } = useTdPassLeaguePicks(league.id)
   const { data: standingsData } = useTdPassStandings(league.id)
   const submit = useSubmitTdPassPick()
 
@@ -50,18 +47,6 @@ export default function TdPassView({ league, tab = 'picks' }) {
     })
   }, [qbs, search])
 
-  // History tab — group league picks by week, ordered desc
-  const groupedHistory = useMemo(() => {
-    const byWeek = {}
-    for (const p of leaguePicks || []) {
-      if (!byWeek[p.week]) byWeek[p.week] = []
-      byWeek[p.week].push(p)
-    }
-    return Object.entries(byWeek)
-      .sort(([a], [b]) => Number(b) - Number(a))
-      .map(([week, picks]) => ({ week: Number(week), picks }))
-  }, [leaguePicks])
-
   async function handlePick(qb) {
     try {
       await submit.mutateAsync({ leagueId: league.id, qbPlayerId: qb.id })
@@ -79,86 +64,62 @@ export default function TdPassView({ league, tab = 'picks' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No picks yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-md overflow-hidden">
-            <div className="grid grid-cols-[2.5rem_1fr_3rem_4rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+          <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/40 backdrop-blur-md overflow-hidden">
+            <div className="grid grid-cols-[2rem_1fr_4rem] lg:grid-cols-[2.5rem_1fr_4.5rem] gap-2 px-4 lg:px-5 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
-              <span className="text-right">Picks</span>
               <span className="text-right">Pass TD</span>
             </div>
             {standings.map((s) => {
               const isMe = s.user?.id === profile?.id
+              const isExpanded = profileUserId === s.user?.id
               return (
-                <button
-                  key={s.user?.id}
-                  onClick={() => setProfileUserId(s.user?.id)}
-                  className={`w-full grid grid-cols-[2.5rem_1fr_3rem_4rem] gap-2 px-4 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
-                >
-                  <span className={`font-display text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar user={s.user} size="lg" />
-                    <span className={`font-bold truncate text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
-                      {s.user?.display_name || s.user?.username}
-                    </span>
-                  </div>
-                  <span className="text-sm text-text-muted text-right">{s.picks}</span>
-                  <span className="font-display text-xl text-white text-right">{s.totalTds}</span>
-                </button>
+                <div key={s.user?.id} className="border-b border-text-primary/10 last:border-b-0">
+                  <button
+                    onClick={() => setProfileUserId(isExpanded ? null : s.user?.id)}
+                    className={`w-full grid grid-cols-[2rem_1fr_4rem] lg:grid-cols-[2.5rem_1fr_4.5rem] gap-2 px-4 lg:px-5 py-3.5 lg:py-4 items-center text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
+                  >
+                    <span className={`font-display text-lg lg:text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
+                    <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                      <Avatar user={s.user} size="md" />
+                      <span className={`font-bold truncate text-sm lg:text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+                        {s.user?.display_name || s.user?.username}
+                      </span>
+                      <svg className={`w-4 h-4 text-accent shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                    <span className="font-display text-lg lg:text-xl text-white text-right">{s.totalTds}</span>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-4 lg:px-5 pb-3">
+                      {!s.history?.length ? (
+                        <p className="text-xs text-text-muted text-center py-2">No picks yet</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {s.history.map((pick, i) => (
+                            <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/30 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-2.5">
+                              {pick.headshot_url && (
+                                <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-9 lg:h-9 rounded-full object-cover bg-bg-secondary shrink-0"
+                                  onError={(e) => { e.target.style.display = 'none' }} />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.qb_name}</div>
+                                <div className="text-[10px] lg:text-xs text-text-muted">{pick.team} · Week {pick.week}</div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className={`font-display text-sm lg:text-base ${pick.td_count > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.td_count} TD</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
-        )}
-        {profileUserId && (
-          <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
-        )}
-      </div>
-    )
-  }
-
-  // ── History tab ─────────────────────────────────────────────────
-  if (tab === 'history') {
-    if (!groupedHistory.length) {
-      return <div className="text-center py-8 text-sm text-text-secondary">No picks have been made yet.</div>
-    }
-    return (
-      <div className="space-y-4">
-        {groupedHistory.map((group) => (
-          <div key={group.week} className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary/40 backdrop-blur-md">
-            <div className="px-4 py-2 border-b border-text-primary/10 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-text-primary">Week {group.week}</h3>
-              <span className="text-[10px] text-text-muted">{group.picks.length} picks</span>
-            </div>
-            <div className="divide-y divide-text-primary/10">
-              {group.picks.map((p) => {
-                const isMe = p.user_id === profile?.id
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => setProfileUserId(p.user_id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-text-primary/5 transition-colors ${isMe ? 'bg-accent/5' : ''}`}
-                  >
-                    <Avatar user={p.users} size="md" />
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-sm font-semibold truncate ${isMe ? 'text-accent' : 'text-text-primary'}`}>
-                        {p.users?.display_name || p.users?.username}
-                      </div>
-                      <div className="text-[11px] text-text-muted truncate">{p.qb_name} · {p.team}</div>
-                    </div>
-                    {p.headshot_url && (
-                      <img src={p.headshot_url} alt="" className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                    )}
-                    <div className="text-right shrink-0 w-12">
-                      <div className="font-display text-lg text-white leading-none">{p.td_count}</div>
-                      <div className="text-[9px] text-text-muted uppercase">TD</div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-        {profileUserId && (
-          <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
         )}
       </div>
     )

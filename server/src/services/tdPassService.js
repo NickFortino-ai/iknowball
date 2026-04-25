@@ -431,15 +431,24 @@ export async function submitPick(leagueId, userId, qbPlayerId) {
 export async function getStandings(leagueId) {
   const { data: picks } = await supabase
     .from('td_pass_picks')
-    .select('user_id, td_count')
+    .select('user_id, week, qb_name, team, headshot_url, td_count')
     .eq('league_id', leagueId)
-  if (!picks?.length) return { standings: [] }
+    .order('week', { ascending: true })
 
   const totals = {}
-  for (const p of picks) {
+  const userPicks = {}
+  for (const p of (picks || [])) {
     if (!totals[p.user_id]) totals[p.user_id] = { totalTds: 0, picks: 0 }
     totals[p.user_id].totalTds += p.td_count || 0
     totals[p.user_id].picks += 1
+    if (!userPicks[p.user_id]) userPicks[p.user_id] = []
+    userPicks[p.user_id].push({
+      week: p.week,
+      qb_name: p.qb_name,
+      team: p.team,
+      headshot_url: p.headshot_url,
+      td_count: p.td_count || 0,
+    })
   }
 
   // Include every member, even those with zero picks yet
@@ -452,6 +461,7 @@ export async function getStandings(leagueId) {
     user: m.users || { id: m.user_id },
     totalTds: totals[m.user_id]?.totalTds || 0,
     picks: totals[m.user_id]?.picks || 0,
+    history: userPicks[m.user_id] || [],
   }))
     .sort((a, b) => b.totalTds - a.totalTds || b.picks - a.picks)
     .map((r, i) => ({ ...r, rank: i + 1 }))

@@ -71,7 +71,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
     nba_dfs: ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread'],
     mlb_dfs: ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread'],
     hr_derby: ['Picks', memberOrStandings, 'Thread'],
-    td_pass: ['Picks', 'History', memberOrStandings, 'Thread'],
+    td_pass: ['Picks', memberOrStandings, 'Thread'],
   }
   return TABS[league.format] || [memberOrStandings, 'Thread']
 }
@@ -1878,11 +1878,11 @@ export default function LeagueDetailPage() {
         </div>
       )}
 
-      {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'History' || tabs[activeTab] === 'Standings') && league.format === 'td_pass' && (
+      {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'td_pass' && (
         <div className="relative z-10">
           <TdPassView
             league={league}
-            tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'History' ? 'history' : 'picks'}
+            tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'}
           />
         </div>
       )}
