@@ -135,8 +135,8 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden">
-            <div className="grid grid-cols-[1.5rem_1fr_2.5rem_3rem] gap-1.5 px-3 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+          <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/40 backdrop-blur-md overflow-hidden">
+            <div className="grid grid-cols-[1.5rem_1fr_2.5rem_3rem] lg:grid-cols-[2rem_1fr_3rem_4rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
               <span className="text-right">HRs</span>
@@ -149,40 +149,40 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                 <div key={s.user?.id} className="border-b border-text-primary/10 last:border-b-0">
                   <button
                     onClick={() => setStandingsUserId(isExpanded ? null : s.user?.id)}
-                    className={`w-full grid grid-cols-[1.5rem_1fr_2.5rem_3rem] gap-1.5 px-3 py-3.5 items-center text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
+                    className={`w-full grid grid-cols-[1.5rem_1fr_2.5rem_3rem] lg:grid-cols-[2rem_1fr_3rem_4rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3.5 lg:py-4.5 items-center text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
                   >
-                    <span className={`font-display text-lg ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Avatar user={s.user} size="md" />
-                      <span className={`font-bold truncate text-sm ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+                    <span className={`font-display text-lg lg:text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
+                    <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                      <Avatar user={s.user} size="md" className="lg:!w-10 lg:!h-10" />
+                      <span className={`font-bold truncate text-sm lg:text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
                         {s.user?.display_name || s.user?.username}
                       </span>
                       <svg className={`w-4 h-4 text-accent shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 9l6 6 6-6" />
                       </svg>
                     </div>
-                    <span className="font-display text-lg text-white text-right">{s.totalHRs}</span>
-                    <span className="text-[11px] text-text-muted text-right">{s.totalDistance ? `${s.totalDistance}ft` : '\u2014'}</span>
+                    <span className="font-display text-lg lg:text-xl text-white text-right">{s.totalHRs}</span>
+                    <span className="text-[11px] lg:text-xs text-text-muted text-right">{s.totalDistance ? `${s.totalDistance}ft` : '\u2014'}</span>
                   </button>
                   {isExpanded && (() => {
                     const todayPicks = (s.picks || []).filter((p) => p.game_date === today)
                     return (
-                    <div className="px-3 pb-3">
+                    <div className="px-3 lg:px-5 pb-3">
                       {!todayPicks.length ? (
                         <p className="text-xs text-text-muted text-center py-2">No picks today</p>
                       ) : (
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           {todayPicks.map((pick, i) => (
-                            <div key={i} className="flex items-center gap-2 bg-bg-primary/40 border border-text-primary/10 rounded-lg px-2.5 py-2">
+                            <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/30 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
                               {pick.headshot_url && (
-                                <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                                <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                                   onError={(e) => { e.target.style.display = 'none' }} />
                               )}
                               <div className="flex-1 min-w-0">
-                                <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
-                                <div className="text-[10px] text-text-muted">{pick.team}</div>
+                                <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
+                                <div className="text-[10px] lg:text-xs text-text-muted">{pick.team}</div>
                               </div>
-                              <span className={`font-display text-sm shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
+                              <span className={`font-display text-sm lg:text-base shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
                             </div>
                           ))}
                         </div>
