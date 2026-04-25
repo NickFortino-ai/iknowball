@@ -64,6 +64,23 @@ export default function DraftPrepPage() {
         <h1 className="font-display text-3xl">Fantasy Football Draft Prep</h1>
       </div>
 
+      {/* Intro */}
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 mb-4">
+        <p className="text-sm text-text-primary/80 mb-3">
+          Your personal big board for fantasy football, tailored to how you actually play.
+        </p>
+        <ul className="space-y-1.5 text-sm text-text-primary/80 mb-3">
+          <li className="flex gap-2"><span className="text-accent">•</span><span>Rank every player your way — drag, search, and filter your own board</span></li>
+          <li className="flex gap-2"><span className="text-accent">•</span><span>Tune it for your scoring (PPR / Half-PPR / Standard) and roster shape</span></li>
+          <li className="flex gap-2"><span className="text-accent">•</span><span>Compare your rankings against ADP and projections side-by-side</span></li>
+          <li className="flex gap-2"><span className="text-accent">•</span><span>Sync your rankings to any of your fantasy leagues — edits flow both ways</span></li>
+          <li className="flex gap-2"><span className="text-accent">•</span><span>Mock-draft against the field using your rankings and/or ADP rankings</span></li>
+        </ul>
+        <p className="text-sm font-bold text-text-primary">
+          Preparation is the best way to secure your league championships!
+        </p>
+      </div>
+
       {/* Config bar */}
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-3 mb-4">
         <div className="flex flex-wrap items-center gap-3">
