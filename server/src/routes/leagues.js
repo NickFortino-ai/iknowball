@@ -668,15 +668,29 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     if (g.away_team) teamsPlaying.add(g.away_team)
   }
 
+  // Aggregate season non-passing TDs (rush + receiving) per player
+  const { data: tdStats } = await supabase
+    .from('nfl_player_stats')
+    .select('player_id, rush_td, rec_td')
+    .eq('season', season)
+
+  const tdMap = {}
+  for (const s of (tdStats || [])) {
+    tdMap[s.player_id] = (tdMap[s.player_id] || 0) + (s.rush_td || 0) + (s.rec_td || 0)
+  }
+  const hasStats = Object.values(tdMap).some((v) => v > 0)
+
   const players = (data || []).map((p) => ({
     ...p,
     used: usedIds.has(p.id),
     on_bye: !teamsPlaying.has(p.team),
+    season_tds: tdMap[p.id] || 0,
   }))
 
-  // Sort: active players first, bye-week to bottom
+  // Sort: bye-week to bottom, then by season TDs (if stats exist) or search_rank
   players.sort((a, b) => {
     if (a.on_bye !== b.on_bye) return a.on_bye ? 1 : -1
+    if (hasStats) return b.season_tds - a.season_tds || (a.search_rank || 999) - (b.search_rank || 999)
     return (a.search_rank || 999) - (b.search_rank || 999)
   })
 

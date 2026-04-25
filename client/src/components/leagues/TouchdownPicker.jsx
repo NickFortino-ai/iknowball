@@ -63,6 +63,11 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
       ) : !players?.length ? (
         <p className="text-sm text-text-muted text-center py-4">No players found</p>
       ) : (
+        <>
+        <div className="flex items-center px-3 py-1.5 mb-1">
+          <div className="flex-1" />
+          <span className="text-[10px] text-text-muted uppercase tracking-wider">Season TD</span>
+        </div>
         <div className="max-h-[400px] overflow-y-auto space-y-1 scrollbar-hide">
           {players.map((player) => (
             <button
@@ -108,9 +113,11 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
                 </div>
                 <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
               </div>
+              <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_tds || 0}</span>
             </button>
           ))}
         </div>
+        </>
       )}
     </div>
   )
