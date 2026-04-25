@@ -36,9 +36,21 @@ export default function TdPassView({ league, tab = 'picks' }) {
 
   const filteredQbs = useMemo(() => {
     if (!qbs) return []
-    if (!search) return qbs
-    const q = search.toLowerCase()
-    return qbs.filter((p) => p.full_name?.toLowerCase().includes(q) || p.team?.toLowerCase().includes(q))
+    let list = qbs
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter((p) => p.full_name?.toLowerCase().includes(q) || p.team?.toLowerCase().includes(q))
+    }
+    // Sort: QBs with matchups first, then injured "Out" last, then alphabetical
+    return [...list].sort((a, b) => {
+      const aOut = a.injury_status === 'Out' ? 1 : 0
+      const bOut = b.injury_status === 'Out' ? 1 : 0
+      if (aOut !== bOut) return aOut - bOut
+      const aMatch = a.matchup ? 0 : 1
+      const bMatch = b.matchup ? 0 : 1
+      if (aMatch !== bMatch) return aMatch - bMatch
+      return (a.full_name || '').localeCompare(b.full_name || '')
+    })
   }, [qbs, search])
 
   // History tab — group league picks by week, ordered desc
@@ -229,7 +241,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   type="button"
                   onClick={() => handlePick(qb)}
                   disabled={submit.isPending}
-                  className="w-full flex flex-col items-center text-center gap-2 px-4 py-5 rounded-2xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-sm hover:border-accent hover:bg-accent/5 active:scale-[0.98] transition-all disabled:opacity-50"
+                  className={`w-full flex flex-col items-center text-center gap-2 px-4 py-5 rounded-2xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-sm hover:border-accent hover:bg-accent/5 active:scale-[0.98] transition-all disabled:opacity-50 ${qb.injury_status === 'Out' ? 'opacity-40' : ''}`}
                 >
                   {qb.headshot_url ? (
                     <img
