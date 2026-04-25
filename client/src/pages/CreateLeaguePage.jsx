@@ -102,7 +102,7 @@ Commissioner controls: sport (single or all), duration (this week, custom range,
   {
     value: 'survivor',
     label: 'Survivor',
-    description: 'Pick one team per period — if they lose, you lose a life. Last one standing wins',
+    description: 'Pick one team per period. If they win, you survive. Last one standing wins. TD Survivor also available',
     details: `Pick one team to win each period. Win and you survive. Lose and you burn a life. The catch: you can never pick the same team twice. Use all your lives and you're out. Last one standing wins.
 
 When the league ends, only survivors earn global IKB points — scaled by league size from 10 points for small leagues up to 100 for 41+ members. If multiple players survive to the end of the season, the bonus points are split evenly.
