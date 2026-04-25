@@ -380,7 +380,7 @@ export default function CreateLeaguePage() {
         name,
         format,
         sport: format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass') ? 'americanfootball_nfl' : sport,
-        duration: isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
+        duration: isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
@@ -390,6 +390,7 @@ export default function CreateLeaguePage() {
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
           : startsAt || undefined,
         ends_at: format === 'td_pass' ? getSeasonEndDate('americanfootball_nfl')
+          : format === 'survivor' ? getSeasonEndDate(sport)
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport)
           // DFS and fantasy salary-cap leagues with full_season run through
@@ -431,7 +432,7 @@ export default function CreateLeaguePage() {
   }
 
   const autoSportFormats = ['nba_dfs', 'mlb_dfs', 'hr_derby', 'td_pass']
-  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares', 'bracket', 'td_pass']
+  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares', 'bracket', 'td_pass', 'survivor']
   const canSubmit = name && format && (sport || autoSportFormats.includes(format)) && (noDurationFormats.includes(format) || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
@@ -582,7 +583,7 @@ export default function CreateLeaguePage() {
         </div>}
 
         {/* Duration (not for fantasy/DFS/squares/bracket — bracket runs from picks lock to championship game) */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares', 'bracket', 'td_pass'].includes(format) && <>
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
@@ -1434,6 +1435,16 @@ export default function CreateLeaguePage() {
                 min={2}
                 className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Start Date</label>
+              <input
+                type="date"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+              />
+              <p className="text-[10px] text-text-muted mt-1">League runs until there's one survivor left or the end of the season.</p>
             </div>
           </div>
         )}
