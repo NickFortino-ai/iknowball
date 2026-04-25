@@ -222,7 +222,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                 type="button"
                 onClick={() => !qb.used && handlePick(qb)}
                 disabled={submit.isPending || qb.used}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${qb.used ? 'opacity-40 cursor-not-allowed' : 'hover:bg-text-primary/5 cursor-pointer'} ${!qb.used && qb.injury_status === 'Out' ? 'opacity-40' : ''}`}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${qb.used ? 'opacity-40 cursor-not-allowed' : 'hover:bg-text-primary/5 cursor-pointer'} ${!qb.used && (qb.injury_status === 'Out' || !qb.matchup) ? 'opacity-40' : ''}`}
               >
                 {qb.headshot_url ? (
                   <img src={qb.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
@@ -236,6 +236,9 @@ export default function TdPassView({ league, tab = 'picks' }) {
                     {qb.used && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted">Used</span>
                     )}
+                    {!qb.matchup && !qb.used && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-primary/10 text-text-muted">BYE</span>
+                    )}
                     {qb.injury_status && !qb.used && (
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                         qb.injury_status === 'Out' ? 'bg-incorrect/20 text-incorrect'
@@ -248,7 +251,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   </div>
                   <div className="text-xs text-text-muted">
                     {qb.team}
-                    {qb.matchup ? ` ${qb.matchup.home_away === 'home' ? 'vs' : '@'} ${qb.matchup.opponent}` : ''}
+                    {qb.matchup ? ` ${qb.matchup.home_away === 'home' ? 'vs' : '@'} ${qb.matchup.opponent}` : ' · Bye week'}
                     {qb.matchup?.starts_at ? ` · ${new Date(qb.matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET` : ''}
                   </div>
                 </div>

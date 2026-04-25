@@ -262,11 +262,20 @@ export async function getAvailableQBs(leagueId, userId) {
     })
 
   // If no stats exist yet (preseason), use curated ranking; otherwise sort by TDs
+  // In both cases, bye-week QBs (no matchup) sink to the bottom
   const hasStats = Object.values(tdMap).some((v) => v > 0)
   if (hasStats) {
-    pool.sort((a, b) => b.season_pass_tds - a.season_pass_tds || a.full_name.localeCompare(b.full_name))
+    pool.sort((a, b) => {
+      const aBye = a.matchup ? 0 : 1
+      const bBye = b.matchup ? 0 : 1
+      if (aBye !== bBye) return aBye - bBye
+      return b.season_pass_tds - a.season_pass_tds || a.full_name.localeCompare(b.full_name)
+    })
   } else {
     pool.sort((a, b) => {
+      const aBye = a.matchup ? 0 : 1
+      const bBye = b.matchup ? 0 : 1
+      if (aBye !== bBye) return aBye - bBye
       const aRank = PRESEASON_QB_RANK[a.full_name] ?? 999
       const bRank = PRESEASON_QB_RANK[b.full_name] ?? 999
       if (aRank !== bRank) return aRank - bRank

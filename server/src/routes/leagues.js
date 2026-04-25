@@ -654,10 +654,31 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
 
   const usedIds = new Set((usedPicks || []).map((p) => p.player_id).filter(Boolean))
 
+  // Find teams with games this week to identify bye-week players
+  const { getCurrentNflWeek } = await import('../services/tdPassService.js')
+  const { season, week } = await getCurrentNflWeek()
+  const { data: weekGames } = await supabase
+    .from('nfl_schedule')
+    .select('home_team, away_team')
+    .eq('season', season)
+    .eq('week', week)
+  const teamsPlaying = new Set()
+  for (const g of (weekGames || [])) {
+    if (g.home_team) teamsPlaying.add(g.home_team)
+    if (g.away_team) teamsPlaying.add(g.away_team)
+  }
+
   const players = (data || []).map((p) => ({
     ...p,
     used: usedIds.has(p.id),
+    on_bye: !teamsPlaying.has(p.team),
   }))
+
+  // Sort: active players first, bye-week to bottom
+  players.sort((a, b) => {
+    if (a.on_bye !== b.on_bye) return a.on_bye ? 1 : -1
+    return (a.search_rank || 999) - (b.search_rank || 999)
+  })
 
   res.json(players)
 })
