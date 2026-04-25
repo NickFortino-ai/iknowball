@@ -1309,7 +1309,7 @@ export default function LeagueDetailPage() {
             </svg>
           </button>
         </div>
-        <div className="flex items-center justify-center gap-5 mt-2">
+        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'survivor', 'pickem', 'squares'].includes(league.format) ? 'justify-center' : ''}`}>
           {isCommissioner && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded text-tier-hof">
               Commissioner
