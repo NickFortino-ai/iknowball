@@ -57,7 +57,20 @@ export default function DraftPrepPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-32">
+    <div className="relative">
+      {/* Hero backdrop */}
+      <div className="absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+        <img
+          src="/ff-draft-prep-bg.png"
+          alt=""
+          className="w-full h-full object-cover opacity-30"
+          style={{ objectPosition: 'center 50%' }}
+          draggable={false}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/20 via-bg-primary/40 to-bg-primary" />
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6 pb-32">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Link to="/leagues" className="text-text-muted hover:text-text-primary">←</Link>
@@ -171,6 +184,7 @@ export default function DraftPrepPage() {
       {activeTab === 2 && (
         <MockDraftPage embedded />
       )}
+      </div>
     </div>
   )
 }
