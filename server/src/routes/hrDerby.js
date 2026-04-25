@@ -207,18 +207,17 @@ router.get('/standings', async (req, res) => {
   // Aggregate all picks with HRs + keep detail for dropdown
   const { data: picks } = await supabase
     .from('hr_derby_picks')
-    .select('user_id, player_name, team, headshot_url, home_runs, hr_distance_total, game_date')
+    .select('user_id, player_name, team, headshot_url, home_runs, game_date')
     .eq('league_id', league_id)
     .order('game_date', { ascending: false })
 
   const userMap = {}
   for (const uid of allMemberIds) {
-    userMap[uid] = { totalHRs: 0, totalDistance: 0, picks: [] }
+    userMap[uid] = { totalHRs: 0, picks: [] }
   }
   for (const p of (picks || [])) {
-    if (!userMap[p.user_id]) userMap[p.user_id] = { totalHRs: 0, totalDistance: 0, picks: [] }
+    if (!userMap[p.user_id]) userMap[p.user_id] = { totalHRs: 0, picks: [] }
     userMap[p.user_id].totalHRs += p.home_runs || 0
-    userMap[p.user_id].totalDistance += p.hr_distance_total || 0
     userMap[p.user_id].picks.push({
       player_name: p.player_name,
       team: p.team,
@@ -238,7 +237,7 @@ router.get('/standings', async (req, res) => {
     user: users?.find((u) => u.id === uid) || { id: uid },
     ...userMap[uid],
   }))
-    .sort((a, b) => b.totalHRs - a.totalHRs || b.totalDistance - a.totalDistance)
+    .sort((a, b) => b.totalHRs - a.totalHRs)
     .map((s, i) => ({ ...s, rank: i + 1 }))
 
   res.json({ standings })

@@ -77,6 +77,22 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
   const todayPickIds = new Set((myPicks || []).map((p) => p.espn_player_id))
   const selectedIds = new Set(selected.map((p) => p.espn_player_id))
 
+  // My pick history from standings data
+  const myHistory = useMemo(() => {
+    if (!standingsData?.standings || !profile?.id) return []
+    const me = standingsData.standings.find((s) => s.user?.id === profile.id)
+    if (!me?.picks?.length) return []
+    // Group by date, most recent first
+    const byDate = {}
+    for (const p of me.picks) {
+      if (!byDate[p.game_date]) byDate[p.game_date] = []
+      byDate[p.game_date].push(p)
+    }
+    return Object.entries(byDate)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([d, picks]) => ({ date: d, picks }))
+  }, [standingsData, profile?.id])
+
   const filteredPlayers = useMemo(() => {
     if (!players) return []
     const now = new Date()
@@ -135,12 +151,11 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/40 backdrop-blur-md overflow-hidden">
-            <div className="grid grid-cols-[1.5rem_1fr_2.5rem_3rem] lg:grid-cols-[2rem_1fr_3rem_4rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+          <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden">
+            <div className="grid grid-cols-[1.5rem_1fr_3rem] lg:grid-cols-[2rem_1fr_3.5rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
               <span className="text-right">HRs</span>
-              <span className="text-right">Dist</span>
             </div>
             {standings.map((s) => {
               const isMe = s.user?.id === profile?.id
@@ -149,7 +164,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                 <div key={s.user?.id} className="border-b border-text-primary/10 last:border-b-0">
                   <button
                     onClick={() => setStandingsUserId(isExpanded ? null : s.user?.id)}
-                    className={`w-full grid grid-cols-[1.5rem_1fr_2.5rem_3rem] lg:grid-cols-[2rem_1fr_3rem_4rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3.5 lg:py-4.5 items-center text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
+                    className={`w-full grid grid-cols-[1.5rem_1fr_3rem] lg:grid-cols-[2rem_1fr_3.5rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3.5 lg:py-4 items-center text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
                   >
                     <span className={`font-display text-lg lg:text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
                     <div className="flex items-center gap-2 lg:gap-3 min-w-0">
@@ -162,7 +177,6 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       </svg>
                     </div>
                     <span className="font-display text-lg lg:text-xl text-white text-right">{s.totalHRs}</span>
-                    <span className="text-[11px] lg:text-xs text-text-muted text-right">{s.totalDistance ? `${s.totalDistance}ft` : '\u2014'}</span>
                   </button>
                   {isExpanded && (() => {
                     const todayPicks = (s.picks || []).filter((p) => p.game_date === today)
@@ -173,7 +187,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       ) : (
                         <div className="space-y-1.5">
                           {todayPicks.map((pick, i) => (
-                            <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/30 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
+                            <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/20 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
                               {pick.headshot_url && (
                                 <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                                   onError={(e) => { e.target.style.display = 'none' }} />
@@ -213,7 +227,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
               key={d}
               onClick={() => setSelectedDate(d)}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                d === date ? 'border-2 border-accent text-accent bg-accent/10' : 'border border-text-primary/20 bg-bg-primary/40 text-text-primary hover:bg-text-primary/10'
+                d === date ? 'border-2 border-accent text-accent bg-accent/10' : 'border border-text-primary/20 bg-bg-primary/30 text-text-primary hover:bg-text-primary/10'
               }`}
             >
               {formatDateLabel(d)}
@@ -221,7 +235,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           ))}
         </div>
 
-        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 mb-4">
+        <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-text-primary">Today's HR Picks</h3>
             <span className="text-xs text-text-muted">{selected.length}/3 picks</span>
@@ -235,9 +249,8 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                 // Merge scored data from saved picks
                 const savedPick = (myPicks || []).find((p) => p.espn_player_id === player.espn_player_id)
                 const hrs = savedPick?.home_runs || 0
-                const dist = savedPick?.hr_distance_total || 0
                 return (
-                  <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2.5">
+                  <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/20 border border-text-primary/15 rounded-lg px-3 py-2.5">
                     {player.headshot_url && (
                       <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                         onError={(e) => { e.target.style.display = 'none' }} />
@@ -247,10 +260,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       <div className="text-xs text-text-muted">{player.team} · {player.opponent || ''}</div>
                     </div>
                     {hasSavedPicks && !editing && (
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={`font-display text-lg ${hrs > 0 ? 'text-correct' : 'text-text-muted'}`}>{hrs} HR</span>
-                        <span className="text-[11px] text-text-muted w-10 text-right">{dist ? `${dist}ft` : '\u2014'}</span>
-                      </div>
+                      <span className={`font-display text-lg shrink-0 ${hrs > 0 ? 'text-correct' : 'text-text-muted'}`}>{hrs} HR</span>
                     )}
                     {(!hasSavedPicks || editing) && (
                       <button
@@ -269,12 +279,10 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
 
         {hasSavedPicks && !editing && (() => {
           const dayHRs = (myPicks || []).reduce((sum, p) => sum + (p.home_runs || 0), 0)
-          const dayDist = (myPicks || []).reduce((sum, p) => sum + (p.hr_distance_total || 0), 0)
           return (
             <div className="flex items-center justify-end gap-4 px-1 mb-2 -mt-1">
               <span className="text-xs text-text-muted uppercase tracking-wider">Today</span>
               <span className={`font-display text-sm ${dayHRs > 0 ? 'text-correct' : 'text-text-muted'}`}>{dayHRs} HR</span>
-              <span className="text-[11px] text-text-muted">{dayDist ? `${dayDist}ft` : '\u2014'}</span>
             </div>
           )
         })()}
@@ -296,13 +304,44 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           </button>
         )}
 
+        {/* Pick History */}
+        {myHistory.length > 0 && (
+          <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden mb-4">
+            <div className="px-4 py-3 border-b border-text-primary/10">
+              <h3 className="text-sm font-semibold text-text-primary">Pick History</h3>
+            </div>
+            <div className="divide-y divide-text-primary/10">
+              {myHistory.map(({ date: d, picks }) => (
+                <div key={d} className="px-4 py-3">
+                  <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">{formatDateLabel(d)}</div>
+                  <div className="space-y-1.5">
+                    {picks.map((pick, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-bg-primary/20 border border-text-primary/10 rounded-lg px-2.5 py-2">
+                        {pick.headshot_url && (
+                          <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                            onError={(e) => { e.target.style.display = 'none' }} />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
+                          <div className="text-[10px] text-text-muted">{pick.team}</div>
+                        </div>
+                        <span className={`font-display text-sm shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Used this week */}
         {usedPlayers?.length > 0 && (
           <div className="mb-4">
             <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Used This Week</div>
             <div className="flex flex-wrap gap-1.5">
               {usedPlayers.filter((u) => !todayPickIds.has(u.espn_player_id)).map((u) => (
-                <span key={u.espn_player_id} className="text-[10px] bg-bg-primary/40 border border-text-primary/10 text-text-muted px-2 py-1 rounded-full">
+                <span key={u.espn_player_id} className="text-[10px] bg-bg-primary/30 border border-text-primary/10 text-text-muted px-2 py-1 rounded-full">
                   {u.player_name}
                 </span>
               ))}
@@ -312,7 +351,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
       </div>
 
       {/* Right: Player pool */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Hitters</h3>
           <input
@@ -320,7 +359,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search players..."
-            className="w-full bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            className="w-full bg-bg-primary/30 border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
 
