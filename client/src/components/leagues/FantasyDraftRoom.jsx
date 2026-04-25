@@ -453,7 +453,7 @@ export default function FantasyDraftRoom({ league }) {
             </li>
             <li className="flex gap-3">
               <span className="text-accent font-bold shrink-0">→</span>
-              <span>Each pick is on a <span className="font-semibold">{settings?.draft_pick_timer || 90}-second timer</span>. If time runs out, the best available player from your queue, then your rankings, then ADP is auto-drafted for you.</span>
+              <span>Each pick is on a <span className="font-semibold">{settings?.draft_pick_timer || 90}-second timer</span>. If time runs out, the autodraft function defers to the best available player from your queue. If no queue is set, autodraft looks to your custom rankings. If none are set, then the next best player based on ADP is drafted. If you know you can't attend the draft live, then be sure to spend time customizing your rankings so that the autodraft will go off of that.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-accent font-bold shrink-0">→</span>
