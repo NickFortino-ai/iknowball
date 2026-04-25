@@ -136,33 +136,35 @@ function mlbPitcherGameFpts(statMap) {
 
 /**
  * Calculate salary from MLB batter FPPG.
- * Matches FanDuel ranges directly. Independent of salary cap.
- *   elite 15 FPPG → $4,500
- *   strong 12 FPPG → $4,000
- *   solid 9 FPPG  → $3,400
- *   average 6 FPPG → $2,900
- *   value 3 FPPG  → $2,300
+ * Steeper curve to spread elite vs replacement. Cap at $6,500.
+ *   elite 15 FPPG → $6,200
+ *   strong 12 FPPG → $5,400
+ *   solid 9 FPPG  → $4,400
+ *   average 6 FPPG → $3,400
+ *   value 3 FPPG  → $2,500
  *   replacement 0 FPPG → $2,000
  */
 function mlbFppgToSalary(fppg) {
   if (!fppg || fppg <= 0) return 2000
-  const salary = Math.round((2000 + fppg * 170) / 100) * 100
-  return Math.max(2000, Math.min(5000, salary))
+  // Quadratic curve: accelerates pricing for elite performers
+  const salary = Math.round((2000 + fppg * 200 + fppg * fppg * 5) / 100) * 100
+  return Math.max(2000, Math.min(6500, salary))
 }
 
 /**
  * Calculate salary from MLB pitcher FPPG.
- * Matches FanDuel ranges directly.
- *   elite 38 FPPG → $10,900
- *   strong 30 FPPG → $9,600
- *   solid 23 FPPG → $8,500
- *   average 15 FPPG → $7,200
- *   value 8 FPPG  → $6,100
+ * Steeper curve so elite aces (Skenes-tier) consistently hit $10,500+.
+ *   elite 38 FPPG → $11,200
+ *   strong 30 FPPG → $10,400
+ *   solid 23 FPPG → $9,100
+ *   average 15 FPPG → $7,700
+ *   value 8 FPPG  → $6,500
  *   replacement 0 FPPG → $5,500
  */
 function mlbPitcherFppgToSalary(fppg) {
   if (!fppg || fppg <= 0) return 5500
-  const salary = Math.round((5500 + fppg * 140) / 100) * 100
+  // Quadratic curve: elite pitchers cost significantly more
+  const salary = Math.round((5500 + fppg * 100 + fppg * fppg * 2) / 100) * 100
   return Math.max(5500, Math.min(11200, salary))
 }
 
@@ -308,7 +310,7 @@ export async function generateMLBSalaries(date, season = 2026) {
         salary = Math.round(salary * scarcity / 100) * 100
         // Re-clamp after adjustments to enforce hard caps
         if (isPitcher) salary = Math.max(5500, Math.min(11200, salary))
-        else salary = Math.max(2000, Math.min(5000, salary))
+        else salary = Math.max(2000, Math.min(6500, salary))
 
         salaries.push({
           player_name: name,
