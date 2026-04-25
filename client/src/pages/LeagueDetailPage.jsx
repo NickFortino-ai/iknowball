@@ -188,11 +188,11 @@ function ScoringRulesDisplay({ rules, format }) {
             <Row label="Safety" value={rules.def_safety} />
             {rules.def_pa_brackets?.length > 0 && (
               <div className="mt-1.5">
-                <div className="text-[10px] text-text-muted mb-1">Points Allowed</div>
+                <div className="text-xs text-text-secondary mb-1">Points Allowed</div>
                 {rules.def_pa_brackets.map((b, i) => (
-                  <div key={i} className="flex justify-between py-0.5">
-                    <span className="text-[11px] text-text-muted">{i === 0 ? '0' : (rules.def_pa_brackets[i - 1].max + 1)}–{b.max >= 999 ? '99+' : b.max} pts allowed</span>
-                    <span className={`text-[11px] font-semibold tabular-nums ${b.pts > 0 ? 'text-correct' : b.pts < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+                  <div key={i} className="flex justify-between py-1.5 border-b border-text-primary/5 last:border-0">
+                    <span className="text-sm text-text-primary">{i === 0 ? '0' : (rules.def_pa_brackets[i - 1].max + 1)}–{b.max >= 999 ? '99+' : b.max} pts allowed</span>
+                    <span className={`text-sm font-semibold tabular-nums ${b.pts > 0 ? 'text-correct' : b.pts < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
                       {b.pts > 0 ? '+' : ''}{b.pts}
                     </span>
                   </div>
