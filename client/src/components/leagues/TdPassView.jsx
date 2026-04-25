@@ -177,6 +177,11 @@ export default function TdPassView({ league, tab = 'picks' }) {
           {myCurrentPick ? (() => {
             const pickedQbData = (qbs || []).find((q) => q.id === myCurrentPick.qb_player_id)
             const matchup = pickedQbData?.matchup
+            const seasonTds = pickedQbData?.season_pass_tds || 0
+            const weekTds = myCurrentPick.td_count || 0
+            // Show week TDs prominently if QB has scored this week (game started or finished)
+            const gameStarted = matchup?.starts_at && new Date(matchup.starts_at) <= new Date()
+            const showWeekTds = weekTds > 0 || gameStarted
             return (
               <div className="flex flex-col items-center text-center gap-2 py-4">
                 {myCurrentPick.headshot_url && (
@@ -192,9 +197,15 @@ export default function TdPassView({ league, tab = 'picks' }) {
                     {new Date(matchup.starts_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
                   </div>
                 )}
-                <div className="mt-1">
-                  <span className="font-display text-3xl text-accent">{myCurrentPick.td_count}</span>
-                  <span className="text-xs text-text-muted uppercase ml-1.5">Pass TD</span>
+                {showWeekTds && (
+                  <div className="mt-2">
+                    <span className="font-display text-4xl text-correct">{weekTds}</span>
+                    <span className="text-xs text-correct uppercase ml-1.5">This Week</span>
+                  </div>
+                )}
+                <div className={showWeekTds ? 'mt-0' : 'mt-2'}>
+                  <span className={`font-display ${showWeekTds ? 'text-xl text-text-muted' : 'text-3xl text-accent'}`}>{seasonTds}</span>
+                  <span className="text-[10px] text-text-muted uppercase ml-1.5">Season Total</span>
                 </div>
               </div>
             )
