@@ -11,6 +11,7 @@ const FORMAT_LABELS = {
   nba_dfs: 'NBA Daily Fantasy',
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
+  td_pass: 'TD Pass Competition',
 }
 
 const SPORT_LABELS = {
@@ -23,6 +24,7 @@ const SPORT_LABELS = {
   basketball_wnba: 'WNBA',
   icehockey_nhl: 'NHL',
   soccer_usa_mls: 'MLS',
+  americanfootball_ufl: 'UFL',
   all: 'All Sports',
 }
 
