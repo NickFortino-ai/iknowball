@@ -2011,28 +2011,28 @@ export default function LeagueDetailPage() {
               </div>
             )}
 
-          </div>
-        </div>
-      )}
+            {isCommissioner && (
+              <div className="mt-10 pt-4 border-t border-border text-center">
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Are you sure? All data will be erased.')) return
+                    try {
+                      await deleteLeague.mutateAsync(league.id)
+                      toast('League deleted', 'success')
+                      navigate('/leagues')
+                    } catch (err) {
+                      toast(err.message || 'Failed to delete league', 'error')
+                    }
+                  }}
+                  disabled={deleteLeague.isPending}
+                  className="text-xs text-text-muted hover:text-incorrect transition-colors disabled:opacity-50"
+                >
+                  {deleteLeague.isPending ? 'Deleting...' : 'Delete League'}
+                </button>
+              </div>
+            )}
 
-      {isCommissioner && (
-        <div className="mt-12 pt-6 border-t border-border">
-          <button
-            onClick={async () => {
-              if (!window.confirm('Are you sure? All data will be erased.')) return
-              try {
-                await deleteLeague.mutateAsync(league.id)
-                toast('League deleted', 'success')
-                navigate('/leagues')
-              } catch (err) {
-                toast(err.message || 'Failed to delete league', 'error')
-              }
-            }}
-            disabled={deleteLeague.isPending}
-            className="text-xs text-text-muted hover:text-incorrect transition-colors disabled:opacity-50"
-          >
-            {deleteLeague.isPending ? 'Deleting...' : 'Delete League'}
-          </button>
+          </div>
         </div>
       )}
     </div>
