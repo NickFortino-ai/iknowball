@@ -114,7 +114,7 @@ export default function FantasyUnderfillBanner({ league, fantasySettings }) {
             <h3 className="font-display text-base text-yellow-500 mb-1">League is underfilled</h3>
             <p className="text-sm text-text-secondary mb-3">
               {isBelowThreshold
-                ? `Only ${state.currentCount} ${state.currentCount === 1 ? 'member has' : 'members have'} joined. IKB requires at least 6 teams for traditional fantasy leagues. ${isClosed ? 'Try opening the league so anyone on IKB can join, ' : ''}You can postpone the draft to give more people a chance to join, or cancel the league.`
+                ? `Only ${state.currentCount} ${state.currentCount === 1 ? 'member has' : 'members have'} joined. IKB requires at least 6 teams for traditional fantasy leagues. ${isClosed ? 'Try opening the league so anyone on IKB can join, ' : ''}You can postpone the draft to give more people a chance to join. Let’s prevent having to cancel the league!`
                 : `Only ${state.currentCount} members have joined a league set up for ${fantasySettings?.num_teams || 'more'}. ${isClosed ? 'Try opening the league to fill remaining spots, or y' : 'Y'}ou can resize down to ${state.targetEven} teams or postpone the draft.`}
             </p>
             <button

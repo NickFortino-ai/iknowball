@@ -1723,7 +1723,7 @@ export async function processFantasyUnderfillNotifications() {
         : `${leagueName} is underfilled — your draft is in 3 days`
 
       const body = state.state === 'below_threshold'
-        ? `Only ${memberCount} of ${row.num_teams} have joined. IKB doesn't run traditional fantasy leagues with fewer than 6 members. Postpone the draft to give people more time to join, or cancel.`
+        ? `Only ${memberCount} of ${row.num_teams} have joined. IKB doesn't run traditional fantasy leagues with fewer than 6 members. Postpone the draft to give people more time to join, and make sure the league is set to open so anyone on IKB can join. Let’s prevent having to cancel.`
         : `Only ${memberCount} of ${row.num_teams} have joined. You can resize the league down to ${state.targetEven} (drops the ${state.willDrop} most recent signup${state.willDrop === 1 ? '' : 's'}), postpone the draft, or cancel.`
 
       await createNotification(commishId, 'fantasy_league_underfilled', `${headline}. ${body}`, {
