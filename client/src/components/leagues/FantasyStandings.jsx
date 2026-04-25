@@ -81,7 +81,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
               {s.user?.display_name || s.user?.username}
             </div>
             {s.fantasyTeamName && (
-              <div className="text-[10px] text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
+              <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
             )}
           </div>
         </div>
@@ -157,7 +157,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                   <div className="min-w-0 overflow-hidden">
                     <div className="font-bold text-sm text-text-primary truncate">{s.user?.display_name || s.user?.username}</div>
                     {s.fantasyTeamName && (
-                      <div className="text-[10px] text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
+                      <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
                     )}
                   </div>
                 </div>
