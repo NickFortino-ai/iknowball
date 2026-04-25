@@ -119,32 +119,6 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, fo
         {/* Invite by Username */}
         <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Invite by Username</h3>
 
-        {/* Your Connections */}
-        {availableConnections.length > 0 && (
-          <div className="mb-4">
-            <div className="space-y-1 mb-3">
-              {availableConnections.map((conn) => (
-                <div
-                  key={conn.user_id}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Avatar user={conn} size="sm" />
-                    <span className="text-sm truncate">@{conn.username}</span>
-                  </div>
-                  <button
-                    onClick={() => handleInvite(conn.username)}
-                    disabled={sendInvitation.isPending}
-                    className="py-1 px-3 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 flex-shrink-0"
-                  >
-                    Invite
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Search Input */}
         <div className="relative mb-4">
           <input
@@ -181,6 +155,33 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, fo
             </div>
           )}
         </div>
+
+        {/* Your Connections */}
+        {availableConnections.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2">Your Squad</h3>
+            <div className="space-y-1 mb-3">
+              {availableConnections.map((conn) => (
+                <div
+                  key={conn.user_id}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar user={conn} size="sm" />
+                    <span className="text-sm truncate">@{conn.username}</span>
+                  </div>
+                  <button
+                    onClick={() => handleInvite(conn.username)}
+                    disabled={sendInvitation.isPending}
+                    className="py-1 px-3 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 flex-shrink-0"
+                  >
+                    Invite
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Pending Invites */}
         {pendingInvites.length > 0 && (
