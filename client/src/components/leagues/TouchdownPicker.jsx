@@ -3,7 +3,7 @@ import { useTouchdownPlayers, useSubmitTouchdownPick } from '../../hooks/useLeag
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
-const POSITION_FILTERS = ['All', 'RB', 'WR', 'TE', 'QB']
+const POSITION_FILTERS = ['All', 'RB', 'WR', 'TE']
 
 export default function TouchdownPicker({ league, pickWeek, onPick }) {
   const [posFilter, setPosFilter] = useState('All')

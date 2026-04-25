@@ -630,7 +630,7 @@ router.get('/:id/survivor/touchdown-players', requireAuth, async (req, res) => {
     .select('id, full_name, position, team, headshot_url, injury_status, search_rank')
     .eq('status', 'Active')
     .not('team', 'is', null)
-    .in('position', ['RB', 'WR', 'TE', 'QB'])
+    .in('position', ['RB', 'WR', 'TE'])
     .order('search_rank', { ascending: true })
     .limit(100)
 
