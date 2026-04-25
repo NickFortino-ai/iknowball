@@ -231,7 +231,6 @@ export async function getAvailableQBs(leagueId, userId) {
   const matchupByTeam = await getCurrentWeekMatchups()
 
   const pool = (qbs || [])
-    .filter((q) => !usedSet.has(q.id))
     .filter((q) => !lockedTeams.has(q.team))
     .map((q) => {
       const m = matchupByTeam[q.team] || null
@@ -242,6 +241,7 @@ export async function getAvailableQBs(leagueId, userId) {
         headshot_url: q.headshot_url,
         injury_status: q.injury_status,
         season_pass_tds: tdMap[q.id] || 0,
+        used: usedSet.has(q.id),
         matchup: m, // { opponent, home_away, starts_at } | null
       }
     })

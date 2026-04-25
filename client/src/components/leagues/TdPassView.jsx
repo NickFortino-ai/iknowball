@@ -238,9 +238,9 @@ export default function TdPassView({ league, tab = 'picks' }) {
               <button
                 key={qb.id}
                 type="button"
-                onClick={() => handlePick(qb)}
-                disabled={submit.isPending}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 hover:bg-text-primary/5 transition-colors disabled:opacity-50 ${qb.injury_status === 'Out' ? 'opacity-40' : ''}`}
+                onClick={() => !qb.used && handlePick(qb)}
+                disabled={submit.isPending || qb.used}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${qb.used ? 'opacity-40 cursor-not-allowed' : 'hover:bg-text-primary/5 cursor-pointer'} ${!qb.used && qb.injury_status === 'Out' ? 'opacity-40' : ''}`}
               >
                 {qb.headshot_url ? (
                   <img src={qb.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
@@ -251,7 +251,10 @@ export default function TdPassView({ league, tab = 'picks' }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-bold text-text-primary truncate">{qb.full_name}</span>
-                    {qb.injury_status && (
+                    {qb.used && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted">Used</span>
+                    )}
+                    {qb.injury_status && !qb.used && (
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                         qb.injury_status === 'Out' ? 'bg-incorrect/20 text-incorrect'
                         : qb.injury_status === 'Questionable' ? 'bg-yellow-500/20 text-yellow-500'
