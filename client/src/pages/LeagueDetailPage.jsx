@@ -317,6 +317,17 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     const freq = isDaily || (leagueDays != null && leagueDays <= 7) ? 'day' : 'week'
     const dateRange = formatDateRange(league.starts_at, league.ends_at)
 
+    const memberCount = league.members?.length || 0
+    function winnerBonus() {
+      if (memberCount >= 41) return 100
+      if (memberCount >= 31) return 75
+      if (memberCount >= 16) return 50
+      if (memberCount >= 11) return 30
+      if (memberCount >= 6) return 20
+      return 10
+    }
+    const bonusText = `The winner earns a +${winnerBonus()} point bonus.`
+
     function durationSentence(endCondition) {
       if (league.duration === 'full_season') {
         return `This league runs through the remainder of the season${endCondition ? ` or ${endCondition}` : ''}.`
@@ -401,7 +412,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         return `Build a 9-player NBA lineup under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. The player with the most fantasy points at the end of the night wins.`
       }
       const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
-      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. Tap a headshot to view player stats and injury info. The champion is determined by ${metric} over the season. Your finishing position affects your global IKB score (N+1−2×rank). The winner earns a bonus that scales with league size: ≤5 members +10, 6–10 +20, 11–15 +30, 16–30 +50, 31–40 +75, 41+ +100.`
+      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. Tap a headshot to view player stats and injury info. The champion is determined by ${metric} over the season. Your finishing position affects your global IKB score (N+1−2×rank). ${bonusText}`
     }
 
     if (league.format === 'mlb_dfs') {
@@ -411,7 +422,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         return `Build a 10-player MLB lineup (1 SP, C, 1B, 2B, SS, 3B, 3 OF, UTIL) under a ${cap} salary cap. Each player locks when their game starts. The player with the most fantasy points at the end of the night wins.`
       }
       const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
-      return `Build a new 10-player MLB lineup each day — 1 starting pitcher plus 9 position players — under a ${cap} salary cap. Players lock when their game starts. Batters earn points from hits, home runs, RBIs, runs, stolen bases, and walks. Pitchers earn points from innings pitched, strikeouts, wins, and saves. The champion is determined by ${metric} over the season. Your finishing position affects your global IKB score (N+1−2×rank). The winner earns a bonus that scales with league size: ≤5 members +10, 6–10 +20, 11–15 +30, 16–30 +50, 31–40 +75, 41+ +100.`
+      return `Build a new 10-player MLB lineup each day — 1 starting pitcher plus 9 position players — under a ${cap} salary cap. Players lock when their game starts. Batters earn points from hits, home runs, RBIs, runs, stolen bases, and walks. Pitchers earn points from innings pitched, strikeouts, wins, and saves. The champion is determined by ${metric} over the season. Your finishing position affects your global IKB score (N+1−2×rank). ${bonusText}`
     }
 
     if (league.format === 'hr_derby') {
@@ -421,12 +432,12 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         'You can change your picks for the current day until games start.',
         'The more homers your picks hit, the more points you earn.',
         'Your finishing position affects your global IKB score (N+1−2×rank).',
-        'The winner earns a bonus that scales with league size: ≤5 members +10, 6–10 +20, 11–15 +30, 16–30 +50, 31–40 +75, 41+ +100.',
+        bonusText,
       ]
     }
 
     if (league.format === 'td_pass') {
-      return `Pick one quarterback each week — you can never pick the same QB twice all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by season's end wins. Your finishing position affects your global IKB score (N+1−2×rank). The winner earns a bonus that scales with league size: ≤5 members +10, 6–10 +20, 11–15 +30, 16–30 +50, 31–40 +75, 41+ +100.`
+      return `Pick one quarterback each week — you can never pick the same QB twice all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by end of the regular season wins. Your finishing position affects your global IKB score (N+1−2×rank). ${bonusText}`
     }
 
     if (league.format === 'bracket') {
@@ -438,7 +449,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         .map((r) => `${r.name}: ${r.points_per_correct} pts`)
         .join(', ')
       const seriesBonus = isBo7 ? ' For each correct winner, predict the series length (4–7 games) for bonus points: +4 for exact, +2 for one game off.' : ''
-      const globalImpact = `When the tournament ends, your finishing position affects your global score: top half earns points, bottom half loses points (N+1−2×rank). The winner earns a bonus that scales with league size: 5 or fewer members +10, 6–10 +20, 11–15 +30, 16–30 +50, 31–40 +75, 41+ +100.`
+      const globalImpact = `When the tournament ends, your finishing position affects your global score: top half earns points, bottom half loses points (N+1−2×rank). ${bonusText}`
       return `Fill out your bracket before the lock deadline. Earn points for each correct pick — later rounds are worth more. ${roundScoring ? `Scoring: ${roundScoring}.` : ''}${seriesBonus} A tiebreaker score prediction on the championship game breaks ties in the standings. ${globalImpact}`
     }
 
@@ -657,7 +668,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               : 'Not set'}
           </div>
         </div>
-      ) : league.format === 'bracket' ? null : (<>
+      ) : (league.format === 'bracket' || league.format === 'td_pass') ? null : (<>
       {/* Duration */}
       <div>
         <label className="block text-xs text-text-muted mb-2">Duration</label>
