@@ -258,6 +258,31 @@ export async function updateFantasySettings(leagueId, updates) {
     }
   }
 
+  // Changing num_teams: validate against allowed counts, current member count,
+  // and keep leagues.max_members in sync so joins aren't blocked / over-allowed.
+  if (updates.num_teams != null && updates.num_teams !== current?.num_teams) {
+    const isTraditional = (current?.format || 'traditional') !== 'salary_cap'
+    if (isTraditional && !VALID_FANTASY_TEAM_COUNTS.includes(updates.num_teams)) {
+      const err = new Error(`Number of teams must be one of ${VALID_FANTASY_TEAM_COUNTS.join(', ')}`)
+      err.status = 400
+      throw err
+    }
+    const { count: memberCount } = await supabase
+      .from('league_members')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('league_id', leagueId)
+    if (memberCount && updates.num_teams < memberCount) {
+      const err = new Error(`Can't shrink below current member count (${memberCount}). Use the resize flow to drop members first.`)
+      err.status = 400
+      throw err
+    }
+    const { error: leagueErr } = await supabase
+      .from('leagues')
+      .update({ max_members: updates.num_teams })
+      .eq('id', leagueId)
+    if (leagueErr) throw leagueErr
+  }
+
   const { data, error } = await supabase
     .from('fantasy_settings')
     .update(updates)

@@ -734,6 +734,74 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
       {league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && fantasySettings?.draft_status !== 'completed' && (
         <>
           <div>
+            <label className="block text-xs text-text-muted mb-2">Number of Teams</label>
+            <div className="flex flex-wrap gap-2">
+              {[6, 8, 10, 12, 14, 16, 20].map((n) => {
+                const memberCount = league.members?.length ?? league.member_count ?? 0
+                const disabled = updateFantasySettings.isPending || n < memberCount
+                return (
+                  <button
+                    key={n}
+                    onClick={async () => {
+                      try {
+                        await updateFantasySettings.mutateAsync({ leagueId: league.id, num_teams: n })
+                        toast('Number of teams updated', 'success')
+                      } catch (err) {
+                        toast(err.message || 'Failed to update', 'error')
+                      }
+                    }}
+                    disabled={disabled}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      (fantasySettings?.num_teams ?? 10) === n
+                        ? 'bg-accent text-white border border-accent'
+                        : 'bg-bg-primary text-text-secondary border border-text-primary/20'
+                    } ${disabled && (fantasySettings?.num_teams ?? 10) !== n ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    {n}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[10px] text-text-primary mt-1">
+              Can't shrink below the current member count. Locked once the draft completes.
+            </p>
+          </div>
+          {fantasySettings?.draft_mode !== 'offline' && (
+            <div>
+              <label className="block text-xs text-text-muted mb-2">Draft Pick Timer</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 60, label: '60s' },
+                  { value: 90, label: '90s' },
+                  { value: 120, label: '2min' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={async () => {
+                      try {
+                        await updateFantasySettings.mutateAsync({ leagueId: league.id, draft_pick_timer: opt.value })
+                        toast('Draft pick timer updated', 'success')
+                      } catch (err) {
+                        toast(err.message || 'Failed to update', 'error')
+                      }
+                    }}
+                    disabled={updateFantasySettings.isPending}
+                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      (fantasySettings?.draft_pick_timer ?? 90) === opt.value
+                        ? 'bg-accent text-white border border-accent'
+                        : 'bg-bg-primary text-text-secondary border border-text-primary/20'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-text-primary mt-1">
+                Time each manager has on the clock per pick. Auto-pick fires when the timer runs out.
+              </p>
+            </div>
+          )}
+          <div>
             <label className="block text-xs text-text-muted mb-2">IR Spots</label>
             <div className="flex gap-2">
               {[0, 1, 2, 3].map((n) => (
