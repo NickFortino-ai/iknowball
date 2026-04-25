@@ -157,20 +157,22 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       <span className={`font-bold truncate text-sm ${isMe ? 'text-accent' : 'text-text-primary'}`}>
                         {s.user?.display_name || s.user?.username}
                       </span>
-                      <svg className={`w-3.5 h-3.5 text-text-muted shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className={`w-4 h-4 text-accent shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 9l6 6 6-6" />
                       </svg>
                     </div>
                     <span className="font-display text-lg text-white text-right">{s.totalHRs}</span>
                     <span className="text-[11px] text-text-muted text-right">{s.totalDistance ? `${s.totalDistance}ft` : '\u2014'}</span>
                   </button>
-                  {isExpanded && (
+                  {isExpanded && (() => {
+                    const todayPicks = (s.picks || []).filter((p) => p.game_date === today)
+                    return (
                     <div className="px-3 pb-3">
-                      {!s.picks?.length ? (
-                        <p className="text-xs text-text-muted text-center py-2">No picks yet</p>
+                      {!todayPicks.length ? (
+                        <p className="text-xs text-text-muted text-center py-2">No picks today</p>
                       ) : (
                         <div className="space-y-1">
-                          {s.picks.map((pick, i) => (
+                          {todayPicks.map((pick, i) => (
                             <div key={i} className="flex items-center gap-2 bg-bg-primary/40 border border-text-primary/10 rounded-lg px-2.5 py-2">
                               {pick.headshot_url && (
                                 <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
@@ -178,7 +180,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
-                                <div className="text-[10px] text-text-muted">{pick.team} · {new Date(pick.game_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                                <div className="text-[10px] text-text-muted">{pick.team}</div>
                               </div>
                               <span className={`font-display text-sm shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
                             </div>
@@ -186,7 +188,8 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                         </div>
                       )}
                     </div>
-                  )}
+                    )
+                  })()}
                 </div>
               )
             })}
