@@ -1306,8 +1306,8 @@ export default function LeagueDetailPage() {
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
-        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'pickem', 'squares'].includes(league.format) || (league.format === 'survivor' && league.settings?.survivor_mode !== 'touchdown') ? 'text-center' : ''}>
-        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'pickem', 'squares'].includes(league.format) || (league.format === 'survivor' && league.settings?.survivor_mode !== 'touchdown') ? 'justify-center' : ''}`}>
+        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'pickem', 'squares', 'survivor'].includes(league.format) ? 'text-center' : ''}>
+        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'pickem', 'squares', 'survivor'].includes(league.format) ? 'justify-center' : ''}`}>
           <h1 className="font-display text-3xl">{league.name}</h1>
           <button
             onClick={() => setShowSettingsModal(true)}
@@ -1320,7 +1320,7 @@ export default function LeagueDetailPage() {
             </svg>
           </button>
         </div>
-        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'pickem', 'squares'].includes(league.format) || (league.format === 'survivor' && league.settings?.survivor_mode !== 'touchdown') ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'pickem', 'squares', 'survivor'].includes(league.format) ? 'justify-center' : ''}`}>
           {isCommissioner && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded text-tier-hof">
               Commissioner

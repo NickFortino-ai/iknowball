@@ -316,7 +316,7 @@ export default function CreateLeaguePage() {
       settings.lives = lives
       settings.pick_frequency = pickFrequency
       settings.all_eliminated_survive = allEliminatedSurvive
-      if (survivorMode === 'touchdown') settings.survivor_mode = 'touchdown'
+      settings.survivor_mode = survivorMode // 'standard' or 'touchdown'
     }
     if (format === 'squares') {
       settings.game_id = gameId
