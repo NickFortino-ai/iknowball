@@ -93,7 +93,6 @@ function getNotificationIcon(n) {
     case 'fantasy_trade_proposed': return '\uD83D\uDD04' // 🔄
     case 'fantasy_draft_started': return '\uD83D\uDCE3' // 📣
     case 'fantasy_draft_starting_soon': return '\u23F0' // ⏰
-    case 'fantasy_draft_on_clock': return '\u23F0' // ⏰
     case 'fantasy_draft_postponed': return '\u23F8\uFE0F' // ⏸️
     case 'fantasy_draft_order_set': return '\uD83D\uDCCB' // 📋
     case 'fantasy_stat_correction': return '\uD83D\uDCDD' // 📝
@@ -173,7 +172,6 @@ function getNotificationRoute(notification) {
 
     case 'fantasy_draft_started':
     case 'fantasy_draft_starting_soon':
-    case 'fantasy_draft_on_clock':
     case 'fantasy_draft_order_set':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Draft` : null
 
