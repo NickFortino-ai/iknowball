@@ -182,7 +182,7 @@ export default function DraftPrepPage() {
         <DraftPrepAdp scoringFormat={scoringFormat} />
       )}
       {activeTab === 2 && (
-        <MockDraftPage embedded />
+        <MockDraftPage embedded defaultConfig={{ scoringFormat, configHash }} />
       )}
       </div>
     </div>

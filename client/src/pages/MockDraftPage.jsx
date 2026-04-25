@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import DraftPlayerPreview from '../components/leagues/DraftPlayerPreview'
+import { useDraftPrepRankings } from '../hooks/useDraftPrep'
 
 // ────────────────────────────────────────────────────────────────────
 // Bot personalities
@@ -362,6 +363,7 @@ export default function MockDraftPage({ embedded = false, defaultConfig }) {
       {screen === 'draft' && config && (
         <DraftScreen
           config={config}
+          draftPrepConfig={defaultConfig}
           onExit={() => setScreen('home')}
           onComplete={finishMock}
         />
@@ -622,12 +624,24 @@ const SCORING_KEY_MAP = {
   standard: 'projected_pts_std',
 }
 
-function DraftScreen({ config, onExit, onComplete }) {
+function DraftScreen({ config, draftPrepConfig, onExit, onComplete }) {
   const { data: allPlayers, isLoading } = useQuery({
     queryKey: ['mock-draft', 'players'],
     queryFn: () => api.get('/mock-draft/players'),
     staleTime: 5 * 60 * 1000,
   })
+
+  // User's My Rankings (only loaded when launched from Draft Prep)
+  const { data: myRankings } = useDraftPrepRankings(
+    draftPrepConfig?.scoringFormat,
+    draftPrepConfig?.configHash,
+  )
+  const myRankMap = useMemo(() => {
+    const m = new Map()
+    for (const r of myRankings || []) m.set(r.player_id, r.rank)
+    return m
+  }, [myRankings])
+  const hasMyRankings = !!draftPrepConfig?.configHash
 
   // Stable per-mock state
   const [picks, setPicks] = useState([]) // { overall, round, teamSlot, player }
@@ -635,6 +649,7 @@ function DraftScreen({ config, onExit, onComplete }) {
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [detailPlayer, setDetailPlayer] = useState(null)
+  const [sortMode, setSortMode] = useState('adp') // 'adp' | 'mine'
 
   // Bot personalities — stable for the duration of the mock
   const personalities = useMemo(() => {
@@ -765,7 +780,14 @@ function DraftScreen({ config, onExit, onComplete }) {
     qbCount: config.rosterSlots?.qb || 1,
   }
   const rankedAll = [...(allPlayers || [])]
-    .sort((a, b) => adpScore(a, adpCtx) - adpScore(b, adpCtx))
+    .sort((a, b) => {
+      if (sortMode === 'mine' && hasMyRankings) {
+        const ar = myRankMap.has(a.id) ? myRankMap.get(a.id) : Infinity
+        const br = myRankMap.has(b.id) ? myRankMap.get(b.id) : Infinity
+        if (ar !== br) return ar - br
+      }
+      return adpScore(a, adpCtx) - adpScore(b, adpCtx)
+    })
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
 
   const filtered = rankedAll
@@ -844,6 +866,25 @@ function DraftScreen({ config, onExit, onComplete }) {
                 >{pos}</button>
               ))}
             </div>
+            {hasMyRankings && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-[10px] uppercase tracking-wider text-text-muted">Sort:</span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setSortMode('adp')}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                      sortMode === 'adp' ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary'
+                    }`}
+                  >ADP</button>
+                  <button
+                    onClick={() => setSortMode('mine')}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                      sortMode === 'mine' ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary'
+                    }`}
+                  >My Rankings</button>
+                </div>
+              </div>
+            )}
           </div>
           <div className="max-h-[55vh] md:max-h-[60vh] overflow-y-auto">
             {filtered.map((player) => (
