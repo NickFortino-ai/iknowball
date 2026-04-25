@@ -1,6 +1,21 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 
+// Preseason QB ranking — used before Week 1 stats exist.
+// Once any pass_td data is recorded, sorting switches to actual TDs.
+const PRESEASON_QB_RANKING = [
+  'Josh Allen', 'Joe Burrow', 'Lamar Jackson', 'Patrick Mahomes',
+  'Matthew Stafford', 'Brock Purdy', 'Jalen Hurts', 'Sam Darnold',
+  'Baker Mayfield', 'Jordan Love', 'Jared Goff', 'Caleb Williams',
+  'Jayden Daniels', 'Dak Prescott', 'Justin Herbert', 'Bo Nix',
+  'Drake Maye', 'CJ Stroud', 'Daniel Jones', 'Aaron Rodgers',
+  'Trevor Lawrence', 'Cam Ward', 'Jaxson Dart', 'Kyler Murray',
+  'Michael Penix', 'Bryce Young', 'Tyler Shough', 'Jacoby Brissett',
+  'Shedeur Sanders', 'Geno Smith', 'Malik Willis',
+]
+const PRESEASON_QB_RANK = {}
+PRESEASON_QB_RANKING.forEach((name, i) => { PRESEASON_QB_RANK[name] = i })
+
 /**
  * Determine the current NFL week + season for the TD Pass competition.
  * Uses nfl_schedule directly so the result reflects what's actually loaded
@@ -246,8 +261,18 @@ export async function getAvailableQBs(leagueId, userId) {
       }
     })
 
-  // Sort by season pass TDs descending, then alphabetical
-  pool.sort((a, b) => b.season_pass_tds - a.season_pass_tds || a.full_name.localeCompare(b.full_name))
+  // If no stats exist yet (preseason), use curated ranking; otherwise sort by TDs
+  const hasStats = Object.values(tdMap).some((v) => v > 0)
+  if (hasStats) {
+    pool.sort((a, b) => b.season_pass_tds - a.season_pass_tds || a.full_name.localeCompare(b.full_name))
+  } else {
+    pool.sort((a, b) => {
+      const aRank = PRESEASON_QB_RANK[a.full_name] ?? 999
+      const bRank = PRESEASON_QB_RANK[b.full_name] ?? 999
+      if (aRank !== bRank) return aRank - bRank
+      return a.full_name.localeCompare(b.full_name)
+    })
+  }
   return pool
 }
 
