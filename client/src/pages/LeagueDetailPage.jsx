@@ -437,7 +437,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     }
 
     if (league.format === 'td_pass') {
-      return `Pick one quarterback each week — you can never pick the same QB twice all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by end of the regular season wins. Your finishing position affects your global IKB score (N+1−2×rank). ${bonusText}`
+      return `Pick one quarterback each week — you can only pick a QB once all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by end of the regular season wins. Your finishing position affects your global IKB score (N+1−2×rank). ${bonusText}`
     }
 
     if (league.format === 'bracket') {
