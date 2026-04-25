@@ -262,6 +262,8 @@ export default function FantasyDraftRoom({ league }) {
     }
   }, [completedPicks.length])
 
+  const isCommissioner = league.commissioner_id === profile?.id
+
   // Commissioner: detect autopicks and prompt to flag user as autodrafting
   const prevPickCountRef = useRef(completedPicks.length)
   useEffect(() => {
@@ -323,8 +325,6 @@ export default function FantasyDraftRoom({ league }) {
   }
 
   if (isLoading) return <LoadingSpinner />
-
-  const isCommissioner = league.commissioner_id === profile?.id
 
   // Pre-draft state
   if (draftStatus === 'pending') {
