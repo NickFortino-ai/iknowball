@@ -668,7 +668,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               : 'Not set'}
           </div>
         </div>
-      ) : (league.format === 'bracket' || league.format === 'td_pass' || league.format === 'survivor') ? null : (<>
+      ) : (league.format === 'bracket' || league.format === 'td_pass' || league.format === 'survivor' || (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap')) ? null : (<>
       {/* Duration */}
       <div>
         <label className="block text-xs text-text-muted mb-2">Duration</label>
