@@ -26,6 +26,7 @@ import HrDerbyView from '../components/leagues/HrDerbyView'
 import TdPassView from '../components/leagues/TdPassView'
 import LeagueReport from '../components/leagues/LeagueReport'
 import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
+import FantasyDraftLiveBanner from '../components/leagues/FantasyDraftLiveBanner'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
@@ -1785,6 +1786,17 @@ export default function LeagueDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Global "draft is live" banner — visible on every tab inside the league */}
+      <FantasyDraftLiveBanner
+        league={league}
+        fantasySettings={fantasySettings}
+        isOnDraftTab={tabs[activeTab] === 'Draft'}
+        onGoToDraft={() => {
+          const idx = tabs.indexOf('Draft')
+          if (idx >= 0) setActiveTab(idx)
+        }}
+      />
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
