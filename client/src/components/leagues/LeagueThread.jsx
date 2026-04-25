@@ -155,17 +155,21 @@ export default function LeagueThread({ league }) {
       .filter((u) => trimmed.includes(`@${u.username}`))
       .map((u) => u.id)
 
+    // Clear input immediately so the user sees instant feedback
+    setInput('')
+    setIsMultiline(false)
+    setTaggedUsers([])
+    setAutoScroll(true)
+
     try {
       await sendMessage.mutateAsync({
         leagueId: league.id,
         content: trimmed,
         user_tags: userTagIds.length > 0 ? userTagIds : undefined,
       })
-      setInput('')
-      setIsMultiline(false)
-      setTaggedUsers([])
-      setAutoScroll(true)
     } catch (err) {
+      // Restore input on failure so they can retry
+      setInput(trimmed)
       toast(err.message || 'Failed to send message', 'error')
     }
   }

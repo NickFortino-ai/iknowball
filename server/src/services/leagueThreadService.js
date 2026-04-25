@@ -108,6 +108,34 @@ export async function postThreadMessage(leagueId, userId, content, userTags = []
     }
   }
 
+  // Dedupe: reject identical message from same user within 30 seconds
+  const thirtySecsAgo = new Date(Date.now() - 30_000).toISOString()
+  const { data: recent } = await supabase
+    .from('league_messages')
+    .select('id')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('content', content)
+    .gte('created_at', thirtySecsAgo)
+    .limit(1)
+
+  if (recent?.length) {
+    // Silently return the existing message instead of inserting a duplicate
+    const { data: existing } = await supabase
+      .from('league_messages')
+      .select('id, league_id, user_id, content, user_tags, created_at')
+      .eq('id', recent[0].id)
+      .single()
+
+    const { data: author } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, avatar_emoji')
+      .eq('id', userId)
+      .single()
+
+    return { ...existing, user: author }
+  }
+
   const { data: message, error } = await supabase
     .from('league_messages')
     .insert({

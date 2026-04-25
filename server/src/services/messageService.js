@@ -18,6 +18,19 @@ export async function sendMessage(senderId, receiverId, content) {
 
   await assertConnected(senderId, receiverId)
 
+  // Dedupe: reject identical message within 30 seconds
+  const thirtySecsAgo = new Date(Date.now() - 30_000).toISOString()
+  const { data: recent } = await supabase
+    .from('direct_messages')
+    .select('id, content, sender_id, receiver_id, created_at')
+    .eq('sender_id', senderId)
+    .eq('receiver_id', receiverId)
+    .eq('content', content)
+    .gte('created_at', thirtySecsAgo)
+    .limit(1)
+
+  if (recent?.length) return recent[0]
+
   const { data, error } = await supabase
     .from('direct_messages')
     .insert({ sender_id: senderId, receiver_id: receiverId, content })
