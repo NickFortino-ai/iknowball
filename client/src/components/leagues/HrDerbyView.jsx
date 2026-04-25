@@ -4,7 +4,6 @@ import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
-import UserProfileModal from '../profile/UserProfileModal'
 
 function todayLocal() {
   return new Date().toLocaleDateString('en-CA')
@@ -145,28 +144,53 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             </div>
             {standings.map((s) => {
               const isMe = s.user?.id === profile?.id
+              const isExpanded = standingsUserId === s.user?.id
               return (
-                <button
-                  key={s.user?.id}
-                  onClick={() => setStandingsUserId(s.user?.id)}
-                  className={`w-full grid grid-cols-[1.5rem_1fr_2.5rem_3rem] gap-1.5 px-3 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
-                >
-                  <span className={`font-display text-lg ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Avatar user={s.user} size="md" />
-                    <span className={`font-bold truncate text-sm ${isMe ? 'text-accent' : 'text-text-primary'}`}>
-                      {s.user?.display_name || s.user?.username}
-                    </span>
-                  </div>
-                  <span className="font-display text-lg text-white text-right">{s.totalHRs}</span>
-                  <span className="text-[11px] text-text-muted text-right">{s.totalDistance ? `${s.totalDistance}ft` : '\u2014'}</span>
-                </button>
+                <div key={s.user?.id} className="border-b border-text-primary/10 last:border-b-0">
+                  <button
+                    onClick={() => setStandingsUserId(isExpanded ? null : s.user?.id)}
+                    className={`w-full grid grid-cols-[1.5rem_1fr_2.5rem_3rem] gap-1.5 px-3 py-3.5 items-center text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
+                  >
+                    <span className={`font-display text-lg ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar user={s.user} size="md" />
+                      <span className={`font-bold truncate text-sm ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+                        {s.user?.display_name || s.user?.username}
+                      </span>
+                      <svg className={`w-3.5 h-3.5 text-text-muted shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                    <span className="font-display text-lg text-white text-right">{s.totalHRs}</span>
+                    <span className="text-[11px] text-text-muted text-right">{s.totalDistance ? `${s.totalDistance}ft` : '\u2014'}</span>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-3 pb-3">
+                      {!s.picks?.length ? (
+                        <p className="text-xs text-text-muted text-center py-2">No picks yet</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {s.picks.map((pick, i) => (
+                            <div key={i} className="flex items-center gap-2 bg-bg-primary/40 border border-text-primary/10 rounded-lg px-2.5 py-2">
+                              {pick.headshot_url && (
+                                <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                                  onError={(e) => { e.target.style.display = 'none' }} />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
+                                <div className="text-[10px] text-text-muted">{pick.team} · {new Date(pick.game_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                              </div>
+                              <span className={`font-display text-sm shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
-        )}
-        {standingsUserId && (
-          <UserProfileModal userId={standingsUserId} onClose={() => setStandingsUserId(null)} />
         )}
       </div>
     )
