@@ -103,6 +103,40 @@ export async function getSeasonOpenerKickoff() {
 }
 
 /**
+ * Earliest kickoff time of the current NFL week. Used as the starts_at
+ * for TD Pass leagues so the league doesn't appear "already started"
+ * before the first game kicks off.
+ */
+export async function getCurrentWeekFirstKickoff() {
+  const { week, season } = await getCurrentNflWeek()
+  const { data: weekRows } = await supabase
+    .from('nfl_schedule')
+    .select('game_date')
+    .eq('season', season)
+    .eq('week', week)
+  if (!weekRows?.length) return null
+  const dates = weekRows.map((r) => r.game_date).sort()
+  const minDate = dates[0]
+  const maxDate = dates[dates.length - 1]
+
+  const { data: sport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', 'americanfootball_nfl')
+    .single()
+  if (!sport?.id) return null
+  const { data: games } = await supabase
+    .from('games')
+    .select('starts_at')
+    .eq('sport_id', sport.id)
+    .gte('starts_at', `${minDate}T00:00:00Z`)
+    .lt('starts_at', `${maxDate}T23:59:59Z`)
+    .order('starts_at', { ascending: true })
+    .limit(1)
+  return games?.[0]?.starts_at || null
+}
+
+/**
  * Latest kickoff time of the current NFL week. Used as the joins_locked_at
  * for a TD Pass league created mid-week — users can join up until the start
  * of the very last game (e.g. MNF nightcap on a doubleheader week).

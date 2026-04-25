@@ -321,22 +321,28 @@ export async function createLeague(userId, data) {
     }
   }
 
-  // TD Pass: lock joins at the start of the very last NFL game of the
-  // current week, so users can join right up until the final kickoff
-  // (typically MNF, or the MNF doubleheader nightcap).
+  // TD Pass: set starts_at to the first kickoff of the current NFL week
+  // so the league doesn't appear "already started" before games begin.
+  // Lock joins at the last kickoff so users can join until the final game.
   if (league.format === 'td_pass') {
     try {
-      const { getCurrentWeekLastKickoff } = await import('./tdPassService.js')
+      const { getCurrentWeekLastKickoff, getCurrentWeekFirstKickoff } = await import('./tdPassService.js')
+      const firstKickoff = await getCurrentWeekFirstKickoff()
       const lastKickoff = await getCurrentWeekLastKickoff()
+      const updates = {}
+      if (firstKickoff) {
+        updates.starts_at = firstKickoff
+        league.starts_at = firstKickoff
+      }
       if (lastKickoff) {
-        await supabase
-          .from('leagues')
-          .update({ joins_locked_at: lastKickoff })
-          .eq('id', league.id)
+        updates.joins_locked_at = lastKickoff
         league.joins_locked_at = lastKickoff
       }
+      if (Object.keys(updates).length) {
+        await supabase.from('leagues').update(updates).eq('id', league.id)
+      }
     } catch (err) {
-      logger.error({ err, leagueId: league.id }, 'Failed to set td_pass joins_locked_at')
+      logger.error({ err, leagueId: league.id }, 'Failed to set td_pass start/lock dates')
     }
   }
 

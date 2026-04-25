@@ -82,7 +82,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No picks yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden">
+          <div className="rounded-2xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-md overflow-hidden">
             <div className="grid grid-cols-[2.5rem_1fr_3rem_4rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
@@ -126,7 +126,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
     return (
       <div className="space-y-4">
         {groupedHistory.map((group) => (
-          <div key={group.week} className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary/60 backdrop-blur-sm">
+          <div key={group.week} className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary/40 backdrop-blur-md">
             <div className="px-4 py-2 border-b border-text-primary/10 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-text-primary">Week {group.week}</h3>
               <span className="text-[10px] text-text-muted">{group.picks.length} picks</span>
@@ -172,7 +172,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
     <div className="lg:grid lg:grid-cols-2 lg:gap-6 pb-24 lg:pb-0">
       {/* Left: current pick + my history summary */}
       <div>
-        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 mb-4">
+        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-md p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-text-primary">Week {currentWeek || '—'} Pick</h3>
             <span className="text-[10px] text-text-muted">Season {currentSeason || ''}</span>
@@ -212,7 +212,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
       </div>
 
       {/* Right: QB pool */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-md overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available QBs</h3>
           <input
