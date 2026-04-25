@@ -1436,16 +1436,21 @@ export default function CreateLeaguePage() {
                 className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
             </div>
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Start Date</label>
-              <input
-                type="date"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-                className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
-              />
-              <p className="text-[10px] text-text-muted mt-1">Defaults to today if left blank. League runs until there's one survivor left or the end of the season.</p>
-            </div>
+            {survivorMode !== 'touchdown' && (
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+                />
+                <p className="text-[10px] text-text-muted mt-1">Defaults to today if left blank. League runs until there's one survivor left or the end of the season.</p>
+              </div>
+            )}
+            {survivorMode === 'touchdown' && (
+              <p className="text-[10px] text-text-muted">League starts at the next NFL kickoff and runs until there's one survivor left or the end of the season.</p>
+            )}
           </div>
         )}
 

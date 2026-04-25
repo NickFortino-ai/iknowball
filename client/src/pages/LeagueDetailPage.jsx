@@ -1798,7 +1798,17 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Picks' && league.format === 'survivor' && (
-        <div className="relative z-10"><SurvivorView league={league} /></div>
+        <div className="relative z-10">
+          {league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date() && (
+            <div className="rounded-xl border border-accent/30 bg-accent/5 backdrop-blur-sm p-4 mb-4 text-center">
+              <div className="text-sm text-text-primary font-semibold">
+                League starts {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' })}
+              </div>
+              <div className="text-xs text-text-muted mt-1">Invite members before kickoff. Picks open when games are loaded.</div>
+            </div>
+          )}
+          <SurvivorView league={league} />
+        </div>
       )}
 
       {tabs[activeTab] === 'Board' && league.format === 'squares' && (
