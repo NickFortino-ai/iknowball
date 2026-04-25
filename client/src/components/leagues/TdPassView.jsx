@@ -41,15 +41,12 @@ export default function TdPassView({ league, tab = 'picks' }) {
       const q = search.toLowerCase()
       list = list.filter((p) => p.full_name?.toLowerCase().includes(q) || p.team?.toLowerCase().includes(q))
     }
-    // Sort: QBs with matchups first, then injured "Out" last, then alphabetical
+    // Server sorts by season TDs desc; just sink "Out" injuries to bottom
     return [...list].sort((a, b) => {
       const aOut = a.injury_status === 'Out' ? 1 : 0
       const bOut = b.injury_status === 'Out' ? 1 : 0
       if (aOut !== bOut) return aOut - bOut
-      const aMatch = a.matchup ? 0 : 1
-      const bMatch = b.matchup ? 0 : 1
-      if (aMatch !== bMatch) return aMatch - bMatch
-      return (a.full_name || '').localeCompare(b.full_name || '')
+      return 0 // preserve server order (most TDs first)
     })
   }, [qbs, search])
 
@@ -231,52 +228,50 @@ export default function TdPassView({ league, tab = 'picks' }) {
             {!qbs?.length ? 'No QBs available — you may have used them all.' : 'No QBs match your search.'}
           </div>
         ) : (
-          <div className="max-h-[70vh] overflow-y-auto p-3 space-y-3">
-            {filteredQbs.map((qb) => {
-              const teamLogo = getTeamLogoUrl(qb.team, 'americanfootball_nfl')
-              const oppLogo = qb.matchup?.opponent ? getTeamLogoUrl(qb.matchup.opponent, 'americanfootball_nfl') : null
-              return (
-                <button
-                  key={qb.id}
-                  type="button"
-                  onClick={() => handlePick(qb)}
-                  disabled={submit.isPending}
-                  className={`w-full flex flex-col items-center text-center gap-2 px-4 py-5 rounded-2xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-sm hover:border-accent hover:bg-accent/5 active:scale-[0.98] transition-all disabled:opacity-50 ${qb.injury_status === 'Out' ? 'opacity-40' : ''}`}
-                >
-                  {qb.headshot_url ? (
-                    <img
-                      src={qb.headshot_url}
-                      alt={qb.full_name}
-                      className="w-24 h-24 rounded-full object-cover bg-bg-secondary"
-                      onError={(e) => { e.target.style.display = 'none' }}
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-bg-secondary flex items-center justify-center text-sm text-text-muted font-bold">QB</div>
-                  )}
-                  <div className="text-base font-display text-text-primary">{qb.full_name}</div>
-                  {qb.matchup ? (
-                    <div className="flex items-center gap-2 text-xs text-text-secondary">
-                      {teamLogo && <img src={teamLogo} alt={qb.team} className="w-5 h-5 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(qb.team, 'americanfootball_nfl'); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
-                      <span className="font-semibold">{qb.team}</span>
-                      <span className="text-text-muted">{qb.matchup.home_away === 'home' ? 'vs' : '@'}</span>
-                      {oppLogo && <img src={oppLogo} alt={qb.matchup.opponent} className="w-5 h-5 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(qb.matchup.opponent, 'americanfootball_nfl'); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
-                      <span className="font-semibold">{qb.matchup.opponent}</span>
-                      {qb.matchup.starts_at && (
-                        <span className="text-text-muted">
-                          · {new Date(qb.matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-text-muted">{qb.team}{qb.injury_status ? ` · ${qb.injury_status}` : ''}</div>
-                  )}
-                  {qb.injury_status && qb.matchup && (
-                    <div className="text-[10px] font-bold text-yellow-500">{qb.injury_status}</div>
-                  )}
-                </button>
-              )
-            })}
+          <>
+          <div className="flex items-center px-4 py-1.5 border-b border-text-primary/10">
+            <div className="flex-1" />
+            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-2">Season TD</span>
           </div>
+          <div className="max-h-[70vh] overflow-y-auto">
+            {filteredQbs.map((qb) => (
+              <button
+                key={qb.id}
+                type="button"
+                onClick={() => handlePick(qb)}
+                disabled={submit.isPending}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 hover:bg-text-primary/5 transition-colors disabled:opacity-50 ${qb.injury_status === 'Out' ? 'opacity-40' : ''}`}
+              >
+                {qb.headshot_url ? (
+                  <img src={qb.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                    onError={(e) => { e.target.style.display = 'none' }} />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">QB</div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-text-primary truncate">{qb.full_name}</span>
+                    {qb.injury_status && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        qb.injury_status === 'Out' ? 'bg-incorrect/20 text-incorrect'
+                        : qb.injury_status === 'Questionable' ? 'bg-yellow-500/20 text-yellow-500'
+                        : 'bg-text-primary/10 text-text-muted'
+                      }`}>
+                        {qb.injury_status === 'Questionable' ? 'Q' : qb.injury_status === 'Doubtful' ? 'D' : qb.injury_status}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-text-muted">
+                    {qb.team}
+                    {qb.matchup ? ` ${qb.matchup.home_away === 'home' ? 'vs' : '@'} ${qb.matchup.opponent}` : ''}
+                    {qb.matchup?.starts_at ? ` · ${new Date(qb.matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET` : ''}
+                  </div>
+                </div>
+                <span className="font-display text-base text-white whitespace-nowrap shrink-0">{qb.season_pass_tds || 0}</span>
+              </button>
+            ))}
+          </div>
+          </>
         )}
       </div>
 

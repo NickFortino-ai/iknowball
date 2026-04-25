@@ -207,6 +207,8 @@ export async function getAvailableQBs(leagueId, userId) {
 
   const lockedTeams = await getLockedTeamSet()
 
+  const { season } = await getCurrentNflWeek()
+
   const { data: qbs } = await supabase
     .from('nfl_players')
     .select('id, full_name, team, headshot_url, injury_status')
@@ -214,10 +216,21 @@ export async function getAvailableQBs(leagueId, userId) {
     .not('team', 'is', null)
     .order('full_name', { ascending: true })
 
+  // Aggregate season passing TDs from nfl_player_stats
+  const { data: tdStats } = await supabase
+    .from('nfl_player_stats')
+    .select('player_id, pass_td')
+    .eq('season', season)
+
+  const tdMap = {}
+  for (const s of (tdStats || [])) {
+    tdMap[s.player_id] = (tdMap[s.player_id] || 0) + (s.pass_td || 0)
+  }
+
   // Pull current-week NFL games so we can attach matchup info to each QB
   const matchupByTeam = await getCurrentWeekMatchups()
 
-  return (qbs || [])
+  const pool = (qbs || [])
     .filter((q) => !usedSet.has(q.id))
     .filter((q) => !lockedTeams.has(q.team))
     .map((q) => {
@@ -228,9 +241,14 @@ export async function getAvailableQBs(leagueId, userId) {
         team: q.team,
         headshot_url: q.headshot_url,
         injury_status: q.injury_status,
+        season_pass_tds: tdMap[q.id] || 0,
         matchup: m, // { opponent, home_away, starts_at } | null
       }
     })
+
+  // Sort by season pass TDs descending, then alphabetical
+  pool.sort((a, b) => b.season_pass_tds - a.season_pass_tds || a.full_name.localeCompare(b.full_name))
+  return pool
 }
 
 /**
