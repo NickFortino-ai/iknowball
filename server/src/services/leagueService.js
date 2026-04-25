@@ -324,6 +324,20 @@ export async function createLeague(userId, data) {
   // TD Pass: set starts_at to the first kickoff of the current NFL week
   // so the league doesn't appear "already started" before games begin.
   // Lock joins at the last kickoff so users can join until the final game.
+  // TD Survivor: same logic — start at first NFL kickoff of current week
+  if (league.format === 'survivor' && league.settings?.survivor_mode === 'touchdown') {
+    try {
+      const { getCurrentWeekFirstKickoff } = await import('./tdPassService.js')
+      const firstKickoff = await getCurrentWeekFirstKickoff()
+      if (firstKickoff && new Date(league.starts_at) <= new Date()) {
+        await supabase.from('leagues').update({ starts_at: firstKickoff }).eq('id', league.id)
+        league.starts_at = firstKickoff
+      }
+    } catch (err) {
+      logger.error({ err, leagueId: league.id }, 'Failed to set td_survivor starts_at')
+    }
+  }
+
   if (league.format === 'td_pass') {
     try {
       const { getCurrentWeekLastKickoff, getCurrentWeekFirstKickoff } = await import('./tdPassService.js')

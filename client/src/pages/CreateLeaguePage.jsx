@@ -1444,7 +1444,7 @@ export default function CreateLeaguePage() {
                 onChange={(e) => setStartsAt(e.target.value)}
                 className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
               />
-              <p className="text-[10px] text-text-muted mt-1">League runs until there's one survivor left or the end of the season.</p>
+              <p className="text-[10px] text-text-muted mt-1">Defaults to today if left blank. League runs until there's one survivor left or the end of the season.</p>
             </div>
           </div>
         )}
