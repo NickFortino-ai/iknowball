@@ -78,7 +78,7 @@ export default function DraftPrepPage() {
       </div>
 
       {/* Intro */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 mb-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/30 backdrop-blur-sm p-4 mb-4">
         <p className="text-sm text-text-primary/80 mb-3">
           Your personal big board for fantasy football, tailored to how you actually play.
         </p>
