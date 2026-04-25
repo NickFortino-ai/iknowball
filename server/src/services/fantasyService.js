@@ -484,6 +484,39 @@ export async function makeDraftPick(leagueId, userId, playerId) {
     } catch (err) {
       logger.error({ err, leagueId }, 'Failed to initialize waiver state post-draft')
     }
+  } else if (settings.draft_mode !== 'offline') {
+    // Ping the next user that they're on the clock — covers users who
+    // navigated away from the league entirely (bell + APNs push).
+    // Skipped for offline drafts (commish records picks) and auto-drafters.
+    try {
+      const { data: nextUp } = await supabase
+        .from('fantasy_draft_picks')
+        .select('user_id, round, pick_number')
+        .eq('league_id', leagueId)
+        .is('player_id', null)
+        .order('pick_number', { ascending: true })
+        .limit(1)
+        .single()
+
+      const autoDrafters = settings.auto_drafting_users || []
+      if (nextUp && nextUp.user_id && !autoDrafters.includes(nextUp.user_id)) {
+        const { data: leagueRow } = await supabase
+          .from('leagues')
+          .select('name')
+          .eq('id', leagueId)
+          .single()
+        const leagueName = leagueRow?.name || 'your fantasy league'
+        const { createNotification } = await import('./notificationService.js')
+        await createNotification(
+          nextUp.user_id,
+          'fantasy_draft_on_clock',
+          `You're on the clock in ${leagueName} — Round ${nextUp.round}, Pick ${nextUp.pick_number}`,
+          { leagueId, round: nextUp.round, pickNumber: nextUp.pick_number },
+        )
+      }
+    } catch (err) {
+      logger.error({ err, leagueId }, 'Failed to send on-the-clock notification')
+    }
   }
 
   return { pick, remaining }
