@@ -186,10 +186,10 @@ export default function TdPassView({ league, tab = 'picks' }) {
         {/* My used QBs (so user can see who they've already burned) */}
         {(myPicks?.length || 0) > 0 && (
           <div className="mb-4">
-            <div className="text-xs text-text-muted uppercase tracking-wider mb-2">QBs You've Used</div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-2">QBs You've Used</div>
+            <div className="flex flex-wrap gap-2">
               {(myPicks || []).map((p) => (
-                <span key={p.id} className="text-[10px] bg-bg-primary/40 border border-text-primary/10 text-text-muted px-2 py-1 rounded-full">
+                <span key={p.id} className="text-sm bg-bg-primary/40 border border-text-primary/15 text-text-primary px-3 py-1.5 rounded-full">
                   W{p.week} · {p.qb_name} · {p.td_count} TD
                 </span>
               ))}
