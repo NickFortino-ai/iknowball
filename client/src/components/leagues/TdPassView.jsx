@@ -174,21 +174,31 @@ export default function TdPassView({ league, tab = 'picks' }) {
             <h3 className="text-sm font-semibold text-text-primary">Week {currentWeek || '—'} Pick</h3>
             <span className="text-[10px] text-text-muted">Season {currentSeason || ''}</span>
           </div>
-          {myCurrentPick ? (
-            <div className="flex items-center gap-3 bg-accent/10 border border-accent/30 rounded-lg px-3 py-2.5">
-              {myCurrentPick.headshot_url && (
-                <img src={myCurrentPick.headshot_url} alt="" className="w-12 h-12 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-text-primary truncate">{myCurrentPick.qb_name}</div>
-                <div className="text-xs text-text-muted">{myCurrentPick.team}</div>
+          {myCurrentPick ? (() => {
+            const pickedQbData = (qbs || []).find((q) => q.id === myCurrentPick.qb_player_id)
+            const matchup = pickedQbData?.matchup
+            return (
+              <div className="flex flex-col items-center text-center gap-2 py-4">
+                {myCurrentPick.headshot_url && (
+                  <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-secondary border-2 border-accent/30" onError={(e) => { e.target.style.display = 'none' }} />
+                )}
+                <div className="font-display text-xl text-text-primary">{myCurrentPick.qb_name}</div>
+                <div className="text-sm text-text-muted">
+                  {myCurrentPick.team}
+                  {matchup ? ` ${matchup.home_away === 'home' ? 'vs' : '@'} ${matchup.opponent}` : ''}
+                </div>
+                {matchup?.starts_at && (
+                  <div className="text-xs text-text-muted">
+                    {new Date(matchup.starts_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
+                  </div>
+                )}
+                <div className="mt-1">
+                  <span className="font-display text-3xl text-accent">{myCurrentPick.td_count}</span>
+                  <span className="text-xs text-text-muted uppercase ml-1.5">Pass TD</span>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="font-display text-2xl text-accent leading-none">{myCurrentPick.td_count}</div>
-                <div className="text-[10px] text-text-muted uppercase">Pass TD</div>
-              </div>
-            </div>
-          ) : (
+            )
+          })() : (
             <p className="text-sm text-text-muted text-center py-4">Pick a QB from the pool — you can swap until their game starts.</p>
           )}
         </div>
