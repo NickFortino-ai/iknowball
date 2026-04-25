@@ -453,7 +453,7 @@ export default function FantasyDraftRoom({ league }) {
             </li>
             <li className="flex gap-3">
               <span className="text-accent font-bold shrink-0">→</span>
-              <span>Each pick is on a <span className="font-semibold">{settings?.draft_pick_timer || 90}-second timer</span>. If time runs out, the best available player by ADP is auto-drafted for you.</span>
+              <span>Each pick is on a <span className="font-semibold">{settings?.draft_pick_timer || 90}-second timer</span>. If time runs out, the best available player from your queue, then your rankings, then ADP is auto-drafted for you.</span>
             </li>
             <li className="flex gap-3">
               <span className="text-accent font-bold shrink-0">→</span>

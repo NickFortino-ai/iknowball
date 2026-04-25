@@ -710,9 +710,11 @@ export async function autoFillLineupsForLeague(leagueId) {
 }
 
 /**
- * Auto-pick for a user who missed their timer. First drains the user's
- * pre-rank queue (skipping any already-drafted), then falls back to the
- * best available player by Sleeper search_rank.
+ * Auto-pick for a user who missed their timer. Order of preference:
+ *   1. The user's in-room draft queue (fantasy_draft_queues)
+ *   2. The user's big-board rankings (fantasy_user_rankings — the same
+ *      table their Draft Prep / My Rankings board writes to)
+ *   3. League-wide ADP fallback (nfl_players.search_rank)
  */
 export async function autoDraftPick(leagueId, userId) {
   // Get drafted set
@@ -724,7 +726,7 @@ export async function autoDraftPick(leagueId, userId) {
 
   const drafted = new Set((draftedIds || []).map((d) => d.player_id))
 
-  // 1. Try the user's pre-rank queue first
+  // 1. Try the user's in-room draft queue first
   const { data: queueRows } = await supabase
     .from('fantasy_draft_queues')
     .select('player_id')
@@ -740,7 +742,23 @@ export async function autoDraftPick(leagueId, userId) {
     }
   }
 
-  // 2. Fallback: best available by Sleeper search_rank
+  // 2. Fallback: best available from the user's big-board rankings
+  if (!pick) {
+    const { data: rankingRows } = await supabase
+      .from('fantasy_user_rankings')
+      .select('player_id')
+      .eq('league_id', leagueId)
+      .eq('user_id', userId)
+      .order('rank', { ascending: true })
+    for (const r of rankingRows || []) {
+      if (!drafted.has(r.player_id)) {
+        pick = { id: r.player_id }
+        break
+      }
+    }
+  }
+
+  // 3. Fallback: best available by Sleeper search_rank (league-wide ADP)
   if (!pick) {
     const { data: bestAvailable } = await supabase
       .from('nfl_players')
