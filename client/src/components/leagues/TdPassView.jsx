@@ -158,6 +158,11 @@ export default function TdPassView({ league, tab = 'picks' }) {
                     {new Date(matchup.starts_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
                   </div>
                 )}
+                {matchup?.starts_at && !gameStarted && (
+                  <div className="text-[10px] text-accent uppercase tracking-wider font-semibold">
+                    Locks at {new Date(matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET
+                  </div>
+                )}
                 {showWeekTds && (
                   <div className="mt-2">
                     <span className="font-display text-4xl text-correct">{weekTds}</span>
@@ -168,6 +173,9 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   <span className={`font-display ${showWeekTds ? 'text-xl text-text-muted' : 'text-3xl text-accent'}`}>{seasonTds}</span>
                   <span className="text-[10px] text-text-muted uppercase ml-1.5">Season Total</span>
                 </div>
+                {!gameStarted && (
+                  <p className="text-xs text-text-muted mt-3">Tap any QB below to swap your pick — locks at kickoff.</p>
+                )}
               </div>
             )
           })() : (
