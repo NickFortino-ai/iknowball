@@ -40,7 +40,7 @@ function splitTeamName(fullName) {
   return { city: words[0], name: words.slice(1).join(' ') }
 }
 
-function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord, seriesPrediction, seriesPredictionColor, mirrored }) {
+function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecord, mirrored }) {
   const { city, name } = splitTeamName(team)
   const padding = size === 'xl' ? 'px-3 py-2.5' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'
 
@@ -50,26 +50,20 @@ function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord,
   )
   const nameEl = team ? (
     <div className={`flex flex-col min-w-0 flex-1 leading-tight ${mirrored ? 'items-end' : ''}`}>
-      <span className={`truncate ${size === 'xl' ? 'text-xs' : 'text-[11px]'} text-text-muted`}>{city}</span>
+      <span className={`truncate ${size === 'xl' ? 'text-xs' : 'text-[11px]'} ${cityClass || 'text-text-muted'}`}>{city}</span>
       <span className={`truncate font-semibold ${size === 'xl' ? 'text-base' : 'text-sm'}`}>{name}</span>
     </div>
   ) : (
     <span className={`truncate flex-1 ${mirrored ? 'text-right' : ''}`}>TBD</span>
   )
 
-  const rightBadges = (
-    <>
-      {seriesPrediction && <span className={`text-[9px] shrink-0 ${seriesPredictionColor}`}>in {seriesPrediction}</span>}
-      {showWin && <span className="text-correct shrink-0">W</span>}
-      {seriesRecord && <span className="text-[9px] text-text-muted shrink-0">{seriesRecord}</span>}
-    </>
-  )
-
   return (
-    <div className={`flex items-center gap-1.5 ${padding} ${className}`}>
+    <div className={`relative flex items-center gap-1.5 ${padding} ${className}`}>
+      {seriesRecord && (
+        <span className="absolute top-0.5 left-1.5 text-[9px] font-semibold text-text-muted z-10">{seriesRecord}</span>
+      )}
       {mirrored ? (
         <>
-          {rightBadges}
           {nameEl}
           {seedEl}
           {logoEl}
@@ -79,7 +73,6 @@ function TeamRow({ team, seed, sportKey, size, className, showWin, seriesRecord,
           {logoEl}
           {seedEl}
           {nameEl}
-          {rightBadges}
         </>
       )}
     </div>
@@ -136,9 +129,30 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
     return 'text-text-primary'
   }
 
+  // City color follows the row's status (green/red/strikethrough/muted)
+  function cityClassFor(team, isTop) {
+    if (!team) return 'text-text-muted'
+    if (showPick && pick === team) {
+      if (eliminated) return 'text-text-muted line-through'
+      if (isTop ? topCorrect : bottomCorrect) return 'text-correct'
+      if (isTop ? topWrong : bottomWrong) return 'text-incorrect line-through'
+      return 'text-text-muted'
+    }
+    if (showPick && eliminatedTeams?.has(team)) return 'text-text-muted line-through'
+    if (showPick && matchup.round_number <= 1 && playInPickResults[team] === 'correct') return 'text-correct'
+    if (showPick && matchup.round_number <= 1 && playInPickResults[team] === 'incorrect') return 'text-incorrect line-through'
+    return 'text-text-muted'
+  }
+
+  // Series prediction badge that sits over the divider line between teams.
+  // Only shown when the user has a pick on this best-of-7 matchup.
+  const predictionLength = isBestOf7 && showPick && pickData?.series_length && (pick === matchup.team_top || pick === matchup.team_bottom)
+    ? pickData.series_length
+    : null
+
   return (
     <div
-      className={`bg-bg-primary/80 backdrop-blur-sm border border-text-primary/20 rounded-lg ${size === 'xl' ? 'w-52 text-sm' : size === 'lg' ? 'w-44 text-xs' : 'w-40 text-xs'} overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
+      className={`relative bg-bg-primary/80 backdrop-blur-sm border border-text-primary/20 rounded-lg ${size === 'xl' ? 'w-52 text-sm' : size === 'lg' ? 'w-44 text-xs' : 'w-40 text-xs'} overflow-hidden${isClickable ? ' cursor-pointer hover:border-accent/50 transition-colors' : ''}`}
       onClick={isClickable ? handleClick : undefined}
     >
       <TeamRow
@@ -148,10 +162,8 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         size={size}
         mirrored={mirrored}
         className={`border-b border-text-primary/10 ${teamClass(matchup.team_top, true)}`}
-        showWin={showPick ? (topCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'top')}
+        cityClass={cityClassFor(matchup.team_top, true)}
         seriesRecord={hasSeriesRecord && matchup.winner === 'top' ? `${matchup.series_wins_top}-${matchup.series_wins_bottom}` : null}
-        seriesPrediction={isBestOf7 && showPick && pick === matchup.team_top && pickData?.series_length ? pickData.series_length : null}
-        seriesPredictionColor={predictionColor}
       />
       <TeamRow
         team={matchup.team_bottom}
@@ -160,11 +172,14 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         size={size}
         mirrored={mirrored}
         className={teamClass(matchup.team_bottom, false)}
-        showWin={showPick ? (bottomCorrect && !eliminated) : (matchup.status === 'completed' && matchup.winner === 'bottom')}
+        cityClass={cityClassFor(matchup.team_bottom, false)}
         seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
-        seriesPrediction={isBestOf7 && showPick && pick === matchup.team_bottom && pickData?.series_length ? pickData.series_length : null}
-        seriesPredictionColor={predictionColor}
       />
+      {predictionLength && (
+        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+          <span className={`text-[9px] font-semibold ${predictionColor} bg-bg-primary px-1 rounded`}>in {predictionLength}</span>
+        </div>
+      )}
     </div>
   )
 }
