@@ -248,7 +248,7 @@ export default function FantasyPlayerBrowser({ league }) {
         </div>
       )}
 
-    <div className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary/40">
+    <div className="rounded-xl border border-text-primary/20 overflow-hidden bg-bg-primary">
       <div className="p-3 border-b border-text-primary/10">
         <input
           value={searchQuery}
@@ -280,8 +280,8 @@ export default function FantasyPlayerBrowser({ league }) {
       <div className="overflow-x-auto scrollbar-hide max-h-[65vh] overflow-y-auto">
         <div className="min-w-[900px]">
         {/* Header — sticky top so it stays visible during vertical scroll */}
-        <div className="border-b border-text-primary/10 bg-bg-card/60 backdrop-blur-sm flex text-[10px] font-bold text-text-muted uppercase tracking-wider sticky top-0 z-30">
-          <div className="sticky left-0 z-20 bg-bg-card/80 backdrop-blur-sm flex items-center shrink-0">
+        <div className="border-b border-text-primary/10 bg-bg-primary flex text-[10px] font-bold text-text-muted uppercase tracking-wider sticky top-0 z-30">
+          <div className="sticky left-0 z-20 bg-bg-primary flex items-center shrink-0">
             <button
               type="button"
               onClick={() => handleSort('rank')}
@@ -319,7 +319,7 @@ export default function FantasyPlayerBrowser({ league }) {
             const pStats = player.stats || {}
             return (
               <div key={player.id} className="flex border-b border-border last:border-0">
-                <div className="sticky left-0 z-10 bg-bg-card/60 backdrop-blur-sm flex items-center shrink-0">
+                <div className="sticky left-0 z-10 bg-bg-primary flex items-center shrink-0">
                   <div className="w-8 text-center text-xs font-bold text-text-muted">
                     {player.adp_rank || idx + 1}
                   </div>
@@ -339,7 +339,7 @@ export default function FantasyPlayerBrowser({ league }) {
                         <InjuryBadge status={player.injury_status} />
                         <BlurbDot playerId={player.id} blurbIds={blurbIds} />
                         {onWaivers && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="On waivers">W</span>
+                          <span className="text-[10px] font-bold text-yellow-500" title="On waivers">W</span>
                         )}
                         {isClaimed && (
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="Pending claim">C</span>
@@ -354,7 +354,7 @@ export default function FantasyPlayerBrowser({ league }) {
                         onClick={() => setAddingPlayer(player)}
                         className={`text-lg font-bold w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
                           onWaivers
-                            ? 'text-accent hover:bg-accent/15'
+                            ? 'text-blue-400 hover:bg-blue-400/15'
                             : 'text-correct hover:bg-correct/15'
                         }`}
                       >
