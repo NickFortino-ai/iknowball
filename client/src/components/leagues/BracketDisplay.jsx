@@ -145,10 +145,19 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   }
 
   // Series prediction badge that sits over the divider line between teams.
-  // Only shown when the user has a pick on this best-of-7 matchup.
+  // User bracket: their predicted length, anchored to the team they picked.
+  // Master bracket (no picks): actual series length on completed games, anchored to the winner.
   const predictionLength = isBestOf7 && showPick && pickData?.series_length && (pick === matchup.team_top || pick === matchup.team_bottom)
     ? pickData.series_length
     : null
+  const actualSeriesLength = hasSeriesRecord
+    ? (matchup.series_wins_top || 0) + (matchup.series_wins_bottom || 0)
+    : null
+  const masterLength = !showPick && actualSeriesLength ? actualSeriesLength : null
+  const badgeLength = predictionLength || masterLength
+  const badgeOnTopRow = predictionLength
+    ? pick === matchup.team_top
+    : matchup.winner === 'top'
 
   return (
     <div
@@ -177,11 +186,11 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
         recordPosition="bottom"
       />
-      {predictionLength && (
+      {badgeLength && (
         <div
-          className={`absolute ${mirrored ? 'left-1.5' : 'right-1.5'} ${pick === matchup.team_top ? 'top-1/2 -translate-y-full' : 'top-1/2'} z-20 pointer-events-none`}
+          className={`absolute ${mirrored ? 'left-1.5' : 'right-1.5'} ${badgeOnTopRow ? 'top-1/2 -translate-y-full' : 'top-1/2'} z-20 pointer-events-none`}
         >
-          <span className={`text-[9px] font-semibold ${predictionColor}`}>in {predictionLength}</span>
+          <span className={`text-[9px] font-semibold ${masterLength ? 'text-text-muted' : predictionColor}`}>in {badgeLength}</span>
         </div>
       )}
     </div>
