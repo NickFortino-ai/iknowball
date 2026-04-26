@@ -56,9 +56,9 @@ export default function DraftPrepAdp({ scoringFormat }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-3">
-        <h3 className="font-display text-base text-text-primary mb-1">Average Draft Position</h3>
-        <p className="text-[11px] text-text-muted mb-2">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/30 backdrop-blur-md p-3">
+        <h3 className="font-display text-base text-text-primary">Average Draft Position</h3>
+        <p className="text-xs text-text-primary/70 mb-2">
           Current ADP data based on {scoringFormat === 'ppr' ? 'PPR' : scoringFormat === 'standard' ? 'Standard' : 'Half-PPR'} scoring.
         </p>
         <input
@@ -72,7 +72,7 @@ export default function DraftPrepAdp({ scoringFormat }) {
             <button
               key={pos}
               onClick={() => setPosFilter(pos)}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
                 posFilter === pos ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary'
               }`}
             >{pos}</button>
