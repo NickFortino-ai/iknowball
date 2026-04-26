@@ -7,6 +7,21 @@ import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
 
+// Winner-only tiered bonus (scaledWinnerBonus on server) — shared across
+// NBA DFS, MLB DFS, HR Derby, TD Pass, Bracket, and Survivor.
+const WINNER_BONUS_COLUMNS = [
+  { key: 'size', label: 'League Size', align: 'left' },
+  { key: 'winner', label: 'Winner Bonus', align: 'center', color: 'text-correct' },
+]
+const WINNER_BONUS_ROWS = [
+  { size: '5 or fewer', winner: '+10' },
+  { size: '6–10', winner: '+20' },
+  { size: '11–15', winner: '+30' },
+  { size: '16–30', winner: '+50' },
+  { size: '31–40', winner: '+75' },
+  { size: '41+', winner: '+100' },
+]
+
 const FORMAT_OPTIONS = [
   {
     value: 'fantasy',
@@ -52,11 +67,17 @@ Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom 
     description: 'Build a nightly NBA lineup under a salary cap and compete for the highest score',
     details: `Build a nightly 9-man NBA lineup (PG, PG, SG, SG, SF, SF, PF, PF, C) under a salary cap. Players are priced using a weighted algorithm that factors in recent performance and opponent defensive strength — so salaries shift nightly based on matchups and form. Scoring follows DraftKings-style NBA rules. Your league tracks wins across every night of the duration.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. The winner's bonus is prorated by how long the league actually ran — a full NBA regular season is ~180 game nights, so a league that runs 90 nights earns 50% of the bonus, a league that runs 18 nights earns 10%, and a full-season league earns 100%. For example, if you win a 20-member full-season league, you'd earn 19 position points + 20 bonus = 39 total points added to your global IKB score.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night NBA regular season.
 
 At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
 
 Commissioner controls: salary cap, team count, league duration, and lineup lock time. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'NBA DFS Winner Bonus (Full Season, ~180 game nights)',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Bonus prorated by nights_played / 180. A 90-night league earns 50% of the bonus; a 30-night league earns ~17%. Position points (n+1−2×rank) are added on top.',
+    },
   },
   {
     value: 'mlb_dfs',
@@ -64,11 +85,17 @@ Commissioner controls: salary cap, team count, league duration, and lineup lock 
     description: 'Build a daily MLB lineup under a salary cap — scored on hits, HRs, RBIs, runs, and more',
     details: `Build a daily 10-man MLB lineup (SP, C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) under a salary cap. Scored on hits, home runs, RBIs, runs, stolen bases, and walks. Player pricing uses recent game logs and opponent pitching and defensive strength. Compete each night with your league across the full slate.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. The winner's bonus is prorated by how long the league actually ran — a full MLB regular season is ~180 game nights, so a league that runs 90 nights earns 50% of the bonus, a league that runs 18 nights earns 10%, and a full-season league earns 100%. For example, if you win a 10-member full-season league, you'd earn 9 position points + 20 bonus = 29 total points added to your global IKB score.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night MLB regular season.
 
 At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
 
 Commissioner controls: salary cap, team count, league duration, lineup lock time. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'MLB DFS Winner Bonus (Full Season, ~180 game nights)',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Bonus prorated by nights_played / 180. A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+    },
   },
   {
     value: 'hr_derby',
@@ -76,9 +103,15 @@ Commissioner controls: salary cap, team count, league duration, lineup lock time
     description: 'Pick 3 hitters per day — score points for every HR they hit, with distance as tiebreaker',
     details: `Pick up to 3 hitters per day who you think will go yard. Each player can only be used once per week. Total home runs determine standings — HR distance is the tiebreaker. No salaries, no lineups, no optimization required. Just: will this guy hit one tonight?
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. For example, if you win a 15-member league, you'd earn 14 position points + 30 bonus = 44 total points added to your global IKB score.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below.
 
 Commissioner controls: league length, team count. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'HR Derby Winner Bonus',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Position points (n+1−2×rank) are added on top of the winner bonus.',
+    },
   },
   {
     value: 'td_pass',
@@ -86,9 +119,15 @@ Commissioner controls: league length, team count. Custom backdrop from a curated
     description: 'Pick one QB per week — never repeat a QB. Most passing TDs across the season wins',
     details: `Season-long NFL league where you pick one quarterback per week — and you can never pick the same QB twice all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by season's end wins. Rushing TDs don't count. Ties split the bonus.
 
-When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. The winner's bonus is prorated by how many NFL weeks the league actually ran — a full regular season is 18 weeks, so a 9-week league earns 50% of the bonus, a 4-week league earns ~22%, and a full-season league earns 100%. For example, if you win a 30-member full-season league, you'd earn 29 position points + 50 bonus = 79 total points added to your global IKB score.
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how many NFL weeks the league ran out of 18.
 
 Commissioner controls: league length (defaults to full NFL season), team count. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'TD Pass Winner Bonus (Full Season, 18 weeks)',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+    },
   },
   {
     value: 'pickem',
@@ -96,9 +135,22 @@ Commissioner controls: league length (defaults to full NFL season), team count. 
     description: 'Pick game winners with odds-based scoring — your points reflect the real odds',
     details: `A picks league where everyone chooses winners from the same slate of games. The twist: IKB scores on odds, not just right or wrong. A chalk pick on the favorite pays less; nailing an underdog pays big. That means one gutsy upset call can leapfrog you over someone who played it safe all week. League picks live on their own leaderboard throughout the duration.
 
-When the league ends, all the pick points you earned during play transfer to your global IKB score. On top of that, the winner gets a bonus equal to the number of members in the league. For example, in a 25-member Pick'em league, the winner would receive all their accumulated pick points plus a 25-point bonus added to their global IKB score.
+When the league ends, all the pick points you earned during play transfer to your global IKB score. On top of that, the winner gets a bonus equal to the number of members in the league.
 
 Commissioner controls: sport (single or all), duration (this week, custom range, or full season), pick frequency (daily or weekly), games per period, lock time (game start or submission), and open vs invite-only. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: "Pick'em Winner Bonus",
+      columns: WINNER_BONUS_COLUMNS,
+      rows: [
+        { size: '6 members', winner: '+6' },
+        { size: '10 members', winner: '+10' },
+        { size: '15 members', winner: '+15' },
+        { size: '25 members', winner: '+25' },
+        { size: '50 members', winner: '+50' },
+        { size: '100 members', winner: '+100' },
+      ],
+      footnote: 'Winner bonus = number of members in the league. Pick points earned during play also transfer to your global score.',
+    },
   },
   {
     value: 'survivor',
@@ -106,11 +158,20 @@ Commissioner controls: sport (single or all), duration (this week, custom range,
     description: 'Pick one team per period. If they win, you survive. Last one standing wins. TD Survivor also available',
     details: `Pick one team to win each period. Win and you survive. Lose and you burn a life. The catch: you can never pick the same team twice. Use all your lives and you're out. Last one standing wins.
 
-When the league ends, only survivors earn global IKB points — scaled by league size from 10 points for small leagues up to 100 for 41+ members. If multiple players survive to the end of the season, the bonus points are split evenly.
+When the league ends, only survivors earn global IKB points — the size-tiered survivor bonus shown below. If multiple players survive to the end, the bonus is split evenly.
 
 NFL leagues can also be set up as a Touchdown Survivor Pool — instead of picking a team, pick one player you think will score a non-passing TD (rush, reception, return, or fumble recovery). Same survivor engine, same global scoring. Comes with the TD Legends backdrop set (Jerry, Emmitt, LaDainian).
 
 Commissioner controls: sport, period frequency (daily or weekly), lives per player, what happens if everyone gets eliminated in the same period (all-survive or reset), and league length. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'Survivor Bonus',
+      columns: [
+        { key: 'size', label: 'League Size', align: 'left' },
+        { key: 'winner', label: 'Survivor Bonus', align: 'center', color: 'text-correct' },
+      ],
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Eliminated players earn nothing. If multiple players survive to the end, the bonus is split evenly among them.',
+    },
   },
   {
     value: 'bracket',
@@ -118,9 +179,15 @@ Commissioner controls: sport, period frequency (daily or weekly), lives per play
     description: 'Fill out a tournament bracket with escalating points per round',
     details: `Tournament-style competition. The commissioner selects a template — NCAA Tournament, NBA Playoffs, NHL Playoffs, NFL Playoffs, and more — members fill out their bracket before the lock, and points scale dramatically by round. A correct championship pick is worth multiples of a first-round call. NBA and NHL playoff brackets include a series length prediction for each matchup — nail the exact number of games for bonus points.
 
-When the bracket completes, your finishing position determines your global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner earns a bonus on top of their position-based points that scales with league size: 5 or fewer members +10, 6–10 members +20, 11–15 members +30, 16–30 members +50, 31–40 members +75, 41+ members +100. For example, if you win a 50-member bracket league, you'd earn 49 position points + 100 bonus = 149 total points added to your global IKB score. Ties split the bonus.
+When the bracket completes, your finishing position determines your global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below.
 
 Commissioner controls: bracket template, lock time, and visibility. Custom backdrop or upload your own, plus a centerpiece image behind the bracket.`,
+    bonusTable: {
+      title: 'Bracket Winner Bonus',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Position points (n+1−2×rank) are added on top of the winner bonus. Ties split the bonus.',
+    },
   },
   {
     value: 'squares',
@@ -507,35 +574,50 @@ export default function CreateLeaguePage() {
                   {isExpanded && (
                     <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-base leading-relaxed text-text-primary border-t border-text-primary/10">
                       <div className="whitespace-pre-line">{opt.details}</div>
-                      {[opt.bonusTable, opt.bonusTable2].filter(Boolean).map((tbl) => (
-                        <div key={tbl.title} className="mt-4 rounded-xl bg-bg-primary border border-text-primary/20 overflow-hidden">
-                          <div className="px-4 py-3 border-b border-text-primary/20 text-sm md:text-base font-display text-text-primary">
-                            {tbl.title}
-                          </div>
-                          {tbl.intro && (
-                            <div className="px-4 py-3 text-sm md:text-base leading-7 text-text-primary border-b border-text-primary/20">
-                              {tbl.intro}
+                      {[opt.bonusTable, opt.bonusTable2].filter(Boolean).map((tbl) => {
+                        const cols = tbl.columns || [
+                          { key: 'size', label: 'League Size', align: 'left' },
+                          { key: 'first', label: '1st', align: 'center', color: 'text-correct' },
+                          { key: 'second', label: '2nd', align: 'center' },
+                          { key: 'third', label: '3rd', align: 'center' },
+                        ]
+                        const gridStyle = { gridTemplateColumns: `repeat(${cols.length}, minmax(0, 1fr))` }
+                        return (
+                          <div key={tbl.title} className="mt-4 rounded-xl bg-bg-primary border border-text-primary/20 overflow-hidden">
+                            <div className="px-4 py-3 border-b border-text-primary/20 text-sm md:text-base font-display text-text-primary">
+                              {tbl.title}
                             </div>
-                          )}
-                          <div className="grid grid-cols-4 text-sm md:text-base">
-                            <div className="px-4 py-2 font-semibold text-text-primary">League Size</div>
-                            <div className="px-2 py-2 font-semibold text-text-primary text-center">1st</div>
-                            <div className="px-2 py-2 font-semibold text-text-primary text-center">2nd</div>
-                            <div className="px-2 py-2 font-semibold text-text-primary text-center">3rd</div>
-                            {tbl.rows.map((r) => (
-                              <div key={r.size} className="contents">
-                                <div className="px-4 py-2 border-t border-text-primary/10 text-text-primary">{r.size}</div>
-                                <div className="px-2 py-2 border-t border-text-primary/10 text-center text-correct font-semibold tabular-nums">{r.first}</div>
-                                <div className="px-2 py-2 border-t border-text-primary/10 text-center text-text-primary font-semibold tabular-nums">{r.second}</div>
-                                <div className="px-2 py-2 border-t border-text-primary/10 text-center text-text-primary font-semibold tabular-nums">{r.third}</div>
+                            {tbl.intro && (
+                              <div className="px-4 py-3 text-sm md:text-base leading-7 text-text-primary border-b border-text-primary/20">
+                                {tbl.intro}
                               </div>
-                            ))}
+                            )}
+                            <div className="grid text-sm md:text-base" style={gridStyle}>
+                              {cols.map((c) => (
+                                <div key={c.key} className={`px-4 py-2 font-semibold text-text-primary ${c.align === 'center' ? 'text-center' : ''}`}>{c.label}</div>
+                              ))}
+                              {tbl.rows.map((r) => (
+                                <div key={r.size} className="contents">
+                                  {cols.map((c) => {
+                                    const isFirstCol = c === cols[0]
+                                    return (
+                                      <div
+                                        key={c.key}
+                                        className={`px-4 py-2 border-t border-text-primary/10 ${c.align === 'center' ? 'text-center' : ''} ${c.color || 'text-text-primary'} ${!isFirstCol ? 'font-semibold tabular-nums' : ''}`}
+                                      >
+                                        {r[c.key]}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="px-4 py-2 text-xs md:text-sm text-text-primary/70 border-t border-text-primary/10">
+                              {tbl.footnote || 'Position points (n+1−2×rank) are still applied on top of these bonuses. Non-standard team counts use the closest configured size.'}
+                            </div>
                           </div>
-                          <div className="px-4 py-2 text-xs md:text-sm text-text-primary/70 border-t border-text-primary/10">
-                            {tbl.footnote || 'Position points (n+1−2×rank) are still applied on top of these bonuses. Non-standard team counts use the closest configured size.'}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
