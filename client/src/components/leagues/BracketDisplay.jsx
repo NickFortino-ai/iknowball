@@ -40,7 +40,7 @@ function splitTeamName(fullName) {
   return { city: words[0], name: words.slice(1).join(' ') }
 }
 
-function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecord, mirrored }) {
+function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecord, recordPosition = 'top', mirrored }) {
   const { city, name } = splitTeamName(team)
   const padding = size === 'xl' ? 'px-3 py-2.5' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'
 
@@ -60,7 +60,7 @@ function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecor
   return (
     <div className={`relative flex items-center gap-1.5 ${padding} ${className}`}>
       {seriesRecord && (
-        <span className="absolute top-0.5 left-1.5 text-[9px] font-semibold text-text-muted z-10">{seriesRecord}</span>
+        <span className={`absolute ${recordPosition === 'bottom' ? 'bottom-0.5' : 'top-0.5'} left-1.5 text-[9px] font-semibold text-text-muted z-10`}>{seriesRecord}</span>
       )}
       {mirrored ? (
         <>
@@ -164,6 +164,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         className={`border-b border-text-primary/10 ${teamClass(matchup.team_top, true)}`}
         cityClass={cityClassFor(matchup.team_top, true)}
         seriesRecord={hasSeriesRecord && matchup.winner === 'top' ? `${matchup.series_wins_top}-${matchup.series_wins_bottom}` : null}
+        recordPosition="top"
       />
       <TeamRow
         team={matchup.team_bottom}
@@ -174,10 +175,13 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
         className={teamClass(matchup.team_bottom, false)}
         cityClass={cityClassFor(matchup.team_bottom, false)}
         seriesRecord={hasSeriesRecord && matchup.winner === 'bottom' ? `${matchup.series_wins_bottom}-${matchup.series_wins_top}` : null}
+        recordPosition="bottom"
       />
       {predictionLength && (
-        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-          <span className={`text-[9px] font-semibold ${predictionColor} bg-bg-primary px-1 rounded`}>in {predictionLength}</span>
+        <div
+          className={`absolute left-1.5 ${pick === matchup.team_top ? 'top-1/2 -translate-y-full' : 'top-1/2'} z-20 pointer-events-none`}
+        >
+          <span className={`text-[9px] font-semibold ${predictionColor}`}>in {predictionLength}</span>
         </div>
       )}
     </div>
