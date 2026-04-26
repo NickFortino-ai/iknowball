@@ -188,7 +188,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
       />
       {badgeLength && (
         <div
-          className={`absolute ${mirrored ? 'left-1.5' : 'right-1.5'} ${badgeOnTopRow ? 'top-1/2 -translate-y-full' : 'top-1/2'} z-20 pointer-events-none`}
+          className={`absolute ${mirrored ? 'left-1.5' : 'right-1.5'} ${badgeOnTopRow ? 'top-1/2 -translate-y-full' : 'top-1/2'} z-20 pointer-events-none whitespace-nowrap leading-none`}
         >
           <span className={`text-[9px] font-semibold ${masterLength ? 'text-text-muted' : predictionColor}`}>in {badgeLength}</span>
         </div>
@@ -901,20 +901,21 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         {/* Legend */}
         {hasPicks && (
           <div className="flex gap-4 mt-4 ml-2 text-[10px] text-text-muted">
-            <span>
-              <span className="inline-block w-2 h-2 bg-correct rounded-full mr-1" />
-              Correct
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block w-2 h-2 bg-correct rounded-full" />
+              <span>Correct</span>
             </span>
-            <span>
-              <span className="inline-block w-2 h-2 bg-red-700 rounded-full mr-1" />
-              Wrong
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block w-2 h-2 bg-red-700 rounded-full" />
+              <span>Wrong</span>
             </span>
-            <span>
-              <span className="inline-block w-2 h-2 bg-accent rounded-full mr-1" />
-              Your Pick
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block w-2 h-2 bg-accent rounded-full" />
+              <span>Your Pick</span>
             </span>
-            <span>
-              <span className="line-through mr-1">X</span>Eliminated
+            <span className="inline-flex items-center gap-1">
+              <span className="line-through">X</span>
+              <span>Eliminated</span>
             </span>
           </div>
         )}
