@@ -42,7 +42,7 @@ Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom 
         { size: '16 members', first: '+80', second: '+32', third: '+16' },
         { size: '20 members', first: '+100', second: '+40', third: '+20' },
       ],
-      footnote: 'Salary cap leagues that start mid-season use the same shape but prorated by weeks played. Single-week leagues (one-and-done) award members / members÷2 / members÷4 to 1st / 2nd / 3rd.',
+      footnote: 'Salary cap leagues that start mid-season use the same shape but prorated by weeks played. Single-week leagues (one-and-done) use position-ranked scoring with a winner bonus — the winner takes home members × 2, the bottom half earns negative points.',
     },
   },
   {

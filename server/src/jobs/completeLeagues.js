@@ -216,7 +216,9 @@ export function getTraditionalFantasyBonus(rank, n) {
 // Salary cap fantasy bonus — formula-based since member counts are
 // unbounded and start weeks vary. Three modes:
 //
-//   single_week:    1st = members,        2nd = members/2,  3rd = members/4
+//   single_week:    winner-only bonus of (n + 1), so total = position pts
+//                   (n − 1) + bonus = members × 2. Everyone else earns
+//                   only the position points (bottom half goes negative).
 //   full_season:    1st = members × 5,    2nd = members × 2, 3rd = members × 1
 //                   (started week 1, ran the whole regular season — toned-
 //                   down version of the traditional bonus shape)
@@ -224,12 +226,12 @@ export function getTraditionalFantasyBonus(rank, n) {
 //                   weeksPlayed / 18 to reflect a shorter run.
 const SALARY_CAP_MULTIPLIERS = { 1: 5, 2: 2, 3: 1 }
 function getSalaryCapBonus(rank, n, ctx) {
-  if (rank > 3) return 0
   const { isSingleWeek, isFullSeasonRun, weeksPlayed } = ctx
   if (isSingleWeek) {
-    const fractions = { 1: 1, 2: 0.5, 3: 0.25 }
-    return Math.round(n * fractions[rank])
+    // Winner total = members × 2 (position pts + bonus). No bonus for others.
+    return rank === 1 ? n + 1 : 0
   }
+  if (rank > 3) return 0
   if (isFullSeasonRun) {
     return Math.round(n * SALARY_CAP_MULTIPLIERS[rank])
   }
