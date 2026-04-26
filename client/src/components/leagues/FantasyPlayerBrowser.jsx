@@ -291,7 +291,7 @@ export default function FantasyPlayerBrowser({ league }) {
             >
               {sortKey === 'rank' ? '#↓' : '#'}
             </button>
-            <div className="w-[200px] lg:w-[260px] px-1 py-1.5">Player</div>
+            <div className="w-[170px] lg:w-[230px] px-1 py-1.5">Player</div>
             <div className="w-8" />
           </div>
           <div className="flex gap-1 py-1.5">
@@ -323,7 +323,7 @@ export default function FantasyPlayerBrowser({ league }) {
                   <div className="w-8 text-center text-xs font-bold text-text-muted">
                     {player.adp_rank || idx + 1}
                   </div>
-                  <div className="w-[200px] lg:w-[260px] flex items-center gap-2 px-1 py-2.5">
+                  <div className="w-[170px] lg:w-[230px] flex items-center gap-2 px-1 py-2.5">
                     {player.headshot_url && (
                       <img
                         src={player.headshot_url}
