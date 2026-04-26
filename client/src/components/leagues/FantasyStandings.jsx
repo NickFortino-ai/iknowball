@@ -2,25 +2,10 @@ import { Fragment, useState } from 'react'
 import Avatar from '../ui/Avatar'
 import RosterList from './RosterList'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
+import StandingsRosterBanner from './StandingsRosterBanner'
 import UserProfileModal from '../profile/UserProfileModal'
 import { useFantasyStandings, useGlobalRank } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
-
-function ChevronDown({ open }) {
-  return (
-    <svg
-      className={`w-4 h-4 text-accent shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  )
-}
 
 export default function FantasyStandings({ league, isSalaryCap }) {
   const [expandedUserId, setExpandedUserId] = useState(null)
@@ -94,6 +79,8 @@ export default function FantasyStandings({ league, isSalaryCap }) {
 
   return (
     <div>
+      <StandingsRosterBanner />
+
       {/* Desktop: full-width table */}
       <div className="hidden md:block">
         <table className="w-full text-sm">
@@ -144,7 +131,6 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                             <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
                           )}
                         </div>
-                        <ChevronDown open={isExpanded} />
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-center text-text-primary text-sm md:text-base font-semibold whitespace-nowrap">
@@ -226,7 +212,6 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                           <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
                         )}
                       </div>
-                      <ChevronDown open={isExpanded} />
                     </div>
                   </div>
                 </div>

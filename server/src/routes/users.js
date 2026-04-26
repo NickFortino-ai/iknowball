@@ -39,6 +39,7 @@ const updateSchema = z.object({
   threads_handle: z.string().max(30).nullable().optional(),
   has_seen_onboarding: z.boolean().optional(),
   has_dismissed_readiness_banner: z.boolean().optional(),
+  has_dismissed_standings_roster_banner: z.boolean().optional(),
   timezone: z.string().max(50).optional(),
   backdrop_image: z.string().max(200).nullable().optional(),
   backdrop_y: z.number().min(0).max(100).nullable().optional(),
