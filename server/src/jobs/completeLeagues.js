@@ -766,7 +766,15 @@ export async function completeLeagues() {
       } else if (league.format === 'mlb_dfs') {
         const standings = await getMLBDFSStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'MLB DFS')
+          // Prorate winner bonus by nights played vs ~180-night MLB regular season
+          const { data: nightRows } = await supabase
+            .from('mlb_dfs_nightly_results')
+            .select('game_date')
+            .eq('league_id', league.id)
+          const nightsPlayed = new Set((nightRows || []).map((r) => r.game_date)).size
+          const fraction = Math.min(1, nightsPlayed / 180)
+          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          await awardPositionBasedPoints(league, standings, 'MLB DFS', bonusFn)
         }
       } else if (league.format === 'hr_derby') {
         const standings = await getHRDerbyStandings(league)
@@ -776,7 +784,15 @@ export async function completeLeagues() {
       } else if (league.format === 'td_pass') {
         const standings = await getTdPassStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'TD Pass')
+          // Prorate winner bonus by NFL weeks played (out of 18-week regular season)
+          const { data: pickRows } = await supabase
+            .from('td_pass_picks')
+            .select('week')
+            .eq('league_id', league.id)
+          const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
+          const fraction = Math.min(1, weeksPlayed / 18)
+          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          await awardPositionBasedPoints(league, standings, 'TD Pass', bonusFn)
         }
       }
 
