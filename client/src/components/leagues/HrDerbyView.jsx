@@ -52,6 +52,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
   const [initialized, setInitialized] = useState(false)
   const [initDate, setInitDate] = useState(null)
   const [editing, setEditing] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   if (initDate !== date) {
     setInitDate(date)
@@ -217,9 +218,9 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
   if (playersLoading || picksLoading) return <LoadingSpinner />
 
   return (
-    <div className="lg:grid lg:grid-cols-2 lg:gap-6 pb-24 lg:pb-0">
+    <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-6 pb-24 lg:pb-0">
       {/* Left: My picks */}
-      <div>
+      <div className="order-1 lg:col-start-1 lg:row-start-1">
         {/* Date tabs */}
         <div className="flex gap-2 mb-4">
           {availableDates.map((d) => (
@@ -304,37 +305,6 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           </button>
         )}
 
-        {/* Pick History */}
-        {myHistory.length > 0 && (
-          <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden mb-4">
-            <div className="px-4 py-3 border-b border-text-primary/10">
-              <h3 className="text-sm font-semibold text-text-primary">Pick History</h3>
-            </div>
-            <div className="divide-y divide-text-primary/10">
-              {myHistory.map(({ date: d, picks }) => (
-                <div key={d} className="px-4 py-3">
-                  <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">{formatDateLabel(d)}</div>
-                  <div className="space-y-1.5">
-                    {picks.map((pick, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-bg-primary/20 border border-text-primary/10 rounded-lg px-2.5 py-2">
-                        {pick.headshot_url && (
-                          <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                            onError={(e) => { e.target.style.display = 'none' }} />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
-                          <div className="text-[10px] text-text-muted">{pick.team}</div>
-                        </div>
-                        <span className={`font-display text-sm shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Used this week */}
         {usedPlayers?.length > 0 && (
           <div className="mb-4">
@@ -351,7 +321,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
       </div>
 
       {/* Right: Player pool */}
-      <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      <div className="order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Hitters</h3>
           <input
@@ -410,6 +380,45 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           </div>
         )}
       </div>
+
+      {/* Pick History (collapsible) */}
+      {myHistory.length > 0 && (
+        <div className="order-3 lg:col-start-1 lg:row-start-2 rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden mt-4 lg:mt-0">
+          <button
+            onClick={() => setHistoryOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 border-b border-text-primary/10 hover:bg-text-primary/5 transition-colors"
+          >
+            <h3 className="text-sm font-semibold text-text-primary">Pick History</h3>
+            <svg className={`w-4 h-4 text-text-muted shrink-0 transition-transform ${historyOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {historyOpen && (
+            <div className="divide-y divide-text-primary/10">
+              {myHistory.map(({ date: d, picks }) => (
+                <div key={d} className="px-4 py-3">
+                  <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">{formatDateLabel(d)}</div>
+                  <div className="space-y-1.5">
+                    {picks.map((pick, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-bg-primary/20 border border-text-primary/10 rounded-lg px-2.5 py-2">
+                        {pick.headshot_url && (
+                          <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                            onError={(e) => { e.target.style.display = 'none' }} />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
+                          <div className="text-[10px] text-text-muted">{pick.team}</div>
+                        </div>
+                        <span className={`font-display text-sm shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
