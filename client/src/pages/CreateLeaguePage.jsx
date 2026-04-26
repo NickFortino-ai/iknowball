@@ -35,12 +35,12 @@ Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom 
     bonusTable2: {
       title: 'Salary Cap Bonus Structure (Full Season, Week 1 Start)',
       rows: [
-        { size: '6 members', first: '+30', second: '+12', third: '+6' },
-        { size: '8 members', first: '+40', second: '+16', third: '+8' },
-        { size: '10 members', first: '+50', second: '+20', third: '+10' },
-        { size: '12 members', first: '+60', second: '+24', third: '+12' },
-        { size: '16 members', first: '+80', second: '+32', third: '+16' },
-        { size: '20 members', first: '+100', second: '+40', third: '+20' },
+        { size: '6 members', first: '+45', second: '+18', third: '+9' },
+        { size: '8 members', first: '+60', second: '+24', third: '+12' },
+        { size: '10 members', first: '+75', second: '+30', third: '+15' },
+        { size: '12 members', first: '+90', second: '+36', third: '+18' },
+        { size: '16 members', first: '+120', second: '+48', third: '+24' },
+        { size: '20 members', first: '+150', second: '+60', third: '+30' },
       ],
       footnote: 'Salary cap leagues that start mid-season use the same shape but prorated by weeks played. Single-week leagues (one-and-done) use position-ranked scoring with a winner bonus — the winner takes home members × 2, the bottom half earns negative points.',
     },

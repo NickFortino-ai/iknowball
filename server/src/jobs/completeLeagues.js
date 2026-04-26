@@ -219,12 +219,12 @@ export function getTraditionalFantasyBonus(rank, n) {
 //   single_week:    winner-only bonus of (n + 1), so total = position pts
 //                   (n − 1) + bonus = members × 2. Everyone else earns
 //                   only the position points (bottom half goes negative).
-//   full_season:    1st = members × 5,    2nd = members × 2, 3rd = members × 1
-//                   (started week 1, ran the whole regular season — toned-
-//                   down version of the traditional bonus shape)
+//   full_season:    1st = members × 7.5, 2nd = members × 3, 3rd = members × 1.5
+//                   (started week 1, ran the whole regular season — ~75% of
+//                   the traditional bonus shape; 20-team caps at 150 / 60 / 30)
 //   mid_season:     same multipliers as full_season, prorated by
 //                   weeksPlayed / 18 to reflect a shorter run.
-const SALARY_CAP_MULTIPLIERS = { 1: 5, 2: 2, 3: 1 }
+const SALARY_CAP_MULTIPLIERS = { 1: 7.5, 2: 3, 3: 1.5 }
 function getSalaryCapBonus(rank, n, ctx) {
   const { isSingleWeek, isFullSeasonRun, weeksPlayed } = ctx
   if (isSingleWeek) {
