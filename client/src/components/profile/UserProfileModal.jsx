@@ -449,10 +449,10 @@ export default function UserProfileModal({ userId, onClose }) {
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-t-2xl md:rounded-2xl max-h-[85vh] flex flex-col overflow-hidden"
+        className="relative bg-bg-primary border border-text-primary/20 w-full max-w-md rounded-2xl max-h-[85vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -461,7 +461,7 @@ export default function UserProfileModal({ userId, onClose }) {
         >
           &times;
         </button>
-        <div className={`overflow-y-auto px-6 pb-20 md:pb-6 ${!user?.backdrop_image && !isLoading ? 'pt-10' : ''}`}>
+        <div className={`overflow-y-auto px-6 pb-6 ${!user?.backdrop_image && !isLoading ? 'pt-10' : ''}`}>
 
         {isLoading ? (
           <LoadingSpinner />
