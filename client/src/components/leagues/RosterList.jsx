@@ -1,10 +1,7 @@
-import { useState, useMemo, useEffect } from 'react'
-import { lockScroll, unlockScroll } from '../../lib/scrollLock'
+import { useState, useMemo } from 'react'
 import { useFantasyUserRoster, useBlurbPlayerIds } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
-import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
-import UserProfileModal from '../profile/UserProfileModal'
 import PlayerDetailModal from './PlayerDetailModal'
 import { ProposeTradeModal } from './FantasyTrades'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
@@ -42,35 +39,32 @@ function TradeIcon() {
   )
 }
 
-export default function RosterModal({ league, userId, user, fantasyTeamName, onClose }) {
+/**
+ * Inline roster body for a single user — renders Starters / Bench / IR
+ * sections, with player detail modal on tap and trade-icon shortcut for
+ * non-self rosters. Used inside the standings table as an expandable row.
+ */
+export default function RosterList({ league, userId }) {
   const leagueId = league?.id || league
   const { profile } = useAuth()
   const { data: roster, isLoading } = useFantasyUserRoster(leagueId, userId)
-  const [showProfile, setShowProfile] = useState(false)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const [tradePlayerId, setTradePlayerId] = useState(null)
   const { data: blurbIdsList } = useBlurbPlayerIds(leagueId)
   const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
   const isMe = userId === profile?.id
 
-  useEffect(() => {
-    lockScroll()
-    return () => unlockScroll()
-  }, [])
-
   function openPlayerDetail(id) {
     if (id) markBlurbSeen(id)
     setDetailPlayerId(id)
   }
 
-  // Sort roster by slot order
   const sorted = [...(roster || [])].sort((a, b) => {
     const ai = SLOT_ORDER.indexOf((a.slot || '').toLowerCase())
     const bi = SLOT_ORDER.indexOf((b.slot || '').toLowerCase())
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
   })
 
-  // Separate starters from bench/IR
   const starters = sorted.filter((r) => r.slot && r.slot !== 'bench' && r.slot !== 'ir')
   const bench = sorted.filter((r) => r.slot === 'bench')
   const ir = sorted.filter((r) => r.slot === 'ir')
@@ -79,8 +73,8 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
     const p = row.nfl_players || {}
     return (
       <div
-        className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-text-primary/10 bg-bg-primary hover:bg-bg-card-hover transition-colors cursor-pointer"
-        onClick={() => p.id && openPlayerDetail(p.id)}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-text-primary/10 bg-bg-primary/40 hover:bg-bg-card-hover transition-colors cursor-pointer"
+        onClick={(e) => { e.stopPropagation(); p.id && openPlayerDetail(p.id) }}
       >
         <span className="text-[10px] font-semibold text-text-muted w-8 shrink-0 text-center bg-bg-secondary rounded px-1 py-0.5">
           {SLOT_LABELS[(row.slot || '').toLowerCase()] || row.slot}
@@ -113,98 +107,51 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 md:py-6"
-        style={{ paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))', paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))' }}
-        onClick={onClose}
-      >
-        <div
-          className="bg-bg-primary border border-text-primary/20 w-full max-w-lg max-h-full rounded-2xl overflow-y-auto overscroll-contain"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header with user avatar */}
-          <div className="sticky top-0 bg-bg-primary border-b border-text-primary/20 px-4 py-4 z-10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
-                <button onClick={(e) => { e.stopPropagation(); setShowProfile(true) }}>
-                  <Avatar user={user} size="lg" />
-                </button>
-                <div className="min-w-0">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowProfile(true) }}
-                    className="font-display text-lg text-text-primary truncate hover:text-accent transition-colors block"
-                  >
-                    {user?.display_name || user?.username}
-                  </button>
-                  {fantasyTeamName && (
-                    <div className="text-xs italic uppercase tracking-wide text-text-muted truncate">{fantasyTeamName}</div>
-                  )}
+      <div className="px-3 pb-3" onClick={(e) => e.stopPropagation()}>
+        {isLoading ? (
+          <div className="py-4 flex justify-center"><LoadingSpinner /></div>
+        ) : !sorted.length ? (
+          <div className="text-center py-4 text-sm text-text-muted">No roster yet</div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">Starters</div>
+              <div className="space-y-1">
+                {starters.map((row, i) => (
+                  <PlayerRow key={row.player_id || i} row={row} showTradeIcon />
+                ))}
+              </div>
+            </div>
+
+            {bench.length > 0 && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">Bench</div>
+                <div className="space-y-1">
+                  {bench.map((row, i) => (
+                    <PlayerRow key={row.player_id || i} row={row} showTradeIcon />
+                  ))}
                 </div>
               </div>
-              <button onClick={onClose} className="text-text-muted hover:text-text-primary text-xl leading-none p-1 shrink-0">
-                &times;
-              </button>
-            </div>
-          </div>
+            )}
 
-          {/* Roster */}
-          <div className="p-4">
-            {isLoading ? (
-              <div className="py-8 flex justify-center"><LoadingSpinner /></div>
-            ) : !sorted.length ? (
-              <div className="text-center py-8 text-sm text-text-muted">No roster yet</div>
-            ) : (
-              <div className="space-y-4">
-                {/* Starters */}
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-text-muted mb-2">Starters</div>
-                  <div className="space-y-1">
-                    {starters.map((row, i) => (
-                      <PlayerRow key={row.player_id || i} row={row} showTradeIcon />
-                    ))}
-                  </div>
+            {ir.length > 0 && (
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5">IR</div>
+                <div className="space-y-1">
+                  {ir.map((row, i) => (
+                    <PlayerRow key={row.player_id || i} row={row} showTradeIcon={false} />
+                  ))}
                 </div>
-
-                {/* Bench */}
-                {bench.length > 0 && (
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-text-muted mb-2">Bench</div>
-                    <div className="space-y-1">
-                      {bench.map((row, i) => (
-                        <PlayerRow key={row.player_id || i} row={row} showTradeIcon />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* IR */}
-                {ir.length > 0 && (
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-text-muted mb-2">IR</div>
-                    <div className="space-y-1">
-                      {ir.map((row, i) => (
-                        <PlayerRow key={row.player_id || i} row={row} showTradeIcon={false} />
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* User profile modal — layered on top */}
-      {showProfile && (
-        <UserProfileModal userId={userId} onClose={() => setShowProfile(false)} />
-      )}
-
-      {/* Player detail modal */}
       {detailPlayerId && (
         <PlayerDetailModal leagueId={leagueId} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
       )}
 
-      {/* Trade proposal modal — prefilled with the selected player */}
       {tradePlayerId && (
         <ProposeTradeModal
           league={typeof league === 'object' ? league : { id: leagueId, members: [] }}
