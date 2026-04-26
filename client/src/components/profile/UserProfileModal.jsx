@@ -456,7 +456,7 @@ export default function UserProfileModal({ userId, onClose }) {
     >
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-primary border border-text-primary/20 w-full max-w-md rounded-2xl max-h-[85vh] flex flex-col overflow-hidden"
+        className="relative bg-bg-primary border border-text-primary/20 w-full max-w-md rounded-2xl max-h-full flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <button

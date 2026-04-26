@@ -113,7 +113,7 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
         onClick={onClose}
       >
         <div
-          className="bg-bg-primary border border-text-primary/20 w-full max-w-lg max-h-[90vh] rounded-2xl overflow-y-auto"
+          className="bg-bg-primary border border-text-primary/20 w-full max-w-lg max-h-full rounded-2xl overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header with user avatar */}
