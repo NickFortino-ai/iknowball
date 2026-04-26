@@ -44,6 +44,8 @@ function getFeedItemTargetKey(item) {
     return `head_to_head-${item.id}`
   } else if (item.type === 'hot_take_reminder') {
     return `hot_take_reminder-${item.id}`
+  } else if (item.type === 'futures_pick' || item.type === 'futures_hit') {
+    return `futures_pick-${item.futures.id}`
   }
   return null
 }
