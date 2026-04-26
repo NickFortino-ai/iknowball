@@ -107,13 +107,13 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
+      <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 py-6" onClick={onClose}>
         <div
-          className="bg-bg-secondary w-full md:max-w-lg max-h-[90vh] rounded-t-2xl md:rounded-2xl overflow-y-auto"
+          className="bg-bg-primary border border-text-primary/20 w-full max-w-lg max-h-[90vh] rounded-2xl overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header with user avatar */}
-          <div className="sticky top-0 bg-bg-secondary border-b border-text-primary/10 px-4 py-4 z-10">
+          <div className="sticky top-0 bg-bg-primary border-b border-text-primary/20 px-4 py-4 z-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <button onClick={(e) => { e.stopPropagation(); setShowProfile(true) }}>

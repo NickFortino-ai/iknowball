@@ -2,11 +2,13 @@ import { useState } from 'react'
 import Avatar from '../ui/Avatar'
 import RosterModal from './RosterModal'
 import FantasyGlobalRankModal from './FantasyGlobalRankModal'
+import UserProfileModal from '../profile/UserProfileModal'
 import { useFantasyStandings, useGlobalRank } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 
 export default function FantasyStandings({ league, isSalaryCap }) {
   const [selectedUser, setSelectedUser] = useState(null)
+  const [profileUserId, setProfileUserId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
   const [sortCol, setSortCol] = useState(null) // null = default (W-L), 'pf', 'pa'
   const [sortDir, setSortDir] = useState('desc')
@@ -75,7 +77,12 @@ export default function FantasyStandings({ league, isSalaryCap }) {
       </td>
       <td className="py-3.5 px-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <Avatar user={s.user} size="lg" className="shrink-0" />
+          <button
+            onClick={(e) => { e.stopPropagation(); setProfileUserId(s.userId) }}
+            className="shrink-0"
+          >
+            <Avatar user={s.user} size="lg" />
+          </button>
           <div className="min-w-0 overflow-hidden">
             <div className="font-bold text-sm md:text-base text-text-primary truncate">
               {s.user?.display_name || s.user?.username}
@@ -153,7 +160,12 @@ export default function FantasyStandings({ league, isSalaryCap }) {
               </div>
               <div className="px-2 w-36">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Avatar user={s.user} size="lg" className="shrink-0" />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setProfileUserId(s.userId) }}
+                    className="shrink-0"
+                  >
+                    <Avatar user={s.user} size="lg" />
+                  </button>
                   <div className="min-w-0 overflow-hidden">
                     <div className="font-bold text-sm text-text-primary truncate">{s.user?.display_name || s.user?.username}</div>
                     {s.fantasyTeamName && (
@@ -223,6 +235,10 @@ export default function FantasyStandings({ league, isSalaryCap }) {
           fantasyTeamName={selectedUser.fantasyTeamName}
           onClose={() => setSelectedUser(null)}
         />
+      )}
+
+      {profileUserId && (
+        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
       )}
     </div>
   )
