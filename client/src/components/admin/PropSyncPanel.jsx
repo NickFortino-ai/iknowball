@@ -40,11 +40,11 @@ const MARKET_OPTIONS = {
 
 function getDateOptions() {
   const options = []
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 3; i++) {
     const d = new Date()
     d.setDate(d.getDate() + i)
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const label = i === 0 ? 'Today' : i === 1 ? 'Tmrw' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
+    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
     options.push({ date: dateStr, label })
   }
   return options
@@ -186,13 +186,13 @@ export default function PropSyncPanel({ game, sportKey }) {
                     <div>U {prop.under_odds ? formatOdds(prop.under_odds) : '—'}</div>
                   </div>
                 </div>
-                <div className="flex gap-1 flex-wrap">
+                <div className="grid grid-cols-3 gap-2">
                   {dateOptions.map((opt) => (
                     <button
                       key={opt.date}
                       onClick={() => handleFeature(prop.id, opt.date)}
                       disabled={featureProp.isPending}
-                      className="px-2 py-1 rounded text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
+                      className="px-3 py-2.5 rounded-lg text-sm font-semibold border border-accent/40 bg-accent/10 text-accent hover:bg-accent hover:text-white transition-colors disabled:opacity-50"
                       title={`Feature for ${opt.date}`}
                     >
                       {opt.label}
