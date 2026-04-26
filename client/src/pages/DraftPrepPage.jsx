@@ -47,7 +47,7 @@ export default function DraftPrepPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = TABS.findIndex((t) => t.toLowerCase().replace(/\s+/g, '-') === searchParams.get('tab'))
   const [activeTab, setActiveTab] = useState(initialTab >= 0 ? initialTab : 0)
-  const [scoringFormat, setScoringFormat] = useState('half_ppr')
+  const [scoringFormat, setScoringFormat] = useState('ppr')
   const [rosterSlots, setRosterSlots] = useState({ ...DEFAULT_ROSTER })
   const [showConfig, setShowConfig] = useState(false)
   const [introOpen, setIntroOpen] = useState(false)
@@ -196,7 +196,7 @@ export default function DraftPrepPage() {
       </div>
 
       {/* Config bar */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-3 mb-4">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/30 backdrop-blur-md p-3 mb-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-muted font-semibold">Scoring:</span>
@@ -263,10 +263,10 @@ export default function DraftPrepPage() {
           <button
             key={tab}
             onClick={() => handleTabChange(i)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors backdrop-blur-md ${
               activeTab === i
                 ? 'bg-accent text-white'
-                : 'bg-bg-primary border border-text-primary/20 text-text-secondary hover:bg-white/10'
+                : 'bg-bg-primary/30 border border-text-primary/20 text-text-secondary hover:bg-white/10'
             }`}
           >{tab}</button>
         ))}
