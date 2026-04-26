@@ -37,7 +37,7 @@ export default function DraftPrepSyncPanel({ configHash, scoringFormat }) {
   const syncedCount = fantasyLeagues.filter((l) => l.isSynced).length
 
   return (
-    <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4">
+    <div className="rounded-xl border border-text-primary/20 bg-bg-primary/30 backdrop-blur-md p-4">
       <h3 className="font-display text-base text-text-primary mb-1">Sync Rankings to Leagues
         <InfoTooltip text="Syncing links your Draft Prep big board to one or more of your fantasy leagues. Any reorder you make here automatically updates your rankings in synced leagues, and vice versa. Unsync a league at any time to give it its own independent rankings." />
       </h3>

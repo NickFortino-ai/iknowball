@@ -137,7 +137,7 @@ export default function FantasyMyRankings({ league, draftPrepConfig }) {
   return (
     <div className="space-y-3">
       {/* Header / actions */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-3">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/30 backdrop-blur-md p-3">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div>
             <div className="flex items-center gap-2">
