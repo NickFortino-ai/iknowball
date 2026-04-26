@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useFantasyUserRoster, useBlurbPlayerIds } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
@@ -51,6 +52,11 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
   const { data: blurbIdsList } = useBlurbPlayerIds(leagueId)
   const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
   const isMe = userId === profile?.id
+
+  useEffect(() => {
+    lockScroll()
+    return () => unlockScroll()
+  }, [])
 
   function openPlayerDetail(id) {
     if (id) markBlurbSeen(id)
@@ -113,7 +119,7 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
         onClick={onClose}
       >
         <div
-          className="bg-bg-primary border border-text-primary/20 w-full max-w-lg max-h-full rounded-2xl overflow-y-auto"
+          className="bg-bg-primary border border-text-primary/20 w-full max-w-lg max-h-full rounded-2xl overflow-y-auto overscroll-contain"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header with user avatar */}

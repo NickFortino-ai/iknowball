@@ -465,7 +465,7 @@ export default function UserProfileModal({ userId, onClose }) {
         >
           &times;
         </button>
-        <div className={`overflow-y-auto px-6 pb-6 ${!user?.backdrop_image && !isLoading ? 'pt-10' : ''}`}>
+        <div className={`overflow-y-auto overscroll-contain px-6 pb-6 ${!user?.backdrop_image && !isLoading ? 'pt-10' : ''}`}>
 
         {isLoading ? (
           <LoadingSpinner />
