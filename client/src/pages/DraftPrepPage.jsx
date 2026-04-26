@@ -41,6 +41,7 @@ export default function DraftPrepPage() {
   const [scoringFormat, setScoringFormat] = useState('half_ppr')
   const [rosterSlots, setRosterSlots] = useState({ ...DEFAULT_ROSTER })
   const [showConfig, setShowConfig] = useState(false)
+  const [introOpen, setIntroOpen] = useState(true)
 
   const configHash = buildRosterConfigHash(rosterSlots)
 
@@ -78,20 +79,33 @@ export default function DraftPrepPage() {
       </div>
 
       {/* Intro */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/15 backdrop-blur-md p-4 mb-4 mt-12 md:mt-0">
-        <p className="text-sm text-text-primary/80 mb-3">
-          Your personal big board for fantasy football, tailored to how you actually play.
-        </p>
-        <ul className="space-y-1.5 text-sm text-text-primary/80 mb-3">
-          <li className="flex gap-2"><span className="text-accent">•</span><span>Rank every player your way — drag, search, and filter your own board</span></li>
-          <li className="flex gap-2"><span className="text-accent">•</span><span>Tune it for your scoring (PPR / Half-PPR / Standard) and roster shape</span></li>
-          <li className="flex gap-2"><span className="text-accent">•</span><span>Compare your rankings against ADP and projections side-by-side</span></li>
-          <li className="flex gap-2"><span className="text-accent">•</span><span>Sync your rankings to any of your fantasy leagues — edits flow both ways</span></li>
-          <li className="flex gap-2"><span className="text-accent">•</span><span>Mock-draft against the field using your rankings and/or ADP rankings</span></li>
-        </ul>
-        <p className="text-sm font-bold text-text-primary">
-          Preparation is the best way to secure your league championships!
-        </p>
+      <div className={`rounded-xl border border-text-primary/20 backdrop-blur-md p-4 mb-4 mt-20 md:mt-4 transition-colors ${introOpen ? 'bg-bg-primary/15' : 'bg-bg-primary/5'}`}>
+        <button
+          onClick={() => setIntroOpen(!introOpen)}
+          className="w-full flex items-center justify-between gap-3 text-left"
+        >
+          <p className="text-sm font-bold text-text-primary">
+            Preparation is the best way to secure your league championships!
+          </p>
+          <svg
+            className={`w-4 h-4 shrink-0 text-text-secondary transition-transform ${introOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {introOpen && (
+          <ul className="space-y-1.5 text-sm text-text-primary/80 mt-3">
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Rank every player your way — drag, search, and filter your own board</span></li>
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Tune it for your scoring (PPR / Half-PPR / Standard) and roster shape</span></li>
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Compare your rankings against ADP and projections side-by-side</span></li>
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Sync your rankings to any of your fantasy leagues — edits flow both ways</span></li>
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Mock-draft against the field using your rankings and/or ADP rankings</span></li>
+          </ul>
+        )}
       </div>
 
       {/* Config bar */}
