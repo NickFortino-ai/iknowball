@@ -25,6 +25,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
 
   const [search, setSearch] = useState('')
   const [profileUserId, setProfileUserId] = useState(null)
+  const [usedOpen, setUsedOpen] = useState(false)
 
   const myCurrentPick = useMemo(() => {
     if (!currentWeek) return null
@@ -146,7 +147,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
             return (
               <div className="flex flex-col items-center text-center gap-2 py-4">
                 {myCurrentPick.headshot_url && (
-                  <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-secondary border-2 border-accent/30" onError={(e) => { e.target.style.display = 'none' }} />
+                  <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-secondary/30 border-2 border-accent/30" onError={(e) => { e.target.style.display = 'none' }} />
                 )}
                 <div className="font-display text-xl text-text-primary">{myCurrentPick.qb_name}</div>
                 <div className="text-sm text-text-muted">
@@ -186,14 +187,26 @@ export default function TdPassView({ league, tab = 'picks' }) {
         {/* My used QBs (so user can see who they've already burned) */}
         {(myPicks?.length || 0) > 0 && (
           <div className="mb-4">
-            <div className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-2">QBs You've Used</div>
-            <div className="flex flex-wrap gap-2">
-              {(myPicks || []).map((p) => (
-                <span key={p.id} className="text-sm bg-bg-primary/40 border border-text-primary/15 text-text-primary px-3 py-1.5 rounded-full">
-                  W{p.week} · {p.qb_name} · {p.td_count} TD
-                </span>
-              ))}
-            </div>
+            <button
+              onClick={() => setUsedOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 mb-2 hover:opacity-80 transition-opacity"
+            >
+              <span className="text-sm font-semibold text-text-primary uppercase tracking-wider">
+                QBs You've Used <span className="text-text-muted">({myPicks.length})</span>
+              </span>
+              <svg className={`w-4 h-4 text-text-muted shrink-0 transition-transform ${usedOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            {usedOpen && (
+              <div className="flex flex-wrap gap-2">
+                {(myPicks || []).map((p) => (
+                  <span key={p.id} className="text-sm bg-bg-primary/40 border border-text-primary/15 text-text-primary px-3 py-1.5 rounded-full">
+                    W{p.week} · {p.qb_name} · {p.td_count} TD
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
