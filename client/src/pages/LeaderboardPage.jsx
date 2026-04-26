@@ -127,6 +127,7 @@ const tabs = [
   { label: 'Leagues', scope: 'leagues', sport: null },
   { label: 'NFL', scope: 'sport', sport: 'americanfootball_nfl' },
   { label: 'NCAAF', scope: 'sport', sport: 'americanfootball_ncaaf' },
+  { label: 'UFL', scope: 'sport', sport: 'americanfootball_ufl' },
   { label: 'WNBA', scope: 'sport', sport: 'basketball_wnba' },
 ]
 
