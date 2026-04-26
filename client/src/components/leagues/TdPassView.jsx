@@ -131,7 +131,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
     <div className="lg:grid lg:grid-cols-2 lg:gap-6 pb-24 lg:pb-0">
       {/* Left: current pick + my history summary */}
       <div>
-        <div className="rounded-xl border border-text-primary/20 bg-bg-primary/40 backdrop-blur-md p-4 mb-4">
+        <div className="rounded-xl border border-text-primary/15 bg-bg-primary/15 backdrop-blur-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-text-primary">Week {currentWeek || '—'} Pick</h3>
             <span className="text-[10px] text-text-muted">Season {currentSeason || ''}</span>
