@@ -41,7 +41,7 @@ export default function DraftPrepPage() {
   const [scoringFormat, setScoringFormat] = useState('half_ppr')
   const [rosterSlots, setRosterSlots] = useState({ ...DEFAULT_ROSTER })
   const [showConfig, setShowConfig] = useState(false)
-  const [introOpen, setIntroOpen] = useState(true)
+  const [introOpen, setIntroOpen] = useState(false)
 
   const configHash = buildRosterConfigHash(rosterSlots)
 
@@ -87,15 +87,18 @@ export default function DraftPrepPage() {
           <p className="text-sm font-bold text-text-primary">
             Preparation is the best way to secure your league championships!
           </p>
-          <svg
-            className={`w-4 h-4 shrink-0 text-text-secondary transition-transform ${introOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <span className="flex items-center gap-1.5 shrink-0 text-accent">
+            <span className="text-[10px] font-semibold uppercase tracking-wider">{introOpen ? 'Hide' : 'Learn more'}</span>
+            <svg
+              className={`w-5 h-5 transition-transform ${introOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </span>
         </button>
         {introOpen && (
           <ul className="space-y-1.5 text-sm text-text-primary/80 mt-3">
