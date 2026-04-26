@@ -87,6 +87,8 @@ export async function fetchESPNScoreboard(sportKey, date = null) {
     return {
       homeTeam: homeComp.team?.displayName || homeComp.team?.name || '',
       awayTeam: awayComp.team?.displayName || awayComp.team?.name || '',
+      homeAbbrev: (homeComp.team?.abbreviation || '').toUpperCase(),
+      awayAbbrev: (awayComp.team?.abbreviation || '').toUpperCase(),
       homeScore: parseInt(homeComp.score || '0', 10),
       awayScore: parseInt(awayComp.score || '0', 10),
       period,

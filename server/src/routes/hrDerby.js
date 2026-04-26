@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { getMLBPlayerPool } from '../services/mlbDfsService.js'
+import { fetchESPNScoreboard } from '../services/espnService.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -70,6 +71,31 @@ router.get('/players', async (req, res) => {
   res.json(enriched)
 })
 
+// Build a map: team abbreviation → { state, period, score, startsAt } for today
+async function buildMlbGameStateByTeam(date) {
+  const today = new Date().toLocaleDateString('en-CA')
+  if (date !== today) return {}
+  try {
+    const events = await fetchESPNScoreboard('baseball_mlb')
+    const map = {}
+    for (const e of events) {
+      const entry = {
+        state: e.state, // 'pre' | 'in' | 'post' | 'postponed'
+        period: e.period, // e.g. "Top 5th"
+        startsAt: e.startsAt,
+        homeAbbrev: e.homeAbbrev,
+        awayAbbrev: e.awayAbbrev,
+      }
+      if (e.homeAbbrev) map[e.homeAbbrev] = entry
+      if (e.awayAbbrev) map[e.awayAbbrev] = entry
+    }
+    return map
+  } catch (err) {
+    logger.error({ err }, 'Failed to fetch MLB scoreboard for HR derby picks')
+    return {}
+  }
+}
+
 // Get my picks for a date
 router.get('/picks', async (req, res) => {
   const { league_id, date } = req.query
@@ -82,7 +108,19 @@ router.get('/picks', async (req, res) => {
     .eq('user_id', req.user.id)
     .eq('game_date', date)
 
-  res.json(data || [])
+  const picks = data || []
+  const stateByTeam = await buildMlbGameStateByTeam(date)
+  const enriched = picks.map((p) => {
+    const g = stateByTeam[(p.team || '').toUpperCase()]
+    return {
+      ...p,
+      game_state: g?.state || null,
+      game_period: g?.period || null,
+      game_starts_at: g?.startsAt || null,
+    }
+  })
+
+  res.json(enriched)
 })
 
 // Get used players this week

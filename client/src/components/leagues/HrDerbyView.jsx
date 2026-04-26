@@ -236,7 +236,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           ))}
         </div>
 
-        <div className="rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md p-4 mb-4">
+        <div className="rounded-xl border border-text-primary/15 bg-bg-primary/10 backdrop-blur-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-text-primary">Today's HR Picks</h3>
             <span className="text-xs text-text-muted">{selected.length}/3 picks</span>
@@ -247,18 +247,53 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
           ) : (
             <div className="space-y-2">
               {selected.map((player) => {
-                // Merge scored data from saved picks
+                // Merge scored data from saved picks (game state lives on saved pick)
                 const savedPick = (myPicks || []).find((p) => p.espn_player_id === player.espn_player_id)
                 const hrs = savedPick?.home_runs || 0
+                const gameState = savedPick?.game_state
+                const gamePeriod = savedPick?.game_period
+                const gameStartsAt = savedPick?.game_starts_at || player.game_starts_at
+                let statusBadge = null
+                if (gameState === 'in') {
+                  statusBadge = (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-correct/15 text-correct border border-correct/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />
+                      Live{gamePeriod ? ` · ${gamePeriod}` : ''}
+                    </span>
+                  )
+                } else if (gameState === 'post') {
+                  statusBadge = (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-text-primary/10 text-text-muted border border-text-primary/15">
+                      Final
+                    </span>
+                  )
+                } else if (gameState === 'postponed') {
+                  statusBadge = (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-incorrect/10 text-incorrect border border-incorrect/30">
+                      Postponed
+                    </span>
+                  )
+                } else if (gameStartsAt) {
+                  const t = new Date(gameStartsAt)
+                  const label = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                  statusBadge = (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent border border-accent/30">
+                      {label}
+                    </span>
+                  )
+                }
                 return (
-                  <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/20 border border-text-primary/15 rounded-lg px-3 py-2.5">
+                  <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5">
                     {player.headshot_url && (
                       <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                         onError={(e) => { e.target.style.display = 'none' }} />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
-                      <div className="text-xs text-text-muted">{player.team} · {player.opponent || ''}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs text-text-muted truncate">{player.team} · {player.opponent || ''}</span>
+                        {statusBadge}
+                      </div>
                     </div>
                     {hasSavedPicks && !editing && (
                       <span className={`font-display text-lg shrink-0 ${hrs > 0 ? 'text-correct' : 'text-text-muted'}`}>{hrs} HR</span>
