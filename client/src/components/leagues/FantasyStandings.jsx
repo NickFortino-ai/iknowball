@@ -169,7 +169,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
         <div className="flex border-b border-text-primary/10 text-text-muted text-xs">
           <div className="shrink-0 flex">
             <div className="py-3 px-2 text-center font-semibold w-8">#</div>
-            <div className="py-3 px-2 text-left font-semibold w-36">Manager</div>
+            <div className="py-3 px-2 text-left font-semibold w-44">Manager</div>
           </div>
           <div className="flex-1 overflow-x-auto">
             <div className="flex min-w-max">
@@ -198,7 +198,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                   <div className="px-2 text-center w-8">
                     <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
                   </div>
-                  <div className="px-2 w-36">
+                  <div className="px-2 w-44">
                     <div className="flex items-center gap-2 min-w-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); setProfileUserId(s.userId) }}
