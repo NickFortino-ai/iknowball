@@ -449,7 +449,11 @@ export default function UserProfileModal({ userId, onClose }) {
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 md:py-6"
+      style={{ paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))', paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))' }}
+      onClick={onClose}
+    >
       <div className="absolute inset-0 bg-black/60" />
       <div
         className="relative bg-bg-primary border border-text-primary/20 w-full max-w-md rounded-2xl max-h-[85vh] flex flex-col overflow-hidden"

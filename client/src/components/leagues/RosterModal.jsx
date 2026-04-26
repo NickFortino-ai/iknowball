@@ -107,7 +107,11 @@ export default function RosterModal({ league, userId, user, fantasyTeamName, onC
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 py-6" onClick={onClose}>
+      <div
+        className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 md:py-6"
+        style={{ paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))', paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))' }}
+        onClick={onClose}
+      >
         <div
           className="bg-bg-primary border border-text-primary/20 w-full max-w-lg max-h-[90vh] rounded-2xl overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
