@@ -249,6 +249,9 @@ router.get('/standings', async (req, res) => {
     .eq('league_id', league_id)
     .order('game_date', { ascending: false })
 
+  const today = new Date().toLocaleDateString('en-CA')
+  const stateByTeam = await buildMlbGameStateByTeam(today)
+
   const userMap = {}
   for (const uid of allMemberIds) {
     userMap[uid] = { totalHRs: 0, picks: [] }
@@ -256,12 +259,17 @@ router.get('/standings', async (req, res) => {
   for (const p of (picks || [])) {
     if (!userMap[p.user_id]) userMap[p.user_id] = { totalHRs: 0, picks: [] }
     userMap[p.user_id].totalHRs += p.home_runs || 0
+    const isToday = p.game_date === today
+    const g = isToday ? stateByTeam[(p.team || '').toUpperCase()] : null
     userMap[p.user_id].picks.push({
       player_name: p.player_name,
       team: p.team,
       headshot_url: p.headshot_url,
       home_runs: p.home_runs || 0,
       game_date: p.game_date,
+      game_state: g?.state || null,
+      game_period: g?.period || null,
+      game_starts_at: g?.startsAt || null,
     })
   }
 

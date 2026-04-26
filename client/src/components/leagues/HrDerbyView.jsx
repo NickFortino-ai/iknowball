@@ -23,6 +23,41 @@ function formatDateLabel(dateStr) {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function GameStatusBadge({ gameState, gamePeriod, gameStartsAt }) {
+  if (gameState === 'in') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-correct/15 text-correct border border-correct/30 shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />
+        Live{gamePeriod ? ` · ${gamePeriod}` : ''}
+      </span>
+    )
+  }
+  if (gameState === 'post') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-text-primary/10 text-text-muted border border-text-primary/15 shrink-0">
+        Final
+      </span>
+    )
+  }
+  if (gameState === 'postponed') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-incorrect/10 text-incorrect border border-incorrect/30 shrink-0">
+        Postponed
+      </span>
+    )
+  }
+  if (gameStartsAt) {
+    const t = new Date(gameStartsAt)
+    const label = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent border border-accent/30 shrink-0">
+        {label}
+      </span>
+    )
+  }
+  return null
+}
+
 export default function HrDerbyView({ league, tab = 'picks' }) {
   const { profile } = useAuth()
 
@@ -195,7 +230,10 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
-                                <div className="text-[10px] lg:text-xs text-text-muted">{pick.team}</div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px] lg:text-xs text-text-muted truncate">{pick.team}</span>
+                                  <GameStatusBadge gameState={pick.game_state} gamePeriod={pick.game_period} gameStartsAt={pick.game_starts_at} />
+                                </div>
                               </div>
                               <span className={`font-display text-sm lg:text-base shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
                             </div>
@@ -253,35 +291,6 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                 const gameState = savedPick?.game_state
                 const gamePeriod = savedPick?.game_period
                 const gameStartsAt = savedPick?.game_starts_at || player.game_starts_at
-                let statusBadge = null
-                if (gameState === 'in') {
-                  statusBadge = (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-correct/15 text-correct border border-correct/30">
-                      <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />
-                      Live{gamePeriod ? ` · ${gamePeriod}` : ''}
-                    </span>
-                  )
-                } else if (gameState === 'post') {
-                  statusBadge = (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-text-primary/10 text-text-muted border border-text-primary/15">
-                      Final
-                    </span>
-                  )
-                } else if (gameState === 'postponed') {
-                  statusBadge = (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-incorrect/10 text-incorrect border border-incorrect/30">
-                      Postponed
-                    </span>
-                  )
-                } else if (gameStartsAt) {
-                  const t = new Date(gameStartsAt)
-                  const label = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-                  statusBadge = (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent border border-accent/30">
-                      {label}
-                    </span>
-                  )
-                }
                 return (
                   <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5">
                     {player.headshot_url && (
@@ -292,7 +301,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-xs text-text-muted truncate">{player.team} · {player.opponent || ''}</span>
-                        {statusBadge}
+                        <GameStatusBadge gameState={gameState} gamePeriod={gamePeriod} gameStartsAt={gameStartsAt} />
                       </div>
                     </div>
                     {hasSavedPicks && !editing && (
