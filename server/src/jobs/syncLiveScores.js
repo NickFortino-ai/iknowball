@@ -10,6 +10,7 @@ import { findESPNEventId, fetchGameTopScorers } from '../services/espnService.js
 const SPORTS = [
   'americanfootball_nfl',
   'americanfootball_ncaaf',
+  'americanfootball_ufl',
   'basketball_nba',
   'basketball_ncaab',
   'basketball_wncaab',
