@@ -195,13 +195,13 @@ async function awardBracketStandings(league, standings) {
 // 2nd place is always 40% of 1st, 3rd is always 20% of 1st — keeps the
 // payout shape consistent across league sizes.
 const TRADITIONAL_FANTASY_BONUSES = {
-  6:  { 1: 30,  2: 12, 3: 6 },
-  8:  { 1: 50,  2: 20, 3: 10 },
-  10: { 1: 75,  2: 30, 3: 15 },
-  12: { 1: 100, 2: 40, 3: 20 },
-  14: { 1: 150, 2: 60, 3: 30 },
-  16: { 1: 175, 2: 70, 3: 35 },
-  20: { 1: 200, 2: 80, 3: 40 },
+  6:  { 1: 50,  2: 20, 3: 10 },
+  8:  { 1: 75,  2: 30, 3: 15 },
+  10: { 1: 90,  2: 36, 3: 18 },
+  12: { 1: 120, 2: 48, 3: 24 },
+  14: { 1: 165, 2: 66, 3: 33 },
+  16: { 1: 195, 2: 78, 3: 39 },
+  20: { 1: 225, 2: 90, 3: 45 },
 }
 export function getTraditionalFantasyBonus(rank, n) {
   if (rank > 3) return 0
@@ -213,18 +213,30 @@ export function getTraditionalFantasyBonus(rank, n) {
   return TRADITIONAL_FANTASY_BONUSES[closest][rank]
 }
 
-// Salary cap fantasy bonus — formula-based since member counts are
-// unbounded and start weeks vary. Three modes:
+// Salary cap fantasy bonus — three modes:
 //
 //   single_week:    winner-only bonus of (n + 1), so total = position pts
 //                   (n − 1) + bonus = members × 2. Everyone else earns
 //                   only the position points (bottom half goes negative).
-//   full_season:    1st = members × 7.5, 2nd = members × 3, 3rd = members × 1.5
-//                   (started week 1, ran the whole regular season — ~75% of
-//                   the traditional bonus shape; 20-team caps at 150 / 60 / 30)
-//   mid_season:     same multipliers as full_season, prorated by
-//                   weeksPlayed / 18 to reflect a shorter run.
-const SALARY_CAP_MULTIPLIERS = { 1: 7.5, 2: 3, 3: 1.5 }
+//   full_season:    Hand-tuned table (below) — kept slightly under traditional
+//                   at every size; 20-team caps at 150 / 60 / 30.
+//   mid_season:     same table values, prorated by weeksPlayed / 18.
+const SALARY_CAP_FULL_SEASON_BONUSES = {
+  6:  { 1: 35,  2: 14, 3: 7 },
+  8:  { 1: 60,  2: 24, 3: 12 },
+  10: { 1: 75,  2: 30, 3: 15 },
+  12: { 1: 90,  2: 36, 3: 18 },
+  14: { 1: 105, 2: 42, 3: 21 },
+  16: { 1: 120, 2: 48, 3: 24 },
+  20: { 1: 150, 2: 60, 3: 30 },
+}
+function getSalaryCapFullSeasonBonus(rank, n) {
+  if (rank > 3) return 0
+  if (SALARY_CAP_FULL_SEASON_BONUSES[n]) return SALARY_CAP_FULL_SEASON_BONUSES[n][rank]
+  const sizes = Object.keys(SALARY_CAP_FULL_SEASON_BONUSES).map(Number)
+  const closest = sizes.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a))
+  return SALARY_CAP_FULL_SEASON_BONUSES[closest][rank]
+}
 function getSalaryCapBonus(rank, n, ctx) {
   const { isSingleWeek, isFullSeasonRun, weeksPlayed } = ctx
   if (isSingleWeek) {
@@ -233,11 +245,11 @@ function getSalaryCapBonus(rank, n, ctx) {
   }
   if (rank > 3) return 0
   if (isFullSeasonRun) {
-    return Math.round(n * SALARY_CAP_MULTIPLIERS[rank])
+    return getSalaryCapFullSeasonBonus(rank, n)
   }
   // Mid-season league — prorate by how much of the regular season they ran
   const weeks = Math.max(1, weeksPlayed || 1)
-  return Math.round(n * SALARY_CAP_MULTIPLIERS[rank] * (weeks / 18))
+  return Math.round(getSalaryCapFullSeasonBonus(rank, n) * (weeks / 18))
 }
 
 // Get fantasy league standings for completion (works for both traditional and salary cap)
