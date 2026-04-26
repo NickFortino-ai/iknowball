@@ -136,19 +136,20 @@ function mlbPitcherGameFpts(statMap) {
 
 /**
  * Calculate salary from MLB batter FPPG.
- * Steeper curve to spread elite vs replacement. Cap at $6,500.
- *   elite 15 FPPG → $6,200
- *   strong 12 FPPG → $5,400
- *   solid 9 FPPG  → $4,400
- *   average 6 FPPG → $3,400
- *   value 3 FPPG  → $2,500
- *   replacement 0 FPPG → $2,000
+ * Lifted floor + steeper quadratic so practical top-of-pool prices
+ * actually reach the cap and a balanced roster consumes the full $60k.
+ *   elite 13 FPPG → $6,500 (cap)
+ *   strong 10 FPPG → $5,500
+ *   solid  8 FPPG → $4,700
+ *   average 6 FPPG → $4,100
+ *   value  3 FPPG → $3,200
+ *   replacement 0 FPPG → $2,500
  */
 function mlbFppgToSalary(fppg) {
-  if (!fppg || fppg <= 0) return 2000
+  if (!fppg || fppg <= 0) return 2500
   // Quadratic curve: accelerates pricing for elite performers
-  const salary = Math.round((2000 + fppg * 200 + fppg * fppg * 5) / 100) * 100
-  return Math.max(2000, Math.min(6500, salary))
+  const salary = Math.round((2500 + fppg * 200 + fppg * fppg * 10) / 100) * 100
+  return Math.max(2500, Math.min(6500, salary))
 }
 
 /**
@@ -310,7 +311,7 @@ export async function generateMLBSalaries(date, season = 2026) {
         salary = Math.round(salary * scarcity / 100) * 100
         // Re-clamp after adjustments to enforce hard caps
         if (isPitcher) salary = Math.max(5500, Math.min(11200, salary))
-        else salary = Math.max(2000, Math.min(6500, salary))
+        else salary = Math.max(2500, Math.min(6500, salary))
 
         salaries.push({
           player_name: name,
