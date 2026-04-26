@@ -1,10 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { buildRosterConfigHash } from '../lib/rosterConfigHash'
+import { useAuth } from '../hooks/useAuth'
+import { api } from '../lib/api'
+import { toast } from '../components/ui/Toast'
 import FantasyMyRankings from '../components/leagues/FantasyMyRankings'
 import DraftPrepAdp from '../components/draftPrep/DraftPrepAdp'
 import DraftPrepSyncPanel from '../components/draftPrep/DraftPrepSyncPanel'
 import MockDraftPage from './MockDraftPage'
+
+const BACKDROP_KEY = 'draft_prep_backdrop_y'
 
 const TABS = ['My Rankings', 'ADP', 'Mock Draft']
 
@@ -35,6 +41,9 @@ function rosterLabel(slots) {
 }
 
 export default function DraftPrepPage() {
+  const { profile } = useAuth()
+  const isAdmin = !!profile?.is_admin
+  const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = TABS.findIndex((t) => t.toLowerCase().replace(/\s+/g, '-') === searchParams.get('tab'))
   const [activeTab, setActiveTab] = useState(initialTab >= 0 ? initialTab : 0)
@@ -42,6 +51,52 @@ export default function DraftPrepPage() {
   const [rosterSlots, setRosterSlots] = useState({ ...DEFAULT_ROSTER })
   const [showConfig, setShowConfig] = useState(false)
   const [introOpen, setIntroOpen] = useState(false)
+
+  // Backdrop position (admin-tunable, public read)
+  const { data: backdropSetting } = useQuery({
+    queryKey: ['app-settings', BACKDROP_KEY],
+    queryFn: () => api.get(`/admin/app-settings/${BACKDROP_KEY}`),
+  })
+  const savedBackdropY = backdropSetting?.value?.y ?? 50
+  const [backdropY, setBackdropY] = useState(50)
+  const [adjustingBackdrop, setAdjustingBackdrop] = useState(false)
+  const backdropDragRef = useRef(null)
+  useEffect(() => { setBackdropY(savedBackdropY) }, [savedBackdropY])
+
+  const handleBackdropDrag = useCallback((e) => {
+    if (e.cancelable) e.preventDefault()
+    const ref = backdropDragRef.current
+    if (!ref) return
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    const rect = ref.getBoundingClientRect()
+    const pct = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
+    setBackdropY(pct)
+  }, [])
+
+  function startBackdropDrag(e) {
+    e.preventDefault()
+    handleBackdropDrag(e)
+    const onUp = () => {
+      document.removeEventListener('mousemove', handleBackdropDrag)
+      document.removeEventListener('mouseup', onUp)
+      document.removeEventListener('touchmove', handleBackdropDrag)
+      document.removeEventListener('touchend', onUp)
+    }
+    document.addEventListener('mousemove', handleBackdropDrag)
+    document.addEventListener('mouseup', onUp)
+    document.addEventListener('touchmove', handleBackdropDrag, { passive: false })
+    document.addEventListener('touchend', onUp)
+  }
+
+  const saveBackdrop = useMutation({
+    mutationFn: () => api.put(`/admin/app-settings/${BACKDROP_KEY}`, { value: { y: Math.round(backdropY) } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app-settings', BACKDROP_KEY] })
+      toast('Backdrop position saved', 'success')
+      setAdjustingBackdrop(false)
+    },
+    onError: (err) => toast(err.message || 'Failed to save', 'error'),
+  })
 
   const configHash = buildRosterConfigHash(rosterSlots)
 
@@ -60,22 +115,54 @@ export default function DraftPrepPage() {
   return (
     <div className="relative">
       {/* Hero backdrop */}
-      <div className="absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+      <div
+        ref={backdropDragRef}
+        className={`absolute inset-x-0 top-0 h-[520px] md:h-[480px] overflow-hidden ${adjustingBackdrop ? 'pointer-events-auto cursor-ns-resize' : 'pointer-events-none'}`}
+        style={{ zIndex: adjustingBackdrop ? 30 : 0, touchAction: adjustingBackdrop ? 'none' : 'auto' }}
+        onMouseDown={adjustingBackdrop ? startBackdropDrag : undefined}
+        onTouchStart={adjustingBackdrop ? startBackdropDrag : undefined}
+      >
         <img
           src="/ff-draft-prep-bg.png"
           alt=""
-          className="w-full h-full object-cover opacity-30"
-          style={{ objectPosition: 'center 50%' }}
+          className={`w-full h-full object-cover ${adjustingBackdrop ? 'opacity-60' : 'opacity-30'}`}
+          style={{ objectPosition: `center ${backdropY}%` }}
           draggable={false}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/20 via-bg-primary/40 to-bg-primary" />
+        {adjustingBackdrop && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-white/70 text-sm font-medium bg-black/40 px-3 py-1.5 rounded-lg">Drag up or down to reposition</p>
+          </div>
+        )}
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-6 pb-32">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Link to="/leagues" className="text-text-muted hover:text-text-primary">←</Link>
-        <h1 className="font-display text-3xl">Fantasy Football Draft Prep</h1>
+        <h1 className="font-display text-3xl flex-1">Fantasy Football Draft Prep</h1>
+        {isAdmin && !adjustingBackdrop && (
+          <button
+            onClick={() => setAdjustingBackdrop(true)}
+            className="text-xs px-2.5 py-1 rounded-lg bg-bg-primary/40 border border-text-primary/20 text-text-secondary hover:text-text-primary hover:bg-bg-primary/60 transition-colors"
+          >
+            Adjust backdrop
+          </button>
+        )}
+        {isAdmin && adjustingBackdrop && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setBackdropY(savedBackdropY); setAdjustingBackdrop(false) }}
+              className="text-xs px-2.5 py-1 rounded-lg bg-bg-secondary border border-text-primary/20 text-text-secondary hover:text-text-primary"
+            >Cancel</button>
+            <button
+              onClick={() => saveBackdrop.mutate()}
+              disabled={saveBackdrop.isPending}
+              className="text-xs px-2.5 py-1 rounded-lg bg-accent text-white font-semibold disabled:opacity-50"
+            >{saveBackdrop.isPending ? 'Saving…' : 'Save'}</button>
+          </div>
+        )}
       </div>
 
       {/* Intro */}
@@ -87,18 +174,15 @@ export default function DraftPrepPage() {
           <p className="text-sm font-bold text-text-primary">
             Preparation is the best way to secure your league championships!
           </p>
-          <span className="flex items-center gap-1.5 shrink-0 text-accent">
-            <span className="text-[10px] font-semibold uppercase tracking-wider">{introOpen ? 'Hide' : 'Learn more'}</span>
-            <svg
-              className={`w-5 h-5 transition-transform ${introOpen ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </span>
+          <svg
+            className={`w-5 h-5 shrink-0 text-accent transition-transform ${introOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
         </button>
         {introOpen && (
           <ul className="space-y-1.5 text-sm text-text-primary/80 mt-3">

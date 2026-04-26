@@ -1255,4 +1255,27 @@ router.delete('/season-dates/:id', requireAuth, requireAdmin, async (req, res) =
   res.json({ deleted: true })
 })
 
+// ── App-wide settings (public read, admin write) ────────────────────
+router.get('/app-settings/:key', async (req, res) => {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('key, value, updated_at')
+    .eq('key', req.params.key)
+    .maybeSingle()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || null)
+})
+
+router.put('/app-settings/:key', requireAuth, requireAdmin, async (req, res) => {
+  const { value } = req.body
+  if (value === undefined) return res.status(400).json({ error: 'value required' })
+  const { data, error } = await supabase
+    .from('app_settings')
+    .upsert({ key: req.params.key, value, updated_at: new Date().toISOString(), updated_by: req.user.id }, { onConflict: 'key' })
+    .select()
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
 export default router
