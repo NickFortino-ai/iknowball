@@ -120,6 +120,17 @@ router.get('/hot-take-reminders/:reminderId/comments', requireAuth, async (req, 
   res.json(comments)
 })
 
+// Futures pick comments
+router.post('/futures/:pickId/comments', requireAuth, validate(commentSchema), async (req, res) => {
+  const comment = await addComment(req.user.id, 'futures_pick', req.params.pickId, req.validated.content, req.validated.parent_id)
+  res.status(201).json(comment)
+})
+
+router.get('/futures/:pickId/comments', requireAuth, async (req, res) => {
+  const comments = await getComments('futures_pick', req.params.pickId, req.user.id)
+  res.json(comments)
+})
+
 // Head-to-head comments
 router.post('/head-to-head/:pickId/comments', requireAuth, validate(commentSchema), async (req, res) => {
   const comment = await addComment(req.user.id, 'head_to_head', req.params.pickId, req.validated.content, req.validated.parent_id)

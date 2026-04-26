@@ -34,6 +34,7 @@ async function getTargetOwner(targetType, targetId) {
     hot_take: 'hot_takes',
     head_to_head: 'picks',
     hot_take_reminder: 'hot_take_reminders',
+    futures_pick: 'futures_picks',
   }
   const OWNER_COL = {
     pick: 'user_id',
@@ -44,6 +45,7 @@ async function getTargetOwner(targetType, targetId) {
     hot_take: 'user_id',
     head_to_head: 'user_id',
     hot_take_reminder: 'reminder_user_id',
+    futures_pick: 'user_id',
   }
 
   // H2H items have composite IDs like "h2h-..." that aren't real DB UUIDs
@@ -73,7 +75,7 @@ async function getTargetOwner(targetType, targetId) {
   return data[ownerCol]
 }
 
-const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'post', head_to_head: 'head-to-head', hot_take_reminder: 'post' }
+const NOTIFICATION_LABELS = { pick: 'pick', parlay: 'parlay', prop: 'prop pick', streak_event: 'streak', record_history: 'record', hot_take: 'post', head_to_head: 'head-to-head', hot_take_reminder: 'post', futures_pick: 'futures pick' }
 
 export async function toggleReaction(userId, pickId, reactionType) {
   // Unified: use feed_reactions with target_type='pick'
