@@ -730,6 +730,7 @@ export async function completeLeagues() {
             .single()
           const isTraditional = league.format === 'fantasy' && settings?.format !== 'salary_cap'
           const isSalaryCap = league.format === 'fantasy' && settings?.format === 'salary_cap'
+          const isNbaDfs = league.format === 'nba_dfs'
           const label = league.format === 'nba_dfs' ? 'NBA DFS'
             : settings?.format === 'salary_cap' ? 'Salary Cap' : 'Fantasy'
 
@@ -747,6 +748,18 @@ export async function completeLeagues() {
             const isSingleWeek = settings?.season_type === 'single_week'
             const isFullSeasonRun = !isSingleWeek && minWeek === 1 && weeksPlayed >= 17
             bonusFn = (rank, n) => getSalaryCapBonus(rank, n, { isSingleWeek, isFullSeasonRun, weeksPlayed })
+          }
+          if (isNbaDfs) {
+            // Prorate the scaled winner bonus by nights actually played
+            // (versus a full ~180-night NBA regular season). Short leagues
+            // get a small slice of the bonus; full-season leagues get all of it.
+            const { data: nightRows } = await supabase
+              .from('nba_dfs_nightly_results')
+              .select('game_date')
+              .eq('league_id', league.id)
+            const nightsPlayed = new Set((nightRows || []).map((r) => r.game_date)).size
+            const fraction = Math.min(1, nightsPlayed / 180)
+            bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
           }
           await awardPositionBasedPoints(league, standings, label, bonusFn)
         }
