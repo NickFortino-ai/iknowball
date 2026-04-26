@@ -164,15 +164,18 @@ export default function FantasyStandings({ league, isSalaryCap }) {
         </table>
       </div>
 
-      {/* Mobile: per-row blocks with internal sticky-left + scrollable-right stats, expansion below */}
-      <div className="md:hidden">
-        <div className="flex border-b border-text-primary/10 text-text-muted text-xs">
-          <div className="shrink-0 flex">
-            <div className="py-3 px-2 text-center font-semibold w-8">#</div>
-            <div className="py-3 px-2 text-left font-semibold w-44">Manager</div>
-          </div>
-          <div className="flex-1 overflow-x-auto">
-            <div className="flex min-w-max">
+      {/* Mobile: single shared horizontal scroll with sticky-left manager column.
+          Expansion is sticky-positioned so it stays anchored to viewport left
+          as the user scrolls the stats horizontally. */}
+      <div className="md:hidden overflow-x-auto">
+        <div className="min-w-max">
+          {/* Header */}
+          <div className="flex border-b border-text-primary/10 text-text-muted text-xs">
+            <div className="sticky left-0 z-10 bg-bg-primary shrink-0 flex">
+              <div className="py-3 px-2 text-center font-semibold w-8">#</div>
+              <div className="py-3 px-2 text-left font-semibold w-44">Manager</div>
+            </div>
+            <div className="flex">
               <div className="py-3 px-3 text-center font-semibold w-16 cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('wl')}>{isSalaryCap ? 'Wins' : 'W-L'}</div>
               <div className={`py-3 px-3 text-center font-semibold w-16 ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`} onClick={() => !isSalaryCap && handleSortClick('pf')}>
                 {isSalaryCap ? 'Points' : 'PF'}{sortCol === 'pf' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
@@ -185,38 +188,37 @@ export default function FantasyStandings({ league, isSalaryCap }) {
               {!isSalaryCap && <div className="py-3 px-3 text-center font-semibold w-16 cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('streak')}>Streak{sortCol === 'streak' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}</div>}
             </div>
           </div>
-        </div>
-        {sortedStandings.map((s) => {
-          const isExpanded = expandedUserId === s.userId
-          return (
-            <div key={s.userId} className={`border-b border-text-primary/10 ${isExpanded ? 'bg-bg-primary/40' : ''}`}>
-              <div
-                onClick={() => toggleExpand(s.userId)}
-                className="flex items-stretch hover:bg-text-primary/5 transition-colors cursor-pointer"
-              >
-                <div className="shrink-0 flex items-center h-16">
-                  <div className="px-2 text-center w-8">
-                    <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
-                  </div>
-                  <div className="px-2 w-44">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setProfileUserId(s.userId) }}
-                        className="shrink-0"
-                      >
-                        <Avatar user={s.user} size="lg" />
-                      </button>
-                      <div className="min-w-0 overflow-hidden flex-1">
-                        <div className="font-bold text-sm text-text-primary truncate">{s.user?.display_name || s.user?.username}</div>
-                        {s.fantasyTeamName && (
-                          <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
-                        )}
+          {/* Rows */}
+          {sortedStandings.map((s) => {
+            const isExpanded = expandedUserId === s.userId
+            return (
+              <div key={s.userId} className="border-b border-text-primary/10">
+                <div
+                  onClick={() => toggleExpand(s.userId)}
+                  className="flex items-stretch hover:bg-text-primary/5 transition-colors cursor-pointer h-16"
+                >
+                  <div className="sticky left-0 z-10 bg-bg-primary shrink-0 flex items-center">
+                    <div className="px-2 text-center w-8">
+                      <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
+                    </div>
+                    <div className="px-2 w-44">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setProfileUserId(s.userId) }}
+                          className="shrink-0"
+                        >
+                          <Avatar user={s.user} size="lg" />
+                        </button>
+                        <div className="min-w-0 overflow-hidden flex-1">
+                          <div className="font-bold text-sm text-text-primary truncate">{s.user?.display_name || s.user?.username}</div>
+                          {s.fantasyTeamName && (
+                            <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex-1 overflow-x-auto">
-                  <div className="flex items-center h-16 min-w-max">
+                  <div className="flex items-center">
                     <div className="px-3 text-center text-text-primary text-sm w-16">
                       {isSalaryCap ? (s.wins > 0 ? s.wins : '--') : (s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}${s.ties ? `-${s.ties}` : ''}` : '--')}
                     </div>
@@ -225,13 +227,15 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                     {!isSalaryCap && <div className="px-3 text-center text-text-muted text-sm w-16">{s.streak}</div>}
                   </div>
                 </div>
+                {isExpanded && (
+                  <div className="sticky left-0 w-screen bg-bg-primary/40">
+                    <RosterList league={league} userId={s.userId} />
+                  </div>
+                )}
               </div>
-              {isExpanded && (
-                <RosterList league={league} userId={s.userId} />
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {sortedStandings.length === 0 && (
