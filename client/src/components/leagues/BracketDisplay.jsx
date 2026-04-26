@@ -60,7 +60,7 @@ function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecor
   return (
     <div className={`relative flex items-center gap-1.5 ${padding} ${className}`}>
       {seriesRecord && (
-        <span className={`absolute ${recordPosition === 'bottom' ? 'bottom-0.5' : 'top-0.5'} left-1.5 text-[9px] font-semibold text-text-muted z-10`}>{seriesRecord}</span>
+        <span className={`absolute ${recordPosition === 'bottom' ? 'bottom-0.5' : 'top-0.5'} ${mirrored ? 'left-1.5' : 'right-1.5'} text-[9px] font-semibold text-text-muted z-10`}>{seriesRecord}</span>
       )}
       {mirrored ? (
         <>
@@ -179,7 +179,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
       />
       {predictionLength && (
         <div
-          className={`absolute left-1.5 ${pick === matchup.team_top ? 'top-1/2 -translate-y-full' : 'top-1/2'} z-20 pointer-events-none`}
+          className={`absolute ${mirrored ? 'left-1.5' : 'right-1.5'} ${pick === matchup.team_top ? 'top-1/2 -translate-y-full' : 'top-1/2'} z-20 pointer-events-none`}
         >
           <span className={`text-[9px] font-semibold ${predictionColor}`}>in {predictionLength}</span>
         </div>
