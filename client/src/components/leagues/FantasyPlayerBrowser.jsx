@@ -277,7 +277,7 @@ export default function FantasyPlayerBrowser({ league }) {
         </div>
       )}
       {/* Single scroll container — header sticks at top, everything scrolls horizontally together */}
-      <div className="overflow-x-auto scrollbar-hide max-h-[65vh] overflow-y-auto">
+      <div className="overflow-x-auto scrollbar-hide max-h-[65vh] overflow-y-auto overscroll-x-none">
         <div className="min-w-[900px]">
         {/* Header — sticky top so it stays visible during vertical scroll */}
         <div className="border-b border-text-primary/10 bg-bg-primary flex text-[10px] font-bold text-text-muted uppercase tracking-wider sticky top-0 z-30">

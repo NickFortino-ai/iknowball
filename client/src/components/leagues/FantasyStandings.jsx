@@ -167,7 +167,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
       {/* Mobile: single shared horizontal scroll with sticky-left manager column.
           Expansion is sticky-positioned so it stays anchored to viewport left
           as the user scrolls the stats horizontally. */}
-      <div className="md:hidden overflow-x-auto">
+      <div className="md:hidden overflow-x-auto overscroll-x-none">
         <div className="min-w-max">
           {/* Header */}
           <div className="flex border-b border-text-primary/10 text-text-muted text-xs">
