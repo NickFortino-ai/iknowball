@@ -69,23 +69,19 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
     )
   }
 
-  // One ranking per roster shape — if the same roster has been saved under
-  // multiple scoring formats, surface the most recently updated one.
-  const byRoster = {}
-  for (const c of configs) {
-    const existing = byRoster[c.config_hash]
-    if (!existing || (c.last_updated && c.last_updated > (existing.last_updated || ''))) {
-      byRoster[c.config_hash] = c
-    }
-  }
-  const deduped = Object.values(byRoster).sort((a, b) => {
+  // One row per (roster + scoring) — different scoring formats produce
+  // meaningfully different rankings (TE/RB/WR values shift), so we surface
+  // them as separate entries instead of collapsing.
+  const sorted = [...configs].sort((a, b) => {
     if (!a.last_updated) return 1
     if (!b.last_updated) return -1
     return b.last_updated.localeCompare(a.last_updated)
   })
 
-  const total = deduped.length
-  const otherCount = deduped.filter((c) => c.config_hash !== activeConfigHash).length
+  const total = sorted.length
+  const otherCount = sorted.filter(
+    (c) => !(c.config_hash === activeConfigHash && c.scoring_format === activeScoringFormat),
+  ).length
 
   return (
     <div className="rounded-xl border border-text-primary/20 bg-bg-primary/15 backdrop-blur-md overflow-hidden">
@@ -110,13 +106,13 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
       </button>
       {open && (
         <div className="px-3 pb-3 pt-1 space-y-1.5">
-          {deduped.map((c) => {
+          {sorted.map((c) => {
             const slots = parseRosterConfigHash(c.config_hash)
-            const isActive = c.config_hash === activeConfigHash
+            const isActive = c.config_hash === activeConfigHash && c.scoring_format === activeScoringFormat
             const rosterLabel = formatRoster(slots) || 'No starters'
             return (
               <button
-                key={c.config_hash}
+                key={`${c.config_hash}|${c.scoring_format}`}
                 onClick={() => !isActive && onLoad?.({ scoringFormat: c.scoring_format, rosterSlots: slots })}
                 disabled={isActive}
                 className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
