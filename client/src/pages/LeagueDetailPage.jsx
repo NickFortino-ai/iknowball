@@ -1887,7 +1887,7 @@ export default function LeagueDetailPage() {
               <div className="text-sm text-text-primary font-semibold">
                 League starts {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' })}
               </div>
-              <div className="text-xs text-text-muted mt-1">Invite members before kickoff. Picks open when games are loaded.</div>
+              <div className="text-xs text-text-muted mt-1">Invite members before the first game. Picks open when games are loaded.</div>
             </div>
           )}
           <SurvivorView league={league} />
