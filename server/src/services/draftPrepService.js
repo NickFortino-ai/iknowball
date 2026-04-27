@@ -64,13 +64,16 @@ async function seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSl
 
 // Returns the distinct (configHash, scoringFormat) pairs the user has saved
 // rankings for, along with player count and last-modified timestamp so the
-// client can render a "saved boards" picker. setDraftPrepRankings deletes
-// + re-inserts on every save, so created_at acts as last-saved.
+// client can render a "saved boards" picker. Filters to is_customized rows
+// so lazy-seeded / reset boards (pure ADP order) don't pollute the list.
+// setDraftPrepRankings deletes + re-inserts on every save, so created_at
+// acts as last-saved.
 export async function getSavedRankingConfigs(userId) {
   const { data, error } = await supabase
     .from('draft_prep_rankings')
     .select('roster_config_hash, scoring_format, created_at')
     .eq('user_id', userId)
+    .eq('is_customized', true)
 
   if (error) throw error
   if (!data?.length) return []
@@ -140,12 +143,15 @@ export async function setDraftPrepRankings(userId, configHash, scoringFormat, pl
     .eq('scoring_format', scoringFormat)
 
   if (!playerIds.length) return { count: 0 }
+  // Marking is_customized=true here is what graduates a board from
+  // "lazy-seeded ADP" to "Saved Ranking" in the user's picker.
   const rows = playerIds.map((pid, i) => ({
     user_id: userId,
     roster_config_hash: configHash,
     scoring_format: scoringFormat,
     player_id: pid,
     rank: i,
+    is_customized: true,
   }))
   const { error } = await supabase.from('draft_prep_rankings').insert(rows)
   if (error) throw error
