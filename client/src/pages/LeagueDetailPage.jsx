@@ -1339,9 +1339,12 @@ export default function LeagueDetailPage() {
           )}
         </div>
       )}
-      {/* Backdrop adjust controls for commissioner */}
+      {/* Backdrop adjust controls for commissioner — desktop only.
+          On mobile the league hero image fills width-first, so the Y offset
+          rarely has any visible effect; the user profile modal keeps it
+          since avatar tiles do crop vertically on phones. */}
       {isCommissioner && hasBackdrop && league.backdrop_image && (
-        <div className="absolute top-2 right-4 flex gap-1.5 z-40">
+        <div className="absolute top-2 right-4 hidden md:flex gap-1.5 z-40">
           {adjustingBackdrop ? (
             <>
               <button
