@@ -58,7 +58,7 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
               <span className="font-semibold text-sm text-text-primary">
                 {outcome.name}
               </span>
-              <div className="flex items-center gap-3 shrink-0 ml-3">
+              <div className="flex items-center gap-3 md:gap-8 shrink-0 ml-3">
                 {isPicked && (
                   <div className="text-right">
                     <div className="text-[10px] text-text-primary uppercase tracking-wider leading-none">Your locked</div>
@@ -71,7 +71,7 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
                 )}
                 <div className="text-right">
                   {isPicked && (
-                    <div className="text-[10px] text-text-muted uppercase tracking-wider leading-none">Live</div>
+                    <div className="text-[10px] text-text-muted uppercase tracking-wider leading-none">Current</div>
                   )}
                   <div className={`font-semibold ${isPicked ? 'text-sm mt-0.5 opacity-70' : 'text-base'} ${isPicked && !oddsChanged ? 'opacity-50' : ''}`}>
                     <span className="text-incorrect">-{liveRisk}</span>
