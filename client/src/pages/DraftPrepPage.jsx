@@ -8,11 +8,12 @@ import { toast } from '../components/ui/Toast'
 import FantasyMyRankings from '../components/leagues/FantasyMyRankings'
 import DraftPrepAdp from '../components/draftPrep/DraftPrepAdp'
 import DraftPrepSyncPanel from '../components/draftPrep/DraftPrepSyncPanel'
+import InPersonDraftBoard from '../components/draftPrep/InPersonDraftBoard'
 import MockDraftPage from './MockDraftPage'
 
 const BACKDROP_KEY = 'draft_prep_backdrop_y'
 
-const TABS = ['My Rankings', 'ADP', 'Mock Draft']
+const TABS = ['My Rankings', 'ADP', 'Mock Draft', 'In-Person Draft']
 
 const SCORING_OPTIONS = [
   { value: 'half_ppr', label: 'Half-PPR' },
@@ -284,6 +285,9 @@ export default function DraftPrepPage() {
       )}
       {activeTab === 2 && (
         <MockDraftPage embedded defaultConfig={{ scoringFormat, configHash }} />
+      )}
+      {activeTab === 3 && (
+        <InPersonDraftBoard scoringFormat={scoringFormat} configHash={configHash} rosterSlots={rosterSlots} />
       )}
       </div>
     </div>
