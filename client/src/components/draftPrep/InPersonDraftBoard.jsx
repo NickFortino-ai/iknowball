@@ -149,6 +149,7 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
   const [draftedOthers, setDraftedOthers] = useState([])
   const [myRoster, setMyRoster] = useState({})
   const [introOpen, setIntroOpen] = useState(false)
+  const [rosterOpen, setRosterOpen] = useState(true)
   const [posFilter, setPosFilter] = useState('All')
   const [hydrated, setHydrated] = useState(false)
 
@@ -278,6 +279,47 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
         )}
       </div>
 
+      {/* My roster — pinned above the available list so it's always reachable */}
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/30 backdrop-blur-md overflow-hidden">
+        <button
+          onClick={() => setRosterOpen(!rosterOpen)}
+          className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-bg-primary/10 transition-colors"
+        >
+          <div className="text-left">
+            <div className="font-display text-base text-text-primary">Your Roster</div>
+            <div className="text-[11px] text-text-muted mt-0.5">
+              {myRosterIds.size} drafted
+            </div>
+          </div>
+          <svg
+            className={`w-4 h-4 shrink-0 text-text-muted transition-transform ${rosterOpen ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {rosterOpen && (
+          <div className="px-4 pb-4 space-y-1.5">
+            {SLOT_DISPLAY.filter((s) => s.key === 'bench' || (rosterSlots[s.key] || 0) > 0).map((s) => {
+              const players = myRoster[s.key] || []
+              const capacity = s.key === 'bench'
+                ? Math.max(players.length, 6)
+                : (rosterSlots[s.key] || 0)
+              return (
+                <div key={s.key} className="space-y-1">
+                  {RosterSlotRow({
+                    label: s.label,
+                    capacity,
+                    players,
+                    onUndo: (idx) => removeFromMyRoster(s.key, idx),
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Position filter */}
       <div className="flex flex-wrap gap-1.5">
         {positions.map((pos) => (
@@ -312,28 +354,6 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
         )}
       </div>
 
-      {/* My roster */}
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/30 backdrop-blur-md p-4 mt-6">
-        <h3 className="font-display text-base text-text-primary mb-3">Your Roster</h3>
-        <div className="space-y-1.5">
-          {SLOT_DISPLAY.filter((s) => s.key === 'bench' || (rosterSlots[s.key] || 0) > 0).map((s) => {
-            const players = myRoster[s.key] || []
-            const capacity = s.key === 'bench'
-              ? Math.max(players.length, 6)
-              : (rosterSlots[s.key] || 0)
-            return (
-              <div key={s.key} className="space-y-1">
-                {RosterSlotRow({
-                  label: s.label,
-                  capacity,
-                  players,
-                  onUndo: (idx) => removeFromMyRoster(s.key, idx),
-                })}
-              </div>
-            )
-          })}
-        </div>
-      </div>
     </div>
   )
 }
