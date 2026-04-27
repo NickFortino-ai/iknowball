@@ -51,7 +51,7 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
   if (error) {
     return (
       <div className="rounded-xl border border-incorrect/30 bg-incorrect/5 backdrop-blur-md px-4 py-3">
-        <div className="text-sm font-semibold text-incorrect">Couldn't load your saved boards</div>
+        <div className="text-sm font-semibold text-incorrect">Couldn't load your saved rankings</div>
         <div className="text-[11px] text-text-muted mt-0.5">{error.message || 'Unknown error'}</div>
       </div>
     )
@@ -60,18 +60,32 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
   if (!configs?.length) {
     return (
       <div className="rounded-xl border border-text-primary/15 bg-bg-primary/10 backdrop-blur-md px-4 py-3">
-        <div className="text-sm font-semibold text-text-primary">Your saved boards</div>
-        <div className="text-[11px] text-text-muted mt-0.5">
-          No saved boards yet. Reorder a few players below — your board saves automatically against the current scoring + roster.
+        <div className="text-sm font-semibold text-text-primary">Your Saved Rankings</div>
+        <div className="text-[11px] text-text-muted mt-0.5">Based on different roster configurations</div>
+        <div className="text-[11px] text-text-muted mt-2">
+          No saved rankings yet. Reorder a few players below — your board saves automatically against the current roster.
         </div>
       </div>
     )
   }
 
-  const total = configs.length
-  const otherCount = configs.filter(
-    (c) => !(c.config_hash === activeConfigHash && c.scoring_format === activeScoringFormat),
-  ).length
+  // One ranking per roster shape — if the same roster has been saved under
+  // multiple scoring formats, surface the most recently updated one.
+  const byRoster = {}
+  for (const c of configs) {
+    const existing = byRoster[c.config_hash]
+    if (!existing || (c.last_updated && c.last_updated > (existing.last_updated || ''))) {
+      byRoster[c.config_hash] = c
+    }
+  }
+  const deduped = Object.values(byRoster).sort((a, b) => {
+    if (!a.last_updated) return 1
+    if (!b.last_updated) return -1
+    return b.last_updated.localeCompare(a.last_updated)
+  })
+
+  const total = deduped.length
+  const otherCount = deduped.filter((c) => c.config_hash !== activeConfigHash).length
 
   return (
     <div className="rounded-xl border border-text-primary/20 bg-bg-primary/15 backdrop-blur-md overflow-hidden">
@@ -80,9 +94,10 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
         className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-bg-primary/10 transition-colors"
       >
         <div className="text-left">
-          <div className="text-sm font-semibold text-text-primary">Your saved boards</div>
-          <div className="text-[11px] text-text-muted mt-0.5">
-            {total} {total === 1 ? 'board' : 'boards'}
+          <div className="text-sm font-semibold text-text-primary">Your Saved Rankings</div>
+          <div className="text-[11px] text-text-muted mt-0.5">Based on different roster configurations</div>
+          <div className="text-[11px] text-text-muted mt-1">
+            {total} {total === 1 ? 'ranking' : 'rankings'}
             {otherCount > 0 && open === false && ` · ${otherCount} other${otherCount === 1 ? '' : 's'} not loaded`}
           </div>
         </div>
@@ -95,12 +110,13 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
       </button>
       {open && (
         <div className="px-3 pb-3 pt-1 space-y-1.5">
-          {configs.map((c) => {
+          {deduped.map((c) => {
             const slots = parseRosterConfigHash(c.config_hash)
-            const isActive = c.config_hash === activeConfigHash && c.scoring_format === activeScoringFormat
+            const isActive = c.config_hash === activeConfigHash
+            const rosterLabel = formatRoster(slots) || 'No starters'
             return (
               <button
-                key={`${c.config_hash}|${c.scoring_format}`}
+                key={c.config_hash}
                 onClick={() => !isActive && onLoad?.({ scoringFormat: c.scoring_format, rosterSlots: slots })}
                 disabled={isActive}
                 className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
@@ -111,25 +127,20 @@ export default function SavedRankings({ activeScoringFormat, activeConfigHash, o
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-text-primary uppercase tracking-wider">
-                        {SCORING_LABELS[c.scoring_format] || c.scoring_format}
-                      </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-text-primary">{rosterLabel}</span>
                       {isActive && (
                         <span className="text-[9px] font-bold text-accent uppercase tracking-wider px-1.5 py-0.5 rounded border border-accent/40">Active</span>
                       )}
                     </div>
-                    <div className="text-[11px] text-text-muted mt-0.5 truncate">
-                      {formatRoster(slots) || 'No starters'}
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-1.5 py-0.5 rounded bg-bg-primary/40 border border-text-primary/15">
+                        {SCORING_LABELS[c.scoring_format] || c.scoring_format}
+                      </span>
+                      {c.last_updated && (
+                        <span className="text-[10px] text-text-muted">{formatRelative(c.last_updated)}</span>
+                      )}
                     </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-[10px] text-text-muted">
-                      {c.player_count} {c.player_count === 1 ? 'player' : 'players'}
-                    </div>
-                    {c.last_updated && (
-                      <div className="text-[10px] text-text-muted/70">{formatRelative(c.last_updated)}</div>
-                    )}
                   </div>
                 </div>
               </button>
