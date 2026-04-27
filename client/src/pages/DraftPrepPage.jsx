@@ -298,7 +298,14 @@ export default function DraftPrepPage() {
         <MockDraftPage embedded defaultConfig={{ scoringFormat, configHash }} />
       )}
       {activeTab === 3 && (
-        <InPersonDraftBoard scoringFormat={scoringFormat} configHash={configHash} rosterSlots={rosterSlots} />
+        <div className="space-y-4">
+          <SavedRankings
+            activeScoringFormat={scoringFormat}
+            activeConfigHash={configHash}
+            onLoad={loadSavedConfig}
+          />
+          <InPersonDraftBoard scoringFormat={scoringFormat} configHash={configHash} rosterSlots={rosterSlots} />
+        </div>
       )}
       </div>
     </div>

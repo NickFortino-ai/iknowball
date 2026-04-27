@@ -41,10 +41,32 @@ function formatRelative(iso) {
 }
 
 export default function SavedRankings({ activeScoringFormat, activeConfigHash, onLoad }) {
-  const { data: configs } = useSavedRankingConfigs()
+  const { data: configs, isLoading, error } = useSavedRankingConfigs()
   const [open, setOpen] = useState(false)
 
-  if (!configs?.length) return null
+  if (isLoading) return null
+
+  // Render even when empty so the user has a clear signal that the picker
+  // exists; otherwise it looks like the feature is missing entirely.
+  if (error) {
+    return (
+      <div className="rounded-xl border border-incorrect/30 bg-incorrect/5 backdrop-blur-md px-4 py-3">
+        <div className="text-sm font-semibold text-incorrect">Couldn't load your saved boards</div>
+        <div className="text-[11px] text-text-muted mt-0.5">{error.message || 'Unknown error'}</div>
+      </div>
+    )
+  }
+
+  if (!configs?.length) {
+    return (
+      <div className="rounded-xl border border-text-primary/15 bg-bg-primary/10 backdrop-blur-md px-4 py-3">
+        <div className="text-sm font-semibold text-text-primary">Your saved boards</div>
+        <div className="text-[11px] text-text-muted mt-0.5">
+          No saved boards yet. Reorder a few players below — your board saves automatically against the current scoring + roster.
+        </div>
+      </div>
+    )
+  }
 
   const total = configs.length
   const otherCount = configs.filter(
