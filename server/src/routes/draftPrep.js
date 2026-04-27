@@ -4,6 +4,7 @@ import {
   getDraftPrepRankings,
   setDraftPrepRankings,
   resetDraftPrepRankings,
+  getSavedRankingConfigs,
   getSyncPreferences,
   syncLeague,
   unsyncLeague,
@@ -47,6 +48,17 @@ router.post('/rankings/reset', requireAuth, async (req, res) => {
     const rosterSlots = parseConfigHash(configHash)
     const result = await resetDraftPrepRankings(req.user.id, configHash, scoringFormat || 'half_ppr', rosterSlots)
     res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// ── Saved configs ────────────────────────────────────────────────────
+
+router.get('/saved-configs', requireAuth, async (req, res) => {
+  try {
+    const data = await getSavedRankingConfigs(req.user.id)
+    res.json(data)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
   }

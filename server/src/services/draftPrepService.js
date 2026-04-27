@@ -60,6 +60,44 @@ async function seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSl
   if (error) throw error
 }
 
+// ── Saved Configs ────────────────────────────────────────────────────
+
+// Returns the distinct (configHash, scoringFormat) pairs the user has saved
+// rankings for, along with player count and last-modified timestamp so the
+// client can render a "saved boards" picker.
+export async function getSavedRankingConfigs(userId) {
+  const { data, error } = await supabase
+    .from('draft_prep_rankings')
+    .select('roster_config_hash, scoring_format, updated_at')
+    .eq('user_id', userId)
+
+  if (error) throw error
+  if (!data?.length) return []
+
+  const map = {}
+  for (const row of data) {
+    const key = `${row.roster_config_hash}|${row.scoring_format}`
+    if (!map[key]) {
+      map[key] = {
+        config_hash: row.roster_config_hash,
+        scoring_format: row.scoring_format,
+        player_count: 0,
+        last_updated: row.updated_at,
+      }
+    }
+    map[key].player_count += 1
+    if (row.updated_at && (!map[key].last_updated || row.updated_at > map[key].last_updated)) {
+      map[key].last_updated = row.updated_at
+    }
+  }
+
+  return Object.values(map).sort((a, b) => {
+    if (!a.last_updated) return 1
+    if (!b.last_updated) return -1
+    return b.last_updated.localeCompare(a.last_updated)
+  })
+}
+
 // ── Rankings CRUD ────────────────────────────────────────────────────
 
 export async function getDraftPrepRankings(userId, configHash, scoringFormat, rosterSlots) {

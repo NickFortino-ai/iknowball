@@ -9,6 +9,7 @@ import FantasyMyRankings from '../components/leagues/FantasyMyRankings'
 import DraftPrepAdp from '../components/draftPrep/DraftPrepAdp'
 import DraftPrepSyncPanel from '../components/draftPrep/DraftPrepSyncPanel'
 import InPersonDraftBoard from '../components/draftPrep/InPersonDraftBoard'
+import SavedRankings from '../components/draftPrep/SavedRankings'
 import MockDraftPage from './MockDraftPage'
 
 const BACKDROP_KEY = 'draft_prep_backdrop_y'
@@ -100,6 +101,11 @@ export default function DraftPrepPage() {
   })
 
   const configHash = buildRosterConfigHash(rosterSlots)
+
+  function loadSavedConfig({ scoringFormat: sf, rosterSlots: rs }) {
+    if (sf) setScoringFormat(sf)
+    if (rs) setRosterSlots({ ...DEFAULT_ROSTER, ...rs })
+  }
 
   function handleTabChange(i) {
     setActiveTab(i)
@@ -276,6 +282,11 @@ export default function DraftPrepPage() {
       {/* Tab content */}
       {activeTab === 0 && (
         <div className="space-y-4">
+          <SavedRankings
+            activeScoringFormat={scoringFormat}
+            activeConfigHash={configHash}
+            onLoad={loadSavedConfig}
+          />
           <FantasyMyRankings draftPrepConfig={{ scoringFormat, configHash }} />
           <DraftPrepSyncPanel configHash={configHash} scoringFormat={scoringFormat} />
         </div>

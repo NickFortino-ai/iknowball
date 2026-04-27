@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
+// ── Saved configs ────────────────────────────────────────────────────
+
+export function useSavedRankingConfigs() {
+  return useQuery({
+    queryKey: ['draftPrep', 'savedConfigs'],
+    queryFn: () => api.get('/draft-prep/saved-configs'),
+  })
+}
+
 // ── Rankings ─────────────────────────────────────────────────────────
 
 export function useDraftPrepRankings(scoringFormat, configHash) {
