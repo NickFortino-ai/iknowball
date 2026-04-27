@@ -45,22 +45,23 @@ export default function DraftPrepSyncPanel({ configHash, scoringFormat }) {
         Your Draft Prep rankings automatically apply to synced leagues. Edits in either place update the same rankings.
       </p>
 
-      {/* Bulk sync buttons */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      {/* Bulk sync buttons — these are live actions; tapping syncs immediately */}
+      <p className="text-[11px] text-text-muted mb-2 uppercase tracking-wider">Tap to sync now</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 mb-4">
         <button
           onClick={() => handleSyncAll('all')}
           disabled={syncAll.isPending}
-          className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-accent/10 border border-accent/40 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
+          className="px-4 py-3 md:px-5 md:py-3.5 rounded-xl text-sm md:text-base font-semibold bg-bg-primary border border-accent text-text-primary hover:bg-accent/10 active:bg-accent/15 transition-colors disabled:opacity-50"
         >
           {syncAll.isPending ? 'Syncing...' : 'Sync to All Leagues'}
         </button>
         <button
           onClick={() => handleSyncAll('matching')}
           disabled={syncAll.isPending}
-          className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-bg-secondary border border-text-primary/20 text-text-secondary hover:bg-white/10 transition-colors disabled:opacity-50"
+          className="px-4 py-3 md:px-5 md:py-3.5 rounded-xl text-sm md:text-base font-semibold bg-bg-primary border border-accent text-text-primary hover:bg-accent/10 active:bg-accent/15 transition-colors disabled:opacity-50"
         >
           Sync to Matching Rosters Only
-          {matchingCount > 0 && <span className="ml-1 text-accent">({matchingCount})</span>}
+          {matchingCount > 0 && <span className="ml-1.5 text-accent">({matchingCount})</span>}
         </button>
       </div>
 
