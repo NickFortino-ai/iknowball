@@ -149,7 +149,7 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
   const [draftedOthers, setDraftedOthers] = useState([])
   const [myRoster, setMyRoster] = useState({})
   const [introOpen, setIntroOpen] = useState(false)
-  const [rosterOpen, setRosterOpen] = useState(true)
+  const [rosterOpen, setRosterOpen] = useState(false)
   const [posFilter, setPosFilter] = useState('All')
   const [hydrated, setHydrated] = useState(false)
 
