@@ -97,7 +97,7 @@ function SwipeRow({ rank, player, onLeft, onRight }) {
             <span> · {player.team || 'FA'}</span>
           </div>
         </div>
-        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+        <div className="hidden sm:flex items-center gap-3 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); onLeft?.() }}
             className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-incorrect/40 text-incorrect hover:bg-incorrect/15"
@@ -252,8 +252,8 @@ export default function InPersonDraftBoard({ scoringFormat, configHash, rosterSl
         {introOpen && (
           <ul className="space-y-1.5 text-sm text-text-primary/80 mt-3">
             <li className="flex gap-2"><span className="text-accent">•</span><span>Set the roster shape above to match your in-person league</span></li>
-            <li className="flex gap-2"><span className="text-accent">•</span><span>Swipe left (or tap ✕ Off) when someone else drafts a player</span></li>
-            <li className="flex gap-2"><span className="text-accent">•</span><span>Swipe right (or tap ✓ Mine) when you draft a player — they auto-fill the right slot</span></li>
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Swipe left (or click ✕ Off on desktop) when someone else drafts a player</span></li>
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Swipe right (or click ✓ Mine on desktop) when you draft a player — they auto-fill the right slot</span></li>
             <li className="flex gap-2"><span className="text-accent">•</span><span>Players slot into their natural position first, then FLEX/SFLEX, then bench</span></li>
             <li className="flex gap-2"><span className="text-accent">•</span><span>Progress saves automatically — refresh and you're right where you left off</span></li>
           </ul>
