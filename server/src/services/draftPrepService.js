@@ -159,6 +159,49 @@ export async function setDraftPrepRankings(userId, configHash, scoringFormat, pl
 }
 
 export async function resetDraftPrepRankings(userId, configHash, scoringFormat, rosterSlots) {
+  // Before wiping, fork-then-unsync any leagues currently syncing this
+  // (config + scoring) board. Otherwise the league would silently start
+  // following the about-to-be-reset ADP order, which is confusing —
+  // especially mid-draft. Fork preserves the league's customized order
+  // at the moment of disconnect.
+  const { data: syncRecords } = await supabase
+    .from('draft_prep_sync')
+    .select('league_id')
+    .eq('user_id', userId)
+    .eq('roster_config_hash', configHash)
+    .eq('scoring_format', scoringFormat)
+
+  if (syncRecords?.length) {
+    // Snapshot the current (still-customized) rankings once — every synced
+    // league forks from the same source.
+    const { data: prepRankings } = await supabase
+      .from('draft_prep_rankings')
+      .select('player_id, rank')
+      .eq('user_id', userId)
+      .eq('roster_config_hash', configHash)
+      .eq('scoring_format', scoringFormat)
+      .order('rank', { ascending: true })
+
+    if (prepRankings?.length) {
+      for (const sync of syncRecords) {
+        const rows = prepRankings.map((r) => ({
+          league_id: sync.league_id,
+          user_id: userId,
+          player_id: r.player_id,
+          rank: r.rank,
+        }))
+        await supabase.from('fantasy_user_rankings').insert(rows)
+      }
+    }
+
+    await supabase
+      .from('draft_prep_sync')
+      .delete()
+      .eq('user_id', userId)
+      .eq('roster_config_hash', configHash)
+      .eq('scoring_format', scoringFormat)
+  }
+
   await supabase
     .from('draft_prep_rankings')
     .delete()
@@ -166,7 +209,7 @@ export async function resetDraftPrepRankings(userId, configHash, scoringFormat, 
     .eq('roster_config_hash', configHash)
     .eq('scoring_format', scoringFormat)
   await seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSlots)
-  return { reset: true }
+  return { reset: true, unsynced: syncRecords?.length || 0 }
 }
 
 // ── Sync Management ──────────────────────────────────────────────────
