@@ -24,6 +24,27 @@ export async function assertConnected(actorId, ownerId) {
   }
 }
 
+// Friendly singular noun for reaction notifications. "Reacted to your X"
+// reads better with "post" / "prediction" than the raw target_type string
+// (which would yield "futures pick" etc.).
+function reactionTargetLabel(targetType) {
+  switch (targetType) {
+    case 'hot_take':
+      return 'post'
+    case 'pick':
+    case 'parlay':
+    case 'prop':
+    case 'futures_pick':
+    case 'head_to_head':
+      return 'prediction'
+    case 'streak_event':
+    case 'record_history':
+      return 'achievement'
+    default:
+      return 'post'
+  }
+}
+
 async function getTargetOwner(targetType, targetId) {
   const TABLE_MAP = {
     pick: 'picks',
@@ -321,8 +342,8 @@ export async function toggleFeedReaction(userId, targetType, targetId, reactionT
         .eq('id', userId)
         .single()
       const username = actor?.username || 'Someone'
-      const label = targetType === 'hot_take' ? 'post' : targetType.replace('_', ' ')
-      await createNotification(ownerId, 'reaction', `${username} reacted ${reactionType} to your ${label}`, {
+      const label = reactionTargetLabel(targetType)
+      await createNotification(ownerId, 'reaction', `${username} reacted to your ${label}`, {
         actorId: userId,
         targetType,
         targetId,
