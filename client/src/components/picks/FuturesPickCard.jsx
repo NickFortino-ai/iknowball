@@ -27,8 +27,8 @@ export default function FuturesPickCard({ pick }) {
 
       <div className="flex items-center justify-between">
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-accent truncate">{pick.picked_outcome}</div>
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Your locked</div>
+          <div className="text-sm font-semibold text-text-primary truncate">{pick.picked_outcome}</div>
+          <div className="text-[10px] text-text-primary uppercase tracking-wider mt-0.5">Your locked</div>
         </div>
         <div className="text-right shrink-0 ml-3">
           {pick.status === 'settled' && pick.points_earned != null ? (

@@ -55,13 +55,13 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
                     : 'border-text-primary/20 hover:bg-text-primary/5'
               } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <span className={`font-semibold text-sm ${isPicked ? 'text-accent' : 'text-text-primary'}`}>
+              <span className="font-semibold text-sm text-text-primary">
                 {outcome.name}
               </span>
               <div className="flex items-center gap-3 shrink-0 ml-3">
                 {isPicked && (
                   <div className="text-right">
-                    <div className="text-[10px] text-text-muted uppercase tracking-wider leading-none">Your locked</div>
+                    <div className="text-[10px] text-text-primary uppercase tracking-wider leading-none">Your locked</div>
                     <div className="text-base font-semibold mt-0.5">
                       <span className="text-incorrect">-{lockedRisk}</span>
                       <span className="text-text-muted mx-1">&rarr;</span>
