@@ -1,5 +1,3 @@
-import { formatOdds } from '../../lib/scoring'
-
 export default function FuturesPickCard({ pick }) {
   const market = pick.futures_markets
 
@@ -28,13 +26,11 @@ export default function FuturesPickCard({ pick }) {
       </div>
 
       <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm font-semibold text-accent">{pick.picked_outcome}</div>
-          <div className="text-xs text-text-muted">
-            Odds: {formatOdds(pick.odds_at_submission)}
-          </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-accent truncate">{pick.picked_outcome}</div>
+          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Your locked</div>
         </div>
-        <div className="text-right">
+        <div className="text-right shrink-0 ml-3">
           {pick.status === 'settled' && pick.points_earned != null ? (
             <div className={`text-lg font-display ${
               pick.points_earned > 0 ? 'text-correct' : pick.points_earned < 0 ? 'text-incorrect' : 'text-text-muted'
@@ -42,9 +38,9 @@ export default function FuturesPickCard({ pick }) {
               {pick.points_earned > 0 ? '+' : ''}{pick.points_earned}
             </div>
           ) : (
-            <div className="text-sm font-semibold">
+            <div className="text-base font-semibold">
               <span className="text-incorrect">-{pick.risk_at_submission}</span>
-              <span className="text-text-muted"> / </span>
+              <span className="text-text-muted mx-1">&rarr;</span>
               <span className="text-correct">+{pick.reward_at_submission}</span>
             </div>
           )}

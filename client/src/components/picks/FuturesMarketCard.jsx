@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
+import { calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 
 export default function FuturesMarketCard({ market, userPick, onPick, isSubmitting }) {
   const [expanded, setExpanded] = useState(false)
@@ -32,8 +32,11 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
       <div className="space-y-1.5">
         {displayedOutcomes.map((outcome) => {
           const isPicked = userPick?.picked_outcome === outcome.name
-          const risk = calculateRiskPoints(outcome.odds)
-          const reward = calculateRewardPoints(outcome.odds)
+          const liveRisk = calculateRiskPoints(outcome.odds)
+          const liveReward = calculateRewardPoints(outcome.odds)
+          const lockedRisk = isPicked ? userPick.risk_at_submission : null
+          const lockedReward = isPicked ? userPick.reward_at_submission : null
+          const oddsChanged = isPicked && (lockedRisk !== liveRisk || lockedReward !== liveReward)
 
           return (
             <button
@@ -55,13 +58,27 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
               <span className={`font-semibold text-sm ${isPicked ? 'text-accent' : 'text-text-primary'}`}>
                 {outcome.name}
               </span>
-              <div className="text-right shrink-0 ml-3">
-                <div className="text-sm font-semibold">
-                  <span className="text-incorrect">-{risk}</span>
-                  <span className="text-text-muted mx-1">&rarr;</span>
-                  <span className="text-correct">+{reward}</span>
+              <div className="flex items-center gap-3 shrink-0 ml-3">
+                {isPicked && (
+                  <div className="text-right">
+                    <div className="text-[10px] text-text-muted uppercase tracking-wider leading-none">Your locked</div>
+                    <div className="text-base font-semibold mt-0.5">
+                      <span className="text-incorrect">-{lockedRisk}</span>
+                      <span className="text-text-muted mx-1">&rarr;</span>
+                      <span className="text-correct">+{lockedReward}</span>
+                    </div>
+                  </div>
+                )}
+                <div className="text-right">
+                  {isPicked && (
+                    <div className="text-[10px] text-text-muted uppercase tracking-wider leading-none">Live</div>
+                  )}
+                  <div className={`font-semibold ${isPicked ? 'text-sm mt-0.5 opacity-70' : 'text-base'} ${isPicked && !oddsChanged ? 'opacity-50' : ''}`}>
+                    <span className="text-incorrect">-{liveRisk}</span>
+                    <span className="text-text-muted mx-1">&rarr;</span>
+                    <span className="text-correct">+{liveReward}</span>
+                  </div>
                 </div>
-                <div className="text-xs text-text-muted">{formatOdds(outcome.odds)}</div>
               </div>
             </button>
           )
@@ -75,16 +92,6 @@ export default function FuturesMarketCard({ market, userPick, onPick, isSubmitti
         >
           {expanded ? 'Show less' : `Show all ${outcomes.length} outcomes`}
         </button>
-      )}
-
-      {userPick?.status === 'locked' && (
-        <div className="mt-3 pt-3 border-t border-text-primary/10 text-center text-sm text-text-muted">
-          Locked: {userPick.picked_outcome} at {formatOdds(userPick.odds_at_submission)}
-          {' '}
-          <span className="text-incorrect">-{userPick.risk_at_submission}</span>
-          {' / '}
-          <span className="text-correct">+{userPick.reward_at_submission}</span>
-        </div>
       )}
 
       {userPick?.status === 'settled' && userPick.points_earned != null && (

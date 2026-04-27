@@ -92,14 +92,16 @@ export default function FuturesSection() {
                 </div>
                 <h4 className="font-display text-base text-text-primary mb-1">{market?.title || 'Futures Market'}</h4>
                 <div className="flex items-center justify-between bg-accent/10 border border-accent/30 rounded-xl px-3 py-2.5 mt-2">
-                  <span className="font-semibold text-sm text-accent">{pick.picked_outcome}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-semibold text-sm text-accent truncate block">{pick.picked_outcome}</span>
+                    <span className="text-[10px] text-text-muted uppercase tracking-wider">Your locked</span>
+                  </div>
                   <div className="text-right shrink-0 ml-3">
-                    <div className="text-sm font-semibold">
+                    <div className="text-base font-semibold">
                       <span className="text-incorrect">-{pick.risk_at_submission}</span>
                       <span className="text-text-muted mx-1">&rarr;</span>
                       <span className="text-correct">+{pick.reward_at_submission}</span>
                     </div>
-                    <div className="text-xs text-text-muted">{pick.odds_at_submission > 0 ? '+' : ''}{pick.odds_at_submission}</div>
                   </div>
                 </div>
               </div>
