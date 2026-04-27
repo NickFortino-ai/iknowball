@@ -350,14 +350,20 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     if (league.format === 'survivor') {
       const isTouchdown = settings.survivor_mode === 'touchdown'
       const lifeText = lives === 1 ? '1 life' : `${lives} lives`
+      const wrongCountText = lives === 1 ? 'wrong' : lives === 2 ? 'wrong twice' : `wrong ${lives} times`
+      const tdMissText = lives === 1
+        ? "if your player doesn't score, you're out"
+        : lives === 2
+          ? "if your player doesn't score twice, you're out"
+          : `if your player doesn't score ${lives} times, you're out`
       const allElimRule = settings.all_eliminated_survive
         ? ` If all remaining players are eliminated on the same ${freq}, everyone survives.`
         : ''
       const duration = durationSentence('until there is one last survivor')
       if (isTouchdown) {
-        return `Pick one player each week to score a non-passing touchdown. You can never pick the same player twice. You have ${lifeText} — if your player doesn't score, you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
+        return `Pick one player each week to score a non-passing touchdown. You can never pick the same player twice. You have ${lifeText} — ${tdMissText}.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
       }
-      return `Pick one winning team each ${freq}. You can only pick each team once unless you've used them all. You have ${lifeText} — pick wrong and you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
+      return `Pick one winning team each ${freq}. You can only pick each team once unless you've used them all. You have ${lifeText} — pick ${wrongCountText} and you're out.${allElimRule} The last player standing wins and earns bonus points on the global leaderboard. ${duration}`
     }
 
     if (league.format === 'pickem') {
