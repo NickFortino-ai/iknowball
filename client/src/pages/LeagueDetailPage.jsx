@@ -614,10 +614,11 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
                 const showTable = isMultiNight || f === 'hr_derby' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
                 if (!showTable) return null
+                const liveMemberCount = league.members?.length ?? league.member_count ?? 0
                 // For fantasy, prefer the configured roster size; otherwise current member count
                 const tableMemberCount = f === 'fantasy'
-                  ? (fantasySettings?.num_teams || memberCount)
-                  : memberCount
+                  ? (fantasySettings?.num_teams || liveMemberCount)
+                  : liveMemberCount
                 const bonusFn = buildBonusForRank({ leagueFormat: f, fantasyFormat: fFormat, seasonType: sType })
                 const footnote = f === 'fantasy' && fFormat === 'salary_cap' && sType !== 'single_week'
                   ? 'Bonuses scale by weeks played for mid-season runs.'

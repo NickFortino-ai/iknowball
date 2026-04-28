@@ -846,7 +846,14 @@ export async function updateLeague(leagueId, userId, data) {
   const settingsOnly = Object.keys(data).every((k) => ['settings', 'commissioner_note', 'starts_at', 'ends_at', 'duration', 'name', 'max_members', 'visibility', 'joins_locked_at'].includes(k))
 
   if (!noteOnly && league.status !== 'open') {
-    if (settingsOnly && (league.format === 'pickem' || league.format === 'survivor')) {
+    // Active commissioners can always tweak end date (shorten or extend a
+    // long-running league). Block other changes for completed leagues and
+    // for non-pickem/survivor active leagues.
+    const onlyEndsAtOrAlwaysAllowed = Object.keys(data).every((k) => k === 'ends_at' || alwaysAllowed.includes(k))
+    const isCompleted = league.status === 'completed'
+    if (onlyEndsAtOrAlwaysAllowed && !isCompleted) {
+      // Allow — fall through to update
+    } else if (settingsOnly && (league.format === 'pickem' || league.format === 'survivor')) {
       const hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)
       if (hasLockedPicks) {
         // Per-setting validation: block only dangerous changes
