@@ -614,7 +614,12 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
                 const showTable = isMultiNight || f === 'hr_derby' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
                 if (!showTable) return null
-                const liveMemberCount = league.members?.length ?? league.member_count ?? 0
+                // Source of truth: actual league members (Array<{user_id,...}>).
+                // Don't fall back to league.member_count — it isn't set on the
+                // detail endpoint and any value present would be a stale cache
+                // bleed-over from list views.
+                const liveMemberCount = Array.isArray(league.members) ? league.members.length : 0
+                if (!liveMemberCount) return null
                 // For fantasy, prefer the configured roster size; otherwise current member count
                 const tableMemberCount = f === 'fantasy'
                   ? (fantasySettings?.num_teams || liveMemberCount)
