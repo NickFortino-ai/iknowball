@@ -216,17 +216,21 @@ export default function AdminPage() {
 
   const upcomingGames = games || []
 
-  // Build 7-day schedule: map each date to its featured props
+  // Build 7-day schedule: map each date to its featured props. Settled props
+  // are excluded — once a prop is graded it doesn't belong on the
+  // forward-looking lineup anymore (the previous 7 days view still shows
+  // the historical record).
   const scheduleDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() + i)
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
-    const dayProps = (featuredProps || []).filter((p) => p.featured_date === dateStr)
+    const dayProps = (featuredProps || []).filter((p) => p.featured_date === dateStr && p.status !== 'settled')
     return { dateStr, label, props: dayProps }
   })
 
-  // Build previous 7 days
+  // Build previous 7 days — keep settled props here so the historical view
+  // shows the full slate that ran each day.
   const previousDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (i + 1))
