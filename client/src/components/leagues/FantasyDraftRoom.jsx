@@ -101,7 +101,7 @@ export default function FantasyDraftRoom({ league }) {
   const setAutoDraftMut = useSetAutoDraft()
   const cancelAutoDraftMut = useCancelAutoDraft()
   const [autoDraftPrompt, setAutoDraftPrompt] = useState(null)
-  useRealtimeDraft(league.id)
+  const presentUserIds = useRealtimeDraft(league.id, profile?.id)
 
   const queuedIds = useMemo(() => new Set((queue || []).map((q) => q.player_id)), [queue])
 
@@ -336,7 +336,7 @@ export default function FantasyDraftRoom({ league }) {
 
     // ── Board preview with countdown (T-60min) ──────────────────────
     if (withinOneHour) {
-      return <DraftBoardPreview settings={settings} picks={picks} draftDate={draftDate} profileId={profile?.id} league={league} isCommissioner={isCommissioner} onStartDraft={handleStartDraft} startDraftPending={startDraft.isPending} />
+      return <DraftBoardPreview settings={settings} picks={picks} draftDate={draftDate} profileId={profile?.id} league={league} isCommissioner={isCommissioner} onStartDraft={handleStartDraft} startDraftPending={startDraft.isPending} presentUserIds={presentUserIds} />
     }
 
     const numTeams = settings?.num_teams || 10
@@ -906,7 +906,7 @@ export default function FantasyDraftRoom({ league }) {
         <div
           className="rounded-xl border border-text-primary/20 p-2 overflow-hidden md:relative md:left-1/2 md:-translate-x-1/2 md:w-[95vw] md:max-w-[1600px]"
         >
-          <DraftBoard picks={picks} settings={settings} profileId={profile?.id} />
+          <DraftBoard picks={picks} settings={settings} profileId={profile?.id} presentUserIds={presentUserIds} />
         </div>
       )}
 
@@ -1253,7 +1253,7 @@ const POS_COLORS = {
   DEF: 'bg-purple-500/20 border-purple-500/40 text-purple-300',
 }
 
-function DraftBoard({ picks, settings, profileId }) {
+function DraftBoard({ picks, settings, profileId, presentUserIds }) {
   const numTeams = settings?.num_teams || 10
   const draftOrder = settings?.draft_order || []
   const totalRounds = Math.ceil(picks.length / numTeams)
@@ -1288,7 +1288,11 @@ function DraftBoard({ picks, settings, profileId }) {
             {draftOrder.map((userId, i) => (
               <th key={userId} className={`px-2 py-2 font-semibold text-center border border-border min-w-[120px] md:min-w-0 ${userId === profileId ? 'text-accent' : 'text-text-secondary'}`}>
                 <div className="text-text-muted text-[10px]">{i + 1}</div>
-                <div className="truncate">{userNames[userId] || 'Team'}</div>
+                <div className="truncate">
+                  <span className={presentUserIds?.has(userId) ? 'inline-block border border-correct/60 rounded px-1.5 py-0.5' : ''}>
+                    {userNames[userId] || 'Team'}
+                  </span>
+                </div>
               </th>
             ))}
           </tr>
@@ -1328,7 +1332,7 @@ function DraftBoard({ picks, settings, profileId }) {
 
 // ── Pre-draft board preview (T-60min countdown) ──────────────────────
 
-function DraftBoardPreview({ settings, picks, draftDate, profileId, isCommissioner, onStartDraft, startDraftPending }) {
+function DraftBoardPreview({ settings, picks, draftDate, profileId, isCommissioner, onStartDraft, startDraftPending, presentUserIds }) {
   const draftOrder = settings?.draft_order || []
   const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
   const totalSlots = Object.values(rosterSlots).reduce((a, b) => a + b, 0)
@@ -1384,7 +1388,11 @@ function DraftBoardPreview({ settings, picks, draftDate, profileId, isCommission
               {draftOrder.map((userId, i) => (
                 <th key={userId} className={`px-2 py-2 font-semibold text-center border border-border min-w-[120px] md:min-w-0 ${userId === profileId ? 'text-accent' : 'text-text-secondary'}`}>
                   <div className="text-text-muted text-[10px]">{i + 1}</div>
-                  <div className="truncate">{userNames[userId] || 'Team'}</div>
+                  <div className="truncate">
+                    <span className={presentUserIds?.has(userId) ? 'inline-block border border-correct/60 rounded px-1.5 py-0.5' : ''}>
+                      {userNames[userId] || 'Team'}
+                    </span>
+                  </div>
                 </th>
               ))}
             </tr>

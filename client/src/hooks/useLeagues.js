@@ -1,5 +1,5 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 
@@ -941,12 +941,16 @@ export function useSetDraftQueue() {
   })
 }
 
-export function useRealtimeDraft(leagueId) {
+export function useRealtimeDraft(leagueId, userId) {
   const queryClient = useQueryClient()
+  const [presentUserIds, setPresentUserIds] = useState(() => new Set())
+
   useEffect(() => {
-    if (!leagueId) return
+    if (!leagueId || !userId) return
     const channel = supabase
-      .channel(`fantasy-draft-${leagueId}`)
+      .channel(`fantasy-draft-${leagueId}`, {
+        config: { presence: { key: userId } },
+      })
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
@@ -956,10 +960,19 @@ export function useRealtimeDraft(leagueId) {
         queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'draft'] })
         queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy', 'players'] })
       })
-      .subscribe()
+      .on('presence', { event: 'sync' }, () => {
+        setPresentUserIds(new Set(Object.keys(channel.presenceState())))
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({})
+        }
+      })
 
     return () => { supabase.removeChannel(channel) }
-  }, [leagueId, queryClient])
+  }, [leagueId, userId, queryClient])
+
+  return presentUserIds
 }
 
 // ============================================
