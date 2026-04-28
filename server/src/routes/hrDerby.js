@@ -71,14 +71,18 @@ router.get('/players', async (req, res) => {
   res.json(enriched)
 })
 
-// Build a map: team abbreviation → { state, period, score, startsAt } for today
+// Build a map: team abbreviation → { state, period, startsAt } for the given
+// pick date. Compares each ESPN event's ET-date (MLB schedules in ET) to the
+// pick date so a server in UTC doesn't blank out the map for late-evening
+// US users (whose local "today" is yesterday in UTC).
 async function buildMlbGameStateByTeam(date) {
-  const today = new Date().toLocaleDateString('en-CA')
-  if (date !== today) return {}
   try {
     const events = await fetchESPNScoreboard('baseball_mlb')
     const map = {}
     for (const e of events) {
+      if (!e.startsAt) continue
+      const eventDate = new Date(e.startsAt).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+      if (eventDate !== date) continue
       const entry = {
         state: e.state, // 'pre' | 'in' | 'post' | 'postponed'
         period: e.period, // e.g. "Top 5th"
