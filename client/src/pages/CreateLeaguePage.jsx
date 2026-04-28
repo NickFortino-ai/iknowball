@@ -326,6 +326,10 @@ export default function CreateLeaguePage() {
     if (format === 'fantasy' && fantasyFormat === 'traditional') setSport('americanfootball_nfl')
     if (format === 'mlb_dfs' || format === 'hr_derby') setSport('baseball_mlb')
     if (format === 'td_pass') setSport('americanfootball_nfl')
+    // Per-format salary cap default — MLB pricing settled lower than NBA, so
+    // it caps at $40k by default with $50k as the bigger option.
+    if (format === 'mlb_dfs') setSalaryCap(40000)
+    else if (format === 'nba_dfs' || (format === 'fantasy' && fantasyFormat === 'salary_cap')) setSalaryCap(60000)
   }, [format, fantasyFormat])
   const [scoringFormat, setScoringFormat] = useState('ppr')
   const [scoringRules, setScoringRules] = useState(null) // null = use preset
@@ -1341,7 +1345,7 @@ export default function CreateLeaguePage() {
               <div>
                 <label className="text-xs text-text-muted block mb-1">Salary Cap</label>
                 <div className="flex gap-2">
-                  {[50000, 60000, 75000].map((n) => (
+                  {[40000, 50000].map((n) => (
                     <button
                       key={n}
                       type="button"
