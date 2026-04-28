@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useFantasyTrades, useRespondToTrade, useFantasyRoster, useProposeTrade, useFantasyTransactions } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
@@ -20,7 +20,7 @@ function PlayerChip({ player }) {
   )
 }
 
-function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, onCancel, onApprove, onVeto }) {
+function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, onCancel, onCounter, onApprove, onVeto }) {
   const isReceiver = trade.receiver_user_id === currentUserId
   const isProposer = trade.proposer_user_id === currentUserId
   const isPending = trade.status === 'pending'
@@ -69,8 +69,11 @@ function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, 
       {trade.message && <div className="text-sm text-text-primary italic mt-3">"{trade.message}"</div>}
 
       {isPending && isReceiver && (
-        <div className="flex gap-3 mt-3">
+        <div className="flex gap-2 mt-3">
           <button onClick={() => onAccept(trade.id)} className="flex-1 py-2 rounded-lg text-sm font-semibold bg-correct text-white">Accept</button>
+          {onCounter && (
+            <button onClick={() => onCounter(trade)} className="flex-1 py-2 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors">Counter</button>
+          )}
           <button onClick={() => onDecline(trade.id)} className="flex-1 py-2 rounded-lg text-sm font-semibold bg-incorrect text-white">Decline</button>
         </div>
       )}
@@ -181,15 +184,24 @@ function TradeTransactionRow({ items, timestamp }) {
 // Propose Trade Modal (exported for reuse from RosterModal)
 // =====================================================================
 
-export function ProposeTradeModal({ league, currentUserId, onClose, initialReceiverId, initialAcquirePlayerId }) {
+export function ProposeTradeModal({ league, currentUserId, onClose, initialReceiverId, initialAcquirePlayerId, counteringTradeId }) {
   const { data: myRoster } = useFantasyRoster(league.id)
   const propose = useProposeTrade(league.id)
+  const respond = useRespondToTrade(league.id)
 
   const otherMembers = (league.members || []).filter((m) => m.user_id !== currentUserId)
   const [receiverId, setReceiverId] = useState(initialReceiverId || '')
   const [myPlayerIds, setMyPlayerIds] = useState([])
   const [theirPlayerIds, setTheirPlayerIds] = useState(initialAcquirePlayerId ? [initialAcquirePlayerId] : [])
   const [message, setMessage] = useState('')
+
+  // Lock body scroll while the modal is open so iOS swipes can't bleed
+  // through to the page behind the modal.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
 
   const { data: theirRoster } = useQuery({
     queryKey: ['leagues', league.id, 'fantasy', 'roster', receiverId],
@@ -206,13 +218,18 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
     if (!receiverId) { toast('Pick a trade partner', 'error'); return }
     if (myPlayerIds.length === 0 && theirPlayerIds.length === 0) { toast('Add at least one player', 'error'); return }
     try {
+      // When countering, mark the original trade as countered first so it
+      // doesn't sit alongside the new one as still-pending.
+      if (counteringTradeId) {
+        await respond.mutateAsync({ tradeId: counteringTradeId, action: 'counter' })
+      }
       await propose.mutateAsync({
         receiver_user_id: receiverId,
         proposer_player_ids: myPlayerIds,
         receiver_player_ids: theirPlayerIds,
         message: message.trim() || undefined,
       })
-      toast('Trade proposed', 'success')
+      toast(counteringTradeId ? 'Counter proposed' : 'Trade proposed', 'success')
       onClose()
     } catch (err) {
       toast(err.message || 'Failed to propose trade', 'error')
@@ -220,10 +237,10 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={onClose}>
-      <div className="bg-bg-primary border border-text-primary/20 w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-bg-primary border border-text-primary/20 w-full max-w-md md:max-w-2xl rounded-2xl max-h-[85vh] overflow-y-auto overscroll-contain" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
-          <h3 className="font-display text-lg">Propose Trade</h3>
+          <h3 className="font-display text-lg">{counteringTradeId ? 'Counter Trade' : 'Propose Trade'}</h3>
           <button onClick={onClose} className="text-text-muted p-1">&times;</button>
         </div>
 
@@ -298,9 +315,9 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
 
           <div className="flex gap-2 pt-2">
             <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-border">Cancel</button>
-            <button onClick={handleSubmit} disabled={propose.isPending || !receiverId}
+            <button onClick={handleSubmit} disabled={propose.isPending || respond.isPending || !receiverId}
               className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white disabled:opacity-50">
-              {propose.isPending ? 'Proposing…' : 'Propose Trade'}
+              {(propose.isPending || respond.isPending) ? 'Proposing…' : (counteringTradeId ? 'Propose Counter' : 'Propose Trade')}
             </button>
           </div>
         </div>
@@ -437,6 +454,7 @@ export default function FantasyTrades({ league, fantasySettings }) {
   const { data: roster } = useFantasyRoster(league.id)
   const respond = useRespondToTrade(league.id)
   const [showProposeModal, setShowProposeModal] = useState(false)
+  const [counterTrade, setCounterTrade] = useState(null)
   const [dropModal, setDropModal] = useState(null) // { tradeId, dropsNeeded }
   const subtab = new URLSearchParams(window.location.search).get('subtab')
   const [activeView, setActiveView] = useState(subtab === 'trades' ? 'trades' : 'activity') // 'activity' | 'trades'
@@ -486,6 +504,15 @@ export default function FantasyTrades({ league, fantasySettings }) {
       {showProposeModal && (
         <ProposeTradeModal league={league} currentUserId={profile?.id} onClose={() => setShowProposeModal(false)} />
       )}
+      {counterTrade && (
+        <ProposeTradeModal
+          league={league}
+          currentUserId={profile?.id}
+          initialReceiverId={counterTrade.proposer_user_id}
+          counteringTradeId={counterTrade.id}
+          onClose={() => setCounterTrade(null)}
+        />
+      )}
 
       {isLoading ? (
         <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>
@@ -529,6 +556,7 @@ export default function FantasyTrades({ league, fantasySettings }) {
                     onAccept={(id) => handleAction(id, 'accept')}
                     onDecline={(id) => handleAction(id, 'decline')}
                     onCancel={(id) => handleAction(id, 'cancel')}
+                    onCounter={(trade) => setCounterTrade(trade)}
                     onApprove={(id) => handleAction(id, 'approve')}
                     onVeto={(id) => handleAction(id, 'veto')} />
                 ))}
