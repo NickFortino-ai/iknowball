@@ -216,15 +216,14 @@ export default function AdminPage() {
 
   const upcomingGames = games || []
 
-  // Build 7-day schedule: map each date to its featured props. Settled props
-  // are excluded — once a prop is graded it doesn't belong on the
-  // forward-looking lineup anymore (the previous 7 days view still shows
-  // the historical record).
-  const scheduleDays = Array.from({ length: 7 }, (_, i) => {
+  // Forward 3-day schedule (today / tomorrow / day after) — matches the
+  // 3-button date selector below. Settled props are excluded from the
+  // forward-looking lineup; the previous 7 days view still shows them.
+  const scheduleDays = Array.from({ length: 3 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() + i)
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })
+    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'long' })
     const dayProps = (featuredProps || []).filter((p) => p.featured_date === dateStr && p.status !== 'settled')
     return { dateStr, label, props: dayProps }
   })
@@ -672,51 +671,57 @@ export default function AdminPage() {
       )}
 
       {propsView === 'set' && <>
-      {/* Featured Schedule — 7-day overview */}
+      {/* Featured Schedule — 3-day overview (today / tomorrow / day after) */}
       <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6">
         <h2 className="font-semibold text-sm mb-3">Featured Schedule</h2>
-        <div className="space-y-1">
+        <div className="space-y-2">
           {scheduleDays.map(({ dateStr, label, props: dayProps }) => (
-            <div key={dateStr} className={`p-2.5 rounded-lg ${
-              dayProps.length ? 'bg-accent/5 border border-accent/20' : 'bg-bg-secondary/50'
+            <div key={dateStr} className={`rounded-lg ${
+              dayProps.length ? 'bg-accent/5 border border-accent/20' : 'bg-bg-secondary/50 border border-text-primary/10'
             }`}>
-              <div className="flex items-center gap-3">
-                <div className="w-20 shrink-0 text-xs font-semibold text-text-secondary">{label}</div>
-                {!dayProps.length && <span className="text-xs text-text-muted">—</span>}
+              <div className="px-3 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-text-primary/10 flex items-center justify-between">
+                <span>{label}</span>
+                <span className="text-text-muted normal-case tracking-normal">
+                  {dayProps.length === 0 ? 'No props' : `${dayProps.length} ${dayProps.length === 1 ? 'prop' : 'props'}`}
+                </span>
               </div>
-              {dayProps.map((prop) => {
-                const nameParts = prop.player_name?.split(' ') || []
-                const shortName = nameParts.length >= 2
-                  ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
-                  : prop.player_name
-                return (
-                <div key={prop.id} className="flex items-center gap-2 py-1.5 first:pt-0 ml-0 sm:ml-20 border-t border-white/10 first:border-t-0">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium truncate">
-                      {shortName} — {prop.market_label} ({prop.line})
-                    </span>
-                    <span className="text-xs text-text-muted ml-2">
-                      {prop.games?.away_team} @ {prop.games?.home_team}
-                    </span>
-                  </div>
-                  {prop.outcome && (
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                      prop.outcome === 'over' ? 'bg-correct/20 text-correct'
-                        : prop.outcome === 'under' ? 'bg-incorrect/20 text-incorrect'
-                        : 'bg-text-muted/20 text-text-muted'
-                    }`}>
-                      {prop.outcome.toUpperCase()}
-                    </span>
-                  )}
-                  {prop.status === 'voided' && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-text-muted/20 text-text-muted">VOIDED</span>
-                  )}
-                  {(prop.status === 'published' || prop.status === 'locked') && !prop.outcome && (
-                    <span className="text-xs text-text-muted">Pending</span>
-                  )}
+              {dayProps.length > 0 && (
+                <div className="divide-y divide-text-primary/10">
+                  {dayProps.map((prop) => {
+                    const nameParts = prop.player_name?.split(' ') || []
+                    const shortName = nameParts.length >= 2
+                      ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
+                      : prop.player_name
+                    return (
+                      <div key={prop.id} className="flex items-start gap-3 px-3 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-text-primary truncate">
+                            {shortName} — {prop.market_label} ({prop.line})
+                          </div>
+                          <div className="text-xs text-text-muted truncate mt-0.5">
+                            {prop.games?.away_team} @ {prop.games?.home_team}
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          {prop.outcome ? (
+                            <span className={`text-[10px] font-bold px-2 py-1 rounded ${
+                              prop.outcome === 'over' ? 'bg-correct/20 text-correct'
+                                : prop.outcome === 'under' ? 'bg-incorrect/20 text-incorrect'
+                                : 'bg-text-muted/20 text-text-muted'
+                            }`}>
+                              {prop.outcome.toUpperCase()}
+                            </span>
+                          ) : prop.status === 'voided' ? (
+                            <span className="text-[10px] font-bold px-2 py-1 rounded bg-text-muted/20 text-text-muted">VOIDED</span>
+                          ) : (prop.status === 'published' || prop.status === 'locked') ? (
+                            <span className="text-[10px] font-bold px-2 py-1 rounded bg-yellow-500/20 text-yellow-500">PENDING</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                )
-              })}
+              )}
             </div>
           ))}
         </div>
@@ -727,45 +732,52 @@ export default function AdminPage() {
           {showPrevious ? 'Hide previous props' : 'See previous props'}
         </button>
         {showPrevious && (
-          <div className="space-y-1 mt-2">
+          <div className="space-y-2 mt-2">
             {previousDays.map(({ dateStr, label, props: dayProps }) => (
-              <div key={dateStr} className={`p-2.5 rounded-lg ${
-                dayProps.length ? 'bg-bg-secondary/50 border border-border' : 'bg-bg-secondary/30'
+              <div key={dateStr} className={`rounded-lg ${
+                dayProps.length ? 'bg-bg-secondary/50 border border-text-primary/10' : 'bg-bg-secondary/30 border border-text-primary/10'
               }`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-20 shrink-0 text-xs font-semibold text-text-secondary">{label}</div>
-                  {!dayProps.length && <span className="text-xs text-text-muted">—</span>}
+                <div className="px-3 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider border-b border-text-primary/10 flex items-center justify-between">
+                  <span>{label}</span>
+                  <span className="text-text-muted normal-case tracking-normal">
+                    {dayProps.length === 0 ? 'No props' : `${dayProps.length} ${dayProps.length === 1 ? 'prop' : 'props'}`}
+                  </span>
                 </div>
-                {dayProps.map((prop) => {
-                  const nameParts = prop.player_name?.split(' ') || []
-                  const shortName = nameParts.length >= 2
-                    ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
-                    : prop.player_name
-                  return (
-                    <div key={prop.id} className="flex items-center gap-2 py-1.5 first:pt-0 ml-0 sm:ml-20 border-t border-white/10 first:border-t-0">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium truncate">
-                          {shortName} — {prop.market_label} ({prop.line})
-                        </span>
-                        <span className="text-xs text-text-muted ml-2">
-                          {prop.games?.away_team} @ {prop.games?.home_team}
-                        </span>
-                      </div>
-                      {prop.outcome && (
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                          prop.outcome === 'over' ? 'bg-correct/20 text-correct'
-                            : prop.outcome === 'under' ? 'bg-incorrect/20 text-incorrect'
-                            : 'bg-text-muted/20 text-text-muted'
-                        }`}>
-                          {prop.outcome.toUpperCase()}
-                        </span>
-                      )}
-                      {(prop.status === 'published' || prop.status === 'locked') && !prop.outcome && (
-                        <span className="text-xs text-text-muted">Pending</span>
-                      )}
-                    </div>
-                  )
-                })}
+                {dayProps.length > 0 && (
+                  <div className="divide-y divide-text-primary/10">
+                    {dayProps.map((prop) => {
+                      const nameParts = prop.player_name?.split(' ') || []
+                      const shortName = nameParts.length >= 2
+                        ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
+                        : prop.player_name
+                      return (
+                        <div key={prop.id} className="flex items-start gap-3 px-3 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-text-primary truncate">
+                              {shortName} — {prop.market_label} ({prop.line})
+                            </div>
+                            <div className="text-xs text-text-muted truncate mt-0.5">
+                              {prop.games?.away_team} @ {prop.games?.home_team}
+                            </div>
+                          </div>
+                          <div className="shrink-0">
+                            {prop.outcome ? (
+                              <span className={`text-[10px] font-bold px-2 py-1 rounded ${
+                                prop.outcome === 'over' ? 'bg-correct/20 text-correct'
+                                  : prop.outcome === 'under' ? 'bg-incorrect/20 text-incorrect'
+                                  : 'bg-text-muted/20 text-text-muted'
+                              }`}>
+                                {prop.outcome.toUpperCase()}
+                              </span>
+                            ) : (prop.status === 'published' || prop.status === 'locked') ? (
+                              <span className="text-[10px] font-bold px-2 py-1 rounded bg-yellow-500/20 text-yellow-500">PENDING</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
