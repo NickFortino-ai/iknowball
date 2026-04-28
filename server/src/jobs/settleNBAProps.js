@@ -52,10 +52,13 @@ export async function settleNBAProps() {
 
   if (!props?.length) return
 
-  // Get the game dates so we can look up stats
+  // Get the game dates so we can look up stats. Use ET (the schedule timezone
+  // nba_dfs_player_stats.game_date is keyed against) — toISOString() drops UTC
+  // dates which roll forward for late-evening Pacific/Central games and miss
+  // the lookup entirely (e.g. 8pm CT tip → 02:00 UTC next day).
   const gameDates = new Set()
   for (const prop of props) {
-    const date = new Date(prop.games.starts_at).toISOString().split('T')[0]
+    const date = new Date(prop.games.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
     gameDates.add(date)
   }
 
