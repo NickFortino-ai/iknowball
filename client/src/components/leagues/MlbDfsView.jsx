@@ -191,7 +191,7 @@ function MlbLiveView({ league, date: leagueDate }) {
                           ) : (
                             <>
                               {slot.headshot_url ? (
-                                <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
+                                <img src={slot.headshot_url} alt="" width="44" height="44" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
                                   onError={(e) => { e.target.style.display = 'none' }} />
                               ) : (
                                 <div className="w-11 h-11 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold">
@@ -496,6 +496,10 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                         <img
                           src={player.headshot_url}
                           alt=""
+                          width="32"
+                          height="32"
+                          loading="lazy"
+                          decoding="async"
                           className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
                           onError={(e) => { e.target.style.display = 'none' }}
                         />
@@ -603,6 +607,10 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                     <img
                       src={player.headshot_url}
                       alt=""
+                      width="40"
+                      height="40"
+                      loading="lazy"
+                      decoding="async"
                       className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                       onError={(e) => { e.target.src = ''; e.target.style.display = 'none' }}
                     />
