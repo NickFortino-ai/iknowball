@@ -664,17 +664,25 @@ export default function FantasyDraftRoom({ league }) {
 
       {/* Sticky pick banner — glass edge */}
       <div className="sticky top-0 z-20 -mx-2 px-2 pt-1 md:static md:mx-0 md:px-0 md:pt-0">
-      <div className={`rounded-xl px-4 py-2.5 flex items-center justify-center gap-3 flex-wrap bg-bg-primary border ${isMyTurn ? 'border-accent' : 'border-text-primary/20'}`}>
+      <div className={`rounded-xl px-4 py-2.5 flex items-center justify-center gap-3 flex-wrap bg-bg-primary border transition-all ${
+        isMyTurn
+          ? 'border-2 border-accent bg-accent/5 shadow-[0_0_24px_rgba(251,146,60,0.5)]'
+          : 'border-text-primary/20'
+      }`}>
         <div className="font-display text-base md:text-lg text-white">
           R{currentPick?.round} · PICK {currentPick?.pick_number}
         </div>
-        <div className="font-display text-sm md:text-base text-text-secondary">
-          {isMyTurn ? "You're on the clock!" : `${currentPick?.users?.display_name || 'Someone'} is picking...`}
+        <div className={`font-display text-sm md:text-base ${isMyTurn ? 'text-accent font-bold uppercase tracking-wider' : 'text-text-secondary'}`}>
+          {isMyTurn ? "🔔 You're on the clock!" : `${currentPick?.users?.display_name || 'Someone'} is picking...`}
         </div>
         {onClockIsAutoDrafting ? (
           <div className="font-display text-base md:text-lg text-yellow-400">AUTO</div>
         ) : timerSeconds != null ? (
-          <div className={`font-display text-base md:text-lg ${timerSeconds <= 10 ? 'text-incorrect' : 'text-text-primary'}`}>
+          <div className={`font-display ${
+            timerSeconds <= 15
+              ? 'text-2xl md:text-3xl text-incorrect animate-pulse'
+              : 'text-base md:text-lg text-text-primary'
+          }`}>
             {Math.floor(timerSeconds / 60)}:{String(timerSeconds % 60).padStart(2, '0')}
           </div>
         ) : null}
@@ -720,6 +728,8 @@ export default function FantasyDraftRoom({ league }) {
           onDraft={(isMyTurn || offlineMode)
             ? async () => { await handlePick(detailPlayerId); setDetailPlayerId(null) }
             : null}
+          onQueue={() => toggleQueue(detailPlayerId)}
+          isQueued={queuedIds.has(detailPlayerId)}
         />
       )}
 

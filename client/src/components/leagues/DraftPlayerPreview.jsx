@@ -71,7 +71,7 @@ function columnsFor(position) {
   ]
 }
 
-export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, onClose, onDraft }) {
+export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, onClose, onDraft, onQueue, isQueued }) {
   const [expanded, setExpanded] = useState(false)
   const isLeague = !!leagueId
   const leagueQuery = useDraftPlayerDetail(isLeague ? leagueId : null, isLeague ? playerId : null)
@@ -141,14 +141,28 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
             <span>· ADP #{player.search_rank || '—'}</span>
             {proj != null && <span>· {Number(proj).toFixed(1)} proj</span>}
           </div>
-          {onDraft && (
-            <button
-              onClick={onDraft}
-              className="mt-2 px-4 md:px-5 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-95 transition"
-            >
-              Draft
-            </button>
-          )}
+          <div className="mt-2 flex gap-2 flex-wrap">
+            {onDraft && (
+              <button
+                onClick={onDraft}
+                className="px-4 md:px-5 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-bold uppercase tracking-wider bg-accent text-white hover:bg-accent-hover active:scale-95 transition"
+              >
+                Draft
+              </button>
+            )}
+            {onQueue && (
+              <button
+                onClick={onQueue}
+                className={`px-4 md:px-5 py-2 md:py-2.5 rounded-lg text-sm md:text-base font-bold uppercase tracking-wider transition active:scale-95 ${
+                  isQueued
+                    ? 'bg-correct/15 border border-correct/40 text-correct'
+                    : 'bg-bg-card border border-text-primary/20 text-text-primary hover:bg-bg-secondary'
+                }`}
+              >
+                {isQueued ? '★ Queued' : '☆ Queue'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
