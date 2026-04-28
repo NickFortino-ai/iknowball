@@ -55,6 +55,7 @@ function getNotificationIcon(n) {
       return reactionEmojis[n.metadata?.reactionType] || '🔥'
     }
     case 'comment': return '\uD83D\uDCAC' // 💬
+    case 'league_thread_mention': return '\uD83D\uDCAC' // 💬
     case 'hot_take_callout': return '\uD83C\uDFF7\uFE0F' // 🏷️
     case 'connection_request': return '\uD83E\uDD1D' // 🤝
     case 'connection_accepted': return '\uD83E\uDD1D' // 🤝
@@ -191,6 +192,9 @@ function getNotificationRoute(notification) {
 
     case 'fantasy_matchup_result':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+
+    case 'league_thread_mention':
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Thread` : null
 
     // Underfill flow notifications
     case 'fantasy_league_underfilled':
