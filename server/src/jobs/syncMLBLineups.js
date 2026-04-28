@@ -15,21 +15,27 @@ function tomorrowET() {
 
 /**
  * Fetch probable pitchers and confirmed lineups from ESPN for a given date.
- * Returns { teamProbables: Map<teamAbbrev, espnPitcherId>, confirmedBatters: Map<espnId, battingOrder> }
+ * Returns { teamProbables, confirmedBatters, lineupConfirmedTeams }
+ *  - teamProbables: Map<teamAbbrev, espnPitcherId>
+ *  - confirmedBatters: Map<espnId, battingOrder>
+ *  - lineupConfirmedTeams: Set<teamAbbrev> — teams we successfully parsed any
+ *    confirmed batter for. Anyone NOT in that team's confirmed batter set is
+ *    marked not_starting downstream.
  */
 async function fetchLineupsForDate(date) {
   const dateStr = date.replace(/-/g, '')
   const teamProbables = new Map() // teamAbbrev → espnPitcherId
   const confirmedBatters = new Map() // espnId → battingOrder
+  const lineupConfirmedTeams = new Set() // teamAbbrev that has any confirmed batter
 
   let events
   try {
     const res = await fetch(`${ESPN_BASE}/baseball/mlb/scoreboard?dates=${dateStr}`)
-    if (!res.ok) return { teamProbables, confirmedBatters }
+    if (!res.ok) return { teamProbables, confirmedBatters, lineupConfirmedTeams }
     const data = await res.json()
     events = data.events || []
   } catch {
-    return { teamProbables, confirmedBatters }
+    return { teamProbables, confirmedBatters, lineupConfirmedTeams }
   }
 
   for (const event of events) {
@@ -61,8 +67,12 @@ async function fetchLineupsForDate(date) {
         if (!res.ok) continue
         const summary = await res.json()
 
-        // Check boxscore for batting lineup (starter flag + order)
+        // Check boxscore for batting lineup (starter flag + order). Each team
+        // entry has its own abbreviation — track which teams we found
+        // confirmed starters for so we can flag non-starters on those teams.
         for (const team of summary.boxscore?.players || []) {
+          const teamAbbrev = team.team?.abbreviation
+          let foundStarter = false
           for (const statGroup of team.statistics || []) {
             if (statGroup.name !== 'batting') continue
             for (let i = 0; i < (statGroup.athletes || []).length; i++) {
@@ -70,20 +80,26 @@ async function fetchLineupsForDate(date) {
               const espnId = athlete.athlete?.id
               if (espnId && athlete.starter) {
                 confirmedBatters.set(String(espnId), i + 1)
+                foundStarter = true
               }
             }
           }
+          if (foundStarter && teamAbbrev) lineupConfirmedTeams.add(teamAbbrev)
         }
 
-        // Also check rosters array (pre-game lineup format)
+        // Also check rosters array (pre-game lineup format) — same idea.
         for (const roster of summary.rosters || []) {
+          const teamAbbrev = roster.team?.abbreviation
+          let foundStarter = false
           for (const entry of roster.roster || []) {
             const espnId = entry.athlete?.id || entry.playerId
             const batOrder = entry.batOrder || entry.battingOrder || entry.order
             if (espnId && batOrder) {
               confirmedBatters.set(String(espnId), Number(batOrder))
+              foundStarter = true
             }
           }
+          if (foundStarter && teamAbbrev) lineupConfirmedTeams.add(teamAbbrev)
         }
       } catch {
         // Game summary not available yet
@@ -91,7 +107,7 @@ async function fetchLineupsForDate(date) {
     }
   }
 
-  return { teamProbables, confirmedBatters }
+  return { teamProbables, confirmedBatters, lineupConfirmedTeams }
 }
 
 /**
@@ -114,7 +130,7 @@ export async function syncMLBLineups() {
 
     if (!count) continue
 
-    const { teamProbables, confirmedBatters } = await fetchLineupsForDate(date)
+    const { teamProbables, confirmedBatters, lineupConfirmedTeams } = await fetchLineupsForDate(date)
 
     // Update pitcher lineup_status based on probables
     if (teamProbables.size > 0) {
@@ -140,14 +156,13 @@ export async function syncMLBLineups() {
     }
 
     // Update confirmed batter lineups
-    if (confirmedBatters.size > 0) {
+    if (confirmedBatters.size > 0 || lineupConfirmedTeams.size > 0) {
       const { data: batters } = await supabase
         .from('mlb_dfs_salaries')
-        .select('id, espn_player_id, lineup_status, batting_order')
+        .select('id, espn_player_id, team, lineup_status, batting_order')
         .eq('game_date', date)
         .eq('is_pitcher', false)
 
-      // Get set of teams that have confirmed lineups
       const confirmedBatterIds = new Set(confirmedBatters.keys())
 
       for (const b of batters || []) {
@@ -157,6 +172,16 @@ export async function syncMLBLineups() {
             await supabase
               .from('mlb_dfs_salaries')
               .update({ lineup_status: 'confirmed', batting_order: order })
+              .eq('id', b.id)
+            totalUpdated++
+          }
+        } else if (lineupConfirmedTeams.has(b.team)) {
+          // Team's lineup is out and this player isn't in it — flag NS so the
+          // player browser badges them red instead of leaving the row pending.
+          if (b.lineup_status !== 'not_starting' || b.batting_order !== null) {
+            await supabase
+              .from('mlb_dfs_salaries')
+              .update({ lineup_status: 'not_starting', batting_order: null })
               .eq('id', b.id)
             totalUpdated++
           }

@@ -45,7 +45,6 @@ function InjuryBadge({ status }) {
 }
 
 function LineupBadge({ status }) {
-  if (!status) return null
   if (status === 'confirmed') {
     return (
       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-correct/20 text-correct" title="Confirmed starter">
@@ -60,7 +59,12 @@ function LineupBadge({ status }) {
       </span>
     )
   }
-  return null
+  // Null / undefined → lineup not yet announced for this player's team
+  return (
+    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="Lineup pending">
+      ?
+    </span>
+  )
 }
 
 function getPlayerGameState(player) {
