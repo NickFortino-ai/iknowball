@@ -243,8 +243,10 @@ export default function FantasyMyTeam({ league }) {
     setDetailPlayerId(playerId)
   }
 
-  // Pending trades where I'm the receiver
-  const incomingTrades = (trades || []).filter((t) => t.status === 'pending' && t.receiver_user_id === profile?.id)
+  // Any pending trade involving me — incoming (I'm the receiver) or
+  // outgoing (I proposed and am waiting). Counters back-and-forth keep
+  // the latest trade pending so the banner stays visible the whole time.
+  const pendingTrades = (trades || []).filter((t) => t.status === 'pending' && (t.receiver_user_id === profile?.id || t.proposer_user_id === profile?.id))
 
   // Build a working slot-by-player map (server slot or draftSlots override)
   // For future weeks with a saved weekly lineup, use those slots as the base
@@ -579,22 +581,31 @@ export default function FantasyMyTeam({ league }) {
         </div>
       )}
 
-      {/* Incoming trade proposals */}
-      {incomingTrades.map((trade) => {
-        const proposer = trade.proposer || trade.proposer_user
+      {/* Pending trade proposals — incoming or outgoing */}
+      {pendingTrades.map((trade) => {
+        const isOutgoing = trade.proposer_user_id === profile?.id
+        const counterparty = isOutgoing
+          ? (trade.receiver || trade.receiver_user)
+          : (trade.proposer || trade.proposer_user)
         const isExpanded = expandedTradeId === trade.id
         const proposerItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.proposer_user_id)
         const receiverItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.receiver_user_id)
+        // From my perspective: what I receive vs what I give up
+        const myReceiveItems = isOutgoing ? receiverItems : proposerItems
+        const myGiveItems = isOutgoing ? proposerItems : receiverItems
+        const counterpartyName = counterparty?.display_name || counterparty?.username
         return (
-          <div key={trade.id} className="rounded-xl border border-accent/40 bg-accent/5 overflow-hidden">
+          <div key={trade.id} className={`rounded-xl border overflow-hidden ${isOutgoing ? 'border-text-primary/20 bg-bg-primary/40' : 'border-accent/40 bg-accent/5'}`}>
             <button
               onClick={() => setExpandedTradeId(isExpanded ? null : trade.id)}
               className="w-full flex items-center gap-3 px-4 py-3 text-left"
             >
-              <Avatar user={proposer} size="sm" />
+              <Avatar user={counterparty} size="sm" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-text-primary">
-                  {proposer?.display_name || proposer?.username} proposed a trade
+                  {isOutgoing
+                    ? `Waiting on ${counterpartyName} to respond`
+                    : `${counterpartyName} proposed a trade`}
                 </div>
                 <div className="text-[10px] text-text-muted">Tap to review</div>
               </div>
@@ -608,7 +619,7 @@ export default function FantasyMyTeam({ league }) {
                   <div>
                     <div className="text-sm font-semibold text-text-primary mb-2">You receive</div>
                     <div className="space-y-1.5">
-                      {proposerItems.map((item) => (
+                      {myReceiveItems.map((item) => (
                         <div key={item.player_id} className="flex flex-col items-center rounded-lg bg-bg-primary/60 border border-text-primary/10 px-2 py-3 text-center">
                           {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-14 h-14 rounded-full object-cover mb-1.5" />}
                           <div className="text-sm font-bold text-text-primary leading-tight">{item.nfl_players?.full_name}</div>
@@ -620,7 +631,7 @@ export default function FantasyMyTeam({ league }) {
                   <div>
                     <div className="text-sm font-semibold text-text-primary mb-2">You give up</div>
                     <div className="space-y-1.5">
-                      {receiverItems.map((item) => (
+                      {myGiveItems.map((item) => (
                         <div key={item.player_id} className="flex flex-col items-center rounded-lg bg-bg-primary/60 border border-text-primary/10 px-2 py-3 text-center">
                           {item.nfl_players?.headshot_url && <img src={item.nfl_players.headshot_url} alt="" className="w-14 h-14 rounded-full object-cover mb-1.5" />}
                           <div className="text-sm font-bold text-text-primary leading-tight">{item.nfl_players?.full_name}</div>
@@ -633,26 +644,34 @@ export default function FantasyMyTeam({ league }) {
                 {trade.message && (
                   <div className="text-sm text-text-primary italic mb-3">"{trade.message}"</div>
                 )}
-                <div className="flex gap-2">
+                {isOutgoing ? (
                   <button
-                    onClick={() => handleTradeAction(trade.id, 'accept')}
+                    onClick={() => handleTradeAction(trade.id, 'cancel')}
                     disabled={respond.isPending}
-                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-correct text-white hover:bg-correct/90 transition-colors disabled:opacity-50"
-                  >Accept</button>
-                  <button
-                    onClick={() => {
-                      setExpandedTradeId(null)
-                      setShowCounterTrade(trade)
-                    }}
-                    disabled={respond.isPending}
-                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
-                  >Counter</button>
-                  <button
-                    onClick={() => handleTradeAction(trade.id, 'decline')}
-                    disabled={respond.isPending}
-                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-incorrect text-white hover:bg-incorrect/90 transition-colors disabled:opacity-50"
-                  >Decline</button>
-                </div>
+                    className="w-full py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-text-primary/20 hover:bg-text-primary/5 transition-colors disabled:opacity-50"
+                  >Cancel Trade</button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleTradeAction(trade.id, 'accept')}
+                      disabled={respond.isPending}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-correct text-white hover:bg-correct/90 transition-colors disabled:opacity-50"
+                    >Accept</button>
+                    <button
+                      onClick={() => {
+                        setExpandedTradeId(null)
+                        setShowCounterTrade(trade)
+                      }}
+                      disabled={respond.isPending}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+                    >Counter</button>
+                    <button
+                      onClick={() => handleTradeAction(trade.id, 'decline')}
+                      disabled={respond.isPending}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-incorrect text-white hover:bg-incorrect/90 transition-colors disabled:opacity-50"
+                    >Decline</button>
+                  </div>
+                )}
               </div>
             )}
           </div>
