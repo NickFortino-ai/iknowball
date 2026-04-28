@@ -765,14 +765,30 @@ export async function autoDraftPick(leagueId, userId) {
     }
   }
 
-  // 2. Fallback: best available from the user's big-board rankings
+  // 2. Fallback: best available from the user's big-board rankings.
+  //    If the league is synced to Draft Prep, the rankings live in
+  //    draft_prep_rankings — same branch logic getMyRankings uses.
   if (!pick) {
-    const { data: rankingRows } = await supabase
-      .from('fantasy_user_rankings')
-      .select('player_id')
-      .eq('league_id', leagueId)
-      .eq('user_id', userId)
-      .order('rank', { ascending: true })
+    const syncInfo = await getLeagueSyncInfo(leagueId, userId)
+    let rankingRows = null
+    if (syncInfo.isSynced) {
+      const { data } = await supabase
+        .from('draft_prep_rankings')
+        .select('player_id')
+        .eq('user_id', userId)
+        .eq('roster_config_hash', syncInfo.roster_config_hash)
+        .eq('scoring_format', syncInfo.scoring_format)
+        .order('rank', { ascending: true })
+      rankingRows = data
+    } else {
+      const { data } = await supabase
+        .from('fantasy_user_rankings')
+        .select('player_id')
+        .eq('league_id', leagueId)
+        .eq('user_id', userId)
+        .order('rank', { ascending: true })
+      rankingRows = data
+    }
     for (const r of rankingRows || []) {
       if (!drafted.has(r.player_id)) {
         pick = { id: r.player_id }
