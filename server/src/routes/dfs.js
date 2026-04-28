@@ -10,6 +10,25 @@ import {
 } from '../services/dfsService.js'
 import { getFantasySettings } from '../services/fantasyService.js'
 
+// Build the H2H starter slot meta from a league's roster_slots config so
+// route handlers don't bake in a fixed wr1/wr2/wr3 assumption — orphan
+// slots (e.g. 'wr3' after a commissioner shrunk the league to wr=2) get
+// excluded from starters cleanly. Mirrors buildH2HSlotMeta on the client.
+function buildH2HSlotMeta(rosterSlots) {
+  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
+  const order = []
+  const labels = {}
+  if ((slots.qb || 0) >= 1) { order.push('qb'); labels.qb = 'QB' }
+  for (let i = 1; i <= (slots.rb || 0); i++) { order.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
+  for (let i = 1; i <= (slots.wr || 0); i++) { order.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
+  if ((slots.te || 0) >= 1) { order.push('te'); labels.te = 'TE' }
+  if ((slots.flex || 0) >= 1) { order.push('flex'); labels.flex = 'FLEX' }
+  if ((slots.superflex || 0) >= 1) { order.push('superflex'); labels.superflex = 'SFLEX' }
+  if ((slots.k || 0) >= 1) { order.push('k'); labels.k = 'K' }
+  if ((slots.def || 0) >= 1) { order.push('def'); labels.def = 'DEF' }
+  return { starterSet: new Set(order), slotOrder: order, slotLabels: labels }
+}
+
 const router = Router()
 router.use(requireAuth)
 
@@ -438,11 +457,12 @@ router.get('/matchup-live', async (req, res) => {
   // Get scoring rules (custom JSONB takes priority over preset)
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('scoring_format, scoring_rules')
+    .select('scoring_format, scoring_rules, roster_slots')
     .eq('league_id', league_id)
     .single()
   const { applyScoringRules: applyRulesH2H, buildScoringRulesFromPreset: buildRulesH2H } = await import('../services/fantasyService.js')
   const leagueRules = settings?.scoring_rules || buildRulesH2H(settings?.scoring_format)
+  const { slotOrder: H2H_SLOT_ORDER_LIVE, slotLabels: H2H_SLOT_LABELS_LIVE } = buildH2HSlotMeta(settings?.roster_slots)
 
   // Fetch season averages for projections — pull every raw stat column so we
   // can apply the league's custom rules to each historical week, then average
@@ -555,8 +575,8 @@ router.get('/matchup-live', async (req, res) => {
     })
   }
 
-  const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
-  const SLOT_LABELS = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
+  const SLOT_ORDER = H2H_SLOT_ORDER_LIVE
+  const SLOT_LABELS = H2H_SLOT_LABELS_LIVE
 
   // Build a structured roster that always includes all starter slots, with
   // empty placeholders for unfilled positions. This prevents players from
@@ -662,15 +682,12 @@ router.get('/matchup-week', async (req, res) => {
 
     const { data: settings } = await supabase
       .from('fantasy_settings')
-      .select('scoring_format')
+      .select('scoring_format, roster_slots')
       .eq('league_id', league_id)
       .single()
     const projCol = { ppr: 'projected_pts_ppr', half_ppr: 'projected_pts_half_ppr', standard: 'projected_pts_std' }[settings?.scoring_format] || 'projected_pts_half_ppr'
 
-    const STARTER_SLOTS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
-    const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
-
-    const SLOT_LABELS_F = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
+    const { starterSet: STARTER_SLOTS, slotOrder: SLOT_ORDER, slotLabels: SLOT_LABELS_F } = buildH2HSlotMeta(settings?.roster_slots)
     const enriched = matchups.map((m) => {
       const buildRoster = (userId) => {
         const userRows = (rosters || []).filter((r) => r.user_id === userId)
@@ -743,16 +760,13 @@ router.get('/matchup-week', async (req, res) => {
 
     const { data: settings } = await supabase
       .from('fantasy_settings')
-      .select('scoring_format, scoring_rules')
+      .select('scoring_format, scoring_rules, roster_slots')
       .eq('league_id', league_id)
       .single()
     const { applyScoringRules: applyRules, buildScoringRulesFromPreset: buildRules } = await import('../services/fantasyService.js')
     const leagueRules = settings?.scoring_rules || buildRules(settings?.scoring_format)
 
-    const STARTER_SLOTS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
-    const SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
-
-    const SLOT_LABELS_P = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLEX', k: 'K', def: 'DEF' }
+    const { starterSet: STARTER_SLOTS, slotOrder: SLOT_ORDER, slotLabels: SLOT_LABELS_P } = buildH2HSlotMeta(settings?.roster_slots)
     const enriched = matchups.map((m) => {
       const buildRoster = (userId) => {
         const userRows = (rosters || []).filter((r) => r.user_id === userId)
@@ -829,10 +843,11 @@ router.get('/lineup-history', async (req, res) => {
   const { applyScoringRules: applyRulesHist, buildScoringRulesFromPreset: buildRulesHist } = await import('../services/fantasyService.js')
   const { data: leagueSettings } = await supabase
     .from('fantasy_settings')
-    .select('scoring_format, scoring_rules')
+    .select('scoring_format, scoring_rules, roster_slots')
     .eq('league_id', league_id)
     .single()
   const rules = leagueSettings?.scoring_rules || buildRulesHist(leagueSettings?.scoring_format)
+  const { starterSet: STARTER_KEYS_HIST } = buildH2HSlotMeta(leagueSettings?.roster_slots)
 
   const playerIds = rows.map((r) => r.player_id)
   const statsMap = {}
@@ -846,7 +861,7 @@ router.get('/lineup-history', async (req, res) => {
     for (const st of stats || []) statsMap[st.player_id] = st
   }
 
-  const STARTER_KEYS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
+  const STARTER_KEYS = STARTER_KEYS_HIST
   let teamTotal = 0
 
   const roster = rows.map((r) => {
