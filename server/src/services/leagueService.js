@@ -849,14 +849,22 @@ export async function updateLeague(leagueId, userId, data) {
     // Formats whose end date is free-form (not tied to an external schedule
     // like the NFL season or a tournament bracket) — commissioners can
     // shorten or extend a running league here. Trad/salary-cap fantasy,
-    // bracket, and TD Pass are deliberately omitted: their windows are
-    // bound to the league or NFL schedule and shouldn't be hand-edited.
-    const ENDS_AT_EDITABLE_FORMATS = ['hr_derby', 'nba_dfs', 'mlb_dfs', 'pickem', 'survivor']
+    // bracket, TD Pass, and survivor are deliberately omitted: their
+    // windows are bound to a schedule (NFL/tournament) or to a "last one
+    // standing" condition that ends the league naturally.
+    const ENDS_AT_EDITABLE_FORMATS = ['hr_derby', 'nba_dfs', 'mlb_dfs', 'pickem']
     const onlyEndsAtOrAlwaysAllowed = Object.keys(data).every((k) => k === 'ends_at' || alwaysAllowed.includes(k))
     const isCompleted = league.status === 'completed'
     if (onlyEndsAtOrAlwaysAllowed && !isCompleted && ENDS_AT_EDITABLE_FORMATS.includes(league.format)) {
       // Allow — fall through to update
     } else if (settingsOnly && (league.format === 'pickem' || league.format === 'survivor')) {
+      // Survivor leagues end on "last one standing" — block end-date edits
+      // even though the per-setting branch is otherwise permissive.
+      if (league.format === 'survivor' && data.ends_at !== undefined) {
+        const err = new Error("Survivor leagues end when one player is left standing — the end date can't be changed")
+        err.status = 400
+        throw err
+      }
       const hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)
       if (hasLockedPicks) {
         // Per-setting validation: block only dangerous changes
