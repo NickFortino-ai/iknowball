@@ -221,6 +221,57 @@ function ScoringRulesDisplay({ rules, format }) {
   )
 }
 
+// Mirrors `scaledWinnerBonus` in server/src/jobs/completeLeagues.js — used by
+// bracket, NBA DFS, MLB DFS, HR Derby, and TD Pass leagues. Anyone touching
+// these brackets must keep both in sync.
+function scaledWinnerBonusClient(n) {
+  if (n >= 41) return 100
+  if (n >= 31) return 75
+  if (n >= 16) return 50
+  if (n >= 11) return 30
+  if (n >= 6) return 20
+  return 10
+}
+
+function ordinalSuffix(r) {
+  const v = r % 100
+  if (v >= 11 && v <= 13) return `${r}th`
+  const last = r % 10
+  return `${r}${last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th'}`
+}
+
+function GlobalPointsTable({ memberCount }) {
+  if (!memberCount || memberCount < 2) return null
+  const bonus = scaledWinnerBonusClient(memberCount)
+  const rows = []
+  for (let r = 1; r <= memberCount; r++) {
+    const positionPts = memberCount + 1 - 2 * r
+    const total = positionPts + (r === 1 ? bonus : 0)
+    rows.push({ rank: r, total })
+  }
+  return (
+    <div className="mt-3 rounded-lg border border-border overflow-hidden">
+      <div className="px-3 py-1.5 bg-bg-secondary text-xs font-semibold text-text-secondary uppercase tracking-wider">
+        Global IKB Points by Finish
+      </div>
+      <div className="grid grid-cols-2 gap-x-6 px-3 py-2 text-sm">
+        {rows.map((row) => (
+          <div key={row.rank} className="flex justify-between py-0.5">
+            <span className="text-text-primary">{ordinalSuffix(row.rank)}</span>
+            <span className={
+              row.total > 0 ? 'text-correct font-semibold'
+              : row.total < 0 ? 'text-incorrect font-semibold'
+              : 'text-text-muted'
+            }>
+              {row.total > 0 ? `+${row.total}` : row.total}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament, fantasySettings: parentFantasySettings }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
@@ -419,7 +470,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         return `Build a 9-player NBA lineup under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. The player with the most fantasy points at the end of the night wins.`
       }
       const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
-      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. Tap a headshot to view player stats and injury info. The champion is determined by ${metric} over the season. Your finishing position affects your global IKB score (N+1−2×rank). ${bonusText}`
+      return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. Tap a headshot to view player stats and injury info. The champion is determined by ${metric} over the season. Your finishing position impacts your global IKB score — see the table below.`
     }
 
     if (league.format === 'mlb_dfs') {
@@ -429,7 +480,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         return `Build a 10-player MLB lineup (1 SP, C, 1B, 2B, SS, 3B, 3 OF, UTIL) under a ${cap} salary cap. Each player locks when their game starts. The player with the most fantasy points at the end of the night wins.`
       }
       const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
-      return `Build a new 10-player MLB lineup each day — 1 starting pitcher plus 9 position players — under a ${cap} salary cap. Players lock when their game starts. Batters earn points from hits, home runs, RBIs, runs, stolen bases, and walks. Pitchers earn points from innings pitched, strikeouts, wins, and saves. The champion is determined by ${metric} over the season. Your finishing position affects your global IKB score (N+1−2×rank). ${bonusText}`
+      return `Build a new 10-player MLB lineup each day — 1 starting pitcher plus 9 position players — under a ${cap} salary cap. Players lock when their game starts. Batters earn points from hits, home runs, RBIs, runs, stolen bases, and walks. Pitchers earn points from innings pitched, strikeouts, wins, and saves. The champion is determined by ${metric} over the season. Your finishing position impacts your global IKB score — see the table below.`
     }
 
     if (league.format === 'hr_derby') {
@@ -438,13 +489,12 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         'Each player can only be used once per week (Monday–Sunday). All players reset on Monday.',
         'You can change your picks for the current day until games start.',
         'The more homers your picks hit, the more points you earn.',
-        'Your finishing position affects your global IKB score (N+1−2×rank).',
-        bonusText,
+        'Your finishing position impacts your global IKB score — see the table below.',
       ]
     }
 
     if (league.format === 'td_pass') {
-      return `Pick one quarterback each week — you can only pick a QB once all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by end of the regular season wins. Your finishing position affects your global IKB score (N+1−2×rank). ${bonusText}`
+      return `Pick one quarterback each week — you can only pick a QB once all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by end of the regular season wins. Your finishing position impacts your global IKB score — see the table below.`
     }
 
     if (league.format === 'bracket') {
@@ -456,7 +506,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         .map((r) => `${r.name}: ${r.points_per_correct} pts`)
         .join(', ')
       const seriesBonus = isBo7 ? ' For each correct winner, predict the series length (4–7 games) for bonus points: +4 for exact, +2 for one game off.' : ''
-      const globalImpact = `When the tournament ends, your finishing position affects your global score: top half earns points, bottom half loses points (N+1−2×rank). ${bonusText}`
+      const globalImpact = `When the tournament ends, your finishing position impacts your global IKB score — see the table below.`
       return `Fill out your bracket before the lock deadline. Earn points for each correct pick — later rounds are worth more. ${roundScoring ? `Scoring: ${roundScoring}.` : ''}${seriesBonus} A tiebreaker score prediction on the championship game breaks ties in the standings. ${globalImpact}`
     }
 
@@ -490,25 +540,33 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
             </svg>
           </button>
           {!collapsed && narrative && !editingNarrative && (
-            <div className="mt-3 flex items-start gap-2">
-              {Array.isArray(narrative) ? (
-                <ul className="text-sm text-text-primary leading-relaxed flex-1 space-y-1.5 list-disc list-outside pl-5">
-                  {narrative.map((item, i) => <li key={i}>{item}</li>)}
-                </ul>
-              ) : (
-                <p className="text-sm text-text-primary leading-relaxed flex-1">{narrative}</p>
-              )}
-              {isCommissioner && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setNarrativeText(narrative); setEditingNarrative(true) }}
-                  className="shrink-0 text-text-muted hover:text-accent transition-colors mt-0.5"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
-              )}
-            </div>
+            <>
+              <div className="mt-3 flex items-start gap-2">
+                {Array.isArray(narrative) ? (
+                  <ul className="text-sm text-text-primary leading-relaxed flex-1 space-y-1.5 list-disc list-outside pl-5">
+                    {narrative.map((item, i) => <li key={i}>{item}</li>)}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-text-primary leading-relaxed flex-1">{narrative}</p>
+                )}
+                {isCommissioner && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setNarrativeText(narrative); setEditingNarrative(true) }}
+                    className="shrink-0 text-text-muted hover:text-accent transition-colors mt-0.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {(() => {
+                const f = league.format
+                const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && fantasySettings?.season_type !== 'single_week'
+                const showTable = isMultiNight || f === 'hr_derby' || f === 'td_pass' || f === 'bracket'
+                return showTable ? <GlobalPointsTable memberCount={memberCount} /> : null
+              })()}
+            </>
           )}
           {!collapsed && editingNarrative && (
             <div className="mt-3 space-y-2">
