@@ -41,6 +41,12 @@ const CATEGORIES = [
     ],
   },
   {
+    label: 'Posts & polls',
+    types: [
+      { key: 'poll_response_milestone', label: 'People responding to your poll' },
+    ],
+  },
+  {
     label: 'Fantasy football',
     types: [
       { key: 'fantasy_trade_proposed', label: 'Trade proposed' },

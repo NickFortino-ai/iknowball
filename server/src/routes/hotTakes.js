@@ -5,7 +5,9 @@ import { validate } from '../middleware/validate.js'
 import { createHotTake, updateHotTake, deleteHotTake, getHotTakesByUser, createReminder, askForHotTakes, createFlex } from '../services/hotTakeService.js'
 import { toggleBookmark, getBookmarkedHotTakes, getBookmarkStatusBatch } from '../services/socialService.js'
 import { checkUserMuted, checkContent } from '../services/contentFilterService.js'
+import { createNotification } from '../services/notificationService.js'
 import { supabase } from '../config/supabase.js'
+import { logger } from '../utils/logger.js'
 import { FALLBACK_TEAMS } from './teams.js'
 
 const router = Router()
@@ -353,7 +355,7 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
 
   const { data: votes } = await supabase
     .from('poll_votes')
-    .select('option_id')
+    .select('option_id, user_id')
     .eq('hot_take_id', req.params.id)
 
   const voteCounts = {}
@@ -365,6 +367,30 @@ router.post('/:id/vote', requireAuth, async (req, res) => {
     ...o,
     votes: voteCounts[o.id] || 0,
   }))
+
+  // Fire one-shot milestone notification when ≥6 non-author voters
+  try {
+    const { data: hotTake } = await supabase
+      .from('hot_takes')
+      .select('id, user_id, voters_notified_at')
+      .eq('id', req.params.id)
+      .maybeSingle()
+    if (hotTake && !hotTake.voters_notified_at) {
+      const nonAuthorCount = (votes || []).filter((v) => v.user_id !== hotTake.user_id).length
+      if (nonAuthorCount >= 6) {
+        await supabase
+          .from('hot_takes')
+          .update({ voters_notified_at: new Date().toISOString() })
+          .eq('id', hotTake.id)
+          .is('voters_notified_at', null)
+        await createNotification(hotTake.user_id, 'poll_response_milestone',
+          'People are responding to your poll!',
+          { hotTakeId: hotTake.id })
+      }
+    }
+  } catch (err) {
+    logger.error({ err, hotTakeId: req.params.id }, 'Failed to fire poll milestone notification')
+  }
 
   res.json({ options: results, userVote: option_id, totalVotes: votes?.length || 0 })
 })

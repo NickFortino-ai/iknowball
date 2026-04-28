@@ -66,6 +66,7 @@ function getNotificationIcon(n) {
     case 'hot_take_reminder': return '\uD83D\uDD14' // 🔔
     case 'hot_take_ask': return '\uD83D\uDCAD' // 💭
     case 'nfl_injury_warning': return '\uD83E\uDE79' // 🩹
+    case 'poll_response_milestone': return '\uD83D\uDCCA' // 📊
 
     // Survivor
     case 'survivor_result':
