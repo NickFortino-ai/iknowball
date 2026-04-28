@@ -184,6 +184,30 @@ function TradeTransactionRow({ items, timestamp }) {
 // Propose Trade Modal (exported for reuse from RosterModal)
 // =====================================================================
 
+// Canonical lineup order: starters in standard sequence, then bench, then IR.
+// Numeric suffix (rb1/rb2/wr1/wr2/wr3, bench1, bench2, ir1) preserves the
+// commissioner-set slot ordering.
+function rosterSlotOrder(slot) {
+  if (!slot) return 999
+  const s = String(slot).toLowerCase()
+  const tail = parseInt(s.replace(/^[a-z]+/, ''), 10) || 0
+  if (s === 'qb') return 0
+  if (s.startsWith('rb')) return 100 + tail
+  if (s.startsWith('wr')) return 200 + tail
+  if (s === 'te') return 300
+  if (s === 'flex') return 400
+  if (s === 'superflex' || s === 'sflex') return 500
+  if (s === 'k') return 600
+  if (s === 'def') return 700
+  if (s.startsWith('bench')) return 1000 + tail
+  if (s.startsWith('ir')) return 2000 + tail
+  return 9999
+}
+
+function sortRosterByLineup(roster) {
+  return [...(roster || [])].sort((a, b) => rosterSlotOrder(a.slot) - rosterSlotOrder(b.slot))
+}
+
 export function ProposeTradeModal({ league, currentUserId, onClose, initialReceiverId, initialAcquirePlayerId, counteringTradeId }) {
   const { data: myRoster } = useFantasyRoster(league.id)
   const propose = useProposeTrade(league.id)
@@ -272,7 +296,7 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
               <div>
                 <div className="text-[10px] uppercase text-text-muted mb-1.5">You give ({myPlayerIds.length})</div>
                 <div className="space-y-1 max-h-72 overflow-y-auto">
-                  {(myRoster || []).map((r) => {
+                  {sortRosterByLineup(myRoster).map((r) => {
                     const selected = myPlayerIds.includes(r.player_id)
                     return (
                       <button key={r.id} type="button" onClick={() => toggle(myPlayerIds, setMyPlayerIds, r.player_id)}
@@ -290,7 +314,7 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
               <div>
                 <div className="text-[10px] uppercase text-text-muted mb-1.5">You get ({theirPlayerIds.length})</div>
                 <div className="space-y-1 max-h-72 overflow-y-auto">
-                  {(theirRoster || []).map((r) => {
+                  {sortRosterByLineup(theirRoster).map((r) => {
                     const selected = theirPlayerIds.includes(r.player_id)
                     return (
                       <button key={r.id} type="button" onClick={() => toggle(theirPlayerIds, setTheirPlayerIds, r.player_id)}
