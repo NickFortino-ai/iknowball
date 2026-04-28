@@ -137,7 +137,7 @@ function mlbPitcherGameFpts(statMap) {
 /**
  * Calculate salary from MLB batter FPPG.
  * Lifted floor + steeper quadratic so practical top-of-pool prices
- * actually reach the cap and a balanced roster consumes the full $60k.
+ * actually reach the cap and a balanced roster consumes the full $40k.
  *   elite 13 FPPG → $6,500 (cap)
  *   strong 10 FPPG → $5,500
  *   solid  8 FPPG → $4,700
