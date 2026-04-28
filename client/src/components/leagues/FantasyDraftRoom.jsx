@@ -1376,13 +1376,13 @@ function DraftBoardPreview({ settings, picks, draftDate, profileId, isCommission
         )}
       </div>
 
-      <div className="rounded-xl border border-text-primary/20 p-2 overflow-auto">
-        <table className="text-xs border-collapse w-full table-fixed">
+      <div className="rounded-xl border border-text-primary/20 p-2 overflow-auto max-h-[70vh] md:max-h-none md:overflow-visible">
+        <table className="text-xs border-collapse md:w-full md:table-fixed">
           <thead>
             <tr>
-              <th className="px-1 py-2 text-text-muted font-semibold text-center w-10 border border-border bg-bg-secondary">Rd</th>
+              <th className="px-1 py-2 text-text-muted font-semibold text-center w-10 border border-border bg-bg-secondary sticky left-0 z-10">Rd</th>
               {draftOrder.map((userId, i) => (
-                <th key={userId} className={`px-2 py-2 font-semibold text-center border border-border ${userId === profileId ? 'text-accent' : 'text-text-secondary'}`}>
+                <th key={userId} className={`px-2 py-2 font-semibold text-center border border-border min-w-[120px] md:min-w-0 ${userId === profileId ? 'text-accent' : 'text-text-secondary'}`}>
                   <div className="text-text-muted text-[10px]">{i + 1}</div>
                   <div className="truncate">{userNames[userId] || 'Team'}</div>
                 </th>
@@ -1392,14 +1392,14 @@ function DraftBoardPreview({ settings, picks, draftDate, profileId, isCommission
           <tbody>
             {Array.from({ length: totalSlots }, (_, r) => (
               <tr key={r}>
-                <td className="px-1 py-3 text-center text-text-muted font-semibold border border-border bg-bg-secondary">
+                <td className="px-1 py-3 text-center text-text-muted font-semibold border border-border bg-bg-secondary sticky left-0 z-10">
                   <div className="flex items-center gap-0.5 justify-center">
                     {r + 1}
                     <span className="text-[8px]">{r % 2 === 0 ? '\u2192' : '\u2190'}</span>
                   </div>
                 </td>
                 {draftOrder.map((userId) => (
-                  <td key={userId} className="px-2 py-3 border border-border text-center">
+                  <td key={userId} className="px-2 py-3 border border-border text-center min-w-[120px] md:min-w-0">
                     <div className="text-text-muted/30">{'\u2014'}</div>
                   </td>
                 ))}
