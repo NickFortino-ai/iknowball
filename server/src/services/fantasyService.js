@@ -3926,7 +3926,7 @@ export async function processAllPendingWaivers() {
  * Propose a trade. proposerItems = array of player_ids the proposer is sending,
  * receiverItems = array of player_ids the receiver is sending back.
  */
-export async function proposeTrade(leagueId, proposerUserId, receiverUserId, proposerPlayerIds, receiverPlayerIds, message) {
+export async function proposeTrade(leagueId, proposerUserId, receiverUserId, proposerPlayerIds, receiverPlayerIds, message, countersTradeId) {
   if (proposerUserId === receiverUserId) {
     const err = new Error("Can't trade with yourself")
     err.status = 400
@@ -4016,11 +4016,19 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
   try {
     const { createNotification } = await import('./notificationService.js')
     const { data: league } = await supabase.from('leagues').select('name').eq('id', leagueId).single()
+    let messageText
+    if (countersTradeId) {
+      const { data: proposer } = await supabase.from('users').select('display_name, username').eq('id', proposerUserId).single()
+      const proposerName = proposer?.display_name || proposer?.username || 'a manager'
+      messageText = `${proposerName} countered your trade in ${league?.name || 'your league'}`
+    } else {
+      messageText = `You have a new trade proposal in ${league?.name || 'your league'}`
+    }
     await createNotification(
       receiverUserId,
       'fantasy_trade_proposed',
-      `You have a new trade proposal in ${league?.name || 'your league'}`,
-      { leagueId, tradeId: trade.id, actorId: proposerUserId },
+      messageText,
+      { leagueId, tradeId: trade.id, actorId: proposerUserId, countersTradeId: countersTradeId || undefined },
     )
   } catch (err) {
     logger.error({ err, tradeId: trade.id }, 'Failed to send trade notification')
@@ -4413,21 +4421,9 @@ export async function counterTrade(tradeId, userId) {
     .update({ status: 'countered', responded_at: new Date().toISOString() })
     .eq('id', tradeId)
 
-  try {
-    const { createNotification } = await import('./notificationService.js')
-    const { data: league } = await supabase.from('leagues').select('name').eq('id', trade.league_id).single()
-    const { data: counterer } = await supabase.from('users').select('display_name, username').eq('id', userId).single()
-    const countererName = counterer?.display_name || counterer?.username || 'a manager'
-    await createNotification(
-      trade.proposer_user_id,
-      'fantasy_trade_proposed',
-      `${countererName} countered your trade in ${league?.name || 'your league'}`,
-      { leagueId: trade.league_id, tradeId, actorId: userId },
-    )
-  } catch (err) {
-    logger.error({ err }, 'Failed to send trade-countered notification')
-  }
-
+  // No notification fired here — the followup proposeTrade call (which
+  // always immediately follows from the counter modal) sends a single
+  // counter-aware notification instead.
   return { countered: true }
 }
 

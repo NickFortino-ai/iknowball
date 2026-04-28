@@ -219,7 +219,9 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
     if (myPlayerIds.length === 0 && theirPlayerIds.length === 0) { toast('Add at least one player', 'error'); return }
     try {
       // When countering, mark the original trade as countered first so it
-      // doesn't sit alongside the new one as still-pending.
+      // doesn't sit alongside the new one as still-pending. Notification
+      // is suppressed there; proposeTrade fires a single counter-aware
+      // notification instead.
       if (counteringTradeId) {
         await respond.mutateAsync({ tradeId: counteringTradeId, action: 'counter' })
       }
@@ -228,6 +230,7 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
         proposer_player_ids: myPlayerIds,
         receiver_player_ids: theirPlayerIds,
         message: message.trim() || undefined,
+        counters_trade_id: counteringTradeId || undefined,
       })
       toast(counteringTradeId ? 'Counter proposed' : 'Trade proposed', 'success')
       onClose()

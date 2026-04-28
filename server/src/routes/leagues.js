@@ -1430,7 +1430,7 @@ router.get('/:id/fantasy/trades', requireAuth, async (req, res) => {
 
 router.post('/:id/fantasy/trades', requireAuth, async (req, res) => {
   try {
-    const { receiver_user_id, proposer_player_ids, receiver_player_ids, message } = req.body
+    const { receiver_user_id, proposer_player_ids, receiver_player_ids, message, counters_trade_id } = req.body
     const result = await proposeTrade(
       req.params.id,
       req.user.id,
@@ -1438,6 +1438,7 @@ router.post('/:id/fantasy/trades', requireAuth, async (req, res) => {
       proposer_player_ids || [],
       receiver_player_ids || [],
       message,
+      counters_trade_id,
     )
     res.json(result)
   } catch (err) {
