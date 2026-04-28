@@ -733,6 +733,65 @@ export async function autoFillLineupsForLeague(leagueId) {
 }
 
 /**
+ * Promote bench-eligible players into any empty starter slots for one
+ * user. Used after trades and waiver swaps so vacated lineup slots get
+ * refilled instead of sitting empty while new players pile up on the
+ * bench — which would otherwise leave the lineup looking incomplete and
+ * trip the roster-cap check on the next add.
+ */
+async function fillEmptyStarterSlots(leagueId, userId) {
+  if (!leagueId || !userId) return
+  const settings = await getFantasySettings(leagueId)
+  const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
+
+  const starterPlan = []
+  if ((rosterSlots.qb || 0) >= 1) starterPlan.push({ key: 'qb', accepts: ['QB'] })
+  for (let i = 1; i <= (rosterSlots.rb || 0); i++) starterPlan.push({ key: `rb${i}`, accepts: ['RB'] })
+  for (let i = 1; i <= (rosterSlots.wr || 0); i++) starterPlan.push({ key: `wr${i}`, accepts: ['WR'] })
+  if ((rosterSlots.te || 0) >= 1) starterPlan.push({ key: 'te', accepts: ['TE'] })
+  if ((rosterSlots.flex || 0) >= 1) starterPlan.push({ key: 'flex', accepts: ['RB', 'WR', 'TE'] })
+  if ((rosterSlots.superflex || 0) >= 1) starterPlan.push({ key: 'superflex', accepts: ['QB', 'RB', 'WR', 'TE'] })
+  if ((rosterSlots.k || 0) >= 1) starterPlan.push({ key: 'k', accepts: ['K'] })
+  if ((rosterSlots.def || 0) >= 1) starterPlan.push({ key: 'def', accepts: ['DEF'] })
+  const starterKeys = new Set(starterPlan.map((s) => s.key))
+
+  const { data: roster } = await supabase
+    .from('fantasy_rosters')
+    .select('id, slot, player_id, nfl_players(position)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+  if (!roster?.length) return
+
+  const filledStarterKeys = new Set(
+    roster.filter((r) => starterKeys.has(r.slot)).map((r) => r.slot)
+  )
+
+  // Walk slot plan in priority order; promote the first eligible benched
+  // player into each empty starter slot.
+  for (const slotDef of starterPlan) {
+    if (filledStarterKeys.has(slotDef.key)) continue
+    const candidate = roster.find((r) => {
+      const pos = r.nfl_players?.position
+      if (!pos || !slotDef.accepts.includes(pos)) return false
+      if (starterKeys.has(r.slot)) return false // already in another starter slot
+      if (r.slot && r.slot.startsWith('ir')) return false // skip IR
+      return true
+    })
+    if (!candidate) continue
+    const { error } = await supabase
+      .from('fantasy_rosters')
+      .update({ slot: slotDef.key })
+      .eq('id', candidate.id)
+    if (error) {
+      logger.error({ error, leagueId, userId, slot: slotDef.key }, 'Failed to promote bench player')
+      continue
+    }
+    candidate.slot = slotDef.key
+    filledStarterKeys.add(slotDef.key)
+  }
+}
+
+/**
  * Auto-pick for a user who missed their timer. Order of preference:
  *   1. The user's in-room draft queue (fantasy_draft_queues)
  *   2. The user's big-board rankings (fantasy_user_rankings — the same
@@ -4210,6 +4269,17 @@ async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
     }
   }
 
+  // Promote bench-eligible players into any starter slots vacated by the
+  // trade. Without this, the rosters end up with empty starter slots while
+  // the new players sit on the bench — which makes the cap check trip on
+  // the next add even though the lineup looks like it has room.
+  try {
+    await fillEmptyStarterSlots(trade.league_id, trade.proposer_user_id)
+    await fillEmptyStarterSlots(trade.league_id, trade.receiver_user_id)
+  } catch (err) {
+    logger.error({ err, tradeId }, 'Failed to refill starter slots after trade')
+  }
+
   await supabase
     .from('fantasy_trades')
     .update({ status: 'accepted', responded_at: new Date().toISOString() })
@@ -4277,19 +4347,20 @@ export async function approveTrade(tradeId, commissionerId) {
 
   const result = await _executeTrade(tradeId, trade, commissionerId)
 
-  // Notify both parties
+  // Notify both parties — both were participants, so personalize each one
   try {
     const { createNotification } = await import('./notificationService.js')
+    const message = `Your trade in ${league.name} was approved by the commissioner`
     await createNotification(
       trade.proposer_user_id,
       'fantasy_trade_approved',
-      `Your trade in ${league.name} was approved by the commissioner`,
+      message,
       { leagueId: trade.league_id, tradeId },
     )
     await createNotification(
       trade.receiver_user_id,
       'fantasy_trade_approved',
-      `A trade in ${league.name} was approved by the commissioner`,
+      message,
       { leagueId: trade.league_id, tradeId },
     )
   } catch (err) {
