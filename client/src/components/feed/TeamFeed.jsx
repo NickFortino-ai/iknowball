@@ -64,8 +64,8 @@ const SPORT_TEAMS = {
   basketball_wnba: [
     'Atlanta Dream', 'Chicago Sky', 'Connecticut Sun', 'Dallas Wings',
     'Golden State Valkyries', 'Indiana Fever', 'Las Vegas Aces', 'Los Angeles Sparks',
-    'Minnesota Lynx', 'New York Liberty', 'Phoenix Mercury', 'Seattle Storm',
-    'Washington Mystics',
+    'Minnesota Lynx', 'New York Liberty', 'Phoenix Mercury', 'Portland Fire',
+    'Seattle Storm', 'Toronto Tempo', 'Washington Mystics',
   ],
 }
 for (const [sport, teams] of Object.entries(SPORT_TEAMS)) {

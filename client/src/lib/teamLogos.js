@@ -64,8 +64,8 @@ const WNBA_ABBRS = {
   'Atlanta Dream': 'atl', 'Chicago Sky': 'chi', 'Connecticut Sun': 'conn',
   'Dallas Wings': 'dal', 'Golden State Valkyries': 'gs', 'Indiana Fever': 'ind',
   'Las Vegas Aces': 'lv', 'Los Angeles Sparks': 'la', 'Minnesota Lynx': 'min',
-  'New York Liberty': 'ny', 'Phoenix Mercury': 'phx', 'Seattle Storm': 'sea',
-  'Washington Mystics': 'wsh',
+  'New York Liberty': 'ny', 'Phoenix Mercury': 'phx', 'Portland Fire': 'por',
+  'Seattle Storm': 'sea', 'Toronto Tempo': 'tor', 'Washington Mystics': 'wsh',
 }
 
 // NCAA uses numeric ESPN team IDs instead of abbreviations

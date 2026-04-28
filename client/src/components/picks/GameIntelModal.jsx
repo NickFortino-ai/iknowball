@@ -117,7 +117,9 @@ const TEAM_COLORS = {
   'Minnesota Lynx': '#0C2340',
   'New York Liberty': '#6ECEB2',
   'Phoenix Mercury': '#CB6015',
+  'Portland Fire': '#C8102E',
   'Seattle Storm': '#2C5234',
+  'Toronto Tempo': '#14B5A0',
   'Washington Mystics': '#C8102E',
 }
 
