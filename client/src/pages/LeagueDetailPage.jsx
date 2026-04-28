@@ -222,8 +222,7 @@ function ScoringRulesDisplay({ rules, format }) {
 }
 
 // Mirrors `scaledWinnerBonus` in server/src/jobs/completeLeagues.js — used by
-// bracket, NBA DFS, MLB DFS, HR Derby, and TD Pass leagues. Anyone touching
-// these brackets must keep both in sync.
+// bracket, NBA DFS, MLB DFS, HR Derby, and TD Pass leagues. Keep in sync.
 function scaledWinnerBonusClient(n) {
   if (n >= 41) return 100
   if (n >= 31) return 75
@@ -233,6 +232,58 @@ function scaledWinnerBonusClient(n) {
   return 10
 }
 
+// Mirrors TRADITIONAL_FANTASY_BONUSES in server/src/jobs/completeLeagues.js
+const TRADITIONAL_FANTASY_BONUSES = {
+  6:  { 1: 50,  2: 20, 3: 10 },
+  8:  { 1: 75,  2: 30, 3: 15 },
+  10: { 1: 90,  2: 36, 3: 18 },
+  12: { 1: 120, 2: 48, 3: 24 },
+  14: { 1: 165, 2: 66, 3: 33 },
+  16: { 1: 195, 2: 78, 3: 39 },
+  20: { 1: 225, 2: 90, 3: 45 },
+}
+
+// Mirrors SALARY_CAP_FULL_SEASON_BONUSES in server/src/jobs/completeLeagues.js
+const SALARY_CAP_FULL_SEASON_BONUSES = {
+  6:  { 1: 35,  2: 14, 3: 7 },
+  8:  { 1: 60,  2: 24, 3: 12 },
+  10: { 1: 75,  2: 30, 3: 15 },
+  12: { 1: 90,  2: 36, 3: 18 },
+  14: { 1: 105, 2: 42, 3: 21 },
+  16: { 1: 120, 2: 48, 3: 24 },
+  20: { 1: 150, 2: 60, 3: 30 },
+}
+
+function snapToClosestSize(table, n) {
+  if (table[n]) return n
+  const sizes = Object.keys(table).map(Number)
+  return sizes.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a))
+}
+
+function getTraditionalFantasyBonusClient(rank, n) {
+  if (rank > 3) return 0
+  return TRADITIONAL_FANTASY_BONUSES[snapToClosestSize(TRADITIONAL_FANTASY_BONUSES, n)][rank]
+}
+
+function getSalaryCapFullSeasonBonusClient(rank, n) {
+  if (rank > 3) return 0
+  return SALARY_CAP_FULL_SEASON_BONUSES[snapToClosestSize(SALARY_CAP_FULL_SEASON_BONUSES, n)][rank]
+}
+
+function buildBonusForRank({ leagueFormat, fantasyFormat, seasonType }) {
+  if (leagueFormat === 'fantasy' && fantasyFormat === 'salary_cap') {
+    if (seasonType === 'single_week') {
+      return (rank, n) => (rank === 1 ? n + 1 : 0)
+    }
+    return getSalaryCapFullSeasonBonusClient
+  }
+  if (leagueFormat === 'fantasy') {
+    return getTraditionalFantasyBonusClient
+  }
+  // Default: scaled winner bonus (bracket, NBA DFS, MLB DFS, HR Derby, TD Pass)
+  return (rank, n) => (rank === 1 ? scaledWinnerBonusClient(n) : 0)
+}
+
 function ordinalSuffix(r) {
   const v = r % 100
   if (v >= 11 && v <= 13) return `${r}th`
@@ -240,13 +291,13 @@ function ordinalSuffix(r) {
   return `${r}${last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th'}`
 }
 
-function GlobalPointsTable({ memberCount }) {
+function GlobalPointsTable({ memberCount, bonusForRank, footnote }) {
   if (!memberCount || memberCount < 2) return null
-  const bonus = scaledWinnerBonusClient(memberCount)
+  const computeBonus = bonusForRank || ((rank, n) => (rank === 1 ? scaledWinnerBonusClient(n) : 0))
   const rows = []
   for (let r = 1; r <= memberCount; r++) {
     const positionPts = memberCount + 1 - 2 * r
-    const total = positionPts + (r === 1 ? bonus : 0)
+    const total = positionPts + computeBonus(r, memberCount)
     rows.push({ rank: r, total })
   }
   return (
@@ -268,6 +319,11 @@ function GlobalPointsTable({ memberCount }) {
           </div>
         ))}
       </div>
+      {footnote && (
+        <div className="px-3 py-1.5 border-t border-border bg-bg-secondary text-[11px] text-text-muted">
+          {footnote}
+        </div>
+      )}
     </div>
   )
 }
@@ -430,10 +486,8 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       const isSalaryCap = fantasySettings?.format === 'salary_cap'
       if (isSalaryCap) {
         const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
-        return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Top finishers earn bonus points on the global leaderboard.`
+        return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Your finishing position impacts your global IKB score — see the table below.`
       }
-      // Build dynamic narrative based on league settings
-      const n = fantasySettings?.num_teams || league.member_count || 10
       const waiverType = fantasySettings?.waiver_type
       let waiverText = 'Dropped players go on waivers for 24 hours — during that window, any manager can place a claim.'
       if (waiverType === 'faab') {
@@ -442,16 +496,9 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         waiverText = 'Dropped players go on waivers for 24 hours — during that window, any manager can place a claim (highest waiver priority wins).'
       }
 
-      // Bonus table — snap to closest standard size
-      const BONUSES = { 6: [30,12,6], 8: [50,20,10], 10: [75,30,15], 12: [100,40,20], 14: [150,60,30], 16: [175,70,35], 20: [200,80,40] }
-      const sizes = Object.keys(BONUSES).map(Number)
-      const closest = sizes.reduce((a, b) => Math.abs(b - n) < Math.abs(a - n) ? b : a)
-      const [b1, b2, b3] = BONUSES[closest]
-      const bonusText = `In this ${n}-team league, the top 3 earn bonus points: 1st +${b1}, 2nd +${b2}, 3rd +${b3}.`
-
       const tradeReview = fantasySettings?.trade_review === 'commissioner' ? ' Trades require commissioner approval.' : ''
 
-      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster through trades, free-agent pickups, and IR moves.${tradeReview} ${waiverText} Unclaimed players become free agents. The weekly waiver run processes all pending claims Wednesday at 3 AM ET. Tap any player to view their stats, game log, injury status, and analysis. Your finishing position affects your global IKB score — every player earns position points, and ${bonusText}`
+      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster through trades, free-agent pickups, and IR moves.${tradeReview} ${waiverText} Unclaimed players become free agents. The weekly waiver run processes all pending claims Wednesday at 3 AM ET. Tap any player to view their stats, game log, injury status, and analysis. Your finishing position impacts your global IKB score — see the table below.`
     }
 
     if (league.format === 'squares') {
@@ -562,9 +609,20 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
               </div>
               {(() => {
                 const f = league.format
-                const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && fantasySettings?.season_type !== 'single_week'
-                const showTable = isMultiNight || f === 'hr_derby' || f === 'td_pass' || f === 'bracket'
-                return showTable ? <GlobalPointsTable memberCount={memberCount} /> : null
+                const sType = fantasySettings?.season_type
+                const fFormat = fantasySettings?.format
+                const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
+                const showTable = isMultiNight || f === 'hr_derby' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
+                if (!showTable) return null
+                // For fantasy, prefer the configured roster size; otherwise current member count
+                const tableMemberCount = f === 'fantasy'
+                  ? (fantasySettings?.num_teams || memberCount)
+                  : memberCount
+                const bonusFn = buildBonusForRank({ leagueFormat: f, fantasyFormat: fFormat, seasonType: sType })
+                const footnote = f === 'fantasy' && fFormat === 'salary_cap' && sType !== 'single_week'
+                  ? 'Bonuses scale by weeks played for mid-season runs.'
+                  : null
+                return <GlobalPointsTable memberCount={tableMemberCount} bonusForRank={bonusFn} footnote={footnote} />
               })()}
             </>
           )}
