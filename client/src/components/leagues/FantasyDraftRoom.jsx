@@ -1187,7 +1187,7 @@ function CompletedDraftReview({ league, picks, settings, profileId }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-4 text-center">
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/15 backdrop-blur-sm p-4 text-center">
         <div className="text-xs uppercase text-text-muted tracking-wider mb-1">Draft Complete</div>
         <div className="font-display text-lg text-text-primary">
           {numTeams}-team {scoringFormat}
