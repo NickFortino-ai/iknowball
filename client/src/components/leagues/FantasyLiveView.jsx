@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNflDfsLive, useFantasyMatchupLive } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
@@ -6,10 +6,26 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import { SkeletonCard } from '../ui/Skeleton'
 import PlayerDetailModal from './PlayerDetailModal'
 
+// Salary-cap NFL DFS lineup slots — fixed shape, not driven by roster_slots.
 const SLOT_LABELS = { QB: 'QB', RB1: 'RB', RB2: 'RB', WR1: 'WR', WR2: 'WR', WR3: 'WR', TE: 'TE', FLEX: 'FLX', DEF: 'DEF' }
 const SLOT_ORDER = ['QB', 'RB1', 'RB2', 'WR1', 'WR2', 'WR3', 'TE', 'FLEX', 'DEF']
-const H2H_SLOT_ORDER = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
-const H2H_SLOT_LABELS = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLX', k: 'K', def: 'DEF' }
+
+// Traditional H2H starter slots are dynamic — build them from the league's
+// roster_slots config so a wr=2 league doesn't show a phantom wr3.
+function buildH2HSlotMeta(rosterSlots) {
+  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
+  const order = []
+  const labels = {}
+  if ((slots.qb || 0) >= 1) { order.push('qb'); labels.qb = 'QB' }
+  for (let i = 1; i <= (slots.rb || 0); i++) { order.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
+  for (let i = 1; i <= (slots.wr || 0); i++) { order.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
+  if ((slots.te || 0) >= 1) { order.push('te'); labels.te = 'TE' }
+  if ((slots.flex || 0) >= 1) { order.push('flex'); labels.flex = 'FLX' }
+  if ((slots.superflex || 0) >= 1) { order.push('superflex'); labels.superflex = 'SFLX' }
+  if ((slots.k || 0) >= 1) { order.push('k'); labels.k = 'K' }
+  if ((slots.def || 0) >= 1) { order.push('def'); labels.def = 'DEF' }
+  return { starterSet: new Set(order), slotLabels: labels, slotOrder: order }
+}
 
 function buildStatLine(stats, position) {
   if (!stats) return null
@@ -214,11 +230,15 @@ function SalaryCapLive({ league, week, season }) {
 }
 
 /** Traditional H2H matchup live view */
-function MatchupLive({ league, week, season }) {
+function MatchupLive({ league, week, season, fantasySettings }) {
   const { profile } = useAuth()
   const { data, isLoading } = useFantasyMatchupLive(league.id, week, season)
   const [expandedMatchup, setExpandedMatchup] = useState(null)
   const [detailPlayerId, setDetailPlayerId] = useState(null)
+  const { starterSet: H2H_STARTER_SET, slotLabels: H2H_SLOT_LABELS } = useMemo(
+    () => buildH2HSlotMeta(fantasySettings?.roster_slots),
+    [fantasySettings?.roster_slots]
+  )
 
   if (isLoading) return (
     <div className="space-y-3">
@@ -364,7 +384,7 @@ function MatchupLive({ league, week, season }) {
                 <div className="grid grid-cols-2 divide-x divide-text-primary/10">
                   {/* Home roster */}
                   <div>
-                    {matchup.home_roster.map((slot) => {
+                    {matchup.home_roster.filter((s) => H2H_STARTER_SET.has(s.slot)).map((slot) => {
                       const statLine = buildStatLine(slot.stats, slot.position)
                       const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
                       return (
@@ -418,7 +438,7 @@ function MatchupLive({ league, week, season }) {
                   </div>
                   {/* Away roster */}
                   <div>
-                    {matchup.away_roster.map((slot) => {
+                    {matchup.away_roster.filter((s) => H2H_STARTER_SET.has(s.slot)).map((slot) => {
                       const statLine = buildStatLine(slot.stats, slot.position)
                       const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
                       return (
@@ -493,5 +513,5 @@ export default function FantasyLiveView({ league, fantasySettings }) {
     return <SalaryCapLive league={league} week={week} season={season} />
   }
 
-  return <MatchupLive league={league} week={week} season={season} />
+  return <MatchupLive league={league} week={week} season={season} fantasySettings={fantasySettings} />
 }

@@ -7,7 +7,24 @@ import PlayerDetailModal from './PlayerDetailModal'
 import PlayoffBracket from './PlayoffBracket'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
-const SLOT_LABELS = { qb: 'QB', rb1: 'RB', rb2: 'RB', wr1: 'WR', wr2: 'WR', wr3: 'WR', te: 'TE', flex: 'FLX', k: 'K', def: 'DEF' }
+// Build the starter slot key set + labels from a league's roster_slots
+// config. Anything outside the configured set is treated as bench (e.g.
+// orphan 'wr3' rows from a league shrunk to wr=2). Mirrors the helper in
+// RosterList.jsx and FantasyMyTeam.jsx.
+function buildSlotMeta(rosterSlots) {
+  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
+  const keys = []
+  const labels = {}
+  if ((slots.qb || 0) >= 1) { keys.push('qb'); labels.qb = 'QB' }
+  for (let i = 1; i <= (slots.rb || 0); i++) { keys.push(`rb${i}`); labels[`rb${i}`] = 'RB' }
+  for (let i = 1; i <= (slots.wr || 0); i++) { keys.push(`wr${i}`); labels[`wr${i}`] = 'WR' }
+  if ((slots.te || 0) >= 1) { keys.push('te'); labels.te = 'TE' }
+  if ((slots.flex || 0) >= 1) { keys.push('flex'); labels.flex = 'FLX' }
+  if ((slots.superflex || 0) >= 1) { keys.push('superflex'); labels.superflex = 'SFLX' }
+  if ((slots.k || 0) >= 1) { keys.push('k'); labels.k = 'K' }
+  if ((slots.def || 0) >= 1) { keys.push('def'); labels.def = 'DEF' }
+  return { starterSet: new Set(keys), slotLabels: labels, slotOrder: keys }
+}
 
 function InjuryBadge({ status }) {
   if (!status || status === 'Probable') return null
@@ -55,19 +72,17 @@ function buildStatLine(stats, position) {
   return parts.length ? parts.join(', ') : null
 }
 
-const STARTER_SET = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
-
-function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds }) {
+function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds, starterSet, slotLabels }) {
   const isMyMatchup = matchup.home_user?.id === myId || matchup.away_user?.id === myId
   const isCompleted = matchup.status === 'completed' || weekStatus === 'past'
   const homeWinning = (matchup.home_points || 0) >= (matchup.away_points || 0)
   const hasScores = (matchup.home_points || 0) > 0 || (matchup.away_points || 0) > 0
   const [showBench, setShowBench] = useState(false)
 
-  const homeStarters = (matchup.home_roster || []).filter((r) => STARTER_SET.has(r.slot))
-  const awayStarters = (matchup.away_roster || []).filter((r) => STARTER_SET.has(r.slot))
-  const homeBench = (matchup.home_roster || []).filter((r) => !STARTER_SET.has(r.slot))
-  const awayBench = (matchup.away_roster || []).filter((r) => !STARTER_SET.has(r.slot))
+  const homeStarters = (matchup.home_roster || []).filter((r) => starterSet.has(r.slot))
+  const awayStarters = (matchup.away_roster || []).filter((r) => starterSet.has(r.slot))
+  const homeBench = (matchup.home_roster || []).filter((r) => !starterSet.has(r.slot))
+  const awayBench = (matchup.away_roster || []).filter((r) => !starterSet.has(r.slot))
 
   // Win probability from projections
   const hProj = matchup.home_projected || 0
@@ -212,7 +227,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                   </div>
                   <div className="text-center">
                     <span className="text-xs font-semibold text-text-muted bg-bg-secondary rounded px-1.5 py-0.5">
-                      {SLOT_LABELS[hp?.slot] || '?'}
+                      {slotLabels[hp?.slot] || (hp?.position) || '?'}
                     </span>
                   </div>
                   <div className={`text-left font-bold text-sm ${ap?.game_status === 'live' ? 'text-orange-400' : ap?.game_status === 'final' ? 'text-white' : 'text-text-muted'}`}>
@@ -317,7 +332,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
               }
 
-              const slotLabel = SLOT_LABELS[hp?.slot] || '?'
+              const slotLabel = slotLabels[hp?.slot] || (hp?.position) || '?'
 
               return (
                 <div key={i} className="flex border-b border-text-primary/10">
@@ -462,6 +477,10 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const [detailPlayerId, setDetailPlayerId] = useState(null)
   const { data: blurbIdsList } = useBlurbPlayerIds(league.id)
   const blurbIds = useMemo(() => new Set(blurbIdsList || []), [blurbIdsList])
+  const { starterSet, slotLabels } = useMemo(
+    () => buildSlotMeta(fantasySettings?.roster_slots),
+    [fantasySettings?.roster_slots]
+  )
 
   function openPlayerDetail(id) {
     if (id) markBlurbSeen(id)
@@ -600,6 +619,8 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               })}
               onPlayerClick={openPlayerDetail}
               blurbIds={blurbIds}
+              starterSet={starterSet}
+              slotLabels={slotLabels}
             />
           ) : (
             <div className="text-center py-8 text-sm text-text-muted">No matchup found for you this week.</div>
@@ -631,6 +652,8 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               })}
               onPlayerClick={openPlayerDetail}
               blurbIds={blurbIds}
+              starterSet={starterSet}
+              slotLabels={slotLabels}
             />
           )
         })
