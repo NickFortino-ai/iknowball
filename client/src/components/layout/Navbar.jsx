@@ -60,6 +60,12 @@ function getNotificationIcon(n) {
     case 'connection_request': return '\uD83E\uDD1D' // 🤝
     case 'connection_accepted': return '\uD83E\uDD1D' // 🤝
     case 'league_invitation': return '\uD83D\uDCE8' // 📨
+    case 'league_deleted': return '\uD83D\uDDD1\uFE0F' // 🗑️
+    case 'streak_milestone': return '\uD83D\uDD25' // 🔥
+    case 'headlines': return '\uD83D\uDCF0' // 📰
+    case 'hot_take_reminder': return '\uD83D\uDD14' // 🔔
+    case 'hot_take_ask': return '\uD83D\uDCAD' // 💭
+    case 'nfl_injury_warning': return '\uD83E\uDE79' // 🩹
 
     // Survivor
     case 'survivor_result':
