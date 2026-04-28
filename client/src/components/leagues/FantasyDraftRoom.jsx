@@ -1249,9 +1249,6 @@ function CompletedDraftReview({ league, picks, settings, profileId }) {
         })}
       </div>
 
-      {/* Pre-draft browser — search, queue, tap-to-inspect */}
-      <PreDraftBrowser leagueId={league.id} />
-
       {/* Full board for reference */}
       <div className="rounded-xl border border-text-primary/20 bg-bg-primary p-2 overflow-hidden">
         <DraftBoard picks={picks} settings={settings} profileId={profileId} />
@@ -1562,6 +1559,9 @@ function DraftBoardPreview({ settings, picks, draftDate, profileId, league, isCo
           </tbody>
         </table>
       </div>
+
+      {/* Pre-draft browser \u2014 search, queue, tap-to-inspect */}
+      <PreDraftBrowser leagueId={league.id} />
     </div>
   )
 }
