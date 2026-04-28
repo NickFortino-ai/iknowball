@@ -443,6 +443,102 @@ export default function FantasyDraftRoom({ league }) {
           </div>
         )}
 
+        {/* Pre-draft player preview (Queue button only — Draft is gated until in_progress) */}
+        {detailPlayerId && (
+          <DraftPlayerPreview
+            leagueId={league.id}
+            playerId={detailPlayerId}
+            onClose={() => setDetailPlayerId(null)}
+            onQueue={() => toggleQueue(detailPlayerId)}
+            isQueued={queuedIds.has(detailPlayerId)}
+          />
+        )}
+
+        {/* Your queue */}
+        {hasPickSlots && (queue || []).length > 0 && (
+          <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">Your Queue</div>
+              <span className="text-[10px] text-text-muted italic">Auto-picks from here when your clock runs out</span>
+            </div>
+            <div className="space-y-1.5">
+              {queue.map((q, i) => (
+                <div key={q.player_id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-bg-card">
+                  <span className="text-xs text-text-muted w-5 text-center shrink-0">{i + 1}</span>
+                  {q.nfl_players?.headshot_url && (
+                    <img src={q.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
+                  )}
+                  <button onClick={() => setDetailPlayerId(q.player_id)} className="flex-1 text-left min-w-0">
+                    <div className="text-sm font-semibold text-text-primary truncate">{q.nfl_players?.full_name}</div>
+                    <div className="text-[10px] text-text-muted">{q.nfl_players?.position} · {q.nfl_players?.team || 'FA'}</div>
+                  </button>
+                  <button onClick={() => toggleQueue(q.player_id)} className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none w-8 h-8 flex items-center justify-center" title="Remove from queue">×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Browse players (pre-draft) */}
+        {hasPickSlots && (
+          <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden">
+            <div className="p-3 border-b border-text-primary/10">
+              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Browse Players</div>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search players..."
+                className="w-full bg-bg-card border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <div className="flex gap-1 mt-2 overflow-x-auto scrollbar-hide">
+                {POSITION_FILTERS.map((pos) => (
+                  <button
+                    key={pos}
+                    onClick={() => setPosFilter(pos)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                      posFilter === pos ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-secondary'
+                    }`}
+                  >{pos}</button>
+                ))}
+              </div>
+            </div>
+            <div className="max-h-[55vh] overflow-y-auto">
+              {(availablePlayers || []).slice(0, 60).map((player) => {
+                const isQueued = queuedIds.has(player.id)
+                return (
+                  <button
+                    key={player.id}
+                    onClick={() => setDetailPlayerId(player.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 border-b border-text-primary/10 last:border-0 hover:bg-accent/10 text-left transition-colors"
+                  >
+                    <span className="w-7 text-center text-xs font-bold text-text-muted shrink-0">
+                      {player.adp_rank || '—'}
+                    </span>
+                    {player.headshot_url && (
+                      <img src={player.headshot_url} alt="" loading="lazy" className="w-9 h-9 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.visibility = 'hidden' }} />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-text-primary truncate">{player.full_name}</div>
+                      <div className="text-[10px] text-text-muted">
+                        <span className={`px-1 py-0.5 rounded text-[10px] font-bold mr-1 ${POS_COLORS[player.position] || 'bg-text-primary/10 text-text-muted'}`}>
+                          {player.position}
+                        </span>
+                        {player.team || 'FA'}{player.bye_week ? ` · Bye ${player.bye_week}` : ''}
+                      </div>
+                    </div>
+                    {isQueued && (
+                      <span className="text-[10px] font-bold text-correct shrink-0">★ QUEUED</span>
+                    )}
+                  </button>
+                )
+              })}
+              {!(availablePlayers || []).length && (
+                <div className="text-center text-sm text-text-muted py-8">No players match.</div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* How it works */}
         <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4">
           <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">How the Draft Works</div>
