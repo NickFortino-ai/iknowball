@@ -642,77 +642,94 @@ export async function undoLastDraftPick(leagueId, commissionerId) {
 }
 
 /**
- * After the draft completes, fill every user's starting lineup with their
- * best available players (highest projected_pts_half_ppr per position),
- * with FLEX getting the best remaining RB/WR/TE.
+ * After the draft completes, fill every user's starting lineup using
+ * DRAFT ORDER: the first player drafted at each position becomes the
+ * starter, subsequent picks fall to FLEX (if eligible) or BENCH.
+ *
+ * Slot count comes from the league's `roster_slots` config so leagues
+ * with non-default lineups (e.g., 2WR instead of 3) don't get extra
+ * players forced into nonexistent starter slots.
  */
 export async function autoFillLineupsForLeague(leagueId) {
+  const settings = await getFantasySettings(leagueId)
+  const rosterSlots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 }
+
+  // Build the ordered starter slot plan. Keys must match STARTER_SLOTS_TRAD
+  // convention (qb / rb1..rbN / wr1..wrN / te / flex / k / def). FLEX accepts
+  // RB/WR/TE; SUPERFLEX (if config has it) additionally accepts QB.
+  const starterPlan = []
+  if ((rosterSlots.qb || 0) >= 1) starterPlan.push({ key: 'qb', accepts: ['QB'] })
+  for (let i = 1; i <= (rosterSlots.rb || 0); i++) starterPlan.push({ key: `rb${i}`, accepts: ['RB'] })
+  for (let i = 1; i <= (rosterSlots.wr || 0); i++) starterPlan.push({ key: `wr${i}`, accepts: ['WR'] })
+  if ((rosterSlots.te || 0) >= 1) starterPlan.push({ key: 'te', accepts: ['TE'] })
+  if ((rosterSlots.flex || 0) >= 1) starterPlan.push({ key: 'flex', accepts: ['RB', 'WR', 'TE'] })
+  if ((rosterSlots.superflex || 0) >= 1) starterPlan.push({ key: 'superflex', accepts: ['QB', 'RB', 'WR', 'TE'] })
+  if ((rosterSlots.k || 0) >= 1) starterPlan.push({ key: 'k', accepts: ['K'] })
+  if ((rosterSlots.def || 0) >= 1) starterPlan.push({ key: 'def', accepts: ['DEF'] })
+
+  // Picks in draft order — earliest pick at each position wins the starter slot.
+  const { data: picks } = await supabase
+    .from('fantasy_draft_picks')
+    .select('user_id, player_id, pick_number, nfl_players(position)')
+    .eq('league_id', leagueId)
+    .not('player_id', 'is', null)
+    .order('pick_number', { ascending: true })
+
+  if (!picks?.length) return
+
   const { data: rosters } = await supabase
     .from('fantasy_rosters')
-    .select('id, user_id, player_id, slot, nfl_players(id, position, projected_pts_half_ppr)')
+    .select('id, user_id, player_id, slot')
     .eq('league_id', leagueId)
 
-  if (!rosters?.length) return
+  // Map player_id → roster row id so we can update by id later
+  const rosterByPlayer = {}
+  for (const r of rosters || []) rosterByPlayer[r.player_id] = r
 
-  // Group by user
-  const byUser = {}
-  for (const r of rosters) {
-    if (!byUser[r.user_id]) byUser[r.user_id] = []
-    byUser[r.user_id].push(r)
+  // Group picks by user, keep draft-order via the picks query above
+  const picksByUser = {}
+  for (const p of picks) {
+    if (!picksByUser[p.user_id]) picksByUser[p.user_id] = []
+    picksByUser[p.user_id].push(p)
   }
 
-  for (const [userId, userRows] of Object.entries(byUser)) {
-    // Sort each player's row by projected points desc
-    const byPos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] }
-    for (const r of userRows) {
-      const pos = r.nfl_players?.position
-      if (byPos[pos]) byPos[pos].push(r)
-    }
-    for (const arr of Object.values(byPos)) {
-      arr.sort((a, b) => (b.nfl_players?.projected_pts_half_ppr || 0) - (a.nfl_players?.projected_pts_half_ppr || 0))
-    }
+  let updatedTotal = 0
+  for (const [userId, userPicks] of Object.entries(picksByUser)) {
+    const slotByKey = {} // key (e.g. 'rb1') → player_id
 
-    const assignments = {} // player_id → slot
-    const used = new Set()
-
-    function take(pos, slot) {
-      const next = byPos[pos]?.find((r) => !used.has(r.player_id))
-      if (next) {
-        assignments[next.player_id] = slot
-        used.add(next.player_id)
+    for (const pick of userPicks) {
+      const pos = pick.nfl_players?.position
+      if (!pos) continue
+      for (const slotDef of starterPlan) {
+        if (!slotDef.accepts.includes(pos)) continue
+        if (slotByKey[slotDef.key]) continue
+        slotByKey[slotDef.key] = pick.player_id
+        break
       }
     }
 
-    take('QB', 'qb')
-    take('RB', 'rb1')
-    take('RB', 'rb2')
-    take('WR', 'wr1')
-    take('WR', 'wr2')
-    take('WR', 'wr3')
-    take('TE', 'te')
-    // FLEX: best remaining RB, WR, or TE
-    const flexCandidates = ['RB', 'WR', 'TE']
-      .flatMap((p) => byPos[p].filter((r) => !used.has(r.player_id)))
-      .sort((a, b) => (b.nfl_players?.projected_pts_half_ppr || 0) - (a.nfl_players?.projected_pts_half_ppr || 0))
-    if (flexCandidates[0]) {
-      assignments[flexCandidates[0].player_id] = 'flex'
-      used.add(flexCandidates[0].player_id)
-    }
-    take('K', 'k')
-    take('DEF', 'def')
+    // Inverse: player_id → slot
+    const slotByPlayer = {}
+    for (const [key, playerId] of Object.entries(slotByKey)) slotByPlayer[playerId] = key
 
-    // Anything else → bench
-    for (const r of userRows) {
-      const newSlot = assignments[r.player_id] || 'bench'
-      if (newSlot !== r.slot) {
-        await supabase
-          .from('fantasy_rosters')
-          .update({ slot: newSlot })
-          .eq('id', r.id)
+    for (const pick of userPicks) {
+      const rosterRow = rosterByPlayer[pick.player_id]
+      if (!rosterRow) continue
+      const newSlot = slotByPlayer[pick.player_id] || 'bench'
+      if (newSlot === rosterRow.slot) continue
+      const { error } = await supabase
+        .from('fantasy_rosters')
+        .update({ slot: newSlot })
+        .eq('id', rosterRow.id)
+      if (error) {
+        logger.error({ error, rosterId: rosterRow.id, leagueId, userId, newSlot }, 'Failed to update roster slot')
+      } else {
+        updatedTotal++
       }
     }
   }
-  logger.info({ leagueId, users: Object.keys(byUser).length }, 'Auto-filled post-draft lineups')
+
+  logger.info({ leagueId, users: Object.keys(picksByUser).length, updated: updatedTotal }, 'Auto-filled post-draft lineups')
 }
 
 /**

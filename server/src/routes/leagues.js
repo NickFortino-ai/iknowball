@@ -994,6 +994,7 @@ import {
   getRoster,
   searchAvailablePlayers,
   generateMatchups,
+  autoFillLineupsForLeague,
   setFantasyLineup,
   addDropPlayer,
   dropRosterPlayer,
@@ -1550,6 +1551,23 @@ router.post('/:id/fantasy/waivers/process', requireAuth, async (req, res) => {
 router.post('/:id/fantasy/matchups/generate', requireAuth, async (req, res) => {
   const result = await generateMatchups(req.params.id)
   res.json(result)
+})
+
+// Auto-fill starting lineups from draft order (commissioner backfill — runs
+// automatically post-draft via makeDraftPick, this endpoint is for re-running
+// it on already-drafted leagues that drafted before the fix shipped).
+router.post('/:id/fantasy/lineups/auto-fill', requireAuth, async (req, res) => {
+  const { data: member } = await supabase
+    .from('league_members')
+    .select('role')
+    .eq('league_id', req.params.id)
+    .eq('user_id', req.user.id)
+    .maybeSingle()
+  if (member?.role !== 'commissioner') {
+    return res.status(403).json({ error: 'Only the commissioner can run auto-fill' })
+  }
+  await autoFillLineupsForLeague(req.params.id)
+  res.json({ ok: true })
 })
 
 // League Activity Report
