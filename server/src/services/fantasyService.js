@@ -484,6 +484,12 @@ export async function makeDraftPick(leagueId, userId, playerId) {
     } catch (err) {
       logger.error({ err, leagueId }, 'Failed to initialize waiver state post-draft')
     }
+    // Generate the regular-season matchup schedule
+    try {
+      await generateMatchups(leagueId)
+    } catch (err) {
+      logger.error({ err, leagueId }, 'Failed to generate matchups post-draft')
+    }
   }
 
   return { pick, remaining }
