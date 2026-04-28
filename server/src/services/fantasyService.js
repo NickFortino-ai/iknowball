@@ -4280,25 +4280,33 @@ async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
     logger.error({ err, tradeId }, 'Failed to refill starter slots after trade')
   }
 
+  // Snapshot status before we flip it so we can decide whether to send the
+  // "accepted by X" notification. Direct accepts (status === 'pending')
+  // fire it; commissioner approvals (status === 'pending_review') skip it
+  // since approveTrade sends its own clearer "approved by commissioner"
+  // notification right after this returns.
+  const wasDirectAccept = trade.status === 'pending'
+
   await supabase
     .from('fantasy_trades')
     .update({ status: 'accepted', responded_at: new Date().toISOString() })
     .eq('id', tradeId)
 
-  // Notify the proposer
-  try {
-    const { createNotification } = await import('./notificationService.js')
-    const { data: league } = await supabase.from('leagues').select('name').eq('id', trade.league_id).single()
-    const { data: accepter } = await supabase.from('users').select('display_name, username').eq('id', actorId).single()
-    const accepterName = accepter?.display_name || accepter?.username || 'a manager'
-    await createNotification(
-      trade.proposer_user_id,
-      'fantasy_trade_accepted',
-      `Your trade proposal in ${league?.name || 'your league'} was accepted by ${accepterName}`,
-      { leagueId: trade.league_id, tradeId, actorId },
-    )
-  } catch (err) {
-    logger.error({ err }, 'Failed to send trade-accepted notification')
+  if (wasDirectAccept) {
+    try {
+      const { createNotification } = await import('./notificationService.js')
+      const { data: league } = await supabase.from('leagues').select('name').eq('id', trade.league_id).single()
+      const { data: accepter } = await supabase.from('users').select('display_name, username').eq('id', actorId).single()
+      const accepterName = accepter?.display_name || accepter?.username || 'a manager'
+      await createNotification(
+        trade.proposer_user_id,
+        'fantasy_trade_accepted',
+        `Your trade proposal in ${league?.name || 'your league'} was accepted by ${accepterName}`,
+        { leagueId: trade.league_id, tradeId, actorId },
+      )
+    } catch (err) {
+      logger.error({ err }, 'Failed to send trade-accepted notification')
+    }
   }
 
   // Log trade transactions
