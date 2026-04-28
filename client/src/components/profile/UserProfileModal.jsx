@@ -147,7 +147,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
                   {sportPicks.map((pick) => (
                     <div
                       key={pick.id}
-                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
+                      className="bg-bg-primary rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
                       onClick={() => onItemTap?.('pick', pick.id)}
                     >
                       <div className="min-w-0">
@@ -160,7 +160,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
                 </div>
               )}
               {isOpen && sportPicks.length === 0 && (
-                <div className="mt-1 bg-bg-card rounded-lg border border-border px-4 py-3 text-xs text-text-muted text-center">
+                <div className="mt-1 bg-bg-primary rounded-lg border border-text-primary/20 px-4 py-3 text-xs text-text-muted text-center">
                   No picks in this sport yet — points contributed by league finishes (see Leagues below).
                 </div>
               )}
@@ -193,7 +193,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
                     return (
                       <div
                         key={parlay.id}
-                        className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
+                        className="bg-bg-primary rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
                         onClick={() => onItemTap?.('parlay', parlay.id)}
                       >
                         <div className="min-w-0">
@@ -232,7 +232,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
                   {items.map((pp) => (
                     <div
                       key={pp.id}
-                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
+                      className="bg-bg-primary rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-bg-card-hover active:bg-bg-card-hover transition-colors"
                       onClick={() => onItemTap?.('prop', pp.id)}
                     >
                       <div className="min-w-0">
@@ -266,7 +266,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
                   {bonuses.map((bonus) => (
                     <div
                       key={bonus.id}
-                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between"
+                      className="bg-bg-primary rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between"
                     >
                       <div className="min-w-0">
                         <div className="text-sm font-semibold truncate">{bonus.label}</div>
@@ -302,7 +302,7 @@ function EventTypeBreakdown({ sportStats, parlays, propPicks, bonuses, futuresPi
                   {items.map((fp) => (
                     <div
                       key={fp.id}
-                      className="bg-bg-card rounded-lg border border-border px-4 py-3 flex items-center justify-between"
+                      className="bg-bg-primary rounded-lg border border-text-primary/20 px-4 py-3 flex items-center justify-between"
                     >
                       <div className="min-w-0">
                         <div className="text-sm font-semibold truncate">{fp.futures_markets?.title || 'Futures'}</div>
