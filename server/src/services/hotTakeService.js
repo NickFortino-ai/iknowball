@@ -196,7 +196,7 @@ export async function askForHotTakes(actorId, targetUserId) {
 
   const username = actor?.username || 'Someone'
 
-  await createNotification(targetUserId, 'hot_take_ask', `@${username} wants to hear your takes!`, {
+  await createNotification(targetUserId, 'hot_take_ask', `@${username} wants to hear from you!`, {
     actorId,
   })
 
