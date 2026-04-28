@@ -2346,9 +2346,9 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const hasCurrentSeasonStats = draftDone && (statRows || []).length > 0
   const sortKey = (sort === 'rank' || !sort) ? null : (sort && STAT_COLUMNS.includes(sort) ? sort : (hasCurrentSeasonStats ? 'pts' : null))
 
-  // Slice offense and defense separately so DEFs are guaranteed in the pool
-  // (otherwise their _adp=9999 sinks them past the 300-row cutoff). Top 268
-  // non-DEFs by sort key + every available DEF.
+  // Slice offense, K, and DEF separately so K and DEF are guaranteed in the
+  // pool (their _adp typically defaults to 9999 and would sink past the
+  // offense cutoff). Top 268 QB/RB/WR/TE by sort key + every available K + DEF.
   const sortFn = (a, b) => {
     if (sortKey) {
       const av = a._stats[sortKey] || 0
@@ -2358,9 +2358,13 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     return a._adp - b._adp
   }
   const availableAll = rankedAll.filter((p) => !excludeSet.has(p.id))
-  const offenseSlice = availableAll.filter((p) => p.position !== 'DEF').sort(sortFn).slice(0, 268)
+  const offenseSlice = availableAll
+    .filter((p) => p.position !== 'K' && p.position !== 'DEF')
+    .sort(sortFn)
+    .slice(0, 268)
+  const kickerSlice = availableAll.filter((p) => p.position === 'K').sort(sortFn)
   const defSlice = availableAll.filter((p) => p.position === 'DEF').sort(sortFn)
-  const ranked = [...offenseSlice, ...defSlice]
+  const ranked = [...offenseSlice, ...kickerSlice, ...defSlice]
 
   // Per-position rank from the same sort
   const posRanks = {}
