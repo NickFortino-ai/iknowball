@@ -18,18 +18,23 @@ const INJURY_COLORS = {
   'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
 }
 
-const STARTER_SLOTS = [
-  { key: 'qb', label: 'QB', positions: ['QB'] },
-  { key: 'rb1', label: 'RB', positions: ['RB'] },
-  { key: 'rb2', label: 'RB', positions: ['RB'] },
-  { key: 'wr1', label: 'WR', positions: ['WR'] },
-  { key: 'wr2', label: 'WR', positions: ['WR'] },
-  { key: 'wr3', label: 'WR', positions: ['WR'] },
-  { key: 'te', label: 'TE', positions: ['TE'] },
-  { key: 'flex', label: 'FLEX', positions: ['RB', 'WR', 'TE'] },
-  { key: 'k', label: 'K', positions: ['K'] },
-  { key: 'def', label: 'DEF', positions: ['DEF'] },
-]
+// Build the starter slot list from the league's roster_slots config so leagues
+// with non-default lineups (e.g., 2 WR instead of 3) don't render extra empty
+// slots that nobody can fill. Slot keys must match what the BE writes
+// (qb, rb1..rbN, wr1..wrN, te, flex, superflex, k, def).
+function buildStarterSlots(rosterSlots) {
+  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
+  const result = []
+  if ((slots.qb || 0) >= 1) result.push({ key: 'qb', label: 'QB', positions: ['QB'] })
+  for (let i = 1; i <= (slots.rb || 0); i++) result.push({ key: `rb${i}`, label: 'RB', positions: ['RB'] })
+  for (let i = 1; i <= (slots.wr || 0); i++) result.push({ key: `wr${i}`, label: 'WR', positions: ['WR'] })
+  if ((slots.te || 0) >= 1) result.push({ key: 'te', label: 'TE', positions: ['TE'] })
+  if ((slots.flex || 0) >= 1) result.push({ key: 'flex', label: 'FLEX', positions: ['RB', 'WR', 'TE'] })
+  if ((slots.superflex || 0) >= 1) result.push({ key: 'superflex', label: 'SFLEX', positions: ['QB', 'RB', 'WR', 'TE'] })
+  if ((slots.k || 0) >= 1) result.push({ key: 'k', label: 'K', positions: ['K'] })
+  if ((slots.def || 0) >= 1) result.push({ key: 'def', label: 'DEF', positions: ['DEF'] })
+  return result
+}
 
 const POSITION_STAT_CONFIG = {
   QB: [
@@ -185,6 +190,7 @@ function EmptySlot({ slotLabel, onTap, isSelected, editMode }) {
 export default function FantasyMyTeam({ league }) {
   const { profile } = useAuth()
   const { data: fantasySettings } = useFantasySettings(league.id)
+  const STARTER_SLOTS = useMemo(() => buildStarterSlots(fantasySettings?.roster_slots), [fantasySettings?.roster_slots])
   const currentWeek = fantasySettings?.current_week || 1
   const season = fantasySettings?.season || 2026
   const totalWeeks = 17
