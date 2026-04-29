@@ -5,6 +5,7 @@ import { usePropPickHistory, useMyPropLiveStats } from '../hooks/useProps'
 import { useFuturesPickHistory } from '../hooks/useFutures'
 import { usePickReactionsBatch } from '../hooks/useSocial'
 import { useAuth } from '../hooks/useAuth'
+import { useAuthStore } from '../stores/authStore'
 import GameCard from '../components/picks/GameCard'
 import ParlayCard from '../components/picks/ParlayCard'
 import PropCard from '../components/picks/PropCard'
@@ -91,8 +92,19 @@ function loadCollapsed() {
 
 export default function ResultsPage() {
   const { profile } = useAuth()
+  const fetchProfile = useAuthStore((s) => s.fetchProfile)
   const [collapsed, setCollapsed] = useState(loadCollapsed)
   const [selectedPickId, setSelectedPickId] = useState(null)
+
+  // The auth-store profile is fetched once at login and never refreshed,
+  // so total_points goes stale after picks settle. Refetch on mount and on
+  // window focus so the Net Points summary stays in sync with the server.
+  useEffect(() => {
+    fetchProfile?.()
+    const onFocus = () => { fetchProfile?.() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [fetchProfile])
 
   const toggleSection = useCallback((section, defaultCollapsed) => {
     setCollapsed((prev) => {
