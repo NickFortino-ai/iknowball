@@ -26,13 +26,35 @@ export async function assertConnected(actorId, ownerId) {
 
 // Friendly singular noun for reaction notifications. "Reacted to your X"
 // reads better with "post" / "prediction" than the raw target_type string
-// (which would yield "futures pick" etc.).
-function reactionTargetLabel(targetType) {
+// (which would yield "futures pick" etc.). For settled `pick` rows we
+// fetch the row and match the same classification the feed uses, so the
+// notification reflects what the actor actually saw — e.g. "reacted to
+// your underdog hit" instead of "your prediction" when the feed item
+// was an underdog-hit card.
+async function reactionTargetLabel(targetType, targetId) {
   switch (targetType) {
     case 'hot_take':
       return 'post'
-    case 'pick':
-    case 'parlay':
+    case 'parlay': {
+      try {
+        const { data: parlay } = await supabase
+          .from('parlays')
+          .select('status, is_correct, leg_count, parlay_legs(status)')
+          .eq('id', targetId)
+          .single()
+        if (!parlay) return 'parlay'
+        // Match connectionService: bad beat = 1 lost leg, all others won, 5+ legs.
+        const lostLegs = (parlay.parlay_legs || []).filter((l) => l.status === 'lost').length
+        const wonLegs = (parlay.parlay_legs || []).filter((l) => l.status === 'won').length
+        if (lostLegs === 1 && wonLegs === (parlay.leg_count || 0) - 1 && (parlay.leg_count || 0) >= 5) {
+          return 'bad beat'
+        }
+        if (parlay.is_correct === true) return 'winning parlay'
+        return 'parlay'
+      } catch {
+        return 'parlay'
+      }
+    }
     case 'prop':
     case 'futures_pick':
     case 'head_to_head':
@@ -40,6 +62,27 @@ function reactionTargetLabel(targetType) {
     case 'streak_event':
     case 'record_history':
       return 'achievement'
+    case 'pick': {
+      try {
+        const { data: pick } = await supabase
+          .from('picks')
+          .select('status, is_correct, odds_at_pick, multiplier')
+          .eq('id', targetId)
+          .single()
+        if (!pick) return 'pick'
+        // Mirror connectionService.js feed-type logic: multiplier first,
+        // then underdog. Use the stricter +250 threshold since reactions
+        // can come from either squad or IKB-wide feed.
+        if (pick.multiplier >= 3 && pick.is_correct) return 'big multiplier hit'
+        if (pick.multiplier >= 3 && pick.is_correct === false) return 'multiplier miss'
+        if (pick.is_correct && (pick.odds_at_pick || 0) >= 250) return 'underdog hit'
+        if (pick.is_correct === true) return 'winning pick'
+        if (pick.is_correct === false) return 'pick'
+        return 'prediction' // pending / not yet settled
+      } catch {
+        return 'prediction'
+      }
+    }
     default:
       return 'post'
   }
@@ -342,7 +385,7 @@ export async function toggleFeedReaction(userId, targetType, targetId, reactionT
         .eq('id', userId)
         .single()
       const username = actor?.username || 'Someone'
-      const label = reactionTargetLabel(targetType)
+      const label = await reactionTargetLabel(targetType, targetId)
       await createNotification(ownerId, 'reaction', `${username} reacted to your ${label}`, {
         actorId: userId,
         targetType,
