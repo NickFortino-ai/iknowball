@@ -115,6 +115,12 @@ export function useRecalculatePoints() {
   })
 }
 
+export function useSyncNflPlayers() {
+  return useMutation({
+    mutationFn: () => api.post('/admin/fantasy/sync-players'),
+  })
+}
+
 export function useSyncNBASalaries() {
   return useMutation({
     mutationFn: (date) => api.post('/admin/nba-dfs/generate-salaries', { date, season: 2026 }),
