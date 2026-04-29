@@ -287,27 +287,29 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
   // by top navbar and bottom tab bar).
   return createPortal(
     <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-bg-primary border border-text-primary/20 w-full max-w-md md:max-w-2xl rounded-2xl max-h-[85vh] overflow-y-auto overscroll-contain" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
+      <div className="bg-bg-primary border border-text-primary/20 w-full max-w-md md:max-w-2xl rounded-2xl max-h-[85vh] flex flex-col overscroll-contain" onClick={(e) => e.stopPropagation()}>
+        {/* Header — fixed at top */}
+        <div className="shrink-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between rounded-t-2xl">
           <h3 className="font-display text-lg">{counteringTradeId ? 'Counter Trade' : 'Propose Trade'}</h3>
           <button onClick={onClose} className="text-text-muted p-1">&times;</button>
         </div>
 
-        <div className="p-4 space-y-4">
+        {/* Body — scrolls when content overflows */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div>
             <label className="block text-xs uppercase text-text-muted mb-2">Trade with</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex flex-col gap-2">
               {otherMembers.map((m) => (
                 <button
                   key={m.user_id}
                   type="button"
                   onClick={() => { setReceiverId(m.user_id); setTheirPlayerIds([]) }}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
                     receiverId === m.user_id ? 'border-accent bg-accent/10' : 'border-text-primary/20 bg-bg-primary hover:bg-bg-card-hover'
                   }`}
                 >
                   <Avatar user={m.users || m} size="sm" />
-                  <span className="text-sm font-semibold truncate">{m.users?.display_name || m.users?.username || m.username}</span>
+                  <span className="text-sm font-semibold flex-1 min-w-0 truncate">{m.users?.display_name || m.users?.username || m.username}</span>
                 </button>
               ))}
             </div>
@@ -317,7 +319,7 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="text-[10px] uppercase text-text-muted mb-1.5">You give ({myPlayerIds.length})</div>
-                <div className="space-y-1 max-h-72 overflow-y-auto">
+                <div className="space-y-1">
                   {sortRosterByLineup(myRoster).map((r) => {
                     const selected = myPlayerIds.includes(r.player_id)
                     return (
@@ -335,7 +337,7 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
               </div>
               <div>
                 <div className="text-[10px] uppercase text-text-muted mb-1.5">You get ({theirPlayerIds.length})</div>
-                <div className="space-y-1 max-h-72 overflow-y-auto">
+                <div className="space-y-1">
                   {sortRosterByLineup(theirRoster).map((r) => {
                     const selected = theirPlayerIds.includes(r.player_id)
                     return (
@@ -361,8 +363,11 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
                 className="w-full bg-bg-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none" />
             </div>
           )}
+        </div>
 
-          <div className="flex gap-2 pt-2">
+        {/* Footer — pinned at bottom, always visible */}
+        <div className="shrink-0 bg-bg-primary border-t border-text-primary/10 p-4 rounded-b-2xl">
+          <div className="flex gap-2">
             <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-border">Cancel</button>
             <button onClick={handleSubmit} disabled={propose.isPending || respond.isPending || !receiverId}
               className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent text-white disabled:opacity-50">
