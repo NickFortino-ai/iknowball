@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useFantasyTrades, useRespondToTrade, useFantasyRoster, useProposeTrade, useFantasyTransactions } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
@@ -280,7 +281,11 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
     }
   }
 
-  return (
+  // Render through a portal so the modal escapes any ancestor that has
+  // transform/filter/will-change applied — those contain position:fixed
+  // and would otherwise bound the modal inside the page content (clipped
+  // by top navbar and bottom tab bar).
+  return createPortal(
     <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-bg-primary border border-text-primary/20 w-full max-w-md md:max-w-2xl rounded-2xl max-h-[85vh] overflow-y-auto overscroll-contain" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
@@ -366,7 +371,8 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
