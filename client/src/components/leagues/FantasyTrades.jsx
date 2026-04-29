@@ -298,21 +298,37 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div>
             <label className="block text-xs uppercase text-text-muted mb-2">Trade with</label>
-            <div className="flex flex-col gap-2">
-              {otherMembers.map((m) => (
-                <button
-                  key={m.user_id}
-                  type="button"
-                  onClick={() => { setReceiverId(m.user_id); setTheirPlayerIds([]) }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
-                    receiverId === m.user_id ? 'border-accent bg-accent/10' : 'border-text-primary/20 bg-bg-primary hover:bg-bg-card-hover'
-                  }`}
-                >
-                  <Avatar user={m.users || m} size="sm" />
-                  <span className="text-sm font-semibold flex-1 min-w-0 truncate">{m.users?.display_name || m.users?.username || m.username}</span>
-                </button>
-              ))}
-            </div>
+            {counteringTradeId ? (
+              // Counter trades are locked to the original proposer — render
+              // them as a non-interactive row so the picker can't accidentally
+              // swap who's getting countered.
+              (() => {
+                const locked = otherMembers.find((m) => m.user_id === receiverId)
+                if (!locked) return null
+                return (
+                  <div className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-accent bg-accent/10">
+                    <Avatar user={locked.users || locked} size="sm" />
+                    <span className="text-sm font-semibold flex-1 min-w-0 truncate">{locked.users?.display_name || locked.users?.username || locked.username}</span>
+                  </div>
+                )
+              })()
+            ) : (
+              <div className="flex flex-col gap-2">
+                {otherMembers.map((m) => (
+                  <button
+                    key={m.user_id}
+                    type="button"
+                    onClick={() => { setReceiverId(m.user_id); setTheirPlayerIds([]) }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                      receiverId === m.user_id ? 'border-accent bg-accent/10' : 'border-text-primary/20 bg-bg-primary hover:bg-bg-card-hover'
+                    }`}
+                  >
+                    <Avatar user={m.users || m} size="sm" />
+                    <span className="text-sm font-semibold flex-1 min-w-0 truncate">{m.users?.display_name || m.users?.username || m.username}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {receiverId && (
