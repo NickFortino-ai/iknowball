@@ -13,33 +13,49 @@ let threeLeadersCache = null
 let threeLeadersCacheTime = 0
 const THREE_CACHE_TTL = 30 * 60 * 1000
 
+// Fetch ESPN's 3PM leaders for one season type and merge into accumulator.
+// types/2 = regular season, types/3 = postseason. Adding playoff makes is
+// the right call during the postseason window — players who don't make
+// the playoffs simply get 0 added.
+async function fetch3PMForType(seasonType, accumulator) {
+  const targetAbbrevs = new Set(['3PM', 'TPM', 'threePointFieldGoalsMade'])
+  const res = await fetch(`https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/types/${seasonType}/leaders?limit=200`)
+  if (!res.ok) throw new Error(`ESPN returned ${res.status} for type ${seasonType}`)
+  const data = await res.json()
+  for (const cat of data.categories || []) {
+    const abbr = cat.abbreviation || cat.name || ''
+    if (!targetAbbrevs.has(abbr)) continue
+    for (const leader of cat.leaders || []) {
+      const ref = leader.athlete?.$ref || ''
+      const m = ref.match(/\/athletes\/(\d+)/)
+      if (!m) continue
+      accumulator[m[1]] = (accumulator[m[1]] || 0) + Math.round(leader.value)
+    }
+    break
+  }
+}
+
 async function getSeason3PMLeaders() {
   if (threeLeadersCache && Date.now() - threeLeadersCacheTime < THREE_CACHE_TTL) return threeLeadersCache
+  const map = {}
+  // Regular season is required; postseason is best-effort. If the
+  // postseason endpoint hasn't started populating yet (off-season) it
+  // returns an empty leaders array, not an error, so we just continue.
   try {
-    const res = await fetch('https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/types/2/leaders?limit=200')
-    if (!res.ok) throw new Error(`ESPN returned ${res.status}`)
-    const data = await res.json()
-    const map = {}
-    // ESPN's NBA category names vary — match common 3PM abbreviations.
-    const targetAbbrevs = new Set(['3PM', 'TPM', 'threePointFieldGoalsMade'])
-    for (const cat of data.categories || []) {
-      const abbr = cat.abbreviation || cat.name || ''
-      if (!targetAbbrevs.has(abbr)) continue
-      for (const leader of cat.leaders || []) {
-        const ref = leader.athlete?.$ref || ''
-        const m = ref.match(/\/athletes\/(\d+)/)
-        if (m) map[m[1]] = Math.round(leader.value)
-      }
-      break
-    }
-    threeLeadersCache = map
-    threeLeadersCacheTime = Date.now()
-    logger.info({ count: Object.keys(map).length }, 'Refreshed ESPN 3PM leaders cache')
-    return map
+    await fetch3PMForType(2, map)
   } catch (err) {
-    logger.error({ err }, 'Failed to fetch ESPN 3PM leaders')
+    logger.error({ err }, 'Failed to fetch ESPN 3PM regular-season leaders')
     return threeLeadersCache || {}
   }
+  try {
+    await fetch3PMForType(3, map)
+  } catch (err) {
+    logger.warn({ err }, 'Failed to fetch ESPN 3PM postseason leaders (continuing with regular only)')
+  }
+  threeLeadersCache = map
+  threeLeadersCacheTime = Date.now()
+  logger.info({ count: Object.keys(map).length }, 'Refreshed ESPN 3PM leaders cache (regular + postseason)')
+  return map
 }
 
 function getWeekStart(dateStr) {

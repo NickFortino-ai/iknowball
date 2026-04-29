@@ -368,7 +368,7 @@ export default function ThreePointView({ league, tab = 'picks' }) {
         {filteredPlayers.length > 0 && (
           <div className="flex items-center px-4 py-1.5 border-b border-text-primary/10">
             <div className="flex-1" />
-            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Season</span>
+            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Total</span>
           </div>
         )}
 
