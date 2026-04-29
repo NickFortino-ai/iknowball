@@ -383,7 +383,6 @@ export default function CreateLeaguePage() {
   const [name, setName] = useState('')
   const [format, setFormat] = useState('')
   const [expandedCardKey, setExpandedCardKey] = useState(null)
-  const [category, setCategory] = useState('all_sports')
   const [selectedCardKey, setSelectedCardKey] = useState(null)
   const [sport, setSport] = useState('')
   const [duration, setDuration] = useState('')
@@ -665,48 +664,31 @@ export default function CreateLeaguePage() {
           />
         </div>
 
-        {/* Format */}
+        {/* Format — grouped by sport category, top to bottom */}
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Format</label>
 
-          {/* Category pills — All Sports first, then per-sport tabs. Some
-              formats (Survivor, Pick'em) appear in multiple tabs with sport
-              presets so commissioners can land on the right configuration in
-              one tap. */}
-          <div className="flex gap-2 flex-wrap mb-3">
+          <div className="space-y-8">
             {CATEGORIES.map((cat) => (
-              <button
-                key={cat.key}
-                type="button"
-                onClick={() => setCategory(cat.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
-                  category === cat.key
-                    ? 'bg-accent text-white'
-                    : 'bg-bg-primary border border-text-primary/20 text-text-secondary hover:border-text-primary/40'
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            {(CATEGORY_CARDS[category] || []).map((card) => {
-              const base = FORMAT_BY_VALUE[card.format] || {}
-              const label = card.label || base.label
-              const description = card.description || base.description
-              const details = base.details
-              const isExpanded = expandedCardKey === card.key
-              const isSelected = selectedCardKey === card.key
-              return (
-                <div
-                  key={card.key}
-                  className={`rounded-xl border transition-colors ${
-                    isSelected
-                      ? 'border-accent bg-accent/10'
-                      : 'border-text-primary/20 hover:border-text-primary/40'
-                  }`}
-                >
+              <div key={cat.key}>
+                <h2 className="font-display text-2xl md:text-3xl text-text-primary mb-3">{cat.label}</h2>
+                <div className="space-y-2">
+                  {(CATEGORY_CARDS[cat.key] || []).map((card) => {
+                    const base = FORMAT_BY_VALUE[card.format] || {}
+                    const label = card.label || base.label
+                    const description = card.description || base.description
+                    const details = base.details
+                    const isExpanded = expandedCardKey === card.key
+                    const isSelected = selectedCardKey === card.key
+                    return (
+                      <div
+                        key={card.key}
+                        className={`rounded-xl border transition-colors ${
+                          isSelected
+                            ? 'border-accent bg-accent/10'
+                            : 'border-text-primary/20 hover:border-text-primary/40'
+                        }`}
+                      >
                   <div className="flex items-stretch">
                     <button
                       type="button"
@@ -797,9 +779,12 @@ export default function CreateLeaguePage() {
                       })}
                     </div>
                   )}
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
