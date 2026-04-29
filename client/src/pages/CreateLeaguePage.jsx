@@ -293,6 +293,13 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       preset: { fantasyFormat: 'salary_cap', sport: 'americanfootball_nfl' },
     },
     {
+      key: 'nfl-survivor',
+      format: 'survivor',
+      label: 'NFL Survivor',
+      description: 'Pick a single NFL team to win each week. Last one standing wins',
+      preset: { sport: 'americanfootball_nfl', survivorMode: 'standard' },
+    },
+    {
       key: 'td-survivor',
       format: 'survivor',
       label: 'TD Survivor',
@@ -1654,35 +1661,14 @@ export default function CreateLeaguePage() {
 
         {format === 'survivor' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
-            <h3 className="font-display text-sm text-text-primary mb-1">Survivor Settings</h3>
-            <div>
-              <label className="block text-xs text-text-muted mb-2">Mode</label>
-              <div className="flex gap-2">
-                {[
-                  { value: 'standard', label: 'Standard', desc: 'Pick a team to win' },
-                  { value: 'touchdown', label: 'Touchdown (NFL)', desc: 'Pick a player to score a TD' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => {
-                      setSurvivorMode(opt.value)
-                      if (opt.value === 'touchdown') setSport('americanfootball_nfl')
-                    }}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                      survivorMode === opt.value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[10px] text-text-muted mt-1">
-                {survivorMode === 'touchdown'
-                  ? 'Pick one NFL player per week to score a rushing, receiving, or return TD. Can\'t reuse players.'
-                  : 'Pick one team per week to win. If they lose, you lose a life.'}
-              </p>
-            </div>
+            <h3 className="font-display text-sm text-text-primary mb-1">
+              {survivorMode === 'touchdown' ? 'TD Survivor Settings' : 'Survivor Settings'}
+            </h3>
+            <p className="text-[11px] text-text-muted leading-relaxed -mt-2">
+              {survivorMode === 'touchdown'
+                ? "Pick one NFL player per week to score a rushing, receiving, or return TD. Can't reuse players."
+                : 'Pick one team per period to win. If they lose, you lose a life.'}
+            </p>
             <div>
               <label className="block text-xs text-text-muted mb-2">Lives</label>
               <div className="flex gap-2">
