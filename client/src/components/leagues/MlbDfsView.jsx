@@ -54,7 +54,7 @@ function LineupBadge({ status }) {
   }
   if (status === 'not_starting') {
     return (
-      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-incorrect/20 text-incorrect" title="Not starting">
+      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-incorrect" title="Not starting">
         NS
       </span>
     )
@@ -567,7 +567,23 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
       {/* Right column: player pool */}
       <div className={`rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4 ${isViewMode ? 'hidden lg:block' : ''}`}>
         <div className="px-4 py-3 border-b border-text-primary/10">
-          <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
+          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+            <h3 className="text-sm font-semibold text-text-primary">Available Players</h3>
+            <div className="flex items-center gap-2 text-[10px] text-text-muted">
+              <span className="flex items-center gap-1">
+                <span className="font-bold text-correct">✓</span>
+                <span>Confirmed</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-bold text-yellow-500">?</span>
+                <span>Pending</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-bold text-incorrect">NS</span>
+                <span>Not Starting</span>
+              </span>
+            </div>
+          </div>
           <input
             type="text"
             value={search}
