@@ -496,32 +496,25 @@ async function getTdPassStandings(league) {
 async function getHRDerbyStandings(league) {
   const { data: picks } = await supabase
     .from('hr_derby_picks')
-    .select('user_id, home_runs, hr_distance_total')
+    .select('user_id, home_runs')
     .eq('league_id', league.id)
 
   if (!picks?.length) return []
 
   const userMap = {}
   for (const p of picks) {
-    if (!userMap[p.user_id]) userMap[p.user_id] = { user_id: p.user_id, totalHRs: 0, totalDistance: 0 }
+    if (!userMap[p.user_id]) userMap[p.user_id] = { user_id: p.user_id, totalHRs: 0 }
     userMap[p.user_id].totalHRs += p.home_runs || 0
-    userMap[p.user_id].totalDistance += p.hr_distance_total || 0
   }
 
   const standings = Object.values(userMap)
-  // Sort by HRs, tiebreaker by distance
-  standings.sort((a, b) => b.totalHRs - a.totalHRs || b.totalDistance - a.totalDistance)
+  standings.sort((a, b) => b.totalHRs - a.totalHRs)
 
-  // Handle ties (same HRs AND same distance)
   const ranked = []
   let i = 0
   while (i < standings.length) {
     let j = i
-    while (j < standings.length &&
-      standings[j].totalHRs === standings[i].totalHRs &&
-      standings[j].totalDistance === standings[i].totalDistance) {
-      j++
-    }
+    while (j < standings.length && standings[j].totalHRs === standings[i].totalHRs) j++
     const sharedRank = i + 1
     for (let k = i; k < j; k++) {
       ranked.push({ user_id: standings[k].user_id, rank: sharedRank })
