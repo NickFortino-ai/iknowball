@@ -226,10 +226,10 @@ const FORMAT_BY_VALUE = Object.fromEntries(FORMAT_OPTIONS.map((o) => [o.value, o
 // per-sport tabs include those generic formats again with sport pre-selected
 // (e.g., NFL Pick'em jumps straight to the Pick'em config with sport=NFL).
 const CATEGORIES = [
-  { key: 'all_sports', label: 'All Sports' },
   { key: 'football', label: 'Football' },
   { key: 'basketball', label: 'Basketball' },
   { key: 'baseball', label: 'Baseball' },
+  { key: 'all_sports', label: 'All Sports' },
 ]
 
 // Cards per category. Only formats that exist today are listed; new formats
