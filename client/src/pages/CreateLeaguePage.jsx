@@ -539,6 +539,8 @@ export default function CreateLeaguePage() {
     if (format === 'td_pass') setSport('americanfootball_nfl')
     if (format === 'sacks') setSport('americanfootball_nfl')
     if (format === 'ints') setSport('americanfootball_nfl')
+    // Squares needs a specific game — bump 'all' off so the picker isn't stuck.
+    if (format === 'squares' && sport === 'all') setSport('americanfootball_nfl')
     // Per-format salary cap default — MLB pricing settled lower than NBA, so
     // it caps at $40k by default with $50k as the bigger option.
     if (format === 'mlb_dfs') setSalaryCap(40000)
@@ -959,7 +961,10 @@ export default function CreateLeaguePage() {
               const isFantasyLocked = format === 'fantasy' && opt.value !== 'americanfootball_nfl'
               // TD Survivor only works with NFL — gate every other sport out.
               const isTouchdownLocked = format === 'survivor' && survivorMode === 'touchdown' && opt.value !== 'americanfootball_nfl'
-              const isLocked = isFantasyLocked || isTouchdownLocked
+              // Squares needs a specific game, so the "All Sports" pill makes
+              // no sense — gate it out when squares is selected.
+              const isSquaresAllLocked = format === 'squares' && opt.value === 'all'
+              const isLocked = isFantasyLocked || isTouchdownLocked || isSquaresAllLocked
               return (
               <button
                 key={opt.value}
@@ -1094,28 +1099,39 @@ export default function CreateLeaguePage() {
         {format === 'pickem' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">Pick'em Settings</h3>
-            {allowedFrequencies(sport).length > 1 && (
-              <div>
-                <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
-                <div className="flex gap-2">
-                  {allowedFrequencies(sport).map((value) => (
+            <div>
+              <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+              <div className="flex gap-2">
+                {['weekly', 'daily'].map((value) => {
+                  const isAllowed = allowedFrequencies(sport).includes(value)
+                  return (
                     <button
                       key={value}
                       type="button"
+                      disabled={!isAllowed}
                       onClick={() => setPickFrequency(value)}
                       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        pickFrequency === value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
+                        pickFrequency === value
+                          ? 'bg-accent text-white'
+                          : isAllowed
+                            ? 'bg-bg-input text-text-secondary'
+                            : 'bg-bg-input/50 text-text-muted opacity-50 cursor-not-allowed'
                       }`}
                     >
                       {value === 'weekly' ? 'Weekly' : 'Daily'}
                     </button>
-                  ))}
-                </div>
-                {pickFrequency === 'daily' && (
-                  <div className="text-[10px] text-text-muted mt-1">Periods are days instead of weeks</div>
-                )}
+                  )
+                })}
               </div>
-            )}
+              {pickFrequency === 'daily' && (
+                <div className="text-[10px] text-text-muted mt-1">Periods are days instead of weeks</div>
+              )}
+              {allowedFrequencies(sport).length === 1 && (
+                <div className="text-[10px] text-text-muted mt-1">
+                  This sport only supports {allowedFrequencies(sport)[0]} picks.
+                </div>
+              )}
+            </div>
             <div>
               <label className="block text-xs text-text-muted mb-1">
                 Games per {pickFrequency === 'daily' ? 'day' : 'week'} <span className="text-text-muted">(leave empty for all games)</span>
@@ -1831,28 +1847,39 @@ export default function CreateLeaguePage() {
                 ))}
               </div>
             </div>
-            {allowedFrequencies(sport).length > 1 && (
-              <div>
-                <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
-                <div className="flex gap-2">
-                  {allowedFrequencies(sport).map((value) => (
+            <div>
+              <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+              <div className="flex gap-2">
+                {['weekly', 'daily'].map((value) => {
+                  const isAllowed = allowedFrequencies(sport).includes(value)
+                  return (
                     <button
                       key={value}
                       type="button"
+                      disabled={!isAllowed}
                       onClick={() => setPickFrequency(value)}
                       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        pickFrequency === value ? 'bg-accent text-white' : 'bg-bg-input text-text-secondary'
+                        pickFrequency === value
+                          ? 'bg-accent text-white'
+                          : isAllowed
+                            ? 'bg-bg-input text-text-secondary'
+                            : 'bg-bg-input/50 text-text-muted opacity-50 cursor-not-allowed'
                       }`}
                     >
                       {value === 'weekly' ? 'Weekly' : 'Daily'}
                     </button>
-                  ))}
-                </div>
-                {pickFrequency === 'daily' && (
-                  <div className="text-[10px] text-text-muted mt-1">One pick per day instead of per week</div>
-                )}
+                  )
+                })}
               </div>
-            )}
+              {pickFrequency === 'daily' && (
+                <div className="text-[10px] text-text-muted mt-1">One pick per day instead of per week</div>
+              )}
+              {allowedFrequencies(sport).length === 1 && (
+                <div className="text-[10px] text-text-muted mt-1">
+                  This sport only supports {allowedFrequencies(sport)[0]} picks.
+                </div>
+              )}
+            </div>
             <div className="flex items-center justify-between">
               <label className="text-xs text-text-muted">
                 If all eliminated in same {pickFrequency === 'daily' ? 'day' : 'week'}, all survive
@@ -2074,7 +2101,9 @@ export default function CreateLeaguePage() {
               )}
             </div>
             <div>
-              <label className="block text-xs text-text-muted mb-1">Bracket Lock Date/Time</label>
+              <label className="block text-xs text-text-muted mb-1">
+                Bracket Lock Date/Time <span className="text-incorrect">*</span>
+              </label>
               <input
                 type="datetime-local"
                 value={locksAt}
