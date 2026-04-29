@@ -23,9 +23,12 @@ function ToastItem({ toast: t, onRemove }) {
     return () => clearTimeout(timer)
   }, [t.id, onRemove])
 
+  // Darker green/red than the theme's `correct`/`incorrect` so white text
+  // hits ~4.5:1 contrast. The theme tokens stay bright (used for win/loss
+  // chips, etc.) — toasts get their own slightly darker fill.
   const colors = {
-    success: 'bg-correct border-correct text-white',
-    error: 'bg-incorrect border-incorrect text-white',
+    success: 'bg-[#15803D] border-[#15803D] text-white',
+    error: 'bg-[#B91C1C] border-[#B91C1C] text-white',
     info: 'bg-accent border-accent text-white',
   }
 
