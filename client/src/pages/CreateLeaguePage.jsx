@@ -556,6 +556,10 @@ export default function CreateLeaguePage() {
     if (format === 'sacks' || format === 'ints') {
       setPickReuse('season')
       if (seasonType === 'single_week') setSeasonType('full_season')
+    } else if (format === 'td_pass') {
+      // TD Pass auto-starts at next NFL kickoff and runs the full season
+      // by default; user can pick a custom end date instead.
+      if (seasonType === 'single_week') setSeasonType('full_season')
     } else if (format === 'three_point' || format === 'hr_derby' || format === 'strikeouts') {
       setPickReuse('weekly')
     }
@@ -612,7 +616,7 @@ export default function CreateLeaguePage() {
   async function handleSubmit(e) {
     e.preventDefault()
 
-    if ((format === 'hr_derby' || format === 'three_point' || format === 'strikeouts') && seasonType === 'custom_range') {
+    if ((format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'td_pass' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range') {
       if (!hrDerbyEndDate) { toast('Pick an end date for your custom range', 'error'); return }
       if (hrDerbyEndDate < getDfsStartDate()) { toast('End date must be after the start date', 'error'); return }
     }
@@ -692,7 +696,7 @@ export default function CreateLeaguePage() {
         name,
         format,
         sport: (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass' || format === 'sacks' || format === 'ints') ? 'americanfootball_nfl' : sport,
-        duration: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range' ? 'custom_range'
+        duration: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && seasonType === 'custom_range' ? 'custom_range'
           : isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
@@ -702,7 +706,7 @@ export default function CreateLeaguePage() {
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
           : startsAt || undefined,
-        ends_at: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
+        ends_at: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
           : (format === 'td_pass' || format === 'sacks' || format === 'ints') ? getSeasonEndDate('americanfootball_nfl')
           : format === 'survivor' ? getSeasonEndDate(sport)
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
@@ -1632,7 +1636,7 @@ export default function CreateLeaguePage() {
           </div>
         )}
 
-        {(format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints') && (
+        {(format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">
               {format === 'mlb_dfs' ? 'MLB Daily Fantasy Settings'
@@ -1640,6 +1644,7 @@ export default function CreateLeaguePage() {
                 : format === 'sacks' ? 'Sacks Contest Settings'
                 : format === 'ints' ? 'Interceptions Contest Settings'
                 : format === 'strikeouts' ? 'Strikeouts Contest Settings'
+                : format === 'td_pass' ? 'TD Pass Competition Settings'
                 : 'Home Run Derby Settings'}
             </h3>
             {format === 'mlb_dfs' && (
@@ -1661,7 +1666,7 @@ export default function CreateLeaguePage() {
                 </div>
               </div>
             )}
-            {format !== 'sacks' && format !== 'ints' && (
+            {format !== 'sacks' && format !== 'ints' && format !== 'td_pass' && (
               <div>
                 <label className="text-xs text-text-muted block mb-1">League Starts</label>
                 {/* note: HR Derby / 3-Point Contest / Strikeouts / MLB DFS all use this picker */}
@@ -1696,10 +1701,10 @@ export default function CreateLeaguePage() {
             )}
             <div>
               <label className="text-xs text-text-muted block mb-1">
-                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints') ? 'League Length' : 'Season Type'}
+                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') ? 'League Length' : 'Season Type'}
               </label>
               <div className="flex gap-2">
-                {((format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints')
+                {((format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass')
                   ? [
                       { value: 'full_season', label: 'Full Season' },
                       { value: 'custom_range', label: 'Select Date' },
@@ -1721,22 +1726,22 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
-              {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range' && (
+              {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && seasonType === 'custom_range' && (
                 <input
                   type="date"
                   value={hrDerbyEndDate}
                   onChange={(e) => setHrDerbyEndDate(e.target.value)}
-                  min={(format === 'sacks' || format === 'ints') ? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : getDfsStartDate()}
+                  min={(format === 'sacks' || format === 'ints' || format === 'td_pass') ? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : getDfsStartDate()}
                   className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                 />
               )}
               <p className="text-xs text-text-muted mt-1.5">
-                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range'
+                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && seasonType === 'custom_range'
                   ? 'Pick the date your league wraps up.'
                   : seasonType === 'full_season'
                     ? format === 'three_point'
                       ? 'Runs through end of NBA regular season.'
-                      : (format === 'sacks' || format === 'ints')
+                      : (format === 'sacks' || format === 'ints' || format === 'td_pass')
                         ? 'Runs through end of NFL regular season.'
                         : 'Runs through end of MLB regular season.'
                     : 'One night only — highest score wins.'}
