@@ -326,6 +326,42 @@ async function tightenJoinLocks() {
 /**
  * Main job: generate salaries for today, score yesterday's (or today's finished) games.
  */
+/**
+ * Score 3-Point Contest picks: pull three_pointers_made from
+ * nba_dfs_player_stats into three_point_picks.made_threes.
+ */
+async function scoreThreePointPicks(date) {
+  const { data: picks } = await supabase
+    .from('three_point_picks')
+    .select('id, espn_player_id')
+    .eq('game_date', date)
+
+  if (!picks?.length) return
+
+  const espnIds = [...new Set(picks.map((p) => p.espn_player_id))]
+  const { data: stats } = await supabase
+    .from('nba_dfs_player_stats')
+    .select('espn_player_id, three_pointers_made')
+    .eq('game_date', date)
+    .in('espn_player_id', espnIds)
+
+  if (!stats?.length) return
+
+  const tpMap = {}
+  for (const s of stats) tpMap[s.espn_player_id] = s.three_pointers_made || 0
+
+  for (const pick of picks) {
+    const tp = tpMap[pick.espn_player_id]
+    if (tp === undefined) continue
+    await supabase
+      .from('three_point_picks')
+      .update({ made_threes: tp })
+      .eq('id', pick.id)
+  }
+
+  logger.info({ date, picks: picks.length }, 'Scored 3-Point Contest picks')
+}
+
 export async function scoreNBADFS() {
   const today = todayET()
   const season = 2026
@@ -378,6 +414,7 @@ export async function scoreNBADFS() {
   if (playerStats.length > 0) {
     await upsertPlayerStats(playerStats, today, season)
     await scoreRosters(today, season, allFinal)
+    await scoreThreePointPicks(today)
     logger.info({ date: today, players: playerStats.length, allFinal }, 'NBA DFS scoring pass complete')
   }
 
@@ -410,6 +447,7 @@ export async function scoreNBADFS() {
     if (yester.playerStats.length > 0) {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
       await scoreRosters(yesterdayStr, season, yester.allFinal)
+      await scoreThreePointPicks(yesterdayStr)
       logger.info({ date: yesterdayStr, players: yester.playerStats.length, allFinal: yester.allFinal }, 'Scored yesterday NBA DFS games')
     }
     if (yester.allFinal) {
@@ -441,6 +479,7 @@ export async function scoreNBADFS() {
       if (older.playerStats.length > 0) {
         await upsertPlayerStats(older.playerStats, d, season)
         await scoreRosters(d, season, older.allFinal)
+        await scoreThreePointPicks(d)
         logger.info({ date: d, players: older.playerStats.length, allFinal: older.allFinal }, 'Scored older unfinalized NBA DFS games')
       }
       if (older.allFinal) {

@@ -254,7 +254,7 @@ export async function createLeague(userId, data) {
       use_league_picks: data.format === 'pickem',
       visibility: data.visibility || 'closed',
       joins_locked_at: data.joins_locked_at
-        ? (['nba_dfs', 'mlb_dfs', 'hr_derby'].includes(data.format) && data.joins_locked_at.length === 10
+        ? (['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point'].includes(data.format) && data.joins_locked_at.length === 10
           // For DFS formats, date-only string → end of sports day (next day 10 AM UTC / 6 AM ET)
           ? (() => { const d = new Date(data.joins_locked_at + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); d.setUTCHours(10, 0, 0, 0); return d.toISOString() })()
           : data.joins_locked_at)
@@ -852,7 +852,7 @@ export async function updateLeague(leagueId, userId, data) {
     // bracket, TD Pass, and survivor are deliberately omitted: their
     // windows are bound to a schedule (NFL/tournament) or to a "last one
     // standing" condition that ends the league naturally.
-    const ENDS_AT_EDITABLE_FORMATS = ['hr_derby', 'nba_dfs', 'mlb_dfs', 'pickem']
+    const ENDS_AT_EDITABLE_FORMATS = ['hr_derby', 'three_point', 'nba_dfs', 'mlb_dfs', 'pickem']
     const onlyEndsAtOrAlwaysAllowed = Object.keys(data).every((k) => k === 'ends_at' || alwaysAllowed.includes(k))
     const isCompleted = league.status === 'completed'
     if (onlyEndsAtOrAlwaysAllowed && !isCompleted && ENDS_AT_EDITABLE_FORMATS.includes(league.format)) {

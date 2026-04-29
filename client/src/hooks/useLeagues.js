@@ -1261,6 +1261,51 @@ export function useHrDerbyStandings(leagueId) {
   })
 }
 
+// 3-Point Contest hooks (mirror HR Derby exactly, NBA equivalent)
+export function useThreePointPlayers(date) {
+  return useQuery({
+    queryKey: ['three-point', 'players', date],
+    queryFn: () => api.get(`/three-point/players?date=${date}`),
+    enabled: !!date,
+  })
+}
+
+export function useThreePointPicks(leagueId, date) {
+  return useQuery({
+    queryKey: ['three-point', leagueId, 'picks', date],
+    queryFn: () => api.get(`/three-point/picks?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+    refetchInterval: 2 * 60 * 1000,
+  })
+}
+
+export function useThreePointUsed(leagueId, date) {
+  return useQuery({
+    queryKey: ['three-point', leagueId, 'used', date],
+    queryFn: () => api.get(`/three-point/used?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+  })
+}
+
+export function useSubmitThreePointPicks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/three-point/picks', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['three-point', variables.league_id] })
+    },
+  })
+}
+
+export function useThreePointStandings(leagueId) {
+  return useQuery({
+    queryKey: ['three-point', leagueId, 'standings'],
+    queryFn: () => api.get(`/three-point/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
 // === TD Pass Competition ===
 export function useTdPassQbs(leagueId) {
   return useQuery({

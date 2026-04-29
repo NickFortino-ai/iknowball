@@ -493,6 +493,38 @@ async function getTdPassStandings(league) {
   return ranked
 }
 
+async function getThreePointStandings(league) {
+  const { data: picks } = await supabase
+    .from('three_point_picks')
+    .select('user_id, made_threes')
+    .eq('league_id', league.id)
+
+  if (!picks?.length) return []
+
+  const userMap = {}
+  for (const p of picks) {
+    if (!userMap[p.user_id]) userMap[p.user_id] = { user_id: p.user_id, totalThrees: 0 }
+    userMap[p.user_id].totalThrees += p.made_threes || 0
+  }
+
+  const standings = Object.values(userMap)
+  standings.sort((a, b) => b.totalThrees - a.totalThrees)
+
+  const ranked = []
+  let i = 0
+  while (i < standings.length) {
+    let j = i
+    while (j < standings.length && standings[j].totalThrees === standings[i].totalThrees) j++
+    const sharedRank = i + 1
+    for (let k = i; k < j; k++) {
+      ranked.push({ user_id: standings[k].user_id, rank: sharedRank })
+    }
+    i = j
+  }
+
+  return ranked
+}
+
 async function getHRDerbyStandings(league) {
   const { data: picks } = await supabase
     .from('hr_derby_picks')
@@ -608,7 +640,7 @@ export async function completeLeagues() {
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
-    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'td_pass'])
+    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'td_pass'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
     .lte('ends_at', earlyWindow)
@@ -773,6 +805,11 @@ export async function completeLeagues() {
         const standings = await getHRDerbyStandings(league)
         if (standings?.length > 0) {
           await awardPositionBasedPoints(league, standings, 'HR Derby')
+        }
+      } else if (league.format === 'three_point') {
+        const standings = await getThreePointStandings(league)
+        if (standings?.length > 0) {
+          await awardPositionBasedPoints(league, standings, '3-Point Contest')
         }
       } else if (league.format === 'td_pass') {
         const standings = await getTdPassStandings(league)
