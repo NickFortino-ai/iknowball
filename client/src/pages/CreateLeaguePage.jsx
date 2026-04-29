@@ -834,11 +834,14 @@ export default function CreateLeaguePage() {
             {SPORT_OPTIONS.map((opt) => {
               const fantasySports = fantasyFormat === 'salary_cap' ? ['americanfootball_nfl', 'basketball_nba'] : ['americanfootball_nfl']
               const isFantasyLocked = format === 'fantasy' && !fantasySports.includes(opt.value)
+              // TD Survivor only works with NFL — gate every other sport out.
+              const isTouchdownLocked = format === 'survivor' && survivorMode === 'touchdown' && opt.value !== 'americanfootball_nfl'
+              const isLocked = isFantasyLocked || isTouchdownLocked
               return (
               <button
                 key={opt.value}
                 type="button"
-                disabled={isFantasyLocked}
+                disabled={isLocked}
                 onClick={() => {
                   setSport(opt.value)
                   // Snap pick_frequency to whatever this sport actually allows
@@ -854,7 +857,7 @@ export default function CreateLeaguePage() {
                 className={`flex-shrink-0 px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
                   sport === opt.value
                     ? 'bg-accent text-white border-accent'
-                    : isFantasyLocked
+                    : isLocked
                     ? 'border-text-primary/10 text-text-muted/30 cursor-not-allowed'
                     : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
                 }`}
