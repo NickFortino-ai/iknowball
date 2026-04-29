@@ -254,7 +254,7 @@ const CATEGORY_CARDS = {
     {
       key: 'fantasy-salary',
       format: 'fantasy',
-      label: 'Salary Cap Fantasy Football—Offense',
+      label: 'Salary Cap Fantasy Football',
       description: 'Build a fresh weekly NFL lineup under a salary cap — no draft, no carryover',
       preset: { fantasyFormat: 'salary_cap', sport: 'americanfootball_nfl' },
     },
