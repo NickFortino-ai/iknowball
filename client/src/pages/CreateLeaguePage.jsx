@@ -650,7 +650,7 @@ export default function CreateLeaguePage() {
     const isFantasyFormat = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints'].includes(format)
     const fantasySettings = isFantasyFormat ? {
       format: (format === 'nba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : format === 'strikeouts' ? 'strikeouts' : format === 'three_point' ? 'three_point' : format === 'sacks' ? 'sacks' : format === 'ints' ? 'ints' : fantasyFormat,
-      pick_reuse: (format === 'three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints') ? pickReuse : undefined,
+      pick_reuse: (format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints') ? pickReuse : undefined,
       // NFL salary cap (DFS) leagues use half-PPR — that's what FanDuel
       // uses and what the salary algorithm is calibrated against. Keeping
       // them on full PPR while salaries assume half-PPR systematically
@@ -1747,7 +1747,7 @@ export default function CreateLeaguePage() {
                     : 'One night only — highest score wins.'}
               </p>
             </div>
-            {(format === 'three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints') && (() => {
+            {(format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints') && (() => {
               const isNflContest = format === 'sacks' || format === 'ints'
               const reuseOptions = isNflContest
                 ? [
@@ -1758,17 +1758,17 @@ export default function CreateLeaguePage() {
                     { value: 'weekly', label: 'Once per Week' },
                     { value: 'unlimited', label: 'Unlimited' },
                   ]
+              const playerNoun = format === 'strikeouts' ? 'pitcher'
+                : format === 'hr_derby' ? 'hitter'
+                : 'player'
+              const cadenceNoun = format === 'strikeouts' ? 'days' : 'nights'
               const helper = isNflContest
                 ? (pickReuse === 'season'
                     ? 'Each defender can only be used once all season.'
                     : 'No reuse limit — pick the same defender as many weeks as you want.')
                 : (pickReuse === 'weekly'
-                    ? (format === 'strikeouts'
-                        ? 'Each pitcher can only be used once per Mon-Sun week.'
-                        : 'Each player can only be used once per Mon-Sun week.')
-                    : (format === 'strikeouts'
-                        ? 'No reuse limit — pick the same pitcher on back-to-back days.'
-                        : 'No reuse limit — pick the same player on back-to-back nights.'))
+                    ? `Each ${playerNoun} can only be used once per Mon-Sun week.`
+                    : `No reuse limit — pick the same ${playerNoun} on back-to-back ${cadenceNoun}.`)
               return (
                 <div>
                   <label className="text-xs text-text-muted block mb-1">Player Reuse</label>

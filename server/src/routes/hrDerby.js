@@ -144,7 +144,9 @@ router.get('/used', async (req, res) => {
   res.json(data || [])
 })
 
-// Submit picks (up to 3 per day)
+// Submit picks (up to 3 per day). Reuse rule comes from
+// fantasy_settings.pick_reuse: 'weekly' (default, blocks players already
+// used this Mon-Sun) or 'unlimited' (no reuse restriction).
 router.post('/picks', async (req, res) => {
   const { league_id, date, players } = req.body
   if (!league_id || !date || !players?.length) {
@@ -164,20 +166,28 @@ router.post('/picks', async (req, res) => {
 
   if (!member) return res.status(403).json({ error: 'Not a member of this league' })
 
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('pick_reuse')
+    .eq('league_id', league_id)
+    .maybeSingle()
+
+  const reuseMode = settings?.pick_reuse || 'weekly'
   const weekStart = getWeekStart(date)
 
-  // Check weekly usage — these players can't have been used this week
-  const { data: used } = await supabase
-    .from('hr_derby_usage')
-    .select('espn_player_id')
-    .eq('league_id', league_id)
-    .eq('user_id', req.user.id)
-    .eq('week_start', weekStart)
+  if (reuseMode === 'weekly') {
+    const { data: used } = await supabase
+      .from('hr_derby_usage')
+      .select('espn_player_id')
+      .eq('league_id', league_id)
+      .eq('user_id', req.user.id)
+      .eq('week_start', weekStart)
 
-  const usedIds = new Set((used || []).map((u) => u.espn_player_id))
-  for (const p of players) {
-    if (usedIds.has(p.espn_player_id)) {
-      return res.status(400).json({ error: `${p.player_name} was already used this week` })
+    const usedIds = new Set((used || []).map((u) => u.espn_player_id))
+    for (const p of players) {
+      if (usedIds.has(p.espn_player_id)) {
+        return res.status(400).json({ error: `${p.player_name} was already used this week` })
+      }
     }
   }
 
@@ -185,15 +195,6 @@ router.post('/picks', async (req, res) => {
   await supabase
     .from('hr_derby_picks')
     .delete()
-    .eq('league_id', league_id)
-    .eq('user_id', req.user.id)
-    .eq('game_date', date)
-
-  // Also remove old usage entries for this day's picks (in case re-picking)
-  // We track usage per week, so we need to clean up if they change picks for today
-  const { data: oldPicks } = await supabase
-    .from('hr_derby_picks')
-    .select('espn_player_id')
     .eq('league_id', league_id)
     .eq('user_id', req.user.id)
     .eq('game_date', date)
@@ -213,20 +214,19 @@ router.post('/picks', async (req, res) => {
   const { error: pickErr } = await supabase.from('hr_derby_picks').insert(pickRows)
   if (pickErr) throw pickErr
 
-  // Record weekly usage
-  const usageRows = players.map((p) => ({
-    league_id,
-    user_id: req.user.id,
-    week_start: weekStart,
-    espn_player_id: p.espn_player_id,
-    player_name: p.player_name,
-  }))
-
-  const { error: usageErr } = await supabase
-    .from('hr_derby_usage')
-    .upsert(usageRows, { onConflict: 'league_id,user_id,week_start,espn_player_id' })
-
-  if (usageErr) throw usageErr
+  if (reuseMode === 'weekly') {
+    const usageRows = players.map((p) => ({
+      league_id,
+      user_id: req.user.id,
+      week_start: weekStart,
+      espn_player_id: p.espn_player_id,
+      player_name: p.player_name,
+    }))
+    const { error: usageErr } = await supabase
+      .from('hr_derby_usage')
+      .upsert(usageRows, { onConflict: 'league_id,user_id,week_start,espn_player_id' })
+    if (usageErr) throw usageErr
+  }
 
   res.json({ submitted: players.length })
 })
