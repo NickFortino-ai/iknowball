@@ -15,6 +15,7 @@ const FORMAT_LABELS = {
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
   three_point: '3-Point Contest',
+  sacks: 'Sacks Contest',
 }
 
 const SPORT_LABELS = {
@@ -231,6 +232,7 @@ export default function JoinLeaguePage() {
                             {league.format === 'pickem' && <div className="text-text-muted italic">Pick game winners scored by odds. Top of the standings at the end wins.</div>}
                             {league.format === 'hr_derby' && <div className="text-text-muted italic">Pick 3 hitters per day. Each player usable once per week. Most HRs wins.</div>}
                             {league.format === 'three_point' && <div className="text-text-muted italic">Pick 3 NBA shooters per night. Most made 3-pointers wins.</div>}
+                            {league.format === 'sacks' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most sacks across the season wins.</div>}
                             {(league.format === 'nba_dfs' || league.format === 'mlb_dfs') && <div className="text-text-muted italic">Build a daily lineup under a salary cap. Highest fantasy points wins.</div>}
                           </div>
                         )}

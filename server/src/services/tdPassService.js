@@ -190,10 +190,11 @@ export async function getCurrentWeekLastKickoff() {
 }
 
 /**
- * Set of QB player_ids whose game has already started for the current week.
- * We use the same Eastern-day rule as the fantasy waiver lock.
+ * Set of NFL team abbreviations whose game has already started today (ET).
+ * Used by every NFL pick-style contest (TD Pass, Sacks, Interceptions) to
+ * lock players whose team has already kicked off.
  */
-async function getLockedTeamSet() {
+export async function getLockedTeamSet() {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
   const { data: lockedGames } = await supabase
     .from('nfl_schedule')
@@ -290,7 +291,7 @@ export async function getAvailableQBs(leagueId, userId) {
  * current NFL week. Pulls from the live `games` table (which is what the
  * picks UI uses elsewhere) so abbreviations match.
  */
-async function getCurrentWeekMatchups() {
+export async function getCurrentWeekMatchups() {
   const { week, season } = await getCurrentNflWeek()
   const { data: weekRows } = await supabase
     .from('nfl_schedule')

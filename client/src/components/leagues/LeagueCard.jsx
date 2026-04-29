@@ -12,6 +12,7 @@ const FORMAT_LABELS = {
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
   three_point: '3-Point Contest',
+  sacks: 'Sacks Contest',
   td_pass: 'TD Pass Competition',
 }
 

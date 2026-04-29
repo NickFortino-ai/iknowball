@@ -108,6 +108,13 @@ export async function syncNflStatsCurrentWeek() {
     } catch (e) {
       logger.error({ err: e }, 'TD Pass scoring failed')
     }
+    // Score Sacks Contest picks (idp_sack) against the freshly-synced stats
+    try {
+      const { scoreAllSacksPicks } = await import('../services/sacksService.js')
+      await scoreAllSacksPicks()
+    } catch (e) {
+      logger.error({ err: e }, 'Sacks Contest scoring failed')
+    }
     // Score traditional fantasy H2H matchups for this week (auto keeps
     // fantasy_matchups totals fresh — no admin button required for the
     // common drift case)
