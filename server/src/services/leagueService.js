@@ -338,25 +338,35 @@ export async function createLeague(userId, data) {
     }
   }
 
-  if (league.format === 'td_pass') {
+  // NFL season-long contests start at the first kickoff of the upcoming/
+  // current NFL week (or Week 1 in the offseason) so the league doesn't
+  // appear "already started" while members are being invited.
+  if (league.format === 'td_pass' || league.format === 'sacks' || league.format === 'ints') {
     try {
       const { getCurrentWeekLastKickoff, getCurrentWeekFirstKickoff } = await import('./tdPassService.js')
       const firstKickoff = await getCurrentWeekFirstKickoff()
-      const lastKickoff = await getCurrentWeekLastKickoff()
       const updates = {}
       if (firstKickoff) {
         updates.starts_at = firstKickoff
         league.starts_at = firstKickoff
       }
-      if (lastKickoff) {
-        updates.joins_locked_at = lastKickoff
-        league.joins_locked_at = lastKickoff
+      // TD Pass auto-locks joins at the last kickoff of the current NFL
+      // week (one shot per week — late joiners after kickoff have less
+      // info than they should). Sacks + Ints stay open longer because
+      // commissioners can plausibly want late joiners across the season,
+      // so we leave joins_locked_at as the user-provided value.
+      if (league.format === 'td_pass') {
+        const lastKickoff = await getCurrentWeekLastKickoff()
+        if (lastKickoff) {
+          updates.joins_locked_at = lastKickoff
+          league.joins_locked_at = lastKickoff
+        }
       }
       if (Object.keys(updates).length) {
         await supabase.from('leagues').update(updates).eq('id', league.id)
       }
     } catch (err) {
-      logger.error({ err, leagueId: league.id }, 'Failed to set td_pass start/lock dates')
+      logger.error({ err, leagueId: league.id, format: league.format }, 'Failed to set NFL contest start/lock dates')
     }
   }
 
