@@ -239,7 +239,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     {hLive || weekStatus === 'past' ? (hp?.points || 0).toFixed(1) : '--'}
                   </div>
                   <div className="text-center">
-                    <span className="text-xs font-semibold text-text-muted bg-bg-secondary rounded px-1.5 py-0.5">
+                    <span className="text-xs font-semibold text-white">
                       {slotLabels[hp?.slot] || (hp?.position) || '?'}
                     </span>
                   </div>
@@ -393,7 +393,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
 
                   {/* Position center column */}
                   <div className="w-9 flex items-start justify-center pt-3.5 shrink-0">
-                    <span className="text-[10px] font-bold text-text-muted bg-bg-secondary rounded px-1.5 py-0.5">{slotLabel}</span>
+                    <span className="text-[10px] font-bold text-white">{slotLabel}</span>
                   </div>
 
                   {/* Away points */}
