@@ -719,10 +719,17 @@ export default function CreateLeaguePage() {
         settings,
         fantasy_settings: fantasySettings,
         visibility,
-        joins_locked_at: ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point'].includes(format)
-          ? getDfsStartDate()
-          : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
-          : visibility === 'open' && joinsLockedAt ? joinsLockedAt : undefined,
+        // Squares always locks at first pitch/tip-off. Otherwise: honor the
+        // user's "Open Until" if they set one (open-visibility leagues only).
+        // For DFS-style formats with no override, default to the league start
+        // date so leagues don't stay joinable after the contest begins.
+        joins_locked_at: format === 'squares' && gameId
+          ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
+          : visibility === 'open' && joinsLockedAt
+            ? joinsLockedAt
+            : ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point'].includes(format)
+              ? getDfsStartDate()
+              : undefined,
         backdrop_image: backdropImage || undefined,
       })
       // Upload custom backdrop if selected
@@ -2115,7 +2122,12 @@ export default function CreateLeaguePage() {
               onChange={(e) => setJoinsLockedAt(e.target.value)}
               className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
             />
-            <p className="text-xs text-text-muted mt-1.5">After this time, no new members can join.</p>
+            <p className="text-xs text-text-muted mt-1.5">
+              After this time, no new members can join.
+              {['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point'].includes(format) && (
+                <> Leave blank to auto-lock when the league starts.</>
+              )}
+            </p>
           </div>
         )}
 
