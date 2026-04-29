@@ -171,7 +171,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
         <div className="min-w-max">
           {/* Header */}
           <div className="flex border-b border-text-primary/10 text-text-muted text-xs">
-            <div className="sticky left-0 z-10 bg-bg-primary shrink-0 flex">
+            <div className="sticky left-0 z-10 bg-bg-primary/40 backdrop-blur-sm shrink-0 flex">
               <div className="py-3 px-2 text-center font-semibold w-8">#</div>
               <div className="py-3 px-2 text-left font-semibold w-44">Manager</div>
             </div>
@@ -197,7 +197,7 @@ export default function FantasyStandings({ league, isSalaryCap }) {
                   onClick={() => toggleExpand(s.userId)}
                   className="flex items-stretch hover:bg-text-primary/5 transition-colors cursor-pointer h-16"
                 >
-                  <div className="sticky left-0 z-10 bg-bg-primary shrink-0 flex items-center">
+                  <div className="sticky left-0 z-10 bg-bg-primary/40 backdrop-blur-sm shrink-0 flex items-center">
                     <div className="px-2 text-center w-8">
                       <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
                     </div>
