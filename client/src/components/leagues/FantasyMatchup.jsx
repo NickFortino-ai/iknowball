@@ -165,23 +165,21 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
         )}
 
         {/* Win probability bar (live) or result bar (completed) or projection bar (future) */}
-        {isCompleted && hasScores ? (() => {
-          // My matchup: green if I won, gray if I lost. Others: green for winner.
-          const iWon = isMyMatchup && ((matchup.home_user?.id === myId && homeWinning) || (matchup.away_user?.id === myId && !homeWinning))
-          const iLost = isMyMatchup && !iWon
-          const barColor = iLost ? 'bg-text-muted/40' : 'bg-correct'
-          return (
-            <div className="mt-3">
-              <div className="h-2 rounded-full overflow-hidden bg-bg-card">
-                <div className={`h-full rounded-full ${barColor}`} />
-              </div>
-              <div className="flex justify-between mt-1">
-                <span className={`text-[9px] md:text-xs font-semibold ${homeWinning ? 'text-correct' : 'text-text-muted'}`}>{homeWinning ? 'Winner' : 'Loser'}</span>
-                <span className={`text-[9px] md:text-xs font-semibold ${!homeWinning ? 'text-correct' : 'text-text-muted'}`}>{!homeWinning ? 'Winner' : 'Loser'}</span>
-              </div>
+        {isCompleted && hasScores ? (
+          // Final: only the winner's half is green; the loser's half stays
+          // gray. Lets a glance at the bar tell you who won without the
+          // misleading full-green-across-a-loss problem.
+          <div className="mt-3">
+            <div className="h-2 rounded-full overflow-hidden bg-bg-card flex">
+              <div className={`h-full w-1/2 ${homeWinning ? 'bg-correct rounded-l-full' : ''}`} />
+              <div className={`h-full w-1/2 ${!homeWinning ? 'bg-correct rounded-r-full' : ''}`} />
             </div>
-          )
-        })() : !isCompleted && (hasScores || totalProj > 0) ? (() => {
+            <div className="flex justify-between mt-1">
+              <span className={`text-[9px] md:text-xs font-semibold ${homeWinning ? 'text-correct' : 'text-text-muted'}`}>{homeWinning ? 'Winner' : 'Loser'}</span>
+              <span className={`text-[9px] md:text-xs font-semibold ${!homeWinning ? 'text-correct' : 'text-text-muted'}`}>{!homeWinning ? 'Winner' : 'Loser'}</span>
+            </div>
+          </div>
+        ) : !isCompleted && (hasScores || totalProj > 0) ? (() => {
           // Live/future: orange for "my" side (or home for others), gray for opponent
           const winProb = matchup.home_win_prob ?? homePct
           // For my matchup: orange = my probability. For others: orange = home.
