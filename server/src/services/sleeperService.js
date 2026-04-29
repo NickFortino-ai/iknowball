@@ -5,7 +5,14 @@ const SLEEPER_BASE = 'https://api.sleeper.app/v1'
 const SLEEPER_CDN = 'https://sleepercdn.com/content/nfl/players'
 const SLEEPER_STATS = 'https://api.sleeper.com'
 
-const FANTASY_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
+// Positions we sync from Sleeper. Offensive + K + team DEF feed traditional
+// fantasy / TD Pass / Survivor / DFS. The IDP positions (defenders) feed the
+// Sacks + Interceptions contests — Sleeper exposes per-player defensive
+// stats in idp_* fields for these positions.
+const SYNCED_POSITIONS = new Set([
+  'QB', 'RB', 'WR', 'TE', 'K', 'DEF',
+  'DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB',
+])
 
 /**
  * Sync all NFL players from Sleeper's player database.
@@ -44,7 +51,7 @@ export async function syncPlayers() {
   // stats fail the foreign key check on nfl_player_stats.player_id and get
   // silently dropped. Allow DEF through regardless of the active flag.
   const players = Object.entries(data)
-    .filter(([_, p]) => FANTASY_POSITIONS.has(p.position) && (p.position === 'DEF' || p.active))
+    .filter(([_, p]) => SYNCED_POSITIONS.has(p.position) && (p.position === 'DEF' || p.active))
     .map(([id, p]) => {
       // For team defenses, use the team logo as the headshot — Sleeper doesn't
       // host real images for DEF "players", and the team abbrev IS the player_id.
@@ -211,7 +218,12 @@ export async function backfillSeasonStats(season) {
 export async function syncWeeklyStats(season = 2026, week = 1) {
   logger.info({ season, week }, 'Syncing weekly player stats from Sleeper')
 
-  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+  // Offense + K + DEF for traditional fantasy / TD Pass / Survivor / DFS;
+  // IDP positions feed Sacks + Interceptions contests (idp_* stat fields).
+  const positions = [
+    'QB', 'RB', 'WR', 'TE', 'K', 'DEF',
+    'DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB',
+  ]
   const posParams = positions.map((p) => `position[]=${p}`).join('&')
 
   let data
@@ -266,6 +278,17 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
         def_fum_rec: s.fum_rec || 0,
         def_safety: s.safe || 0,
         def_pts_allowed: s.pts_allow != null ? s.pts_allow : null,
+        // Individual defensive player stats (populated on IDP rows; 0 on
+        // offense/K/DEF rows where Sleeper doesn't return these keys).
+        idp_sack: s.idp_sack || 0,
+        idp_int: s.idp_int || 0,
+        idp_tkl_solo: s.idp_tkl_solo || 0,
+        idp_tkl_ast: s.idp_tkl_ast || 0,
+        idp_tkl_loss: s.idp_tkl_loss || 0,
+        idp_qb_hit: s.idp_qb_hit || 0,
+        idp_pass_def: s.idp_pass_def || 0,
+        idp_ff: s.idp_ff || 0,
+        idp_fum_rec: s.idp_fum_rec || 0,
         pts_ppr: s.pts_ppr || null,
         pts_half_ppr: s.pts_half_ppr || null,
         pts_std: s.pts_std || null,

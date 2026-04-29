@@ -1585,7 +1585,7 @@ export default function CreateLeaguePage() {
                 {((format === 'hr_derby' || format === 'three_point')
                   ? [
                       { value: 'full_season', label: 'Full Season' },
-                      { value: 'custom_range', label: 'Custom Range' },
+                      { value: 'custom_range', label: 'Select Date' },
                     ]
                   : [
                       { value: 'full_season', label: 'Full Season' },
