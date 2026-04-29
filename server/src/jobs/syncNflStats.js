@@ -115,6 +115,13 @@ export async function syncNflStatsCurrentWeek() {
     } catch (e) {
       logger.error({ err: e }, 'Sacks Contest scoring failed')
     }
+    // Score Interceptions Contest picks (idp_int) against the freshly-synced stats
+    try {
+      const { scoreAllIntsPicks } = await import('../services/intsService.js')
+      await scoreAllIntsPicks()
+    } catch (e) {
+      logger.error({ err: e }, 'Interceptions Contest scoring failed')
+    }
     // Score traditional fantasy H2H matchups for this week (auto keeps
     // fantasy_matchups totals fresh — no admin button required for the
     // common drift case)

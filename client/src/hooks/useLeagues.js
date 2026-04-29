@@ -1351,6 +1351,51 @@ export function useSacksStandings(leagueId) {
   })
 }
 
+// === Interceptions Contest ===
+export function useIntsPlayers() {
+  return useQuery({
+    queryKey: ['ints', 'players'],
+    queryFn: () => api.get('/ints/players'),
+    staleTime: 60_000,
+  })
+}
+
+export function useIntsPicks(leagueId) {
+  return useQuery({
+    queryKey: ['ints', leagueId, 'picks'],
+    queryFn: () => api.get(`/ints/picks?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 2 * 60 * 1000,
+  })
+}
+
+export function useIntsUsed(leagueId) {
+  return useQuery({
+    queryKey: ['ints', leagueId, 'used'],
+    queryFn: () => api.get(`/ints/used?league_id=${leagueId}`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useSubmitIntsPicks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/ints/picks', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['ints', variables.league_id] })
+    },
+  })
+}
+
+export function useIntsStandings(leagueId) {
+  return useQuery({
+    queryKey: ['ints', leagueId, 'standings'],
+    queryFn: () => api.get(`/ints/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
 // === TD Pass Competition ===
 export function useTdPassQbs(leagueId) {
   return useQuery({

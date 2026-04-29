@@ -128,6 +128,7 @@ const FORMAT_LABELS = {
   hr_derby: 'HR Derby',
   three_point: '3PT Contest',
   sacks: 'Sacks',
+  ints: 'INTs',
   td_pass: 'TD Pass',
 }
 

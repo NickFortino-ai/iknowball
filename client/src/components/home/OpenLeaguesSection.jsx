@@ -16,6 +16,7 @@ const FORMAT_LABELS = {
   hr_derby: 'Home Run Derby',
   three_point: '3-Point Contest',
   sacks: 'Sacks Contest',
+  ints: 'Interceptions Contest',
 }
 
 const SPORT_LABELS = {
@@ -181,6 +182,7 @@ export default function OpenLeaguesSection() {
                         {league.format === 'hr_derby' && "Pick 3 MLB hitters per day. Each player usable only once per week. Most home runs across the season wins."}
                         {league.format === 'three_point' && "Pick 3 NBA shooters per night. Most made 3-pointers across the season wins."}
                         {league.format === 'sacks' && "Pick 3 NFL defenders per week. Most sacks across the season wins."}
+                        {league.format === 'ints' && "Pick 3 NFL defenders per week. Most interceptions across the season wins."}
                         {league.format === 'squares' && "Pick a square on the grid. When the score lands on your row + column at the end of any quarter, you win that quarter."}
                       </p>
 

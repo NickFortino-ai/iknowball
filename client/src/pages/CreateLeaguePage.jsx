@@ -130,6 +130,22 @@ Commissioner controls: league length, player reuse rule, team count. Custom back
     },
   },
   {
+    value: 'ints',
+    label: 'Interceptions Contest',
+    description: 'Pick 3 NFL defenders per week — score points for every interception they record',
+    details: `Pick up to 3 NFL defenders each week — DBs, LBs, anyone who can pick off a pass. Every interception each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to unlimited.
+
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
+
+Commissioner controls: league length (defaults to full NFL season), player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'Interceptions Contest Winner Bonus (Full Season, 18 weeks)',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+    },
+  },
+  {
     value: 'sacks',
     label: 'Sacks Contest',
     description: 'Pick 3 NFL defenders per week — score points for every sack they record',
@@ -324,6 +340,7 @@ Commissioner controls: salary cap, season type (full season or single week), tea
     },
     { key: 'td-pass', format: 'td_pass' },
     { key: 'sacks', format: 'sacks', preset: { sport: 'americanfootball_nfl' } },
+    { key: 'ints', format: 'ints', preset: { sport: 'americanfootball_nfl' } },
     {
       key: 'nfl-pickem',
       format: 'pickem',
@@ -502,6 +519,7 @@ export default function CreateLeaguePage() {
     if (format === 'three_point') setSport('basketball_nba')
     if (format === 'td_pass') setSport('americanfootball_nfl')
     if (format === 'sacks') setSport('americanfootball_nfl')
+    if (format === 'ints') setSport('americanfootball_nfl')
     // Per-format salary cap default — MLB pricing settled lower than NBA, so
     // it caps at $40k by default with $50k as the bigger option.
     if (format === 'mlb_dfs') setSalaryCap(40000)
@@ -513,9 +531,10 @@ export default function CreateLeaguePage() {
       setDfsStartOption('tomorrow')
       if (seasonType === 'single_week') setSeasonType('full_season')
     }
-    // Sacks Contest defaults: once per season per defender, full season.
-    // No daily start option — picks are weekly so dfsStartOption isn't used.
-    if (format === 'sacks') {
+    // Sacks + Interceptions Contests share NFL weekly cadence with default
+    // once-per-season reuse. No daily start option — picks are weekly so
+    // dfsStartOption isn't used.
+    if (format === 'sacks' || format === 'ints') {
       setPickReuse('season')
       if (seasonType === 'single_week') setSeasonType('full_season')
     } else if (format === 'three_point' || format === 'hr_derby') {
@@ -547,7 +566,7 @@ export default function CreateLeaguePage() {
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
   const fileInputRef = useRef(null)
-  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'sacks' ? 'sacks_contest' : sport || undefined
+  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'sacks' ? 'sacks_contest' : format === 'ints' ? 'ints_contest' : sport || undefined
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [joinsLockedAt, setJoinsLockedAt] = useState('')
 
@@ -605,10 +624,10 @@ export default function CreateLeaguePage() {
     }
 
     // Fantasy settings passed separately
-    const isFantasyFormat = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks'].includes(format)
+    const isFantasyFormat = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints'].includes(format)
     const fantasySettings = isFantasyFormat ? {
-      format: (format === 'nba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : format === 'three_point' ? 'three_point' : format === 'sacks' ? 'sacks' : fantasyFormat,
-      pick_reuse: (format === 'three_point' || format === 'sacks') ? pickReuse : undefined,
+      format: (format === 'nba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : format === 'three_point' ? 'three_point' : format === 'sacks' ? 'sacks' : format === 'ints' ? 'ints' : fantasyFormat,
+      pick_reuse: (format === 'three_point' || format === 'sacks' || format === 'ints') ? pickReuse : undefined,
       // NFL salary cap (DFS) leagues use half-PPR — that's what FanDuel
       // uses and what the salary algorithm is calibrated against. Keeping
       // them on full PPR while salaries assume half-PPR systematically
@@ -653,19 +672,19 @@ export default function CreateLeaguePage() {
       const league = await createLeague.mutateAsync({
         name,
         format,
-        sport: (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass' || format === 'sacks') ? 'americanfootball_nfl' : sport,
-        duration: (format === 'hr_derby' || format === 'three_point' || format === 'sacks') && seasonType === 'custom_range' ? 'custom_range'
+        sport: (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass' || format === 'sacks' || format === 'ints') ? 'americanfootball_nfl' : sport,
+        duration: (format === 'hr_derby' || format === 'three_point' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range' ? 'custom_range'
           : isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point'].includes(format) ? getDfsStartDate()
-          : (format === 'td_pass' || format === 'sacks') ? new Date().toISOString()
+          : (format === 'td_pass' || format === 'sacks' || format === 'ints') ? new Date().toISOString()
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
           : startsAt || undefined,
-        ends_at: (format === 'hr_derby' || format === 'three_point' || format === 'sacks') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
-          : (format === 'td_pass' || format === 'sacks') ? getSeasonEndDate('americanfootball_nfl')
+        ends_at: (format === 'hr_derby' || format === 'three_point' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
+          : (format === 'td_pass' || format === 'sacks' || format === 'ints') ? getSeasonEndDate('americanfootball_nfl')
           : format === 'survivor' ? getSeasonEndDate(sport)
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : endsAt === 'end_of_season' ? getSeasonEndDate((format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport)
@@ -707,8 +726,8 @@ export default function CreateLeaguePage() {
     }
   }
 
-  const autoSportFormats = ['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'td_pass']
-  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'squares', 'bracket', 'td_pass', 'survivor']
+  const autoSportFormats = ['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints', 'td_pass']
+  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints', 'squares', 'bracket', 'td_pass', 'survivor']
   const canSubmit = name && format && (sport || autoSportFormats.includes(format)) && (noDurationFormats.includes(format) || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
@@ -866,7 +885,7 @@ export default function CreateLeaguePage() {
         {format && <>
 
         {/* Sport (hidden for format-locked sports) */}
-        {!['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'td_pass'].includes(format) && <div>
+        {!['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints', 'td_pass'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
@@ -908,7 +927,7 @@ export default function CreateLeaguePage() {
         </div>}
 
         {/* Duration (not for fantasy/DFS/squares/bracket — bracket runs from picks lock to championship game) */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
@@ -991,7 +1010,7 @@ export default function CreateLeaguePage() {
         </>}
 
         {/* Max Members — only standalone for formats without their own settings section */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'pickem', 'survivor', 'squares', 'td_pass'].includes(format) && <div>
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints', 'pickem', 'survivor', 'squares', 'td_pass'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">
             Max Members <span className="text-text-muted font-normal">(optional)</span>
           </label>
@@ -1549,12 +1568,13 @@ export default function CreateLeaguePage() {
           </div>
         )}
 
-        {(format === 'mlb_dfs' || format === 'hr_derby' || format === 'three_point' || format === 'sacks') && (
+        {(format === 'mlb_dfs' || format === 'hr_derby' || format === 'three_point' || format === 'sacks' || format === 'ints') && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">
               {format === 'mlb_dfs' ? 'MLB Daily Fantasy Settings'
                 : format === 'three_point' ? '3-Point Contest Settings'
                 : format === 'sacks' ? 'Sacks Contest Settings'
+                : format === 'ints' ? 'Interceptions Contest Settings'
                 : 'Home Run Derby Settings'}
             </h3>
             {format === 'mlb_dfs' && (
@@ -1576,7 +1596,7 @@ export default function CreateLeaguePage() {
                 </div>
               </div>
             )}
-            {format !== 'sacks' && (
+            {format !== 'sacks' && format !== 'ints' && (
               <div>
                 <label className="text-xs text-text-muted block mb-1">League Starts</label>
                 <div className="flex gap-2">
@@ -1610,10 +1630,10 @@ export default function CreateLeaguePage() {
             )}
             <div>
               <label className="text-xs text-text-muted block mb-1">
-                {(format === 'hr_derby' || format === 'three_point' || format === 'sacks') ? 'League Length' : 'Season Type'}
+                {(format === 'hr_derby' || format === 'three_point' || format === 'sacks' || format === 'ints') ? 'League Length' : 'Season Type'}
               </label>
               <div className="flex gap-2">
-                {((format === 'hr_derby' || format === 'three_point' || format === 'sacks')
+                {((format === 'hr_derby' || format === 'three_point' || format === 'sacks' || format === 'ints')
                   ? [
                       { value: 'full_season', label: 'Full Season' },
                       { value: 'custom_range', label: 'Select Date' },
@@ -1635,29 +1655,30 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
-              {(format === 'hr_derby' || format === 'three_point' || format === 'sacks') && seasonType === 'custom_range' && (
+              {(format === 'hr_derby' || format === 'three_point' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range' && (
                 <input
                   type="date"
                   value={hrDerbyEndDate}
                   onChange={(e) => setHrDerbyEndDate(e.target.value)}
-                  min={format === 'sacks' ? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : getDfsStartDate()}
+                  min={(format === 'sacks' || format === 'ints') ? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : getDfsStartDate()}
                   className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                 />
               )}
               <p className="text-xs text-text-muted mt-1.5">
-                {(format === 'hr_derby' || format === 'three_point' || format === 'sacks') && seasonType === 'custom_range'
+                {(format === 'hr_derby' || format === 'three_point' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range'
                   ? 'Pick the date your league wraps up.'
                   : seasonType === 'full_season'
                     ? format === 'three_point'
                       ? 'Runs through end of NBA regular season.'
-                      : format === 'sacks'
+                      : (format === 'sacks' || format === 'ints')
                         ? 'Runs through end of NFL regular season.'
                         : 'Runs through end of MLB regular season.'
                     : 'One night only — highest score wins.'}
               </p>
             </div>
-            {(format === 'three_point' || format === 'sacks') && (() => {
-              const reuseOptions = format === 'sacks'
+            {(format === 'three_point' || format === 'sacks' || format === 'ints') && (() => {
+              const isNflContest = format === 'sacks' || format === 'ints'
+              const reuseOptions = isNflContest
                 ? [
                     { value: 'season', label: 'Once per Season' },
                     { value: 'unlimited', label: 'Unlimited' },
@@ -1666,7 +1687,7 @@ export default function CreateLeaguePage() {
                     { value: 'weekly', label: 'Once per Week' },
                     { value: 'unlimited', label: 'Unlimited' },
                   ]
-              const helper = format === 'sacks'
+              const helper = isNflContest
                 ? (pickReuse === 'season'
                     ? 'Each defender can only be used once all season.'
                     : 'No reuse limit — pick the same defender as many weeks as you want.')

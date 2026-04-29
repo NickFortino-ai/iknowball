@@ -13,6 +13,7 @@ const FORMAT_LABELS = {
   hr_derby: 'Home Run Derby',
   three_point: '3-Point Contest',
   sacks: 'Sacks Contest',
+  ints: 'Interceptions Contest',
   td_pass: 'TD Pass Competition',
 }
 

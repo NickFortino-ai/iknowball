@@ -852,7 +852,7 @@ export async function updateLeague(leagueId, userId, data) {
     // bracket, TD Pass, and survivor are deliberately omitted: their
     // windows are bound to a schedule (NFL/tournament) or to a "last one
     // standing" condition that ends the league naturally.
-    const ENDS_AT_EDITABLE_FORMATS = ['hr_derby', 'three_point', 'sacks', 'nba_dfs', 'mlb_dfs', 'pickem']
+    const ENDS_AT_EDITABLE_FORMATS = ['hr_derby', 'three_point', 'sacks', 'ints', 'nba_dfs', 'mlb_dfs', 'pickem']
     const onlyEndsAtOrAlwaysAllowed = Object.keys(data).every((k) => k === 'ends_at' || alwaysAllowed.includes(k))
     const isCompleted = league.status === 'completed'
     if (onlyEndsAtOrAlwaysAllowed && !isCompleted && ENDS_AT_EDITABLE_FORMATS.includes(league.format)) {

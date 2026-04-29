@@ -493,6 +493,38 @@ async function getTdPassStandings(league) {
   return ranked
 }
 
+async function getIntsStandings(league) {
+  const { data: picks } = await supabase
+    .from('ints_picks')
+    .select('user_id, ints')
+    .eq('league_id', league.id)
+
+  if (!picks?.length) return []
+
+  const userMap = {}
+  for (const p of picks) {
+    if (!userMap[p.user_id]) userMap[p.user_id] = { user_id: p.user_id, totalInts: 0 }
+    userMap[p.user_id].totalInts += Number(p.ints) || 0
+  }
+
+  const standings = Object.values(userMap)
+  standings.sort((a, b) => b.totalInts - a.totalInts)
+
+  const ranked = []
+  let i = 0
+  while (i < standings.length) {
+    let j = i
+    while (j < standings.length && standings[j].totalInts === standings[i].totalInts) j++
+    const sharedRank = i + 1
+    for (let k = i; k < j; k++) {
+      ranked.push({ user_id: standings[k].user_id, rank: sharedRank })
+    }
+    i = j
+  }
+
+  return ranked
+}
+
 async function getSacksStandings(league) {
   const { data: picks } = await supabase
     .from('sacks_picks')
@@ -672,7 +704,7 @@ export async function completeLeagues() {
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
-    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'td_pass'])
+    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints', 'td_pass'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
     .lte('ends_at', earlyWindow)
@@ -855,6 +887,18 @@ export async function completeLeagues() {
           const fraction = Math.min(1, weeksPlayed / 18)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
           await awardPositionBasedPoints(league, standings, 'Sacks Contest', bonusFn)
+        }
+      } else if (league.format === 'ints') {
+        const standings = await getIntsStandings(league)
+        if (standings?.length > 0) {
+          const { data: pickRows } = await supabase
+            .from('ints_picks')
+            .select('week')
+            .eq('league_id', league.id)
+          const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
+          const fraction = Math.min(1, weeksPlayed / 18)
+          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          await awardPositionBasedPoints(league, standings, 'Interceptions Contest', bonusFn)
         }
       } else if (league.format === 'td_pass') {
         const standings = await getTdPassStandings(league)

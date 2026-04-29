@@ -89,7 +89,7 @@ router.get('/preview/:code', async (req, res) => {
 
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
-  format: z.enum(['pickem', 'survivor', 'squares', 'bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'td_pass']),
+  format: z.enum(['pickem', 'survivor', 'squares', 'bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints', 'td_pass']),
   sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'basketball_wncaab', 'icehockey_nhl', 'soccer_usa_mls', 'americanfootball_ufl', 'all']),
   duration: z.enum(['this_week', 'custom_range', 'full_season', 'playoffs_only']).optional(),
   starts_at: z.string().optional(),
@@ -115,7 +115,7 @@ const createLeagueSchema = z.object({
     locks_at: z.string().optional(),
   }).optional(),
   fantasy_settings: z.object({
-    format: z.enum(['traditional', 'salary_cap', 'hr_derby', 'three_point', 'sacks']).optional(),
+    format: z.enum(['traditional', 'salary_cap', 'hr_derby', 'three_point', 'sacks', 'ints']).optional(),
     pick_reuse: z.enum(['weekly', 'season', 'unlimited']).optional(),
     scoring_format: z.enum(['ppr', 'half_ppr', 'standard']).optional(),
     num_teams: z.number().int().min(2).max(20).optional(),
@@ -306,7 +306,7 @@ router.get('/backdrops', requireAuth, async (req, res) => {
   if (!backdrops?.length) return res.json([])
 
   // Exclusive filters: only show backdrops specifically tagged with this format
-  const exclusiveFilters = ['touchdown_survivor', 'td_pass_competition', 'three_point_contest', 'sacks_contest']
+  const exclusiveFilters = ['touchdown_survivor', 'td_pass_competition', 'three_point_contest', 'sacks_contest', 'ints_contest']
   const isExclusive = exclusiveFilters.includes(sport)
 
   const filtered = sport

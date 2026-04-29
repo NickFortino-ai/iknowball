@@ -155,6 +155,9 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     if (byFormat.sacks?.length) {
       await computeSacksReadiness(byFormat.sacks, userId, result)
     }
+    if (byFormat.ints?.length) {
+      await computeIntsReadiness(byFormat.ints, userId, result)
+    }
     if (byFormat.fantasy?.length) {
       await computeFantasyReadiness(byFormat.fantasy, userId, result)
     }
@@ -454,6 +457,26 @@ async function computeSacksReadiness(leagues, userId, result) {
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
     .from('sacks_picks')
+    .select('league_id')
+    .in('league_id', leagueIds)
+    .eq('user_id', userId)
+    .eq('week', week)
+  const counts = {}
+  for (const p of picks || []) counts[p.league_id] = (counts[p.league_id] || 0) + 1
+  for (const l of leagues) {
+    const n = counts[l.id] || 0
+    if (n >= 3) set(result, l.id, 'ready', `Week ${week} picks in (3/3)`)
+    else if (n > 0) set(result, l.id, 'attention', `Week ${week} picks in (${n}/3)`)
+    else set(result, l.id, 'action', `Week ${week} picks not in yet`)
+  }
+}
+
+async function computeIntsReadiness(leagues, userId, result) {
+  const { getCurrentNflWeek } = await import('./tdPassService.js')
+  const { week } = await getCurrentNflWeek()
+  const leagueIds = leagues.map((l) => l.id)
+  const { data: picks } = await supabase
+    .from('ints_picks')
     .select('league_id')
     .in('league_id', leagueIds)
     .eq('user_id', userId)

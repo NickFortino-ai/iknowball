@@ -30,6 +30,7 @@ import mlbDfsRouter from './routes/mlbDfs.js'
 import hrDerbyRouter from './routes/hrDerby.js'
 import threePointRouter from './routes/threePoint.js'
 import sacksRouter from './routes/sacks.js'
+import intsRouter from './routes/ints.js'
 import tdPassRouter from './routes/tdPass.js'
 import reportsRouter from './routes/reports.js'
 import teamsRouter from './routes/teams.js'
@@ -82,6 +83,7 @@ app.use('/api/mlb-dfs', mlbDfsRouter)
 app.use('/api/hr-derby', hrDerbyRouter)
 app.use('/api/three-point', threePointRouter)
 app.use('/api/sacks', sacksRouter)
+app.use('/api/ints', intsRouter)
 app.use('/api/td-pass', tdPassRouter)
 app.use('/api/news', newsRouter)
 
