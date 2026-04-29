@@ -249,6 +249,22 @@ const CATEGORY_CARDS = {
       format: 'fantasy',
       label: 'Traditional Fantasy Football',
       description: 'Snake draft, weekly head-to-head matchups, waivers, trades, and a playoff bracket',
+      details: `Snake draft, weekly head-to-head matchups, waivers, trades, and an end-of-season playoff bracket. Set your lineup each week, work the waiver wire, make trades, and battle league mates for the championship.
+
+Commissioner controls: scoring format (PPR, half-PPR, standard, or fully custom per-stat), roster configuration, team count, draft date and pick timer, waiver system (priority, rolling, or FAAB with starting budget), trade review method, playoff team count, playoff start week, and championship week. Custom backdrop from a curated library or upload your own.`,
+      bonusTable: {
+        title: 'Traditional Fantasy Bonus Structure',
+        intro: `Traditional fantasy leagues require effort and intelligence to win. We honor that with an appropriate point-bonus structure for winning leagues. Traditional fantasy football with people who pay attention, try, and have a deep understanding of the sport, is a serious competition of strategy and knowledge. Winning a league is genuinely respectable as a life achievement — I know that may sound silly... but only to people who have never won a serious league. It's a legitimate brain test, doused in dramatic unpredictability and luck of course. But to be in the mix year in and year out, and to win championships against serious fantasy football players bestows major credibility upon a person. I can only win a serious league if and only if I KNOW BALL. To honor the feat of winning a fantasy football league, we offer the following bonus structure.`,
+        rows: [
+          { size: '6 teams', first: '+50', second: '+20', third: '+10' },
+          { size: '8 teams', first: '+75', second: '+30', third: '+15' },
+          { size: '10 teams', first: '+90', second: '+36', third: '+18' },
+          { size: '12 teams', first: '+120', second: '+48', third: '+24' },
+          { size: '14 teams', first: '+165', second: '+66', third: '+33' },
+          { size: '16 teams', first: '+195', second: '+78', third: '+39' },
+          { size: '20 teams', first: '+225', second: '+90', third: '+45' },
+        ],
+      },
       preset: { fantasyFormat: 'traditional', sport: 'americanfootball_nfl' },
     },
     {
@@ -256,6 +272,24 @@ const CATEGORY_CARDS = {
       format: 'fantasy',
       label: 'Salary Cap Fantasy Football',
       description: 'Build a fresh weekly NFL lineup under a salary cap — no draft, no carryover',
+      details: `Build a fresh weekly NFL lineup under a salary cap — no draft, no trades, no roster carryover. Player prices shift weekly based on recent performance and matchups, so the value plays change every week. Single-week mode is also available for one-and-done contests.
+
+Salary cap leagues generate a League Report at the end of the season — most-played player, pick of the year, best value plays, worst investments, and league-wide awards.
+
+Commissioner controls: salary cap, season type (full season or single week), team count, and lineup lock time. Custom backdrop from a curated library or upload your own.`,
+      bonusTable: {
+        title: 'Salary Cap Bonus Structure (Full Season, Week 1 Start)',
+        rows: [
+          { size: '6 members', first: '+35', second: '+14', third: '+7' },
+          { size: '8 members', first: '+60', second: '+24', third: '+12' },
+          { size: '10 members', first: '+75', second: '+30', third: '+15' },
+          { size: '12 members', first: '+90', second: '+36', third: '+18' },
+          { size: '14 members', first: '+105', second: '+42', third: '+21' },
+          { size: '16 members', first: '+120', second: '+48', third: '+24' },
+          { size: '20 members', first: '+150', second: '+60', third: '+30' },
+        ],
+        footnote: 'Salary cap leagues that start mid-season use the same shape but prorated by weeks played. Single-week leagues (one-and-done) use position-ranked scoring with a winner bonus — the winner takes home members × 2, the bottom half earns negative points.',
+      },
       preset: { fantasyFormat: 'salary_cap', sport: 'americanfootball_nfl' },
     },
     {
@@ -677,7 +711,12 @@ export default function CreateLeaguePage() {
                     const base = FORMAT_BY_VALUE[card.format] || {}
                     const label = card.label || base.label
                     const description = card.description || base.description
-                    const details = base.details
+                    const details = card.details || base.details
+                    // Per-card bonus tables override the base ones (used by
+                    // fantasy: each fantasy card now has its own table).
+                    const bonusTables = card.bonusTable
+                      ? [card.bonusTable, card.bonusTable2].filter(Boolean)
+                      : [base.bonusTable, base.bonusTable2].filter(Boolean)
                     const isExpanded = expandedCardKey === card.key
                     const isSelected = selectedCardKey === card.key
                     return (
@@ -733,7 +772,7 @@ export default function CreateLeaguePage() {
                   {isExpanded && (
                     <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-base leading-relaxed text-text-primary border-t border-text-primary/10">
                       <div className="whitespace-pre-line">{details}</div>
-                      {[base.bonusTable, base.bonusTable2].filter(Boolean).map((tbl) => {
+                      {bonusTables.map((tbl) => {
                         const cols = tbl.columns || [
                           { key: 'size', label: 'League Size', align: 'left' },
                           { key: 'first', label: '1st', align: 'center', color: 'text-correct' },
@@ -1005,44 +1044,19 @@ export default function CreateLeaguePage() {
 
         {format === 'fantasy' && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
-            <h3 className="font-display text-sm text-text-primary mb-1">Fantasy Settings</h3>
+            <h3 className="font-display text-sm text-text-primary mb-1">
+              {fantasyFormat === 'salary_cap' ? 'Salary Cap Fantasy Settings' : 'Traditional Fantasy Settings'}
+            </h3>
 
-            {/* Format: Traditional vs Salary Cap */}
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Format</label>
-              <div className="space-y-2">
-                {[
-                  { value: 'traditional', label: 'Traditional', desc: 'Draft players and manage your roster all season. Make trades, work the waiver wire, and set your lineup each week.' },
-                  { value: 'salary_cap', label: 'Salary Cap', desc: 'Build a new roster every week under a salary budget. No draft, no trades. Fresh start every week.' },
-                ].map((opt) => {
-                  const isDisabled = opt.value === 'traditional' && traditionalLocked
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => !isDisabled && setFantasyFormat(opt.value)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        fantasyFormat === opt.value ? 'border-accent bg-accent/10' : 'border-text-primary/20 hover:border-text-primary/40'
-                      } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="font-semibold text-sm text-text-primary">{opt.label}</div>
-                        {isDisabled && (
-                          <span className="text-[10px] font-semibold text-yellow-500 bg-yellow-500/10 border border-yellow-500/30 rounded px-1.5 py-0.5">UNAVAILABLE</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-text-secondary mt-0.5">{opt.desc}</div>
-                    </button>
-                  )
-                })}
-              </div>
-              {traditionalLocked && (
-                <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
-                  Traditional fantasy can only be created before the NFL season opens. The season is already underway — for a fresh league this late, use Salary Cap.
-                </p>
-              )}
-            </div>
+            {/* If user picked Traditional but the season is already underway,
+                we silently auto-flipped them to salary_cap above — surface a
+                note so they understand why the panel below is the salary
+                cap configuration, not the traditional one they selected. */}
+            {selectedCardKey === 'fantasy-traditional' && traditionalLocked && fantasyFormat === 'salary_cap' && (
+              <p className="text-[11px] text-yellow-500 leading-relaxed">
+                Traditional fantasy can only be created before the NFL season opens. The season is already underway — switched to Salary Cap automatically.
+              </p>
+            )}
 
             {/* Salary Cap specific settings */}
             {fantasyFormat === 'salary_cap' && (
