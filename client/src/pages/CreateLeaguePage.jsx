@@ -563,7 +563,7 @@ export default function CreateLeaguePage() {
   const [singleWeek, setSingleWeek] = useState(1)
 
   // Visibility settings
-  const [visibility, setVisibility] = useState('closed')
+  const [visibility, setVisibility] = useState('open')
   const [backdropImage, setBackdropImage] = useState('')
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
@@ -2055,21 +2055,21 @@ export default function CreateLeaguePage() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setVisibility('closed')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                visibility === 'closed' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
-              }`}
-            >
-              Invite Only
-            </button>
-            <button
-              type="button"
               onClick={() => setVisibility('open')}
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                 visibility === 'open' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
               }`}
             >
               Open
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibility('closed')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                visibility === 'closed' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+              }`}
+            >
+              Invite Only
             </button>
           </div>
           <p className="text-xs text-text-muted mt-1.5">
