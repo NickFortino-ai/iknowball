@@ -834,6 +834,11 @@ export default function CreateLeaguePage() {
           </div>
         </div>
 
+        {/* Everything below the format picker only renders once a format is
+            selected — no point asking for sport/duration/visibility before
+            the user has decided what they're creating. */}
+        {format && <>
+
         {/* Sport (hidden for format-locked sports) */}
         {!['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'td_pass'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
@@ -2075,6 +2080,8 @@ export default function CreateLeaguePage() {
         >
           {createLeague.isPending ? 'Creating...' : 'Create League'}
         </button>
+
+        </>}
       </form>
     </div>
   )
