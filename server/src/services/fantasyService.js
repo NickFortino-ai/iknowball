@@ -2540,20 +2540,26 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
  * Bench / IR are catch-alls — anything not explicitly assigned to a starter
  * slot or IR ends up in bench.
  */
-const STARTER_SLOTS_TRAD = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
-const SLOT_POSITIONS = {
-  qb: ['QB'],
-  rb1: ['RB'],
-  rb2: ['RB'],
-  wr1: ['WR'],
-  wr2: ['WR'],
-  wr3: ['WR'],
-  te: ['TE'],
-  flex: ['RB', 'WR', 'TE'],
-  k: ['K'],
-  def: ['DEF'],
-  bench: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
-  ir: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
+// Build per-league lineup-validation maps from the league's roster_slots
+// config. Replaces the old hardcoded STARTER_SLOTS_TRAD / SLOT_POSITIONS
+// constants so a wr=2 league can never accidentally accept a wr3
+// assignment, and the slot list always matches what the FE renders.
+function buildLineupValidationMaps(rosterSlots) {
+  const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
+  const starterKeys = []
+  const slotPositions = {
+    bench: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
+    ir: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
+  }
+  if ((slots.qb || 0) >= 1) { starterKeys.push('qb'); slotPositions.qb = ['QB'] }
+  for (let i = 1; i <= (slots.rb || 0); i++) { starterKeys.push(`rb${i}`); slotPositions[`rb${i}`] = ['RB'] }
+  for (let i = 1; i <= (slots.wr || 0); i++) { starterKeys.push(`wr${i}`); slotPositions[`wr${i}`] = ['WR'] }
+  if ((slots.te || 0) >= 1) { starterKeys.push('te'); slotPositions.te = ['TE'] }
+  if ((slots.flex || 0) >= 1) { starterKeys.push('flex'); slotPositions.flex = ['RB', 'WR', 'TE'] }
+  if ((slots.superflex || 0) >= 1) { starterKeys.push('superflex'); slotPositions.superflex = ['QB', 'RB', 'WR', 'TE'] }
+  if ((slots.k || 0) >= 1) { starterKeys.push('k'); slotPositions.k = ['K'] }
+  if ((slots.def || 0) >= 1) { starterKeys.push('def'); slotPositions.def = ['DEF'] }
+  return { starterKeys, slotPositions }
 }
 
 export async function setFantasyLineup(leagueId, userId, slotAssignments) {
@@ -2576,6 +2582,9 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
     err.status = 404
     throw err
   }
+
+  const lineupSettings = await getFantasySettings(leagueId)
+  const { starterKeys: STARTER_SLOTS_TRAD, slotPositions: SLOT_POSITIONS } = buildLineupValidationMaps(lineupSettings?.roster_slots)
 
   const rosterByPlayerId = {}
   for (const r of roster) rosterByPlayerId[r.player_id] = r
@@ -2715,6 +2724,9 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
     err.status = 404
     throw err
   }
+
+  const weeklySettings = await getFantasySettings(leagueId)
+  const { starterKeys: STARTER_SLOTS_TRAD, slotPositions: SLOT_POSITIONS } = buildLineupValidationMaps(weeklySettings?.roster_slots)
 
   const rosterByPlayerId = {}
   for (const r of roster) rosterByPlayerId[r.player_id] = r
@@ -5021,7 +5033,16 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
  * Mirrors scoreNflDfsWeek (salary cap) but for traditional starting lineups
  * — reads roster slots and treats every non-bench/IR slot as starting.
  */
-const STARTER_SLOT_KEYS = new Set(['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def'])
+// "Is this slot a starter?" — config-agnostic. Anything not bench/IR is a
+// starter. Orphan slots get demoted to bench upstream by
+// fillEmptyStarterSlots so they're naturally excluded here.
+function isStarterSlot(slot) {
+  const s = (slot || '').toLowerCase()
+  if (!s) return false
+  if (s === 'bench' || s.startsWith('bench')) return false
+  if (s === 'ir' || s.startsWith('ir')) return false
+  return true
+}
 
 export async function scoreFantasyMatchupsWeek(week, season) {
   // 1. Find every traditional fantasy league that has a matchup for this week
@@ -5121,7 +5142,7 @@ export async function scoreFantasyMatchupsWeek(week, season) {
 
   // 4. Fetch stats for all rostered starting players
   const allPlayerIds = [...new Set((rosterRows || [])
-    .filter((r) => STARTER_SLOT_KEYS.has((r.slot || '').toLowerCase()))
+    .filter((r) => isStarterSlot(r.slot))
     .map((r) => r.player_id))]
 
   const statsMap = {}
@@ -5138,7 +5159,7 @@ export async function scoreFantasyMatchupsWeek(week, season) {
   // 5. Sum starter points per (league, user) using each league's own rules
   const userPointsMap = {} // `${leagueId}|${userId}` → sum
   for (const r of rosterRows || []) {
-    if (!STARTER_SLOT_KEYS.has((r.slot || '').toLowerCase())) continue
+    if (!isStarterSlot(r.slot)) continue
     if (!isTraditional[r.league_id]) continue
     const rules = rulesByLeague[r.league_id]
     const st = statsMap[r.player_id]

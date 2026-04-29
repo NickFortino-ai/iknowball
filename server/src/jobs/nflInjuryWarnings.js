@@ -37,13 +37,21 @@ export async function sendNflInjuryWarnings() {
   const playerById = {}
   for (const p of outPlayers) playerById[p.id] = p
 
-  // 2. Find traditional fantasy starters with these players
-  const STARTER_SLOT_KEYS = ['qb', 'rb1', 'rb2', 'wr1', 'wr2', 'wr3', 'te', 'flex', 'k', 'def']
-  const { data: tradStarters } = await supabase
+  // 2. Find traditional fantasy starters with these players. "Starter"
+  // here = anything not bench / IR — config-agnostic so we don't have to
+  // enumerate slot keys per league. Orphan slots get demoted to bench
+  // upstream by fillEmptyStarterSlots, so they're filtered out here.
+  const { data: tradRosters } = await supabase
     .from('fantasy_rosters')
     .select('league_id, user_id, player_id, slot, leagues(name, format)')
     .in('player_id', outIds)
-    .in('slot', STARTER_SLOT_KEYS)
+  const tradStarters = (tradRosters || []).filter((r) => {
+    const s = (r.slot || '').toLowerCase()
+    if (!s) return false
+    if (s === 'bench' || s.startsWith('bench')) return false
+    if (s === 'ir' || s.startsWith('ir')) return false
+    return true
+  })
 
   // 3. Find salary cap rostered players for the current week
   const { data: dfsSlots } = await supabase
