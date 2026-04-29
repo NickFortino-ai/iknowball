@@ -925,8 +925,10 @@ export default function CreateLeaguePage() {
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
-              const fantasySports = fantasyFormat === 'salary_cap' ? ['americanfootball_nfl', 'basketball_nba'] : ['americanfootball_nfl']
-              const isFantasyLocked = format === 'fantasy' && !fantasySports.includes(opt.value)
+              // The 'fantasy' format (Traditional + Salary Cap Fantasy Football)
+              // is NFL-only. NBA "fantasy" lives under format='nba_dfs', which
+              // hides the sport picker entirely.
+              const isFantasyLocked = format === 'fantasy' && opt.value !== 'americanfootball_nfl'
               // TD Survivor only works with NFL — gate every other sport out.
               const isTouchdownLocked = format === 'survivor' && survivorMode === 'touchdown' && opt.value !== 'americanfootball_nfl'
               const isLocked = isFantasyLocked || isTouchdownLocked
