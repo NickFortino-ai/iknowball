@@ -1180,6 +1180,25 @@ export default function CreateLeaguePage() {
               </p>
             )}
 
+            {/* Number of Teams (shared) */}
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Number of Teams</label>
+              <div className="flex gap-2 flex-wrap">
+                {[6, 8, 10, 12, 14, 16, 20].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNumTeams(n)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      numTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Salary Cap specific settings */}
             {fantasyFormat === 'salary_cap' && (
               <>
@@ -1293,23 +1312,6 @@ export default function CreateLeaguePage() {
             </div>
             {/* Traditional-only settings */}
             {fantasyFormat === 'traditional' && <>
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Number of Teams</label>
-              <div className="flex gap-2">
-                {[6, 8, 10, 12, 14, 16, 20].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setNumTeams(n)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      numTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div>
               <label className="text-xs text-text-muted block mb-1">Draft Type</label>
               <div className="flex gap-2">
