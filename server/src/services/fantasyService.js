@@ -291,7 +291,31 @@ export async function updateFantasySettings(leagueId, updates) {
     .single()
 
   if (error) throw error
+
+  // If roster_slots changed, normalize every member's roster — orphan slots
+  // (e.g. wr3 in a wr=2 league) get demoted to bench and any newly empty
+  // starter slot gets back-filled from the bench. Without this step a
+  // commissioner shrinking 'wr' from 3 to 2 leaves stranded rows that
+  // count toward the cap but don't render anywhere in the UI.
+  if (updates.roster_slots) {
+    try {
+      await normalizeAllRostersForLeague(leagueId)
+    } catch (err) {
+      logger.error({ err, leagueId }, 'Failed to normalize rosters after roster_slots change')
+    }
+  }
+
   return data
+}
+
+async function normalizeAllRostersForLeague(leagueId) {
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+  for (const m of members || []) {
+    await fillEmptyStarterSlots(leagueId, m.user_id)
+  }
 }
 
 /**
@@ -762,12 +786,40 @@ async function fillEmptyStarterSlots(leagueId, userId) {
     .eq('user_id', userId)
   if (!roster?.length) return
 
+  // Step 1: demote orphan starter rows. A row counts as orphan if its slot
+  // looks starter-shaped (qb/rb*/wr*/te/flex/superflex/k/def) but isn't in
+  // the league's current starter plan — e.g. 'wr3' in a wr=2 league after a
+  // commissioner shrunk the position count, or after a draft that ran with
+  // a different config.
+  function isOrphanStarterSlot(slot) {
+    if (!slot) return false
+    const s = String(slot).toLowerCase()
+    if (starterKeys.has(s)) return false
+    if (s === 'bench' || s.startsWith('bench')) return false
+    if (s === 'ir' || s.startsWith('ir')) return false
+    // Slot looks like a starter key (qb / rb1 / wr1 / te / flex / etc.) but
+    // isn't valid for this league — orphan.
+    return /^(qb|te|flex|superflex|k|def|rb[0-9]+|wr[0-9]+)$/.test(s)
+  }
+  for (const r of roster) {
+    if (!isOrphanStarterSlot(r.slot)) continue
+    const { error } = await supabase
+      .from('fantasy_rosters')
+      .update({ slot: 'bench' })
+      .eq('id', r.id)
+    if (error) {
+      logger.error({ error, leagueId, userId, oldSlot: r.slot }, 'Failed to demote orphan slot')
+      continue
+    }
+    r.slot = 'bench'
+  }
+
   const filledStarterKeys = new Set(
     roster.filter((r) => starterKeys.has(r.slot)).map((r) => r.slot)
   )
 
-  // Walk slot plan in priority order; promote the first eligible benched
-  // player into each empty starter slot.
+  // Step 2: walk slot plan in priority order; promote the first eligible
+  // benched player into each empty starter slot.
   for (const slotDef of starterPlan) {
     if (filledStarterKeys.has(slotDef.key)) continue
     const candidate = roster.find((r) => {
