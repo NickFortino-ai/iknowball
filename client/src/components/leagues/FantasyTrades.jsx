@@ -538,7 +538,10 @@ export default function FantasyTrades({ league, fantasySettings }) {
   async function handleAction(tradeId, action, dropPlayerIds) {
     try {
       await respond.mutateAsync({ tradeId, action, drop_player_ids: dropPlayerIds })
-      toast(`Trade ${action}ed`, 'success')
+      // Negative outcomes (veto / decline) get the red error toast — they
+      // succeeded technically but they're killing a trade, not approving one.
+      const tone = action === 'veto' || action === 'decline' ? 'error' : 'success'
+      toast(`Trade ${action}ed`, tone)
       setDropModal(null)
     } catch (err) {
       const body = err?.response || err
