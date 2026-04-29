@@ -1494,7 +1494,7 @@ router.post('/:id/fantasy/trades/:tradeId/approve', requireAuth, async (req, res
 
 router.post('/:id/fantasy/trades/:tradeId/veto', requireAuth, async (req, res) => {
   try {
-    const result = await vetoTrade(req.params.tradeId, req.user.id)
+    const result = await vetoTrade(req.params.tradeId, req.user.id, req.body?.reason)
     res.json(result)
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })

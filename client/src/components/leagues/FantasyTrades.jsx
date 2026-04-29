@@ -69,6 +69,13 @@ function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, 
 
       {trade.message && <div className="text-sm text-text-primary italic mt-3">"{trade.message}"</div>}
 
+      {trade.status === 'vetoed' && trade.veto_reason && (
+        <div className="mt-3 rounded-lg border border-incorrect/30 bg-incorrect/10 px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-incorrect font-semibold mb-0.5">Commissioner reason</div>
+          <div className="text-sm text-text-primary">{trade.veto_reason}</div>
+        </div>
+      )}
+
       {isPending && isReceiver && (
         <div className="flex gap-2 mt-3">
           <button onClick={() => onAccept(trade.id)} className="flex-1 py-2 rounded-lg text-sm font-semibold bg-correct text-white">Accept</button>
@@ -527,6 +534,7 @@ export default function FantasyTrades({ league, fantasySettings }) {
   const [showProposeModal, setShowProposeModal] = useState(false)
   const [counterTrade, setCounterTrade] = useState(null)
   const [dropModal, setDropModal] = useState(null) // { tradeId, dropsNeeded }
+  const [vetoModal, setVetoModal] = useState(null) // { tradeId }
   const subtab = new URLSearchParams(window.location.search).get('subtab')
   const [activeView, setActiveView] = useState(subtab === 'trades' ? 'trades' : 'activity') // 'activity' | 'trades'
 
@@ -535,14 +543,15 @@ export default function FantasyTrades({ league, fantasySettings }) {
   const isCommissioner = league.commissioner_id === profile?.id
   const pending = (trades || []).filter((t) => t.status === 'pending' || t.status === 'pending_review')
 
-  async function handleAction(tradeId, action, dropPlayerIds) {
+  async function handleAction(tradeId, action, dropPlayerIds, reason) {
     try {
-      await respond.mutateAsync({ tradeId, action, drop_player_ids: dropPlayerIds })
+      await respond.mutateAsync({ tradeId, action, drop_player_ids: dropPlayerIds, reason })
       // Negative outcomes (veto / decline) get the red error toast — they
       // succeeded technically but they're killing a trade, not approving one.
       const tone = action === 'veto' || action === 'decline' ? 'error' : 'success'
       toast(`Trade ${action}ed`, tone)
       setDropModal(null)
+      setVetoModal(null)
     } catch (err) {
       const body = err?.response || err
       if (body?.requires_drop && action === 'accept') {
@@ -632,7 +641,7 @@ export default function FantasyTrades({ league, fantasySettings }) {
                     onCancel={(id) => handleAction(id, 'cancel')}
                     onCounter={(trade) => setCounterTrade(trade)}
                     onApprove={(id) => handleAction(id, 'approve')}
-                    onVeto={(id) => handleAction(id, 'veto')} />
+                    onVeto={(id) => setVetoModal({ tradeId: id })} />
                 ))}
               </div>
             </div>
@@ -667,6 +676,51 @@ export default function FantasyTrades({ league, fantasySettings }) {
           />
         )
       })()}
+
+      {vetoModal && (
+        <VetoTradeModal
+          onConfirm={(reason) => handleAction(vetoModal.tradeId, 'veto', null, reason)}
+          onCancel={() => setVetoModal(null)}
+          isPending={respond.isPending}
+        />
+      )}
     </div>
+  )
+}
+
+// Lightweight modal for the commissioner's optional veto rationale.
+function VetoTradeModal({ onConfirm, onCancel, isPending }) {
+  const [reason, setReason] = useState('')
+  return createPortal(
+    <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display text-lg mb-2">Veto this trade?</h3>
+        <p className="text-sm text-text-muted mb-4">
+          Optional — leave a note so league members understand the call. They'll see this on the vetoed trade in History.
+        </p>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value.slice(0, 500))}
+          placeholder="Reason (optional)…"
+          rows={3}
+          maxLength={500}
+          className="w-full bg-bg-card border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none"
+        />
+        <div className="text-[10px] text-text-muted text-right mt-1">{reason.length}/500</div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={onCancel}
+            disabled={isPending}
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-bg-card text-text-secondary border border-border disabled:opacity-50"
+          >Cancel</button>
+          <button
+            onClick={() => onConfirm(reason.trim() || null)}
+            disabled={isPending}
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-incorrect text-white disabled:opacity-50"
+          >{isPending ? 'Vetoing…' : 'Veto Trade'}</button>
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }

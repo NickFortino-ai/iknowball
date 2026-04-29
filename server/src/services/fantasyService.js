@@ -4445,7 +4445,7 @@ export async function approveTrade(tradeId, commissionerId) {
 /**
  * Commissioner vetoes a trade (pending or pending_review).
  */
-export async function vetoTrade(tradeId, commissionerId) {
+export async function vetoTrade(tradeId, commissionerId, reason) {
   const { data: trade } = await supabase
     .from('fantasy_trades')
     .select('*')
@@ -4465,31 +4465,37 @@ export async function vetoTrade(tradeId, commissionerId) {
     throw err
   }
 
+  const trimmedReason = typeof reason === 'string' ? reason.trim().slice(0, 500) : null
   await supabase
     .from('fantasy_trades')
-    .update({ status: 'vetoed', responded_at: new Date().toISOString() })
+    .update({
+      status: 'vetoed',
+      responded_at: new Date().toISOString(),
+      veto_reason: trimmedReason || null,
+    })
     .eq('id', tradeId)
 
-  // Notify both parties
+  // Both parties were participants — same wording for both.
   try {
     const { createNotification } = await import('./notificationService.js')
+    const message = `Your trade in ${league.name} was vetoed by the commissioner`
     await createNotification(
       trade.proposer_user_id,
       'fantasy_trade_vetoed',
-      `Your trade in ${league.name} was vetoed by the commissioner`,
-      { leagueId: trade.league_id, tradeId },
+      message,
+      { leagueId: trade.league_id, tradeId, hasReason: !!trimmedReason },
     )
     await createNotification(
       trade.receiver_user_id,
       'fantasy_trade_vetoed',
-      `A trade in ${league.name} was vetoed by the commissioner`,
-      { leagueId: trade.league_id, tradeId },
+      message,
+      { leagueId: trade.league_id, tradeId, hasReason: !!trimmedReason },
     )
   } catch (err) {
     logger.error({ err }, 'Failed to send trade-vetoed notifications')
   }
 
-  return { vetoed: true }
+  return { vetoed: true, veto_reason: trimmedReason || null }
 }
 
 export async function declineTrade(tradeId, userId) {
