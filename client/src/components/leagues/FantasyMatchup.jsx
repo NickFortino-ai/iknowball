@@ -44,6 +44,19 @@ function displayName(name) {
   return name.endsWith(' D/ST') ? name.replace(' D/ST', '') : name
 }
 
+// Split a player name into { first, last } for two-line rendering on the
+// narrow mobile matchup column. "Christian McCaffrey" → { first:'Christian',
+// last:'McCaffrey' }. Multi-word last names ("St. Brown", "Smith-Njigba")
+// stay together on the bottom line. D/ST and single-word entries return
+// last-only so the top line stays empty.
+function splitName(name) {
+  if (!name) return { first: '', last: '--' }
+  if (name.endsWith(' D/ST')) return { first: '', last: name.replace(' D/ST', '') }
+  const parts = name.split(' ')
+  if (parts.length < 2) return { first: '', last: name }
+  return { first: parts[0], last: parts.slice(1).join(' ') }
+}
+
 function buildStatLine(stats, position) {
   if (!stats) return null
   const parts = []
@@ -341,8 +354,15 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     className="flex-1 p-3 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0"
                     onClick={() => hp?.player_id && onPlayerClick(hp.player_id)}
                   >
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <span className="text-sm font-bold text-text-primary truncate">{abbrevName(hp?.player_name)}</span>
+                    <div className="flex items-start gap-1 mb-0.5 min-w-0">
+                      <div className="flex-1 min-w-0 leading-tight">
+                        {(() => { const n = splitName(hp?.player_name); return (
+                          <>
+                            {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
+                            <div className="text-sm font-bold text-text-primary break-words">{n.last}</div>
+                          </>
+                        )})()}
+                      </div>
                       {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
                     </div>
                     {(hLive || weekStatus === 'past') && hp?.opponent ? (
@@ -390,9 +410,16 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                     className="flex-1 p-3 cursor-pointer hover:bg-text-primary/5 transition-colors min-w-0 text-right"
                     onClick={() => ap?.player_id && onPlayerClick(ap.player_id)}
                   >
-                    <div className="flex items-center gap-1 justify-end mb-0.5">
+                    <div className="flex items-start gap-1 justify-end mb-0.5 min-w-0">
                       {ap?.injury_status && <InjuryBadge status={ap.injury_status} />}
-                      <span className="text-sm font-bold text-text-primary truncate">{abbrevName(ap?.player_name)}</span>
+                      <div className="flex-1 min-w-0 leading-tight text-right">
+                        {(() => { const n = splitName(ap?.player_name); return (
+                          <>
+                            {n.first && <div className="text-[11px] font-medium text-text-primary/70">{n.first}</div>}
+                            <div className="text-sm font-bold text-text-primary break-words">{n.last}</div>
+                          </>
+                        )})()}
+                      </div>
                     </div>
                     {(aLive || weekStatus === 'past') && ap?.opponent ? (
                       <div className="text-[11px] text-text-primary">{gameScoreLine(ap)}</div>
