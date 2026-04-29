@@ -171,7 +171,7 @@ Commissioner controls: sport (single or all), duration (this week, custom range,
   {
     value: 'survivor',
     label: 'Survivor',
-    description: 'Pick one team per period. If they win, you survive. Last one standing wins. TD Survivor also available',
+    description: 'Pick one team per period. If they win, you survive. Last one standing wins',
     details: `Pick one team to win each period. Win and you survive. Lose and you burn a life. The catch: you can never pick the same team twice. Use all your lives and you're out. Last one standing wins.
 
 When the league ends, only survivors earn global IKB points — the size-tiered survivor bonus shown below. If multiple players survive to the end, the bonus is split evenly.
@@ -216,6 +216,105 @@ Squares is pure side action — it does not affect your global IKB score. What h
 Commissioner controls: which game, max squares per user, points per quarter, and whether numbers are auto-assigned when the board fills or commissioner-triggered. Custom backdrop from a curated library or upload your own.`,
   },
 ]
+
+// Lookup so cards can inherit details + bonusTable from the canonical
+// FORMAT_OPTIONS entry without duplication.
+const FORMAT_BY_VALUE = Object.fromEntries(FORMAT_OPTIONS.map((o) => [o.value, o]))
+
+// Sport-tab navigation for the Create flow. "All Sports" lists the formats
+// that aren't tied to one sport (Survivor, Pick'em, Squares, Bracket); the
+// per-sport tabs include those generic formats again with sport pre-selected
+// (e.g., NFL Pick'em jumps straight to the Pick'em config with sport=NFL).
+const CATEGORIES = [
+  { key: 'all_sports', label: 'All Sports' },
+  { key: 'football', label: 'Football' },
+  { key: 'basketball', label: 'Basketball' },
+  { key: 'baseball', label: 'Baseball' },
+]
+
+// Cards per category. Only formats that exist today are listed; new formats
+// (Sacks Contest, INT Contest, MLB Strikeouts, Salary Cap Defense) get added
+// here when they ship. Each card resolves to a `format` slug; an optional
+// `preset` applies sport / fantasyFormat / survivorMode on click.
+const CATEGORY_CARDS = {
+  all_sports: [
+    { key: 'pickem-generic', format: 'pickem' },
+    { key: 'survivor-generic', format: 'survivor' },
+    { key: 'squares', format: 'squares' },
+    { key: 'bracket', format: 'bracket' },
+  ],
+  football: [
+    {
+      key: 'fantasy-traditional',
+      format: 'fantasy',
+      label: 'Traditional Fantasy Football',
+      description: 'Snake draft, weekly head-to-head matchups, waivers, trades, and a playoff bracket',
+      preset: { fantasyFormat: 'traditional', sport: 'americanfootball_nfl' },
+    },
+    {
+      key: 'fantasy-salary',
+      format: 'fantasy',
+      label: 'Salary Cap Fantasy Football—Offense',
+      description: 'Build a fresh weekly NFL lineup under a salary cap — no draft, no carryover',
+      preset: { fantasyFormat: 'salary_cap', sport: 'americanfootball_nfl' },
+    },
+    {
+      key: 'td-survivor',
+      format: 'survivor',
+      label: 'TD Survivor',
+      description: 'Pick a single NFL player each week to score a TD. Survive or be eliminated',
+      preset: { sport: 'americanfootball_nfl', survivorMode: 'touchdown' },
+    },
+    { key: 'td-pass', format: 'td_pass' },
+    {
+      key: 'nfl-pickem',
+      format: 'pickem',
+      label: "NFL Pick'em",
+      description: 'Pick NFL game winners with odds-based scoring',
+      preset: { sport: 'americanfootball_nfl' },
+    },
+  ],
+  basketball: [
+    {
+      key: 'nba-dfs',
+      format: 'nba_dfs',
+      preset: { sport: 'basketball_nba' },
+    },
+    { key: 'three-point', format: 'three_point' },
+    {
+      key: 'nba-survivor',
+      format: 'survivor',
+      label: 'NBA Survivor',
+      description: 'Pick a single NBA team to win each period. Last one standing wins',
+      preset: { sport: 'basketball_nba', survivorMode: 'standard' },
+    },
+    {
+      key: 'nba-pickem',
+      format: 'pickem',
+      label: "NBA Pick'em",
+      description: 'Pick NBA game winners with odds-based scoring',
+      preset: { sport: 'basketball_nba' },
+    },
+  ],
+  baseball: [
+    { key: 'mlb-dfs', format: 'mlb_dfs' },
+    { key: 'hr-derby', format: 'hr_derby' },
+    {
+      key: 'mlb-survivor',
+      format: 'survivor',
+      label: 'MLB Survivor',
+      description: 'Pick a single MLB team to win each period. Last one standing wins',
+      preset: { sport: 'baseball_mlb', survivorMode: 'standard' },
+    },
+    {
+      key: 'mlb-pickem',
+      format: 'pickem',
+      label: "MLB Pick'em",
+      description: 'Pick MLB game winners with odds-based scoring',
+      preset: { sport: 'baseball_mlb' },
+    },
+  ],
+}
 
 const SPORT_OPTIONS = [
   { value: 'americanfootball_nfl', label: 'NFL' },
@@ -283,7 +382,9 @@ export default function CreateLeaguePage() {
 
   const [name, setName] = useState('')
   const [format, setFormat] = useState('')
-  const [expandedFormat, setExpandedFormat] = useState(null)
+  const [expandedCardKey, setExpandedCardKey] = useState(null)
+  const [category, setCategory] = useState('all_sports')
+  const [selectedCardKey, setSelectedCardKey] = useState(null)
   const [sport, setSport] = useState('')
   const [duration, setDuration] = useState('')
   const [maxMembers, setMaxMembers] = useState('')
@@ -567,13 +668,39 @@ export default function CreateLeaguePage() {
         {/* Format */}
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Format</label>
+
+          {/* Category pills — All Sports first, then per-sport tabs. Some
+              formats (Survivor, Pick'em) appear in multiple tabs with sport
+              presets so commissioners can land on the right configuration in
+              one tap. */}
+          <div className="flex gap-2 flex-wrap mb-3">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.key}
+                type="button"
+                onClick={() => setCategory(cat.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
+                  category === cat.key
+                    ? 'bg-accent text-white'
+                    : 'bg-bg-primary border border-text-primary/20 text-text-secondary hover:border-text-primary/40'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-2">
-            {FORMAT_OPTIONS.map((opt) => {
-              const isExpanded = expandedFormat === opt.value
-              const isSelected = format === opt.value
+            {(CATEGORY_CARDS[category] || []).map((card) => {
+              const base = FORMAT_BY_VALUE[card.format] || {}
+              const label = card.label || base.label
+              const description = card.description || base.description
+              const details = base.details
+              const isExpanded = expandedCardKey === card.key
+              const isSelected = selectedCardKey === card.key
               return (
                 <div
-                  key={opt.value}
+                  key={card.key}
                   className={`rounded-xl border transition-colors ${
                     isSelected
                       ? 'border-accent bg-accent/10'
@@ -581,21 +708,30 @@ export default function CreateLeaguePage() {
                   }`}
                 >
                   <div className="flex items-stretch">
-                    {/* Left side: tap to select */}
                     <button
                       type="button"
-                      onClick={() => setFormat(opt.value)}
+                      onClick={() => {
+                        setSelectedCardKey(card.key)
+                        setFormat(card.format)
+                        if (card.preset?.sport !== undefined) setSport(card.preset.sport)
+                        if (card.preset?.fantasyFormat) setFantasyFormat(card.preset.fantasyFormat)
+                        if (card.preset?.survivorMode !== undefined) {
+                          setSurvivorMode(card.preset.survivorMode)
+                        } else if (card.format === 'survivor') {
+                          // Generic Survivor (All Sports tab) defaults to standard mode.
+                          setSurvivorMode('standard')
+                        }
+                      }}
                       className="flex-1 text-left p-4 md:p-5 min-w-0"
                     >
-                      <div className="font-semibold text-base md:text-lg text-text-primary">{opt.label}</div>
-                      <div className="text-sm md:text-base text-text-primary mt-1">{opt.description}</div>
+                      <div className="font-semibold text-base md:text-lg text-text-primary">{label}</div>
+                      <div className="text-sm md:text-base text-text-primary mt-1">{description}</div>
                     </button>
-                    {/* Right side: tap to toggle the description dropdown */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setExpandedFormat(isExpanded ? null : opt.value)
+                        setExpandedCardKey(isExpanded ? null : card.key)
                       }}
                       className="px-4 flex items-center text-text-muted hover:text-text-primary border-l border-text-primary/10 transition-colors"
                       aria-label={isExpanded ? 'Hide details' : 'Show details'}
@@ -614,8 +750,8 @@ export default function CreateLeaguePage() {
                   </div>
                   {isExpanded && (
                     <div className="px-4 md:px-5 pb-4 md:pb-5 pt-3 text-sm md:text-base leading-relaxed text-text-primary border-t border-text-primary/10">
-                      <div className="whitespace-pre-line">{opt.details}</div>
-                      {[opt.bonusTable, opt.bonusTable2].filter(Boolean).map((tbl) => {
+                      <div className="whitespace-pre-line">{details}</div>
+                      {[base.bonusTable, base.bonusTable2].filter(Boolean).map((tbl) => {
                         const cols = tbl.columns || [
                           { key: 'size', label: 'League Size', align: 'left' },
                           { key: 'first', label: '1st', align: 'center', color: 'text-correct' },
