@@ -764,6 +764,19 @@ export default function CreateLeaguePage() {
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
 
+  // Surface the specific missing field so users aren't stuck staring at a
+  // disabled Create button wondering why.
+  function missingFieldHint() {
+    if (!name) return 'Add a league name above.'
+    if (!format) return 'Pick a format above.'
+    if (!sport && !autoSportFormats.includes(format)) return 'Pick a sport above.'
+    if (!noDurationFormats.includes(format) && !duration) return 'Pick a duration above.'
+    if (format === 'bracket' && !templateId) return 'Pick a bracket template above.'
+    if (format === 'bracket' && !locksAt) return 'Set the bracket lock date above.'
+    if (format === 'squares' && !gameId) return 'Pick a game for your squares board above.'
+    return null
+  }
+
   return (
     <div className="max-w-2xl md:max-w-3xl mx-auto px-4 py-6">
       <h1 className="font-display text-3xl mb-6">Create a League</h1>
@@ -2234,7 +2247,9 @@ export default function CreateLeaguePage() {
 
         {/* Submit */}
         {!canSubmit && !createLeague.isPending && (
-          <p className="text-xs text-text-muted text-center mb-2">Fill out all required fields above to create your league</p>
+          <p className="text-xs text-text-muted text-center mb-2">
+            {missingFieldHint() || 'Fill out all required fields above to create your league'}
+          </p>
         )}
         <button
           type="submit"
