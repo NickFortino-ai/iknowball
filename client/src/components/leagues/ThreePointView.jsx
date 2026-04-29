@@ -368,7 +368,7 @@ export default function ThreePointView({ league, tab = 'picks' }) {
         {filteredPlayers.length > 0 && (
           <div className="flex items-center px-4 py-1.5 border-b border-text-primary/10">
             <div className="flex-1" />
-            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Total</span>
+            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Total 3PM</span>
           </div>
         )}
 
@@ -396,7 +396,7 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                     <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
                     <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
                   </div>
-                  <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_threes || 0} 3PM</span>
+                  <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_threes || 0}</span>
                 </div>
                 {(!hasSavedPicks || editing) && (
                   <button
