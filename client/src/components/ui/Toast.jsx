@@ -24,13 +24,13 @@ function ToastItem({ toast: t, onRemove }) {
   }, [t.id, onRemove])
 
   const colors = {
-    success: 'bg-correct/20 border-correct text-correct',
-    error: 'bg-incorrect/20 border-incorrect text-incorrect',
-    info: 'bg-accent/20 border-accent text-accent',
+    success: 'bg-correct border-correct text-white',
+    error: 'bg-incorrect border-incorrect text-white',
+    info: 'bg-accent border-accent text-white',
   }
 
   return (
-    <div className={`px-4 py-3 rounded-lg border text-sm ${colors[t.type] || colors.info} animate-[slideIn_0.2s_ease-out]`}>
+    <div className={`px-4 py-3 rounded-lg border text-sm font-semibold shadow-lg ${colors[t.type] || colors.info} animate-[slideIn_0.2s_ease-out]`}>
       {t.message}
     </div>
   )
