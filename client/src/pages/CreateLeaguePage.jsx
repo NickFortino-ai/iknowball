@@ -330,6 +330,12 @@ export default function CreateLeaguePage() {
     // it caps at $40k by default with $50k as the bigger option.
     if (format === 'mlb_dfs') setSalaryCap(40000)
     else if (format === 'nba_dfs' || (format === 'fantasy' && fantasyFormat === 'salary_cap')) setSalaryCap(60000)
+    // HR Derby has its own start/length defaults: start tomorrow (gives players
+    // a day to join) and run the full season unless commissioner picks custom range.
+    if (format === 'hr_derby') {
+      setDfsStartOption('tomorrow')
+      if (seasonType === 'single_week') setSeasonType('full_season')
+    }
   }, [format, fantasyFormat])
   const [scoringFormat, setScoringFormat] = useState('ppr')
   const [scoringRules, setScoringRules] = useState(null) // null = use preset
@@ -363,6 +369,8 @@ export default function CreateLeaguePage() {
   // NBA DFS start date
   const [dfsStartOption, setDfsStartOption] = useState('today')
   const [dfsStartCustom, setDfsStartCustom] = useState('')
+  // HR Derby custom end date — used when seasonType === 'custom_range' for hr_derby
+  const [hrDerbyEndDate, setHrDerbyEndDate] = useState('')
 
   function getDfsStartDate() {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
@@ -377,6 +385,11 @@ export default function CreateLeaguePage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+
+    if (format === 'hr_derby' && seasonType === 'custom_range') {
+      if (!hrDerbyEndDate) { toast('Pick an end date for your custom range', 'error'); return }
+      if (hrDerbyEndDate < getDfsStartDate()) { toast('End date must be after the start date', 'error'); return }
+    }
 
     const settings = {}
     if (format === 'pickem') {
@@ -452,7 +465,8 @@ export default function CreateLeaguePage() {
         name,
         format,
         sport: format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass') ? 'americanfootball_nfl' : sport,
-        duration: isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
+        duration: format === 'hr_derby' && seasonType === 'custom_range' ? 'custom_range'
+          : isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
@@ -461,7 +475,8 @@ export default function CreateLeaguePage() {
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
           : startsAt || undefined,
-        ends_at: format === 'td_pass' ? getSeasonEndDate('americanfootball_nfl')
+        ends_at: format === 'hr_derby' && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
+          : format === 'td_pass' ? getSeasonEndDate('americanfootball_nfl')
           : format === 'survivor' ? getSeasonEndDate(sport)
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : endsAt === 'end_of_season' ? getSeasonEndDate(format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : sport)
@@ -1391,12 +1406,20 @@ export default function CreateLeaguePage() {
               )}
             </div>
             <div>
-              <label className="text-xs text-text-muted block mb-1">Season Type</label>
+              <label className="text-xs text-text-muted block mb-1">
+                {format === 'hr_derby' ? 'League Length' : 'Season Type'}
+              </label>
               <div className="flex gap-2">
-                {[
-                  { value: 'full_season', label: 'Full Season' },
-                  { value: 'single_week', label: 'Single Night' },
-                ].map((opt) => (
+                {(format === 'hr_derby'
+                  ? [
+                      { value: 'full_season', label: 'Full Season' },
+                      { value: 'custom_range', label: 'Custom Range' },
+                    ]
+                  : [
+                      { value: 'full_season', label: 'Full Season' },
+                      { value: 'single_week', label: 'Single Night' },
+                    ]
+                ).map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -1409,8 +1432,21 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
+              {format === 'hr_derby' && seasonType === 'custom_range' && (
+                <input
+                  type="date"
+                  value={hrDerbyEndDate}
+                  onChange={(e) => setHrDerbyEndDate(e.target.value)}
+                  min={getDfsStartDate()}
+                  className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                />
+              )}
               <p className="text-xs text-text-muted mt-1.5">
-                {seasonType === 'full_season' ? 'Runs through end of MLB regular season.' : 'One night only — highest score wins.'}
+                {format === 'hr_derby' && seasonType === 'custom_range'
+                  ? 'Pick the date your derby league wraps up.'
+                  : seasonType === 'full_season'
+                    ? 'Runs through end of MLB regular season.'
+                    : 'One night only — highest score wins.'}
               </p>
             </div>
             <div>
