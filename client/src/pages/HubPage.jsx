@@ -474,12 +474,13 @@ export default function HubPage() {
             {[
               { key: 'all', label: 'All of IKB' },
               { key: 'squad', label: 'My Squad' },
-              { key: 'highlights', label: 'Me' },
-              { key: 'news', label: 'News', mobileOnly: true },
-              { key: 'user_feeds', label: 'User Feeds' },
+              { key: 'posts', label: 'Posts' },
               { key: 'polls', label: 'Polls' },
               { key: 'predictions', label: 'Predictions' },
+              { key: 'highlights', label: 'Me' },
+              { key: 'user_feeds', label: 'User Feeds' },
               { key: 'receipts', label: 'Receipts' },
+              { key: 'news', label: 'News', mobileOnly: true },
             ].filter((tab) => !tab.mobileOnly || !window.matchMedia('(min-width: 1024px)').matches).map((tab) => (
               <button
                 key={tab.key}
@@ -522,6 +523,13 @@ export default function HubPage() {
           <ActivityFeed
             onUserTap={setSelectedUserId}
             scope="highlights"
+            scrollToItemId={scrollToItem}
+            onScrollComplete={() => setScrollToItem(null)}
+          />
+        ) : feedScope === 'posts' ? (
+          <ActivityFeed
+            onUserTap={setSelectedUserId}
+            scope="posts"
             scrollToItemId={scrollToItem}
             onScrollComplete={() => setScrollToItem(null)}
           />

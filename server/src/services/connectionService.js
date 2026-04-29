@@ -331,6 +331,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   const isHotTakes = scope === 'hot_takes'
   const isPolls = scope === 'polls'
   const isPredictions = scope === 'predictions'
+  const isPosts = scope === 'posts'
   const isUserHighlights = scope === 'user_highlights'
   const isUserHotTakes = scope === 'user_hot_takes'
 
@@ -422,11 +423,11 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
 
   // Helper: for 'all'/'hot_takes' scope, skip user filter; for 'squad'/'highlights', filter by user ids
   function filterByUser(query, col, ids) {
-    return (isAll || isHotTakes || isUserHotTakes || isPolls || isPredictions) ? query : query.in(col, ids)
+    return (isAll || isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) ? query : query.in(col, ids)
   }
 
   // For hot_takes/user_hot_takes scope, only run Source 9; everything else resolves to empty
-  const skipForHotTakes = (isHotTakes || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) : null
+  const skipForHotTakes = (isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) : null
 
   // Query sources in parallel (some skipped for 'all' / 'highlights' / 'hot_takes' scope)
   const [notablePicks, settledParlays, streakEvents, tierAchievements, recordsBroken, pickShares, leagueWins, h2hPicks, hotTakes, hotTakeReminders, sweatShares, viralHotTakes, futuresPicks] = await Promise.all([
@@ -453,7 +454,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .limit(50),
 
     // Source 3: Streak events (squad/highlights + all scope for 10+ streaks)
-    (isHotTakes || isUserHotTakes || isUserHighlights || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
+    (isHotTakes || isUserHotTakes || isUserHighlights || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
     applyBefore(filterByUser(supabase
       .from('streak_events')
       .select('id, user_id, streak_length, created_at, sports(key, name)'),
@@ -474,7 +475,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .limit(30),
 
     // Source 6: Pick shares (squad only)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(game_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, games(home_team, away_team, sports(name)))')
@@ -493,7 +494,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .limit(30),
 
     // Source 8: H2H — settled picks in last 3 days (squad only)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('picks')
       .select('id, user_id, picked_team, game_id, is_correct, odds_at_pick, points_earned, risk_points, multiplier, updated_at, games(home_team, away_team, sports(name))')
@@ -511,6 +512,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
         htQuery = supabase.from('hot_takes').select(htSelect).eq('post_type', 'poll')
       } else if (isPredictions) {
         htQuery = supabase.from('hot_takes').select(htSelect).eq('post_type', 'prediction')
+      } else if (isPosts) {
+        htQuery = supabase.from('hot_takes').select(htSelect).eq('post_type', 'post')
       } else if (isHotTakes) {
         htQuery = supabase.from('hot_takes').select(htSelect)
       } else if (isUserHotTakes && targetUserId) {
@@ -520,11 +523,11 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       }
       return applyBefore(htQuery, 'created_at')
         .order('created_at', { ascending: false })
-        .limit((isHotTakes || isUserHotTakes || isPolls || isPredictions) ? 30 : 15)
+        .limit((isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) ? 30 : 15)
     })(),
 
     // Source 10: Hot take reminders (squad only)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
     applyBefore(supabase
       .from('hot_take_reminders')
       .select('id, reminder_user_id, hot_take_id, comment, created_at, hot_takes(id, user_id, content, team_tags, user_tags, created_at)')
@@ -533,7 +536,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .limit(15),
 
     // Source 11: All pick shares for sweat cards (squad only)
-    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
+    (isAll || isHighlights || isHotTakes || isUserHighlights || isUserHotTakes || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
     supabase
       .from('pick_shares')
       .select('id, pick_id, user_id, created_at, picks(id, user_id, picked_team, odds_at_pick, status, is_correct, points_earned, multiplier, risk_points, reward_points, updated_at, game_id, games(id, home_team, away_team, starts_at, sports(name)))')
@@ -543,7 +546,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       .limit(50),
 
     // Source 12: Hot take reminder counts — to find viral takes (5+ reminds)
-    (isHighlights || isUserHighlights || isPolls || isPredictions) ? Promise.resolve({ data: [] }) :
+    (isHighlights || isUserHighlights || isPolls || isPredictions || isPosts) ? Promise.resolve({ data: [] }) :
     supabase
       .from('hot_take_reminders')
       .select('hot_take_id')
@@ -560,7 +563,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
   ])
 
   // For 'all' / 'hot_takes' / 'user_hot_takes' scope, batch-fetch user data from query results
-  if (isAll || isHotTakes || isUserHotTakes || isPolls || isPredictions) {
+  if (isAll || isHotTakes || isUserHotTakes || isPolls || isPredictions || isPosts) {
     const userIdSet = new Set()
     for (const pick of notablePicks.data || []) userIdSet.add(pick.user_id)
     for (const parlay of settledParlays.data || []) userIdSet.add(parlay.user_id)
