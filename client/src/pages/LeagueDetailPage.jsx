@@ -36,7 +36,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import Avatar from '../components/ui/Avatar'
 import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
-import { getBackdropUrl } from '../lib/backdropUrl'
+import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'mlb_dfs']
 
@@ -790,7 +790,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
       toast(err.message || 'Failed to save', 'error')
     }
   }
-  const backdropSport = league.sport === 'all' ? undefined : league.sport
+  const backdropSport = getBackdropFilterKey(league)
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
@@ -1381,7 +1381,7 @@ export default function LeagueDetailPage() {
     const hasUpcoming = allSlots.some((s) => s.game_status === 'upcoming')
     return (hasLive || hasFinal) && (hasLive || hasUpcoming)
   })()
-  const backdropSport = league?.sport === 'all' ? undefined : league?.sport
+  const backdropSport = getBackdropFilterKey(league)
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const myMembership = league?.members?.find((m) => m.user_id === profile?.id)
   const [showTeamNameModal, setShowTeamNameModal] = useState(false)
