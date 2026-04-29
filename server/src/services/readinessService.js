@@ -112,7 +112,7 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
   // last game ends.
   const relevantSportKeys = new Set()
   if (byFormat.nba_dfs?.length || byFormat.three_point?.length) relevantSportKeys.add('basketball_nba')
-  if (byFormat.mlb_dfs?.length || byFormat.hr_derby?.length) relevantSportKeys.add('baseball_mlb')
+  if (byFormat.mlb_dfs?.length || byFormat.hr_derby?.length || byFormat.strikeouts?.length) relevantSportKeys.add('baseball_mlb')
   if (byFormat.survivor?.length) {
     for (const l of byFormat.survivor) {
       if (l.sport && l.settings?.pick_frequency === 'daily') relevantSportKeys.add(l.sport)
@@ -142,6 +142,11 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     if (byFormat.hr_derby?.length) {
       if (!doneSports.has('baseball_mlb')) {
         await computeHrDerbyReadiness(byFormat.hr_derby, userId, todayET, result)
+      }
+    }
+    if (byFormat.strikeouts?.length) {
+      if (!doneSports.has('baseball_mlb')) {
+        await computeStrikeoutsReadiness(byFormat.strikeouts, userId, todayET, result)
       }
     }
     if (byFormat.three_point?.length) {
@@ -412,6 +417,25 @@ async function computeHrDerbyReadiness(leagues, userId, todayET, result) {
     const n = countByLeague[l.id] || 0
     if (n > 0) set(result, l.id, 'ready', `${n}/3 hitter${n === 1 ? '' : 's'} picked for today`)
     else set(result, l.id, 'action', "You haven't picked today's hitters")
+  }
+}
+
+async function computeStrikeoutsReadiness(leagues, userId, todayET, result) {
+  const leagueIds = leagues.map((l) => l.id)
+  const { data: picks } = await supabase
+    .from('strikeouts_picks')
+    .select('league_id')
+    .in('league_id', leagueIds)
+    .eq('user_id', userId)
+    .eq('game_date', todayET)
+  const countByLeague = {}
+  for (const p of picks || []) {
+    countByLeague[p.league_id] = (countByLeague[p.league_id] || 0) + 1
+  }
+  for (const l of leagues) {
+    const n = countByLeague[l.id] || 0
+    if (n > 0) set(result, l.id, 'ready', `${n}/3 pitcher${n === 1 ? '' : 's'} picked for today`)
+    else set(result, l.id, 'action', "You haven't picked today's pitchers")
   }
 }
 

@@ -14,6 +14,7 @@ const FORMAT_LABELS = {
   nba_dfs: 'NBA Daily Fantasy',
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
+  strikeouts: 'Strikeouts Contest',
   three_point: '3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
@@ -232,6 +233,7 @@ export default function JoinLeaguePage() {
                             {league.format === 'survivor' && <div className="text-text-muted italic">Pick one team per period. If they lose, you lose a life. Can't reuse teams.</div>}
                             {league.format === 'pickem' && <div className="text-text-muted italic">Pick game winners scored by odds. Top of the standings at the end wins.</div>}
                             {league.format === 'hr_derby' && <div className="text-text-muted italic">Pick 3 hitters per day. Each player usable once per week. Most HRs wins.</div>}
+                            {league.format === 'strikeouts' && <div className="text-text-muted italic">Pick 3 pitchers per day. Each player usable once per week. Most strikeouts wins.</div>}
                             {league.format === 'three_point' && <div className="text-text-muted italic">Pick 3 NBA shooters per night. Most made 3-pointers wins.</div>}
                             {league.format === 'sacks' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most sacks across the season wins.</div>}
                             {league.format === 'ints' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most interceptions across the season wins.</div>}

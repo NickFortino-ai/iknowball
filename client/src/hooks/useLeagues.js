@@ -1261,6 +1261,51 @@ export function useHrDerbyStandings(leagueId) {
   })
 }
 
+// Strikeouts Contest hooks (mirror HR Derby — pitchers + strikeouts)
+export function useStrikeoutsPlayers(date) {
+  return useQuery({
+    queryKey: ['strikeouts', 'players', date],
+    queryFn: () => api.get(`/strikeouts/players?date=${date}`),
+    enabled: !!date,
+  })
+}
+
+export function useStrikeoutsPicks(leagueId, date) {
+  return useQuery({
+    queryKey: ['strikeouts', leagueId, 'picks', date],
+    queryFn: () => api.get(`/strikeouts/picks?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+    refetchInterval: 2 * 60 * 1000,
+  })
+}
+
+export function useStrikeoutsUsed(leagueId, date) {
+  return useQuery({
+    queryKey: ['strikeouts', leagueId, 'used', date],
+    queryFn: () => api.get(`/strikeouts/used?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+  })
+}
+
+export function useSubmitStrikeoutsPicks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/strikeouts/picks', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['strikeouts', variables.league_id] })
+    },
+  })
+}
+
+export function useStrikeoutsStandings(leagueId) {
+  return useQuery({
+    queryKey: ['strikeouts', leagueId, 'standings'],
+    queryFn: () => api.get(`/strikeouts/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
 // 3-Point Contest hooks (mirror HR Derby exactly, NBA equivalent)
 export function useThreePointPlayers(date) {
   return useQuery({

@@ -28,6 +28,7 @@ import dfsRouter from './routes/dfs.js'
 import nbaDfsRouter from './routes/nbaDfs.js'
 import mlbDfsRouter from './routes/mlbDfs.js'
 import hrDerbyRouter from './routes/hrDerby.js'
+import strikeoutsRouter from './routes/strikeouts.js'
 import threePointRouter from './routes/threePoint.js'
 import sacksRouter from './routes/sacks.js'
 import intsRouter from './routes/ints.js'
@@ -81,6 +82,7 @@ app.use('/api/dfs', dfsRouter)
 app.use('/api/nba-dfs', nbaDfsRouter)
 app.use('/api/mlb-dfs', mlbDfsRouter)
 app.use('/api/hr-derby', hrDerbyRouter)
+app.use('/api/strikeouts', strikeoutsRouter)
 app.use('/api/three-point', threePointRouter)
 app.use('/api/sacks', sacksRouter)
 app.use('/api/ints', intsRouter)

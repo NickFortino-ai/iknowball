@@ -126,6 +126,7 @@ const FORMAT_LABELS = {
   nba_dfs: 'NBA DFS',
   mlb_dfs: 'MLB DFS',
   hr_derby: 'HR Derby',
+  strikeouts: 'Strikeouts',
   three_point: '3PT Contest',
   sacks: 'Sacks',
   ints: 'INTs',

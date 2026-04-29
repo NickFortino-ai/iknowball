@@ -353,6 +353,46 @@ async function tightenMLBJoinLocks() {
 }
 
 /**
+ * Score Strikeouts Contest picks: pull strikeouts from mlb_dfs_player_stats
+ * (pitcher rows only) into strikeouts_picks. Mirrors HR Derby scoring.
+ */
+async function scoreStrikeoutsPicks(date) {
+  const { data: picks } = await supabase
+    .from('strikeouts_picks')
+    .select('id, espn_player_id')
+    .eq('game_date', date)
+
+  if (!picks?.length) return
+
+  const espnIds = [...new Set(picks.map((p) => p.espn_player_id))]
+  const { data: stats } = await supabase
+    .from('mlb_dfs_player_stats')
+    .select('espn_player_id, strikeouts, is_pitcher')
+    .eq('game_date', date)
+    .in('espn_player_id', espnIds)
+
+  if (!stats?.length) return
+
+  // Pitcher rows only — a hitter can also have a `strikeouts` value (Ks at
+  // the plate) but those aren't what this contest tracks.
+  const kMap = {}
+  for (const s of stats) {
+    if (s.is_pitcher) kMap[s.espn_player_id] = s.strikeouts || 0
+  }
+
+  for (const pick of picks) {
+    const ks = kMap[pick.espn_player_id]
+    if (ks === undefined) continue
+    await supabase
+      .from('strikeouts_picks')
+      .update({ strikeouts: ks })
+      .eq('id', pick.id)
+  }
+
+  logger.info({ date, picks: picks.length }, 'Scored Strikeouts Contest picks')
+}
+
+/**
  * Score HR Derby picks: pull home_runs from mlb_dfs_player_stats into hr_derby_picks.
  */
 async function scoreHRDerbyPicks(date) {
@@ -448,6 +488,7 @@ export async function scoreMLBDFS() {
     await upsertPlayerStats(playerStats, today, season)
     await scoreRosters(today, season, allFinal)
     await scoreHRDerbyPicks(today)
+    await scoreStrikeoutsPicks(today)
     logger.info({ date: today, players: playerStats.length, allFinal }, 'MLB DFS scoring pass complete')
   }
 
@@ -469,6 +510,7 @@ export async function scoreMLBDFS() {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
       await scoreRosters(yesterdayStr, season, yester.allFinal)
       await scoreHRDerbyPicks(yesterdayStr)
+      await scoreStrikeoutsPicks(yesterdayStr)
       logger.info({ date: yesterdayStr, players: yester.playerStats.length, allFinal: yester.allFinal }, 'Scored yesterday MLB DFS games')
     }
   }
