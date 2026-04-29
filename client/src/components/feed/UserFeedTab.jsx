@@ -9,7 +9,6 @@ import ActivityFeed from './ActivityFeed'
 export default function UserFeedTab({ onUserTap, initialUserId }) {
   const [selectedUser, setSelectedUser] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [subFilter, setSubFilter] = useState('all')
   const [squadExpanded, setSquadExpanded] = useState(false)
 
   const { data: searchResults } = useSearchUsers(searchQuery)
@@ -26,12 +25,10 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
   function selectUser(user) {
     setSelectedUser(user)
     setSearchQuery('')
-    setSubFilter('all')
   }
 
   function clearUser() {
     setSelectedUser(null)
-    setSubFilter('all')
   }
 
   if (selectedUser) {
@@ -54,28 +51,10 @@ export default function UserFeedTab({ onUserTap, initialUserId }) {
           </button>
         </div>
 
-        {/* All / Posts toggle */}
-        <div className="flex gap-1 mb-3">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'hot_takes', label: 'Posts' },
-          ].map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setSubFilter(f.key)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                subFilter === f.key ? 'bg-accent text-white' : 'bg-bg-primary text-text-secondary hover:bg-text-primary/5'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Feed */}
+        {/* Feed — all activity from this user */}
         <ActivityFeed
           onUserTap={onUserTap}
-          scope={subFilter === 'hot_takes' ? 'user_hot_takes' : 'user_highlights'}
+          scope="user_highlights"
           targetUserId={selectedUser.user_id || selectedUser.id}
           targetUserName={selectedUser.display_name || selectedUser.username}
         />
