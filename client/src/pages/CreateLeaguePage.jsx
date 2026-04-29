@@ -1303,33 +1303,26 @@ export default function CreateLeaguePage() {
               </>
             )}
 
-            {/* Scoring Format (shared) */}
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Scoring Format</label>
-              <div className="flex gap-2">
-                {[
-                  { value: 'half_ppr', label: 'Half PPR' },
-                  { value: 'ppr', label: 'PPR' },
-                  { value: 'standard', label: 'Standard' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => { setScoringFormat(opt.value); setScoringRules(null) }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      scoringFormat === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            {/* Scoring */}
+            {fantasyFormat === 'traditional' ? (
+              // Traditional: ScoringRulesEditor is the single source of truth.
+              // It has its own preset picker (PPR/Half/Std/Custom), so the
+              // outer Scoring Format buttons would be redundant.
+              <div>
+                <label className="text-xs text-text-muted block mb-2">Scoring</label>
+                <ScoringRulesEditor value={scoringRules} onChange={setScoringRules} />
               </div>
-              {format === 'fantasy' && fantasyFormat === 'traditional' && (
-                <div className="mt-3">
-                  <ScoringRulesEditor value={scoringRules} onChange={setScoringRules} />
+            ) : (
+              // Salary Cap is locked to Half PPR because the salary algorithm
+              // is calibrated against it — full PPR would systematically
+              // underprice high-target pass catchers.
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Scoring</label>
+                <div className="rounded-lg bg-bg-secondary px-3 py-2 text-xs text-text-secondary">
+                  Half PPR (locked) — used by the salary cap algorithm
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             {/* Traditional-only settings */}
             {fantasyFormat === 'traditional' && <>
             <div>
