@@ -459,6 +459,8 @@ export default function CreateLeaguePage() {
   const [format, setFormat] = useState('')
   const [expandedCardKey, setExpandedCardKey] = useState(null)
   const [selectedCardKey, setSelectedCardKey] = useState(null)
+  const [collapsedCategories, setCollapsedCategories] = useState(() => new Set())
+  const settingsRef = useRef(null)
   const [sport, setSport] = useState('')
   const [duration, setDuration] = useState('')
   const [maxMembers, setMaxMembers] = useState('')
@@ -755,9 +757,35 @@ export default function CreateLeaguePage() {
           <label className="block text-sm font-semibold text-text-secondary mb-2">Format</label>
 
           <div className="space-y-8">
-            {CATEGORIES.map((cat) => (
+            {CATEGORIES.map((cat) => {
+              const isCollapsed = collapsedCategories.has(cat.key)
+              return (
               <div key={cat.key}>
-                <h2 className="font-display text-2xl md:text-3xl text-text-primary mb-3">{cat.label}</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCollapsedCategories((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(cat.key)) next.delete(cat.key)
+                      else next.add(cat.key)
+                      return next
+                    })
+                  }}
+                  className="flex items-center gap-2 mb-3 text-text-primary hover:text-accent transition-colors"
+                  aria-expanded={!isCollapsed}
+                >
+                  <h2 className="font-display text-2xl md:text-3xl">{cat.label}</h2>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {!isCollapsed && (
                 <div className="space-y-2">
                   {(CATEGORY_CARDS[cat.key] || []).map((card) => {
                     const base = FORMAT_BY_VALUE[card.format] || {}
@@ -794,6 +822,11 @@ export default function CreateLeaguePage() {
                           // Generic Survivor (All Sports tab) defaults to standard mode.
                           setSurvivorMode('standard')
                         }
+                        // Settings panel mounts on the next render once
+                        // `format` is set — wait a frame, then scroll to it.
+                        requestAnimationFrame(() => {
+                          settingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        })
                       }}
                       className="flex-1 text-left p-4 md:p-5 min-w-0"
                     >
@@ -874,8 +907,10 @@ export default function CreateLeaguePage() {
                     )
                   })}
                 </div>
+                )}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
@@ -883,6 +918,7 @@ export default function CreateLeaguePage() {
             selected — no point asking for sport/duration/visibility before
             the user has decided what they're creating. */}
         {format && <>
+        <div ref={settingsRef} aria-hidden="true" />
 
         {/* Sport (hidden for format-locked sports) */}
         {!['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'sacks', 'ints', 'td_pass'].includes(format) && <div>
