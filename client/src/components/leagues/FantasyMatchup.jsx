@@ -614,7 +614,9 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               key={v}
               onClick={() => setMatchupView(v)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                matchupView === v ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
+                matchupView === v
+                  ? 'bg-accent text-white'
+                  : 'bg-bg-primary border border-text-primary/20 text-text-primary hover:bg-text-primary/5'
               }`}
             >
               {v === 'mine' ? 'My Matchup' : v === 'bracket' ? 'Bracket' : 'All Matchups'}
