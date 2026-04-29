@@ -219,12 +219,29 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
   const [theirPlayerIds, setTheirPlayerIds] = useState(initialAcquirePlayerId ? [initialAcquirePlayerId] : [])
   const [message, setMessage] = useState('')
 
-  // Lock body scroll while the modal is open so iOS swipes can't bleed
-  // through to the page behind the modal.
+  // Lock body scroll while the modal is open. `overflow:hidden` alone isn't
+  // enough on iOS WebKit — momentum scrolling still leaks through. Pinning
+  // body to fixed at the current scrollY blocks it reliably; on cleanup we
+  // restore both styles and scroll back to where we were.
   useEffect(() => {
-    const prev = document.body.style.overflow
+    const scrollY = window.scrollY
+    const prev = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    }
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+    return () => {
+      document.body.style.overflow = prev.overflow
+      document.body.style.position = prev.position
+      document.body.style.top = prev.top
+      document.body.style.width = prev.width
+      window.scrollTo(0, scrollY)
+    }
   }, [])
 
   const { data: theirRoster } = useQuery({
@@ -264,7 +281,7 @@ export function ProposeTradeModal({ league, currentUserId, onClose, initialRecei
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-bg-primary border border-text-primary/20 w-full max-w-md md:max-w-2xl rounded-2xl max-h-[85vh] overflow-y-auto overscroll-contain" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-between z-10">
           <h3 className="font-display text-lg">{counteringTradeId ? 'Counter Trade' : 'Propose Trade'}</h3>
