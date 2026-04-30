@@ -9,7 +9,7 @@ const sections = [
         a: `I KNOW BALL is the all-in-one sports platform for people who live and breathe sports. Pick winners using live Vegas odds, run fantasy leagues with the best visuals in the game, and prove you actually know ball.
 
 \u2022 <strong class="text-white">Picks:</strong> Make daily picks on real games across NFL, NBA, MLB, NHL, and more. Every pick is scored using live odds and permanently tracked \u2014 no hiding from bad takes.
-\u2022 <strong class="text-white">Fantasy Leagues:</strong> Full-featured fantasy football, NBA Daily Fantasy, MLB Daily Fantasy, Home Run Derby, Survivor pools, Brackets, Pick\u2019em, and Squares. Create a league in seconds, invite your squad, and compete with stadium backdrops and real trophies.
+\u2022 <strong class="text-white">Fantasy Leagues:</strong> Full-featured fantasy football, NBA Daily Fantasy, MLB Daily Fantasy, Home Run Derby, Strikeouts Contest, 3-Point Contest, TD Pass, Sacks Contest, Interceptions Contest, Survivor pools, Touchdown Survivor, Brackets, Pick\u2019em, and Squares. Create a league in seconds, invite your squad, and compete with stadium backdrops and real trophies.
 \u2022 <strong class="text-white">Social:</strong> Post takes, react to your friends\u2019 picks, comment, and watch the feed light up. Your connections see everything \u2014 the wins, the losses, and the streaks.
 \u2022 <strong class="text-white">Global Leaderboard:</strong> Climb from Rookie to GOAT. Your score reflects everything \u2014 picks, props, parlays, futures, and league finishes. Filter by sport to see who really knows ball.`,
       },
@@ -19,7 +19,7 @@ const sections = [
       },
       {
         q: 'What sports are available?',
-        a: 'NFL, NBA, MLB, NHL, WNBA, MLS, NCAA Men\u2019s Basketball, NCAA Women\u2019s Basketball, NCAA Football, and Golf. You can also make futures predictions on major golf tournaments like the Masters. Each sport has its own leaderboard filter so you can see who knows ball sport by sport.',
+        a: 'NFL, NBA, MLB, NHL, WNBA, MLS, UFL, NCAA Men\u2019s Basketball, NCAA Women\u2019s Basketball, NCAA Football, and Golf. You can also make futures predictions on major golf tournaments like the Masters. Each sport has its own leaderboard filter so you can see who knows ball sport by sport.',
       },
       {
         q: 'Why do you charge a subscription?',
@@ -111,7 +111,11 @@ The multiplier is only available on straight picks in the global competition. It
 \u2022 <strong class="text-white">TD Pass Competition:</strong> Season-long NFL league where you pick one QB per week. You can never re-pick the same QB. Standings rank by total accumulated passing TDs across all your picks \u2014 most TDs by season\u2019s end wins.
 \u2022 <strong class="text-white">NBA Daily Fantasy:</strong> Build a nightly NBA lineup under a salary cap (9 positions) and compete for the highest score.
 \u2022 <strong class="text-white">MLB Daily Fantasy:</strong> Build a daily MLB lineup under a salary cap (C, 1B, 2B, SS, 3B, OF, OF, OF, UTIL) scored on hits, HRs, RBIs, runs, stolen bases, and more.
-\u2022 <strong class="text-white">Home Run Derby:</strong> Pick 3 hitters per day who you think will hit a home run. Each player can only be used once per week. Total home runs determine standings with HR distance as tiebreaker.`,
+\u2022 <strong class="text-white">Home Run Derby:</strong> Pick 3 hitters per day who you think will hit a home run. Player reuse is set by the commissioner (weekly, season-long, or unlimited). Total home runs determine standings with HR distance as tiebreaker.
+\u2022 <strong class="text-white">Strikeouts Contest:</strong> MLB. Pick 3 pitchers per day, with player reuse configurable by the commissioner. Most strikeouts across the contest wins.
+\u2022 <strong class="text-white">3-Point Contest:</strong> NBA. Pick 3 shooters per night, with reuse configurable by the commissioner. Most made 3-pointers wins.
+\u2022 <strong class="text-white">Sacks Contest:</strong> NFL season-long. Pick 3 defensive players per week. Commissioner sets max uses per defender (1x, 2x, 3x, 4x, or unlimited). Half sacks are supported. Most total sacks across the season wins.
+\u2022 <strong class="text-white">Interceptions Contest:</strong> NFL season-long. Pick 3 defensive players per week with the same reuse setting. Most total interceptions across the season wins.`,
       },
       {
         q: 'How do leagues affect my global score?',
@@ -119,7 +123,7 @@ The multiplier is only available on straight picks in the global competition. It
 
 \u2022 <strong class="text-white">Pick\u2019em:</strong> Your league pick points are added to your global score when the league ends, plus the winner earns a bonus equal to the number of members.
 \u2022 <strong class="text-white">Survivor:</strong> Winners earn bonus points scaled by league size (10 pts for small leagues up to 100 pts for 41+ member leagues).
-\u2022 <strong class="text-white">Bracket, Salary Cap Fantasy, NBA DFS, MLB DFS, HR Derby, TD Pass:</strong> All use position-based scoring when the league ends. Top half earns positive points, bottom half loses points. Formula: N+1\u22122\u00d7rank, plus a +10 champion bonus for 1st place. Ties split the points for the positions they span.
+\u2022 <strong class="text-white">Bracket, Salary Cap Fantasy, NBA DFS, MLB DFS, HR Derby, Strikeouts, 3-Point, TD Pass, Sacks, Interceptions:</strong> All use position-based scoring when the league ends. Top half earns positive points, bottom half loses points. Formula: N+1\u22122\u00d7rank, plus a +10 champion bonus for 1st place. Ties split the points for the positions they span. NFL season-long contests (TD Pass, Sacks, Ints) prorate the champion bonus by weeks played out of 18.
 \u2022 <strong class="text-white">Traditional Fantasy Football:</strong> Same N+1\u22122\u00d7rank position points, but with a much bigger top-3 bonus that scales with league size — winning a deep traditional league is a real test of strategy and prep. 8 teams: +50/+20/+10. 10 teams: +75/+30/+15. 12 teams: +100/+40/+20. 14 teams: +150/+60/+30. 16 teams: +175/+70/+35. 20 teams: +200/+80/+40. 6-team leagues get +30/+12/+6.
 \u2022 <strong class="text-white">Squares:</strong> Does not affect global score.`,
       },
