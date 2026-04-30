@@ -23,10 +23,10 @@ const ONBOARDING_STEPS = [
     freeScroll: true,
   },
   {
-    page: '/?headlines=1',
+    page: '/',
     targetSelector: null,
     title: 'Your Home Page',
-    body: "This is your landing page. New featured props are refreshed daily. Tap game statuses for live scores and details. Browse the weekly headlines recap, and discover featured open leagues you can join right from here.",
+    body: "This is your landing page. Discover open leagues you can join right from here, and get a quick view of the leagues you're already in.",
     position: 'center',
     freeScroll: true,
   },
