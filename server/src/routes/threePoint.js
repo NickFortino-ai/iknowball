@@ -138,15 +138,24 @@ router.get('/picks', async (req, res) => {
   res.json(enriched)
 })
 
-// Players the user has already picked any day this week (Mon-Sun).
-// Derived from three_point_picks directly so it stays in sync when
-// the user edits picks (the legacy three_point_usage table didn't
-// have a clean way to know which usage entries were 'today only' vs
-// 'other days this week').
+// Players that are "exhausted" for the rest of this week given the
+// league's pick_reuse setting. Used by the View to gray those players
+// out in the available list. Returns [] for unlimited reuse since
+// no player is ever exhausted.
 router.get('/used', async (req, res) => {
   const { league_id, date } = req.query
   if (!league_id || !date) return res.status(400).json({ error: 'league_id and date required' })
 
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('pick_reuse')
+    .eq('league_id', league_id)
+    .maybeSingle()
+  const reuseMode = settings?.pick_reuse || 'weekly'
+  if (reuseMode === 'unlimited') return res.json([])
+
+  // Once-per-week: any player picked on another day this week is
+  // exhausted (today's picks are excluded since they're replaceable).
   const weekStart = getWeekStart(date)
   const weekEnd = getWeekEnd(weekStart)
   const { data } = await supabase
@@ -156,8 +165,8 @@ router.get('/used', async (req, res) => {
     .eq('user_id', req.user.id)
     .gte('game_date', weekStart)
     .lte('game_date', weekEnd)
+    .neq('game_date', date)
 
-  // Dedupe by espn_player_id (player may appear on multiple days if reuse=unlimited)
   const seen = new Set()
   const uniq = []
   for (const p of (data || [])) {

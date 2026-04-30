@@ -81,7 +81,9 @@ export default function IntsView({ league, tab = 'picks' }) {
   }
 
   const hasSavedPicks = myPicks?.length > 0
-  const usedPlayerIds = new Set((usedPlayers || []).filter((u) => u.week !== week).map((u) => u.sleeper_player_id))
+  // Defenders fully exhausted given the league's pick_reuse setting
+  // (server returns only exhausted; partial usage doesn't appear).
+  const usedPlayerIds = new Set((usedPlayers || []).map((u) => u.sleeper_player_id))
   const thisWeekPickIds = new Set((myPicks || []).map((p) => p.sleeper_player_id))
   const selectedIds = new Set(selected.map((p) => p.sleeper_player_id))
 
@@ -103,7 +105,6 @@ export default function IntsView({ league, tab = 'picks' }) {
     if (!players) return []
     return players.filter((p) => {
       if (selectedIds.has(p.sleeper_player_id)) return false
-      if (usedPlayerIds.has(p.sleeper_player_id) && !thisWeekPickIds.has(p.sleeper_player_id)) return false
       if (p.injury_status === 'Out') return false
       if (search) {
         const q = search.toLowerCase()
@@ -111,7 +112,7 @@ export default function IntsView({ league, tab = 'picks' }) {
       }
       return true
     })
-  }, [players, search, selectedIds, usedPlayerIds, thisWeekPickIds])
+  }, [players, search, selectedIds])
 
   function addPlayer(player) {
     if (selected.length >= 3) {
@@ -337,10 +338,14 @@ export default function IntsView({ league, tab = 'picks' }) {
           </div>
         ) : (
           <div className="max-h-[50vh] overflow-y-auto">
-            {filteredPlayers.map((player) => (
+            {filteredPlayers.map((player) => {
+              const isExhausted = usedPlayerIds.has(player.sleeper_player_id) && !thisWeekPickIds.has(player.sleeper_player_id)
+              return (
               <div
                 key={player.sleeper_player_id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 hover:bg-text-primary/5 transition-colors"
+                className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${
+                  isExhausted ? 'opacity-40' : 'hover:bg-text-primary/5'
+                }`}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {player.headshot_url ? (
@@ -356,21 +361,25 @@ export default function IntsView({ league, tab = 'picks' }) {
                       <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
                       <InjuryBadge status={player.injury_status} />
                     </div>
-                    <div className="text-xs text-text-muted">{player.position} · {player.team}{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}</div>
+                    <div className="text-xs text-text-muted">
+                      {player.position} · {player.team}{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}
+                      {isExhausted && <span className="ml-1">· Used up this season</span>}
+                    </div>
                   </div>
                   <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_ints || 0}</span>
                 </div>
                 {(!hasSavedPicks || editing) && (
                   <button
                     onClick={() => addPlayer(player)}
-                    disabled={selected.length >= 3}
-                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none disabled:opacity-30"
+                    disabled={selected.length >= 3 || isExhausted}
+                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +
                   </button>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

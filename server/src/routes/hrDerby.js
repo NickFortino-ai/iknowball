@@ -133,13 +133,19 @@ router.get('/picks', async (req, res) => {
   res.json(enriched)
 })
 
-// Players the user has already picked any day this week (Mon-Sun).
-// Derived from hr_derby_picks directly so it stays consistent through
-// edits — the legacy hr_derby_usage table couldn't tell which entries
-// came from today's (replaceable) picks vs other days.
+// Players exhausted for the rest of the week under the league's
+// pick_reuse setting. The View grays these out in the available list.
 router.get('/used', async (req, res) => {
   const { league_id, date } = req.query
   if (!league_id || !date) return res.status(400).json({ error: 'league_id and date required' })
+
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('pick_reuse')
+    .eq('league_id', league_id)
+    .maybeSingle()
+  const reuseMode = settings?.pick_reuse || 'weekly'
+  if (reuseMode === 'unlimited') return res.json([])
 
   const weekStart = getWeekStart(date)
   const weekEnd = getWeekEnd(weekStart)
@@ -150,6 +156,7 @@ router.get('/used', async (req, res) => {
     .eq('user_id', req.user.id)
     .gte('game_date', weekStart)
     .lte('game_date', weekEnd)
+    .neq('game_date', date)
 
   const seen = new Set()
   const uniq = []

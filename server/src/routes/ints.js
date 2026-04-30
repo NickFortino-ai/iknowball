@@ -113,20 +113,43 @@ router.get('/picks', async (req, res) => {
   res.json(data || [])
 })
 
+// Defenders exhausted for this season under the league's pick_reuse
+// setting (1x/2x/3x/4x/Unlimited). View grays these in the available
+// list. Excludes the current week since today's picks are still
+// replaceable.
 router.get('/used', async (req, res) => {
   const { league_id } = req.query
   if (!league_id) return res.status(400).json({ error: 'league_id required' })
 
-  const { season } = await getCurrentNflWeek()
+  const { season, week } = await getCurrentNflWeek()
 
-  const { data } = await supabase
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('pick_reuse')
+    .eq('league_id', league_id)
+    .maybeSingle()
+  const reuseMode = settings?.pick_reuse || 'season'
+  if (reuseMode === 'unlimited') return res.json([])
+  const maxUses = reuseMode === 'season' ? 1 : (parseInt(reuseMode, 10) || 1)
+
+  const { data: priorPicks } = await supabase
     .from('ints_picks')
-    .select('sleeper_player_id, player_name, week')
+    .select('sleeper_player_id, player_name')
     .eq('league_id', league_id)
     .eq('user_id', req.user.id)
     .eq('season', season)
+    .neq('week', week)
 
-  res.json(data || [])
+  const counts = {}
+  const names = {}
+  for (const p of priorPicks || []) {
+    counts[p.sleeper_player_id] = (counts[p.sleeper_player_id] || 0) + 1
+    names[p.sleeper_player_id] = p.player_name
+  }
+  const exhausted = Object.entries(counts)
+    .filter(([_, c]) => c >= maxUses)
+    .map(([id]) => ({ sleeper_player_id: id, player_name: names[id] }))
+  res.json(exhausted)
 })
 
 router.post('/picks', async (req, res) => {

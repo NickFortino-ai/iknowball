@@ -144,8 +144,6 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
     const now = new Date()
     return players.filter((p) => {
       if (selectedIds.has(p.espn_player_id)) return false
-      // Used this week (but not if it's today's saved pick — allow re-picking)
-      if (usedPlayerIds.has(p.espn_player_id) && !todayPickIds.has(p.espn_player_id)) return false
       if (p.injury_status === 'Out') return false
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
       if (gameStarted) return false
@@ -155,7 +153,7 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
       }
       return true
     })
-  }, [players, search, selectedIds, usedPlayerIds, todayPickIds])
+  }, [players, search, selectedIds])
 
   function addPlayer(player) {
     if (selected.length >= 3) {
@@ -403,37 +401,45 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
           </div>
         ) : (
           <div className="max-h-[50vh] overflow-y-auto">
-            {filteredPlayers.map((player) => (
-              <div
-                key={player.espn_player_id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 hover:bg-text-primary/5 transition-colors"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {player.headshot_url ? (
-                    <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                      onError={(e) => { e.target.style.display = 'none' }} />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
-                      {player.position}
+            {filteredPlayers.map((player) => {
+              const isUsedElsewhere = usedPlayerIds.has(player.espn_player_id) && !todayPickIds.has(player.espn_player_id)
+              return (
+                <div
+                  key={player.espn_player_id}
+                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${
+                    isUsedElsewhere ? 'opacity-40' : 'hover:bg-text-primary/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {player.headshot_url ? (
+                      <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                        onError={(e) => { e.target.style.display = 'none' }} />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
+                        {player.position}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
+                      <div className="text-xs text-text-muted">
+                        {player.position} · {player.team} · {player.opponent}
+                        {isUsedElsewhere && <span className="ml-1">· Used this week</span>}
+                      </div>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
-                    <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
+                    <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_strikeouts || 0}</span>
                   </div>
-                  <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_strikeouts || 0}</span>
+                  {(!hasSavedPicks || editing) && (
+                    <button
+                      onClick={() => addPlayer(player)}
+                      disabled={selected.length >= 3 || isUsedElsewhere}
+                      className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
-                {(!hasSavedPicks || editing) && (
-                  <button
-                    onClick={() => addPlayer(player)}
-                    disabled={selected.length >= 3}
-                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none disabled:opacity-30"
-                  >
-                    +
-                  </button>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
