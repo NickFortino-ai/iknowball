@@ -9,6 +9,41 @@ function todayET() {
 }
 
 /**
+ * True if mlb_dfs_salaries for the date is missing OR ESPN's scoreboard
+ * shows more games than we have distinct game start times for. Catches
+ * the case where MLB schedules a make-up doubleheader after we already
+ * generated salaries for the date.
+ */
+async function mlbSalariesAreStale(date, season) {
+  const { count: existing } = await supabase
+    .from('mlb_dfs_salaries')
+    .select('id', { count: 'exact', head: true })
+    .eq('game_date', date)
+    .eq('season', season)
+  if (!existing || existing === 0) return true
+
+  let espnGameCount = 0
+  try {
+    const dateStr = date.replace(/-/g, '')
+    const res = await fetch(`${ESPN_BASE}/baseball/mlb/scoreboard?dates=${dateStr}`)
+    if (!res.ok) return false
+    const data = await res.json()
+    espnGameCount = (data.events || []).length
+  } catch (_) {
+    return false
+  }
+  if (espnGameCount === 0) return false
+
+  const { data: rows } = await supabase
+    .from('mlb_dfs_salaries')
+    .select('game_starts_at')
+    .eq('game_date', date)
+    .eq('season', season)
+  const distinctOurs = new Set((rows || []).map((r) => r.game_starts_at).filter(Boolean)).size
+  return distinctOurs < espnGameCount
+}
+
+/**
  * MLB DFS fantasy points formula (batters):
  * Single: 3, Double: 5, Triple: 8, HR: 10
  * RBI: 2, Run: 2, Walk: 2, SB: 5, Strikeout: -0.5
@@ -439,14 +474,9 @@ export async function scoreMLBDFS() {
   const today = todayET()
   const season = 2026
 
-  // Generate salaries for today if not done
-  const { count: existingSalaries } = await supabase
-    .from('mlb_dfs_salaries')
-    .select('id', { count: 'exact', head: true })
-    .eq('game_date', today)
-    .eq('season', season)
-
-  if (!existingSalaries || existingSalaries === 0) {
+  // Refresh today's salaries if missing or if MLB added a game we
+  // didn't have when we last generated.
+  if (await mlbSalariesAreStale(today, season)) {
     try {
       await generateMLBSalaries(today, season)
     } catch (err) {
@@ -454,18 +484,12 @@ export async function scoreMLBDFS() {
     }
   }
 
-  // Generate tomorrow's salaries
+  // Same for tomorrow.
   const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
   tomorrowDate.setDate(tomorrowDate.getDate() + 1)
   const tomorrow = tomorrowDate.toISOString().split('T')[0]
 
-  const { count: tomorrowSalaries } = await supabase
-    .from('mlb_dfs_salaries')
-    .select('id', { count: 'exact', head: true })
-    .eq('game_date', tomorrow)
-    .eq('season', season)
-
-  if (!tomorrowSalaries || tomorrowSalaries === 0) {
+  if (await mlbSalariesAreStale(tomorrow, season)) {
     try {
       await generateMLBSalaries(tomorrow, season)
     } catch (err) {

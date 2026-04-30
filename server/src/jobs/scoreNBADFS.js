@@ -10,6 +10,45 @@ function todayET() {
 }
 
 /**
+ * Decide whether nba_dfs_salaries for a given date needs (re)generation.
+ * Returns true if we have no rows OR ESPN's scoreboard shows more games
+ * than we have distinct game start times for. The latter catches the
+ * case where NBA added a game (e.g. playoff series winner clinches and
+ * a Game N+1 gets scheduled the next day) AFTER the cron's first run
+ * for that date had already populated the salary set.
+ */
+async function nbaSalariesAreStale(date, season) {
+  const { count: existing } = await supabase
+    .from('nba_dfs_salaries')
+    .select('id', { count: 'exact', head: true })
+    .eq('game_date', date)
+    .eq('season', season)
+  if (!existing || existing === 0) return true
+
+  let espnGameCount = 0
+  try {
+    const dateStr = date.replace(/-/g, '')
+    const res = await fetch(`${ESPN_BASE}/basketball/nba/scoreboard?dates=${dateStr}`)
+    if (!res.ok) return false // can't tell — assume fresh, wait for next tick
+    const data = await res.json()
+    espnGameCount = (data.events || []).length
+  } catch (_) {
+    return false
+  }
+  if (espnGameCount === 0) return false
+
+  // Count distinct kickoff times in our salaries for this date — proxy
+  // for distinct games. Cheap query, runs once per cron tick per date.
+  const { data: rows } = await supabase
+    .from('nba_dfs_salaries')
+    .select('game_starts_at')
+    .eq('game_date', date)
+    .eq('season', season)
+  const distinctOurs = new Set((rows || []).map((r) => r.game_starts_at).filter(Boolean)).size
+  return distinctOurs < espnGameCount
+}
+
+/**
  * Fetch player box score stats from ESPN for completed NBA games on a given date.
  * Returns array of { espnPlayerId, playerName, stats }.
  * Exported so the player-prop live-score enrichment can fall back to a direct
@@ -366,14 +405,9 @@ export async function scoreNBADFS() {
   const today = todayET()
   const season = 2026
 
-  // Generate salaries for today if not already done
-  const { count: existingSalaries } = await supabase
-    .from('nba_dfs_salaries')
-    .select('id', { count: 'exact', head: true })
-    .eq('game_date', today)
-    .eq('season', season)
-
-  if (!existingSalaries || existingSalaries === 0) {
+  // Refresh today's salaries if missing or if NBA added a game that
+  // wasn't on the schedule when we last generated.
+  if (await nbaSalariesAreStale(today, season)) {
     try {
       await generateNBASalaries(today, season)
     } catch (err) {
@@ -381,18 +415,12 @@ export async function scoreNBADFS() {
     }
   }
 
-  // Also generate tomorrow's salaries so users can build rosters a day early
+  // Same for tomorrow so users can pick a day in advance.
   const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
   tomorrowDate.setDate(tomorrowDate.getDate() + 1)
   const tomorrow = tomorrowDate.toISOString().split('T')[0]
 
-  const { count: tomorrowSalaries } = await supabase
-    .from('nba_dfs_salaries')
-    .select('id', { count: 'exact', head: true })
-    .eq('game_date', tomorrow)
-    .eq('season', season)
-
-  if (!tomorrowSalaries || tomorrowSalaries === 0) {
+  if (await nbaSalariesAreStale(tomorrow, season)) {
     try {
       await generateNBASalaries(tomorrow, season)
     } catch (err) {
