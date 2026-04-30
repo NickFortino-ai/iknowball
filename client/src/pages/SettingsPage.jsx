@@ -355,7 +355,12 @@ export default function SettingsPage() {
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
-              if (file) uploadAvatar(file)
+              if (file) {
+                // Uploading a photo replaces any previously-selected emoji
+                // — keep the picker UI in sync with the new state.
+                setAvatarEmoji('')
+                uploadAvatar(file)
+              }
               e.target.value = ''
             }}
           />
