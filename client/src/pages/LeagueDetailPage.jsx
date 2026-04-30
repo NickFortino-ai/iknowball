@@ -858,11 +858,24 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           </div>
         </div>
       ) : (league.format === 'bracket' || league.format === 'td_pass' || league.format === 'sacks' || league.format === 'ints' || league.format === 'survivor' || (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap')) ? null : (<>
-      {/* Duration */}
+      {/* Duration — options match what was offered in Create League for
+          this format. Daily-pick contests (3-Point, HR Derby, Strikeouts,
+          MLB DFS) only ever offered Full Season + Select Date. Generic
+          formats (Pick'em, Squares, NBA DFS Salary Cap) keep the full
+          set with This Week + Playoffs Only. */}
+      {(() => {
+      const dailyContestFormats = ['three_point', 'hr_derby', 'strikeouts', 'mlb_dfs']
+      const formatDurationOptions = dailyContestFormats.includes(league.format)
+        ? [
+            { value: 'full_season', label: 'Full Season' },
+            { value: 'custom_range', label: 'Select Date' },
+          ]
+        : DURATION_OPTIONS
+      return (
       <div>
         <label className="block text-xs text-text-muted mb-2">Duration</label>
         <div className="grid grid-cols-2 gap-2">
-          {DURATION_OPTIONS.map((opt) => (
+          {formatDurationOptions.map((opt) => (
             <button
               key={opt.value}
               onClick={async () => {
@@ -887,6 +900,8 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           ))}
         </div>
       </div>
+      )
+      })()}
 
       {/* Custom date range — full pickers */}
       {league.duration === 'custom_range' && (
