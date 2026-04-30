@@ -98,10 +98,10 @@ export default function LeagueCard({ league, noLink }) {
           <img
             src={getBackdropUrl(league.backdrop_image)}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
+            className="absolute inset-0 w-full h-full object-cover opacity-15 pointer-events-none"
             style={{ objectPosition: `center ${league.backdrop_y ?? 50}%` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/80 via-bg-primary/60 to-bg-primary/80 pointer-events-none" />
+          <div className="absolute inset-0 bg-bg-primary/70 pointer-events-none" />
         </>
       )}
       <div className="relative z-10 p-5">
