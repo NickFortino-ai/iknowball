@@ -395,13 +395,17 @@ export async function submitPick(leagueId, userId, qbPlayerId) {
     throw err
   }
 
-  // Already used this QB?
+  // Already used this QB on a different week? Exclude the current week
+  // so the user can re-confirm the same QB on an edit (we replace the
+  // current week's pick row before inserting, so seeing the QB on the
+  // current week would be a false positive).
   const { data: alreadyUsed } = await supabase
     .from('td_pass_picks')
     .select('id, week')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .eq('qb_player_id', qbPlayerId)
+    .neq('week', week)
     .maybeSingle()
   if (alreadyUsed) {
     const err = new Error(`You already picked ${qb.full_name} in week ${alreadyUsed.week}`)
