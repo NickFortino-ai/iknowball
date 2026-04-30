@@ -353,11 +353,14 @@ export async function createLeague(userId, data) {
       const isFutureKickoff = firstKickoff && new Date(firstKickoff).getTime() > nowMs
       let resolvedStartsAt = isFutureKickoff ? firstKickoff : null
       if (!resolvedStartsAt) {
-        // Offseason fallback: Sept 1 of the upcoming NFL season
+        // Offseason fallback: NFL kickoff date for the upcoming season.
+        // 2026 regular season opens Sept 9, and that pattern (early-Sept
+        // Wed/Thu kickoff) holds year-to-year — close enough as a
+        // placeholder until the real schedule loads from Sleeper.
         const today = new Date()
         const yr = today.getFullYear()
-        const candidate = new Date(yr, 8, 1) // Sept 1 (month index 8)
-        resolvedStartsAt = (candidate > today ? candidate : new Date(yr + 1, 8, 1)).toISOString()
+        const candidate = new Date(yr, 8, 9) // Sept 9 (month index 8)
+        resolvedStartsAt = (candidate > today ? candidate : new Date(yr + 1, 8, 9)).toISOString()
       }
       const updates = {}
       updates.starts_at = resolvedStartsAt
