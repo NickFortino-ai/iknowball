@@ -2080,14 +2080,22 @@ export default function CreateLeaguePage() {
           </div>
         )}
 
-        {format === 'bracket' && (
+        {format === 'bracket' && (() => {
+          // Split into still-pickable templates (locks_at is in the future
+          // or unset) vs already-locked/past tournaments. Past ones get
+          // shown as historical reference only — not selectable — so the
+          // commissioner sees the full picture without confusion.
+          const now = Date.now()
+          const available = (bracketTemplates || []).filter((t) => !t.locks_at || new Date(t.locks_at).getTime() > now)
+          const past = (bracketTemplates || []).filter((t) => t.locks_at && new Date(t.locks_at).getTime() <= now)
+          return (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">Bracket Settings</h3>
             <div>
               <label className="block text-xs text-text-muted mb-2">Tournament Template</label>
-              {bracketTemplates?.length > 0 ? (
+              {available.length > 0 ? (
                 <div className="space-y-1">
-                  {bracketTemplates.map((t) => (
+                  {available.map((t) => (
                     <button
                       key={t.id}
                       type="button"
@@ -2114,8 +2122,26 @@ export default function CreateLeaguePage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-xs text-text-muted">
-                  No bracket templates available{sport !== 'all' ? ' for this sport' : ''}. An admin must create one first.
+                <div className="rounded-lg border border-text-primary/15 bg-bg-primary/50 p-3 text-xs text-text-secondary leading-relaxed">
+                  No bracket tournaments are currently open{sport !== 'all' ? ' for this sport' : ''}. New tournaments are added as each major postseason kicks off — NCAA Tournament in March, NBA + NHL Playoffs in April, MLB + WNBA Playoffs in October, NFL Playoffs in January.
+                </div>
+              )}
+              {past.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-text-primary/10">
+                  <div className="text-[10px] uppercase tracking-wider text-text-muted mb-2">Past Brackets</div>
+                  <div className="space-y-1">
+                    {past.map((t) => (
+                      <div
+                        key={t.id}
+                        className="w-full text-left p-3 rounded-xl border border-text-primary/10 bg-bg-primary/30 opacity-60"
+                      >
+                        <div className="font-semibold text-sm text-text-secondary">{t.name}</div>
+                        <div className="text-xs text-text-muted mt-0.5">
+                          Locked {new Date(t.locks_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -2134,7 +2160,8 @@ export default function CreateLeaguePage() {
               </div>
             </div>
           </div>
-        )}
+          )
+        })()}
 
         {/* Visibility */}
         <div>
