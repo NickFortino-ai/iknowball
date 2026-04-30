@@ -1277,7 +1277,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               </button>
             </div>
             {(availableBackdrops || []).map((b) => (
-              <div key={b.filename} className="relative" style={{ paddingBottom: '56.25%' }}>
+              <div key={b.filename} className="relative aspect-[16/9]">
                 <button
                   type="button"
                   onClick={async () => {
@@ -1292,7 +1292,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
                     league.backdrop_image === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
                   }`}
                 >
-                  <img src={getBackdropUrl(b.filename)} alt={b.label} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <img src={getBackdropUrl(b.filename)} alt={b.label} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
                     <span className="text-[10px] text-white font-medium">{b.label}</span>
                   </div>

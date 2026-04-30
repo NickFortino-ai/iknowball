@@ -2254,7 +2254,7 @@ export default function CreateLeaguePage() {
                 }}
               />
               {(availableBackdrops || []).map((b) => (
-                <div key={b.filename} className="relative" style={{ paddingBottom: '56.25%' }}>
+                <div key={b.filename} className="relative aspect-[16/9]">
                   <button
                     type="button"
                     onClick={() => { setBackdropImage(backdropImage === b.filename ? '' : b.filename); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
