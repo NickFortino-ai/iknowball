@@ -171,7 +171,10 @@ export default function SettingsPage() {
   const [backdropImage, setBackdropImage] = useState('')
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
-  const [backdropSport, setBackdropSport] = useState(null)
+  // Default to NBA — first chip — so the picker never tries to render
+  // the full ~80-tile catalog at once, which iOS Safari struggles to
+  // size correctly. User picks a category to see backdrops.
+  const [backdropSport, setBackdropSport] = useState('basketball_nba')
   const backdropFileRef = useRef(null)
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [saving, setSaving] = useState(false)
@@ -391,10 +394,10 @@ export default function SettingsPage() {
       {/* Profile Backdrop */}
       <Section label="Profile Backdrop" defaultOpen={true}>
         <p className="text-xs text-text-muted mb-3">Shows on your profile card and profile modal.</p>
-        {/* Sport filter */}
+        {/* Sport filter — no 'All' option since rendering 80+ tiles in
+            a single grid is unreliable on iOS Safari. */}
         <div className="flex gap-1.5 flex-wrap mb-3">
           {[
-            { key: null, label: 'All' },
             { key: 'basketball_nba', label: 'NBA' },
             { key: 'americanfootball_nfl', label: 'NFL' },
             { key: 'baseball_mlb', label: 'MLB' },
