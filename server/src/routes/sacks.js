@@ -15,6 +15,29 @@ const DEFENSIVE_POSITIONS = [
   'DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB',
 ]
 
+// Curated preseason ranking (last year's sack leaders + high-profile IDP
+// rookies). Used for the player pool order before any 2026 idp_sack stats
+// have been recorded. Once even one defender has a sack on the season,
+// sorting flips to live season totals desc.
+const PRESEASON_SACK_RANKING = [
+  'Myles Garrett', 'Brian Burns', 'Danielle Hunter', 'Aidan Hutchinson',
+  'Rueben Bain Jr.', 'Nik Bonitto', 'Tuli Tuipulotu', 'Arvell Reese',
+  'Micah Parsons', 'Josh Sweat', 'David Bailey', 'Will Anderson Jr.',
+  'Byron Young', 'Akheem Mesidor', 'Al-Quadin Muhammad', 'Jeffery Simmons',
+  'Peter Woods', 'Cameron Jordan', 'James Pearce Jr.', 'Lee Hunter',
+  'Montez Sweat', 'Maxx Crosby', 'Kayden McDonald', 'Chase Young',
+  'Alex Highsmith', 'Sonny Styles', 'Von Miller', 'Jadeveon Clowney',
+  'Bradley Chubb', 'Harold Landry III', 'Laiatu Latu', 'Brandon Dorlus',
+  'Josh Hines-Allen', 'Jonathon Cooper', 'Will McDonald IV', 'Dallas Turner',
+  'John Franklin-Myers', 'Rashan Gary', "K'Lavon Chaisson", 'Odafe Oweh',
+  'Nick Herbig', 'Jared Verse', 'Leonard Williams', 'Chris Jones',
+  'T.J. Watt', 'Uchenna Nwosu', 'Andrew Van Ginkel', 'Zach Allen',
+  "Dre'Mont Jones", 'Kobie Turner', 'Greg Rousseau', 'Byron Murphy II',
+  'Yaya Diaby', 'Calais Campbell', 'Maliek Collins', 'Eric Wilson',
+]
+const PRESEASON_SACK_RANK = {}
+PRESEASON_SACK_RANKING.forEach((name, i) => { PRESEASON_SACK_RANK[name] = i })
+
 // Available defenders for the current NFL week. Sorted by season idp_sack
 // desc; locked teams are excluded.
 router.get('/players', async (req, res) => {
@@ -58,11 +81,21 @@ router.get('/players', async (req, res) => {
       }
     })
 
+  // Once any defender has a sack on the season, sort live; otherwise use
+  // the curated preseason ranking. Bye-week defenders sink to the bottom
+  // either way.
+  const hasStats = pool.some((p) => p.season_sacks > 0)
   pool.sort((a, b) => {
     const aBye = a.opponent ? 0 : 1
     const bBye = b.opponent ? 0 : 1
     if (aBye !== bBye) return aBye - bBye
-    return b.season_sacks - a.season_sacks || a.player_name.localeCompare(b.player_name)
+    if (hasStats) {
+      return b.season_sacks - a.season_sacks || a.player_name.localeCompare(b.player_name)
+    }
+    const aRank = PRESEASON_SACK_RANK[a.player_name] ?? 999
+    const bRank = PRESEASON_SACK_RANK[b.player_name] ?? 999
+    if (aRank !== bRank) return aRank - bRank
+    return a.player_name.localeCompare(b.player_name)
   })
 
   res.json({ season, week, players: pool })
