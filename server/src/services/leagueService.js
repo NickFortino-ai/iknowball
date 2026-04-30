@@ -64,7 +64,51 @@ export async function assertLeagueJoinable(league) {
     return // joinable
   }
 
-  // All other formats (survivor, pickem, nba_dfs, mlb_dfs, hr_derby, td_pass, salary_cap fantasy):
+  // Survivor: per-period gate. Allow joining until the last game of the
+  // current/next period kicks off. Once the last game of the current
+  // period starts, the period is unpickable and we don't want late
+  // joiners getting unfair immunity for it.
+  if (league.format === 'survivor') {
+    const nowIso = new Date().toISOString()
+    const { data: nextPeriod } = await supabase
+      .from('league_weeks')
+      .select('id, starts_at, ends_at')
+      .eq('league_id', league.id)
+      .gt('ends_at', nowIso)
+      .order('starts_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (!nextPeriod) {
+      const err = new Error('This league has no more pickable periods — closed to new members')
+      err.status = 400
+      throw err
+    }
+
+    if (league.sport && league.sport !== 'all') {
+      const { data: sportRow } = await supabase.from('sports').select('id').eq('key', league.sport).single()
+      if (sportRow) {
+        const { data: lastGame } = await supabase
+          .from('games')
+          .select('starts_at')
+          .eq('sport_id', sportRow.id)
+          .gte('starts_at', nextPeriod.starts_at)
+          .lte('starts_at', nextPeriod.ends_at)
+          .order('starts_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (lastGame && new Date(lastGame.starts_at) <= new Date()) {
+          const err = new Error('The current period has already started — survivor pool is closed to new members until the next period')
+          err.status = 400
+          throw err
+        }
+      }
+    }
+    return
+  }
+
+  // All other formats (pickem, nba_dfs, mlb_dfs, hr_derby, td_pass, salary_cap fantasy):
   // Allow joining until the last game on the start date kicks off.
   if (!league.starts_at) return // no start date = always joinable
 
