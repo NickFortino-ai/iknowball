@@ -463,31 +463,32 @@ export default function SettingsPage() {
               <span className="text-[9px] text-text-muted font-semibold">Remove</span>
             </button>
           )}
-          {/* Preset backdrops. Wrapper div owns the aspect ratio because
-              iOS Safari ignores aspect-ratio on a <button> whose only
+          {/* Preset backdrops. The empty spacer div uses padding-bottom %
+              to establish intrinsic 16:9 height in normal flow — iOS
+              Safari needs that hint for grid cells whose only other
               children are absolutely-positioned. */}
           {(availableBackdrops || []).map((b) => (
-            <div key={b.filename} className="relative aspect-[16/9]">
-              <button
-                type="button"
-                onClick={() => { setBackdropImage(backdropImage === b.filename ? '' : b.filename); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
-                className={`absolute inset-0 rounded-lg overflow-hidden border-2 transition-all ${
-                  backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
-                }`}
-              >
-                <img src={getBackdropUrl(b.filename)} alt={b.label} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
-                  <span className="text-[10px] text-white font-medium">{b.label}</span>
+            <button
+              key={b.filename}
+              type="button"
+              onClick={() => { setBackdropImage(backdropImage === b.filename ? '' : b.filename); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
+              className={`relative block w-full rounded-lg overflow-hidden border-2 transition-all ${
+                backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
+              }`}
+            >
+              <div aria-hidden style={{ paddingBottom: '56.25%' }} />
+              <img src={getBackdropUrl(b.filename)} alt={b.label} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                <span className="text-[10px] text-white font-medium">{b.label}</span>
+              </div>
+              {backdropImage === b.filename && (
+                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
-                {backdropImage === b.filename && (
-                  <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                )}
-              </button>
-            </div>
+              )}
+            </button>
           ))}
         </div>
         <p className="text-xs text-text-muted mt-1.5">Custom images are submitted for admin review.</p>

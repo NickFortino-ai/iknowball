@@ -1277,22 +1277,23 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               </button>
             </div>
             {(availableBackdrops || []).map((b) => (
-              <div key={b.filename} className="relative aspect-[16/9]">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await updateLeague.mutateAsync({ leagueId: league.id, backdrop_image: b.filename })
-                      setCustomBackdropFile(null)
-                      setCustomBackdropPreview(null)
-                      toast('Backdrop updated!', 'success')
-                    } catch (err) { toast(err.message || 'Failed', 'error') }
-                  }}
-                  className={`absolute inset-0 rounded-lg overflow-hidden border-2 transition-all ${
-                    league.backdrop_image === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
-                  }`}
-                >
-                  <img src={getBackdropUrl(b.filename)} alt={b.label} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+              <button
+                key={b.filename}
+                type="button"
+                onClick={async () => {
+                  try {
+                    await updateLeague.mutateAsync({ leagueId: league.id, backdrop_image: b.filename })
+                    setCustomBackdropFile(null)
+                    setCustomBackdropPreview(null)
+                    toast('Backdrop updated!', 'success')
+                  } catch (err) { toast(err.message || 'Failed', 'error') }
+                }}
+                className={`relative block w-full rounded-lg overflow-hidden border-2 transition-all ${
+                  league.backdrop_image === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
+                }`}
+              >
+                <div aria-hidden style={{ paddingBottom: '56.25%' }} />
+                <img src={getBackdropUrl(b.filename)} alt={b.label} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
                     <span className="text-[10px] text-white font-medium">{b.label}</span>
                   </div>
@@ -1303,8 +1304,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
                       </svg>
                     </div>
                   )}
-                </button>
-              </div>
+              </button>
             ))}
           </div>
           <p className="text-xs text-text-muted mt-1.5">Custom images submitted for admin review.</p>
