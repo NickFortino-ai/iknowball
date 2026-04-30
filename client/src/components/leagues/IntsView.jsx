@@ -5,6 +5,24 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 
+const INJURY_COLORS = {
+  Out: 'bg-incorrect/20 text-incorrect',
+  Questionable: 'bg-yellow-500/20 text-yellow-500',
+  Doubtful: 'bg-yellow-500/20 text-yellow-500',
+  Probable: 'bg-correct/20 text-correct',
+  'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
+}
+
+function InjuryBadge({ status }) {
+  if (!status) return null
+  const label = status === 'Day-To-Day' ? 'DTD' : status.charAt(0)
+  return (
+    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'}`} title={status}>
+      {label}
+    </span>
+  )
+}
+
 function GameStatusBadge({ gameStartsAt, locked }) {
   if (locked) {
     return (
@@ -227,9 +245,12 @@ export default function IntsView({ league, tab = 'picks' }) {
                         onError={(e) => { e.target.style.display = 'none' }} />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                        <InjuryBadge status={player.injury_status} />
+                      </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs text-text-muted truncate">{player.position} · {player.team}{player.opponent ? ` vs ${player.opponent}` : ''}</span>
+                        <span className="text-xs text-text-muted truncate">{player.position} · {player.team}{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}</span>
                         <GameStatusBadge gameStartsAt={player.game_starts_at} />
                       </div>
                     </div>
@@ -332,7 +353,10 @@ export default function IntsView({ league, tab = 'picks' }) {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                      <InjuryBadge status={player.injury_status} />
+                    </div>
                     <div className="text-xs text-text-muted">{player.position} · {player.team}{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}</div>
                   </div>
                   <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_ints || 0}</span>
