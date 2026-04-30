@@ -23,6 +23,11 @@ function InjuryBadge({ status }) {
   )
 }
 
+// Singular only when exactly 1 — "1 sack", but "0 sacks", "1.5 sacks", "2 sacks".
+function sackLabel(n) {
+  return Number(n) === 1 ? 'sack' : 'sacks'
+}
+
 function GameStatusBadge({ gameStartsAt, locked }) {
   if (locked) {
     return (
@@ -197,7 +202,7 @@ export default function SacksView({ league, tab = 'picks' }) {
                                   <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
                                   <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.position} · {pick.team}</div>
                                 </div>
-                                <span className={`font-display text-sm lg:text-base shrink-0 ${pick.sacks > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.sacks} sacks</span>
+                                <span className={`font-display text-sm lg:text-base shrink-0 ${pick.sacks > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.sacks} {sackLabel(pick.sacks)}</span>
                               </div>
                             ))}
                           </div>
@@ -277,7 +282,7 @@ export default function SacksView({ league, tab = 'picks' }) {
           return (
             <div className="flex items-center justify-end gap-4 px-1 mb-2 -mt-1">
               <span className="text-xs text-text-muted uppercase tracking-wider">This Week</span>
-              <span className={`font-display text-sm ${weekSacks > 0 ? 'text-correct' : 'text-text-muted'}`}>{weekSacks} sacks</span>
+              <span className={`font-display text-sm ${weekSacks > 0 ? 'text-correct' : 'text-text-muted'}`}>{weekSacks} {sackLabel(weekSacks)}</span>
             </div>
           )
         })()}
