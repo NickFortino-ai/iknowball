@@ -46,10 +46,6 @@ You can also go yearly for $10 and save a little. Join the movement. This is I K
 
 Your tier is visible on your profile, the leaderboard, and in every league you join. It\u2019s earned through consistent, smart picking over time.`,
       },
-      {
-        q: 'What are the Weekly Headlines?',
-        a: 'Every Monday, we publish the top 5 performances of the week with narratives, plus Pick of the Week, Biggest Fall, and Longest Active Streak. If you make the Weekly Headlines, you\u2019ll get an email and an in-app notification. It\u2019s your moment of fame.',
-      },
     ],
   },
   {
