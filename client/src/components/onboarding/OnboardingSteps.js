@@ -58,7 +58,7 @@ const ONBOARDING_STEPS = [
     page: '/hall-of-fame',
     targetSelector: null,
     title: 'Hall of Fame & Record Book',
-    body: "The record book and posts all live here. See who holds the crown and check out all-time records.",
+    body: "The Hall of Fame features IKB Royalty — the current leaders in every category — alongside the all-time record book.",
     position: 'center',
     freeScroll: true,
   },
