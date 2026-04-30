@@ -213,7 +213,7 @@ export default function SurvivorView({ league }) {
                 const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
                 return (
                   <div key={dateKey}>
-                    <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5">{label}</div>
+                    <div className="font-display text-base text-white uppercase tracking-wider mb-2">{label}</div>
                     {(() => {
                       const gameRows = grouped[dateKey].map((game) => {
                         const homeUsed = !poolExpanded && usedTeamSet.has(game.home_team)
