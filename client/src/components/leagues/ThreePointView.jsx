@@ -111,6 +111,16 @@ export default function ThreePointView({ league, tab = 'picks' }) {
   const todayPickIds = new Set((myPicks || []).map((p) => p.espn_player_id))
   const selectedIds = new Set(selected.map((p) => p.espn_player_id))
 
+  // A pick is locked once its game tips off (live or final).
+  const now = new Date()
+  function isPickLocked(p) {
+    if (!p) return false
+    if (p.game_state === 'in' || p.game_state === 'post') return true
+    if (p.game_starts_at && new Date(p.game_starts_at) <= now) return true
+    return false
+  }
+  const allPicksLocked = hasSavedPicks && (myPicks || []).every(isPickLocked)
+
   const myHistory = useMemo(() => {
     if (!standingsData?.standings || !profile?.id) return []
     const me = standingsData.standings.find((s) => s.user?.id === profile.id)
@@ -294,10 +304,10 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                         <GameStatusBadge gameState={gameState} gamePeriod={gamePeriod} gameStartsAt={gameStartsAt} />
                       </div>
                     </div>
-                    {hasSavedPicks && !editing && (
+                    {(hasSavedPicks && !editing) || (editing && isPickLocked(savedPick)) ? (
                       <span className={`font-display text-lg shrink-0 ${threes > 0 ? 'text-correct' : 'text-text-muted'}`}>{threes} 3PM</span>
-                    )}
-                    {(!hasSavedPicks || editing) && (
+                    ) : null}
+                    {(!hasSavedPicks || (editing && !isPickLocked(savedPick))) && (
                       <button
                         onClick={() => removePlayer(player.espn_player_id)}
                         className="p-2 text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
@@ -322,13 +332,17 @@ export default function ThreePointView({ league, tab = 'picks' }) {
           )
         })()}
 
-        {hasSavedPicks && !editing ? (
+        {hasSavedPicks && !editing && !allPicksLocked ? (
           <button
             onClick={() => setEditing(true)}
             className="w-full py-3 rounded-xl font-display border-2 border-accent text-accent bg-accent/5 hover:bg-accent/10 transition-colors mb-6"
           >
             Edit Picks
           </button>
+        ) : hasSavedPicks && !editing && allPicksLocked ? (
+          <div className="w-full py-3 rounded-xl text-center text-sm text-text-muted bg-bg-primary/30 border border-text-primary/10 mb-6">
+            All games are final — picks locked for the night
+          </div>
         ) : (
           <button
             onClick={handleSubmit}
