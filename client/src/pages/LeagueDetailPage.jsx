@@ -578,28 +578,22 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       ]
     }
 
-    if (league.format === 'sacks') {
-      const reuseRule = fantasySettings?.pick_reuse === 'unlimited'
+    if (league.format === 'sacks' || league.format === 'ints') {
+      const raw = fantasySettings?.pick_reuse
+      const maxUses = raw === 'unlimited' ? Infinity
+        : raw === 'season' ? 1
+        : (parseInt(raw, 10) || 1)
+      const reuseRule = maxUses === Infinity
         ? 'No reuse limit — pick the same defender as many weeks as you want.'
-        : 'Each defender can only be used once per season.'
+        : maxUses === 1
+          ? 'Each defender can only be used once all season.'
+          : `Each defender can be used up to ${maxUses} times this season.`
+      const stat = league.format === 'sacks' ? 'sack' : 'interception'
       return [
-        'Pick up to 3 NFL defenders each week that you think will record sacks.',
+        `Pick up to 3 NFL defenders each week that you think will record ${stat}s.`,
         reuseRule,
         'You can change your picks until each player\'s game starts.',
-        'Every sack your picks record adds to your league total.',
-        'Your finishing position impacts your global IKB score — see the table below.',
-      ]
-    }
-
-    if (league.format === 'ints') {
-      const reuseRule = fantasySettings?.pick_reuse === 'unlimited'
-        ? 'No reuse limit — pick the same defender as many weeks as you want.'
-        : 'Each defender can only be used once per season.'
-      return [
-        'Pick up to 3 NFL defenders each week that you think will record interceptions.',
-        reuseRule,
-        'You can change your picks until each player\'s game starts.',
-        'Every interception your picks record adds to your league total.',
+        `Every ${stat} your picks record adds to your league total.`,
         'Your finishing position impacts your global IKB score — see the table below.',
       ]
     }

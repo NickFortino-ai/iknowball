@@ -556,7 +556,7 @@ export default function CreateLeaguePage() {
     // once-per-season reuse. No daily start option — picks are weekly so
     // dfsStartOption isn't used.
     if (format === 'sacks' || format === 'ints') {
-      setPickReuse('season')
+      setPickReuse('1')
       if (seasonType === 'single_week') setSeasonType('full_season')
     } else if (format === 'td_pass') {
       // TD Pass auto-starts at next NFL kickoff and runs the full season
@@ -1773,7 +1773,10 @@ export default function CreateLeaguePage() {
               const isNflContest = format === 'sacks' || format === 'ints'
               const reuseOptions = isNflContest
                 ? [
-                    { value: 'season', label: 'Once per Season' },
+                    { value: '1', label: '1x' },
+                    { value: '2', label: '2x' },
+                    { value: '3', label: '3x' },
+                    { value: '4', label: '4x' },
                     { value: 'unlimited', label: 'Unlimited' },
                   ]
                 : [
@@ -1784,29 +1787,39 @@ export default function CreateLeaguePage() {
                 : format === 'hr_derby' ? 'hitter'
                 : 'player'
               const cadenceNoun = format === 'strikeouts' ? 'days' : 'nights'
+              // Map legacy 'season' value to '1' for display purposes
+              const nflMaxUses = pickReuse === 'season' ? '1' : pickReuse
               const helper = isNflContest
-                ? (pickReuse === 'season'
-                    ? 'Each defender can only be used once all season.'
-                    : 'No reuse limit — pick the same defender as many weeks as you want.')
+                ? (pickReuse === 'unlimited'
+                    ? 'No reuse limit — pick the same defender as many weeks as you want.'
+                    : nflMaxUses === '1'
+                      ? 'Each defender can only be used once all season.'
+                      : `Each defender can be used up to ${nflMaxUses} times this season.`)
                 : (pickReuse === 'weekly'
                     ? `Each ${playerNoun} can only be used once per Mon-Sun week.`
                     : `No reuse limit — pick the same ${playerNoun} on back-to-back ${cadenceNoun}.`)
               return (
                 <div>
-                  <label className="text-xs text-text-muted block mb-1">Player Reuse</label>
-                  <div className="flex gap-2">
-                    {reuseOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setPickReuse(opt.value)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                          pickReuse === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                  <label className="text-xs text-text-muted block mb-1">
+                    {isNflContest ? 'Max Uses per Defender' : 'Player Reuse'}
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {reuseOptions.map((opt) => {
+                      // Legacy 'season' value for NFL contests was equivalent to '1'
+                      const isActive = pickReuse === opt.value || (isNflContest && opt.value === '1' && pickReuse === 'season')
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setPickReuse(opt.value)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                            isActive ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
                   </div>
                   <p className="text-xs text-text-muted mt-1.5">{helper}</p>
                 </div>

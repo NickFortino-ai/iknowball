@@ -164,7 +164,13 @@ router.post('/picks', async (req, res) => {
     .eq('league_id', league_id)
     .maybeSingle()
 
+  // Reuse rule: 'unlimited' → no cap. Anything else parses to a max-uses
+  // count per defender per season ('season' is the legacy alias for 1;
+  // '1'/'2'/'3'/'4' are the commissioner-tunable values).
   const reuseMode = settings?.pick_reuse || 'season'
+  const maxUses = reuseMode === 'unlimited'
+    ? Infinity
+    : reuseMode === 'season' ? 1 : (parseInt(reuseMode, 10) || 1)
   const lockedTeams = await getLockedTeamSet()
 
   // Lock check — can't pick a defender whose team has already started
@@ -174,7 +180,7 @@ router.post('/picks', async (req, res) => {
     }
   }
 
-  if (reuseMode !== 'unlimited') {
+  if (maxUses < Infinity) {
     const playerIds = players.map((p) => p.sleeper_player_id)
     const { data: priorPicks } = await supabase
       .from('sacks_picks')
@@ -185,11 +191,18 @@ router.post('/picks', async (req, res) => {
       .neq('week', week)
       .in('sleeper_player_id', playerIds)
 
-    if (priorPicks?.length) {
-      const first = priorPicks[0]
-      return res.status(400).json({
-        error: `You already picked ${first.player_name} in week ${first.week}`,
-      })
+    const useCount = {}
+    for (const p of priorPicks || []) {
+      useCount[p.sleeper_player_id] = (useCount[p.sleeper_player_id] || 0) + 1
+    }
+    for (const p of players) {
+      if ((useCount[p.sleeper_player_id] || 0) >= maxUses) {
+        return res.status(400).json({
+          error: maxUses === 1
+            ? `You already picked ${p.player_name} earlier this season`
+            : `You've already used ${p.player_name} ${maxUses} times this season`,
+        })
+      }
     }
   }
 

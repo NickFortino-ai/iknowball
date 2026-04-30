@@ -116,7 +116,7 @@ const createLeagueSchema = z.object({
   }).optional(),
   fantasy_settings: z.object({
     format: z.enum(['traditional', 'salary_cap', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints']).optional(),
-    pick_reuse: z.enum(['weekly', 'season', 'unlimited']).optional(),
+    pick_reuse: z.enum(['weekly', 'season', '1', '2', '3', '4', 'unlimited']).optional(),
     scoring_format: z.enum(['ppr', 'half_ppr', 'standard']).optional(),
     num_teams: z.number().int().min(2).max(20).optional(),
     draft_pick_timer: z.number().int().optional(),
