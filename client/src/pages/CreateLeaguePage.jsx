@@ -2265,6 +2265,8 @@ export default function CreateLeaguePage() {
                     <img
                       src={getBackdropUrl(b.filename)}
                       alt={b.label}
+                      loading="lazy"
+                      decoding="async"
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
