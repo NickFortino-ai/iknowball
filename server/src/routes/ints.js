@@ -15,6 +15,27 @@ const DEFENSIVE_POSITIONS = [
   'DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB',
 ]
 
+// Curated preseason ranking — top ball-hawking DBs and rookies. Used for
+// the player pool order before any 2026 idp_int stats exist. Once even
+// one defender records an interception, sorting flips to live totals desc.
+const PRESEASON_INT_RANKING = [
+  'Pat Surtain II', 'Devon Witherspoon', 'Kyle Hamilton', 'Quinyon Mitchell',
+  'Sauce Gardner', 'Minkah Fitzpatrick', 'Derek Stingley Jr.', 'Antoine Winfield Jr.',
+  'Cooper DeJean', 'Derwin James', 'Jaire Alexander', 'Budda Baker',
+  "L'Jarius Sneed", 'Jessie Bates III', 'Jaylon Johnson', 'Jevon Holland',
+  'Tariq Woolen', 'Kevin Byard', 'Christian Gonzalez', 'Dax Hill',
+  'DJ Reed', 'Talanoa Hufanga', 'Denzel Ward', 'Jordan Poyer',
+  'Kaiir Elam', 'Quandre Diggs', 'Kelee Ringo', 'Marcus Maye',
+  'Kendall Fuller', 'Justin Simmons', 'Adoree Jackson', 'Bran Branch',
+  'Trevius Hodges-Tomlinson', 'Isiah Simmons', 'Carlton Davis', 'Andre Cisco',
+  'Nate Hobbs', 'Daniel Thomas', 'Rock Ya-Sin', 'Lewis Cine',
+  'Jalen Ramsey', 'Cameron Sutton', 'Kristian Fulton', 'Damar Hamlin',
+  'Eli Apple', 'Marcus Peters', "Tre'Davious White", 'Antoine Brooks Jr.',
+  'Darius Slay', 'Marshon Lattimore',
+]
+const PRESEASON_INT_RANK = {}
+PRESEASON_INT_RANKING.forEach((name, i) => { PRESEASON_INT_RANK[name] = i })
+
 router.get('/players', async (req, res) => {
   const { season, week } = await getCurrentNflWeek()
   const lockedTeams = await getLockedTeamSet()
@@ -55,11 +76,21 @@ router.get('/players', async (req, res) => {
       }
     })
 
+  // Once any defender has an INT on the season, sort live; otherwise use
+  // the curated preseason ranking. Bye-week defenders sink to the bottom
+  // either way.
+  const hasStats = pool.some((p) => p.season_ints > 0)
   pool.sort((a, b) => {
     const aBye = a.opponent ? 0 : 1
     const bBye = b.opponent ? 0 : 1
     if (aBye !== bBye) return aBye - bBye
-    return b.season_ints - a.season_ints || a.player_name.localeCompare(b.player_name)
+    if (hasStats) {
+      return b.season_ints - a.season_ints || a.player_name.localeCompare(b.player_name)
+    }
+    const aRank = PRESEASON_INT_RANK[a.player_name] ?? 999
+    const bRank = PRESEASON_INT_RANK[b.player_name] ?? 999
+    if (aRank !== bRank) return aRank - bRank
+    return a.player_name.localeCompare(b.player_name)
   })
 
   res.json({ season, week, players: pool })
