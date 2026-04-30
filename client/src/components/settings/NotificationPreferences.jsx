@@ -22,7 +22,6 @@ const CATEGORIES = [
       { key: 'record_broken', label: 'Record broken' },
       { key: 'survivor_win', label: 'Survivor pool wins' },
       { key: 'league_win', label: 'League wins' },
-      { key: 'headlines', label: 'Weekly Headlines' },
     ],
   },
   {
@@ -32,6 +31,12 @@ const CATEGORIES = [
       { key: 'league_thread_mention', label: 'Mentions in league threads' },
       { key: 'survivor_result', label: 'Survivor daily results' },
       { key: 'league_report', label: 'League reports' },
+    ],
+  },
+  {
+    label: 'Messaging',
+    types: [
+      { key: 'direct_message', label: 'Direct messages' },
     ],
   },
   {
@@ -53,6 +58,7 @@ const CATEGORIES = [
       { key: 'fantasy_trade_accepted', label: 'Trade accepted' },
       { key: 'fantasy_trade_declined', label: 'Trade declined' },
       { key: 'fantasy_waiver_awarded', label: 'Waiver claim awarded' },
+      { key: 'fantasy_waiver_failed', label: 'Waiver claim failed' },
       { key: 'fantasy_stat_correction', label: 'Stat corrections' },
     ],
   },
