@@ -463,10 +463,10 @@ export default function SettingsPage() {
               <span className="text-[9px] text-text-muted font-semibold">Remove</span>
             </button>
           )}
-          {/* Preset backdrops. The empty spacer div uses padding-bottom %
-              to establish intrinsic 16:9 height in normal flow — iOS
-              Safari needs that hint for grid cells whose only other
-              children are absolutely-positioned. */}
+          {/* Preset backdrops. The <img> is the layout-defining child —
+              with explicit width/height attributes the browser knows the
+              16:9 aspect ratio before the bytes finish downloading, so the
+              tile renders at the right size from the very first frame. */}
           {(availableBackdrops || []).map((b) => (
             <button
               key={b.filename}
@@ -476,8 +476,15 @@ export default function SettingsPage() {
                 backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
               }`}
             >
-              <div aria-hidden style={{ paddingBottom: '56.25%' }} />
-              <img src={getBackdropUrl(b.filename)} alt={b.label} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+              <img
+                src={getBackdropUrl(b.filename)}
+                alt={b.label}
+                width={1920}
+                height={1080}
+                loading="lazy"
+                decoding="async"
+                className="block w-full h-auto"
+              />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
                 <span className="text-[10px] text-white font-medium">{b.label}</span>
               </div>
