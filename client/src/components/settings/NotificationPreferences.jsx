@@ -58,7 +58,6 @@ const CATEGORIES = [
       { key: 'fantasy_trade_accepted', label: 'Trade accepted' },
       { key: 'fantasy_trade_declined', label: 'Trade declined' },
       { key: 'fantasy_waiver_awarded', label: 'Waiver claim awarded' },
-      { key: 'fantasy_waiver_failed', label: 'Waiver claim failed' },
       { key: 'fantasy_stat_correction', label: 'Stat corrections' },
     ],
   },
