@@ -322,19 +322,32 @@ export async function createLeague(userId, data) {
   }
 
   // TD Pass: set starts_at to the first kickoff of the current NFL week
-  // so the league doesn't appear "already started" before games begin.
-  // Lock joins at the last kickoff so users can join until the final game.
-  // TD Survivor: same logic — start at first NFL kickoff of current week
-  if (league.format === 'survivor' && league.settings?.survivor_mode === 'touchdown') {
+  // NFL Survivor (standard or Touchdown mode): start at the first kickoff
+  // of the upcoming NFL week so the league doesn't appear "already
+  // started" before games begin. Falls back to Sept 9 placeholder if the
+  // schedule hasn't been loaded yet (offseason create).
+  if (league.format === 'survivor' && league.sport === 'americanfootball_nfl') {
     try {
       const { getCurrentWeekFirstKickoff } = await import('./tdPassService.js')
       const firstKickoff = await getCurrentWeekFirstKickoff()
-      if (firstKickoff && new Date(league.starts_at) <= new Date()) {
-        await supabase.from('leagues').update({ starts_at: firstKickoff }).eq('id', league.id)
-        league.starts_at = firstKickoff
+      const nowMs = Date.now()
+      const isFutureKickoff = firstKickoff && new Date(firstKickoff).getTime() > nowMs
+      const startsAtMs = league.starts_at ? new Date(league.starts_at).getTime() : 0
+      // Only override if the league's existing starts_at is already in the
+      // past or unset — don't stomp a user-chosen future start date.
+      if (startsAtMs <= nowMs) {
+        let newStartsAt = isFutureKickoff ? firstKickoff : null
+        if (!newStartsAt) {
+          const today = new Date()
+          const yr = today.getFullYear()
+          const candidate = new Date(yr, 8, 9)
+          newStartsAt = (candidate > today ? candidate : new Date(yr + 1, 8, 9)).toISOString()
+        }
+        await supabase.from('leagues').update({ starts_at: newStartsAt }).eq('id', league.id)
+        league.starts_at = newStartsAt
       }
     } catch (err) {
-      logger.error({ err, leagueId: league.id }, 'Failed to set td_survivor starts_at')
+      logger.error({ err, leagueId: league.id }, 'Failed to set NFL survivor starts_at')
     }
   }
 
