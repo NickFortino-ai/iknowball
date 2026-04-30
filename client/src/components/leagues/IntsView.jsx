@@ -326,9 +326,8 @@ export default function IntsView({ league, tab = 'picks' }) {
         </div>
 
         {filteredPlayers.length > 0 && (
-          <div className="flex items-center px-4 py-1.5 border-b border-text-primary/10">
-            <div className="flex-1" />
-            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Season INTs</span>
+          <div className="flex items-center justify-end px-4 py-2 border-b border-text-primary/10">
+            <span className="text-xs font-semibold text-text-primary">Total INTs</span>
           </div>
         )}
 

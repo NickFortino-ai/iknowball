@@ -393,9 +393,8 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
         </div>
 
         {filteredPlayers.length > 0 && (
-          <div className="flex items-center px-4 py-1.5 border-b border-text-primary/10">
-            <div className="flex-1" />
-            <span className="text-[10px] text-text-muted uppercase tracking-wider mr-10">Season</span>
+          <div className="flex items-center justify-end px-4 py-2 border-b border-text-primary/10">
+            <span className="text-xs font-semibold text-text-primary">Total HRs</span>
           </div>
         )}
 
@@ -423,7 +422,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                     <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
                     <div className="text-xs text-text-muted">{player.position} · {player.team} · {player.opponent}</div>
                   </div>
-                  <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_hrs || 0} HR</span>
+                  <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_hrs || 0}</span>
                 </div>
                 {(!hasSavedPicks || editing) && (
                   <button
