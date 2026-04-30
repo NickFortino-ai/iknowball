@@ -824,11 +824,20 @@ export async function autoEliminateMissedPicks() {
       const weekEndedMs = new Date(week.ends_at).getTime()
       const ageHours = (Date.now() - weekEndedMs) / (1000 * 60 * 60)
       if (ageHours > 24) {
+        // Push any still-locked picks (postponed games etc.) so users
+        // aren't stuck with an unresolved pick blocking their next period.
+        // Sportsbook convention: postponed = push. Team stays burned.
+        await supabase
+          .from('survivor_picks')
+          .update({ status: 'survived', updated_at: new Date().toISOString() })
+          .eq('league_id', league.id)
+          .eq('league_week_id', week.id)
+          .eq('status', 'locked')
         await supabase
           .from('league_weeks')
           .update({ missed_picks_processed: true })
           .eq('id', week.id)
-        logger.info({ leagueId: league.id, weekId: week.id, ageHours }, 'Skipping retroactive missed-pick processing for old period')
+        logger.info({ leagueId: league.id, weekId: week.id, ageHours }, 'Skipping retroactive missed-pick processing for old period; locked picks pushed')
         continue
       }
 
@@ -868,10 +877,13 @@ export async function autoEliminateMissedPicks() {
       const allFinal = games.every((g) => g.status === 'final')
       if (!allFinal) continue
 
-      // Get alive members
+      // Get alive members. We pull joined_at so we can skip any member who
+      // joined after this period started — they couldn't have picked in time
+      // and shouldn't be retroactively eliminated for a period that began
+      // before they were a member.
       const { data: aliveMembers } = await supabase
         .from('league_members')
-        .select('user_id, lives_remaining')
+        .select('user_id, lives_remaining, joined_at')
         .eq('league_id', league.id)
         .eq('is_alive', true)
 
@@ -892,8 +904,14 @@ export async function autoEliminateMissedPicks() {
 
       const pickedUserIds = new Set((existingPicks || []).map((p) => p.user_id))
 
-      // Find alive members with no pick for this week
-      const missedMembers = aliveMembers.filter((m) => !pickedUserIds.has(m.user_id))
+      // Find alive members with no pick for this week. Skip anyone who
+      // joined the league after this period's start — their first eligible
+      // period is the next one.
+      const weekStartMs = new Date(week.starts_at).getTime()
+      const missedMembers = aliveMembers.filter((m) =>
+        !pickedUserIds.has(m.user_id) &&
+        new Date(m.joined_at).getTime() <= weekStartMs
+      )
 
       // Collect all team names available in this period
       const periodTeamNames = new Set()

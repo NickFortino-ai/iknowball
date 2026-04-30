@@ -339,17 +339,29 @@ export async function createLeague(userId, data) {
   }
 
   // NFL season-long contests start at the first kickoff of the upcoming/
-  // current NFL week (or Week 1 in the offseason) so the league doesn't
-  // appear "already started" while members are being invited.
+  // current NFL week so the league doesn't appear "already started" while
+  // members are being invited. In the offseason (no future kickoffs in
+  // nfl_schedule yet), getCurrentWeekFirstKickoff falls back to the latest
+  // known week — which is in the past — so we guard with a future check
+  // and fall back to next September 1 as a placeholder until the schedule
+  // is loaded.
   if (league.format === 'td_pass' || league.format === 'sacks' || league.format === 'ints') {
     try {
       const { getCurrentWeekLastKickoff, getCurrentWeekFirstKickoff } = await import('./tdPassService.js')
       const firstKickoff = await getCurrentWeekFirstKickoff()
-      const updates = {}
-      if (firstKickoff) {
-        updates.starts_at = firstKickoff
-        league.starts_at = firstKickoff
+      const nowMs = Date.now()
+      const isFutureKickoff = firstKickoff && new Date(firstKickoff).getTime() > nowMs
+      let resolvedStartsAt = isFutureKickoff ? firstKickoff : null
+      if (!resolvedStartsAt) {
+        // Offseason fallback: Sept 1 of the upcoming NFL season
+        const today = new Date()
+        const yr = today.getFullYear()
+        const candidate = new Date(yr, 8, 1) // Sept 1 (month index 8)
+        resolvedStartsAt = (candidate > today ? candidate : new Date(yr + 1, 8, 1)).toISOString()
       }
+      const updates = {}
+      updates.starts_at = resolvedStartsAt
+      league.starts_at = resolvedStartsAt
       // TD Pass auto-locks joins at the last kickoff of the current NFL
       // week (one shot per week — late joiners after kickoff have less
       // info than they should). Sacks + Ints stay open longer because
@@ -357,7 +369,7 @@ export async function createLeague(userId, data) {
       // so we leave joins_locked_at as the user-provided value.
       if (league.format === 'td_pass') {
         const lastKickoff = await getCurrentWeekLastKickoff()
-        if (lastKickoff) {
+        if (lastKickoff && new Date(lastKickoff).getTime() > nowMs) {
           updates.joins_locked_at = lastKickoff
           league.joins_locked_at = lastKickoff
         }
