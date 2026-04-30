@@ -672,12 +672,14 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
                 const showTable = isMultiNight || f === 'hr_derby' || f === 'strikeouts' || f === 'three_point' || f === 'sacks' || f === 'ints' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
                 if (!showTable) return null
-                // Source of truth: actual league members (Array<{user_id,...}>).
-                // Don't fall back to league.member_count — it isn't set on the
-                // detail endpoint and any value present would be a stale cache
-                // bleed-over from list views.
-                const liveMemberCount = Array.isArray(league.members) ? league.members.length : 0
-                if (!liveMemberCount) return null
+                // Prefer the actual member array; if the detail endpoint
+                // didn't include it (some flows skip it), fall back to
+                // league.member_count, then to a reasonable preview count
+                // so the modal never silently drops the bonus table after
+                // saying "see the table below."
+                const liveMemberCount = Array.isArray(league.members) && league.members.length > 0
+                  ? league.members.length
+                  : (league.member_count || 8)
                 // For fantasy, prefer the configured roster size; otherwise current member count
                 const tableMemberCount = f === 'fantasy'
                   ? (fantasySettings?.num_teams || liveMemberCount)
@@ -2212,10 +2214,10 @@ export default function LeagueDetailPage() {
       {/* Delete League */}
       {/* Settings Modal */}
       {showSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={() => setShowSettingsModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowSettingsModal(false)}>
           <div className="absolute inset-0 bg-black/60" />
           <div
-            className="relative bg-bg-primary/80 backdrop-blur-md border border-text-primary/20 w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-6 max-h-[80vh] overflow-y-auto"
+            className="relative bg-bg-primary/80 backdrop-blur-md border border-text-primary/20 w-full max-w-lg rounded-2xl p-6 max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
