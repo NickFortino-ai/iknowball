@@ -204,7 +204,7 @@ export default function JoinLeaguePage() {
                           </button>
                         </div>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-accent/20 text-accent">
+                          <span className="text-xs font-semibold text-accent">
                             {FORMAT_LABELS[league.format] || league.format}
                           </span>
                           <span className="text-xs text-text-secondary">{SPORT_LABELS[league.sport] || league.sport}</span>
