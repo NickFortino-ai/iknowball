@@ -46,7 +46,7 @@ export default function PollDisplay({ hotTakeId }) {
             {/* Background fill bar */}
             {hasVoted && (
               <div
-                className={`absolute inset-0 ${isSelected ? 'bg-orange-500/20' : 'bg-bg-secondary/50'}`}
+                className={`absolute inset-0 ${isSelected ? 'bg-orange-500/20' : 'bg-text-primary/10'}`}
                 style={{ width: `${pct}%` }}
               />
             )}
