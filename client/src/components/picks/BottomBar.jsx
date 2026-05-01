@@ -85,13 +85,14 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
     if (!game) continue
     const currentOdds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
     const oddsForCalc = pick.odds_at_pick ?? currentOdds
-    if (oddsForCalc == null) continue
     const mult = pick.multiplier || 1
-    const baseRisk = pick.risk_at_submission ?? calculateRiskPoints(oddsForCalc)
-    const baseReward = pick.reward_at_submission ?? calculateRewardPoints(oddsForCalc)
-    totalRisk += baseRisk * mult
-    totalReward += baseReward * mult
-    if (oddsForCalc < 0) favCount++
+    // risk_at_submission/reward_at_submission already include the multiplier
+    const displayedRisk = pick.risk_at_submission ?? (oddsForCalc != null ? calculateRiskPoints(oddsForCalc) * mult : null)
+    const displayedReward = pick.reward_at_submission ?? (oddsForCalc != null ? calculateRewardPoints(oddsForCalc) * mult : null)
+    if (displayedRisk == null) continue
+    totalRisk += displayedRisk
+    totalReward += displayedReward
+    if (oddsForCalc != null && oddsForCalc < 0) favCount++
     else dogCount++
   }
 
@@ -178,15 +179,26 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
             if (!game) return null
             const currentOdds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
             const oddsForCalc = pick.odds_at_pick ?? currentOdds
-            if (oddsForCalc == null) return null
-            const baseRisk = pick.risk_at_submission ?? calculateRiskPoints(oddsForCalc)
-            const baseReward = pick.reward_at_submission ?? calculateRewardPoints(oddsForCalc)
             const mult = pick.multiplier || 1
+
+            // Base (single-x) risk/reward — used for affordability checks
+            const baseRisk = oddsForCalc != null
+              ? calculateRiskPoints(oddsForCalc)
+              : (pick.risk_at_submission != null ? pick.risk_at_submission / mult : null)
+            const baseReward = oddsForCalc != null
+              ? calculateRewardPoints(oddsForCalc)
+              : (pick.reward_at_submission != null ? pick.reward_at_submission / mult : null)
+
+            // Displayed risk/reward — prefer locked submission values, which already include the multiplier
+            const displayedRisk = pick.risk_at_submission ?? (baseRisk != null ? baseRisk * mult : null)
+            const displayedReward = pick.reward_at_submission ?? (baseReward != null ? baseReward * mult : null)
+
+            if (displayedRisk == null) return null
 
             // Determine which multiplier squares are affordable
             const affordableMultipliers = [2, 3, 4].filter((m) => {
+              if (baseRisk == null) return false
               const extraCost = baseRisk * (m - 1)
-              // Subtract current pick's extra cost from used budget (since we'd be replacing it)
               const currentExtra = mult > 1 ? baseRisk * (mult - 1) : 0
               return (extraCost - currentExtra) <= remainingBudget
             })
@@ -233,9 +245,9 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
 
                   {/* Risk → Reward */}
                   <div className="flex items-center gap-2 text-sm flex-shrink-0">
-                    <span className="text-incorrect">{baseRisk * mult}</span>
+                    <span className="text-incorrect">{displayedRisk}</span>
                     <span className="text-text-muted">&rarr;</span>
-                    <span className="text-correct">{baseReward * mult}</span>
+                    <span className="text-correct">{displayedReward}</span>
                   </div>
                 </div>
                 {tappedGameId === gameId && (
