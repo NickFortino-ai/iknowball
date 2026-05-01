@@ -2899,12 +2899,40 @@ export async function promoteWeeklyLineup(leagueId, userId, currentWeek, season)
  * The added player goes to the bench by default — user can move to a starter
  * slot via setFantasyLineup afterward.
  */
+/**
+ * Throws if any of the user's roster players currently sitting in the IR
+ * slot is no longer injured (status not Out / IR / Injured Reserve).
+ * Mirrors Yahoo behavior: ineligible IR blocks all transactions until the
+ * player is moved off IR (lineup change resolves it).
+ */
+async function assertNoIneligibleIR(leagueId, userId) {
+  const { data: irRows } = await supabase
+    .from('fantasy_rosters')
+    .select('player_id, nfl_players(full_name, injury_status)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('slot', 'ir')
+
+  for (const row of irRows || []) {
+    const status = (row.nfl_players?.injury_status || '').toLowerCase()
+    if (status !== 'out' && status !== 'ir' && status !== 'injured reserve') {
+      const name = row.nfl_players?.full_name || 'A player'
+      const err = new Error(`${name} is on IR but no longer injured. Move them off IR before making any roster moves.`)
+      err.status = 400
+      err.ineligible_ir = true
+      throw err
+    }
+  }
+}
+
 export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId) {
   if (!addPlayerId) {
     const err = new Error('add_player_id required')
     err.status = 400
     throw err
   }
+
+  await assertNoIneligibleIR(leagueId, userId)
 
   // Verify the added player exists and is a valid NFL player
   const { data: addPlayer } = await supabase
@@ -3004,6 +3032,7 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
     err.status = 400
     throw err
   }
+  await assertNoIneligibleIR(leagueId, userId)
   const { data: row } = await supabase
     .from('fantasy_rosters')
     .select('id, user_id, nfl_players(full_name, team)')
@@ -3653,6 +3682,8 @@ export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlaye
     throw err
   }
 
+  await assertNoIneligibleIR(leagueId, userId)
+
   // Check the player isn't already rostered
   const { data: existing } = await supabase
     .from('fantasy_rosters')
@@ -4069,6 +4100,8 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
     throw err
   }
 
+  await assertNoIneligibleIR(leagueId, proposerUserId)
+
   // Check trade deadline
   const { data: settings } = await supabase
     .from('fantasy_settings')
@@ -4192,6 +4225,8 @@ export async function acceptTrade(tradeId, userId, dropPlayerIds = []) {
     err.status = 403
     throw err
   }
+
+  await assertNoIneligibleIR(trade.league_id, userId)
 
   // Check trade deadline
   const { data: settings } = await supabase
