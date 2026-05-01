@@ -50,7 +50,7 @@ function GameStatusBadge({ gameState, gamePeriod, gameStartsAt }) {
     const t = new Date(gameStartsAt)
     const label = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent border border-accent/30 shrink-0">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-accent shrink-0">
         {label}
       </span>
     )
