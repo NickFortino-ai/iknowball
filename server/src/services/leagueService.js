@@ -67,7 +67,7 @@ export async function assertLeagueJoinable(league) {
     if (board?.id) {
       const gameStart = board.games?.starts_at
       if (gameStart && new Date(gameStart) <= new Date()) {
-        const err = new Error('The game has already started — squares board is locked')
+        const err = new Error("The game's underway — this squares league is closed to new members")
         err.status = 400
         throw err
       }
@@ -78,7 +78,7 @@ export async function assertLeagueJoinable(league) {
         .eq('board_id', board.id)
 
       if ((claimCount || 0) >= 100) {
-        const err = new Error('Squares board is full — all 100 squares have been claimed')
+        const err = new Error('This squares board is full — all 100 squares are taken')
         err.status = 400
         throw err
       }
