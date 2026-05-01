@@ -55,25 +55,38 @@ export async function assertLeagueJoinable(league) {
   }
 
   // Squares: a squares league is tied to a specific game. Allow joining
-  // until that game's actual kickoff, not just midnight on the start date.
+  // until either (a) the linked game kicks off, or (b) all 100 squares
+  // are claimed.
   if (league.format === 'squares') {
     const { data: board } = await supabase
       .from('squares_boards')
-      .select('game_id, games(starts_at)')
+      .select('id, game_id, games(starts_at)')
       .eq('league_id', league.id)
       .maybeSingle()
 
-    const gameStart = board?.games?.starts_at
-    if (gameStart) {
-      if (new Date(gameStart) <= new Date()) {
+    if (board?.id) {
+      const gameStart = board.games?.starts_at
+      if (gameStart && new Date(gameStart) <= new Date()) {
         const err = new Error('The game has already started — squares board is locked')
         err.status = 400
         throw err
       }
-      return // joinable until kickoff
+
+      const { count: claimCount } = await supabase
+        .from('squares_claims')
+        .select('id', { count: 'exact', head: true })
+        .eq('board_id', board.id)
+
+      if ((claimCount || 0) >= 100) {
+        const err = new Error('Squares board is full — all 100 squares have been claimed')
+        err.status = 400
+        throw err
+      }
+
+      return // joinable until kickoff or full
     }
 
-    // Fallback: no board/game linked yet — use starts_at if set
+    // Fallback: no board linked yet — use starts_at if set
     if (league.starts_at && new Date(league.starts_at) <= new Date()) {
       const err = new Error('This league has already started')
       err.status = 400
