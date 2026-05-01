@@ -97,7 +97,7 @@ function InlineThread({ partnerId, profile }) {
                   </div>
                 )}
                 <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm break-words ${
+                  <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm break-words whitespace-pre-wrap ${
                     isMe ? 'bg-accent text-white rounded-br-md' : 'bg-bg-card border border-border text-text-primary rounded-bl-md'
                   }`}>{msg.content}</div>
                 </div>
