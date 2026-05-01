@@ -190,25 +190,49 @@ export default function SacksView({ league, tab = 'picks' }) {
                   </button>
                   {isExpanded && (() => {
                     const thisWeekPicks = (s.picks || []).filter((p) => p.week === week)
+                    const lastWeekPicks = week ? (s.picks || []).filter((p) => p.week === week - 1) : []
                     return (
-                      <div className="px-3 lg:px-5 pb-3">
-                        {!thisWeekPicks.length ? (
-                          <p className="text-xs text-text-muted text-center py-2">No picks for week {week}</p>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {thisWeekPicks.map((pick, i) => (
-                              <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
-                                {pick.headshot_url && (
-                                  <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                                    onError={(e) => { e.target.style.display = 'none' }} />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
-                                  <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.position} · {pick.team}</div>
+                      <div className="px-3 lg:px-5 pb-3 space-y-3">
+                        <div>
+                          <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Week {week}</div>
+                          {!thisWeekPicks.length ? (
+                            <p className="text-xs text-text-muted text-center py-2">No picks for week {week}</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {thisWeekPicks.map((pick, i) => (
+                                <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
+                                  {pick.headshot_url && (
+                                    <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                                      onError={(e) => { e.target.style.display = 'none' }} />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
+                                    <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.position} · {pick.team}</div>
+                                  </div>
+                                  <span className={`font-display text-sm lg:text-base shrink-0 ${pick.sacks > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.sacks} {sackLabel(pick.sacks)}</span>
                                 </div>
-                                <span className={`font-display text-sm lg:text-base shrink-0 ${pick.sacks > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.sacks} {sackLabel(pick.sacks)}</span>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {lastWeekPicks.length > 0 && (
+                          <div>
+                            <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Week {week - 1}</div>
+                            <div className="space-y-1.5">
+                              {lastWeekPicks.map((pick, i) => (
+                                <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
+                                  {pick.headshot_url && (
+                                    <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                                      onError={(e) => { e.target.style.display = 'none' }} />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
+                                    <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.position} · {pick.team}</div>
+                                  </div>
+                                  <span className={`font-display text-sm lg:text-base shrink-0 ${pick.sacks > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.sacks} {sackLabel(pick.sacks)}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
