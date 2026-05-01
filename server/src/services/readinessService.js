@@ -102,9 +102,11 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     byFormat[l.format].push(l)
   }
 
-  // Today (Eastern) — used for DFS / hr_derby.
-  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  const yesterdayET = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  // Today in the user's local timezone — matches what the user sees as
+  // "tonight" in the picks UI. Falls back to ET if the user has no tz set.
+  const tz = userTz || 'America/New_York'
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: tz })
+  const yesterdayET = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: tz })
 
   // Pre-compute which sports are "done" for today (last game ended 4h ago).
   // Daily formats whose sport is done will return null (no clip) until the
