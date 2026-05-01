@@ -83,12 +83,15 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
   for (const [, pick] of entries) {
     const game = games?.find((g) => g.id === pick.game_id)
     if (!game) continue
-    const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
-    if (!odds) continue
+    const currentOdds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
+    const oddsForCalc = pick.odds_at_pick ?? currentOdds
+    if (oddsForCalc == null) continue
     const mult = pick.multiplier || 1
-    totalRisk += calculateRiskPoints(odds) * mult
-    totalReward += calculateRewardPoints(odds) * mult
-    if (odds < 0) favCount++
+    const baseRisk = pick.risk_at_submission ?? calculateRiskPoints(oddsForCalc)
+    const baseReward = pick.reward_at_submission ?? calculateRewardPoints(oddsForCalc)
+    totalRisk += baseRisk * mult
+    totalReward += baseReward * mult
+    if (oddsForCalc < 0) favCount++
     else dogCount++
   }
 
@@ -173,10 +176,11 @@ export default function BottomBar({ picks, games, propPicks, profile, onUpdateMu
           {entries.map(([gameId, pick]) => {
             const game = games?.find((g) => g.id === gameId)
             if (!game) return null
-            const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
-            if (!odds) return null
-            const baseRisk = calculateRiskPoints(odds)
-            const baseReward = calculateRewardPoints(odds)
+            const currentOdds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
+            const oddsForCalc = pick.odds_at_pick ?? currentOdds
+            if (oddsForCalc == null) return null
+            const baseRisk = pick.risk_at_submission ?? calculateRiskPoints(oddsForCalc)
+            const baseReward = pick.reward_at_submission ?? calculateRewardPoints(oddsForCalc)
             const mult = pick.multiplier || 1
 
             // Determine which multiplier squares are affordable
