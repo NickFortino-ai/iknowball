@@ -190,7 +190,7 @@ export default function ThreePointView({ league, tab = 'picks' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden">
+          <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/15 backdrop-blur-md overflow-hidden">
             <div className="grid grid-cols-[1.5rem_1fr_3rem] lg:grid-cols-[2rem_1fr_3.5rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
@@ -226,7 +226,7 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                       ) : (
                         <div className="space-y-1.5">
                           {todayPicks.map((pick, i) => (
-                            <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/20 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
+                            <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
                               {pick.headshot_url && (
                                 <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                                   onError={(e) => { e.target.style.display = 'none' }} />
@@ -377,7 +377,7 @@ export default function ThreePointView({ league, tab = 'picks' }) {
         )}
       </div>
 
-      <div className="order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      <div className="order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 rounded-xl border border-text-primary/15 bg-bg-primary/15 backdrop-blur-md overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Shooters</h3>
           <input
@@ -385,7 +385,7 @@ export default function ThreePointView({ league, tab = 'picks' }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search players..."
-            className="w-full bg-bg-primary/30 border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            className="w-full bg-bg-primary/15 border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -449,7 +449,7 @@ export default function ThreePointView({ league, tab = 'picks' }) {
       </div>
 
       {myHistory.length > 0 && (
-        <div className="order-3 lg:col-start-1 lg:row-start-2 rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden mt-4 lg:mt-0">
+        <div className="order-3 lg:col-start-1 lg:row-start-2 rounded-xl border border-text-primary/15 bg-bg-primary/15 backdrop-blur-md overflow-hidden mt-4 lg:mt-0">
           <button
             onClick={() => setHistoryOpen((v) => !v)}
             className="w-full flex items-center justify-between px-4 py-3 border-b border-text-primary/10 hover:bg-text-primary/5 transition-colors"
