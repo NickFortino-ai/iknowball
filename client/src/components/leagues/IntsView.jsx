@@ -36,7 +36,7 @@ function GameStatusBadge({ gameStartsAt, locked }) {
     const day = t.toLocaleDateString('en-US', { weekday: 'short' })
     const time = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent border border-accent/30 shrink-0">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-accent shrink-0">
         {day} {time}
       </span>
     )
@@ -81,6 +81,9 @@ export default function IntsView({ league, tab = 'picks' }) {
   }
 
   const hasSavedPicks = myPicks?.length > 0
+  const nowMs = Date.now()
+  const isPickLocked = (p) => p?.game_starts_at && new Date(p.game_starts_at).getTime() <= nowMs
+  const allPicksLocked = hasSavedPicks && (myPicks || []).every(isPickLocked)
   // Defenders fully exhausted given the league's pick_reuse setting
   // (server returns only exhausted; partial usage doesn't appear).
   const usedPlayerIds = new Set((usedPlayers || []).map((u) => u.sleeper_player_id))
@@ -153,7 +156,7 @@ export default function IntsView({ league, tab = 'picks' }) {
         {!standings.length ? (
           <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
         ) : (
-          <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden">
+          <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/15 backdrop-blur-md overflow-hidden">
             <div className="grid grid-cols-[1.5rem_1fr_3rem] lg:grid-cols-[2rem_1fr_3.5rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
@@ -189,7 +192,7 @@ export default function IntsView({ league, tab = 'picks' }) {
                         ) : (
                           <div className="space-y-1.5">
                             {thisWeekPicks.map((pick, i) => (
-                              <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/20 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
+                              <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
                                 {pick.headshot_url && (
                                   <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                                     onError={(e) => { e.target.style.display = 'none' }} />
@@ -228,8 +231,10 @@ export default function IntsView({ league, tab = 'picks' }) {
 
         <div className="rounded-xl border border-text-primary/15 bg-bg-primary/10 backdrop-blur-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-text-primary">This Week's INT Picks</h3>
-            <span className="text-xs text-text-muted">{selected.length}/3 picks</span>
+            <h3 className="text-sm font-semibold text-text-primary">This Week's Picks</h3>
+            {!allPicksLocked && (
+              <span className="text-xs text-text-muted">{selected.length}/3 picks</span>
+            )}
           </div>
 
           {selected.length === 0 ? (
@@ -276,9 +281,12 @@ export default function IntsView({ league, tab = 'picks' }) {
         {hasSavedPicks && !editing && (() => {
           const weekInts = (myPicks || []).reduce((sum, p) => sum + (Number(p.ints) || 0), 0)
           return (
-            <div className="flex items-center justify-end gap-4 px-1 mb-2 -mt-1">
-              <span className="text-xs text-text-muted uppercase tracking-wider">This Week</span>
-              <span className={`font-display text-sm ${weekInts > 0 ? 'text-correct' : 'text-text-muted'}`}>{weekInts} INT{weekInts === 1 ? '' : 's'}</span>
+            <div className="flex items-center justify-end gap-4 pr-7 mb-2 -mt-1">
+              <span className="text-sm text-text-muted uppercase tracking-wider font-semibold">This Week</span>
+              <span className="font-display flex items-baseline gap-1">
+                <span className={`text-lg ${weekInts > 0 ? 'text-correct' : 'text-text-muted'}`}>{weekInts}</span>
+                <span className="text-sm text-white">INT{weekInts === 1 ? '' : 's'}</span>
+              </span>
             </div>
           )
         })()}
@@ -314,7 +322,7 @@ export default function IntsView({ league, tab = 'picks' }) {
         )}
       </div>
 
-      <div className="order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
+      <div className="order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 rounded-xl border border-text-primary/15 bg-bg-primary/15 backdrop-blur-md overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4">
         <div className="px-4 py-3 border-b border-text-primary/10">
           <h3 className="text-sm font-semibold text-text-primary mb-3">Available Defenders</h3>
           <input
@@ -322,7 +330,7 @@ export default function IntsView({ league, tab = 'picks' }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search players..."
-            className="w-full bg-bg-primary/30 border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            className="w-full bg-bg-primary/15 border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -385,7 +393,7 @@ export default function IntsView({ league, tab = 'picks' }) {
       </div>
 
       {myHistory.length > 0 && (
-        <div className="order-3 lg:col-start-1 lg:row-start-2 rounded-xl border border-text-primary/15 bg-bg-primary/30 backdrop-blur-md overflow-hidden mt-4 lg:mt-0">
+        <div className="order-3 lg:col-start-1 lg:row-start-2 rounded-xl border border-text-primary/15 bg-bg-primary/15 backdrop-blur-md overflow-hidden mt-4 lg:mt-0">
           <button
             onClick={() => setHistoryOpen((v) => !v)}
             className="w-full flex items-center justify-between px-4 py-3 border-b border-text-primary/10 hover:bg-text-primary/5 transition-colors"
@@ -402,7 +410,7 @@ export default function IntsView({ league, tab = 'picks' }) {
                   <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">Week {w}</div>
                   <div className="space-y-1.5">
                     {picks.map((pick, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-bg-primary/20 border border-text-primary/10 rounded-lg px-2.5 py-2">
+                      <div key={i} className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 py-2">
                         {pick.headshot_url && (
                           <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
                             onError={(e) => { e.target.style.display = 'none' }} />
