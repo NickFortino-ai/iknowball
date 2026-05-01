@@ -279,8 +279,10 @@ export default function ThreePointView({ league, tab = 'picks' }) {
 
         <div className="rounded-xl border border-text-primary/15 bg-bg-primary/10 backdrop-blur-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-text-primary">Tonight's 3PM Picks</h3>
-            <span className="text-xs text-text-muted">{selected.length}/3 picks</span>
+            <h3 className="text-sm font-semibold text-text-primary">Today's Picks</h3>
+            {!allPicksLocked && (
+              <span className="text-xs text-text-muted">{selected.length}/3 picks</span>
+            )}
           </div>
 
           {selected.length === 0 ? (
