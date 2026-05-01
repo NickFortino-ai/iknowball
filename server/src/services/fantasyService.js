@@ -2573,7 +2573,7 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
   // 1. Get the user's current roster joined to nfl_players for position
   const { data: roster } = await supabase
     .from('fantasy_rosters')
-    .select('id, player_id, slot, nfl_players(id, position, team)')
+    .select('id, player_id, slot, nfl_players(id, position, team, injury_status, full_name)')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
 
@@ -2607,6 +2607,14 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
       const err = new Error(`Player ${r.nfl_players?.position} cannot fill slot ${a.slot}`)
       err.status = 400
       throw err
+    }
+    if (a.slot === 'ir') {
+      const status = (r.nfl_players?.injury_status || '').toLowerCase()
+      if (status !== 'out' && status !== 'ir' && status !== 'injured reserve') {
+        const err = new Error(`${r.nfl_players?.full_name || 'Player'} isn't injured (Out or IR) and can't be placed on IR`)
+        err.status = 400
+        throw err
+      }
     }
   }
 
