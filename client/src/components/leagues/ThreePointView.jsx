@@ -332,11 +332,11 @@ export default function ThreePointView({ league, tab = 'picks' }) {
         {hasSavedPicks && !editing && (() => {
           const dayThrees = (myPicks || []).reduce((sum, p) => sum + (p.made_threes || 0), 0)
           return (
-            <div className="flex items-center justify-end gap-4 px-1 mb-2 -mt-1">
-              <span className="text-xs text-text-muted uppercase tracking-wider">Tonight</span>
+            <div className="flex items-center justify-end gap-4 pr-7 mb-2 -mt-1">
+              <span className="text-sm text-text-muted uppercase tracking-wider font-semibold">Tonight</span>
               <span className="font-display flex items-baseline gap-1">
-                <span className={`text-sm ${dayThrees > 0 ? 'text-correct' : 'text-text-muted'}`}>{dayThrees}</span>
-                <span className="text-xs text-white">3PM</span>
+                <span className={`text-lg ${dayThrees > 0 ? 'text-correct' : 'text-text-muted'}`}>{dayThrees}</span>
+                <span className="text-sm text-white">3PM</span>
               </span>
             </div>
           )
