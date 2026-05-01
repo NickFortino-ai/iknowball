@@ -54,8 +54,26 @@ export async function assertLeagueJoinable(league) {
     return // joinable
   }
 
-  // Squares: just check starts_at
+  // Squares: a squares league is tied to a specific game. Allow joining
+  // until that game's actual kickoff, not just midnight on the start date.
   if (league.format === 'squares') {
+    const { data: board } = await supabase
+      .from('squares_boards')
+      .select('game_id, games(starts_at)')
+      .eq('league_id', league.id)
+      .maybeSingle()
+
+    const gameStart = board?.games?.starts_at
+    if (gameStart) {
+      if (new Date(gameStart) <= new Date()) {
+        const err = new Error('The game has already started — squares board is locked')
+        err.status = 400
+        throw err
+      }
+      return // joinable until kickoff
+    }
+
+    // Fallback: no board/game linked yet — use starts_at if set
     if (league.starts_at && new Date(league.starts_at) <= new Date()) {
       const err = new Error('This league has already started')
       err.status = 400
