@@ -238,7 +238,10 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                                   <GameStatusBadge gameState={pick.game_state} gamePeriod={pick.game_period} gameStartsAt={pick.game_starts_at} />
                                 </div>
                               </div>
-                              <span className={`font-display text-sm lg:text-base shrink-0 ${pick.made_threes > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.made_threes} 3PM</span>
+                              <span className="font-display shrink-0 flex items-baseline gap-1">
+                                <span className={`text-sm lg:text-base ${pick.made_threes > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.made_threes}</span>
+                                <span className="text-xs lg:text-sm text-white">3PM</span>
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -304,7 +307,10 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                       </div>
                     </div>
                     {(hasSavedPicks && !editing) || (editing && isPickLocked(savedPick)) ? (
-                      <span className={`font-display text-lg shrink-0 ${threes > 0 ? 'text-correct' : 'text-text-muted'}`}>{threes} 3PM</span>
+                      <span className="font-display shrink-0 flex items-baseline gap-1">
+                        <span className={`text-lg ${threes > 0 ? 'text-correct' : 'text-text-muted'}`}>{threes}</span>
+                        <span className="text-sm text-white">3PM</span>
+                      </span>
                     ) : null}
                     {(!hasSavedPicks || (editing && !isPickLocked(savedPick))) && (
                       <button
@@ -326,7 +332,10 @@ export default function ThreePointView({ league, tab = 'picks' }) {
           return (
             <div className="flex items-center justify-end gap-4 px-1 mb-2 -mt-1">
               <span className="text-xs text-text-muted uppercase tracking-wider">Tonight</span>
-              <span className={`font-display text-sm ${dayThrees > 0 ? 'text-correct' : 'text-text-muted'}`}>{dayThrees} 3PM</span>
+              <span className="font-display flex items-baseline gap-1">
+                <span className={`text-sm ${dayThrees > 0 ? 'text-correct' : 'text-text-muted'}`}>{dayThrees}</span>
+                <span className="text-xs text-white">3PM</span>
+              </span>
             </div>
           )
         })()}
@@ -464,7 +473,10 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                           <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
                           <div className="text-[10px] text-text-muted">{pick.team}</div>
                         </div>
-                        <span className={`font-display text-sm shrink-0 ${pick.made_threes > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.made_threes} 3PM</span>
+                        <span className="font-display shrink-0 flex items-baseline gap-1">
+                          <span className={`text-sm ${pick.made_threes > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.made_threes}</span>
+                          <span className="text-xs text-white">3PM</span>
+                        </span>
                       </div>
                     ))}
                   </div>
