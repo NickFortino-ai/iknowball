@@ -332,6 +332,16 @@ export async function generateMLBSalaries(date, season = 2026) {
     }
   }
 
+  // Clear stale entries — see scoreNBADFS for rationale.
+  if (salaries.length > 0) {
+    const { error: delErr } = await supabase
+      .from('mlb_dfs_salaries')
+      .delete()
+      .eq('game_date', date)
+      .eq('season', season)
+    if (delErr) logger.error({ delErr, date, season }, 'Failed to clear stale MLB salaries before regen')
+  }
+
   // Batch upsert
   const CHUNK = 200
   let upserted = 0

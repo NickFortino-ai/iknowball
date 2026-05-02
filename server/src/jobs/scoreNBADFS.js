@@ -25,27 +25,33 @@ async function nbaSalariesAreStale(date, season) {
     .eq('season', season)
   if (!existing || existing === 0) return true
 
-  let espnGameCount = 0
+  let espnEvents = []
   try {
     const dateStr = date.replace(/-/g, '')
     const res = await fetch(`${ESPN_BASE}/basketball/nba/scoreboard?dates=${dateStr}`)
     if (!res.ok) return false // can't tell — assume fresh, wait for next tick
     const data = await res.json()
-    espnGameCount = (data.events || []).length
+    espnEvents = data.events || []
   } catch (_) {
     return false
   }
-  if (espnGameCount === 0) return false
+  if (espnEvents.length === 0) return false
 
-  // Count distinct kickoff times in our salaries for this date — proxy
-  // for distinct games. Cheap query, runs once per cron tick per date.
+  // Compare kickoff sets — if our table has any kickoff ESPN doesn't list
+  // (game canceled/postponed) OR ESPN has any kickoff we don't have (game
+  // added), regenerate. Counting alone misses the "we have stale games
+  // ESPN dropped" case, which leaves zombie players blocking the new game.
   const { data: rows } = await supabase
     .from('nba_dfs_salaries')
     .select('game_starts_at')
     .eq('game_date', date)
     .eq('season', season)
-  const distinctOurs = new Set((rows || []).map((r) => r.game_starts_at).filter(Boolean)).size
-  return distinctOurs < espnGameCount
+  const norm = (s) => s ? new Date(s).getTime() : null
+  const ours = new Set((rows || []).map((r) => norm(r.game_starts_at)).filter(Boolean))
+  const espn = new Set(espnEvents.map((e) => norm(e.date)).filter(Boolean))
+  if (ours.size !== espn.size) return true
+  for (const k of espn) if (!ours.has(k)) return true
+  return false
 }
 
 /**

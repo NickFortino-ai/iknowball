@@ -22,25 +22,30 @@ async function mlbSalariesAreStale(date, season) {
     .eq('season', season)
   if (!existing || existing === 0) return true
 
-  let espnGameCount = 0
+  let espnEvents = []
   try {
     const dateStr = date.replace(/-/g, '')
     const res = await fetch(`${ESPN_BASE}/baseball/mlb/scoreboard?dates=${dateStr}`)
     if (!res.ok) return false
     const data = await res.json()
-    espnGameCount = (data.events || []).length
+    espnEvents = data.events || []
   } catch (_) {
     return false
   }
-  if (espnGameCount === 0) return false
+  if (espnEvents.length === 0) return false
 
+  // Compare kickoff sets — see scoreNBADFS for rationale.
   const { data: rows } = await supabase
     .from('mlb_dfs_salaries')
     .select('game_starts_at')
     .eq('game_date', date)
     .eq('season', season)
-  const distinctOurs = new Set((rows || []).map((r) => r.game_starts_at).filter(Boolean)).size
-  return distinctOurs < espnGameCount
+  const norm = (s) => s ? new Date(s).getTime() : null
+  const ours = new Set((rows || []).map((r) => norm(r.game_starts_at)).filter(Boolean))
+  const espn = new Set(espnEvents.map((e) => norm(e.date)).filter(Boolean))
+  if (ours.size !== espn.size) return true
+  for (const k of espn) if (!ours.has(k)) return true
+  return false
 }
 
 /**

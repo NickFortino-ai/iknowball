@@ -463,6 +463,18 @@ export async function generateNBASalaries(date, season = 2026) {
     }
   }
 
+  // Clear stale entries (players whose teams aren't on the current schedule
+  // — e.g. canceled/postponed games). Only delete after we have new data
+  // assembled, to minimize the empty-table window. Skip if assembly failed.
+  if (salaries.length > 0) {
+    const { error: delErr } = await supabase
+      .from('nba_dfs_salaries')
+      .delete()
+      .eq('game_date', date)
+      .eq('season', season)
+    if (delErr) logger.error({ delErr, date, season }, 'Failed to clear stale NBA salaries before regen')
+  }
+
   // Batch upsert
   const CHUNK = 200
   let upserted = 0
