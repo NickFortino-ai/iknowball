@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import DraftPlayerPreview from '../components/leagues/DraftPlayerPreview'
 import { useDraftPrepRankings } from '../hooks/useDraftPrep'
+import { buildRosterConfigHash } from '../lib/rosterConfigHash'
 
 // ────────────────────────────────────────────────────────────────────
 // Bot personalities
@@ -631,17 +632,21 @@ function DraftScreen({ config, draftPrepConfig, onExit, onComplete }) {
     staleTime: 5 * 60 * 1000,
   })
 
-  // User's My Rankings (only loaded when launched from Draft Prep)
-  const { data: myRankings } = useDraftPrepRankings(
-    draftPrepConfig?.scoringFormat,
-    draftPrepConfig?.configHash,
-  )
+  // Build configHash from the mock's actual setup (not the prep page's
+  // state, which may have reverted to defaults if the user navigated
+  // away). buildRosterConfigHash aliases `superflex` → `sflex` so the
+  // hash matches what was saved from the prep page.
+  const setupScoringFormat = config.scoring || draftPrepConfig?.scoringFormat
+  const setupConfigHash = config.rosterSlots
+    ? buildRosterConfigHash(config.rosterSlots)
+    : draftPrepConfig?.configHash
+  const { data: myRankings } = useDraftPrepRankings(setupScoringFormat, setupConfigHash)
   const myRankMap = useMemo(() => {
     const m = new Map()
     for (const r of myRankings || []) m.set(r.player_id, r.rank)
     return m
   }, [myRankings])
-  const hasMyRankings = !!draftPrepConfig?.configHash
+  const hasMyRankings = !!setupConfigHash
 
   // Stable per-mock state
   const [picks, setPicks] = useState([]) // { overall, round, teamSlot, player }
