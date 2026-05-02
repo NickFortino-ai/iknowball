@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
+import InjuryBadge from '../ui/InjuryBadge'
 import UserProfileModal from '../profile/UserProfileModal'
 import { toast } from '../ui/Toast'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
@@ -159,7 +160,10 @@ export default function TdPassView({ league, tab = 'picks' }) {
                 {myCurrentPick.headshot_url && (
                   <img src={myCurrentPick.headshot_url} alt="" className="w-28 h-28 rounded-full object-cover bg-bg-secondary/30 border-2 border-accent/30" onError={(e) => { e.target.style.display = 'none' }} />
                 )}
-                <div className="font-display text-xl text-text-primary">{myCurrentPick.qb_name}</div>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="font-display text-xl text-text-primary">{myCurrentPick.qb_name}</div>
+                  <InjuryBadge status={pickedQbData?.injury_status} />
+                </div>
                 <div className="text-sm text-text-muted">
                   {myCurrentPick.team}
                   {matchup ? ` ${matchup.home_away === 'home' ? 'vs' : '@'} ${matchup.opponent}` : ''}

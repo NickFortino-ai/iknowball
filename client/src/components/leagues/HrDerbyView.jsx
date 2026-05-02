@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
+import InjuryBadge from '../ui/InjuryBadge'
 import UserProfileModal from '../profile/UserProfileModal'
 
 function todayLocal() {
@@ -259,7 +260,10 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                                     onError={(e) => { e.target.style.display = 'none' }} />
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
+                                    <InjuryBadge status={pick.injury_status} />
+                                  </div>
                                   <div className="flex items-center gap-1.5 mt-0.5">
                                     <span className="text-[10px] lg:text-xs text-text-muted truncate">{pick.team}</span>
                                     <GameStatusBadge gameState={pick.game_state} gamePeriod={pick.game_period} gameStartsAt={pick.game_starts_at} />
@@ -352,6 +356,8 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                 const gameState = savedPick?.game_state
                 const gamePeriod = savedPick?.game_period
                 const gameStartsAt = savedPick?.game_starts_at || player.game_starts_at
+                const poolEntry = (players || []).find((p) => p.espn_player_id === player.espn_player_id)
+                const injuryStatus = poolEntry?.injury_status || player.injury_status
                 return (
                   <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5">
                     {player.headshot_url && (
@@ -359,7 +365,10 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                         onError={(e) => { e.target.style.display = 'none' }} />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
+                        <InjuryBadge status={injuryStatus} />
+                      </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-xs text-text-muted truncate">{player.team} · {player.opponent || ''}</span>
                         <GameStatusBadge gameState={gameState} gamePeriod={gamePeriod} gameStartsAt={gameStartsAt} />

@@ -125,6 +125,16 @@ router.get('/picks', async (req, res) => {
 
   const picks = data || []
   const stateByTeam = await buildNbaGameStateByTeam(date)
+  const espnIds = [...new Set(picks.map((p) => p.espn_player_id).filter(Boolean))]
+  const injuryByEspnId = {}
+  if (espnIds.length) {
+    const { data: salaryRows } = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id, injury_status')
+      .eq('game_date', date)
+      .in('espn_player_id', espnIds)
+    for (const r of salaryRows || []) injuryByEspnId[r.espn_player_id] = r.injury_status
+  }
   const enriched = picks.map((p) => {
     const g = stateByTeam[(p.team || '').toUpperCase()]
     return {
@@ -132,6 +142,7 @@ router.get('/picks', async (req, res) => {
       game_state: g?.state || null,
       game_period: g?.period || null,
       game_starts_at: g?.startsAt || null,
+      injury_status: injuryByEspnId[p.espn_player_id] || null,
     }
   })
 
@@ -268,12 +279,24 @@ router.get('/standings', async (req, res) => {
 
   const { data: picks } = await supabase
     .from('three_point_picks')
-    .select('user_id, player_name, team, headshot_url, made_threes, game_date')
+    .select('user_id, player_name, team, headshot_url, made_threes, game_date, espn_player_id')
     .eq('league_id', league_id)
     .order('game_date', { ascending: false })
 
   const today = new Date().toLocaleDateString('en-CA')
   const stateByTeam = await buildNbaGameStateByTeam(today)
+
+  // Pull today's injury statuses so the standings UI can flag picked-but-out players.
+  const todayEspnIds = [...new Set((picks || []).filter((p) => p.game_date === today).map((p) => p.espn_player_id).filter(Boolean))]
+  const injuryByEspnId = {}
+  if (todayEspnIds.length) {
+    const { data: salaryRows } = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id, injury_status')
+      .eq('game_date', today)
+      .in('espn_player_id', todayEspnIds)
+    for (const r of salaryRows || []) injuryByEspnId[r.espn_player_id] = r.injury_status
+  }
 
   const userMap = {}
   for (const uid of allMemberIds) userMap[uid] = { totalThrees: 0, picks: [] }
@@ -291,6 +314,7 @@ router.get('/standings', async (req, res) => {
       game_state: g?.state || null,
       game_period: g?.period || null,
       game_starts_at: g?.startsAt || null,
+      injury_status: isToday ? (injuryByEspnId[p.espn_player_id] || null) : null,
     })
   }
 

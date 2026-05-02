@@ -26,6 +26,7 @@ import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.j
 import { syncPlayers, syncProjections, syncWeeklyProjections, getNFLState } from '../services/sleeperService.js'
 import { rolloverFantasyWeek } from '../services/fantasyService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
+import { sendPickInjuryWarnings } from './pickInjuryWarnings.js'
 import { computeFantasyGlobalRankings } from './computeFantasyGlobalRankings.js'
 
 export function startScheduler() {
@@ -192,6 +193,14 @@ export function startScheduler() {
       try { await sendNflInjuryWarnings() } catch (err) { logger.error({ err }, 'NFL injury warnings job failed') }
     })
     logger.info('NFL injury warnings scheduled: every hour')
+
+    // Pick injury warnings — same idea but for the pick-based contest formats
+    // (3-Point, HR Derby, Strikeouts, Sacks, Ints, TD Pass). Runs every 20
+    // minutes so daily NBA/MLB picks get warnings closer to tipoff.
+    cron.schedule('17 * * * *', async () => {
+      try { await sendPickInjuryWarnings() } catch (err) { logger.error({ err }, 'Pick injury warnings job failed') }
+    })
+    logger.info('Pick injury warnings scheduled: every hour at :17')
 
     // Fantasy global rankings — recompute every night at 4:00 AM ET so users
     // can see how their team ranks against every other team across IKB with

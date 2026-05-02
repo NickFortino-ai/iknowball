@@ -183,9 +183,100 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     logger.error({ err }, 'Failed to compute league readiness')
   }
 
+  // Downgrade leagues whose picks include an injured (Out) player. Same
+  // pattern as FF: the user already submitted picks (so we'd otherwise
+  // mark them ready/attention), but they need to swap an out player.
+  try {
+    await applyInjuryDowngrades(byFormat, userId, todayET, result)
+  } catch (err) {
+    logger.error({ err }, 'Failed to apply injury downgrades to readiness')
+  }
+
   // Anything we don't have a definite signal for stays null (no clip).
   // Showing nothing is strictly better than lying with a green dot.
   return result
+}
+
+async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
+  // ── NBA daily (Three-Point) ─────────────────────────────────────
+  if (byFormat.three_point?.length) {
+    const leagueIds = byFormat.three_point.map((l) => l.id)
+    const { data: outRows } = await supabase
+      .from('nba_dfs_salaries')
+      .select('espn_player_id')
+      .eq('game_date', todayET)
+      .eq('injury_status', 'Out')
+    const outIds = (outRows || []).map((r) => r.espn_player_id).filter(Boolean)
+    if (outIds.length) {
+      const { data: badPicks } = await supabase
+        .from('three_point_picks')
+        .select('league_id, espn_player_id')
+        .in('league_id', leagueIds)
+        .eq('user_id', userId)
+        .eq('game_date', todayET)
+        .in('espn_player_id', outIds)
+      const hit = new Set((badPicks || []).map((p) => p.league_id))
+      for (const id of hit) set(result, id, 'action', 'Injured player on lineup — swap before tip-off')
+    }
+  }
+
+  // ── MLB daily (HR Derby + Strikeouts) ───────────────────────────
+  const mlbDaily = []
+  if (byFormat.hr_derby?.length) mlbDaily.push({ table: 'hr_derby_picks', leagues: byFormat.hr_derby })
+  if (byFormat.strikeouts?.length) mlbDaily.push({ table: 'strikeouts_picks', leagues: byFormat.strikeouts })
+  if (mlbDaily.length) {
+    const { data: outRows } = await supabase
+      .from('mlb_dfs_salaries')
+      .select('espn_player_id')
+      .eq('game_date', todayET)
+      .eq('injury_status', 'Out')
+    const outIds = (outRows || []).map((r) => r.espn_player_id).filter(Boolean)
+    if (outIds.length) {
+      for (const { table, leagues } of mlbDaily) {
+        const leagueIds = leagues.map((l) => l.id)
+        const { data: badPicks } = await supabase
+          .from(table)
+          .select('league_id, espn_player_id')
+          .in('league_id', leagueIds)
+          .eq('user_id', userId)
+          .eq('game_date', todayET)
+          .in('espn_player_id', outIds)
+        const hit = new Set((badPicks || []).map((p) => p.league_id))
+        for (const id of hit) set(result, id, 'action', 'Injured player on lineup — swap before first pitch')
+      }
+    }
+  }
+
+  // ── NFL weekly (Sacks, Ints, TD Pass) ───────────────────────────
+  const nflWeekly = []
+  if (byFormat.sacks?.length) nflWeekly.push({ table: 'sacks_picks', col: 'sleeper_player_id', leagues: byFormat.sacks })
+  if (byFormat.ints?.length) nflWeekly.push({ table: 'ints_picks', col: 'sleeper_player_id', leagues: byFormat.ints })
+  if (byFormat.td_pass?.length) nflWeekly.push({ table: 'td_pass_picks', col: 'qb_player_id', leagues: byFormat.td_pass })
+  if (nflWeekly.length) {
+    const { data: outPlayers } = await supabase
+      .from('nfl_players')
+      .select('id')
+      .in('injury_status', ['Out', 'IR'])
+      .not('team', 'is', null)
+    const outIds = (outPlayers || []).map((p) => p.id)
+    if (outIds.length) {
+      const { getCurrentNflWeek } = await import('./tdPassService.js')
+      const { week, season } = await getCurrentNflWeek()
+      for (const { table, col, leagues } of nflWeekly) {
+        const leagueIds = leagues.map((l) => l.id)
+        const { data: badPicks } = await supabase
+          .from(table)
+          .select(`league_id, ${col}`)
+          .in('league_id', leagueIds)
+          .eq('user_id', userId)
+          .eq('week', week)
+          .eq('season', season)
+          .in(col, outIds)
+        const hit = new Set((badPicks || []).map((p) => p.league_id))
+        for (const id of hit) set(result, id, 'action', `Injured player on Week ${week} pick — swap before kickoff`)
+      }
+    }
+  }
 }
 
 /**
