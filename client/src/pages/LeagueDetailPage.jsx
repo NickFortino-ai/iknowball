@@ -676,10 +676,13 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 // didn't include it (some flows skip it), fall back to
                 // league.member_count, then to a reasonable preview count
                 // so the modal never silently drops the bonus table after
-                // saying "see the table below."
+                // saying "see the table below." A brand-new league has
+                // member_count=1 (just the commissioner) which would also
+                // be filtered out by GlobalPointsTable's <2 guard, so
+                // bump anything <2 up to the 8-row preview.
                 const liveMemberCount = Array.isArray(league.members) && league.members.length > 0
                   ? league.members.length
-                  : (league.member_count || 8)
+                  : (league.member_count >= 2 ? league.member_count : 8)
                 // For fantasy, prefer the configured roster size; otherwise current member count
                 const tableMemberCount = f === 'fantasy'
                   ? (fantasySettings?.num_teams || liveMemberCount)
