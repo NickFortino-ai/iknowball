@@ -691,7 +691,7 @@ export default function HomePage() {
         {/* Social proof strip */}
         <div className="mb-16 flex flex-wrap items-center justify-center gap-8 sm:gap-16 py-6 border-y border-text-primary/10">
           {[
-            { value: '11', label: 'League Formats' },
+            { value: '15', label: 'League Formats' },
             { value: '10', label: 'Sports Covered' },
             { value: '24/7', label: 'Live Odds' },
             { value: '∞', label: 'Leagues to Run' },
