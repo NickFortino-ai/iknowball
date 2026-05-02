@@ -40,6 +40,7 @@ import linkPreviewRouter from './routes/linkPreview.js'
 import messagesRouter from './routes/messages.js'
 import backdropSubmissionsRouter from './routes/backdropSubmissions.js'
 import newsRouter from './routes/news.js'
+import publicLandingRouter from './routes/publicLanding.js'
 
 const app = express()
 
@@ -88,6 +89,7 @@ app.use('/api/sacks', sacksRouter)
 app.use('/api/ints', intsRouter)
 app.use('/api/td-pass', tdPassRouter)
 app.use('/api/news', newsRouter)
+app.use('/api/public', publicLandingRouter)
 
 app.use(errorHandler)
 

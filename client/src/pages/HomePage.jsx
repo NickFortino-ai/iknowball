@@ -11,6 +11,8 @@ import { getTier } from '../lib/scoring'
 import TierBadge from '../components/ui/TierBadge'
 import Avatar from '../components/ui/Avatar'
 import { getBackdropUrl } from '../lib/backdropUrl'
+import { useLandingPreview } from '../hooks/useLandingPreview'
+import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
 
 const tiers = [
   { name: 'Lost', points: '<0', color: 'border-tier-lost text-tier-lost', desc: 'Gone negative' },
@@ -318,6 +320,10 @@ export default function HomePage() {
     return () => clearInterval(interval)
   }, [])
 
+  const { data: landingPreview } = useLandingPreview()
+  const previewMlb = landingPreview?.mlbGame
+  const previewFutures = landingPreview?.nbaFutures
+
   return (
     <div>
       {/* Hero with cycling stadium backdrops — full width like league backdrops */}
@@ -532,86 +538,114 @@ export default function HomePage() {
           <p className="text-text-muted text-center mb-8 max-w-2xl mx-auto">Beyond leagues, every pick counts toward your global score. Climb from Rookie to GOAT.</p>
 
           <div className="grid sm:grid-cols-3 gap-4 mb-6">
-            {/* Game Pick Preview */}
-            <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
-              <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Game Picks</div>
-              <div className="rounded-xl border border-text-primary/15 bg-black/30 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <img src="https://a.espncdn.com/i/teamlogos/mlb/500/laa.png" alt="" className="w-8 h-8 object-contain" />
-                    <span className="font-semibold text-text-primary">Los Angeles Angels</span>
+            {/* Game Pick Preview — live MLB game when available, else fallback */}
+            {(() => {
+              const homeName = previewMlb?.homeTeam || 'New York Yankees'
+              const awayName = previewMlb?.awayTeam || 'Los Angeles Angels'
+              const homeLogo = getTeamLogoUrl(homeName, 'baseball_mlb') || getTeamLogoFallbackUrl(homeName, 'baseball_mlb')
+              const awayLogo = getTeamLogoUrl(awayName, 'baseball_mlb') || getTeamLogoFallbackUrl(awayName, 'baseball_mlb')
+              const awayRisk = previewMlb?.awayRisk ?? 10
+              const awayReward = previewMlb?.awayReward ?? 15
+              const homeRisk = previewMlb?.homeRisk ?? 10
+              const homeReward = previewMlb?.homeReward ?? 6
+              const awayIsFav = previewMlb ? !previewMlb.homeIsFavorite : false
+              const homeIsFav = previewMlb ? previewMlb.homeIsFavorite : true
+              return (
+                <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
+                  <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Game Picks</div>
+                  <div className="rounded-xl border border-text-primary/15 bg-black/30 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {awayLogo && <img src={awayLogo} alt="" className="w-8 h-8 object-contain shrink-0" />}
+                        <span className="font-semibold text-text-primary truncate">{awayName}</span>
+                      </div>
+                      <span className={`text-xs font-semibold whitespace-nowrap ${awayIsFav ? 'text-accent' : 'text-correct'}`}>
+                        Risk {awayRisk} → Win {awayReward}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {homeLogo && <img src={homeLogo} alt="" className="w-8 h-8 object-contain shrink-0" />}
+                        <span className="font-semibold text-text-primary truncate">{homeName}</span>
+                      </div>
+                      <span className={`text-xs font-semibold whitespace-nowrap ${homeIsFav ? 'text-accent' : 'text-correct'}`}>
+                        Risk {homeRisk} → Win {homeReward}
+                      </span>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-text-primary/10 text-center">
+                      <span className="text-xs text-text-muted">Underdogs earn more points · Favorites pay less</span>
+                    </div>
                   </div>
-                  <span className="text-xs text-correct font-semibold">Risk 10 → Win 15</span>
+                  <p className="text-sm text-text-secondary mt-4 leading-relaxed">Pick the winner of any game, any sport. Underdogs earn more points. Every correct pick earns points — every miss costs 10.</p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <img src="https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png" alt="" className="w-8 h-8 object-contain" />
-                    <span className="font-semibold text-text-primary">New York Yankees</span>
-                  </div>
-                  <span className="text-xs text-accent font-semibold">Risk 10 → Win 6</span>
-                </div>
-                <div className="mt-3 pt-3 border-t border-text-primary/10 text-center">
-                  <span className="text-xs text-text-muted">Underdogs earn more points · Favorites pay less</span>
-                </div>
-              </div>
-              <p className="text-sm text-text-secondary mt-4 leading-relaxed">Pick the winner of any game, any sport. Underdogs earn more points. Every correct pick earns points — every miss costs 10.</p>
-            </div>
+              )
+            })()}
 
-            {/* Prop Pick Preview */}
+            {/* Prop Pick Preview — static placeholder */}
             <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
               <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Player Props</div>
               <div className="rounded-xl border border-text-primary/15 bg-black/30 p-4">
                 <div className="text-center mb-3">
-                  <img src="https://a.espncdn.com/i/headshots/mlb/players/full/33192.png" alt="Aaron Judge" className="w-14 h-14 rounded-full object-cover bg-bg-secondary mx-auto mb-2" />
-                  <div className="font-semibold text-text-primary">Aaron Judge</div>
-                  <div className="text-xs text-text-muted">NYY vs LAA · Total Bases</div>
+                  <img src="https://a.espncdn.com/i/headshots/nfl/players/full/3916387.png" alt="Lamar Jackson" className="w-14 h-14 rounded-full object-cover bg-bg-secondary mx-auto mb-2" />
+                  <div className="font-semibold text-text-primary">Lamar Jackson</div>
+                  <div className="text-xs text-text-muted">Passing Yards</div>
                 </div>
                 <div className="flex items-center justify-center gap-3 mb-3">
                   <div className="flex-1 text-center py-2.5 rounded-lg border border-text-primary/20 bg-black/20">
-                    <div className="text-xs text-text-muted mb-0.5">Over 1.5</div>
-                    <div className="text-xs font-semibold text-text-primary">Risk 10 → Win 8</div>
+                    <div className="text-xs text-text-muted mb-0.5">Over 300</div>
+                    <div className="text-xs font-semibold text-text-primary">Risk 10 → Win 25</div>
                   </div>
-                  <div className="text-xs text-text-muted font-bold">1.5</div>
+                  <div className="text-xs text-text-muted font-bold">300</div>
                   <div className="flex-1 text-center py-2.5 rounded-lg border border-text-primary/20 bg-black/20">
-                    <div className="text-xs text-text-muted mb-0.5">Under 1.5</div>
-                    <div className="text-xs font-semibold text-text-primary">Risk 10 → Win 11</div>
+                    <div className="text-xs text-text-muted mb-0.5">Under 300</div>
+                    <div className="text-xs font-semibold text-text-primary">Risk 10 → Win 5</div>
                   </div>
                 </div>
               </div>
               <p className="text-sm text-text-secondary mt-4 leading-relaxed">Predict player performances — points, rebounds, strikeouts, home runs. New props drop daily for every sport in season.</p>
             </div>
 
-            {/* Futures Preview */}
-            <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
-              <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Futures</div>
-              <div className="rounded-xl border border-text-primary/15 bg-black/30 p-4 relative overflow-hidden">
-                <div className="text-center mb-3">
-                  <div className="font-semibold text-text-primary">2026 NBA Championship</div>
-                  <div className="text-xs text-text-muted">Pick the winner before the season ends</div>
+            {/* Futures Preview — live NBA championship odds when available */}
+            {(() => {
+              const fallback = {
+                title: '2026 NBA Championship',
+                outcomes: [
+                  { name: 'Boston Celtics', risk: 10, reward: 14 },
+                  { name: 'OKC Thunder', risk: 10, reward: 18 },
+                  { name: 'Cleveland Cavaliers', risk: 10, reward: 22 },
+                  { name: 'New York Knicks', risk: 10, reward: 30 },
+                ],
+              }
+              const market = previewFutures || fallback
+              return (
+                <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
+                  <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Futures</div>
+                  <div className="rounded-xl border border-text-primary/15 bg-black/30 p-4 relative overflow-hidden">
+                    <div className="text-center mb-3">
+                      <div className="font-semibold text-text-primary">{market.title}</div>
+                      <div className="text-xs text-text-muted">Pick the winner before the season ends</div>
+                    </div>
+                    <div className="space-y-1.5">
+                      {market.outcomes.slice(0, 4).map((o, i) => (
+                        <div
+                          key={o.name}
+                          className={`flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20 ${i === 3 ? 'opacity-50' : ''}`}
+                        >
+                          <span className="text-sm font-semibold text-text-primary truncate pr-2">{o.name}</span>
+                          <span className="text-xs font-semibold whitespace-nowrap">
+                            <span className="text-incorrect">-{o.risk}</span>{' '}
+                            <span className="text-text-muted">→</span>{' '}
+                            <span className="text-correct">+{o.reward}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                  </div>
+                  <p className="text-sm text-text-secondary mt-4 leading-relaxed">Predict champions, MVPs, and tournament winners across every sport — including golf majors. Big risk, big reward.</p>
                 </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20">
-                    <span className="text-sm font-semibold text-text-primary">Boston Celtics</span>
-                    <span className="text-xs font-semibold"><span className="text-incorrect">-10</span> <span className="text-text-muted">→</span> <span className="text-correct">+14</span></span>
-                  </div>
-                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20">
-                    <span className="text-sm font-semibold text-text-primary">OKC Thunder</span>
-                    <span className="text-xs font-semibold"><span className="text-incorrect">-10</span> <span className="text-text-muted">→</span> <span className="text-correct">+18</span></span>
-                  </div>
-                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20">
-                    <span className="text-sm font-semibold text-text-primary">Cleveland Cavaliers</span>
-                    <span className="text-xs font-semibold"><span className="text-incorrect">-10</span> <span className="text-text-muted">→</span> <span className="text-correct">+22</span></span>
-                  </div>
-                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-text-primary/20 bg-black/20 opacity-50">
-                    <span className="text-sm font-semibold text-text-primary">New York Knicks</span>
-                    <span className="text-xs font-semibold"><span className="text-incorrect">-10</span> <span className="text-text-muted">→</span> <span className="text-correct">+30</span></span>
-                  </div>
-                </div>
-                {/* Fade-out effect at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-              </div>
-              <p className="text-sm text-text-secondary mt-4 leading-relaxed">Predict champions, MVPs, and tournament winners across every sport — including golf majors. Big risk, big reward.</p>
-            </div>
+              )
+            })()}
           </div>
 
           {/* Scoring explainer */}
