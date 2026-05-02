@@ -186,7 +186,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 py-8"
+      className="fixed inset-0 z-50 bg-black/60 flex items-stretch md:items-center justify-center md:px-4 md:py-8"
       onClick={onClose}
       onTouchMove={(e) => {
         // Prevent background scroll on iOS — only allow scroll inside the modal content
@@ -195,7 +195,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
     >
       <div
         ref={contentRef}
-        className="bg-bg-primary border border-text-primary/20 w-full max-w-xl rounded-2xl max-h-full overflow-y-auto overscroll-contain"
+        className="bg-bg-primary border border-text-primary/20 w-full md:max-w-xl rounded-none md:rounded-2xl h-full md:h-auto md:max-h-full overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
