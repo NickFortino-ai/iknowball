@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
+import UserProfileModal from '../profile/UserProfileModal'
 
 function todayLocal() {
   return new Date().toLocaleDateString('en-CA')
@@ -84,6 +85,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
   const [selected, setSelected] = useState([])
   const [search, setSearch] = useState('')
   const [standingsUserId, setStandingsUserId] = useState(null)
+  const [profileUserId, setProfileUserId] = useState(null)
   const [initialized, setInitialized] = useState(false)
   const [initDate, setInitDate] = useState(null)
   const [editing, setEditing] = useState(false)
@@ -207,13 +209,20 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
               const isExpanded = standingsUserId === s.user?.id
               return (
                 <div key={s.user?.id} className="border-b border-text-primary/10 last:border-b-0">
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setStandingsUserId(isExpanded ? null : s.user?.id)}
                     className={`w-full grid grid-cols-[1.5rem_1fr_3rem] lg:grid-cols-[2rem_1fr_3.5rem] gap-1.5 lg:gap-3 px-3 lg:px-5 py-3.5 lg:py-4 items-center text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
                   >
                     <span className={`font-display text-lg lg:text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
                     <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                      <Avatar user={s.user} size="md" className="lg:!w-10 lg:!h-10" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setProfileUserId(s.user?.id) }}
+                        className="shrink-0"
+                      >
+                        <Avatar user={s.user} size="md" className="lg:!w-10 lg:!h-10" />
+                      </button>
                       <span className={`font-bold truncate text-sm lg:text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
                         {s.user?.display_name || s.user?.username}
                       </span>
@@ -222,7 +231,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       </svg>
                     </div>
                     <span className="font-display text-lg lg:text-xl text-white text-right">{s.totalHRs}</span>
-                  </button>
+                  </div>
                   {isExpanded && (() => {
                     const todayPicks = (s.picks || []).filter((p) => p.game_date === today)
                     const weekAgo = new Date()
@@ -297,6 +306,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             })}
           </div>
         )}
+        {profileUserId && <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />}
       </div>
     )
   }

@@ -1,7 +1,7 @@
 import EmptyState from '../ui/EmptyState'
 import Avatar from '../ui/Avatar'
 
-export default function BracketStandings({ entries, championshipTotalScore, onViewBracket, isCompleted }) {
+export default function BracketStandings({ entries, championshipTotalScore, onViewBracket, onUserTap, isCompleted }) {
   if (!entries?.length) {
     return <EmptyState title="No entries yet" message="No one has submitted a bracket yet" />
   }
@@ -36,7 +36,16 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
                   <td className="px-3 py-3 text-accent font-semibold">{i + 1}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Avatar user={e.users} size="lg" />
+                      {onUserTap ? (
+                        <button
+                          onClick={(ev) => { ev.stopPropagation(); onUserTap(e.user_id) }}
+                          className="shrink-0"
+                        >
+                          <Avatar user={e.users} size="lg" />
+                        </button>
+                      ) : (
+                        <Avatar user={e.users} size="lg" />
+                      )}
                       <span className="font-semibold truncate max-w-[140px] sm:max-w-none">
                         {e.users?.display_name || e.users?.username}
                       </span>

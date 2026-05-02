@@ -10,6 +10,7 @@ import BracketDisplay from './BracketDisplay'
 import BracketPicker from './BracketPicker'
 import BracketStandings from './BracketStandings'
 import SeriesDetailModal from './SeriesDetailModal'
+import UserProfileModal from '../profile/UserProfileModal'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import EmptyState from '../ui/EmptyState'
 import { toast } from '../ui/Toast'
@@ -33,6 +34,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
 
   const [showPicker, setShowPicker] = useState(!!savedDraft)
   const [viewingUserId, setViewingUserId] = useState(null)
+  const [profileUserId, setProfileUserId] = useState(null)
   const [hasDefaulted, setHasDefaulted] = useState(false)
   const [seriesMatchup, setSeriesMatchup] = useState(null)
   const viewTab = tab
@@ -455,7 +457,12 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
             setViewingUserId(userId)
             onTabChange?.('bracket')
           } : null}
+          onUserTap={setProfileUserId}
         />
+      )}
+
+      {profileUserId && (
+        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
       )}
 
       {seriesMatchup && (

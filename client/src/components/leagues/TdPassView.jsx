@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
+import UserProfileModal from '../profile/UserProfileModal'
 import { toast } from '../ui/Toast'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
@@ -24,6 +25,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
   const submit = useSubmitTdPassPick()
 
   const [search, setSearch] = useState('')
+  const [expandedUserId, setExpandedUserId] = useState(null)
   const [profileUserId, setProfileUserId] = useState(null)
   const [usedOpen, setUsedOpen] = useState(false)
 
@@ -73,16 +75,23 @@ export default function TdPassView({ league, tab = 'picks' }) {
             </div>
             {standings.map((s) => {
               const isMe = s.user?.id === profile?.id
-              const isExpanded = profileUserId === s.user?.id
+              const isExpanded = expandedUserId === s.user?.id
               return (
                 <div key={s.user?.id} className="border-b border-text-primary/10 last:border-b-0">
-                  <button
-                    onClick={() => setProfileUserId(isExpanded ? null : s.user?.id)}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setExpandedUserId(isExpanded ? null : s.user?.id)}
                     className={`w-full grid grid-cols-[2rem_1fr_4rem] lg:grid-cols-[2.5rem_1fr_4.5rem] gap-2 px-4 lg:px-5 py-3.5 lg:py-4 items-center text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
                   >
                     <span className={`font-display text-lg lg:text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
                     <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                      <Avatar user={s.user} size="md" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setProfileUserId(s.user?.id) }}
+                        className="shrink-0"
+                      >
+                        <Avatar user={s.user} size="md" />
+                      </button>
                       <span className={`font-bold truncate text-sm lg:text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
                         {s.user?.display_name || s.user?.username}
                       </span>
@@ -91,7 +100,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                       </svg>
                     </div>
                     <span className="font-display text-lg lg:text-xl text-white text-right">{s.totalTds}</span>
-                  </button>
+                  </div>
                   {isExpanded && (
                     <div className="px-4 lg:px-5 pb-3">
                       {!s.history?.length ? (
@@ -122,6 +131,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
             })}
           </div>
         )}
+        {profileUserId && <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />}
       </div>
     )
   }
