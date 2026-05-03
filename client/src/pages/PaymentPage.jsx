@@ -283,23 +283,6 @@ export default function PaymentPage() {
           </ul>
         </div>
 
-        {/* Scoring examples */}
-        <div className="text-[10px] text-text-muted uppercase tracking-wider text-center mb-2">How picks are scored</div>
-        <div className="grid grid-cols-3 gap-2 mb-6">
-          <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3 text-center">
-            <div className="font-display text-xl text-correct">+20</div>
-            <div className="text-text-primary/70 text-xs">Underdog win</div>
-          </div>
-          <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3 text-center">
-            <div className="font-display text-xl text-accent">+4</div>
-            <div className="text-text-primary/70 text-xs">Favorite win</div>
-          </div>
-          <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3 text-center">
-            <div className="font-display text-xl text-incorrect">-10</div>
-            <div className="text-text-primary/70 text-xs">Wrong pick</div>
-          </div>
-        </div>
-
         {/* Plan toggle */}
         <div className="flex gap-2 mb-5">
           <button
