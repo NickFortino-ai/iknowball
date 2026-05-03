@@ -223,7 +223,7 @@ function FAQItem({ q, a }) {
         </svg>
       </button>
       {open && (
-        <div className="pb-4 text-sm text-text-secondary whitespace-pre-line leading-relaxed" dangerouslySetInnerHTML={{ __html: a }} />
+        <div className="pb-4 text-sm text-text-primary whitespace-pre-line leading-relaxed" dangerouslySetInnerHTML={{ __html: a }} />
       )}
     </div>
   )
