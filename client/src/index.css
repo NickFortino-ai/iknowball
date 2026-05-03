@@ -54,6 +54,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0.7);
 }
 
+/* iOS Safari reserves space for a native calendar/clock stub on date/time
+   inputs that bleeds outside our styled border. Strip native appearance so
+   the field renders as a clean themed box. */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* Hide horizontal scrollbars globally — content still scrollable via touch/trackpad */
 .overflow-x-auto, .overflow-x-scroll {
   -ms-overflow-style: none;

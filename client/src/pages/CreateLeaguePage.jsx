@@ -1392,7 +1392,7 @@ export default function CreateLeaguePage() {
                 type="datetime-local"
                 value={draftDate}
                 onChange={(e) => setDraftDate(e.target.value)}
-                className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent appearance-none [-webkit-appearance:none]"
               />
               <p className="text-[10px] text-text-muted mt-1">
                 {draftMode === 'live'
