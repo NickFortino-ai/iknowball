@@ -21,7 +21,7 @@ export default function InjuryBadge({ status, className = '' }) {
   if (!status) return null
   return (
     <span
-      className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'} ${className}`}
+      className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'} ${className}`}
       title={status}
     >
       {shortLabel(status)}

@@ -186,7 +186,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-stretch md:items-center justify-center md:px-4 md:py-8"
+      className="fixed inset-0 z-[60] bg-black/60 flex items-stretch md:items-center justify-center md:px-4 md:py-8"
       onClick={onClose}
       onTouchMove={(e) => {
         // Prevent background scroll on iOS — only allow scroll inside the modal content
@@ -199,7 +199,10 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
-        <div className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-end z-10 rounded-t-2xl">
+        <div
+          className="sticky top-0 bg-bg-primary border-b border-text-primary/10 px-4 py-3 flex items-center justify-end z-10 rounded-t-2xl"
+          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+        >
           <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

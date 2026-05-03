@@ -12,7 +12,7 @@ function InjuryBadge({ status }) {
   }
   const label = status === 'Day-To-Day' ? 'DTD' : status.charAt(0)
   return (
-    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${colors[status] || 'bg-text-primary/10 text-text-muted'}`} title={status}>
+    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${colors[status] || 'bg-text-primary/10 text-text-muted'}`} title={status}>
       {label}
     </span>
   )
