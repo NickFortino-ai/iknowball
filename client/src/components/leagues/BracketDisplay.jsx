@@ -738,7 +738,7 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
   // Desktop horizontal view — break out of parent max-w container to use full viewport width
   return (
     <div
-      className={`md:w-[calc(100vw-3rem)] ${useFacing ? '' : 'md:max-w-[1400px]'} md:-ml-[calc((100vw-3rem-100%)/2)] md:self-center`}
+      className={`xl:w-[calc(100vw-3rem)] ${useFacing ? '' : 'xl:max-w-[1400px]'} xl:-ml-[calc((100vw-3rem-100%)/2)] xl:self-center`}
     >
       {/* Region tabs */}
       {showRegionTabs && (

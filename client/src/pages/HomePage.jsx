@@ -711,7 +711,7 @@ export default function HomePage() {
           Status Tiers
           <InfoTooltip text="Your status is based on your lifetime point total. Earn points by picking winners and winning leagues. Every wrong pick costs points. Climb from Rookie to GOAT." />
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
           {tiers.map((tier) => (
             <div
               key={tier.name}
