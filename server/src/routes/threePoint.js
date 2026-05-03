@@ -298,6 +298,7 @@ router.get('/standings', async (req, res) => {
     for (const r of salaryRows || []) injuryByEspnId[r.espn_player_id] = r.injury_status
   }
 
+  const now = Date.now()
   const userMap = {}
   for (const uid of allMemberIds) userMap[uid] = { totalThrees: 0, picks: [] }
   for (const p of (picks || [])) {
@@ -305,16 +306,20 @@ router.get('/standings', async (req, res) => {
     userMap[p.user_id].totalThrees += p.made_threes || 0
     const isToday = p.game_date === today
     const g = isToday ? stateByTeam[(p.team || '').toUpperCase()] : null
+    const isLive = !isToday || g?.state === 'in' || g?.state === 'post' ||
+      (g?.startsAt && new Date(g.startsAt).getTime() <= now)
+    const hideFromOpponent = !isLive && p.user_id !== req.user.id
     userMap[p.user_id].picks.push({
-      player_name: p.player_name,
-      team: p.team,
-      headshot_url: p.headshot_url,
+      player_name: hideFromOpponent ? null : p.player_name,
+      team: hideFromOpponent ? null : p.team,
+      headshot_url: hideFromOpponent ? null : p.headshot_url,
       made_threes: p.made_threes || 0,
       game_date: p.game_date,
       game_state: g?.state || null,
       game_period: g?.period || null,
       game_starts_at: g?.startsAt || null,
-      injury_status: isToday ? (injuryByEspnId[p.espn_player_id] || null) : null,
+      injury_status: hideFromOpponent ? null : (isToday ? (injuryByEspnId[p.espn_player_id] || null) : null),
+      hidden: hideFromOpponent,
     })
   }
 

@@ -108,7 +108,20 @@ export default function TdPassView({ league, tab = 'picks' }) {
                         <p className="text-xs text-text-muted text-center py-2">No picks yet</p>
                       ) : (
                         <div className="space-y-1.5">
-                          {s.history.map((pick, i) => (
+                          {s.history.map((pick, i) => pick.hidden ? (
+                            <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/15 border border-text-primary/10 border-dashed rounded-lg px-2.5 lg:px-4 py-2 lg:py-2.5">
+                              <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-bg-secondary/40 shrink-0 flex items-center justify-center text-text-muted">
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs lg:text-sm italic text-text-muted">Hidden until kickoff</div>
+                                <div className="text-[10px] lg:text-xs text-text-muted">Week {pick.week}</div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-display text-sm lg:text-base text-text-muted">— TD</span>
+                              </div>
+                            </div>
+                          ) : (
                             <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/30 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-2.5">
                               {pick.headshot_url && (
                                 <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-9 lg:h-9 rounded-full object-cover bg-bg-secondary shrink-0"

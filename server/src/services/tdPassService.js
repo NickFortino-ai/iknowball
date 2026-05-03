@@ -442,12 +442,15 @@ export async function submitPick(leagueId, userId, qbPlayerId) {
 /**
  * Standings = total accumulated passing TDs across all picks per user.
  */
-export async function getStandings(leagueId) {
+export async function getStandings(leagueId, viewerUserId) {
   const { data: picks } = await supabase
     .from('td_pass_picks')
     .select('user_id, week, qb_name, team, headshot_url, td_count')
     .eq('league_id', leagueId)
     .order('week', { ascending: true })
+
+  const { week: currentWeek } = await getCurrentNflWeek()
+  const lockedTeams = await getLockedTeamSet()
 
   const totals = {}
   const userPicks = {}
@@ -456,12 +459,16 @@ export async function getStandings(leagueId) {
     totals[p.user_id].totalTds += p.td_count || 0
     totals[p.user_id].picks += 1
     if (!userPicks[p.user_id]) userPicks[p.user_id] = []
+    const isPastWeek = p.week < currentWeek
+    const isLive = isPastWeek || lockedTeams.has(p.team)
+    const hideFromOpponent = !isLive && p.user_id !== viewerUserId
     userPicks[p.user_id].push({
       week: p.week,
-      qb_name: p.qb_name,
-      team: p.team,
-      headshot_url: p.headshot_url,
+      qb_name: hideFromOpponent ? null : p.qb_name,
+      team: hideFromOpponent ? null : p.team,
+      headshot_url: hideFromOpponent ? null : p.headshot_url,
       td_count: p.td_count || 0,
+      hidden: hideFromOpponent,
     })
   }
 

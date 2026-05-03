@@ -294,6 +294,7 @@ router.get('/standings', async (req, res) => {
     for (const r of salaryRows || []) injuryByEspnId[r.espn_player_id] = r.injury_status
   }
 
+  const now = Date.now()
   const userMap = {}
   for (const uid of allMemberIds) {
     userMap[uid] = { totalHRs: 0, picks: [] }
@@ -303,16 +304,22 @@ router.get('/standings', async (req, res) => {
     userMap[p.user_id].totalHRs += p.home_runs || 0
     const isToday = p.game_date === today
     const g = isToday ? stateByTeam[(p.team || '').toUpperCase()] : null
+    // Hide today's pick from opponents until the player's game has started.
+    // Past-date picks stay visible (games already played).
+    const isLive = !isToday || g?.state === 'in' || g?.state === 'post' ||
+      (g?.startsAt && new Date(g.startsAt).getTime() <= now)
+    const hideFromOpponent = !isLive && p.user_id !== req.user.id
     userMap[p.user_id].picks.push({
-      player_name: p.player_name,
-      team: p.team,
-      headshot_url: p.headshot_url,
+      player_name: hideFromOpponent ? null : p.player_name,
+      team: hideFromOpponent ? null : p.team,
+      headshot_url: hideFromOpponent ? null : p.headshot_url,
       home_runs: p.home_runs || 0,
       game_date: p.game_date,
       game_state: g?.state || null,
       game_period: g?.period || null,
       game_starts_at: g?.startsAt || null,
-      injury_status: isToday ? (injuryByEspnId[p.espn_player_id] || null) : null,
+      injury_status: hideFromOpponent ? null : (isToday ? (injuryByEspnId[p.espn_player_id] || null) : null),
+      hidden: hideFromOpponent,
     })
   }
 

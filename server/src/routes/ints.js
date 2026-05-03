@@ -264,18 +264,25 @@ router.get('/standings', async (req, res) => {
     .eq('league_id', league_id)
     .order('week', { ascending: false })
 
+  const { week: currentWeek } = await getCurrentNflWeek()
+  const lockedTeams = await getLockedTeamSet()
+
   const userMap = {}
   for (const uid of allMemberIds) userMap[uid] = { totalInts: 0, picks: [] }
   for (const p of (picks || [])) {
     if (!userMap[p.user_id]) userMap[p.user_id] = { totalInts: 0, picks: [] }
     userMap[p.user_id].totalInts += Number(p.ints) || 0
+    const isPastWeek = p.week < currentWeek
+    const isLive = isPastWeek || lockedTeams.has(p.team)
+    const hideFromOpponent = !isLive && p.user_id !== req.user.id
     userMap[p.user_id].picks.push({
       week: p.week,
-      player_name: p.player_name,
-      position: p.position,
-      team: p.team,
-      headshot_url: p.headshot_url,
+      player_name: hideFromOpponent ? null : p.player_name,
+      position: hideFromOpponent ? null : p.position,
+      team: hideFromOpponent ? null : p.team,
+      headshot_url: hideFromOpponent ? null : p.headshot_url,
       ints: Number(p.ints) || 0,
+      hidden: hideFromOpponent,
     })
   }
 

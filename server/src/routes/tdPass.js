@@ -80,7 +80,7 @@ router.get('/standings', async (req, res, next) => {
   try {
     const { league_id } = req.query
     if (!league_id) return res.status(400).json({ error: 'league_id required' })
-    const data = await getStandings(league_id)
+    const data = await getStandings(league_id, req.user.id)
     res.json(data)
   } catch (err) {
     next(err)
