@@ -148,6 +148,8 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
     return players.filter((p) => {
       if (selectedIds.has(p.espn_player_id)) return false
       if (p.injury_status === 'Out') return false
+      // Pitchers we know aren't starting today are useless to pick.
+      if (p.lineup_status === 'not_starting') return false
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
       if (gameStarted) return false
       if (search) {
@@ -252,7 +254,18 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                           <p className="text-xs text-text-muted text-center py-2">No picks today</p>
                         ) : (
                           <div className="space-y-1.5">
-                            {todayPicks.map((pick, i) => (
+                            {todayPicks.map((pick, i) => pick.hidden ? (
+                              <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/5 border border-text-primary/10 border-dashed rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
+                                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-bg-secondary/40 shrink-0 flex items-center justify-center text-text-muted">
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs lg:text-sm italic text-text-muted">Hidden until first pitch</div>
+                                  <GameStatusBadge gameState={pick.game_state} gamePeriod={pick.game_period} gameStartsAt={pick.game_starts_at} />
+                                </div>
+                                <span className="font-display text-sm lg:text-base shrink-0 text-text-muted">— Ks</span>
+                              </div>
+                            ) : (
                               <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
                                 {pick.headshot_url && (
                                   <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
@@ -366,6 +379,11 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
+                        {(poolEntry?.lineup_status === 'confirmed' || player.lineup_status === 'confirmed') && (
+                          <span title="Confirmed starting pitcher" className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-correct text-white">
+                            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          </span>
+                        )}
                         <InjuryBadge status={injuryStatus} />
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
@@ -484,7 +502,14 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                        {player.lineup_status === 'confirmed' && (
+                          <span title="Confirmed starting pitcher" className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-correct text-white">
+                            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-text-muted">
                         {player.position} · {player.team} · {player.opponent}
                         {isUsedElsewhere && <span className="ml-1">· Used this week</span>}
