@@ -287,11 +287,6 @@ export default function HomePage() {
     }
   }, [forceHeadlines])
 
-  // Redirect authenticated but unpaid users to payment
-  if (isAuthenticated && profile && !profile.is_paid) {
-    return <Navigate to="/payment" replace />
-  }
-
   const HERO_IMAGES = [
     'nba-msg.webp',
     'nfl-lambeau.webp',
@@ -323,6 +318,14 @@ export default function HomePage() {
   const { data: landingPreview } = useLandingPreview()
   const previewMlb = landingPreview?.mlbGame
   const previewFutures = landingPreview?.nbaFutures
+
+  // Redirect authenticated but unpaid users to payment.
+  // Must come AFTER all hooks above — early returning before later hooks
+  // causes a "rendered fewer hooks than expected" error (React #300) when
+  // is_paid flips from true to false between renders.
+  if (isAuthenticated && profile && !profile.is_paid) {
+    return <Navigate to="/payment" replace />
+  }
 
   return (
     <div>
