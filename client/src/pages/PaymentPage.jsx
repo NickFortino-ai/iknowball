@@ -243,56 +243,84 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-bg-card rounded-2xl p-8 border border-border">
-        <h1 className="font-display text-3xl text-center mb-2">I KNOW BALL</h1>
-        <p className="text-text-secondary text-center mb-6">
-          Subscribe to compete, climb the leaderboard, and prove you know ball.
+    <div className="min-h-screen flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md bg-bg-primary rounded-2xl p-7 border border-text-primary/20">
+        <h1 className="font-display text-4xl text-center text-text-primary mb-2 tracking-wide">I KNOW BALL</h1>
+        <p className="text-text-primary/80 text-center text-sm mb-6 leading-relaxed">
+          The all-in-one sports platform for people who live and breathe sports.
         </p>
 
         {(error || status === 'cancelled') && (
-          <div className="bg-incorrect-muted border border-incorrect rounded-lg p-3 mb-6 text-sm text-incorrect">
+          <div className="bg-incorrect/10 border border-incorrect rounded-lg p-3 mb-5 text-sm text-incorrect">
             {error || 'Payment was cancelled. Try again when you\'re ready.'}
           </div>
         )}
 
+        {/* What you get */}
+        <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-4 mb-5">
+          <div className="font-display text-sm text-accent uppercase tracking-wider mb-3">What you get</div>
+          <ul className="space-y-2 text-sm text-text-primary">
+            <li className="flex gap-2.5">
+              <span className="text-accent shrink-0 mt-0.5">●</span>
+              <span><span className="font-semibold">Live picks</span> across NFL, NBA, MLB, NHL, college, golf — scored by Vegas odds in real time.</span>
+            </li>
+            <li className="flex gap-2.5">
+              <span className="text-accent shrink-0 mt-0.5">●</span>
+              <span><span className="font-semibold">14+ league formats</span> — fantasy football, daily fantasy, HR Derby, 3-Point Contest, Sacks, Survivor, Brackets, Squares, and more.</span>
+            </li>
+            <li className="flex gap-2.5">
+              <span className="text-accent shrink-0 mt-0.5">●</span>
+              <span><span className="font-semibold">Global leaderboard</span> climbing from Rookie to GOAT — every pick counts toward your tier forever.</span>
+            </li>
+            <li className="flex gap-2.5">
+              <span className="text-accent shrink-0 mt-0.5">●</span>
+              <span><span className="font-semibold">Trophy case + records</span> for every league you win and every milestone you hit.</span>
+            </li>
+            <li className="flex gap-2.5">
+              <span className="text-accent shrink-0 mt-0.5">●</span>
+              <span><span className="font-semibold">Zero ads, zero data sales.</span> Your subscription is the product — not you.</span>
+            </li>
+          </ul>
+        </div>
+
         {/* Scoring examples */}
+        <div className="text-[10px] text-text-muted uppercase tracking-wider text-center mb-2">How picks are scored</div>
         <div className="grid grid-cols-3 gap-2 mb-6">
-          <div className="bg-bg-primary rounded-xl border border-border p-3 text-center">
+          <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3 text-center">
             <div className="font-display text-xl text-correct">+20</div>
-            <div className="text-text-muted text-xs">Underdog win</div>
+            <div className="text-text-primary/70 text-xs">Underdog win</div>
           </div>
-          <div className="bg-bg-primary rounded-xl border border-border p-3 text-center">
+          <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3 text-center">
             <div className="font-display text-xl text-accent">+4</div>
-            <div className="text-text-muted text-xs">Favorite win</div>
+            <div className="text-text-primary/70 text-xs">Favorite win</div>
           </div>
-          <div className="bg-bg-primary rounded-xl border border-border p-3 text-center">
+          <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-3 text-center">
             <div className="font-display text-xl text-incorrect">-10</div>
-            <div className="text-text-muted text-xs">Wrong pick</div>
+            <div className="text-text-primary/70 text-xs">Wrong pick</div>
           </div>
         </div>
 
         {/* Plan toggle */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-5">
           <button
             onClick={() => setPlan('monthly')}
             className={`flex-1 py-3 rounded-xl text-center transition-all ${
               plan === 'monthly'
                 ? 'bg-accent/10 border-2 border-accent'
-                : 'bg-bg-primary border border-border hover:border-text-primary/30'
+                : 'bg-bg-primary border border-text-primary/20 hover:border-text-primary/40'
             }`}
           >
             <div className="font-display text-lg text-text-primary">
               {isNative ? products.monthly?.priceString || '$0.99' : '$1'}
             </div>
-            <div className="text-xs text-text-muted">per month</div>
+            <div className="text-xs text-text-primary/70">per month</div>
           </button>
           <button
             onClick={() => setPlan('yearly')}
             className={`flex-1 py-3 rounded-xl text-center transition-all relative ${
               plan === 'yearly'
                 ? 'bg-accent/10 border-2 border-accent'
-                : 'bg-bg-primary border border-border hover:border-text-primary/30'
+                : 'bg-bg-primary border border-text-primary/20 hover:border-text-primary/40'
             }`}
           >
             <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-correct text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -301,7 +329,7 @@ export default function PaymentPage() {
             <div className="font-display text-lg text-text-primary">
               {isNative ? products.yearly?.priceString || '$9.99' : '$10'}
             </div>
-            <div className="text-xs text-text-muted">per year</div>
+            <div className="text-xs text-text-primary/70">per year</div>
           </button>
         </div>
 
@@ -318,7 +346,7 @@ export default function PaymentPage() {
         </button>
 
         {/* Auto-renewal disclosure */}
-        <p className="text-[10px] text-text-muted text-center mb-2 leading-relaxed">
+        <p className="text-[10px] text-text-primary/60 text-center mb-2 leading-relaxed">
           {isNative
             ? 'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in Settings > Apple ID > Subscriptions.'
             : `Your subscription will auto-renew at ${plan === 'yearly' ? '$10.00/year' : '$1.00/month'} until cancelled. You can manage or cancel anytime from your account settings.`
@@ -326,7 +354,7 @@ export default function PaymentPage() {
         </p>
 
         {/* Terms + Privacy links (required by Apple guideline 3.1.2 for auto-renewing subscriptions) */}
-        <p className="text-[10px] text-text-muted text-center mb-4 leading-relaxed">
+        <p className="text-[10px] text-text-primary/60 text-center mb-4 leading-relaxed">
           By subscribing you agree to our{' '}
           <a href="https://iknowball.club/terms" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Terms of Use</a>
           {' '}and{' '}
@@ -338,7 +366,7 @@ export default function PaymentPage() {
           <button
             onClick={handleRestore}
             disabled={restoringPurchase}
-            className="w-full text-text-secondary hover:text-text-primary text-sm transition-colors mb-2"
+            className="w-full text-text-primary/80 hover:text-text-primary text-sm transition-colors mb-2"
           >
             {restoringPurchase ? 'Restoring...' : 'Restore Purchase'}
           </button>
@@ -349,7 +377,7 @@ export default function PaymentPage() {
           !showPromo ? (
             <button
               onClick={() => setShowPromo(true)}
-              className="w-full text-text-secondary hover:text-text-primary text-sm transition-colors"
+              className="w-full text-text-primary/80 hover:text-text-primary text-sm transition-colors"
             >
               Have a promo code?
             </button>
@@ -361,7 +389,7 @@ export default function PaymentPage() {
                 onChange={(e) => setPromoCode(e.target.value)}
                 placeholder="Enter code"
                 required
-                className="flex-1 bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors"
+                className="flex-1 bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors"
               />
               <button
                 type="submit"
@@ -375,9 +403,9 @@ export default function PaymentPage() {
         )}
 
         {/* Why we charge */}
-        <div className="mt-6 pt-5 border-t border-text-primary/10">
-          <p className="text-xs text-text-muted leading-relaxed">
-            <span className="text-text-secondary font-semibold">Why do we charge?</span> If you're not paying for the product, you are the product. IKB runs zero ads and shares nothing about you with anyone. It costs real money to run live odds, real-time scoring, and fantasy leagues — so instead of selling your data, we charge a dollar a month. The people behind IKB are devoted to one thing: building the best fantasy and sports prediction app ever made.
+        <div className="mt-6 pt-5 border-t border-text-primary/15">
+          <p className="text-xs text-text-primary/85 leading-relaxed">
+            <span className="text-text-primary font-display text-sm">Why we charge.</span> If you're not paying for the product, you are the product. IKB runs zero ads and shares nothing about you with anyone. We charge a dollar a month so we can build the best fantasy and sports prediction app ever made — without selling your data to do it.
           </p>
         </div>
       </div>
