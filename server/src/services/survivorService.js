@@ -1086,17 +1086,19 @@ async function checkSurvivorWinner(leagueId) {
   if (aliveMembers.length === 1 && !bonusExists) {
     const winnerId = aliveMembers[0].user_id
 
-    // Don't declare a winner if their current pick is still pending — their game
-    // hasn't finished yet and they could still lose. Wait for the pick to settle.
-    const { data: pendingPicks } = await supabase
+    // Don't declare a winner if their current pick is still unsettled. A pick
+    // can be 'pending' (game not started) or 'locked' (game in progress) —
+    // both mean the outcome is still TBD. Only 'survived' or 'survived_wrong'
+    // means the pick is resolved in the winner's favor.
+    const { data: unsettledPicks } = await supabase
       .from('survivor_picks')
       .select('id')
       .eq('league_id', leagueId)
       .eq('user_id', winnerId)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'locked'])
       .limit(1)
 
-    if (pendingPicks?.length > 0) {
+    if (unsettledPicks?.length > 0) {
       logger.info({ leagueId, winnerId }, 'Last survivor standing has unsettled pick — waiting before declaring winner')
       return
     }
