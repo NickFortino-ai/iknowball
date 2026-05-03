@@ -297,9 +297,9 @@ router.get('/standings', async (req, res) => {
       headshot_url: hideFromOpponent ? null : p.headshot_url,
       strikeouts: p.strikeouts || 0,
       game_date: p.game_date,
-      game_state: g?.state || null,
-      game_period: g?.period || null,
-      game_starts_at: g?.startsAt || null,
+      game_state: hideFromOpponent ? null : (g?.state || null),
+      game_period: hideFromOpponent ? null : (g?.period || null),
+      game_starts_at: hideFromOpponent ? null : (g?.startsAt || null),
       injury_status: hideFromOpponent ? null : (isToday ? (injuryByEspnId[p.espn_player_id] || null) : null),
       hidden: hideFromOpponent,
     })

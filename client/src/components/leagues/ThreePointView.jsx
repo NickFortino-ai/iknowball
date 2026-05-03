@@ -255,7 +255,6 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-xs lg:text-sm italic text-text-muted">Hidden until tip-off</div>
-                                  <GameStatusBadge gameState={pick.game_state} gamePeriod={pick.game_period} gameStartsAt={pick.game_starts_at} />
                                 </div>
                                 <span className="font-display shrink-0 flex items-baseline gap-1">
                                   <span className="text-sm lg:text-base text-text-muted">—</span>

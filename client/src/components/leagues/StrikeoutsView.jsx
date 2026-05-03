@@ -261,7 +261,6 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-xs lg:text-sm italic text-text-muted">Hidden until first pitch</div>
-                                  <GameStatusBadge gameState={pick.game_state} gamePeriod={pick.game_period} gameStartsAt={pick.game_starts_at} />
                                 </div>
                                 <span className="font-display text-sm lg:text-base shrink-0 text-text-muted">— Ks</span>
                               </div>
