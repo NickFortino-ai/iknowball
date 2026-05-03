@@ -642,19 +642,30 @@ export default function SettingsPage() {
                 <span className="text-sm text-text-secondary">{new Date(profile.subscription_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
             )}
-            <button
-              onClick={async () => {
-                try {
-                  const { url } = await api.post('/payments/create-portal-session')
-                  window.location.href = url
-                } catch {
-                  toast('Failed to open subscription management', 'error')
-                }
-              }}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold border border-accent text-accent hover:bg-accent/10 transition-colors"
-            >
-              Manage Subscription
-            </button>
+            {Capacitor.isNativePlatform() ? (
+              <button
+                onClick={() => {
+                  window.location.href = 'itms-apps://apps.apple.com/account/subscriptions'
+                }}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold border border-accent text-accent hover:bg-accent/10 transition-colors"
+              >
+                Manage Subscription
+              </button>
+            ) : (
+              <button
+                onClick={async () => {
+                  try {
+                    const { url } = await api.post('/payments/create-portal-session')
+                    window.location.href = url
+                  } catch {
+                    toast('Failed to open subscription management', 'error')
+                  }
+                }}
+                className="w-full py-2.5 rounded-lg text-sm font-semibold border border-accent text-accent hover:bg-accent/10 transition-colors"
+              >
+                Manage Subscription
+              </button>
+            )}
           </div>
         ) : (
           <div className="text-sm text-text-muted">No active subscription</div>
