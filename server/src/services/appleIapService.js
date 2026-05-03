@@ -7,7 +7,7 @@ import { logger } from '../utils/logger.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const CERTS_DIR = join(__dirname, '../../certs')
-const PRODUCT_ID = 'com.iknowball.app.yearly'
+const PRODUCT_IDS = ['com.iknowball.app.monthly', 'com.iknowball.app.yearly']
 
 let verifier = null
 
@@ -36,8 +36,8 @@ export async function verifyTransaction(jwsString) {
     throw new Error(`Bundle ID mismatch: expected ${env.APPLE_BUNDLE_ID}, got ${decoded.bundleId}`)
   }
 
-  if (decoded.productId !== PRODUCT_ID) {
-    throw new Error(`Product ID mismatch: expected ${PRODUCT_ID}, got ${decoded.productId}`)
+  if (!PRODUCT_IDS.includes(decoded.productId)) {
+    throw new Error(`Product ID mismatch: expected one of ${PRODUCT_IDS.join(', ')}, got ${decoded.productId}`)
   }
 
   return decoded

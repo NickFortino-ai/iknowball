@@ -1,40 +1,45 @@
 import { Capacitor } from '@capacitor/core'
 import { NativePurchases } from '@capgo/native-purchases'
 
-const PRODUCT_ID = 'com.iknowball.app.yearly'
+const PRODUCT_IDS = {
+  monthly: 'com.iknowball.app.monthly',
+  yearly: 'com.iknowball.app.yearly',
+}
 const PENDING_TX_KEY = 'pendingAppleTransaction'
 
 export function isIAPAvailable() {
   return Capacitor.isNativePlatform()
 }
 
-export async function getSeasonAccessProduct() {
-  if (!isIAPAvailable()) return null
+export async function getSubscriptionProducts() {
+  if (!isIAPAvailable()) return { monthly: null, yearly: null }
   try {
-    console.log('[IAP] Fetching product:', PRODUCT_ID)
-    const result = await NativePurchases.getProducts({ productIdentifiers: [PRODUCT_ID] })
-    console.log('[IAP] getProducts result:', JSON.stringify(result))
-    const { products } = result
-    if (products.length === 0) {
-      console.warn('[IAP] No products returned for', PRODUCT_ID)
+    const result = await NativePurchases.getProducts({
+      productIdentifiers: [PRODUCT_IDS.monthly, PRODUCT_IDS.yearly],
+    })
+    const products = result.products || []
+    return {
+      monthly: products.find((p) => p.identifier === PRODUCT_IDS.monthly) || null,
+      yearly: products.find((p) => p.identifier === PRODUCT_IDS.yearly) || null,
     }
-    return products.length > 0 ? products[0] : null
   } catch (err) {
     console.error('[IAP] getProducts error:', err)
-    return null
+    return { monthly: null, yearly: null }
   }
 }
 
-export async function purchaseSeasonAccess() {
-  const { transactions } = await NativePurchases.purchaseProduct({ productIdentifier: PRODUCT_ID })
+export async function purchaseSubscription(plan) {
+  const productId = PRODUCT_IDS[plan]
+  if (!productId) throw new Error(`Invalid plan: ${plan}`)
+  const { transactions } = await NativePurchases.purchaseProduct({ productIdentifier: productId })
   return transactions && transactions.length > 0 ? transactions[0] : null
 }
 
-export async function restoreSeasonAccess() {
+export async function restoreSubscription() {
   const { transactions } = await NativePurchases.restorePurchases()
   if (!transactions || transactions.length === 0) return null
-  // Find the season access transaction
-  const match = transactions.find((t) => t.productIdentifier === PRODUCT_ID)
+  const validIds = new Set(Object.values(PRODUCT_IDS))
+  const match = transactions.find((t) => validIds.has(t.productIdentifier))
   return match || transactions[0]
 }
 

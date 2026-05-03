@@ -5,9 +5,9 @@ import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
 import {
   isIAPAvailable,
-  getSeasonAccessProduct,
-  purchaseSeasonAccess,
-  restoreSeasonAccess,
+  getSubscriptionProducts,
+  purchaseSubscription,
+  restoreSubscription,
   savePendingTransaction,
   getPendingTransaction,
   clearPendingTransaction,
@@ -60,7 +60,7 @@ export default function PaymentPage() {
   const [promoCode, setPromoCode] = useState('')
   const [promoLoading, setPromoLoading] = useState(false)
   const [polling, setPolling] = useState(false)
-  const [product, setProduct] = useState(null)
+  const [products, setProducts] = useState({ monthly: null, yearly: null })
   const [restoringPurchase, setRestoringPurchase] = useState(false)
   const [plan, setPlan] = useState('yearly') // default to yearly (better value)
   const pollCount = useRef(0)
@@ -98,7 +98,7 @@ export default function PaymentPage() {
   useEffect(() => {
     if (!isNative) return
 
-    getSeasonAccessProduct().then(setProduct)
+    getSubscriptionProducts().then(setProducts)
 
     if (!pendingRecoveryAttempted.current) {
       pendingRecoveryAttempted.current = true
@@ -150,7 +150,7 @@ export default function PaymentPage() {
     setLoading(true)
     setError(null)
     try {
-      const transaction = await purchaseSeasonAccess()
+      const transaction = await purchaseSubscription(plan)
       if (!transaction?.jwsRepresentation) {
         throw new Error('No transaction returned')
       }
@@ -179,7 +179,7 @@ export default function PaymentPage() {
     setRestoringPurchase(true)
     setError(null)
     try {
-      const transaction = await restoreSeasonAccess()
+      const transaction = await restoreSubscription()
       if (!transaction?.jwsRepresentation) {
         setError('No previous purchase found.')
         return
@@ -272,45 +272,47 @@ export default function PaymentPage() {
           </div>
         </div>
 
-        {/* Plan toggle — web only */}
-        {!isNative && (
-          <div className="flex gap-2 mb-6">
-            <button
-              onClick={() => setPlan('monthly')}
-              className={`flex-1 py-3 rounded-xl text-center transition-all ${
-                plan === 'monthly'
-                  ? 'bg-accent/10 border-2 border-accent'
-                  : 'bg-bg-primary border border-border hover:border-text-primary/30'
-              }`}
-            >
-              <div className="font-display text-lg text-text-primary">$1</div>
-              <div className="text-xs text-text-muted">per month</div>
-            </button>
-            <button
-              onClick={() => setPlan('yearly')}
-              className={`flex-1 py-3 rounded-xl text-center transition-all relative ${
-                plan === 'yearly'
-                  ? 'bg-accent/10 border-2 border-accent'
-                  : 'bg-bg-primary border border-border hover:border-text-primary/30'
-              }`}
-            >
-              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-correct text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                Save 17%
-              </div>
-              <div className="font-display text-lg text-text-primary">$10</div>
-              <div className="text-xs text-text-muted">per year</div>
-            </button>
-          </div>
-        )}
+        {/* Plan toggle */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setPlan('monthly')}
+            className={`flex-1 py-3 rounded-xl text-center transition-all ${
+              plan === 'monthly'
+                ? 'bg-accent/10 border-2 border-accent'
+                : 'bg-bg-primary border border-border hover:border-text-primary/30'
+            }`}
+          >
+            <div className="font-display text-lg text-text-primary">
+              {isNative ? products.monthly?.priceString || '$0.99' : '$1'}
+            </div>
+            <div className="text-xs text-text-muted">per month</div>
+          </button>
+          <button
+            onClick={() => setPlan('yearly')}
+            className={`flex-1 py-3 rounded-xl text-center transition-all relative ${
+              plan === 'yearly'
+                ? 'bg-accent/10 border-2 border-accent'
+                : 'bg-bg-primary border border-border hover:border-text-primary/30'
+            }`}
+          >
+            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-correct text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+              Save 17%
+            </div>
+            <div className="font-display text-lg text-text-primary">
+              {isNative ? products.yearly?.priceString || '$9.99' : '$10'}
+            </div>
+            <div className="text-xs text-text-muted">per year</div>
+          </button>
+        </div>
 
         {/* Purchase button */}
         <button
           onClick={isNative ? handleApplePurchase : handleCheckout}
-          disabled={loading || (isNative && !product)}
+          disabled={loading || (isNative && !products[plan])}
           className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 text-lg mb-3"
         >
           {loading ? 'Processing...' : isNative
-            ? product ? `Subscribe — ${product.priceString}` : 'Purchase unavailable'
+            ? products[plan] ? `Subscribe — ${products[plan].priceString}` : 'Purchase unavailable'
             : `Subscribe — ${plan === 'yearly' ? '$10/year' : '$1/month'}`
           }
         </button>
