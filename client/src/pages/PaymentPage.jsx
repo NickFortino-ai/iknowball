@@ -274,7 +274,7 @@ export default function PaymentPage() {
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">Trophy case + records</span> for every league you win and every milestone you hit.</span>
+              <span><span className="font-semibold">Sports-centric social hub</span> — post takes, react to friends' picks, and watch the feed light up with wins, streaks, and league results.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
