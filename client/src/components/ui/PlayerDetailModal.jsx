@@ -5,10 +5,10 @@ import LoadingSpinner from './LoadingSpinner'
 function InjuryBadge({ status }) {
   if (!status) return null
   const colors = {
-    Out: 'bg-incorrect/20 text-incorrect',
-    Questionable: 'bg-yellow-500/20 text-yellow-500',
-    Probable: 'bg-correct/20 text-correct',
-    'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
+    Out: 'bg-incorrect text-white',
+    Questionable: 'bg-yellow-500 text-black',
+    Probable: 'bg-correct text-white',
+    'Day-To-Day': 'bg-yellow-500 text-black',
   }
   const label = status === 'Day-To-Day' ? 'DTD' : status.charAt(0)
   return (

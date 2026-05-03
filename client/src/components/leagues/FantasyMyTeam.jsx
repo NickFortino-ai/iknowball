@@ -10,12 +10,12 @@ import { ProposeTradeModal } from './FantasyTrades'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 
 const INJURY_COLORS = {
-  Out: 'bg-incorrect/20 text-incorrect',
-  IR: 'bg-incorrect/20 text-incorrect',
-  Questionable: 'bg-yellow-500/20 text-yellow-500',
-  Doubtful: 'bg-yellow-500/20 text-yellow-500',
-  Probable: 'bg-correct/20 text-correct',
-  'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
+  Out: 'bg-incorrect text-white',
+  IR: 'bg-incorrect text-white',
+  Questionable: 'bg-yellow-500 text-black',
+  Doubtful: 'bg-yellow-500 text-black',
+  Probable: 'bg-correct text-white',
+  'Day-To-Day': 'bg-yellow-500 text-black',
 }
 
 // Build the starter slot list from the league's roster_slots config so leagues
