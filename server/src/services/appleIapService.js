@@ -7,7 +7,7 @@ import { logger } from '../utils/logger.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const CERTS_DIR = join(__dirname, '../../certs')
-const PRODUCT_ID = 'com.iknowball.app.season_access'
+const PRODUCT_ID = 'com.iknowball.app.yearly'
 
 let verifier = null
 

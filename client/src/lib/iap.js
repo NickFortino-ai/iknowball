@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core'
 import { NativePurchases } from '@capgo/native-purchases'
 
-const PRODUCT_ID = 'com.iknowball.app.season_access'
+const PRODUCT_ID = 'com.iknowball.app.yearly'
 const PENDING_TX_KEY = 'pendingAppleTransaction'
 
 export function isIAPAvailable() {
