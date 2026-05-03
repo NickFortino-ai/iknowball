@@ -247,7 +247,7 @@ export default function PaymentPage() {
       <div className="w-full max-w-md bg-bg-primary rounded-2xl p-7 border border-text-primary/20">
         <h1 className="font-display text-4xl text-center text-text-primary mb-2 tracking-wide">I KNOW BALL</h1>
         <p className="text-text-primary/80 text-center text-sm mb-6 leading-relaxed">
-          The all-in-one sports platform for people who live and breathe sports.
+          The all-in-one fantasy and sports prediction platform.
         </p>
 
         {(error || status === 'cancelled') && (
