@@ -318,11 +318,19 @@ export default function PaymentPage() {
         </button>
 
         {/* Auto-renewal disclosure */}
-        <p className="text-[10px] text-text-muted text-center mb-4 leading-relaxed">
+        <p className="text-[10px] text-text-muted text-center mb-2 leading-relaxed">
           {isNative
             ? 'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in Settings > Apple ID > Subscriptions.'
             : `Your subscription will auto-renew at ${plan === 'yearly' ? '$10.00/year' : '$1.00/month'} until cancelled. You can manage or cancel anytime from your account settings.`
           }
+        </p>
+
+        {/* Terms + Privacy links (required by Apple guideline 3.1.2 for auto-renewing subscriptions) */}
+        <p className="text-[10px] text-text-muted text-center mb-4 leading-relaxed">
+          By subscribing you agree to our{' '}
+          <a href="https://iknowball.club/terms" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Terms of Use</a>
+          {' '}and{' '}
+          <a href="https://iknowball.club/privacy" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Privacy Policy</a>.
         </p>
 
         {/* Restore Purchases — native only */}
