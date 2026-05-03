@@ -17,8 +17,14 @@ export default function FeaturedPropSection({ date, sportKey, fallback = false, 
 
   const activeProps = useMemo(() => {
     if (!props?.length) return []
+    const now = Date.now()
     return props.filter((p) => {
-      if (p.status === 'settled') return false
+      // Mirror the games page: hide anything that's no longer pickable.
+      // status flips to 'locked' when the game starts (set by lockPicks job),
+      // and 'settled' once it finishes. Belt-and-suspenders: also drop props
+      // whose game.starts_at has already passed in case the lock job is late.
+      if (p.status === 'locked' || p.status === 'settled') return false
+      if (p.games?.starts_at && new Date(p.games.starts_at).getTime() <= now) return false
       if (sportKey && p.games?.sports?.key !== sportKey) return false
       return true
     })
