@@ -5,9 +5,25 @@ function formatOdds(odds) {
   return odds >= 0 ? `+${odds}` : `${odds}`
 }
 
+function americanToDecimal(odds) {
+  if (odds == null) return 2
+  return odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds)
+}
+
+// Recompute would-have-won from leg odds rather than trusting parlay.reward_points,
+// which is stale/wrong on some older parlay records (saw a 7-leg parlay rendering
+// "7 pts" because its stored reward_points was bad).
+function computeWouldHaveWon(parlay) {
+  if (!parlay.legs?.length) return parlay.reward_points || 0
+  const combined = parlay.legs.reduce((acc, l) => acc * americanToDecimal(l.odds), 1)
+  const risk = parlay.risk_points || 10
+  return Math.max(1, Math.round(risk * (combined - 1)))
+}
+
 export default function BadBeatFeedCard({ item, reactions, onUserTap }) {
   const { parlay } = item
   const wonLegs = parlay.legs?.filter((l) => l.status === 'won').length || 0
+  const wouldHaveWon = computeWouldHaveWon(parlay)
 
   return (
     <FeedCardWrapper
@@ -58,7 +74,7 @@ export default function BadBeatFeedCard({ item, reactions, onUserTap }) {
 
       {/* Would have won — prominent */}
       <div className="mt-2 text-sm text-text-secondary text-center font-medium">
-        Would have won <span className="text-correct">{parlay.reward_points} pts</span>
+        Would have won <span className="text-correct">{wouldHaveWon} pts</span>
       </div>
     </FeedCardWrapper>
   )
