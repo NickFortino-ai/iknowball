@@ -112,7 +112,7 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
   const isOwn = ownerId && ownerId === session?.user?.id
   const { data: connData } = useConnectionStatus(!isOwn ? ownerId : null)
   const canComment = isOwn || connData?.status === 'connected'
-  const reactionTargets = item?.hot_take?.id ? [{ type: 'hot_take', id: item.hot_take.id }] : []
+  const reactionTargets = item?.hot_take?.id ? [{ target_type: 'hot_take', target_id: item.hot_take.id }] : []
   const { data: reactionsBatch } = useFeedReactionsBatch(reactionTargets)
   const reactions = reactionsBatch?.[`hot_take-${item?.hot_take?.id}`] || []
 
