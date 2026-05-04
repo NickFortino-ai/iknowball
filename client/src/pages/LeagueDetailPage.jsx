@@ -680,8 +680,14 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 // member_count=1 (just the commissioner) which would also
                 // be filtered out by GlobalPointsTable's <2 guard, so
                 // bump anything <2 up to the 8-row preview.
-                const liveMemberCount = Array.isArray(league.members) && league.members.length > 0
-                  ? league.members.length
+                // Count distinct user_ids — guards against duplicate rows in
+                // league_members (seen in the wild on a 12-member bracket
+                // where the table was rendering 16 rows).
+                const distinctMemberCount = Array.isArray(league.members)
+                  ? new Set(league.members.map((m) => m.user_id).filter(Boolean)).size
+                  : 0
+                const liveMemberCount = distinctMemberCount > 0
+                  ? distinctMemberCount
                   : (league.member_count >= 2 ? league.member_count : 8)
                 // For fantasy, prefer the configured roster size; otherwise current member count
                 const tableMemberCount = f === 'fantasy'
