@@ -340,7 +340,7 @@ function GlobalPointsTable({ memberCount, bonusForRank, footnote }) {
   )
 }
 
-function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament, fantasySettings: parentFantasySettings }) {
+function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournament, bracketEntries, fantasySettings: parentFantasySettings }) {
   const [editingNarrative, setEditingNarrative] = useState(false)
   const [narrativeText, setNarrativeText] = useState('')
   const { profile } = useAuth()
@@ -680,19 +680,25 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 // member_count=1 (just the commissioner) which would also
                 // be filtered out by GlobalPointsTable's <2 guard, so
                 // bump anything <2 up to the 8-row preview.
-                // Count distinct user_ids — guards against duplicate rows in
-                // league_members (seen in the wild on a 12-member bracket
-                // where the table was rendering 16 rows).
                 const distinctMemberCount = Array.isArray(league.members)
                   ? new Set(league.members.map((m) => m.user_id).filter(Boolean)).size
                   : 0
                 const liveMemberCount = distinctMemberCount > 0
                   ? distinctMemberCount
                   : (league.member_count >= 2 ? league.member_count : 8)
-                // For fantasy, prefer the configured roster size; otherwise current member count
+                // For fantasy, prefer the configured roster size. For brackets
+                // post-lock, use the count of submitted entries — the server's
+                // awardBracketStandings runs off standings.length (only entrants),
+                // so the displayed table needs to match or the +bonus tier and
+                // row count both lie. Members who joined but never submitted
+                // a bracket aren't actually competing.
+                const isBracketLocked = bracketTournament?.locks_at && new Date(bracketTournament.locks_at) <= new Date()
+                const submittedBrackets = Array.isArray(bracketEntries) ? bracketEntries.length : 0
                 const tableMemberCount = f === 'fantasy'
                   ? (fantasySettings?.num_teams || liveMemberCount)
-                  : liveMemberCount
+                  : f === 'bracket' && isBracketLocked && submittedBrackets >= 2
+                    ? submittedBrackets
+                    : liveMemberCount
                 const bonusFn = buildBonusForRank({ leagueFormat: f, fantasyFormat: fFormat, seasonType: sType })
                 const footnote = f === 'fantasy' && fFormat === 'salary_cap' && sType !== 'single_week'
                   ? 'Bonuses scale by weeks played for mid-season runs.'
@@ -2261,7 +2267,7 @@ export default function LeagueDetailPage() {
               </button>
             </div>
 
-            <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} bracketTournament={bracketTournament} fantasySettings={fantasySettings} />
+            <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} bracketTournament={bracketTournament} bracketEntries={bracketEntries} fantasySettings={fantasySettings} />
 
             {isCommissioner && league.settings_editable && (
               <div className="mt-4">
