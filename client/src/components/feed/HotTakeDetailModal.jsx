@@ -6,6 +6,7 @@ import { useConnectionStatus } from '../../hooks/useConnections'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import RichContent from './RichContent'
+import PollDisplay from './PollDisplay'
 import LinkPreview from './LinkPreview'
 import FeedReactions from './FeedReactions'
 import { useFeedReactionsBatch } from '../../hooks/useSocial'
@@ -160,7 +161,16 @@ export default function HotTakeDetailModal({ hotTakeId, onClose }) {
 
             {/* Hot take content */}
             <div className="bg-bg-primary rounded-xl p-4">
+              {hotTake.post_type === 'prediction' && (
+                <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full text-green-400 mb-2">Prediction</span>
+              )}
+              {hotTake.post_type === 'poll' && (
+                <span className="inline-block text-xs font-bold px-2 py-0.5 rounded-full text-orange-400 mb-2">Poll</span>
+              )}
               <RichContent text={hotTake.content} className="text-sm text-text-primary leading-relaxed" />
+              {hotTake.post_type === 'poll' && (
+                <PollDisplay hotTakeId={hotTake.id} />
+              )}
               {hotTake.image_url && (
                 <img src={hotTake.image_url} alt="" className="w-full rounded-lg mt-2" />
               )}
