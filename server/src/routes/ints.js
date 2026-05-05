@@ -219,28 +219,42 @@ router.post('/picks', async (req, res) => {
     }
   }
 
-  await supabase
+  // Diff existing picks against new picks instead of delete-all-reinsert —
+  // wiping a row for a kept player briefly resets accumulated INTs to 0.
+  const { data: existingPicks } = await supabase
     .from('ints_picks')
-    .delete()
+    .select('id, sleeper_player_id')
     .eq('league_id', league_id)
     .eq('user_id', req.user.id)
     .eq('season', season)
     .eq('week', week)
 
-  const pickRows = players.map((p) => ({
-    league_id,
-    user_id: req.user.id,
-    season,
-    week,
-    sleeper_player_id: p.sleeper_player_id,
-    player_name: p.player_name,
-    position: p.position,
-    team: p.team,
-    headshot_url: p.headshot_url,
-  }))
+  const newIds = new Set(players.map((p) => p.sleeper_player_id))
+  const existingIds = new Set((existingPicks || []).map((p) => p.sleeper_player_id))
+  const toDeleteIds = (existingPicks || [])
+    .filter((p) => !newIds.has(p.sleeper_player_id))
+    .map((p) => p.id)
+  const toInsert = players
+    .filter((p) => !existingIds.has(p.sleeper_player_id))
+    .map((p) => ({
+      league_id,
+      user_id: req.user.id,
+      season,
+      week,
+      sleeper_player_id: p.sleeper_player_id,
+      player_name: p.player_name,
+      position: p.position,
+      team: p.team,
+      headshot_url: p.headshot_url,
+    }))
 
-  const { error: pickErr } = await supabase.from('ints_picks').insert(pickRows)
-  if (pickErr) throw pickErr
+  if (toDeleteIds.length) {
+    await supabase.from('ints_picks').delete().in('id', toDeleteIds)
+  }
+  if (toInsert.length) {
+    const { error: pickErr } = await supabase.from('ints_picks').insert(toInsert)
+    if (pickErr) throw pickErr
+  }
 
   res.json({ submitted: players.length })
 })

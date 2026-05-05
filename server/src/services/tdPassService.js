@@ -413,13 +413,24 @@ export async function submitPick(leagueId, userId, qbPlayerId) {
     throw err
   }
 
-  // Replace any prior pick for the current week (allowed until lock)
-  await supabase
+  // If the user is re-confirming the same QB on an edit, leave the existing
+  // row in place so its accumulated td_count isn't briefly reset to 0 by a
+  // delete-then-insert. Otherwise, delete the prior row and insert fresh.
+  const { data: existing } = await supabase
     .from('td_pass_picks')
-    .delete()
+    .select('id, qb_player_id')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
     .eq('week', week)
+    .maybeSingle()
+
+  if (existing && existing.qb_player_id === qbPlayerId) {
+    return existing
+  }
+
+  if (existing) {
+    await supabase.from('td_pass_picks').delete().eq('id', existing.id)
+  }
 
   const { data, error } = await supabase
     .from('td_pass_picks')
