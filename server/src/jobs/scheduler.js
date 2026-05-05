@@ -28,6 +28,7 @@ import { rolloverFantasyWeek } from '../services/fantasyService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
 import { sendPickInjuryWarnings } from './pickInjuryWarnings.js'
 import { computeFantasyGlobalRankings } from './computeFantasyGlobalRankings.js'
+import { processSoloLeagues } from './processSoloLeagues.js'
 
 export function startScheduler() {
   if (env.ENABLE_ODDS_SYNC) {
@@ -109,6 +110,15 @@ export function startScheduler() {
     }, { timezone: 'America/New_York' })
     logger.info('Video cleanup scheduled: daily at 4:15 AM EST')
   }
+
+  // Solo-league at-risk warning + auto-cancel. Runs every 15 minutes.
+  // Warns the commissioner ~6h before starts_at if they're still the only
+  // member; cancels the league at starts_at if still solo. Squares is
+  // exempt (single-game format, never awards a global bonus anyway).
+  cron.schedule('*/15 * * * *', async () => {
+    try { await processSoloLeagues() } catch (err) { logger.error({ err }, 'Solo-league processor job failed') }
+  })
+  logger.info('Solo-league processor scheduled: every 15 minutes')
 
   if (env.ENABLE_INJURY_SYNC) {
     cron.schedule('*/10 * * * *', async () => {

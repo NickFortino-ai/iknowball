@@ -62,6 +62,8 @@ function getNotificationIcon(n) {
     case 'league_invitation': return '\uD83D\uDCE8' // 📨
     case 'league_deleted': return '\uD83D\uDDD1\uFE0F' // 🗑️
     case 'streak_milestone': return '\uD83D\uDD25' // 🔥
+    case 'league_at_risk': return '\u26A0\uFE0F' // ⚠️
+    case 'league_canceled_solo': return '\uD83D\uDDD1\uFE0F' // 🗑️
     case 'headlines': return '\uD83D\uDCF0' // 📰
     case 'hot_take_reminder': return '\uD83D\uDD14' // 🔔
     case 'hot_take_ask': return '\uD83D\uDCAD' // 💭
@@ -222,6 +224,13 @@ function getNotificationRoute(notification) {
       // All members → open the Draft tab so they see the new countdown +
       // can share/invite without a second tap
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Draft` : null
+
+    case 'league_at_risk':
+      // Commissioner → open the league so they can edit start date / visibility
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+    case 'league_canceled_solo':
+      // League is deleted — land on the home page so they can create another
+      return '/'
 
     default:
       return null
