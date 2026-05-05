@@ -1,7 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOpenLeagues, useJoinOpenLeague } from '../../hooks/useLeagues'
-import DraftStartsIn from '../leagues/DraftStartsIn'
 import { toast } from '../ui/Toast'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 
@@ -38,47 +37,29 @@ function formatStartDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
 }
 
-function formatRunsUntil(league) {
-  if (league.format === 'survivor') return 'Last one standing'
-  if (league.format === 'squares') return 'End of game'
-  if (league.duration === 'full_season') return 'End of season'
-  if (league.duration === 'playoffs_only') return 'End of playoffs'
-  if (league.ends_at) return formatStartDate(league.ends_at)
-  return null
-}
-
-function LeagueSettingsPreview({ league }) {
-  const s = league.settings || {}
-  const items = []
-  if ((league.format === 'survivor' || league.format === 'pickem') && s.pick_frequency) {
-    items.push(['Picks', s.pick_frequency === 'daily' ? 'Daily' : 'Weekly'])
-  }
-  if (league.format === 'survivor' && s.lives) {
-    items.push(['Lives', `${s.lives}`])
-  }
-  if (!items.length) return null
-  return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-      {items.map(([label, value]) => (
-        <span key={label} className="text-xs text-text-muted">
-          {label}: <span className="text-text-secondary font-medium">{value}</span>
-        </span>
-      ))}
-    </div>
-  )
-}
-
 export default function OpenLeaguesSection() {
   const { data: leagues, isLoading } = useOpenLeagues()
   const joinOpen = useJoinOpenLeague()
   const navigate = useNavigate()
   const [joiningId, setJoiningId] = useState(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [infoLeagueId, setInfoLeagueId] = useState(null)
 
-  if (isLoading || !leagues?.length) return null
+  // Sort by start date ascending — soonest to start on the left, later starts
+  // to the right. Leagues with no start date sink to the end.
+  const sortedLeagues = useMemo(() => {
+    if (!leagues?.length) return []
+    return [...leagues].sort((a, b) => {
+      const aTime = a.starts_at ? new Date(a.starts_at).getTime() : Infinity
+      const bTime = b.starts_at ? new Date(b.starts_at).getTime() : Infinity
+      return aTime - bTime
+    })
+  }, [leagues])
 
-  async function handleJoin(leagueId) {
+  if (isLoading || !sortedLeagues.length) return null
+
+  async function handleJoin(e, leagueId) {
+    e.preventDefault()
+    e.stopPropagation()
     setJoiningId(leagueId)
     try {
       const league = await joinOpen.mutateAsync(leagueId)
@@ -103,118 +84,49 @@ export default function OpenLeaguesSection() {
       </button>
 
       {!collapsed && (
-        <div className="space-y-4">
-          {leagues.slice(0, 5).map((league) => {
-            const hasBackdrop = !!league.backdrop_image
-
-            return (
-              <div
-                key={league.id}
-                className="relative rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden"
-              >
-                {hasBackdrop && (
-                  <>
-                    <img
-                      src={getBackdropUrl(league.backdrop_image)}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none"
-                      style={{ objectPosition: `center ${league.backdrop_y ?? 50}%` }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-bg-primary/80 via-bg-primary/60 to-bg-primary/80 pointer-events-none" />
-                  </>
+        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          {sortedLeagues.map((league) => (
+            <div
+              key={league.id}
+              className="relative flex-shrink-0 w-56 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden flex flex-col"
+            >
+              {league.backdrop_image && (
+                <>
+                  <img
+                    src={getBackdropUrl(league.backdrop_image)}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover opacity-25 pointer-events-none"
+                    style={{ objectPosition: `center ${league.backdrop_y ?? 50}%` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-bg-primary/40 to-bg-primary/85 pointer-events-none" />
+                </>
+              )}
+              <div className="relative p-4 flex flex-col flex-1">
+                <div className="font-semibold text-sm text-white mb-1 line-clamp-2 leading-snug">{league.name}</div>
+                <div className="text-xs mb-1.5">
+                  <span className="text-accent font-semibold">{FORMAT_LABELS[league.format] || league.format}</span>
+                  <span className="text-text-muted"> · {SPORT_LABELS[league.sport] || league.sport}</span>
+                </div>
+                <div className="text-xs text-text-muted mb-1">
+                  {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
+                </div>
+                {league.starts_at && (
+                  <div className="text-xs text-yellow-500 font-semibold mb-3">
+                    Starts {formatStartDate(league.starts_at)}
+                  </div>
                 )}
-
-                <div className="relative z-10 p-5">
-                  {/* Title row — full width, info icon inline at end. League name wraps so it's always visible. */}
-                  <div className="flex items-start gap-2">
-                    <h3 className="font-display text-xl text-white flex-1 leading-tight break-words">
-                      {league.name}
-                    </h3>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      {league.format === 'fantasy' && league.draft_date && league.draft_status !== 'completed' && (
-                        <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} />
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setInfoLeagueId(infoLeagueId === league.id ? null : league.id) }}
-                        className="text-text-muted hover:text-text-secondary transition-colors p-1"
-                        title="League Details"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <line x1="12" y1="16" x2="12" y2="12" />
-                          <line x1="12" y1="8" x2="12.01" y2="8" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Meta row */}
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <span className="text-xs font-semibold text-accent">
-                      {FORMAT_LABELS[league.format] || league.format}
-                    </span>
-                    <span className="text-xs text-text-secondary">{SPORT_LABELS[league.sport] || league.sport}</span>
-                    <span className="text-xs text-text-secondary">
-                      {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3 mt-1.5 text-text-muted">
-                    <span className="text-xs">by {league.commissioner}</span>
-                    {league.starts_at && (
-                      <span className="text-sm text-yellow-500 font-semibold">
-                        {formatStartDate(league.starts_at)} – {formatRunsUntil(league) || 'TBD'}
-                      </span>
-                    )}
-                  </div>
-                  <LeagueSettingsPreview league={league} />
-
-                  {/* Expanded info card */}
-                  {infoLeagueId === league.id && (
-                    <div className="mt-3 bg-bg-primary/50 backdrop-blur-sm border border-text-primary/20 rounded-lg p-3 text-xs text-text-secondary space-y-2">
-                      {/* Format description (the enticing pitch) */}
-                      <p className="text-sm text-text-primary leading-relaxed">
-                        {league.format === 'survivor' && "Pick one team to win each period. If they lose, you lose a life. You can't reuse a team. The last manager standing takes the league."}
-                        {league.format === 'pickem' && "Pick the winner of every game. Underdogs are worth more — points are scaled by real odds. Climb the standings to win."}
-                        {league.format === 'bracket' && "Fill out a postseason bracket and ride your picks all the way through. Most points across all rounds wins."}
-                        {league.format === 'fantasy' && "Draft a team, set your lineup each week, work the waiver wire, and battle your league mates. Standard NFL fantasy with custom scoring."}
-                        {league.format === 'nba_dfs' && "Build a fresh roster every night under a salary cap. No draft, no commitment — just pick the best lineup of the day."}
-                        {league.format === 'mlb_dfs' && "Build a fresh lineup every game day under a salary cap. No long-term commitment — just nightly rosters."}
-                        {league.format === 'hr_derby' && "Pick 3 MLB hitters per day. Each player usable only once per week. Most home runs across the season wins."}
-                        {league.format === 'strikeouts' && "Pick 3 MLB pitchers per day. Each pitcher usable only once per week. Most strikeouts across the season wins."}
-                        {league.format === 'three_point' && "Pick 3 NBA shooters per night. Most made 3-pointers across the season wins."}
-                        {league.format === 'sacks' && "Pick 3 NFL defenders per week. Most sacks across the season wins."}
-                        {league.format === 'ints' && "Pick 3 NFL defenders per week. Most interceptions across the season wins."}
-                        {league.format === 'squares' && "Pick a square on the grid. When the score lands on your row + column at the end of any quarter, you win that quarter."}
-                      </p>
-
-                      <div className="border-t border-text-primary/10 pt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-                        <div><span className="text-text-muted">Format:</span> <span className="text-text-primary font-semibold">{FORMAT_LABELS[league.format] || league.format}</span></div>
-                        <div><span className="text-text-muted">Sport:</span> <span className="text-text-primary">{SPORT_LABELS[league.sport] || league.sport}</span></div>
-                        {league.starts_at && <div><span className="text-text-muted">Starts:</span> <span className="text-text-primary">{formatStartDate(league.starts_at)}</span></div>}
-                        {formatRunsUntil(league) && <div><span className="text-text-muted">Runs until:</span> <span className="text-text-primary">{formatRunsUntil(league)}</span></div>}
-                        <div><span className="text-text-muted">Members:</span> <span className="text-text-primary">{league.member_count}{league.max_members ? ` of ${league.max_members}` : ''}</span></div>
-                        <div><span className="text-text-muted">Commissioner:</span> <span className="text-text-primary">{league.commissioner}</span></div>
-                        {league.settings?.pick_frequency && <div><span className="text-text-muted">Picks:</span> <span className="text-text-primary">{league.settings.pick_frequency === 'daily' ? 'Daily' : 'Weekly'}</span></div>}
-                        {league.settings?.lives && <div><span className="text-text-muted">Lives:</span> <span className="text-text-primary">{league.settings.lives}</span></div>}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Join button — bottom right */}
-                  <div className="flex justify-end mt-4">
-                    <button
-                      onClick={() => handleJoin(league.id)}
-                      disabled={joiningId === league.id}
-                      className="px-6 py-2.5 rounded-xl font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {joiningId === league.id ? '...' : 'Join'}
-                    </button>
-                  </div>
+                <div className="mt-auto pt-2">
+                  <button
+                    onClick={(e) => handleJoin(e, league.id)}
+                    disabled={joiningId === league.id}
+                    className="w-full px-3 py-2 rounded-lg font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+                  >
+                    {joiningId === league.id ? '...' : 'Join'}
+                  </button>
                 </div>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>

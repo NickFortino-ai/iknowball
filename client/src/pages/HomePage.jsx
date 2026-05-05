@@ -395,8 +395,8 @@ export default function HomePage() {
       {/* Logged-in: Open Leagues + Active Leagues + Headlines */}
       {isAuthenticated && (
         <>
-          <OpenLeaguesSection />
           <MyActiveLeagues />
+          <OpenLeaguesSection />
           {/* Headlines hidden from non-admins while we dial in the data
               pipeline — recordsBroken was pulling from user_sport_stats
               (per-user-per-sport bests) instead of the authoritative
