@@ -105,7 +105,7 @@ function SearchResultView({
             </div>
             <TierBadge tier={rank.tier} size="xs" />
             <span className="font-display text-lg text-right">
-              {scope === 'sport' ? (rank.sport_points ?? 0) : scope === 'props' ? (rank.prop_points ?? 0) : scope === 'parlays' ? (rank.parlay_points ?? 0) : (rank.total_points ?? 0)}
+              {scope === 'sport' ? (rank.sport_points ?? 0) : scope === 'picks' ? (rank.pick_points ?? 0) : scope === 'props' ? (rank.prop_points ?? 0) : scope === 'parlays' ? (rank.parlay_points ?? 0) : (rank.total_points ?? 0)}
             </span>
           </div>
         </div>
@@ -122,6 +122,7 @@ const tabs = [
   { label: 'MLB', scope: 'sport', sport: 'baseball_mlb' },
   { label: 'NHL', scope: 'sport', sport: 'icehockey_nhl' },
   { label: 'MLS', scope: 'sport', sport: 'soccer_usa_mls' },
+  { label: 'Picks', scope: 'picks', sport: null },
   { label: 'Props', scope: 'props', sport: null },
   { label: 'Parlays', scope: 'parlays', sport: null },
   { label: 'Leagues', scope: 'leagues', sport: null },
@@ -196,6 +197,9 @@ export default function LeaderboardPage() {
 
       {tab.scope === 'sport' && (
         <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks only</p>
+      )}
+      {tab.scope === 'picks' && (
+        <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks across all sports</p>
       )}
 
       {searchedUser ? (
@@ -296,7 +300,7 @@ export default function LeaderboardPage() {
                 </div>
                 <TierBadge tier={user.tier} size="xs" />
                 <span className="font-display text-lg text-right">
-                  {tab.scope === 'sport' ? (user.sport_points ?? 0) : tab.scope === 'props' ? (user.prop_points ?? 0) : tab.scope === 'parlays' ? (user.parlay_points ?? 0) : (user.total_points ?? 0)}
+                  {tab.scope === 'sport' ? (user.sport_points ?? 0) : tab.scope === 'picks' ? (user.pick_points ?? 0) : tab.scope === 'props' ? (user.prop_points ?? 0) : tab.scope === 'parlays' ? (user.parlay_points ?? 0) : (user.total_points ?? 0)}
                 </span>
               </div>
             )

@@ -13,6 +13,38 @@ export async function getLeaderboard(scope = 'global', sportKey) {
     return data.map((u, i) => ({ ...u, rank: i + 1 }))
   }
 
+  if (scope === 'picks') {
+    // Straight picks only — parlay legs live in parlay_legs and are
+    // counted separately under the 'parlays' scope.
+    const data = await fetchAll(
+      supabase
+        .from('picks')
+        .select('user_id, points_earned, is_correct, users!inner(id, username, display_name, avatar_url, avatar_emoji, tier)')
+        .eq('status', 'settled')
+    )
+
+    const statsMap = {}
+    for (const pick of data || []) {
+      if (!statsMap[pick.user_id]) {
+        statsMap[pick.user_id] = {
+          ...pick.users,
+          pick_points: 0,
+          total_picks: 0,
+          correct_picks: 0,
+        }
+      }
+      const s = statsMap[pick.user_id]
+      s.pick_points += pick.points_earned || 0
+      s.total_picks++
+      if (pick.is_correct) s.correct_picks++
+    }
+
+    return Object.values(statsMap)
+      .sort((a, b) => b.pick_points - a.pick_points)
+      .slice(0, 100)
+      .map((u, i) => ({ ...u, rank: i + 1 }))
+  }
+
   if (scope === 'props') {
     const data = await fetchAll(
       supabase
@@ -165,16 +197,16 @@ export async function getUserRankOnLeaderboard(userId, scope = 'global', sportKe
     }
   }
 
-  if (scope === 'props' || scope === 'parlays') {
+  if (scope === 'picks' || scope === 'props' || scope === 'parlays') {
     const board = await getLeaderboard(scope)
     // getLeaderboard slices to top 100 — but the aggregation inside
     // processes all users, so if the target isn't in the slice we
     // need to re-aggregate without the slice. Cheapest approach:
     // compute it fresh here.
-    const table = scope === 'props' ? 'prop_picks' : 'parlays'
-    const pointsField = scope === 'props' ? 'prop_points' : 'parlay_points'
-    const countField = scope === 'props' ? 'total_picks' : 'total_parlays'
-    const correctField = scope === 'props' ? 'correct_picks' : 'correct_parlays'
+    const table = scope === 'picks' ? 'picks' : scope === 'props' ? 'prop_picks' : 'parlays'
+    const pointsField = scope === 'picks' ? 'pick_points' : scope === 'props' ? 'prop_points' : 'parlay_points'
+    const countField = scope === 'parlays' ? 'total_parlays' : 'total_picks'
+    const correctField = scope === 'parlays' ? 'correct_parlays' : 'correct_picks'
 
     // Fast path: user is in top 100 → use that row directly
     const inBoard = board.find((u) => u.id === userId)
@@ -253,6 +285,12 @@ export async function getAllCrownHolders() {
     holders['I KNOW BALL'] = { id: u.id, display_name: u.display_name, username: u.username }
   }
 
+  const picksBoard = await getLeaderboard('picks')
+  if (picksBoard.length > 0) {
+    const u = picksBoard[0]
+    holders['Picks'] = { id: u.id, display_name: u.display_name, username: u.username }
+  }
+
   const propsBoard = await getLeaderboard('props')
   if (propsBoard.length > 0) {
     const u = propsBoard[0]
@@ -284,6 +322,12 @@ export async function getCrowns(userId) {
   const globalBoard = await getLeaderboard('global')
   if (globalBoard.length > 0 && globalBoard[0].id === userId) {
     crowns.push('I KNOW BALL')
+  }
+
+  // Check picks leaderboard (straight picks only)
+  const picksBoard = await getLeaderboard('picks')
+  if (picksBoard.length > 0 && picksBoard[0].id === userId) {
+    crowns.push('Picks')
   }
 
   // Check props leaderboard
