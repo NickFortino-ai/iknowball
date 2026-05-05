@@ -449,7 +449,9 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     const bonusText = `The winner earns a +${winnerBonus()} point bonus.`
 
     function durationSentence(endCondition) {
-      if (league.duration === 'full_season') {
+      // All-Sports leagues span every sport, so "remainder of the season"
+      // doesn't fit. Fall back to the explicit date range instead.
+      if (league.duration === 'full_season' && league.sport !== 'all') {
         return `This league runs through the remainder of the season${endCondition ? ` or ${endCondition}` : ''}.`
       }
       if (league.duration === 'playoffs_only') {
@@ -462,6 +464,11 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
           return `This league starts ${dateRange.replace('Starts ', '')}${endCondition ? ` and runs until ${endCondition}` : ''}.`
         }
         return `This league runs ${dateRange}${endCondition ? ` or ${endCondition}` : ''}.`
+      }
+      // All-Sports with no explicit range — describe by end date alone
+      if (league.ends_at) {
+        const endStr = new Date(league.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })
+        return `This league runs through ${endStr}${endCondition ? ` or ${endCondition}` : ''}.`
       }
       return ''
     }
@@ -872,7 +879,26 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
               : 'Not set'}
           </div>
         </div>
-      ) : (league.format === 'bracket' || league.format === 'td_pass' || league.format === 'sacks' || league.format === 'ints' || league.format === 'survivor' || (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap')) ? null : (<>
+      ) : league.format === 'survivor' ? (
+        // Survivor: only the Start Date is editable up until the first pick
+        // is locked. The settings editor for other formats includes Duration
+        // and End Date pickers, but those don't apply here — survivor always
+        // runs to the season end date / All-Sports end date by design.
+        <div>
+          <label className="block text-xs text-text-muted mb-1">
+            Start Date
+            {hasLockedPicks && <span className="ml-1 italic">Locked</span>}
+          </label>
+          <input
+            type="date"
+            defaultValue={toDateInputValue(league.starts_at)}
+            onBlur={(e) => saveDate('starts_at', e.target.value)}
+            disabled={hasLockedPicks}
+            className={`w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent ${hasLockedPicks ? 'opacity-50 cursor-not-allowed' : ''}`}
+          />
+          <p className="text-[10px] text-text-muted mt-1">Picks open when the first game on this date loads.</p>
+        </div>
+      ) : (league.format === 'bracket' || league.format === 'td_pass' || league.format === 'sacks' || league.format === 'ints' || (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap')) ? null : (<>
       {/* Duration — options match what was offered in Create League for
           this format. Daily-pick contests (3-Point, HR Derby, Strikeouts,
           MLB DFS) only ever offered Full Season + Select Date. Generic
