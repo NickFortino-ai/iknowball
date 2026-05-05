@@ -65,10 +65,13 @@ function formatRunsUntil(league) {
 }
 
 function LeagueInfoModal({ league, onClose, onJoin, joining }) {
+  // Only lock scroll while the modal is actually open. Locking on every
+  // mount (when league=null) leaves the body unscrollable forever.
   useEffect(() => {
+    if (!league) return
     lockScroll()
     return () => unlockScroll()
-  }, [])
+  }, [league])
 
   if (!league) return null
 
@@ -285,12 +288,14 @@ export default function OpenLeaguesSection() {
         ))}
       </div>
 
-      <LeagueInfoModal
-        league={infoLeague}
-        onClose={() => setInfoLeague(null)}
-        onJoin={handleJoin}
-        joining={joiningId === infoLeague?.id}
-      />
+      {infoLeague && (
+        <LeagueInfoModal
+          league={infoLeague}
+          onClose={() => setInfoLeague(null)}
+          onJoin={handleJoin}
+          joining={joiningId === infoLeague?.id}
+        />
+      )}
     </div>
   )
 }
