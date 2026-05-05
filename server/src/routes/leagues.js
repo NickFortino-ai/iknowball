@@ -203,13 +203,16 @@ router.get('/bracket-templates/active', requireAuth, async (req, res) => {
 router.get('/open', requireAuth, async (req, res) => {
   const now = new Date().toISOString()
 
-  // Get leagues that are open visibility, haven't started yet, not completed,
-  // not past their join lock, and not past their end date
+  // Get visibility=open leagues that are still joinable. Many leagues flip
+  // from status='open' to status='active' the moment a start date / first
+  // game has passed, but joining is gated by joins_locked_at + ends_at, not
+  // by status. Showing both 'open' and 'active' lets late joiners discover
+  // leagues that are already running but haven't locked picks yet.
   const { data: leagues, error } = await supabase
     .from('leagues')
     .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, backdrop_image, backdrop_y, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
     .eq('visibility', 'open')
-    .eq('status', 'open')
+    .in('status', ['open', 'active'])
     .or(`joins_locked_at.is.null,joins_locked_at.gt.${now}`)
     .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order('created_at', { ascending: false })
