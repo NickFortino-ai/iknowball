@@ -177,7 +177,17 @@ function MlbLiveView({ league, date: leagueDate }) {
                       const hidden = slot.player_name === '????'
                       const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
                       const hasStats = slot.stats && (slot.game_status === 'live' || slot.game_status === 'final')
-                      const statLine = hasStats && slot.stats ? [
+                      const isPitcher = slot.stats?.is_pitcher || slot.roster_slot === 'SP'
+                      const pitcherFields = hasStats && slot.stats ? [
+                        { label: 'IP', value: slot.stats.ip },
+                        { label: 'K', value: slot.stats.k },
+                        { label: 'ER', value: slot.stats.er },
+                        { label: 'BB', value: slot.stats.bb },
+                        { label: 'H', value: slot.stats.h_allowed },
+                        { label: 'W', value: slot.stats.w },
+                        { label: 'SV', value: slot.stats.sv },
+                      ] : []
+                      const batterFields = hasStats && slot.stats ? [
                         { label: 'H', value: slot.stats.h },
                         { label: 'R', value: slot.stats.r },
                         { label: 'HR', value: slot.stats.hr },
@@ -185,7 +195,11 @@ function MlbLiveView({ league, date: leagueDate }) {
                         { label: 'SB', value: slot.stats.sb },
                         { label: 'BB', value: slot.stats.bb },
                         { label: 'K', value: slot.stats.k },
-                      ].filter((s) => s.value > 0).map((s) => `${s.value} ${s.label}`).join(' \u00b7 ') : null
+                      ] : []
+                      const fields = isPitcher ? pitcherFields : batterFields
+                      const statLine = hasStats && slot.stats
+                        ? fields.filter((s) => s.value > 0).map((s) => `${s.value} ${s.label}`).join(' \u00b7 ')
+                        : null
 
                       return (
                         <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-3.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>

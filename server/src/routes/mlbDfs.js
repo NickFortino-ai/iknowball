@@ -213,16 +213,21 @@ router.get('/live', async (req, res) => {
   if (allEspnIds.length) {
     const { data: stats } = await supabase
       .from('mlb_dfs_player_stats')
-      .select('espn_player_id, fantasy_points, hits, at_bats, runs, home_runs, rbis, stolen_bases, walks, strikeouts')
+      .select('espn_player_id, fantasy_points, is_pitcher, hits, at_bats, runs, home_runs, rbis, stolen_bases, walks, strikeouts, innings_pitched, hits_allowed, earned_runs, wins, saves')
       .eq('game_date', date)
       .eq('season', s)
       .in('espn_player_id', [...new Set(allEspnIds)])
 
     for (const stat of stats || []) {
       playerStatsMap[stat.espn_player_id] = {
+        is_pitcher: stat.is_pitcher || false,
+        // Batter fields (zero for pitchers)
         h: stat.hits || 0, ab: stat.at_bats || 0, r: stat.runs || 0,
         hr: stat.home_runs || 0, rbi: stat.rbis || 0, sb: stat.stolen_bases || 0,
         bb: stat.walks || 0, k: stat.strikeouts || 0,
+        // Pitcher fields (zero for batters)
+        ip: stat.innings_pitched || 0, h_allowed: stat.hits_allowed || 0,
+        er: stat.earned_runs || 0, w: stat.wins || 0, sv: stat.saves || 0,
       }
     }
   }
