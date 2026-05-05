@@ -208,11 +208,15 @@ router.get('/open', requireAuth, async (req, res) => {
   // game has passed, but joining is gated by joins_locked_at + ends_at, not
   // by status. Showing both 'open' and 'active' lets late joiners discover
   // leagues that are already running but haven't locked picks yet.
+  // Also hide leagues whose starts_at is already in the past — even if the
+  // commissioner left a grace window via joins_locked_at, a league that has
+  // already started reads as stale on the "Join an Open League" rail.
   const { data: leagues, error } = await supabase
     .from('leagues')
     .select('id, name, format, sport, status, max_members, commissioner_id, starts_at, ends_at, joins_locked_at, duration, settings, backdrop_image, backdrop_y, created_at, users!leagues_commissioner_id_fkey(display_name, username)')
     .eq('visibility', 'open')
     .in('status', ['open', 'active'])
+    .or(`starts_at.is.null,starts_at.gt.${now}`)
     .or(`joins_locked_at.is.null,joins_locked_at.gt.${now}`)
     .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order('created_at', { ascending: false })
