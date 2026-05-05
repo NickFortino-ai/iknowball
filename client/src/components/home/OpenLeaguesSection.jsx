@@ -4,6 +4,9 @@ import { useOpenLeagues, useJoinOpenLeague } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 
+// Collapse toggle removed — the horizontal-scroller layout is compact enough
+// that hiding it isn't worth the extra UI affordance.
+
 const FORMAT_LABELS = {
   pickem: "Pick'em",
   survivor: 'Survivor',
@@ -42,7 +45,6 @@ export default function OpenLeaguesSection() {
   const joinOpen = useJoinOpenLeague()
   const navigate = useNavigate()
   const [joiningId, setJoiningId] = useState(null)
-  const [collapsed, setCollapsed] = useState(false)
 
   // Sort by start date ascending — soonest to start on the left, later starts
   // to the right. Leagues with no start date sink to the end.
@@ -73,18 +75,8 @@ export default function OpenLeaguesSection() {
 
   return (
     <div className="mb-8">
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-between w-full mb-3"
-      >
-        <h2 className="font-display text-lg text-text-primary">Join an Open League</h2>
-        <svg className={`w-4 h-4 text-text-muted transition-transform ${collapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {!collapsed && (
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+      <h2 className="font-display text-lg text-text-primary mb-3">Join an Open League</h2>
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
           {sortedLeagues.map((league) => (
             <div
               key={league.id}
@@ -127,8 +119,7 @@ export default function OpenLeaguesSection() {
               </div>
             </div>
           ))}
-        </div>
-      )}
+      </div>
     </div>
   )
 }
