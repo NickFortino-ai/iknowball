@@ -308,9 +308,9 @@ router.get('/backdrops', requireAuth, async (req, res) => {
   // Exclusive filters: only show backdrops specifically tagged with this format
   const exclusiveFilters = ['touchdown_survivor', 'td_pass_competition', 'three_point_contest', 'sacks_contest', 'ints_contest', 'strikeouts_contest']
   const isExclusive = exclusiveFilters.includes(sport)
-  // 'all_sports' is the All-Sports Survivor variant — every backdrop is fair
-  // game, since the league spans every sport. Treat it like no filter.
-  const isAllSports = sport === 'all_sports'
+  // 'all' is the All-Sports pill (Survivor / Pick'em variant) — every backdrop
+  // is fair game since the league spans every sport. Treat it like no filter.
+  const isAllSports = sport === 'all'
 
   const filtered = sport && !isAllSports
     ? backdrops.filter((b) => {

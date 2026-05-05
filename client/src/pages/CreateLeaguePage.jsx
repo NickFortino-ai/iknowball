@@ -286,9 +286,9 @@ const CATEGORIES = [
 // `preset` applies sport / fantasyFormat / survivorMode on click.
 const CATEGORY_CARDS = {
   all_sports: [
-    { key: 'survivor-generic', format: 'survivor' },
+    { key: 'survivor-generic', format: 'survivor', preset: { sport: 'all' } },
     { key: 'bracket', format: 'bracket' },
-    { key: 'pickem-generic', format: 'pickem' },
+    { key: 'pickem-generic', format: 'pickem', preset: { sport: 'all' } },
     { key: 'squares', format: 'squares' },
   ],
   football: [
