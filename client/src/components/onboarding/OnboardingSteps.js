@@ -24,10 +24,10 @@ const ONBOARDING_STEPS = [
   },
   {
     page: '/',
-    targetSelector: null,
-    title: 'Your Home Page',
-    body: "This is your landing page. Discover open leagues you can join right from here, and get a quick view of the leagues you're already in.",
-    position: 'center',
+    targetSelector: '[data-onboarding="open-leagues"]',
+    title: 'Join an Open League',
+    body: "Scroll horizontally to browse leagues you can jump into right now. Tap any card for details — format, members already in, and how the global bonus scales with league size — then hit Join. Your own leagues live in the row above.",
+    position: 'bottom',
     freeScroll: true,
   },
   {
