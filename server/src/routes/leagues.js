@@ -235,9 +235,11 @@ router.get('/open', requireAuth, async (req, res) => {
     let all = []
     let offset = 0
     while (true) {
+      // Pull user fields too so the join-preview modal can show a top-N
+      // members list ordered by IKB rank without a second roundtrip.
       const { data, error: memErr } = await supabase
         .from('league_members')
-        .select('league_id, user_id')
+        .select('league_id, user_id, users(id, username, display_name, avatar_url, avatar_emoji, total_points, tier)')
         .in('league_id', ids)
         .range(offset, offset + PAGE - 1)
       if (memErr) throw memErr
@@ -251,9 +253,18 @@ router.get('/open', requireAuth, async (req, res) => {
 
   const countMap = {}
   const userLeagues = new Set()
+  // Members per league, sorted by IKB rank (total_points desc), capped at 10
+  // for the modal preview.
+  const membersByLeague = {}
   for (const m of members) {
     countMap[m.league_id] = (countMap[m.league_id] || 0) + 1
     if (m.user_id === req.user.id) userLeagues.add(m.league_id)
+    if (!membersByLeague[m.league_id]) membersByLeague[m.league_id] = []
+    if (m.users) membersByLeague[m.league_id].push(m.users)
+  }
+  for (const id of Object.keys(membersByLeague)) {
+    membersByLeague[id].sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
+    membersByLeague[id] = membersByLeague[id].slice(0, 10)
   }
 
   // Pull fantasy_settings.draft_date for any fantasy leagues in this batch
@@ -296,6 +307,7 @@ router.get('/open', requireAuth, async (req, res) => {
       backdrop_y: l.backdrop_y ?? 50,
       draft_date: draftDateByLeague[l.id] || null,
       draft_status: draftStatusByLeague[l.id] || null,
+      top_members: membersByLeague[l.id] || [],
     }))
 
   res.json(result)

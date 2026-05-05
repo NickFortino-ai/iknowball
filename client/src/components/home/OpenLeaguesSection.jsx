@@ -4,6 +4,8 @@ import { useOpenLeagues, useJoinOpenLeague } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import { getBackdropUrl } from '../../lib/backdropUrl'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
+import Avatar from '../ui/Avatar'
+import TierBadge from '../ui/TierBadge'
 
 const FORMAT_LABELS = {
   pickem: "Pick'em",
@@ -119,14 +121,15 @@ function LeagueInfoModal({ league, onClose, onJoin, joining }) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-4">
           {FORMAT_DESCRIPTIONS[league.format] && (
             <p className="text-sm text-text-primary leading-relaxed">
               {FORMAT_DESCRIPTIONS[league.format]}
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs pt-2 border-t border-text-primary/10">
+          {/* Quick facts grid */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs pt-3 border-t border-text-primary/10">
             <div><span className="text-text-muted">Format: </span><span className="text-text-primary font-semibold">{FORMAT_LABELS[league.format] || league.format}</span></div>
             <div><span className="text-text-muted">Sport: </span><span className="text-text-primary">{SPORT_LABELS[league.sport] || league.sport}</span></div>
             {league.starts_at && (
@@ -143,6 +146,37 @@ function LeagueInfoModal({ league, onClose, onJoin, joining }) {
             {league.settings?.lives && (
               <div><span className="text-text-muted">Lives: </span><span className="text-text-primary">{league.settings.lives}</span></div>
             )}
+          </div>
+
+          {/* Members list (sorted by IKB rank) */}
+          {league.top_members?.length > 0 && (
+            <div className="pt-3 border-t border-text-primary/10">
+              <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
+                Who's already in {league.member_count > 10 ? `(top 10 of ${league.member_count})` : ''}
+              </div>
+              <div className="space-y-1">
+                {league.top_members.map((m, i) => (
+                  <div key={m.id} className="flex items-center gap-2 py-1">
+                    <span className={`font-display text-xs w-5 text-right ${i < 3 ? 'text-accent' : 'text-text-muted'}`}>{i + 1}</span>
+                    <Avatar user={m} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-text-primary truncate">{m.display_name || m.username}</div>
+                      <div className="text-[10px] text-text-muted truncate">@{m.username}</div>
+                    </div>
+                    <TierBadge tier={m.tier} size="xs" />
+                    <span className="text-xs text-text-muted tabular-nums w-12 text-right">{m.total_points ?? 0} pts</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bonus / scoring narrative — subtly persuasive. */}
+          <div className="pt-3 border-t border-text-primary/10">
+            <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1.5">How winning pays</div>
+            <p className="text-xs text-text-primary leading-relaxed">
+              The winner takes a global IKB bonus that scales with league size — <span className="text-accent font-semibold">the bigger the league, the bigger the bonus</span>. Every member's final standing also adjusts their global IKB score: top-half finishers earn positive points, bottom-half finishers lose points. The exact formula is <span className="text-text-secondary font-mono">N + 1 − 2 × rank</span>, where N is the final member count.
+            </p>
           </div>
         </div>
 
