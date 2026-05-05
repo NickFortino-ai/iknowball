@@ -199,7 +199,7 @@ export default function LeaderboardPage() {
         <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks only</p>
       )}
       {tab.scope === 'picks' && (
-        <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks across all sports</p>
+        <p className="text-xs text-text-primary -mt-4 mb-4">Straight picks across all sports</p>
       )}
 
       {searchedUser ? (
