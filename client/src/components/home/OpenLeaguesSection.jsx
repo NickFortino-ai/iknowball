@@ -88,7 +88,7 @@ export default function OpenLeaguesSection() {
           {sortedLeagues.map((league) => (
             <div
               key={league.id}
-              className="relative flex-shrink-0 w-56 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden flex flex-col"
+              className="relative flex-shrink-0 w-64 rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden flex flex-col"
             >
               {league.backdrop_image && (
                 <>
