@@ -45,19 +45,35 @@ router.get('/', requireAuth, async (req, res) => {
 })
 
 router.get('/active-sports', requireAuth, async (req, res) => {
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() + 3)
+  // Match the picks page's day-picker window exactly: only count games whose
+  // ET calendar day is today, tomorrow, or the day after. A rolling 72-hour
+  // cutoff doesn't work — at 11pm ET it includes day-offset-3 games (e.g.
+  // WNBA games at 7:30pm ET three days out) that the picks day-picker
+  // can't actually reach. Result: tab appears tappable but list is empty.
+  const tz = 'America/New_York'
+  const dayKey = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d)
+  const now = new Date()
+  const validDays = new Set([
+    dayKey(now),
+    dayKey(new Date(now.getTime() + 24 * 60 * 60 * 1000)),
+    dayKey(new Date(now.getTime() + 48 * 60 * 60 * 1000)),
+  ])
+  // Pull a slightly wider rolling window from the DB (4 days), then filter
+  // by ET calendar day in JS. Cheap — active-sports counts are small.
+  const sqlCutoff = new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000)
 
   const { data, error } = await supabase
     .from('games')
-    .select('sport_id, sports!inner(key, name)')
+    .select('sport_id, sports!inner(key, name), starts_at')
     .eq('status', 'upcoming')
-    .lte('starts_at', cutoff.toISOString())
+    .lte('starts_at', sqlCutoff.toISOString())
 
   if (error) throw error
 
   const counts = {}
   for (const game of data) {
+    const gameDay = dayKey(new Date(game.starts_at))
+    if (!validDays.has(gameDay)) continue
     const key = game.sports.key
     if (!counts[key]) {
       counts[key] = { key, name: game.sports.name, count: 0 }
