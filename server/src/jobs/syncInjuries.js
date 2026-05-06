@@ -20,6 +20,33 @@ async function fetchDepthChart(sportPath, espnTeamId) {
   return res.json()
 }
 
+// WNBA's depth-chart endpoint returns an empty `depthchart` array — ESPN
+// doesn't populate it. The per-team injuries endpoint is also empty. The
+// only working path is the league-wide /injuries endpoint, which returns
+// every team's injuries in a single response. Pull once per sync, return a
+// Map<teamId, injuries[]> so the per-team loop can look up by ESPN team id.
+async function fetchWnbaInjuriesByTeamId() {
+  const url = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/injuries'
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`ESPN WNBA league-wide injuries ${res.status}`)
+  const data = await res.json()
+  const byTeamId = new Map()
+  for (const teamEntry of data.injuries || []) {
+    const list = (teamEntry.injuries || [])
+      .filter((i) => i.athlete?.displayName)
+      .map((i) => ({
+        name: i.athlete.displayName,
+        shortName: i.athlete.shortName,
+        position: '',
+        status: i.status || 'Unknown',
+        detail: i.shortComment || '',
+      }))
+    list.sort((a, b) => (SEVERITY_ORDER[a.status] ?? 99) - (SEVERITY_ORDER[b.status] ?? 99))
+    byTeamId.set(String(teamEntry.id), list)
+  }
+  return byTeamId
+}
+
 // NHL doesn't populate `.injuries` on its depth-chart athletes the way NFL/MLB
 // do, so the depthchart-based extractor returns zero. ESPN exposes a per-team
 // injuries endpoint that works directly — use that instead.
@@ -156,7 +183,11 @@ async function getUpcomingTeams(sportKey) {
   if (!sport) return []
 
   const now = new Date()
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  // WNBA games are typically 2-3 days apart, so a 24h window means we
+  // never refresh injuries when the picks-page tab is showing. Widen the
+  // sync window to match the 3-day calendar window the picks page uses.
+  const windowMs = sportKey === 'basketball_wnba' ? 4 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
+  const cutoff = new Date(now.getTime() + windowMs)
 
   const { data: games } = await supabase
     .from('games')
@@ -164,7 +195,7 @@ async function getUpcomingTeams(sportKey) {
     .eq('sport_id', sport.id)
     .eq('status', 'upcoming')
     .gte('starts_at', now.toISOString())
-    .lte('starts_at', tomorrow.toISOString())
+    .lte('starts_at', cutoff.toISOString())
 
   if (!games?.length) return []
 
@@ -188,8 +219,21 @@ export async function syncInjuries() {
     }
 
     const isBasketball = BASKETBALL_SPORTS.has(sportKey)
+    const isWnba = sportKey === 'basketball_wnba'
     const isHockey = sportKey === 'icehockey_nhl'
     const sportMap = ODDS_TO_ESPN[sportKey] || {}
+
+    // WNBA depth chart is empty server-side — use the league-wide injuries
+    // endpoint once per sync and look up each team by ESPN id.
+    let wnbaInjuriesByTeamId = null
+    if (isWnba) {
+      try {
+        wnbaInjuriesByTeamId = await fetchWnbaInjuriesByTeamId()
+      } catch (err) {
+        logger.error({ err, sportKey }, 'WNBA league-wide injuries fetch failed')
+        wnbaInjuriesByTeamId = new Map()
+      }
+    }
     let synced = 0
 
     for (const teamName of teamNames) {
@@ -204,6 +248,11 @@ export async function syncInjuries() {
         if (isHockey) {
           const data = await fetchNhlTeamInjuries(espnId)
           ;({ starters, injuries } = extractNhlInjuries(data))
+        } else if (isWnba) {
+          // WNBA depth chart returns zero athletes — pull from the
+          // league-wide injuries map and skip starters.
+          starters = []
+          injuries = wnbaInjuriesByTeamId.get(String(espnId)) || []
         } else {
           const data = await fetchDepthChart(sportPath, espnId)
           ;({ starters, injuries } = isBasketball
