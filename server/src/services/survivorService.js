@@ -4,15 +4,25 @@ import { createNotification } from './notificationService.js'
 import { checkRecordAfterSettle } from './recordService.js'
 
 export async function submitSurvivorPick(leagueId, userId, weekId, gameId, pickedTeam) {
-  // Check if league is completed
+  // Check league state
   const { data: league } = await supabase
     .from('leagues')
-    .select('status, sport')
+    .select('status, sport, starts_at')
     .eq('id', leagueId)
     .single()
 
   if (league?.status === 'completed') {
     const err = new Error('This league has been completed')
+    err.status = 400
+    throw err
+  }
+
+  // Reject picks before the league has actually started. Without this guard
+  // any tab that loaded the survivor view before the start gate was added
+  // (or any direct API call) could submit picks tied to real upcoming games,
+  // which then settle and eliminate users on a "Day 1" that never existed.
+  if (league?.starts_at && new Date(league.starts_at) > new Date()) {
+    const err = new Error("This league hasn't started yet — picks open on the start date.")
     err.status = 400
     throw err
   }
@@ -159,12 +169,19 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
 export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
   const { data: league } = await supabase
     .from('leagues')
-    .select('status, settings')
+    .select('status, settings, starts_at')
     .eq('id', leagueId)
     .single()
 
   if (league?.status === 'completed') {
     const err = new Error('This league has been completed')
+    err.status = 400
+    throw err
+  }
+
+  // Reject picks before the league actually starts (mirrors the team-pick guard).
+  if (league?.starts_at && new Date(league.starts_at) > new Date()) {
+    const err = new Error("This league hasn't started yet — picks open on the start date.")
     err.status = 400
     throw err
   }
