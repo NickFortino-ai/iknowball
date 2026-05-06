@@ -107,13 +107,22 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
               <>
                 <button
                   onClick={() => handleToggleLike(c.id, c.has_liked)}
-                  className="flex items-center gap-1 text-xs transition-colors"
+                  className={`flex items-center gap-1 text-xs transition-colors ${c.has_liked ? 'text-accent' : 'text-text-muted hover:text-accent'}`}
                   title={c.has_liked ? 'Remove emphasis' : 'Emphasize'}
                 >
-                  <span className={`text-base font-bold leading-none ${c.has_liked ? 'text-accent' : 'text-text-muted hover:text-accent'}`}>
-                    {'‼'}
-                  </span>
-                  {c.like_count > 0 && <span className={c.has_liked ? 'text-accent' : 'text-text-muted'}>{c.like_count}</span>}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <rect x="7.6" y="4" width="2.4" height="11" rx="1.2" />
+                    <circle cx="8.8" cy="18.5" r="1.4" />
+                    <rect x="14" y="4" width="2.4" height="11" rx="1.2" />
+                    <circle cx="15.2" cy="18.5" r="1.4" />
+                  </svg>
+                  {c.like_count > 0 && <span>{c.like_count}</span>}
                 </button>
                 <button
                   onClick={() => setReplyingTo({ id: c.parent_id ? c.parent_id : c.id, username: c.users?.username })}
