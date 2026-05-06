@@ -1649,8 +1649,11 @@ export default function LeagueDetailPage() {
               Commissioner
             </span>
           )}
-          {/* Invite action icons */}
-          {isCommissioner && (league.status === 'open' || (league.format === 'fantasy' && fantasySettings?.draft_status === 'pending')) && league.format !== 'bracket' && (
+          {/* Invite action icons. Any member can copy/share the invite link
+              for open-visibility leagues (the banner explicitly tells them to);
+              only the commissioner sees the "Invite Player" autocomplete that
+              creates server-side invitations. */}
+          {(isCommissioner || league.visibility === 'open') && (league.status === 'open' || (league.format === 'fantasy' && fantasySettings?.draft_status === 'pending')) && league.format !== 'bracket' && (
             <div className="flex items-center gap-5">
               <button
                 onClick={async () => {
@@ -1686,15 +1689,17 @@ export default function LeagueDetailPage() {
                   </svg>
                 </button>
               )}
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="p-2 text-text-primary hover:text-white transition-colors cursor-pointer"
-                title="Invite Player"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-              </button>
+              {isCommissioner && (
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="p-2 text-text-primary hover:text-white transition-colors cursor-pointer"
+                  title="Invite Player"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -2131,19 +2136,25 @@ export default function LeagueDetailPage() {
         /></div>
       )}
 
-      {tabs[activeTab] === 'Picks' && league.format === 'survivor' && (
-        <div className="relative z-10">
-          {league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date() && (
-            <div className="rounded-xl border border-accent/30 bg-accent/5 backdrop-blur-sm p-4 mb-4 text-center">
-              <div className="text-sm text-text-primary font-semibold">
-                League starts {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' })}
+      {tabs[activeTab] === 'Picks' && league.format === 'survivor' && (() => {
+        const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
+        return (
+          <div className="relative z-10">
+            {notStartedYet && (
+              <div className="rounded-xl border border-accent/30 bg-accent/5 backdrop-blur-sm p-4 mb-4 text-center max-w-md mx-auto">
+                <div className="text-sm text-text-primary font-semibold">
+                  League starts {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' })}
+                </div>
+                <div className="text-xs text-text-muted mt-1">Invite members before the first game. Picks open when games are loaded.</div>
               </div>
-              <div className="text-xs text-text-muted mt-1">Invite members before the first game. Picks open when games are loaded.</div>
-            </div>
-          )}
-          <SurvivorView league={league} />
-        </div>
-      )}
+            )}
+            {/* Don't render the pick selector before the league actually starts —
+                otherwise users see today's games (across all sports for All-Sports
+                survivor) and can pick before they should be able to. */}
+            {!notStartedYet && <SurvivorView league={league} />}
+          </div>
+        )
+      })()}
 
       {tabs[activeTab] === 'Board' && league.format === 'squares' && (
         <div className="relative z-10"><SquaresView league={league} isCommissioner={isCommissioner} onUserTap={setSelectedUserId} /></div>
