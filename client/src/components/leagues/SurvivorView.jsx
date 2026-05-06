@@ -10,6 +10,24 @@ import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import Avatar from '../ui/Avatar'
 import TouchdownPicker from './TouchdownPicker'
 
+// Sport labels for the All-Sports survivor sub-grouping. Falls back to the
+// raw sport_key if a sport isn't in the map.
+const SPORT_LABELS = {
+  americanfootball_nfl: 'NFL',
+  basketball_nba: 'NBA',
+  baseball_mlb: 'MLB',
+  basketball_ncaab: 'NCAAB',
+  basketball_wncaab: 'WNCAAB',
+  americanfootball_ncaaf: 'NCAAF',
+  americanfootball_ufl: 'UFL',
+  basketball_wnba: 'WNBA',
+  icehockey_nhl: 'NHL',
+  soccer_usa_mls: 'MLS',
+}
+function sportLabel(key) {
+  return SPORT_LABELS[key] || key || 'Other'
+}
+
 const STATUS_STYLES = {
   survived: 'bg-correct/20 text-correct',
   survived_wrong: 'bg-yellow-500/20 text-yellow-500',
@@ -32,6 +50,10 @@ export default function SurvivorView({ league }) {
   const [showPickForm, setShowPickForm] = useState(false)
   const [localPickTeam, setLocalPickTeam] = useState(null)
   const [localPickGameId, setLocalPickGameId] = useState(null)
+  // Collapsed sport sub-sections for All-Sports survivor. Stored as
+  // "${dateKey}|${sportKey}" so collapsing one sport on Mar 5 doesn't
+  // collapse the same sport on Mar 6.
+  const [collapsedSportSections, setCollapsedSportSections] = useState(new Set())
 
   const currentWeek = league.current_week
   // Use pick_week from board (advances past locked picks) with fallback to current_week
@@ -186,6 +208,8 @@ export default function SurvivorView({ league }) {
         </div>
       )}
       {showPickForm && !leagueCompleted && userIsAlive && !isTouchdown && pickWeekGames.length > 0 && (() => {
+        const isAllSports = league.sport === 'all'
+
         // Group games by date
         const grouped = pickWeekGames.reduce((acc, game) => {
           const d = new Date(game.starts_at)
@@ -195,6 +219,95 @@ export default function SurvivorView({ league }) {
           return acc
         }, {})
         const dateKeys = Object.keys(grouped).sort()
+
+        // Renders one game as the away/home button row.
+        function renderGameRow(game) {
+          const homeUsed = !poolExpanded && usedTeamSet.has(game.home_team)
+          const awayUsed = !poolExpanded && usedTeamSet.has(game.away_team)
+          // Only highlight a pick on the EXACT game it was made on —
+          // matching by team name alone visually "picks" the same
+          // team in future games (e.g. consecutive-day matchups).
+          const isThisGamePicked = currentPickGameId === game.id
+          const awayPicked = isThisGamePicked && currentPickTeam === game.away_team
+          const homePicked = isThisGamePicked && currentPickTeam === game.home_team
+
+          const sportForLogo = league.sport === 'all' ? game.sport_key : league.sport
+          const awayLogo = getTeamLogoUrl(game.away_team, sportForLogo)
+          const homeLogo = getTeamLogoUrl(game.home_team, sportForLogo)
+
+          return (
+            <div key={game.id} className="flex items-center gap-2">
+              <button
+                onClick={() => handlePick(game.id, 'away')}
+                disabled={awayUsed || submitPick.isPending}
+                className={`flex-1 py-3 px-3 rounded-lg text-sm font-semibold transition-colors flex flex-col items-center gap-1.5 ${
+                  awayUsed
+                    ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
+                    : awayPicked
+                      ? 'bg-accent/20 text-accent ring-2 ring-accent'
+                      : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
+                }`}
+              >
+                {awayLogo && <img src={awayLogo} alt="" className="w-8 h-8 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(game.away_team, sportForLogo); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
+                <span>{game.away_team}</span>
+                {game.away_odds != null && (
+                  <span className="text-xs font-normal text-text-muted">{formatOdds(game.away_odds)}</span>
+                )}
+              </button>
+              <span className="text-xs text-text-muted">@</span>
+              <button
+                onClick={() => handlePick(game.id, 'home')}
+                disabled={homeUsed || submitPick.isPending}
+                className={`flex-1 py-3 px-3 rounded-lg text-sm font-semibold transition-colors flex flex-col items-center gap-1.5 ${
+                  homeUsed
+                    ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
+                    : homePicked
+                      ? 'bg-accent/20 text-accent ring-2 ring-accent'
+                      : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
+                }`}
+              >
+                {homeLogo && <img src={homeLogo} alt="" className="w-8 h-8 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(game.home_team, sportForLogo); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
+                <span>{game.home_team}</span>
+                {game.home_odds != null && (
+                  <span className="text-xs font-normal text-text-muted">{formatOdds(game.home_odds)}</span>
+                )}
+              </button>
+            </div>
+          )
+        }
+
+        // Renders a list of games as one or two columns. Single-sport leagues
+        // get the existing two-column desktop split; All-Sports stays single
+        // column inside each sport sub-group so the per-sport block is tidy.
+        function renderGameList(games, { columns = 'two' } = {}) {
+          const rows = games.map(renderGameRow)
+          if (columns === 'one') {
+            return <div className="space-y-2">{rows}</div>
+          }
+          const mid = Math.ceil(rows.length / 2)
+          return (
+            <>
+              <div className="space-y-2 lg:hidden">{rows}</div>
+              <div className="hidden lg:flex gap-0">
+                <div className="flex-1 space-y-2">{rows.slice(0, mid)}</div>
+                {rows.length > mid && (
+                  <>
+                    <div className="w-px bg-white/20 mx-4" />
+                    <div className="flex-1 space-y-2">{rows.slice(mid)}</div>
+                  </>
+                )}
+              </div>
+            </>
+          )
+        }
+
+        function toggleSportSection(key) {
+          setCollapsedSportSections((prev) => {
+            const next = new Set(prev)
+            if (next.has(key)) next.delete(key); else next.add(key)
+            return next
+          })
+        }
 
         return (
           <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-primary/30">
@@ -210,86 +323,60 @@ export default function SurvivorView({ league }) {
             <div className="space-y-3">
               {dateKeys.map((dateKey) => {
                 const d = new Date(dateKey + 'T12:00:00')
-                const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                const dateLabelStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                const gamesOnDate = grouped[dateKey]
+
+                if (!isAllSports) {
+                  // Single-sport survivor — original two-column layout.
+                  return (
+                    <div key={dateKey}>
+                      <div className="font-display text-base text-white uppercase tracking-wider mb-2">{dateLabelStr}</div>
+                      {renderGameList(gamesOnDate, { columns: 'two' })}
+                    </div>
+                  )
+                }
+
+                // All-Sports survivor: sub-group games by sport_key and render
+                // each sport as a collapsible section (expanded by default).
+                const bySport = gamesOnDate.reduce((acc, g) => {
+                  const k = g.sport_key || 'unknown'
+                  if (!acc[k]) acc[k] = []
+                  acc[k].push(g)
+                  return acc
+                }, {})
+                const sportKeys = Object.keys(bySport).sort((a, b) => sportLabel(a).localeCompare(sportLabel(b)))
+
                 return (
                   <div key={dateKey}>
-                    <div className="font-display text-base text-white uppercase tracking-wider mb-2">{label}</div>
-                    {(() => {
-                      const gameRows = grouped[dateKey].map((game) => {
-                        const homeUsed = !poolExpanded && usedTeamSet.has(game.home_team)
-                        const awayUsed = !poolExpanded && usedTeamSet.has(game.away_team)
-                        // Only highlight a pick on the EXACT game it was made on —
-                        // matching by team name alone visually "picks" the same
-                        // team in future games (e.g. consecutive-day matchups).
-                        const isThisGamePicked = currentPickGameId === game.id
-                        const awayPicked = isThisGamePicked && currentPickTeam === game.away_team
-                        const homePicked = isThisGamePicked && currentPickTeam === game.home_team
-
-                        const awayLogo = getTeamLogoUrl(game.away_team, league.sport === 'all' ? game.sport_key : league.sport)
-                        const homeLogo = getTeamLogoUrl(game.home_team, league.sport === 'all' ? game.sport_key : league.sport)
-
+                    <div className="font-display text-base text-white uppercase tracking-wider mb-2">{dateLabelStr}</div>
+                    <div className="space-y-2">
+                      {sportKeys.map((sportKey) => {
+                        const sectionKey = `${dateKey}|${sportKey}`
+                        const collapsed = collapsedSportSections.has(sectionKey)
+                        const games = bySport[sportKey]
                         return (
-                          <div key={game.id} className="flex items-center gap-2">
+                          <div key={sectionKey} className="rounded-lg border border-text-primary/10 bg-bg-primary/40 overflow-hidden">
                             <button
-                              onClick={() => handlePick(game.id, 'away')}
-                              disabled={awayUsed || submitPick.isPending}
-                              className={`flex-1 py-3 px-3 rounded-lg text-sm font-semibold transition-colors flex flex-col items-center gap-1.5 ${
-                                awayUsed
-                                  ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
-                                  : awayPicked
-                                    ? 'bg-accent/20 text-accent ring-2 ring-accent'
-                                    : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
-                              }`}
+                              type="button"
+                              onClick={() => toggleSportSection(sectionKey)}
+                              className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-text-primary/5 transition-colors"
                             >
-                              {awayLogo && <img src={awayLogo} alt="" className="w-8 h-8 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(game.away_team, league.sport === 'all' ? game.sport_key : league.sport); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
-                              <span>{game.away_team}</span>
-                              {game.away_odds != null && (
-                                <span className="text-xs font-normal text-text-muted">{formatOdds(game.away_odds)}</span>
-                              )}
+                              <span className="text-xs font-semibold text-accent uppercase tracking-wider">
+                                {sportLabel(sportKey)} <span className="text-text-muted ml-1">({games.length})</span>
+                              </span>
+                              <svg className={`w-4 h-4 text-text-muted transition-transform ${collapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
                             </button>
-                            <span className="text-xs text-text-muted">@</span>
-                            <button
-                              onClick={() => handlePick(game.id, 'home')}
-                              disabled={homeUsed || submitPick.isPending}
-                              className={`flex-1 py-3 px-3 rounded-lg text-sm font-semibold transition-colors flex flex-col items-center gap-1.5 ${
-                                homeUsed
-                                  ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
-                                  : homePicked
-                                    ? 'bg-accent/20 text-accent ring-2 ring-accent'
-                                    : 'bg-black/40 border border-text-primary/20 text-text-primary hover:bg-accent/20 hover:text-accent'
-                              }`}
-                            >
-                              {homeLogo && <img src={homeLogo} alt="" className="w-8 h-8 object-contain" onError={(e) => { const fb = getTeamLogoFallbackUrl(game.home_team, league.sport === 'all' ? game.sport_key : league.sport); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />}
-                              <span>{game.home_team}</span>
-                              {game.home_odds != null && (
-                                <span className="text-xs font-normal text-text-muted">{formatOdds(game.home_odds)}</span>
-                              )}
-                            </button>
-                          </div>
-                        )
-                      })
-
-                      const mid = Math.ceil(gameRows.length / 2)
-                      const left = gameRows.slice(0, mid)
-                      const right = gameRows.slice(mid)
-
-                      return (
-                        <>
-                          {/* Single column on mobile */}
-                          <div className="space-y-2 lg:hidden">{gameRows}</div>
-                          {/* Two columns with divider on desktop */}
-                          <div className="hidden lg:flex gap-0">
-                            <div className="flex-1 space-y-2">{left}</div>
-                            {right.length > 0 && (
-                              <>
-                                <div className="w-px bg-white/20 mx-4" />
-                                <div className="flex-1 space-y-2">{right}</div>
-                              </>
+                            {!collapsed && (
+                              <div className="p-3 pt-2 border-t border-text-primary/10">
+                                {renderGameList(games, { columns: 'one' })}
+                              </div>
                             )}
                           </div>
-                        </>
-                      )
-                    })()}
+                        )
+                      })}
+                    </div>
                   </div>
                 )
               })}
