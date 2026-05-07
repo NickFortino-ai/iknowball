@@ -72,6 +72,10 @@ function getNotificationIcon(n) {
 
     // Survivor
     case 'survivor_result':
+      // Correction / 'ignore the earlier notice' messages get an edit icon
+      // so they don't look like another elimination on visual scan. Set
+      // metadata.isCorrection=true on the server when sending one of these.
+      if (n.metadata?.isCorrection) return '\u270F\uFE0F' // ✏️
       if (n.message?.includes('eliminated')) return '\u274C' // ❌
       if (n.message?.includes('lost a life')) return '\u26A0\uFE0F' // ⚠️
       return '\u2705' // ✅ survived
