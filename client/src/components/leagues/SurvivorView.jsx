@@ -310,7 +310,7 @@ export default function SurvivorView({ league }) {
         }
 
         return (
-          <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-primary/30">
+          <div className="rounded-xl border border-text-primary/20 p-4 mb-6 relative z-10 bg-bg-primary/20 backdrop-blur-sm">
             {poolExpanded && (
               <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3 text-center">
                 <div className="text-xs text-text-secondary font-semibold mb-0.5">Pool Expanded</div>
@@ -355,7 +355,7 @@ export default function SurvivorView({ league }) {
                         const collapsed = collapsedSportSections.has(sectionKey)
                         const games = bySport[sportKey]
                         return (
-                          <div key={sectionKey} className="rounded-lg border border-text-primary/10 bg-bg-primary/40 overflow-hidden">
+                          <div key={sectionKey} className="rounded-lg border border-text-primary/10 overflow-hidden">
                             <button
                               type="button"
                               onClick={() => toggleSportSection(sectionKey)}
