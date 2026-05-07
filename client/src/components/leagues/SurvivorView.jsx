@@ -231,7 +231,7 @@ export default function SurvivorView({ league }) {
           const awayPicked = isThisGamePicked && currentPickTeam === game.away_team
           const homePicked = isThisGamePicked && currentPickTeam === game.home_team
 
-          const sportForLogo = league.sport === 'all' ? game.sport_key : league.sport
+          const sportForLogo = league.sport === 'all' ? (game.sports?.key || game.sport_key) : league.sport
           const awayLogo = getTeamLogoUrl(game.away_team, sportForLogo)
           const homeLogo = getTeamLogoUrl(game.home_team, sportForLogo)
 
@@ -339,7 +339,7 @@ export default function SurvivorView({ league }) {
                 // All-Sports survivor: sub-group games by sport_key and render
                 // each sport as a collapsible section (expanded by default).
                 const bySport = gamesOnDate.reduce((acc, g) => {
-                  const k = g.sport_key || 'unknown'
+                  const k = g.sports?.key || g.sport_key || 'unknown'
                   if (!acc[k]) acc[k] = []
                   acc[k].push(g)
                   return acc
