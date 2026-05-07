@@ -162,6 +162,14 @@ export default function HubPage() {
     if (tab && VALID_SCOPES.has(tab)) {
       hasManuallyToggled.current = true
       setFeedScope(tab)
+    } else if (tab === 'team_feed') {
+      // team_feed isn't a top-level scope — render via the All-of-IKB feed
+      // with the sport/team filter panel activated and the requested team
+      // pre-selected. Without this branch the scope wouldn't switch and the
+      // URL would just revert to /hub a moment later.
+      hasManuallyToggled.current = true
+      setFeedScope('all')
+      setShowFilterPanel(true)
     }
     if (scrollTo) {
       setScrollToItem(scrollTo)
@@ -548,7 +556,11 @@ export default function HubPage() {
             onScrollComplete={() => setScrollToItem(null)}
           />
         ) : feedScope === 'all' && showFilterPanel ? (
-          <TeamFeed onUserTap={setSelectedUserId} />
+          <TeamFeed
+            onUserTap={setSelectedUserId}
+            initialTeam={initialTeam}
+            onTeamConsumed={() => setInitialTeam(null)}
+          />
         ) : feedScope === 'news' ? (
           <NewsFeed />
         ) : (
