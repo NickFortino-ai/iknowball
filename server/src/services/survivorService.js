@@ -489,14 +489,24 @@ export async function getUsedTeams(leagueId, userId) {
  */
 export async function scoreTouchdownSurvivorPicks(gameId) {
   // Find locked touchdown survivor picks for this game
-  const { data: picks, error } = await supabase
+  const { data: rawPicks, error } = await supabase
     .from('survivor_picks')
-    .select('*, leagues(name, settings), league_weeks(week_number)')
+    .select('*, leagues(name, settings, starts_at), league_weeks(week_number)')
     .eq('game_id', gameId)
     .eq('status', 'locked')
     .not('player_id', 'is', null)
 
-  if (error || !picks?.length) return
+  if (error || !rawPicks?.length) return
+
+  // Defense in depth: skip picks tied to leagues that haven't started yet.
+  // Submit endpoints already block this, but this guard means even an errant
+  // pick row (manual insert, future bug) can't trigger eliminations.
+  const nowMs = Date.now()
+  const picks = rawPicks.filter((p) => {
+    const ts = p.leagues?.starts_at
+    return !ts || new Date(ts).getTime() <= nowMs
+  })
+  if (!picks.length) return
 
   // Get the game's external_id for ESPN lookup
   const { data: game } = await supabase
@@ -643,9 +653,9 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
 
 export async function scoreSurvivorPicks(gameId, winner) {
   // Find all locked survivor picks for this game
-  const { data: picks, error } = await supabase
+  const { data: rawPicks, error } = await supabase
     .from('survivor_picks')
-    .select('*, leagues(name, settings), league_weeks(week_number)')
+    .select('*, leagues(name, settings, starts_at), league_weeks(week_number)')
     .eq('game_id', gameId)
     .eq('status', 'locked')
 
@@ -654,7 +664,15 @@ export async function scoreSurvivorPicks(gameId, winner) {
     return
   }
 
-  if (!picks?.length) return
+  if (!rawPicks?.length) return
+
+  // Defense in depth: skip picks tied to leagues that haven't started yet.
+  const nowMs = Date.now()
+  const picks = rawPicks.filter((p) => {
+    const ts = p.leagues?.starts_at
+    return !ts || new Date(ts).getTime() <= nowMs
+  })
+  if (!picks.length) return
 
   // Collect deferred notifications — we send them AFTER checkSurvivorWinner
   // so that if all users are eliminated and revived, we don't send false
