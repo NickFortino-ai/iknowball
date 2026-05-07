@@ -13,7 +13,7 @@ import { FALLBACK_TEAMS } from './teams.js'
 const router = Router()
 
 const hotTakeSchema = z.object({
-  content: z.string().max(280).optional().default(''),
+  content: z.string().max(2000).optional().default(''),
   team_tags: z.array(z.string().max(50)).max(5).optional(),
   sport_key: z.string().max(50).optional(),
   image_url: z.string().url().optional(),

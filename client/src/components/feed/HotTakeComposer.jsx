@@ -9,7 +9,7 @@ import InfoTooltip from '../ui/InfoTooltip'
 import TeamAutocomplete from './TeamAutocomplete'
 import { toast } from '../ui/Toast'
 
-const MAX_CHARS = 280
+const MAX_CHARS = 2000
 const IMAGE_URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+\.(jpg|jpeg|png|gif|webp)(\?[^\s]*)?/gi
 
 const sportTabs = [

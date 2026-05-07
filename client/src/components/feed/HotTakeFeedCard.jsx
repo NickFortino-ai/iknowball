@@ -232,7 +232,44 @@ function FeedVideo({ url }) {
   )
 }
 
-const MAX_CHARS = 280
+const MAX_CHARS = 2000
+const TRUNCATE_AT = 500
+
+function ExpandableContent({ text }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!text) return null
+  const needsTruncation = text.length > TRUNCATE_AT
+  if (!needsTruncation || expanded) {
+    return (
+      <div>
+        <RichContent text={text} className="text-sm text-text-primary leading-relaxed" />
+        {needsTruncation && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(false) }}
+            className="text-xs text-accent hover:text-accent-hover transition-colors mt-1"
+          >
+            Show less
+          </button>
+        )}
+      </div>
+    )
+  }
+  // Truncate to a word boundary near TRUNCATE_AT to avoid mid-word cuts.
+  const slice = text.slice(0, TRUNCATE_AT)
+  const lastSpace = slice.lastIndexOf(' ')
+  const truncated = (lastSpace > TRUNCATE_AT * 0.7 ? slice.slice(0, lastSpace) : slice).trimEnd() + '…'
+  return (
+    <div>
+      <RichContent text={truncated} className="text-sm text-text-primary leading-relaxed" />
+      <button
+        onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+        className="text-xs text-accent hover:text-accent-hover transition-colors mt-1"
+      >
+        Show more
+      </button>
+    </div>
+  )
+}
 
 const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
@@ -703,7 +740,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
           {/* Content (non-flex posts) */}
           {hot_take.post_type !== 'flex' && (
-            <RichContent text={hot_take.content} className="text-sm text-text-primary leading-relaxed" />
+            <ExpandableContent text={hot_take.content} />
           )}
 
           {/* Poll options */}
