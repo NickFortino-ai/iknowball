@@ -490,6 +490,13 @@ export async function generateLeagueWeeks(league) {
     ? new Date(league.ends_at)
     : new Date(new Date(league.starts_at).getTime() + 365 * 24 * 60 * 60 * 1000)
 
+  // Periods that end before league.starts_at are backdated and dangerous —
+  // the auto-eliminate cron would treat them as "Day 1 already happened" and
+  // mark every member as missed-pick-eliminated for a day that never
+  // existed. Skip any such period at insert time. Belt-and-suspenders alongside
+  // the autoEliminateMissedPicks/scoreSurvivorPicks pre-start guards.
+  const startsAtMs = new Date(league.starts_at).getTime()
+
   if (isDaily) {
     // Daily mode: one entry per day
     // Use 10:00 UTC to 09:59 UTC boundaries (6 AM ET to 5:59 AM ET)
@@ -501,12 +508,14 @@ export async function generateLeagueWeeks(league) {
       dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
       dayEnd.setUTCHours(9, 59, 59, 999)
 
-      periods.push({
-        league_id: league.id,
-        week_number: periodNum++,
-        starts_at: current.toISOString(),
-        ends_at: dayEnd.toISOString(),
-      })
+      if (dayEnd.getTime() > startsAtMs) {
+        periods.push({
+          league_id: league.id,
+          week_number: periodNum++,
+          starts_at: current.toISOString(),
+          ends_at: dayEnd.toISOString(),
+        })
+      }
 
       current.setUTCDate(current.getUTCDate() + 1)
     }
@@ -521,12 +530,14 @@ export async function generateLeagueWeeks(league) {
       weekEnd.setUTCDate(current.getUTCDate() + 7)
       weekEnd.setUTCHours(9, 59, 59, 999)
 
-      periods.push({
-        league_id: league.id,
-        week_number: periodNum++,
-        starts_at: current.toISOString(),
-        ends_at: weekEnd.toISOString(),
-      })
+      if (weekEnd.getTime() > startsAtMs) {
+        periods.push({
+          league_id: league.id,
+          week_number: periodNum++,
+          starts_at: current.toISOString(),
+          ends_at: weekEnd.toISOString(),
+        })
+      }
 
       current.setUTCDate(current.getUTCDate() + 7)
     }
