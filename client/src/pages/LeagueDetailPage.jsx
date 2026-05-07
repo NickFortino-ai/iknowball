@@ -2145,13 +2145,10 @@ export default function LeagueDetailPage() {
                 <div className="text-sm text-text-primary font-semibold">
                   League starts {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' })}
                 </div>
-                <div className="text-xs text-text-muted mt-1">Invite members before the first game. Picks open when games are loaded.</div>
+                <div className="text-xs text-text-muted mt-1">You can pick early — picks lock when each game starts.</div>
               </div>
             )}
-            {/* Don't render the pick selector before the league actually starts —
-                otherwise users see today's games (across all sports for All-Sports
-                survivor) and can pick before they should be able to. */}
-            {!notStartedYet && <SurvivorView league={league} />}
+            <SurvivorView league={league} />
           </div>
         )
       })()}

@@ -16,16 +16,8 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
     err.status = 400
     throw err
   }
-
-  // Reject picks before the league has actually started. Without this guard
-  // any tab that loaded the survivor view before the start gate was added
-  // (or any direct API call) could submit picks tied to real upcoming games,
-  // which then settle and eliminate users on a "Day 1" that never existed.
-  if (league?.starts_at && new Date(league.starts_at) > new Date()) {
-    const err = new Error("This league hasn't started yet — picks open on the start date.")
-    err.status = 400
-    throw err
-  }
+  // (Pre-start picks are allowed for games on/after league.starts_at — the
+  // game.starts_at vs league.starts_at check below handles the dangerous case.)
 
   // Verify user is alive
   const { data: member } = await supabase
@@ -62,6 +54,16 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
 
   if (game.status !== 'upcoming') {
     const err = new Error('This game has already started')
+    err.status = 400
+    throw err
+  }
+
+  // Picks are allowed before league.starts_at — but only for games on or
+  // after the league actually begins. Picking a game that starts before the
+  // league does would be settled outside the league's lifecycle and is
+  // exactly the failure mode that caused the May 5/6 disaster.
+  if (league?.starts_at && new Date(game.starts_at) < new Date(league.starts_at)) {
+    const err = new Error("That game starts before the league does — pick a game on or after the league start date.")
     err.status = 400
     throw err
   }
@@ -179,12 +181,9 @@ export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
     throw err
   }
 
-  // Reject picks before the league actually starts (mirrors the team-pick guard).
-  if (league?.starts_at && new Date(league.starts_at) > new Date()) {
-    const err = new Error("This league hasn't started yet — picks open on the start date.")
-    err.status = 400
-    throw err
-  }
+  // (Pre-start picks are allowed for games on/after league.starts_at — the
+  // playerGame.starts_at vs league.starts_at check below handles the
+  // dangerous case.)
 
   // Look up the player
   const { data: player } = await supabase
@@ -213,6 +212,14 @@ export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
     g.home_team?.includes(player.team) || g.away_team?.includes(player.team) ||
     player.team === getTeamAbbrev(g.home_team) || player.team === getTeamAbbrev(g.away_team)
   )
+
+  // Block picks for games that start before the league does — same
+  // failure-mode protection as the team-pick path.
+  if (playerGame && league?.starts_at && new Date(playerGame.starts_at) < new Date(league.starts_at)) {
+    const err = new Error("That game starts before the league does — pick a player whose game is on or after the league start date.")
+    err.status = 400
+    throw err
+  }
 
   // Determine the league week
   const { data: weeks } = await supabase
@@ -376,9 +383,12 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     .eq('league_id', leagueId)
     .order('week_number', { ascending: true })
 
-  // Find current week
+  // Find current week. Before the league starts, no week is "live" yet —
+  // fall through to the first upcoming week so the pick form has Day 1
+  // games to render (lets users pick a day early).
   const now = new Date().toISOString()
   const currentWeek = (weeks || []).find((w) => w.starts_at <= now && w.ends_at >= now)
+    || (weeks || []).find((w) => w.starts_at > now)
   const currentWeekId = currentWeek?.id
 
   // Check if requesting user has made their pick for the current week
