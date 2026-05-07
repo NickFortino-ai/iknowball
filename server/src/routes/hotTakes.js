@@ -21,7 +21,7 @@ const hotTakeSchema = z.object({
   video_url: z.string().url().optional(),
   user_tags: z.array(z.string().uuid()).max(3).optional(),
   post_type: z.enum(['post', 'prediction', 'poll']).optional(),
-  poll_options: z.array(z.string().min(1).max(100)).min(2).max(6).optional(),
+  poll_options: z.array(z.string().min(1).max(100)).min(2).max(10).optional(),
 }).refine((data) => data.content || data.image_url || data.image_urls?.length || data.video_url, {
   message: 'Post must have text, an image, or a video',
 })

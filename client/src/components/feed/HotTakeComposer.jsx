@@ -479,7 +479,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   )}
                 </div>
               ))}
-              {pollOptions.length < 6 && (
+              {pollOptions.length < 10 && (
                 <button
                   onClick={() => setPollOptions([...pollOptions, ''])}
                   className="text-xs text-accent hover:text-accent-hover transition-colors"
