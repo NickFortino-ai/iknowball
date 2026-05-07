@@ -170,14 +170,23 @@ export async function unfeatureProp(propId) {
 }
 
 export async function getFeaturedProps(date, { fallback = false } = {}) {
+  // Match any prop featured on or before the requested date whose game
+  // hasn't yet started. Earlier this used eq('featured_date', date), which
+  // broke when admin featured a prop on day N for a game on day N+1 — the
+  // picks page auto-advances dayOffset to the game date, so the prop's
+  // featured_date wouldn't match and it disappeared.
   const { data, error } = await supabase
     .from('player_props')
     .select('*, games(id, home_team, away_team, starts_at, status, sports(key, name))')
-    .eq('featured_date', date)
+    .lte('featured_date', date)
     .in('status', ['published', 'locked', 'settled'])
 
   if (error) throw error
 
+  // The client's FeaturedPropSection already filters out props whose
+  // game has started or which are locked/settled — let it decide what
+  // to render. We just hand back everything featured on or before the
+  // requested date.
   const props = data || []
 
   // If fallback enabled and all today's props are settled or none exist, return next upcoming
