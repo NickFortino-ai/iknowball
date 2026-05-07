@@ -810,15 +810,24 @@ export async function autoEliminateMissedPicks() {
   // Find active survivor leagues
   const { data: leagues } = await supabase
     .from('leagues')
-    .select('id, sport, name, settings')
+    .select('id, sport, name, settings, starts_at')
     .eq('format', 'survivor')
     .neq('status', 'completed')
 
   if (!leagues?.length) return
 
   const now = new Date().toISOString()
+  const nowMs = Date.now()
 
   for (const league of leagues) {
+    // Don't process leagues that haven't actually started yet. Without this
+    // guard, league_weeks rows with starts_at <= now (e.g. a "Week 1" the
+    // schedule generator placed before league.starts_at) would mark every
+    // member as missed-pick-eliminated for a Day that hasn't existed.
+    if (league.starts_at && new Date(league.starts_at).getTime() > nowMs) {
+      continue
+    }
+
     const isDaily = league.settings?.pick_frequency === 'daily'
     const periodLabel = isDaily ? 'Day' : 'Week'
 
