@@ -523,7 +523,7 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                   {teamTags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full"
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-accent px-2 py-0.5 rounded-full"
                     >
                       {tag}
                       <button

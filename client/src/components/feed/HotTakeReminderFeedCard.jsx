@@ -47,7 +47,7 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
           {hot_take.team_tags?.length > 0 && hot_take.team_tags.map((tag) => (
             <span
               key={tag}
-              className="text-[10px] font-semibold uppercase tracking-wider bg-accent/15 text-accent px-2 py-0.5 rounded-full"
+              className="text-[10px] font-semibold uppercase tracking-wider text-accent px-2 py-0.5 rounded-full"
             >
               {tag}
             </span>
