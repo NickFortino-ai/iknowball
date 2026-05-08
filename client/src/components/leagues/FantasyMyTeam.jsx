@@ -133,8 +133,10 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           </div>
           <div className="text-xs text-text-primary">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
-        {/* Season stats — desktop only */}
-        {showSeasonStats && row?.season_stats && row?.nfl_players?.position && !editMode && (() => {
+        {/* Stat line — desktop only. Renders season totals on the current
+            week, single-week stats on past weeks (server returns the same
+            shape under the season_stats key for both). */}
+        {row?.season_stats && row?.nfl_players?.position && !editMode && (() => {
           const statLine = formatSeasonStats(row.nfl_players.position, row.season_stats)
           if (!statLine) return null
           return (

@@ -873,7 +873,12 @@ router.get('/lineup-history', async (req, res) => {
       slot: r.slot,
       locked_at: r.locked_at,
       nfl_players: r.nfl_players,
-      points: pts,
+      // Field names matching the live-roster shape so PlayerRow can read
+      // both consistently. season_stats here is actually that-week's stats
+      // — we reuse the field for the formatter; the label ("pts" vs "season")
+      // is set client-side based on whether the user is viewing the live week.
+      live_points: pts,
+      season_stats: stat || null,
     }
   })
 
