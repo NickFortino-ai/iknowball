@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { usePlayerDetail } from '../../hooks/useLeagues'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -185,6 +186,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
   }, [])
 
   return (
+    createPortal(
     <div
       className="fixed inset-0 z-[60] bg-black/60 flex items-stretch md:items-center justify-center md:px-4 md:py-8"
       onClick={onClose}
@@ -379,6 +381,8 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
+    )
   )
 }
