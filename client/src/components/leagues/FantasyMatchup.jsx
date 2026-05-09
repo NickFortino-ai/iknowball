@@ -330,7 +330,12 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
               function gameClockLine(p) {
                 if (!p) return null
                 if (p.game_status === 'final') return 'Final'
-                if (p.game_status === 'live') return `Q${p.game_period || '?'} ${p.game_clock || ''}`
+                if (p.game_status === 'live') {
+                  const period = p.game_period
+                    ? (p.game_period <= 4 ? `Q${p.game_period}` : p.game_period === 5 ? 'OT' : `${p.game_period - 4}OT`)
+                    : '?'
+                  return `${period} ${p.game_clock || ''}`
+                }
                 return null
               }
 

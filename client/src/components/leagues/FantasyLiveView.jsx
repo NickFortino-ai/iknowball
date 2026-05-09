@@ -58,10 +58,17 @@ function buildStatLine(stats, position) {
   return parts.length > 0 ? parts.join(' \u00b7 ') : null
 }
 
+function formatNflPeriod(p) {
+  if (!p) return ''
+  if (p <= 4) return `Q${p}`
+  if (p === 5) return 'OT'
+  return `${p - 4}OT`
+}
+
 function gameClockLabel(slot) {
   if (slot.game_status === 'final') return 'Final'
   if (slot.game_status === 'live') {
-    const period = slot.game_period ? `Q${slot.game_period}` : ''
+    const period = formatNflPeriod(slot.game_period)
     const clock = slot.game_clock ? slot.game_clock : ''
     return [period, clock].filter(Boolean).join(' ') || 'Live'
   }
@@ -194,7 +201,7 @@ function SalaryCapLive({ league, week, season }) {
                               <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-xs lg:w-44 lg:shrink-0 lg:text-right">
                                 {slot.away_team} {slot.away_score ?? ''} @ {slot.home_team} {slot.home_score ?? ''}
                                 {slot.game_status === 'live' && slot.game_period && (
-                                  <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
+                                  <span className="text-text-primary ml-1.5">{formatNflPeriod(slot.game_period)} {slot.game_clock}</span>
                                 )}
                                 {slot.game_status === 'final' && (
                                   <span className="text-text-primary ml-1.5">Final</span>

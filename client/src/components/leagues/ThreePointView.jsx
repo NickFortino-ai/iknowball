@@ -310,7 +310,10 @@ export default function ThreePointView({ league, tab = 'picks' }) {
                                       )}
                                       <div className="flex-1 min-w-0">
                                         <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
-                                        <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.team}</div>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                          <span className="text-[10px] lg:text-xs text-text-muted truncate">{pick.team}</span>
+                                          <GameStatusBadge gameState="post" />
+                                        </div>
                                       </div>
                                       <span className="font-display shrink-0 flex items-baseline gap-1">
                                         <span className={`text-sm lg:text-base ${pick.made_threes > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.made_threes}</span>

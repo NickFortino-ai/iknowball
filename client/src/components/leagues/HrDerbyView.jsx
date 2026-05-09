@@ -27,11 +27,11 @@ function formatDateLabel(dateStr) {
 
 function GameStatusBadge({ gameState, gamePeriod, gameStartsAt }) {
   if (gameState === 'in') {
-    const periodLabel = gamePeriod ? `Inn ${gamePeriod}` : ''
+    // MLB period from ESPN is already a friendly string ("Top 5th", "Bot 9th")
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-correct/15 text-correct border border-correct/30 shrink-0">
         <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />
-        Live{periodLabel ? ` · ${periodLabel}` : ''}
+        Live{gamePeriod ? ` · ${gamePeriod}` : ''}
       </span>
     )
   }
@@ -302,7 +302,10 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                                       )}
                                       <div className="flex-1 min-w-0">
                                         <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
-                                        <div className="text-[10px] lg:text-xs text-text-muted truncate">{pick.team}</div>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                          <span className="text-[10px] lg:text-xs text-text-muted truncate">{pick.team}</span>
+                                          <GameStatusBadge gameState="post" />
+                                        </div>
                                       </div>
                                       <span className={`font-display text-sm lg:text-base shrink-0 ${pick.home_runs > 0 ? 'text-correct' : 'text-text-muted'}`}>{pick.home_runs} HR</span>
                                     </div>
