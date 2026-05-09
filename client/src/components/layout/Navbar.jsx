@@ -196,8 +196,18 @@ function getNotificationRoute(notification) {
     case 'fantasy_waiver_failed':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Players` : null
 
-    case 'nfl_injury_warning':
-      return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=My+Team` : null
+    case 'nfl_injury_warning': {
+      // Writers use league_id (snake_case); accept either to remain backward compatible
+      const lid = metadata?.leagueId || metadata?.league_id
+      if (!lid) return null
+      // Pick the right tab based on which writer fired the warning:
+      //   nflInjuryWarnings.js sets source = 'traditional' | 'salary_cap'
+      //   pickInjuryWarnings.js sets format = '3-Point Contest' | 'HR Derby' | etc.
+      if (metadata?.source === 'salary_cap') return `/leagues/${lid}?tab=Roster`
+      if (metadata?.source === 'traditional') return `/leagues/${lid}?tab=My+Team`
+      if (metadata?.format) return `/leagues/${lid}?tab=Picks`
+      return `/leagues/${lid}`
+    }
 
     case 'fantasy_stat_correction':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}?tab=Live` : null
