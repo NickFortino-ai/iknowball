@@ -113,10 +113,10 @@ export default function LeagueCard({ league, noLink }) {
             <DraftStartsIn draftDate={league.draft_date} draftStatus={league.draft_status} compact={false} />
           </div>
         )}
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-display text-lg truncate text-white">{league.name}</h3>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h3 className="font-display text-lg text-white break-words">{league.name}</h3>
           {!league.survivor_eliminated && (
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLES[league.status]}`}>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 mt-1 ${STATUS_STYLES[league.status]}`}>
               {league.status}
             </span>
           )}
