@@ -70,6 +70,26 @@ export async function sendPickInjuryWarnings() {
     sentSet,
   })
 
+  // ── NBA DFS rosters ──────────────────────────────────────────────
+  sentTotal += await runDfsRosterFormat({
+    rosterTable: 'nba_dfs_rosters',
+    slotTable: 'nba_dfs_roster_slots',
+    salaryTable: 'nba_dfs_salaries',
+    label: 'NBA DFS',
+    today,
+    sentSet,
+  })
+
+  // ── MLB DFS rosters ──────────────────────────────────────────────
+  sentTotal += await runDfsRosterFormat({
+    rosterTable: 'mlb_dfs_rosters',
+    slotTable: 'mlb_dfs_roster_slots',
+    salaryTable: 'mlb_dfs_salaries',
+    label: 'MLB DFS',
+    today,
+    sentSet,
+  })
+
   // ── NFL weekly: Sacks, Interceptions, Passing TD ──────────────────
   try {
     const state = await getCurrentNflWeek()
@@ -150,6 +170,57 @@ async function runDailyEspnFormat({ table, salaryTable, label, statName, today, 
       sent++
     } catch (err) {
       logger.error({ err, p }, `${label} injury warning failed`)
+    }
+  }
+  return sent
+}
+
+async function runDfsRosterFormat({ rosterTable, slotTable, salaryTable, label, today, sentSet }) {
+  // Find Out players in today's salaries
+  const { data: outSalaries } = await supabase
+    .from(salaryTable)
+    .select('espn_player_id, player_name')
+    .eq('game_date', today)
+    .eq('injury_status', 'Out')
+
+  if (!outSalaries?.length) return 0
+  const outIds = outSalaries.map((s) => s.espn_player_id).filter(Boolean)
+  if (!outIds.length) return 0
+  const nameById = {}
+  for (const s of outSalaries) nameById[s.espn_player_id] = s.player_name
+
+  // Find roster slots holding those players for today's rosters
+  const { data: slots } = await supabase
+    .from(slotTable)
+    .select(`espn_player_id, ${rosterTable}!inner(league_id, user_id, game_date, leagues(name))`)
+    .in('espn_player_id', outIds)
+    .eq(`${rosterTable}.game_date`, today)
+
+  if (!slots?.length) return 0
+
+  let sent = 0
+  for (const slot of slots) {
+    const roster = slot[rosterTable]
+    if (!roster) continue
+    const periodKey = `date:${today}`
+    const playerKey = `espn:${slot.espn_player_id}`
+    const dedupKey = `${roster.user_id}|${playerKey}|${roster.league_id}|${periodKey}`
+    if (sentSet.has(dedupKey)) continue
+    sentSet.add(dedupKey)
+
+    const playerName = nameById[slot.espn_player_id] || 'A player'
+    const leagueName = roster.leagues?.name || `your ${label}`
+    const body = `${playerName} is Out tonight — they're on your ${leagueName} ${label} roster. Swap them out before the game starts.`
+    try {
+      await createNotification(roster.user_id, NOTIF_TYPE, body, {
+        player_key: playerKey,
+        league_id: roster.league_id,
+        period_key: periodKey,
+        format: label,
+      })
+      sent++
+    } catch (err) {
+      logger.error({ err, slot }, `${label} injury warning failed`)
     }
   }
   return sent

@@ -205,6 +205,7 @@ function getNotificationRoute(notification) {
       //   pickInjuryWarnings.js sets format = '3-Point Contest' | 'HR Derby' | etc.
       if (metadata?.source === 'salary_cap') return `/leagues/${lid}?tab=Roster`
       if (metadata?.source === 'traditional') return `/leagues/${lid}?tab=My+Team`
+      if (metadata?.format === 'NBA DFS' || metadata?.format === 'MLB DFS') return `/leagues/${lid}?tab=Roster`
       if (metadata?.format) return `/leagues/${lid}?tab=Picks`
       return `/leagues/${lid}`
     }
