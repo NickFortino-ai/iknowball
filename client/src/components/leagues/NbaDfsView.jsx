@@ -19,6 +19,13 @@ const SLOTS = [
   { key: 'C', label: 'C', positions: ['C', 'PF/C'] },
 ]
 
+function formatNbaPeriod(p) {
+  if (!p) return ''
+  if (p <= 4) return `Q${p}`
+  if (p === 5) return 'OT'
+  return `${p - 4}OT`
+}
+
 function isPlayerEligibleForSlot(player, slot) {
   const playerParts = player.position.split('/')
   return slot.positions.some((sp) => {
@@ -266,7 +273,7 @@ function LiveView({ league, date: leagueDate }) {
                               <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-xs lg:w-44 lg:shrink-0 lg:text-right">
                                 {slot.away_team} {slot.away_score ?? ''} @ {slot.home_team} {slot.home_score ?? ''}
                                 {slot.game_status === 'live' && slot.game_period && (
-                                  <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
+                                  <span className="text-text-primary ml-1.5">{formatNbaPeriod(slot.game_period)} {slot.game_clock}</span>
                                 )}
                                 {slot.game_status === 'final' && (
                                   <span className="text-text-primary ml-1.5">Final</span>
@@ -277,7 +284,7 @@ function LiveView({ league, date: leagueDate }) {
                               <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-xs lg:w-44 lg:shrink-0 lg:text-right">
                                 {slot.team} {slot.opponent}
                                 {slot.game_status === 'live' && slot.game_period && (
-                                  <span className="text-text-primary ml-1.5">Q{slot.game_period} {slot.game_clock}</span>
+                                  <span className="text-text-primary ml-1.5">{formatNbaPeriod(slot.game_period)} {slot.game_clock}</span>
                                 )}
                                 {slot.game_status === 'final' && (
                                   <span className="text-text-primary ml-1.5">Final</span>
@@ -850,7 +857,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
                       <div className="text-xs text-text-muted">
                         {player.position} · {player.team} {player.opponent}
                         {player.game_status === 'live' && player.game_period && (
-                          <span className="text-text-primary ml-1.5">Q{player.game_period} {player.game_clock}</span>
+                          <span className="text-text-primary ml-1.5">{formatNbaPeriod(player.game_period)} {player.game_clock}</span>
                         )}
                         {player.game_status === 'final' && (
                           <span className="text-text-primary ml-1.5">Final</span>

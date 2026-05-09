@@ -27,10 +27,11 @@ function formatDateLabel(dateStr) {
 
 function GameStatusBadge({ gameState, gamePeriod, gameStartsAt }) {
   if (gameState === 'in') {
+    const periodLabel = gamePeriod ? `Inn ${gamePeriod}` : ''
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-correct/15 text-correct border border-correct/30 shrink-0">
         <span className="w-1.5 h-1.5 rounded-full bg-correct animate-pulse" />
-        Live{gamePeriod ? ` · ${gamePeriod}` : ''}
+        Live{periodLabel ? ` · ${periodLabel}` : ''}
       </span>
     )
   }
