@@ -57,6 +57,7 @@ export default function GameCard({ game, userPick, onPick, onUndoPick, isSubmitt
     // This side is picked
     if (isPostponed) return 'postponed'
     if (isFinal) {
+      if (userPick.is_correct === null) return 'push'
       return userPick.is_correct ? 'correct' : 'incorrect'
     }
     if (userPick.status === 'locked') return 'locked-picked'
