@@ -141,8 +141,10 @@ export default function LeagueCard({ league, noLink }) {
           if (league.format === 'fantasy' && league.draft_date) return null
           const start = formatShortDate(league.starts_at)
           const end = formatRunsUntil(league)
+          const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
           if (!start && !end) return null
-          if (start && end) {
+          // Pre-start: show the full range so users see exactly when it begins and ends.
+          if (notStartedYet && start && end) {
             return (
               <div className="text-xs text-text-muted mt-1.5">
                 Runs <span className="text-yellow-500 font-semibold">{start}</span>
@@ -151,18 +153,23 @@ export default function LeagueCard({ league, noLink }) {
               </div>
             )
           }
-          if (start) {
+          // Pre-start with no known end → "Starts <date>".
+          if (notStartedYet && start) {
             return (
               <div className="text-xs text-text-muted mt-1.5">
                 Starts <span className="text-yellow-500 font-semibold">{start}</span>
               </div>
             )
           }
-          return (
-            <div className="text-xs text-text-muted mt-1.5">
-              Runs until <span className="text-text-secondary font-medium">{end}</span>
-            </div>
-          )
+          // Already underway → just the end label.
+          if (end) {
+            return (
+              <div className="text-xs text-text-muted mt-1.5">
+                Runs until <span className="text-text-secondary font-medium">{end}</span>
+              </div>
+            )
+          }
+          return null
         })()}
         {/* Mobile: countdown on its own line at the bottom since horizontal
             space is tight */}

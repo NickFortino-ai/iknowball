@@ -64,14 +64,15 @@ function formatRunsUntil(league) {
   return null
 }
 
-// "Runs May 17 – Last one standing" / "Runs May 17 – Jun 17"
-// Falls back to "Starts May 17" or "Runs until <end>" when only one
-// end of the range is known.
+// Pre-start: "Runs May 17 – Last one standing" so users see the full window.
+// Already underway: just "Runs until Last one standing" — the start date stops
+// being useful once the league is rolling.
 function formatLeagueRuns(league) {
   const start = formatStartDate(league.starts_at)
   const end = formatRunsUntil(league)
-  if (start && end) return `Runs ${start} – ${end}`
-  if (start) return `Starts ${start}`
+  const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
+  if (notStartedYet && start && end) return `Runs ${start} – ${end}`
+  if (notStartedYet && start) return `Starts ${start}`
   if (end) return `Runs until ${end}`
   return null
 }
