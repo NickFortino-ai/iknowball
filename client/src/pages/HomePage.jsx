@@ -212,7 +212,7 @@ function MyActiveLeagues() {
   if (isLoading || !active.length) return null
 
   return (
-    <div className="mb-8">
+    <div className="mb-8 xl:-mx-24">
       <h2 className="font-display text-xl mb-4">Your Leagues</h2>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
         {active.map((league) => (
