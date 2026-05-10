@@ -188,7 +188,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
   return (
     createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end md:items-center justify-center px-0 md:px-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-16"
       onClick={onClose}
       onTouchMove={(e) => {
         // Prevent background scroll on iOS — only allow scroll inside the modal content
@@ -198,7 +198,7 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
       <div className="absolute inset-0 bg-black/60" />
       <div
         ref={contentRef}
-        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[85vh] overflow-y-auto scrollbar-hide"
+        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-xl rounded-2xl max-h-[75vh] overflow-y-auto scrollbar-hide"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
