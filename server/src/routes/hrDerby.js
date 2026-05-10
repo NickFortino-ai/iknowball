@@ -293,7 +293,9 @@ router.get('/standings', async (req, res) => {
     .eq('league_id', league_id)
     .order('game_date', { ascending: false })
 
-  const today = new Date().toLocaleDateString('en-CA')
+  // ET is the source of truth for US sports calendar dates — server runs in UTC
+  // on Render so naive ambient-TZ would roll over at 8pm ET and miss today.
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
   const stateByTeam = await buildMlbGameStateByTeam(today)
 
   const todayEspnIds = [...new Set((picks || []).filter((p) => p.game_date === today).map((p) => p.espn_player_id).filter(Boolean))]
