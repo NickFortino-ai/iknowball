@@ -104,7 +104,7 @@ function StandingsTable({ standings, leagueId }) {
               <span className="px-4 py-3 text-right text-text-muted whitespace-nowrap">
                 {s.correct_picks}W-{s.total_picks - s.correct_picks}L
               </span>
-              <span className="px-4 py-3 text-right font-semibold text-accent whitespace-nowrap w-16">{s.total_points}</span>
+              <span className="px-4 py-3 text-right font-semibold text-white text-base whitespace-nowrap w-16">{s.total_points}</span>
             </div>
           </button>
           {expandedUser === s.user_id && (
