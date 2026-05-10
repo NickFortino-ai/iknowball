@@ -64,13 +64,14 @@ function formatRunsUntil(league) {
   return null
 }
 
-// "Runs May 17 – Last one standing" / "Runs May 17 – Jun 17" / "Runs May 17"
-// Falls back to "Runs until <end>" when start date is unknown.
+// "Runs May 17 – Last one standing" / "Runs May 17 – Jun 17"
+// Falls back to "Starts May 17" or "Runs until <end>" when only one
+// end of the range is known.
 function formatLeagueRuns(league) {
   const start = formatStartDate(league.starts_at)
   const end = formatRunsUntil(league)
   if (start && end) return `Runs ${start} – ${end}`
-  if (start) return `Runs ${start}`
+  if (start) return `Starts ${start}`
   if (end) return `Runs until ${end}`
   return null
 }

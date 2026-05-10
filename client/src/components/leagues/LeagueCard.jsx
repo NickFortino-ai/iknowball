@@ -154,7 +154,7 @@ export default function LeagueCard({ league, noLink }) {
           if (start) {
             return (
               <div className="text-xs text-text-muted mt-1.5">
-                Runs <span className="text-yellow-500 font-semibold">{start}</span>
+                Starts <span className="text-yellow-500 font-semibold">{start}</span>
               </div>
             )
           }
