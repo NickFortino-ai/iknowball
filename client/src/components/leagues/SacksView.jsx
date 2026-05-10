@@ -305,7 +305,9 @@ export default function SacksView({ league, tab = 'picks' }) {
                         <InjuryBadge status={player.injury_status} />
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs text-text-muted truncate">{player.position} · {player.team}{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}</span>
+                        <span className="text-xs text-text-muted truncate">
+                          {player.position} · <span className="text-white">{player.team}</span>{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}
+                        </span>
                         <GameStatusBadge gameStartsAt={player.game_starts_at} />
                       </div>
                     </div>
@@ -419,7 +421,7 @@ export default function SacksView({ league, tab = 'picks' }) {
                       <InjuryBadge status={player.injury_status} />
                     </div>
                     <div className="text-xs text-text-muted">
-                      {player.position} · {player.team}{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}
+                      {player.position} · <span className="text-white">{player.team}</span>{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}
                       {isExhausted && <span className="ml-1">· Used up this season</span>}
                     </div>
                   </div>

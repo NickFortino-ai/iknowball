@@ -390,7 +390,10 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                         <InjuryBadge status={injuryStatus} />
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs text-text-muted truncate">{player.team} · {player.opponent || ''}</span>
+                        <span className="text-xs truncate">
+                          <span className="text-white">{player.team}</span>
+                          {player.opponent ? <span className="text-text-muted"> · {player.opponent}</span> : null}
+                        </span>
                         <GameStatusBadge gameState={gameState} gamePeriod={gamePeriod} gameStartsAt={gameStartsAt} />
                       </div>
                     </div>
@@ -514,7 +517,7 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                         )}
                       </div>
                       <div className="text-xs text-text-muted">
-                        {player.position} · {player.team} · {player.opponent}
+                        {player.position} · <span className="text-white">{player.team}</span> · {player.opponent}
                         {isUsedElsewhere && <span className="ml-1">· Used this week</span>}
                       </div>
                     </div>

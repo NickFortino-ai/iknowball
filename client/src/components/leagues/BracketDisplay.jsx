@@ -92,14 +92,20 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   const hasCompletedScore = !isBestOf7 && matchup.status === 'completed' && matchup.score_top != null
   const canTap = !!onTap && (hasLiveSeries || hasSeriesRecord || hasCompletedScore)
 
-  // Series length prediction color: white during series, green/yellow/red after completion
+  // Series length prediction color: white during series, green/yellow/red
+  // after completion ONLY if the team pick was correct (no series-length
+  // bonus points are awarded otherwise — coloring it would be misleading).
   let predictionColor = 'text-text-primary'
   if (hasSeriesRecord && pickData?.series_length) {
-    const actualLength = (matchup.series_wins_top || 0) + (matchup.series_wins_bottom || 0)
-    const diff = Math.abs(pickData.series_length - actualLength)
-    if (diff === 0) predictionColor = 'text-correct'
-    else if (diff === 1) predictionColor = 'text-yellow-500'
-    else predictionColor = 'text-incorrect'
+    if (topCorrect || bottomCorrect) {
+      const actualLength = (matchup.series_wins_top || 0) + (matchup.series_wins_bottom || 0)
+      const diff = Math.abs(pickData.series_length - actualLength)
+      if (diff === 0) predictionColor = 'text-correct'
+      else if (diff === 1) predictionColor = 'text-yellow-500'
+      else predictionColor = 'text-incorrect'
+    } else {
+      predictionColor = 'text-text-muted'
+    }
   }
 
   function handleClick() {

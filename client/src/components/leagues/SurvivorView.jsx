@@ -60,15 +60,25 @@ export default function SurvivorView({ league }) {
   const pickWeek = board?.pick_week || currentWeek
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
 
-  // Find current pick: prefer board.current_pick, fall back to user's latest pending pick from member data
-  const fallback = useMemo(() => {
-    if (board?.current_pick?.team_name) return { team_name: null, game_id: null }
-    const myEntry = board?.members?.find((m) => m.users?.id === currentUserId)
-    const pendingPick = myEntry?.picks?.find((p) => p.status === 'pending')
-    return { team_name: pendingPick?.team_name || null, game_id: pendingPick?.game_id || null }
-  }, [board, currentUserId])
-  const currentPickTeam = localPickTeam || board?.current_pick?.team_name || fallback.team_name
-  const currentPickGameId = localPickGameId || board?.current_pick?.game_id || fallback.game_id
+  // Build a map of game_id -> picked team for ALL of the current user's
+  // pending picks across upcoming days. This lets multi-day picks
+  // (e.g. Sunday + Monday) each retain their own highlight, instead of
+  // only the single board.current_pick entry being visualized.
+  const userPicksByGameId = useMemo(() => {
+    const map = {}
+    const myEntry = board?.members?.find((m) => m.users?.id === currentUserId || m.user_id === currentUserId)
+    for (const p of myEntry?.picks || []) {
+      if (p.status === 'pending' && p.game_id && p.team_name) {
+        map[p.game_id] = p.team_name
+      }
+    }
+    // Layer in optimistic local state for the just-submitted pick so the UI
+    // updates immediately before the board refetch lands.
+    if (localPickGameId && localPickTeam) {
+      map[localPickGameId] = localPickTeam
+    }
+    return map
+  }, [board, currentUserId, localPickGameId, localPickTeam])
 
   // Winner detection
   const isWinner = board?.survivor_winner?.user_id === currentUserId
@@ -111,13 +121,19 @@ export default function SurvivorView({ league }) {
     }
   }
 
-  // Clear local pick when board refreshes with server data
+  // Clear local optimistic pick once the server-side picks list catches up
+  // (the just-submitted pick now appears in the member's picks array).
   useEffect(() => {
-    if (board?.current_pick?.team_name) {
+    if (!localPickGameId) return
+    const myEntry = board?.members?.find((m) => m.users?.id === currentUserId || m.user_id === currentUserId)
+    const matched = (myEntry?.picks || []).some(
+      (p) => p.game_id === localPickGameId && p.team_name === localPickTeam,
+    )
+    if (matched) {
       setLocalPickTeam(null)
       setLocalPickGameId(null)
     }
-  }, [board?.current_pick?.team_name])
+  }, [board, currentUserId, localPickGameId, localPickTeam])
 
   // Auto-expand pick form if user hasn't picked yet
   useEffect(() => {
@@ -224,12 +240,11 @@ export default function SurvivorView({ league }) {
         function renderGameRow(game) {
           const homeUsed = !poolExpanded && usedTeamSet.has(game.home_team)
           const awayUsed = !poolExpanded && usedTeamSet.has(game.away_team)
-          // Only highlight a pick on the EXACT game it was made on —
-          // matching by team name alone visually "picks" the same
-          // team in future games (e.g. consecutive-day matchups).
-          const isThisGamePicked = currentPickGameId === game.id
-          const awayPicked = isThisGamePicked && currentPickTeam === game.away_team
-          const homePicked = isThisGamePicked && currentPickTeam === game.home_team
+          // Highlight per-game so multi-day picks (e.g. Sunday + Monday)
+          // each keep their own visual selection.
+          const pickedTeamForThisGame = userPicksByGameId[game.id]
+          const awayPicked = pickedTeamForThisGame === game.away_team
+          const homePicked = pickedTeamForThisGame === game.home_team
 
           const sportForLogo = league.sport === 'all' ? (game.sports?.key || game.sport_key) : league.sport
           const awayLogo = getTeamLogoUrl(game.away_team, sportForLogo)

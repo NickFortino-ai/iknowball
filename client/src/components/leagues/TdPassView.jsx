@@ -178,7 +178,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                   <InjuryBadge status={pickedQbData?.injury_status} />
                 </div>
                 <div className="text-sm text-text-muted">
-                  {myCurrentPick.team}
+                  <span className="text-white">{myCurrentPick.team}</span>
                   {matchup ? ` ${matchup.home_away === 'home' ? 'vs' : '@'} ${matchup.opponent}` : ''}
                 </div>
                 {matchup?.starts_at && (
@@ -298,7 +298,7 @@ export default function TdPassView({ league, tab = 'picks' }) {
                     )}
                   </div>
                   <div className="text-xs text-text-muted">
-                    {qb.team}
+                    <span className="text-white">{qb.team}</span>
                     {qb.matchup ? ` ${qb.matchup.home_away === 'home' ? 'vs' : '@'} ${qb.matchup.opponent}` : ' · Bye week'}
                     {qb.matchup?.starts_at ? ` · ${new Date(qb.matchup.starts_at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET` : ''}
                   </div>
