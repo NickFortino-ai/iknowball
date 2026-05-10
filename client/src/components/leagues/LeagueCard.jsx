@@ -32,14 +32,17 @@ const SPORT_LABELS = {
   all: 'All Sports',
 }
 
+function formatShortDate(dateStr) {
+  if (!dateStr) return null
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
+}
+
 function formatRunsUntil(league) {
   if (league.format === 'survivor') return 'Last one standing'
   if (league.format === 'squares') return 'End of game'
   if (league.duration === 'full_season') return 'End of season'
   if (league.duration === 'playoffs_only') return 'End of playoffs'
-  if (league.ends_at) {
-    return new Date(league.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
-  }
+  if (league.ends_at) return formatShortDate(league.ends_at)
   return null
 }
 
@@ -133,15 +136,34 @@ export default function LeagueCard({ league, noLink }) {
             <span className="font-semibold text-tier-hof">Commish</span>
           )}
         </div>
-        {league.status === 'open' && league.starts_at ? (
-          <div className="text-xs text-text-muted mt-1.5">
-            Starts <span className="text-yellow-500 font-semibold">{new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}</span>
-          </div>
-        ) : league.format !== 'fantasy' && !league.draft_date && formatRunsUntil(league) ? (
-          <div className="text-xs text-text-muted mt-1.5">
-            Runs until <span className="text-text-secondary font-medium">{formatRunsUntil(league)}</span>
-          </div>
-        ) : null}
+        {(() => {
+          // Hide for fantasy leagues with a draft countdown — that block owns the bottom row.
+          if (league.format === 'fantasy' && league.draft_date) return null
+          const start = formatShortDate(league.starts_at)
+          const end = formatRunsUntil(league)
+          if (!start && !end) return null
+          if (start && end) {
+            return (
+              <div className="text-xs text-text-muted mt-1.5">
+                Runs <span className="text-yellow-500 font-semibold">{start}</span>
+                {' – '}
+                <span className="text-text-secondary font-medium">{end}</span>
+              </div>
+            )
+          }
+          if (start) {
+            return (
+              <div className="text-xs text-text-muted mt-1.5">
+                Runs <span className="text-yellow-500 font-semibold">{start}</span>
+              </div>
+            )
+          }
+          return (
+            <div className="text-xs text-text-muted mt-1.5">
+              Runs until <span className="text-text-secondary font-medium">{end}</span>
+            </div>
+          )
+        })()}
         {/* Mobile: countdown on its own line at the bottom since horizontal
             space is tight */}
         {league.format === 'fantasy' && league.draft_date && league.draft_status !== 'completed' && (

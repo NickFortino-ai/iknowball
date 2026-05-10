@@ -64,6 +64,17 @@ function formatRunsUntil(league) {
   return null
 }
 
+// "Runs May 17 – Last one standing" / "Runs May 17 – Jun 17" / "Runs May 17"
+// Falls back to "Runs until <end>" when start date is unknown.
+function formatLeagueRuns(league) {
+  const start = formatStartDate(league.starts_at)
+  const end = formatRunsUntil(league)
+  if (start && end) return `Runs ${start} – ${end}`
+  if (start) return `Runs ${start}`
+  if (end) return `Runs until ${end}`
+  return null
+}
+
 function LeagueInfoModal({ league, onClose, onJoin, joining }) {
   // Only lock scroll while the modal is actually open. Locking on every
   // mount (when league=null) leaves the body unscrollable forever.
@@ -76,6 +87,7 @@ function LeagueInfoModal({ league, onClose, onJoin, joining }) {
   if (!league) return null
 
   const runsUntil = formatRunsUntil(league)
+  const runsLine = formatLeagueRuns(league)
 
   return (
     <div
@@ -115,9 +127,9 @@ function LeagueInfoModal({ league, onClose, onJoin, joining }) {
                 {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
               </span>
             </div>
-            {league.starts_at && (
+            {runsLine && (
               <div className="text-sm text-yellow-500 font-semibold mt-1.5">
-                {formatStartDate(league.starts_at)}{runsUntil ? ` – ${runsUntil}` : ''}
+                {runsLine}
               </div>
             )}
           </div>
@@ -268,9 +280,9 @@ export default function OpenLeaguesSection() {
               <div className="text-xs text-text-muted mb-1">
                 {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
               </div>
-              {league.starts_at && (
+              {formatLeagueRuns(league) && (
                 <div className="text-xs text-yellow-500 font-semibold mb-3">
-                  Starts {formatStartDate(league.starts_at)}
+                  {formatLeagueRuns(league)}
                 </div>
               )}
               <div className="mt-auto pt-2">
