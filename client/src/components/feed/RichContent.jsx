@@ -13,7 +13,7 @@ export default function RichContent({ text, className }) {
   const [lightboxSrc, setLightboxSrc] = useState(null)
 
   return (
-    <div className={className}>
+    <div className={`whitespace-pre-wrap ${className || ''}`}>
       {segments.map((seg, i) =>
         seg.type === 'youtube_embed' ? (
           <div key={i} className="mt-2 mb-1" onClick={(e) => e.stopPropagation()}>
