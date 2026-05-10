@@ -9,23 +9,30 @@ const PLAYER_SELECT = 'player_id, rank, nfl_players(id, full_name, position, tea
 // ── Helpers ──────────────────────────────────────────────────────────
 
 async function fetchPlayerPool() {
-  // Two parallel queries — DEFs need to be guaranteed in the pool even though
-  // they typically have very high (null or large) search_rank values.
-  const [offensiveResult, defResult] = await Promise.all([
+  // Parallel queries — DEFs and Ks each need their own pull since both
+  // typically have very high (null or large) ADP/search_rank values and
+  // would otherwise be sliced out of the seed alongside late-round skill
+  // players.
+  const [offensiveResult, kickerResult, defResult] = await Promise.all([
     supabase
       .from('nfl_players')
       .select('id, position, search_rank, adp_ppr, adp_half_ppr')
-      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+      .in('position', ['QB', 'RB', 'WR', 'TE'])
       .not('team', 'is', null)
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(500),
     supabase
       .from('nfl_players')
       .select('id, position, search_rank, adp_ppr, adp_half_ppr')
+      .eq('position', 'K')
+      .not('team', 'is', null),
+    supabase
+      .from('nfl_players')
+      .select('id, position, search_rank, adp_ppr, adp_half_ppr')
       .eq('position', 'DEF')
       .not('team', 'is', null),
   ])
-  return [...(offensiveResult.data || []), ...(defResult.data || [])]
+  return [...(offensiveResult.data || []), ...(kickerResult.data || []), ...(defResult.data || [])]
 }
 
 async function seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSlots) {
@@ -33,21 +40,24 @@ async function seedDraftPrepRankings(userId, configHash, scoringFormat, rosterSl
   const pool = await fetchPlayerPool()
   if (!pool.length) return
 
-  // Split by position so defenses are guaranteed to make the seed even
-  // when their Sleeper ADP/search_rank is null (falls back to 9999).
-  // Without this split, all 32 DEFs sort past the seed cutoff and never
-  // appear in user rankings. Same risk for Ks when ADP data is thin.
+  // Split by position so defenses AND kickers are both guaranteed to make
+  // the seed even when their Sleeper ADP/search_rank is null (falls back
+  // to 9999). Without this split, K/DEF sort past the seed cutoff and
+  // never appear in user rankings — which is why kickers were missing
+  // from draft boards entirely.
   const ranked = pool
     .map((p) => ({ ...p, _adp: effectiveAdp(p, scoringFormat, isSuperflex) }))
     .sort((a, b) => a._adp - b._adp)
 
   const defs = ranked.filter((p) => p.position === 'DEF')
-  const offense = ranked.filter((p) => p.position !== 'DEF')
+  const kickers = ranked.filter((p) => p.position === 'K')
+  const offense = ranked.filter((p) => p.position !== 'DEF' && p.position !== 'K')
 
-  // Reserve slots for all defenses (typically ~32), fill the rest with
-  // the top offensive players by ADP.
-  const offenseSeed = offense.slice(0, Math.max(0, RANKINGS_SEED_SIZE - defs.length))
-  const seed = [...offenseSeed, ...defs]
+  // Reserve slots for all defenses + kickers (typically ~32 each), fill
+  // the rest with the top offensive players by ADP.
+  const reserved = defs.length + kickers.length
+  const offenseSeed = offense.slice(0, Math.max(0, RANKINGS_SEED_SIZE - reserved))
+  const seed = [...offenseSeed, ...kickers, ...defs]
 
   const rows = seed.map((p, i) => ({
     user_id: userId,

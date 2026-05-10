@@ -17,16 +17,22 @@ router.get('/players', requireAuth, async (req, res) => {
   // adp_half_ppr (most accurate) → adp_ppr → search_rank fallback.
   const SELECT = 'id, full_name, position, team, headshot_url, search_rank, injury_status, bye_week, projected_pts_half_ppr, projected_pts_ppr, projected_pts_std, adp_ppr, adp_half_ppr'
 
-  // Two parallel queries so defenses are guaranteed to make it into the pool.
-  // Filter out retired players explicitly alongside team IS NOT NULL.
-  const [offensiveResult, defResult] = await Promise.all([
+  // Parallel queries so DEFs and Ks are each guaranteed in the pool — both
+  // typically have null ADPs (default to 9999), so they'd sink past the
+  // offensive slice cutoff if grouped with skill positions.
+  const [offensiveResult, kickerResult, defResult] = await Promise.all([
     supabase
       .from('nfl_players')
       .select(SELECT)
-      .in('position', ['QB', 'RB', 'WR', 'TE', 'K'])
+      .in('position', ['QB', 'RB', 'WR', 'TE'])
       .not('team', 'is', null)
       .order('search_rank', { ascending: true, nullsFirst: false })
       .limit(500),
+    supabase
+      .from('nfl_players')
+      .select(SELECT)
+      .eq('position', 'K')
+      .not('team', 'is', null),
     supabase
       .from('nfl_players')
       .select(SELECT)
@@ -35,13 +41,14 @@ router.get('/players', requireAuth, async (req, res) => {
   ])
 
   if (offensiveResult.error) return res.status(500).json({ error: offensiveResult.error.message })
+  if (kickerResult.error) return res.status(500).json({ error: kickerResult.error.message })
   if (defResult.error) return res.status(500).json({ error: defResult.error.message })
 
   // Composite ADP score: prefer adp_half_ppr → adp_ppr → search_rank
-  // (lower is better in all three). Sort offensive players by ADP and take
-  // top 268, then ALWAYS append all 32 DEFs regardless of their ADP.
-  // Without this guarantee, DEFs (which all default to _adp=9999) sink to
-  // the bottom of the sort and the slice cuts them out.
+  // (lower is better in all three). Sort offensive skill players by ADP and
+  // take top 268, then ALWAYS append all kickers and DEFs regardless of
+  // their ADP. Without this guarantee, K/DEF (which typically default to
+  // _adp=9999) sink to the bottom of the sort and the slice cuts them out.
   const offensiveSorted = (offensiveResult.data || [])
     .map((p) => ({
       ...p,
@@ -50,6 +57,13 @@ router.get('/players', requireAuth, async (req, res) => {
     .sort((a, b) => a._adp - b._adp)
     .slice(0, 268)
 
+  const kickers = (kickerResult.data || [])
+    .map((p) => ({
+      ...p,
+      _adp: p.adp_half_ppr ?? p.adp_ppr ?? p.search_rank ?? 9999,
+    }))
+    .sort((a, b) => a._adp - b._adp)
+
   const defs = (defResult.data || [])
     .map((p) => ({
       ...p,
@@ -57,8 +71,8 @@ router.get('/players', requireAuth, async (req, res) => {
     }))
     .sort((a, b) => a._adp - b._adp)
 
-  // Concat: offense first (ADP-ordered), then all defenses
-  const sorted = [...offensiveSorted, ...defs]
+  // Concat: skill offense first (ADP-ordered), then all kickers, then all defenses
+  const sorted = [...offensiveSorted, ...kickers, ...defs]
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
 
   res.json(sorted)
