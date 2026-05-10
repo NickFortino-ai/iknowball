@@ -59,7 +59,7 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-right font-semibold text-accent whitespace-nowrap">{e.total_points}</td>
+                  <td className="px-3 py-3 text-right font-semibold text-white text-base whitespace-nowrap">{e.total_points}</td>
                   {!isCompleted && <td className="px-3 py-3 text-right text-text-primary whitespace-nowrap">{e.possible_points}</td>}
                   {hasActualScore && (
                     <td className="px-3 py-3 text-right whitespace-nowrap">
