@@ -557,21 +557,21 @@ export default function HomePage() {
                 <div className="rounded-2xl border border-text-primary/20 bg-bg-primary p-6">
                   <div className="text-xs font-bold uppercase tracking-wider text-accent mb-4">Game Picks</div>
                   <div className="rounded-xl border border-text-primary/15 bg-black/30 p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         {awayLogo && <img src={awayLogo} alt="" className="w-8 h-8 object-contain shrink-0" />}
-                        <span className="font-semibold text-text-primary truncate">{awayName}</span>
+                        <span className="font-semibold text-text-primary break-words">{awayName}</span>
                       </div>
-                      <span className={`text-xs font-semibold whitespace-nowrap ${awayIsFav ? 'text-accent' : 'text-correct'}`}>
+                      <span className={`text-xs font-semibold whitespace-nowrap shrink-0 mt-2 ${awayIsFav ? 'text-accent' : 'text-correct'}`}>
                         Risk {awayRisk} → Win {awayReward}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         {homeLogo && <img src={homeLogo} alt="" className="w-8 h-8 object-contain shrink-0" />}
-                        <span className="font-semibold text-text-primary truncate">{homeName}</span>
+                        <span className="font-semibold text-text-primary break-words">{homeName}</span>
                       </div>
-                      <span className={`text-xs font-semibold whitespace-nowrap ${homeIsFav ? 'text-accent' : 'text-correct'}`}>
+                      <span className={`text-xs font-semibold whitespace-nowrap shrink-0 mt-2 ${homeIsFav ? 'text-accent' : 'text-correct'}`}>
                         Risk {homeRisk} → Win {homeReward}
                       </span>
                     </div>

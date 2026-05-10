@@ -44,28 +44,48 @@ async function pickMlbGame() {
 }
 
 async function pickNbaFutures() {
-  const { data: markets } = await supabase
-    .from('futures_markets')
-    .select('title, outcomes')
-    .eq('sport_key', 'basketball_nba')
-    .eq('status', 'active')
-    .ilike('title', '%champion%')
-    .limit(1)
+  // Try in order: NBA championship → MLB World Series → NFL Super Bowl → NHL Stanley Cup.
+  // First market with priced outcomes wins.
+  const candidates = [
+    { sport_key: 'basketball_nba', title: '%champion%' },
+    { sport_key: 'baseball_mlb', title: '%world series%' },
+    { sport_key: 'baseball_mlb', title: '%champion%' },
+    { sport_key: 'americanfootball_nfl', title: '%super bowl%' },
+    { sport_key: 'americanfootball_nfl', title: '%champion%' },
+    { sport_key: 'icehockey_nhl', title: '%stanley%' },
+    { sport_key: 'icehockey_nhl', title: '%champion%' },
+  ]
 
-  if (!markets?.length) return null
-  const m = markets[0]
-  const outcomes = (typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes) || []
-  const top = outcomes
-    .filter((o) => o.price != null)
-    .sort((a, b) => americanToImpliedProb(b.price) - americanToImpliedProb(a.price))
-    .slice(0, 4)
-    .map((o) => ({
-      name: o.name,
-      risk: calculateRiskPoints(o.price),
-      reward: calculateRewardPoints(o.price),
-    }))
+  for (const c of candidates) {
+    const { data: markets } = await supabase
+      .from('futures_markets')
+      .select('title, outcomes')
+      .eq('sport_key', c.sport_key)
+      .eq('status', 'active')
+      .ilike('title', c.title)
+      .limit(1)
 
-  return { title: m.title, outcomes: top }
+    if (!markets?.length) continue
+    const m = markets[0]
+    const outcomes = (typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes) || []
+    // Outcomes in storage use `odds` (American). Accept `price` too in case a
+    // future sync rewrites the field.
+    const priced = outcomes.filter((o) => (o.odds ?? o.price) != null)
+    if (!priced.length) continue
+    const top = priced
+      .map((o) => ({ ...o, _odds: o.odds ?? o.price }))
+      .sort((a, b) => americanToImpliedProb(b._odds) - americanToImpliedProb(a._odds))
+      .slice(0, 4)
+      .map((o) => ({
+        name: o.name,
+        risk: calculateRiskPoints(o._odds),
+        reward: calculateRewardPoints(o._odds),
+      }))
+
+    return { title: m.title, outcomes: top }
+  }
+
+  return null
 }
 
 router.get('/landing-preview', async (req, res) => {
