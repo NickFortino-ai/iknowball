@@ -97,7 +97,7 @@ export default function PickComments({ pickId, targetType = 'pick', targetId, co
       >
         <Avatar user={c.users} size="xs" />
         <div className="min-w-0 flex-1">
-          <div>
+          <div className="whitespace-pre-wrap">
             <span className="text-sm font-semibold">{c.users?.username}</span>{' '}
             <span className="text-sm text-text-secondary">{c.content}</span>
           </div>
