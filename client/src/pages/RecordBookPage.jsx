@@ -67,7 +67,7 @@ function formatRecordValue(record) {
     case 'best_futures_hit':
       return val > 0 ? `+${val}` : `${val}`
     case 'biggest_parlay':
-      return `+${Math.round((val - 1) * 100)}`
+      return `10 → ${Math.round((val - 1) * 10)}`
     case 'great_climb':
       return `${val} spots`
     case 'most_parlay_legs':
@@ -172,7 +172,7 @@ function RecordCard({ record, onUserTap, defaultExpanded = false }) {
 
           {hasHolder && (
             <div className="text-right flex-shrink-0">
-              <div className="text-xl font-bold text-accent">{formatRecordValue(record)}</div>
+              <div className="text-xl font-bold text-white">{formatRecordValue(record)}</div>
             </div>
           )}
         </div>
@@ -241,7 +241,7 @@ function RecordCard({ record, onUserTap, defaultExpanded = false }) {
                       </div>
                     )}
                   </div>
-                  <div className="text-lg font-bold text-accent">{formatRecordValue(sub)}</div>
+                  <div className="text-lg font-bold text-white">{formatRecordValue(sub)}</div>
                 </div>
               </div>
             ))}
