@@ -20,6 +20,7 @@ import { scoreNBADFS } from './scoreNBADFS.js'
 import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
 import { settleWNBAProps } from './settleWNBAProps.js'
+import { settleMLBProps } from './settleMLBProps.js'
 import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
@@ -241,6 +242,11 @@ export function startScheduler() {
       try { await settleWNBAProps() } catch (err) { logger.error({ err }, 'WNBA prop auto-settlement failed') }
     })
     logger.info('WNBA prop auto-settlement scheduled: every 2 minutes')
+
+    cron.schedule('*/2 * * * *', async () => {
+      try { await settleMLBProps() } catch (err) { logger.error({ err }, 'MLB prop auto-settlement failed') }
+    })
+    logger.info('MLB prop auto-settlement scheduled: every 2 minutes')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues
