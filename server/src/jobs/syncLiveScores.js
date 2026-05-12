@@ -201,6 +201,58 @@ async function syncSportLiveScores(sportKey) {
   return updated
 }
 
+// Retry top scorer fetch for games that finalized within the last few
+// hours but have no top_scorer rows OR only all-zero rows (which means
+// the original fire-and-forget call hit ESPN before its box score had
+// populated stats).
+async function retryStaleTopScorers() {
+  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+  const { data: finalGames } = await supabase
+    .from('games')
+    .select('id, home_team, away_team, starts_at, sports!inner(key)')
+    .eq('status', 'final')
+    .gte('starts_at', cutoff)
+
+  if (!finalGames?.length) return 0
+
+  let refreshed = 0
+  for (const game of finalGames) {
+    const sportKey = game.sports?.key
+    if (!SPORTS.includes(sportKey)) continue
+
+    const { data: scorerRows } = await supabase
+      .from('game_top_scorers')
+      .select('points')
+      .eq('game_id', game.id)
+
+    const needsRefresh = !scorerRows?.length || scorerRows.every((r) => (r.points || 0) === 0)
+    if (!needsRefresh) continue
+
+    try {
+      const espnEventId = await findESPNEventId(sportKey, game.home_team, game.away_team, game.starts_at)
+      if (!espnEventId) continue
+      const scorers = await fetchGameTopScorers(sportKey, espnEventId)
+      if (!scorers.length) continue
+      for (const s of scorers) {
+        await supabase
+          .from('game_top_scorers')
+          .upsert({
+            game_id: game.id,
+            team: s.team,
+            player_name: s.playerName,
+            points: s.points,
+            headshot_url: s.headshotUrl,
+          }, { onConflict: 'game_id,team' })
+      }
+      refreshed++
+      logger.info({ gameId: game.id, count: scorers.length }, 'Refreshed stale top scorers')
+    } catch (err) {
+      logger.warn({ err: err.message, gameId: game.id }, 'Failed to refresh top scorers')
+    }
+  }
+  return refreshed
+}
+
 export async function syncLiveScores() {
   logger.info('Starting live scores sync...')
 
@@ -212,6 +264,13 @@ export async function syncLiveScores() {
     } catch (err) {
       logger.error({ err, sportKey }, 'Live scores sync failed for sport')
     }
+  }
+
+  try {
+    const refreshed = await retryStaleTopScorers()
+    if (refreshed) logger.info({ refreshed }, 'Top scorer retry pass complete')
+  } catch (err) {
+    logger.error({ err }, 'Top scorer retry pass failed')
   }
 
   logger.info({ total }, 'Live scores sync complete')

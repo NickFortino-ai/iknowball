@@ -282,7 +282,7 @@ export async function fetchGameTopScorers(sportKey, espnEventId) {
       if (scoreIdx < 0) continue
 
       let topScorer = null
-      let topPoints = -1
+      let topPoints = 0
       for (const athlete of stats.athletes) {
         const pts = parseInt(athlete.stats?.[scoreIdx] || '0', 10)
         if (pts > topPoints) {
@@ -295,7 +295,12 @@ export async function fetchGameTopScorers(sportKey, espnEventId) {
           }
         }
       }
-      if (topScorer) results.push(topScorer)
+      // Skip when the box score is still empty (all athletes at 0) — the
+      // fire-and-forget call runs the moment a game flips to final, before
+      // ESPN's stats endpoint has fully populated. Returning a 0-pt
+      // "leader" stored a phantom top scorer (LeBron / Hartenstein at 0)
+      // that never got refreshed.
+      if (topScorer && topPoints > 0) results.push(topScorer)
     }
     return results
   } catch (err) {
