@@ -193,7 +193,7 @@ export default function DraftPrepPage() {
         </button>
         {introOpen && (
           <ul className="space-y-1.5 text-sm text-text-primary/80 mt-3">
-            <li className="flex gap-2"><span className="text-accent">•</span><span>Rank every player your way — drag, search, and filter your own board</span></li>
+            <li className="flex gap-2"><span className="text-accent">•</span><span>Rank every player your way — reorder, search, and filter your own board</span></li>
             <li className="flex gap-2"><span className="text-accent">•</span><span>Tune it for your scoring (PPR / Half-PPR / Standard) and roster shape</span></li>
             <li className="flex gap-2"><span className="text-accent">•</span><span>Compare your rankings against ADP and projections side-by-side</span></li>
             <li className="flex gap-2"><span className="text-accent">•</span><span>Sync your rankings to any of your fantasy leagues — edits flow both ways</span></li>

@@ -80,6 +80,9 @@ export const FUTURES_SPORT_KEYS = {
   basketball_nba: [
     'basketball_nba_championship_winner',
   ],
+  basketball_wnba: [
+    'basketball_wnba_championship_winner',
+  ],
   americanfootball_nfl: [
     'americanfootball_nfl_super_bowl_winner',
   ],
