@@ -308,3 +308,57 @@ export async function fetchGameTopScorers(sportKey, espnEventId) {
     return []
   }
 }
+
+// Fetch full per-player box stats for a game. Returns a map of
+// normalized-lowercase-player-name → { points, rebounds, assists,
+// threes, blocks, steals }. Used by WNBA prop settlement since we
+// don't have a wnba_player_stats table populated separately. Reuses
+// the existing normalizePlayerName helper defined earlier in this
+// file (see findESPNEventId region).
+export async function fetchPlayerBoxStats(sportKey, espnEventId) {
+  const sport = SPORT_TO_ESPN[sportKey]
+  if (!sport || !espnEventId) return {}
+
+  const url = `${ESPN_BASE}/${sport.path}/summary?event=${espnEventId}`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return {}
+    const data = await res.json()
+    const boxscore = data.boxscore
+    if (!boxscore?.players) return {}
+
+    const result = {}
+    for (const teamBox of boxscore.players) {
+      const stats = teamBox.statistics?.[0]
+      if (!stats?.athletes?.length) continue
+      const labels = stats.labels || []
+      const idx = {
+        pts: labels.indexOf('PTS'),
+        reb: labels.indexOf('REB'),
+        ast: labels.indexOf('AST'),
+        threePT: labels.indexOf('3PT'),
+        blk: labels.indexOf('BLK'),
+        stl: labels.indexOf('STL'),
+      }
+      for (const athlete of stats.athletes) {
+        const name = athlete.athlete?.displayName
+        if (!name) continue
+        const arr = athlete.stats || []
+        // 3PT comes in "X-Y" form — made is X.
+        const threes = idx.threePT >= 0 ? parseInt((arr[idx.threePT] || '0').split('-')[0], 10) : 0
+        result[normalizePlayerName(name)] = {
+          points: idx.pts >= 0 ? parseInt(arr[idx.pts] || '0', 10) : 0,
+          rebounds: idx.reb >= 0 ? parseInt(arr[idx.reb] || '0', 10) : 0,
+          assists: idx.ast >= 0 ? parseInt(arr[idx.ast] || '0', 10) : 0,
+          threes,
+          blocks: idx.blk >= 0 ? parseInt(arr[idx.blk] || '0', 10) : 0,
+          steals: idx.stl >= 0 ? parseInt(arr[idx.stl] || '0', 10) : 0,
+        }
+      }
+    }
+    return result
+  } catch (err) {
+    logger.warn({ err: err.message, espnEventId }, 'Failed to fetch ESPN player box stats')
+    return {}
+  }
+}

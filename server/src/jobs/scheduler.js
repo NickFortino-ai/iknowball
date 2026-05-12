@@ -19,6 +19,7 @@ import { cleanupExpiredVideos } from './cleanupExpiredVideos.js'
 import { scoreNBADFS } from './scoreNBADFS.js'
 import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
+import { settleWNBAProps } from './settleWNBAProps.js'
 import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
@@ -235,6 +236,11 @@ export function startScheduler() {
       try { await settleNBAProps() } catch (err) { logger.error({ err }, 'NBA prop auto-settlement failed') }
     })
     logger.info('NBA prop auto-settlement scheduled: every 2 minutes')
+
+    cron.schedule('*/2 * * * *', async () => {
+      try { await settleWNBAProps() } catch (err) { logger.error({ err }, 'WNBA prop auto-settlement failed') }
+    })
+    logger.info('WNBA prop auto-settlement scheduled: every 2 minutes')
   }
 
   // League completion runs alongside game scoring — checks for ended pickem/bracket leagues
