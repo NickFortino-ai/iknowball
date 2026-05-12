@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
+import { timeAgo } from '../../lib/time'
 
 function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -226,6 +227,9 @@ export default function LeagueThread({ league }) {
                     <div className="flex items-baseline gap-2 mb-0.5">
                       <span className="text-xs font-semibold text-text-primary">
                         {msg.user?.display_name || msg.user?.username}
+                      </span>
+                      <span className="text-[10px] text-text-muted/70">
+                        {timeAgo(msg.created_at)}
                       </span>
                     </div>
                   )}
