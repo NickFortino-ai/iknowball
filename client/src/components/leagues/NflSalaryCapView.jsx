@@ -16,7 +16,7 @@ const SLOTS = [
   { key: 'DEF', label: 'DEF', positions: ['DEF'] },
 ]
 
-const POS_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'DEF']
+const POS_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'DEF', 'OUT']
 
 export default function NflSalaryCapView({ league }) {
   const { profile } = useAuth()
@@ -56,14 +56,21 @@ export default function NflSalaryCapView({ league }) {
   const remaining = salaryCap - totalSalary
   const filledCount = Object.values(lineup).filter(Boolean).length
 
-  // Filter available players
+  // Filter available players. Mirrors the NBA DFS pattern: by default
+  // exclude players marked Out / IR so a user can't accidentally roster
+  // an inactive (whose salary still reflects healthy-FPPG pricing); the
+  // dedicated OUT filter lets a curious user inspect who's ruled out.
   const available = useMemo(() => {
     if (!players) return []
     return players
       .filter((p) => !usedPlayerIds.has(p.id))
-      .filter((p) => posFilter === 'All' || p.position === posFilter)
+      .filter((p) => {
+        if (posFilter === 'OUT') return p.injury_status === 'Out' || p.injury_status === 'IR'
+        if (p.injury_status === 'Out' || p.injury_status === 'IR') return false
+        return posFilter === 'All' || p.position === posFilter
+      })
       .filter((p) => !searchQuery || p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
-      .filter((p) => p.salary <= remaining)
+      .filter((p) => posFilter === 'OUT' || p.salary <= remaining)
       .sort((a, b) => (b.salary || 0) - (a.salary || 0))
       .slice(0, 100)
   }, [players, usedPlayerIds, posFilter, searchQuery, remaining])
@@ -211,12 +218,16 @@ export default function NflSalaryCapView({ league }) {
                 key={pos}
                 onClick={() => setPosFilter(pos)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  posFilter === pos
-                    ? 'bg-accent text-white'
-                    : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+                  pos === 'OUT'
+                    ? posFilter === pos
+                      ? 'bg-incorrect/20 text-incorrect border border-incorrect/40'
+                      : 'border border-incorrect/30 text-incorrect/70 hover:bg-incorrect/10'
+                    : posFilter === pos
+                      ? 'bg-accent text-white'
+                      : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
                 }`}
               >
-                {pos}
+                {pos === 'OUT' ? 'O' : pos}
               </button>
             ))}
           </div>
