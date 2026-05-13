@@ -312,7 +312,12 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
   const usedSalary = Object.values(roster).reduce((sum, p) => sum + (p?.salary || 0), 0)
   const remainingSalary = salaryCap - usedSalary
   const filledSlots = Object.keys(roster).length
-  const usedPlayerIds = new Set(Object.values(roster).map((p) => p?.espn_player_id).filter(Boolean))
+  // Strip the -P suffix two-way players (Ohtani) carry so picking him as
+  // SP blocks UTIL and vice versa — same real-world player, one slot only.
+  const stripRole = (id) => (id || '').replace(/-P$/, '')
+  const usedPlayerIds = new Set(
+    Object.values(roster).map((p) => stripRole(p?.espn_player_id)).filter(Boolean)
+  )
   const hasSavedRoster = !!existingRoster?.mlb_dfs_roster_slots?.length
   const allLocked = hasSavedRoster && Object.values(roster).length > 0 &&
     Object.values(roster).every((p) => p && getPlayerGameState(p) !== 'upcoming')
@@ -322,7 +327,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
     if (!players) return []
     const now = new Date()
     const filtered = players.filter((p) => {
-      if (usedPlayerIds.has(p.espn_player_id)) return false
+      if (usedPlayerIds.has(stripRole(p.espn_player_id))) return false
       if (p.injury_status === 'Out') return false
       const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
       if (gameStarted) return false

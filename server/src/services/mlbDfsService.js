@@ -417,6 +417,21 @@ export async function generateMLBSalaries(date, season = 2026) {
 export async function saveMLBDFSRoster(leagueId, userId, date, season, slots) {
   const totalSalary = slots.reduce((sum, s) => sum + (s.salary || 0), 0)
 
+  // Reject rosters that try to slot the same real-world player twice.
+  // Two-way players (Ohtani) appear under both espn_player_id `${id}` and
+  // `${id}-P`; the real-player identity is the suffix-stripped id.
+  const seenRealIds = new Set()
+  for (const s of slots) {
+    const real = (s.espn_player_id || '').replace(/-P$/, '')
+    if (!real) continue
+    if (seenRealIds.has(real)) {
+      const err = new Error('Cannot draft the same player in multiple slots')
+      err.status = 400
+      throw err
+    }
+    seenRealIds.add(real)
+  }
+
   // Upsert roster
   const { data: rosterRows, error: rosterErr } = await supabase
     .from('mlb_dfs_rosters')
