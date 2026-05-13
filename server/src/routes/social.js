@@ -203,25 +203,43 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
   const currentStreak = stats?.current_streak || 0
   const isActive = currentStreak >= streakEvent.streak_length
 
-  // 3. Get the picks that formed this streak by reconstructing from history.
-  //    Use fetchAll + games!inner sport filter — the default Supabase 1000-row
-  //    cap was silently truncating older picks for heavy users, which made the
-  //    walk-back below see no losses and bail with an empty list (the visible
-  //    bug: streak modal showed header but no picks).
-  let sportPicks = []
+  // 3. Reconstruct the streak from settled history.
+  //    The current_streak counter on user_sport_stats is bumped by BOTH
+  //    straight picks (scoringService) AND prop picks (propService), so a
+  //    13-win NBA streak is typically a mix of picks + props. Walking the
+  //    picks table alone could never find 13 in a row → empty modal.
+  //    Now we merge both into a single timeline sorted by updated_at.
+  let straightPicks = []
+  let propPicks = []
   try {
-    sportPicks = await fetchAll(
-      supabase
-        .from('picks')
-        .select('id, picked_team, is_correct, odds_at_pick, points_earned, updated_at, games!inner(home_team, away_team, starts_at, sport_id, sports(name))')
-        .eq('user_id', streakEvent.user_id)
-        .eq('status', 'settled')
-        .eq('games.sport_id', streakEvent.sport_id)
-        .order('updated_at', { ascending: false })
-    )
+    [straightPicks, propPicks] = await Promise.all([
+      fetchAll(
+        supabase
+          .from('picks')
+          .select('id, picked_team, is_correct, odds_at_pick, points_earned, updated_at, games!inner(home_team, away_team, starts_at, sport_id, sports(name))')
+          .eq('user_id', streakEvent.user_id)
+          .eq('status', 'settled')
+          .eq('games.sport_id', streakEvent.sport_id)
+          .order('updated_at', { ascending: false })
+      ),
+      fetchAll(
+        supabase
+          .from('prop_picks')
+          .select('id, picked_outcome, line_at_submission, is_correct, odds_at_submission, points_earned, updated_at, player_props!inner(player_name, market_key, line, sport_id)')
+          .eq('user_id', streakEvent.user_id)
+          .eq('status', 'settled')
+          .eq('player_props.sport_id', streakEvent.sport_id)
+          .order('updated_at', { ascending: false })
+      ),
+    ])
   } catch (err) {
-    console.error('Failed to fetch streak picks:', err)
+    console.error('Failed to fetch streak history:', err)
   }
+
+  const sportPicks = [
+    ...straightPicks.map((p) => ({ ...p, type: 'pick' })),
+    ...propPicks.map((p) => ({ ...p, type: 'prop' })),
+  ].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
 
   // Find consecutive winning runs (pushes — is_correct === null — are skipped, not streak-breaking)
   let streakPicks = []

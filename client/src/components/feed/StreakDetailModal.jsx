@@ -76,23 +76,37 @@ export default function StreakDetailModal({ streakId, onClose }) {
                 : 'Streak no longer active'}
             </div>
 
-            {/* Picks list */}
+            {/* Picks list — entries may be straight picks ('pick') or
+                player props ('prop'), interleaved by settlement time. */}
             <div className="space-y-2">
               {data.picks.map((pick, i) => {
-                const team = pick.picked_team === 'home' ? pick.games.home_team : pick.games.away_team
-                const opponent = pick.picked_team === 'home' ? pick.games.away_team : pick.games.home_team
-
+                const isProp = pick.type === 'prop'
+                const dateStr = isProp ? pick.updated_at : pick.games?.starts_at
+                let primary, secondary
+                if (isProp) {
+                  const marketLabel = (pick.player_props?.market_key || '').replace(/^player_/, '').replace(/_/g, ' ')
+                  const line = pick.line_at_submission ?? pick.player_props?.line
+                  const direction = pick.picked_outcome ? pick.picked_outcome.toUpperCase() : ''
+                  primary = pick.player_props?.player_name || 'Player'
+                  secondary = `${direction} ${line} ${marketLabel}`.trim()
+                } else {
+                  const team = pick.picked_team === 'home' ? pick.games.home_team : pick.games.away_team
+                  const opponent = pick.picked_team === 'home' ? pick.games.away_team : pick.games.home_team
+                  primary = team
+                  secondary = `vs ${opponent}`
+                }
                 return (
-                  <div key={pick.id} className="flex items-center justify-between bg-bg-secondary rounded-lg px-3 py-2 text-sm">
+                  <div key={`${pick.type}:${pick.id}`} className="flex items-center justify-between bg-bg-secondary rounded-lg px-3 py-2 text-sm">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-text-muted text-xs w-5 text-center shrink-0">{i + 1}</span>
                       <div className="min-w-0">
-                        <div className="text-text-primary font-medium truncate">{team}</div>
-                        <div className="text-text-muted text-xs truncate">vs {opponent}</div>
+                        <div className="text-text-primary font-medium truncate">{primary}</div>
+                        <div className="text-text-muted text-xs truncate">{secondary}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-text-muted text-xs">{formatGameDate(pick.games.starts_at)}</span>
+                      {isProp && <span className="text-[10px] text-accent uppercase tracking-wider">Prop</span>}
+                      {dateStr && <span className="text-text-muted text-xs">{formatGameDate(dateStr)}</span>}
                       {pick.points_earned != null && (
                         <span className="text-correct text-xs font-semibold">
                           +{pick.points_earned}
