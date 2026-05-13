@@ -96,14 +96,22 @@ input[type="time"] {
   }
 }
 
+/* Scrollbar-hide rules live OUTSIDE @layer utilities because Tailwind v4
+   puts unlayered CSS (like the global `::-webkit-scrollbar { width: 8px }`
+   above) in an implicit layer that ranks AFTER utilities — which made the
+   desktop scrollbar leak through .scrollbar-hide elements on the expanded
+   pick bar, modal bodies, etc. */
+.scrollbar-hide, .no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar, .no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 @layer utilities {
-  .scrollbar-hide, .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar, .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
   .bottom-nav-offset {
     bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
