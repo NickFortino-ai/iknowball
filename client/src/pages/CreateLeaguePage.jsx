@@ -6,6 +6,7 @@ import { getBackdropUrl } from '../lib/backdropUrl'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
+import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
 
 // Winner-only tiered bonus (scaledWinnerBonus on server) — shared across
 // NBA DFS, MLB DFS, HR Derby, TD Pass, Bracket, and Survivor.
@@ -440,33 +441,8 @@ const DURATION_OPTIONS = [
   { value: 'playoffs_only', label: 'Playoffs Only' },
 ]
 
-// Sport-specific season end dates (approximate, updated yearly)
-// REGULAR-season end dates (NOT playoff finales). Full-season leagues
-// run through the regular season only. Playoff games don't count toward
-// these leagues — they end naturally on the last day of the regular season.
-function getSeasonEndDate(sportKey) {
-  const year = new Date().getFullYear()
-  const dates = {
-    basketball_nba: `${year}-04-12`,        // NBA reg season ends ~April 12 (before play-in)
-    americanfootball_nfl: `${year + 1}-01-05`, // NFL Week 18 ends ~Jan 5
-    baseball_mlb: `${year}-09-29`,          // MLB reg season ends ~Sept 29
-    basketball_ncaab: `${year}-03-08`,      // NCAAB reg season ends ~early March (before conf tourneys)
-    basketball_wncaab: `${year}-03-08`,
-    americanfootball_ufl: `${year}-06-15`,   // UFL reg season ends ~mid June
-    americanfootball_ncaaf: `${year}-12-07`, // NCAAF reg season ends ~Dec 7
-    basketball_wnba: `${year}-09-14`,       // WNBA reg season ends ~mid Sept
-    icehockey_nhl: `${year}-04-18`,         // NHL reg season ends ~April 18
-    soccer_usa_mls: `${year}-10-18`,        // MLS reg season ends ~mid October
-  }
-  // If we're past the end date for this sport, push to next year
-  const endDate = dates[sportKey] || `${year}-12-31`
-  if (new Date(endDate) < new Date()) {
-    const d = new Date(endDate)
-    d.setFullYear(d.getFullYear() + 1)
-    return d.toISOString().split('T')[0]
-  }
-  return endDate
-}
+// Season start/end helpers moved to lib/seasonDates.js so the league-edit
+// page can share the same source of truth.
 
 export default function CreateLeaguePage() {
   const navigate = useNavigate()
@@ -1062,7 +1038,7 @@ export default function CreateLeaguePage() {
                     endsAt === 'end_of_season' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
                   }`}
                 >
-                  End of Season
+                  {isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season'}
                 </button>
                 <button
                   type="button"
@@ -1270,7 +1246,7 @@ export default function CreateLeaguePage() {
                   <label className="text-xs text-text-muted block mb-1">Season Type</label>
                   <div className="flex gap-2">
                     {[
-                      { value: 'full_season', label: 'Full Season' },
+                      { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
                       { value: 'single_week', label: sport === 'basketball_nba' ? 'Single Night' : 'Single Week' },
                     ].map((opt) => (
                       <button
@@ -1585,7 +1561,7 @@ export default function CreateLeaguePage() {
               <label className="text-xs text-text-muted block mb-1">Season Type</label>
               <div className="flex gap-2">
                 {[
-                  { value: 'full_season', label: 'Full Season' },
+                  { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
                   { value: 'single_week', label: 'Single Night' },
                 ].map((opt) => (
                   <button
@@ -1742,11 +1718,11 @@ export default function CreateLeaguePage() {
               <div className="flex gap-2">
                 {((format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass')
                   ? [
-                      { value: 'full_season', label: 'Full Season' },
+                      { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
                       { value: 'custom_range', label: 'Select Date' },
                     ]
                   : [
-                      { value: 'full_season', label: 'Full Season' },
+                      { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
                       { value: 'single_week', label: 'Single Night' },
                     ]
                 ).map((opt) => (

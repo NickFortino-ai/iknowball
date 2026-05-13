@@ -37,6 +37,7 @@ import Avatar from '../components/ui/Avatar'
 import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
+import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'mlb_dfs']
 
@@ -790,6 +791,70 @@ function toDateTimeLocalValue(isoStr) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function EndDateEditor({ league, saveDate }) {
+  const seasonEnd = league.sport && league.sport !== 'all' ? getSeasonEndDate(league.sport) : null
+  const currentEndsAt = toDateInputValue(league.ends_at)
+  const [mode, setMode] = useState(seasonEnd && currentEndsAt === seasonEnd ? 'season' : 'custom')
+  const seasonLabel = isSeasonUnderway(league.sport) ? 'Remainder of Regular Season' : 'Full Season'
+
+  function handleSeasonClick() {
+    if (!seasonEnd) return
+    setMode('season')
+    if (currentEndsAt !== seasonEnd) saveDate('ends_at', seasonEnd)
+  }
+
+  return (
+    <div>
+      <label className="block text-xs text-text-muted mb-1">End Date</label>
+      {seasonEnd && (
+        <div className="flex gap-2 mb-2">
+          <button
+            type="button"
+            onClick={handleSeasonClick}
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              mode === 'season' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+            }`}
+          >
+            {seasonLabel}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('custom')}
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              mode === 'custom' ? 'bg-accent text-white' : 'bg-bg-input border border-border text-text-secondary hover:bg-bg-card-hover'
+            }`}
+          >
+            Custom Date
+          </button>
+        </div>
+      )}
+      {mode === 'custom' && (
+        <>
+          <input
+            type="date"
+            defaultValue={currentEndsAt}
+            max={seasonEnd || undefined}
+            onBlur={(e) => {
+              if (!e.target.value) return
+              if (seasonEnd && e.target.value > seasonEnd) {
+                toast(`End date can't be later than the ${league.sport.split('_').pop().toUpperCase()} regular-season end (${new Date(seasonEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}).`, 'error')
+                e.target.value = currentEndsAt
+                return
+              }
+              saveDate('ends_at', e.target.value)
+            }}
+            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+          />
+          {seasonEnd && (
+            <p className="text-[10px] text-text-muted mt-1">Capped at the {league.sport.split('_').pop().toUpperCase()} regular-season end ({new Date(seasonEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}).</p>
+          )}
+        </>
+      )}
+      <p className="text-[10px] text-text-primary mt-1">All games on this date are included. The league closes after the last game goes final.</p>
+    </div>
+  )
+}
+
 function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
   const [expanded, setExpanded] = useState(false)
   const settings = league.settings || {}
@@ -963,16 +1028,10 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
 
       {/* End Date — hidden for traditional fantasy (completion is driven by championship matchup) */}
       {league.ends_at && !(league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap') && (
-        <div>
-          <label className="block text-xs text-text-muted mb-1">End Date</label>
-          <input
-            type="date"
-            defaultValue={toDateInputValue(league.ends_at)}
-            onBlur={(e) => saveDate('ends_at', e.target.value)}
-            className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
-          />
-          <p className="text-[10px] text-text-primary mt-1">All games on this date are included. The league closes after the last game goes final.</p>
-        </div>
+        <EndDateEditor
+          league={league}
+          saveDate={saveDate}
+        />
       )}
       </>)}
 
