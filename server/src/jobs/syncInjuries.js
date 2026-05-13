@@ -47,6 +47,49 @@ async function fetchWnbaInjuriesByTeamId() {
   return byTeamId
 }
 
+// WNBA starters: depth charts are empty, so derive the starting 5 from
+// the team's most recent completed game's box score (athletes with
+// starter: true).
+async function fetchWnbaTeamStarters(espnTeamId) {
+  try {
+    const scheduleUrl = `https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams/${espnTeamId}/schedule`
+    const scheduleRes = await fetch(scheduleUrl)
+    if (!scheduleRes.ok) return []
+    const schedule = await scheduleRes.json()
+
+    const completed = (schedule.events || [])
+      .filter((ev) => ev.competitions?.[0]?.status?.type?.completed)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+    if (!completed.length) return []
+
+    const lastGameId = completed[0].id
+    const summaryRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=${lastGameId}`)
+    if (!summaryRes.ok) return []
+    const summary = await summaryRes.json()
+
+    const teamEntry = (summary.boxscore?.players || []).find((t) => String(t.team?.id) === String(espnTeamId))
+    if (!teamEntry) return []
+
+    const starters = []
+    for (const statGroup of teamEntry.statistics || []) {
+      for (const a of statGroup.athletes || []) {
+        if (!a.starter || !a.athlete?.displayName) continue
+        starters.push({
+          position: a.athlete?.position?.abbreviation?.toUpperCase() || '',
+          name: a.athlete.displayName,
+          shortName: a.athlete.shortName,
+          depth: [{ name: a.athlete.displayName, shortName: a.athlete.shortName }],
+        })
+        if (starters.length === 5) break
+      }
+      if (starters.length === 5) break
+    }
+    return starters
+  } catch {
+    return []
+  }
+}
+
 // NHL doesn't populate `.injuries` on its depth-chart athletes the way NFL/MLB
 // do, so the depthchart-based extractor returns zero. ESPN exposes a per-team
 // injuries endpoint that works directly — use that instead.
@@ -249,9 +292,10 @@ export async function syncInjuries() {
           const data = await fetchNhlTeamInjuries(espnId)
           ;({ starters, injuries } = extractNhlInjuries(data))
         } else if (isWnba) {
-          // WNBA depth chart returns zero athletes — pull from the
-          // league-wide injuries map and skip starters.
-          starters = []
+          // WNBA depth chart returns zero athletes — pull injuries from the
+          // league-wide injuries map, and derive starters from the team's
+          // most recent completed box score.
+          starters = await fetchWnbaTeamStarters(espnId)
           injuries = wnbaInjuriesByTeamId.get(String(espnId)) || []
         } else {
           const data = await fetchDepthChart(sportPath, espnId)
