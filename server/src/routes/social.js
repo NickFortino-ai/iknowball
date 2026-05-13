@@ -225,7 +225,7 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
       fetchAll(
         supabase
           .from('prop_picks')
-          .select('id, picked_outcome, line_at_submission, is_correct, odds_at_submission, points_earned, updated_at, player_props!inner(player_name, market_key, line, sport_id)')
+          .select('id, picked_side, is_correct, odds_at_submission, points_earned, updated_at, player_props!inner(player_name, market_key, line, sport_id)')
           .eq('user_id', streakEvent.user_id)
           .eq('status', 'settled')
           .eq('player_props.sport_id', streakEvent.sport_id)
