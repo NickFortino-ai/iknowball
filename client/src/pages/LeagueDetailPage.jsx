@@ -1035,6 +1035,41 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
       )}
       </>)}
 
+      {league.format === 'mlb_dfs' && (
+        <div>
+          <label className="block text-xs text-text-muted mb-2">Salary Cap</label>
+          <div className="flex flex-wrap gap-2">
+            {[40000, 45000, 50000].map((n) => {
+              const current = fantasySettings?.salary_cap ?? 40000
+              return (
+                <button
+                  key={n}
+                  onClick={async () => {
+                    try {
+                      await updateFantasySettings.mutateAsync({ leagueId: league.id, salary_cap: n })
+                      toast('Salary cap updated', 'success')
+                    } catch (err) {
+                      toast(err.message || 'Failed to update', 'error')
+                    }
+                  }}
+                  disabled={updateFantasySettings.isPending}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    current === n
+                      ? 'bg-accent text-white border border-accent'
+                      : 'bg-bg-primary text-text-secondary border border-text-primary/20'
+                  } ${updateFantasySettings.isPending && current !== n ? 'opacity-40 cursor-not-allowed' : ''}`}
+                >
+                  ${n.toLocaleString()}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-[10px] text-text-primary mt-1">
+            Applies to every member's next roster submission. Existing rosters keep the cap they were saved with.
+          </p>
+        </div>
+      )}
+
       {league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && fantasySettings?.draft_status !== 'completed' && (
         <>
           <div>

@@ -1663,7 +1663,7 @@ export default function CreateLeaguePage() {
               <div>
                 <label className="text-xs text-text-muted block mb-1">Salary Cap</label>
                 <div className="flex gap-2">
-                  {[40000, 50000].map((n) => (
+                  {[40000, 45000, 50000].map((n) => (
                     <button
                       key={n}
                       type="button"
