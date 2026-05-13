@@ -29,10 +29,25 @@ const SPORT_LABELS = {
   basketball_ncaab: 'NCAAB',
   basketball_wncaab: 'WNCAAB',
   americanfootball_ncaaf: 'NCAAF',
+  americanfootball_ufl: 'UFL',
   basketball_wnba: 'WNBA',
   icehockey_nhl: 'NHL',
   soccer_usa_mls: 'MLS',
   all: 'All Sports',
+}
+
+// Sport-agnostic formats — prefix the sport in the card label
+// ("UFL Pick'em League", "NFL Survivor League"). Sport-specific formats
+// like nba_dfs already include the sport in their label.
+const PREFIX_SPORT_FORMATS = new Set(['pickem', 'survivor', 'bracket', 'squares'])
+
+function getLeagueHeadline(league) {
+  const formatLabel = FORMAT_LABELS[league.format] || league.format
+  const sportLabel = SPORT_LABELS[league.sport] || league.sport
+  if (PREFIX_SPORT_FORMATS.has(league.format) && sportLabel && league.sport !== 'all') {
+    return `${sportLabel} ${formatLabel} League`
+  }
+  return `${formatLabel} League`
 }
 
 const FORMAT_DESCRIPTIONS = {
@@ -123,8 +138,7 @@ function LeagueInfoModal({ league, onClose, onJoin, joining }) {
             </button>
             <h2 className="font-display text-xl text-white pr-8 leading-tight break-words">{league.name}</h2>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <span className="text-xs font-semibold text-accent">{FORMAT_LABELS[league.format] || league.format}</span>
-              <span className="text-xs text-text-secondary">{SPORT_LABELS[league.sport] || league.sport}</span>
+              <span className="text-xs font-semibold text-accent">{getLeagueHeadline(league)}</span>
               <span className="text-xs text-text-secondary">
                 {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
               </span>
@@ -276,8 +290,7 @@ export default function OpenLeaguesSection() {
             <div className="relative p-4 flex flex-col flex-1">
               <div className="font-semibold text-sm text-white mb-1 line-clamp-2 leading-snug">{league.name}</div>
               <div className="text-xs mb-1.5">
-                <span className="text-accent font-semibold">{FORMAT_LABELS[league.format] || league.format}</span>
-                <span className="text-text-muted"> · {SPORT_LABELS[league.sport] || league.sport}</span>
+                <span className="text-accent font-semibold">{getLeagueHeadline(league)}</span>
               </div>
               <div className="text-xs text-text-muted mb-1">
                 {league.member_count}{league.max_members ? `/${league.max_members}` : ''} members
