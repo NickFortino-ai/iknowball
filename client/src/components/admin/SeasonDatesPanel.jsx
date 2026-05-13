@@ -13,6 +13,7 @@ const SPORT_OPTIONS = [
   { key: 'basketball_ncaab', label: 'NCAAB' },
   { key: 'basketball_wncaab', label: 'WNCAAB' },
   { key: 'americanfootball_ncaaf', label: 'NCAAF' },
+  { key: 'americanfootball_ufl', label: 'UFL' },
 ]
 
 export default function SeasonDatesPanel() {

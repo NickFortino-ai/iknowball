@@ -623,6 +623,14 @@ export default function CreateLeaguePage() {
       if (hrDerbyEndDate < getDfsStartDate()) { toast('End date must be after the start date', 'error'); return }
     }
 
+    if (endsAt && endsAt !== 'end_of_season' && sport && sport !== 'all') {
+      const seasonEnd = getSeasonEndDate(sport)
+      if (endsAt > seasonEnd) {
+        toast(`End date can't be later than the ${sport.split('_').pop().toUpperCase()} regular-season end (${new Date(seasonEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}).`, 'error')
+        return
+      }
+    }
+
     const settings = {}
     if (format === 'pickem') {
       if (gamesPerWeek) settings.games_per_week = parseInt(gamesPerWeek, 10)
@@ -1067,12 +1075,18 @@ export default function CreateLeaguePage() {
                 </button>
               </div>
               {endsAt !== 'end_of_season' && (
-                <input
-                  type="date"
-                  value={endsAt}
-                  onChange={(e) => setEndsAt(e.target.value)}
-                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
-                />
+                <>
+                  <input
+                    type="date"
+                    value={endsAt}
+                    max={sport && sport !== 'all' ? getSeasonEndDate(sport) : undefined}
+                    onChange={(e) => setEndsAt(e.target.value)}
+                    className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                  />
+                  {sport && sport !== 'all' && (
+                    <p className="text-xs text-text-muted mt-1">Capped at the {sport.split('_').pop().toUpperCase()} regular-season end ({new Date(getSeasonEndDate(sport)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}).</p>
+                  )}
+                </>
               )}
             </div>
           </div>
