@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useLeaderboard, useUserRankOnLeaderboard } from '../hooks/useLeaderboard'
@@ -114,7 +114,7 @@ function SearchResultView({
   )
 }
 
-const tabs = [
+const DEFAULT_TABS = [
   { label: 'Global', scope: 'global', sport: null },
   { label: 'NBA', scope: 'sport', sport: 'basketball_nba' },
   { label: 'NCAAB', scope: 'sport', sport: 'basketball_ncaab' },
@@ -132,15 +132,186 @@ const tabs = [
   { label: 'WNBA', scope: 'sport', sport: 'basketball_wnba' },
 ]
 
+function getOrderStorageKey(userId) {
+  return userId ? `leaderboard_tab_order_v1:${userId}` : 'leaderboard_tab_order_v1'
+}
+
+function loadTabOrder(userId) {
+  try {
+    const saved = localStorage.getItem(getOrderStorageKey(userId))
+    if (!saved) return DEFAULT_TABS
+    const labels = JSON.parse(saved)
+    if (!Array.isArray(labels)) return DEFAULT_TABS
+    const ordered = []
+    for (const label of labels) {
+      const t = DEFAULT_TABS.find((d) => d.label === label)
+      if (t && !ordered.includes(t)) ordered.push(t)
+    }
+    // Append any new tabs added since the user last saved their order.
+    for (const t of DEFAULT_TABS) {
+      if (!ordered.includes(t)) ordered.push(t)
+    }
+    return ordered
+  } catch {
+    return DEFAULT_TABS
+  }
+}
+
+function saveTabOrder(userId, tabs) {
+  try {
+    localStorage.setItem(getOrderStorageKey(userId), JSON.stringify(tabs.map((t) => t.label)))
+  } catch {
+    // localStorage might be unavailable (private mode, etc.) — silently ignore.
+  }
+}
+
+// Pointer-based drag reorder. Lighter than pulling in a dnd library, and works
+// on both touch and mouse. While dragging, the held tab follows the pointer
+// via translateX; when its center crosses another tab's center, the order
+// array is mutated and on release we persist to localStorage.
+function ReorderableTabs({ tabs, setTabs, activeLabel, setActiveLabel, editMode, onToggleEdit, onScoringInfoClick, userId, scrollRef }) {
+  const tabRefs = useRef({})
+  const [dragLabel, setDragLabel] = useState(null)
+  const [dragX, setDragX] = useState(0)
+  const dragRef = useRef({ pointerId: null, startX: 0, startScrollLeft: 0 })
+
+  function handlePointerDown(e, label) {
+    if (!editMode) return
+    if (e.target.closest('button')?.dataset?.scoringInfo) return
+    e.preventDefault()
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startScrollLeft: scrollRef.current?.scrollLeft || 0,
+    }
+    setDragLabel(label)
+    setDragX(0)
+    try { e.target.setPointerCapture(e.pointerId) } catch {}
+  }
+
+  function handlePointerMove(e) {
+    if (!editMode || dragLabel === null || e.pointerId !== dragRef.current.pointerId) return
+    const scrollDelta = (scrollRef.current?.scrollLeft || 0) - dragRef.current.startScrollLeft
+    const dx = e.clientX - dragRef.current.startX + scrollDelta
+    setDragX(dx)
+
+    // Find which neighbor's midpoint we've crossed and swap.
+    const dragRect = tabRefs.current[dragLabel]?.getBoundingClientRect()
+    if (!dragRect) return
+    const draggedCenter = dragRect.left + dragRect.width / 2 + (dx - (dragX || 0))
+    for (const t of tabs) {
+      if (t.label === dragLabel) continue
+      const r = tabRefs.current[t.label]?.getBoundingClientRect()
+      if (!r) continue
+      const center = r.left + r.width / 2
+      const fromIdx = tabs.findIndex((x) => x.label === dragLabel)
+      const toIdx = tabs.findIndex((x) => x.label === t.label)
+      const movingRight = toIdx > fromIdx
+      if ((movingRight && e.clientX > center) || (!movingRight && e.clientX < center)) {
+        const next = [...tabs]
+        const [moved] = next.splice(fromIdx, 1)
+        next.splice(toIdx, 0, moved)
+        setTabs(next)
+        // Reset visual offset relative to new position.
+        dragRef.current.startX = e.clientX
+        setDragX(0)
+        return
+      }
+    }
+  }
+
+  function handlePointerUp() {
+    if (dragLabel === null) return
+    setDragLabel(null)
+    setDragX(0)
+    saveTabOrder(userId, tabs)
+  }
+
+  return (
+    <div
+      className="flex overflow-x-auto items-center gap-2 pb-2 mb-6 scrollbar-hide -mx-4 px-4"
+      ref={scrollRef}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      <button
+        type="button"
+        onClick={onToggleEdit}
+        aria-label={editMode ? 'Done reordering' : 'Reorder tabs'}
+        className={`flex-shrink-0 w-6 h-9 flex items-center justify-center rounded-md transition-colors ${
+          editMode ? 'bg-accent/20 text-accent' : 'text-text-muted/60 hover:text-text-primary'
+        }`}
+      >
+        <svg width="4" height="16" viewBox="0 0 4 16" fill="currentColor" aria-hidden>
+          <circle cx="2" cy="2" r="1.5" />
+          <circle cx="2" cy="8" r="1.5" />
+          <circle cx="2" cy="14" r="1.5" />
+        </svg>
+      </button>
+      {tabs.map((t, i) => {
+        const isActive = activeLabel === t.label
+        const isDragging = dragLabel === t.label
+        return (
+          <div
+            key={t.label}
+            ref={(el) => { if (el) tabRefs.current[t.label] = el }}
+            onPointerDown={(e) => handlePointerDown(e, t.label)}
+            onClick={() => { if (!editMode) setActiveLabel(t.label) }}
+            style={isDragging ? { transform: `translateX(${dragX}px)`, zIndex: 10 } : undefined}
+            className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1 select-none ${
+              isActive
+                ? 'bg-accent text-white'
+                : 'bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40'
+            } ${editMode ? 'cursor-grab animate-wiggle relative shadow-md' : 'cursor-pointer'} ${
+              isDragging ? 'cursor-grabbing opacity-90 ring-2 ring-accent' : 'transition-colors'
+            }`}
+          >
+            {/* Three vertical dots handle on the FIRST tab in edit mode is offered as the entry to edit;
+                when already in edit mode, every tab gets a tiny grip dot pattern. */}
+            {editMode && (
+              <span className="text-text-muted/70 leading-none mr-0.5" aria-hidden>⋮⋮</span>
+            )}
+            {t.label}
+            {t.scope === 'leagues' && (
+              <button
+                type="button"
+                data-scoring-info="1"
+                onClick={(e) => { e.stopPropagation(); onScoringInfoClick() }}
+                className="inline-flex items-center ml-0.5 opacity-70 hover:opacity-100 transition-opacity"
+                aria-label="Scoring info"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function LeaderboardPage() {
-  const [activeTab, setActiveTab] = useState(0)
+  const { profile } = useAuth()
+  const userId = profile?.id
+  const [tabs, setTabs] = useState(() => loadTabOrder(userId))
+  const [activeLabel, setActiveLabel] = useState(tabs[0]?.label || 'Global')
+  const [editMode, setEditMode] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [scoringModalOpen, setScoringModalOpen] = useState(false)
-  // The user the search bar has filtered to. Stays set across tab
-  // switches so the user can compare one person across Global / NBA /
-  // MLB etc. Cleared via the X button in the search-result banner.
   const [searchedUser, setSearchedUser] = useState(null)
-  const tab = tabs[activeTab]
+  const scrollRef = useRef(null)
+
+  // Reload order if userId arrives after first render (auth loads async).
+  useEffect(() => {
+    setTabs(loadTabOrder(userId))
+  }, [userId])
+
+  const tab = useMemo(() => tabs.find((t) => t.label === activeLabel) || tabs[0], [tabs, activeLabel])
   const isLeaguesTab = tab.scope === 'leagues'
   const { data: leaders, isLoading, isError, refetch } = useLeaderboard(isLeaguesTab ? null : tab.scope, tab.sport)
   const { data: leagueLeaders, isLoading: leaguesLoading } = useQuery({
@@ -156,7 +327,6 @@ export default function LeaderboardPage() {
     rankScope,
     tab.sport
   )
-  const { profile } = useAuth()
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-6 pb-32">
@@ -166,34 +336,20 @@ export default function LeaderboardPage() {
         <LeaderboardSearch onSelect={setSearchedUser} />
       </div>
 
-      <div className="flex overflow-x-auto gap-2 pb-2 mb-6 scrollbar-hide -mx-4 px-4">
-        {tabs.map((t, i) => (
-          <button
-            key={t.label}
-            onClick={() => setActiveTab(i)}
-            className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1 ${
-              activeTab === i
-                ? 'bg-accent text-white'
-                : 'bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40'
-            }`}
-          >
-            {t.label}
-            {t.scope === 'leagues' && (
-              <span
-                onClick={(e) => { e.stopPropagation(); setScoringModalOpen(true) }}
-                className="inline-flex items-center ml-0.5 opacity-70 hover:opacity-100 transition-opacity"
-                aria-label="Scoring info"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <ReorderableTabs
+        tabs={tabs}
+        setTabs={setTabs}
+        activeLabel={activeLabel}
+        setActiveLabel={setActiveLabel}
+        editMode={editMode}
+        onToggleEdit={() => setEditMode((v) => !v)}
+        onScoringInfoClick={() => setScoringModalOpen(true)}
+        userId={userId}
+        scrollRef={scrollRef}
+      />
+      {editMode && (
+        <p className="text-[10px] text-text-muted -mt-4 mb-4 px-1">Drag tabs to reorder. Tap the dots again when finished.</p>
+      )}
 
       {tab.scope === 'sport' && (
         <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks only</p>

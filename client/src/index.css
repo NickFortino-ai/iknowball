@@ -257,6 +257,20 @@ input[type="time"] {
   animation: crown-pulse 3s ease-in-out infinite;
 }
 
+/* Subtle wobble used to indicate that leaderboard tabs are draggable
+   while the user is in reorder mode. Each tab uses a slightly offset
+   delay so the row doesn't move as one block. */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-0.6deg); }
+  50% { transform: rotate(0.6deg); }
+}
+.animate-wiggle {
+  animation: wiggle 0.4s ease-in-out infinite;
+}
+.animate-wiggle:nth-child(even) {
+  animation-delay: 0.2s;
+}
+
 @media (min-width: 768px) {
   .bottom-nav-offset {
     bottom: 0;
