@@ -3,14 +3,14 @@ import OddsDisplay from './OddsDisplay'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 
 const stateStyles = {
-  default: 'bg-bg-primary/40 backdrop-blur-sm hover:bg-bg-card-hover/60 border-border hover:border-border-hover',
+  default: 'bg-bg-primary/20 backdrop-blur-sm hover:bg-bg-card-hover/60 border-border hover:border-border-hover',
   selected: 'bg-accent/20 backdrop-blur-sm border-accent',
-  locked: 'bg-bg-primary/40 backdrop-blur-sm border-border opacity-60 cursor-not-allowed',
-  'locked-picked': 'bg-bg-primary/40 backdrop-blur-sm border-accent/50 cursor-not-allowed',
-  correct: 'bg-bg-primary/40 backdrop-blur-sm border-correct',
-  incorrect: 'bg-bg-primary/40 backdrop-blur-sm border-incorrect',
-  postponed: 'bg-bg-primary/40 backdrop-blur-sm border-yellow-500',
-  push: 'bg-bg-primary/40 backdrop-blur-sm border-yellow-500',
+  locked: 'bg-bg-primary/20 backdrop-blur-sm border-border opacity-60 cursor-not-allowed',
+  'locked-picked': 'bg-bg-primary/20 backdrop-blur-sm border-accent/50 cursor-not-allowed',
+  correct: 'bg-bg-primary/20 backdrop-blur-sm border-correct',
+  incorrect: 'bg-bg-primary/20 backdrop-blur-sm border-incorrect',
+  postponed: 'bg-bg-primary/20 backdrop-blur-sm border-yellow-500',
+  push: 'bg-bg-primary/20 backdrop-blur-sm border-yellow-500',
 }
 
 function PickLogo({ team, sportKey }) {
@@ -31,7 +31,7 @@ export default function PickButton({ team, odds, score, isLive, state = 'default
   const hasLogo = !!getTeamLogoUrl(team, sportKey)
 
   // When showing scores (live/final), use dark background for all states
-  const bgOverride = hasResult && state === 'default' ? 'bg-bg-primary/40 backdrop-blur-sm border-border' : ''
+  const bgOverride = hasResult && state === 'default' ? 'bg-bg-primary/20 backdrop-blur-sm border-border' : ''
 
   return (
     <button
