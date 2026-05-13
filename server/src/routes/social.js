@@ -15,6 +15,7 @@ import {
   getFeedReactionsBatch,
 } from '../services/socialService.js'
 import { getPronouns } from '../utils/pronouns.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 const router = Router()
 
@@ -202,22 +203,25 @@ router.get('/streaks/:streakId', requireAuth, async (req, res) => {
   const currentStreak = stats?.current_streak || 0
   const isActive = currentStreak >= streakEvent.streak_length
 
-  // 3. Get the picks that formed this streak by reconstructing from history
-  //    Fetch recent settled picks (wins + losses) for this sport, walk backwards
-  //    to find the consecutive winning run.
-  const { data: allPicks, error: picksError } = await supabase
-    .from('picks')
-    .select('id, picked_team, is_correct, odds_at_pick, points_earned, updated_at, games(home_team, away_team, starts_at, sport_id, sports(name))')
-    .eq('user_id', streakEvent.user_id)
-    .eq('status', 'settled')
-    .order('updated_at', { ascending: false })
-
-  if (picksError) {
-    console.error('Failed to fetch streak picks:', picksError)
+  // 3. Get the picks that formed this streak by reconstructing from history.
+  //    Use fetchAll + games!inner sport filter — the default Supabase 1000-row
+  //    cap was silently truncating older picks for heavy users, which made the
+  //    walk-back below see no losses and bail with an empty list (the visible
+  //    bug: streak modal showed header but no picks).
+  let sportPicks = []
+  try {
+    sportPicks = await fetchAll(
+      supabase
+        .from('picks')
+        .select('id, picked_team, is_correct, odds_at_pick, points_earned, updated_at, games!inner(home_team, away_team, starts_at, sport_id, sports(name))')
+        .eq('user_id', streakEvent.user_id)
+        .eq('status', 'settled')
+        .eq('games.sport_id', streakEvent.sport_id)
+        .order('updated_at', { ascending: false })
+    )
+  } catch (err) {
+    console.error('Failed to fetch streak picks:', err)
   }
-
-  // Filter to the correct sport
-  const sportPicks = (allPicks || []).filter(p => p.games?.sport_id === streakEvent.sport_id)
 
   // Find consecutive winning runs (pushes — is_correct === null — are skipped, not streak-breaking)
   let streakPicks = []
