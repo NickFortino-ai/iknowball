@@ -4,6 +4,7 @@ import { logger } from '../utils/logger.js'
 import { getTier } from '../config/constants.js'
 import { getPronouns } from '../utils/pronouns.js'
 import { getAllCrownHolders } from './leaderboardService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 /**
  * A user has "thin data" when there is nothing specific for Claude to
@@ -31,52 +32,63 @@ export async function collectWeeklyData(weekStart, weekEnd) {
   const startISO = weekStart.toISOString()
   const endISO = weekEnd.toISOString()
 
-  // 1. Settled picks in the date range (with timestamp + sport for daily breakdown)
-  const { data: picks } = await supabase
-    .from('picks')
-    .select('user_id, points_earned, is_correct, odds_at_pick, reward_points, risk_points, picked_team, updated_at, games(home_team, away_team, home_score, away_score, sports(name))')
-    .eq('status', 'settled')
-    .not('points_earned', 'is', null)
-    .gte('updated_at', startISO)
-    .lte('updated_at', endISO)
+  // 1-6. Pull all settled activity for the week + every user + every per-sport
+  //       stat row, paginated through Supabase's silent 1000-row cap. A single
+  //       NFL/NBA-overlap weekday already produces ~hundreds of parlays + props
+  //       across the user base; without paginating, recap stats are silently
+  //       wrong (missing tail users, missing parlays, missing prop highlights).
+  const picks = await fetchAll(
+    supabase
+      .from('picks')
+      .select('user_id, points_earned, is_correct, odds_at_pick, reward_points, risk_points, picked_team, updated_at, games(home_team, away_team, home_score, away_score, sports(name))')
+      .eq('status', 'settled')
+      .not('points_earned', 'is', null)
+      .gte('updated_at', startISO)
+      .lte('updated_at', endISO)
+  )
 
-  // 2. Settled parlays
-  const { data: parlays } = await supabase
-    .from('parlays')
-    .select('user_id, points_earned, is_correct, leg_count, risk_points, reward_points, combined_multiplier, updated_at')
-    .eq('status', 'settled')
-    .not('points_earned', 'is', null)
-    .gte('updated_at', startISO)
-    .lte('updated_at', endISO)
+  const parlays = await fetchAll(
+    supabase
+      .from('parlays')
+      .select('user_id, points_earned, is_correct, leg_count, risk_points, reward_points, combined_multiplier, updated_at')
+      .eq('status', 'settled')
+      .not('points_earned', 'is', null)
+      .gte('updated_at', startISO)
+      .lte('updated_at', endISO)
+  )
 
-  // 3. Settled prop picks (with details for highlights)
-  const { data: propPicks } = await supabase
-    .from('prop_picks')
-    .select('user_id, points_earned, is_correct, picked_side, odds_at_pick, updated_at, player_props(player_name, market_label, line, actual_value, sport_id, sports(name))')
-    .eq('status', 'settled')
-    .not('points_earned', 'is', null)
-    .gte('updated_at', startISO)
-    .lte('updated_at', endISO)
+  const propPicks = await fetchAll(
+    supabase
+      .from('prop_picks')
+      .select('user_id, points_earned, is_correct, picked_side, odds_at_pick, updated_at, player_props(player_name, market_label, line, actual_value, sport_id, sports(name))')
+      .eq('status', 'settled')
+      .not('points_earned', 'is', null)
+      .gte('updated_at', startISO)
+      .lte('updated_at', endISO)
+  )
 
-  // 4. Settled futures picks
-  const { data: futuresPicks } = await supabase
-    .from('futures_picks')
-    .select('user_id, points_earned, is_correct')
-    .eq('status', 'settled')
-    .not('points_earned', 'is', null)
-    .gte('updated_at', startISO)
-    .lte('updated_at', endISO)
+  const futuresPicks = await fetchAll(
+    supabase
+      .from('futures_picks')
+      .select('user_id, points_earned, is_correct')
+      .eq('status', 'settled')
+      .not('points_earned', 'is', null)
+      .gte('updated_at', startISO)
+      .lte('updated_at', endISO)
+  )
 
-  // 5. Current streaks per user (max across all sports)
-  const { data: allStats } = await supabase
-    .from('user_sport_stats')
-    .select('user_id, current_streak, sports(name)')
+  const allStats = await fetchAll(
+    supabase
+      .from('user_sport_stats')
+      .select('user_id, current_streak, sports(name)')
+  )
 
-  // 6. All users for rank calculation
-  const { data: allUsers } = await supabase
-    .from('users')
-    .select('id, username, display_name, total_points, tier, title_preference')
-    .order('total_points', { ascending: false })
+  const allUsers = await fetchAll(
+    supabase
+      .from('users')
+      .select('id, username, display_name, total_points, tier, title_preference')
+      .order('total_points', { ascending: false })
+  )
 
   // Build per-user aggregation
   const userMap = {}

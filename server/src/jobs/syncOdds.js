@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { fetchOdds } from '../services/oddsService.js'
 import { logger } from '../utils/logger.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 async function syncSport(sportKey, { force = false } = {}) {
   const { data: sport } = await supabase
@@ -174,15 +175,20 @@ async function syncSport(sportKey, { force = false } = {}) {
   // so admins can resolve manually.
   const seenExternalIds = new Set(events.map((e) => e.id))
   const horizon = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000)
-  const { data: candidates } = await supabase
-    .from('games')
-    .select('id, external_id, home_team, away_team, starts_at')
-    .eq('sport_id', sport.id)
-    .eq('status', 'upcoming')
-    .gte('starts_at', now.toISOString())
-    .lte('starts_at', horizon.toISOString())
+  // Paginate — cross-league mid-season the upcoming-games count can exceed
+  // 1000 (NFL + MLB + NBA + NHL + UFL overlap). Silent truncation here would
+  // leave orphan phantom games undetected.
+  const candidates = await fetchAll(
+    supabase
+      .from('games')
+      .select('id, external_id, home_team, away_team, starts_at')
+      .eq('sport_id', sport.id)
+      .eq('status', 'upcoming')
+      .gte('starts_at', now.toISOString())
+      .lte('starts_at', horizon.toISOString())
+  )
 
-  const orphans = (candidates || []).filter((g) => !seenExternalIds.has(g.external_id))
+  const orphans = candidates.filter((g) => !seenExternalIds.has(g.external_id))
   for (const orphan of orphans) {
     // Check for dependent records
     const [picksRes, legsRes, leaguePicksRes] = await Promise.all([

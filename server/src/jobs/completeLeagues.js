@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { getLeaguePickStandings } from '../services/leaguePickService.js'
 import { getBracketStandings } from '../services/bracketService.js'
 import { createNotification } from '../services/notificationService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 import { connectAutoConnectMembers } from '../services/connectionService.js'
 import { generateLeagueReport } from '../services/leagueReportService.js'
 
@@ -312,14 +313,19 @@ async function getFantasyLeagueStandings(league) {
     return ranked
   }
 
-  // Traditional fantasy — use matchup W-L records
-  const { data: matchups } = await supabase
-    .from('fantasy_matchups')
-    .select('home_user_id, away_user_id, home_points, away_points, status')
-    .eq('league_id', league.id)
-    .eq('status', 'completed')
+  // Traditional fantasy — use matchup W-L records.
+  // Paginate: a 20-team league across 18 weeks is fine (~180 rows), but
+  // there's no upper bound on the schema and silent truncation would
+  // produce wrong playoff seedings.
+  const matchups = await fetchAll(
+    supabase
+      .from('fantasy_matchups')
+      .select('home_user_id, away_user_id, home_points, away_points, status')
+      .eq('league_id', league.id)
+      .eq('status', 'completed')
+  )
 
-  if (!matchups?.length) return []
+  if (!matchups.length) return []
 
   const userMap = {}
   // Head-to-head matrix: h2hWins[a][b] = number of times a beat b

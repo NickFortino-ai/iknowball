@@ -4,6 +4,7 @@ import { createNotification } from './notificationService.js'
 import { checkRecordAfterSettle } from './recordService.js'
 import { BASE_RISK_POINTS } from '../config/constants.js'
 import { americanToMultiplier } from '../utils/scoring.js'
+import { fetchAll as paginate } from '../utils/fetchAll.js'
 
 export async function scoreCompletedGame(gameId, winner, sportId) {
   // Get all locked picks for this game
@@ -377,13 +378,15 @@ export async function recalculateAllUserPoints() {
     userPoints[row.user_id] = Number(row.total) || 0
   }
 
-  // Get current stored totals
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, total_points')
+  // Get current stored totals — paginate to avoid Supabase's 1000-row cap
+  // once the user base grows past it (silent truncation would leave some
+  // users with stale totals on every recalc run).
+  const users = await paginate(
+    supabase.from('users').select('id, total_points')
+  )
 
   const results = []
-  for (const user of (users || [])) {
+  for (const user of users) {
     const correctTotal = userPoints[user.id] || 0
     if (correctTotal !== user.total_points) {
       const delta = correctTotal - user.total_points
@@ -495,11 +498,13 @@ async function recalculateAllUserPointsFallback() {
   await fetchAll('futures_picks', 'status', 'points_earned')
   await fetchAll('bonus_points', null, 'points')
 
-  // Get current stored totals
-  const { data: users } = await supabase.from('users').select('id, total_points')
+  // Get current stored totals — paginated.
+  const users = await paginate(
+    supabase.from('users').select('id, total_points')
+  )
 
   const results = []
-  for (const user of (users || [])) {
+  for (const user of users) {
     const correctTotal = userPoints[user.id] || 0
     if (correctTotal !== user.total_points) {
       const delta = correctTotal - user.total_points

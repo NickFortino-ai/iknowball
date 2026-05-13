@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { effectiveAdp as computeEffectiveAdp } from '../utils/effectiveAdp.js'
 import { getLeagueSyncInfo } from './draftPrepService.js'
+import { fetchAll } from '../utils/fetchAll.js'
 
 // =====================================================================
 // SCORING RULES
@@ -1370,12 +1371,16 @@ export async function getFantasyStandings(leagueId) {
 
   if (!members?.length) return []
 
-  // All matchups for this league, ordered so we can compute streaks chronologically
-  const { data: matchups } = await supabase
-    .from('fantasy_matchups')
-    .select('week, home_user_id, away_user_id, home_points, away_points, status')
-    .eq('league_id', leagueId)
-    .order('week', { ascending: true })
+  // All matchups for this league, ordered so we can compute streaks
+  // chronologically. Paginate for safety — very large leagues with long
+  // seasons could approach the 1000-row cap.
+  const matchups = await fetchAll(
+    supabase
+      .from('fantasy_matchups')
+      .select('week, home_user_id, away_user_id, home_points, away_points, status')
+      .eq('league_id', leagueId)
+      .order('week', { ascending: true })
+  )
 
   // Initialize per-user buckets
   const tally = {}
@@ -2390,7 +2395,6 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const draftDone = settings?.draft_status === 'completed' || settings?.draft_status === 'in_progress'
   const statSeason = draftDone ? season : season - 1
   const pointsCol = scoringFormat === 'ppr' ? 'pts_ppr' : scoringFormat === 'standard' ? 'pts_std' : 'pts_half_ppr'
-  const { fetchAll } = await import('../utils/fetchAll.js')
   const statRows = await fetchAll(
     supabase
       .from('nfl_player_stats')
@@ -5094,13 +5098,17 @@ function isStarterSlot(slot) {
 }
 
 export async function scoreFantasyMatchupsWeek(week, season) {
-  // 1. Find every traditional fantasy league that has a matchup for this week
-  const { data: matchups } = await supabase
-    .from('fantasy_matchups')
-    .select('id, league_id, week, home_user_id, away_user_id')
-    .eq('week', week)
+  // 1. Find every traditional fantasy league that has a matchup for this week.
+  //    This is cross-league — 100+ leagues × multiple matchups can blow past
+  //    the 1000-row cap and silently leave matchups unscored. Paginate.
+  const matchups = await fetchAll(
+    supabase
+      .from('fantasy_matchups')
+      .select('id, league_id, week, home_user_id, away_user_id')
+      .eq('week', week)
+  )
 
-  if (!matchups?.length) {
+  if (!matchups.length) {
     logger.info({ week, season }, 'No fantasy H2H matchups for week')
     return { scored: 0 }
   }
