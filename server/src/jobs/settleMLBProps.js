@@ -68,14 +68,26 @@ export async function settleMLBProps() {
     return
   }
 
-  const statsByName = {}
+  // Index by (normalized name, is_pitcher). Two-way players (Ohtani)
+  // produce two stat rows per game — one batter, one pitcher — and a
+  // pitcher_strikeouts prop needs the pitcher row while batter_strikeouts
+  // needs the batter row. The `strikeouts` column means different things
+  // depending on role, so we can't just merge.
+  const statsByNameRole = {}
   for (const s of allStats) {
-    statsByName[normalizePlayerName(s.player_name)] = s
+    const key = `${normalizePlayerName(s.player_name)}|${s.is_pitcher ? 'P' : 'B'}`
+    statsByNameRole[key] = s
   }
 
   const settlements = []
   for (const prop of props) {
-    const stats = statsByName[normalizePlayerName(prop.player_name)]
+    const wantsPitcher = prop.market_key?.startsWith('pitcher_')
+    const role = wantsPitcher ? 'P' : 'B'
+    const nameKey = normalizePlayerName(prop.player_name)
+    let stats = statsByNameRole[`${nameKey}|${role}`]
+    // Fall back to the opposite role only if no exact-role row exists —
+    // covers legacy stat rows from before the two-way split.
+    if (!stats) stats = statsByNameRole[`${nameKey}|${wantsPitcher ? 'B' : 'P'}`]
     if (!stats) {
       logger.info({ propId: prop.id, player: prop.player_name }, 'MLB player not in stats — settling as push')
       settlements.push({ propId: prop.id, outcome: 'push', actualValue: null })

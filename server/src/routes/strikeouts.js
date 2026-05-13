@@ -68,9 +68,11 @@ router.get('/players', async (req, res) => {
 
   const kMap = await getSeasonStrikeoutLeaders()
 
+  // Strip the -P suffix that two-way players (Ohtani) carry — the
+  // strikeout-leaders cache is keyed on real ESPN athlete IDs.
   const enriched = pitchers.map((p) => ({
     ...p,
-    season_strikeouts: kMap[p.espn_player_id] || 0,
+    season_strikeouts: kMap[(p.espn_player_id || '').replace(/-P$/, '')] || 0,
   }))
   enriched.sort((a, b) => b.season_strikeouts - a.season_strikeouts || b.salary - a.salary)
 

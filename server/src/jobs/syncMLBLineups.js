@@ -144,7 +144,10 @@ export async function syncMLBLineups() {
         const teamProbableId = teamProbables.get(p.team)
         if (!teamProbableId) continue // No probable announced for this team yet — leave as null
 
-        const newStatus = p.espn_player_id === teamProbableId ? 'confirmed' : 'not_starting'
+        // Strip the -P suffix carried by two-way players (Ohtani) before
+        // comparing — ESPN's probable-pitcher feed uses the real athlete ID.
+        const realId = (p.espn_player_id || '').replace(/-P$/, '')
+        const newStatus = realId === teamProbableId ? 'confirmed' : 'not_starting'
         if (newStatus !== p.lineup_status) {
           await supabase
             .from('mlb_dfs_salaries')

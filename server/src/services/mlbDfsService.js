@@ -15,43 +15,53 @@ function mapPosition(pos) {
   return map[pos] || pos || 'UTIL'
 }
 
+// MLB two-way players. ESPN's roster endpoint lists each athlete under a
+// single position group, so Ohtani currently slots in as a hitter and is
+// missing entirely from the SP pool (DFS, Strikeouts contest, pitcher
+// props). For these players we emit a SECOND salary row priced from
+// pitching stats, with espn_player_id suffixed -P so it satisfies the
+// (espn_player_id, game_date, season) unique constraint and is
+// distinguishable downstream.
+const TWO_WAY_PLAYER_NAMES = new Set([
+  'shohei ohtani',
+])
+
+export function isTwoWayPlayer(name) {
+  return !!name && TWO_WAY_PLAYER_NAMES.has(name.toLowerCase().trim())
+}
+
+export function pitcherIdSuffix(espnId) {
+  return `${espnId}-P`
+}
+
 /**
- * Fetch season batting averages for an ESPN MLB player.
+ * Fetch season averages for an ESPN MLB player. preferType (optional) lets a
+ * caller specifically request pitching stats for a two-way player whose
+ * batting category would otherwise win the default precedence.
  */
-async function fetchPlayerSeasonAvgs(espnId) {
+async function fetchPlayerSeasonAvgs(espnId, preferType = null) {
   try {
     const res = await fetch(`https://site.api.espn.com/apis/common/v3/sports/baseball/mlb/athletes/${espnId}/stats`)
     if (!res.ok) return null
     const data = await res.json()
 
-    // Look for batting stats (ESPN uses 'batting' or 'career-batting')
-    const batting = data.categories?.find((c) => c.name === 'batting' || c.name === 'career-batting')
-    if (batting?.labels?.length && batting?.statistics?.length) {
-      const labels = batting.labels
-      const latest = batting.statistics[batting.statistics.length - 1]
+    function extract(category, type) {
+      if (!category?.labels?.length || !category?.statistics?.length) return null
+      const labels = category.labels
+      const latest = category.statistics[category.statistics.length - 1]
       const vals = latest.stats || []
       const get = (label) => {
         const idx = labels.indexOf(label)
         return idx >= 0 ? parseFloat(vals[idx]) || 0 : 0
       }
-      return {
-        type: 'batting',
-        gp: get('GP'), ab: get('AB'), avg: get('AVG'), hr: get('HR'),
-        rbi: get('RBI'), r: get('R'), sb: get('SB'), h: get('H'),
-        bb: get('BB'), obp: get('OBP'), slg: get('SLG'), ops: get('OPS'),
-        doubles: get('2B'), triples: get('3B'),
-      }
-    }
-
-    // Look for pitching stats (ESPN uses 'pitching' or 'career-pitching')
-    const pitching = data.categories?.find((c) => c.name === 'pitching' || c.name === 'career-pitching')
-    if (pitching?.labels?.length && pitching?.statistics?.length) {
-      const labels = pitching.labels
-      const latest = pitching.statistics[pitching.statistics.length - 1]
-      const vals = latest.stats || []
-      const get = (label) => {
-        const idx = labels.indexOf(label)
-        return idx >= 0 ? parseFloat(vals[idx]) || 0 : 0
+      if (type === 'batting') {
+        return {
+          type: 'batting',
+          gp: get('GP'), ab: get('AB'), avg: get('AVG'), hr: get('HR'),
+          rbi: get('RBI'), r: get('R'), sb: get('SB'), h: get('H'),
+          bb: get('BB'), obp: get('OBP'), slg: get('SLG'), ops: get('OPS'),
+          doubles: get('2B'), triples: get('3B'),
+        }
       }
       return {
         type: 'pitching',
@@ -61,7 +71,14 @@ async function fetchPlayerSeasonAvgs(espnId) {
       }
     }
 
-    return null
+    const batting = data.categories?.find((c) => c.name === 'batting' || c.name === 'career-batting')
+    const pitching = data.categories?.find((c) => c.name === 'pitching' || c.name === 'career-pitching')
+
+    if (preferType === 'pitching') return extract(pitching, 'pitching')
+    if (preferType === 'batting') return extract(batting, 'batting')
+
+    // Default precedence: batting first (handles position players), pitching fallback.
+    return extract(batting, 'batting') || extract(pitching, 'pitching')
   } catch {
     return null
   }
@@ -327,6 +344,38 @@ export async function generateMLBSalaries(date, season = 2026) {
           injury_status: injuryStatus,
           is_pitcher: isPitcher,
         })
+
+        // Two-way player: emit a second entry under the opposite role so users
+        // can draft Ohtani as SP separately from drafting him as a hitter, and
+        // the Strikeouts contest sees him in the pitcher pool. Suffix the
+        // espn_player_id with -P to satisfy the unique constraint and keep
+        // downstream stats lookups unambiguous.
+        if (isTwoWayPlayer(name) && !isPitcher) {
+          const pitchAvgs = await fetchPlayerSeasonAvgs(espnId, 'pitching')
+          if (pitchAvgs) {
+            const pitchSeasonFppg = calcMLBPitcherFppg(pitchAvgs)
+            const pitchFppg = calcWeightedFppg(mlbPitcherGameFpts, gameLog, pitchSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
+            let pitchSalary = mlbPitcherFppgToSalary(pitchFppg)
+            pitchSalary = applyDefensiveAdjustment(pitchSalary, opponentAbbrev, defRankings, 30)
+            const pitchScarcity = POSITION_SCARCITY['SP'] || 1.0
+            pitchSalary = Math.round(pitchSalary * pitchScarcity / 100) * 100
+            pitchSalary = Math.max(5500, Math.min(11200, pitchSalary))
+            salaries.push({
+              player_name: name,
+              team: teamAbbrev,
+              position: 'SP',
+              espn_player_id: pitcherIdSuffix(espnId),
+              game_date: date,
+              season,
+              salary: pitchSalary,
+              opponent: `${isHome ? 'vs' : '@'} ${opponentAbbrev}`,
+              game_starts_at: gameStartsAt,
+              headshot_url: headshot,
+              injury_status: injuryStatus,
+              is_pitcher: true,
+            })
+          }
+        }
         }
       }
     }

@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
-import { generateMLBSalaries } from '../services/mlbDfsService.js'
+import { generateMLBSalaries, isTwoWayPlayer, pitcherIdSuffix } from '../services/mlbDfsService.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -194,8 +194,14 @@ export async function fetchCompletedGameStats(date) {
             const ip = parseFloat(statMap['IP']) || 0
             if (ip === 0) continue
 
+            // Two-way players (Ohtani) appear in BOTH batting and pitching
+            // groups when they bat + pitch the same game. Tag the pitcher
+            // stats row with the -P suffix so it survives the composite-key
+            // dedupe below and matches the salaries table's pitcher entry.
+            const statsEspnId = isTwoWayPlayer(name) ? pitcherIdSuffix(espnId) : espnId
+
             playerStats.push({
-              espnPlayerId: espnId,
+              espnPlayerId: statsEspnId,
               playerName: name,
               stats: {
                 innings_pitched: ip,
@@ -228,10 +234,15 @@ export async function fetchCompletedGameStats(date) {
 async function upsertPlayerStats(playerStats, date, season) {
   if (!playerStats.length) return
 
-  // Deduplicate by espn_player_id — keep the last entry (most complete stats)
+  // Deduplicate by (espn_player_id, is_pitcher). Two-way players like
+  // Ohtani contribute both a batter row and a pitcher row (the pitcher
+  // row's espnPlayerId is already -P suffixed at extraction time, so they
+  // never collide here — but keying on is_pitcher too is the right
+  // invariant in case ESPN ever lists a non-tagged duplicate).
   const deduped = new Map()
   for (const p of playerStats) {
-    deduped.set(p.espnPlayerId, p)
+    const key = `${p.espnPlayerId}|${p.stats.is_pitcher ? 'P' : 'B'}`
+    deduped.set(key, p)
   }
 
   const rows = [...deduped.values()].map((p) => {
