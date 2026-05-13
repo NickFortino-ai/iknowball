@@ -1184,14 +1184,48 @@ export async function getLeagueWeeks(leagueId, userId) {
     throw err
   }
 
-  const { data, error } = await supabase
+  const { data: weeks, error } = await supabase
     .from('league_weeks')
     .select('*')
     .eq('league_id', leagueId)
     .order('week_number', { ascending: true })
 
   if (error) throw error
-  return data
+  if (!weeks?.length) return weeks
+
+  // Hide periods that contain no scheduled games for the league's sport,
+  // so leagues with overshot ends_at (e.g. a UFL pickem set to run through
+  // November) don't show empty future weeks.
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('sport')
+    .eq('id', leagueId)
+    .single()
+
+  const firstStart = weeks[0].starts_at
+  const lastEnd = weeks[weeks.length - 1].ends_at
+
+  let gamesQuery = supabase
+    .from('games')
+    .select('starts_at, sports!inner(key)')
+    .gte('starts_at', firstStart)
+    .lte('starts_at', lastEnd)
+
+  if (league?.sport && league.sport !== 'all') {
+    gamesQuery = gamesQuery.eq('sports.key', league.sport)
+  }
+
+  const { data: games } = await gamesQuery
+  if (!games?.length) return weeks
+
+  return weeks.filter((w) => {
+    const ws = new Date(w.starts_at).getTime()
+    const we = new Date(w.ends_at).getTime()
+    return games.some((g) => {
+      const gs = new Date(g.starts_at).getTime()
+      return gs >= ws && gs <= we
+    })
+  })
 }
 
 export async function getPickemStandings(leagueId) {
