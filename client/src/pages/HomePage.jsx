@@ -132,6 +132,8 @@ const FORMAT_LABELS = {
   three_point: '3PT Contest',
   sacks: 'Sacks',
   ints: 'INTs',
+  tackles: 'Tackles',
+  receptions: 'Recs',
   td_pass: 'TD Pass',
 }
 

@@ -20,6 +20,9 @@ const FORMAT_LABELS = {
   three_point: '3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
+  tackles: 'Solo Tackles Contest',
+  receptions: 'Receptions Contest',
+  td_pass: 'TD Pass Competition',
 }
 
 const SPORT_LABELS = {
@@ -62,6 +65,8 @@ const FORMAT_DESCRIPTIONS = {
   three_point: 'Pick 3 NBA shooters per night. Most made 3-pointers across the season wins.',
   sacks: 'Pick 3 NFL defenders per week. Most sacks across the season wins.',
   ints: 'Pick 3 NFL defenders per week. Most interceptions across the season wins.',
+  tackles: 'Pick 3 NFL defenders per week. Most solo tackles across the season wins.',
+  receptions: 'Pick 3 NFL pass catchers per week. Most receptions across the season wins.',
   squares: 'Pick a square on the grid. When the score lands on your row + column at the end of any quarter, you win that quarter.',
 }
 

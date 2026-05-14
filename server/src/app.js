@@ -32,6 +32,8 @@ import strikeoutsRouter from './routes/strikeouts.js'
 import threePointRouter from './routes/threePoint.js'
 import sacksRouter from './routes/sacks.js'
 import intsRouter from './routes/ints.js'
+import tacklesRouter from './routes/tackles.js'
+import receptionsRouter from './routes/receptions.js'
 import tdPassRouter from './routes/tdPass.js'
 import reportsRouter from './routes/reports.js'
 import teamsRouter from './routes/teams.js'
@@ -87,6 +89,8 @@ app.use('/api/strikeouts', strikeoutsRouter)
 app.use('/api/three-point', threePointRouter)
 app.use('/api/sacks', sacksRouter)
 app.use('/api/ints', intsRouter)
+app.use('/api/tackles', tacklesRouter)
+app.use('/api/receptions', receptionsRouter)
 app.use('/api/td-pass', tdPassRouter)
 app.use('/api/news', newsRouter)
 app.use('/api/public', publicLandingRouter)

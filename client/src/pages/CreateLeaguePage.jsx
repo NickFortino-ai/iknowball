@@ -179,6 +179,38 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
     },
   },
   {
+    value: 'tackles',
+    label: 'Solo Tackles Contest',
+    description: 'Pick 3 NFL defenders per week — score points for every solo tackle they record',
+    details: `Pick up to 3 NFL defenders each week — LBs, safeties, corners, anyone on defense. Every solo tackle each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
+
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
+
+Commissioner controls: league length (defaults to full NFL season), player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'Solo Tackles Contest Winner Bonus (Full Season, 18 weeks)',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+    },
+  },
+  {
+    value: 'receptions',
+    label: 'Receptions Contest',
+    description: 'Pick 3 NFL pass catchers per week — score points for every reception they record',
+    details: `Pick up to 3 NFL pass catchers each week — WRs, TEs, and pass-catching RBs. Every reception each pick records adds to your league total. By default, each player can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
+
+When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
+
+Commissioner controls: league length (defaults to full NFL season), player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'Receptions Contest Winner Bonus (Full Season, 18 weeks)',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+    },
+  },
+  {
     value: 'td_pass',
     label: 'TD Pass Competition',
     description: 'Pick one QB per week — never repeat a QB. Most passing TDs across the season wins',
@@ -358,6 +390,8 @@ Commissioner controls: salary cap, season type (full season or single week), tea
     { key: 'td-pass', format: 'td_pass' },
     { key: 'sacks', format: 'sacks', preset: { sport: 'americanfootball_nfl' } },
     { key: 'ints', format: 'ints', preset: { sport: 'americanfootball_nfl' } },
+    { key: 'tackles', format: 'tackles', preset: { sport: 'americanfootball_nfl' } },
+    { key: 'receptions', format: 'receptions', preset: { sport: 'americanfootball_nfl' } },
     {
       key: 'nfl-pickem',
       format: 'pickem',
@@ -515,6 +549,8 @@ export default function CreateLeaguePage() {
     if (format === 'td_pass') setSport('americanfootball_nfl')
     if (format === 'sacks') setSport('americanfootball_nfl')
     if (format === 'ints') setSport('americanfootball_nfl')
+    if (format === 'tackles') setSport('americanfootball_nfl')
+    if (format === 'receptions') setSport('americanfootball_nfl')
     // Squares needs a specific game — bump 'all' off so the picker isn't stuck.
     if (format === 'squares' && sport === 'all') setSport('americanfootball_nfl')
     // Per-format salary cap default — MLB pricing settled lower than NBA, so
@@ -528,10 +564,10 @@ export default function CreateLeaguePage() {
       setDfsStartOption('tomorrow')
       if (seasonType === 'single_week') setSeasonType('full_season')
     }
-    // Sacks + Interceptions Contests share NFL weekly cadence with default
-    // once-per-season reuse. No daily start option — picks are weekly so
-    // dfsStartOption isn't used.
-    if (format === 'sacks' || format === 'ints') {
+    // Sacks + Interceptions + Solo Tackles + Receptions Contests share NFL
+    // weekly cadence with default once-per-season reuse. No daily start
+    // option — picks are weekly so dfsStartOption isn't used.
+    if (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') {
       setPickReuse('1')
       if (seasonType === 'single_week') setSeasonType('full_season')
     } else if (format === 'td_pass') {
@@ -567,7 +603,7 @@ export default function CreateLeaguePage() {
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
   const fileInputRef = useRef(null)
-  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'sacks' ? 'sacks_contest' : format === 'ints' ? 'ints_contest' : format === 'strikeouts' ? 'strikeouts_contest' : sport || undefined
+  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'sacks' ? 'sacks_contest' : format === 'ints' ? 'ints_contest' : format === 'tackles' ? 'tackles_contest' : format === 'receptions' ? 'receptions_contest' : format === 'strikeouts' ? 'strikeouts_contest' : sport || undefined
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
   const [joinsLockedAt, setJoinsLockedAt] = useState('')
 
@@ -594,7 +630,7 @@ export default function CreateLeaguePage() {
   async function handleSubmit(e) {
     e.preventDefault()
 
-    if ((format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'td_pass' || format === 'sacks' || format === 'ints') && seasonType === 'custom_range') {
+    if ((format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') && seasonType === 'custom_range') {
       if (!hrDerbyEndDate) { toast('Pick an end date for your custom range', 'error'); return }
       if (hrDerbyEndDate < getDfsStartDate()) { toast('End date must be after the start date', 'error'); return }
     }
@@ -633,10 +669,10 @@ export default function CreateLeaguePage() {
     }
 
     // Fantasy settings passed separately
-    const isFantasyFormat = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints'].includes(format)
+    const isFantasyFormat = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions'].includes(format)
     const fantasySettings = isFantasyFormat ? {
-      format: (format === 'nba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : format === 'strikeouts' ? 'strikeouts' : format === 'three_point' ? 'three_point' : format === 'sacks' ? 'sacks' : format === 'ints' ? 'ints' : fantasyFormat,
-      pick_reuse: (format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints') ? pickReuse : undefined,
+      format: (format === 'nba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : format === 'strikeouts' ? 'strikeouts' : format === 'three_point' ? 'three_point' : format === 'sacks' ? 'sacks' : format === 'ints' ? 'ints' : format === 'tackles' ? 'tackles' : format === 'receptions' ? 'receptions' : fantasyFormat,
+      pick_reuse: (format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? pickReuse : undefined,
       // NFL salary cap (DFS) leagues use half-PPR — that's what FanDuel
       // uses and what the salary algorithm is calibrated against. Keeping
       // them on full PPR while salaries assume half-PPR systematically
@@ -681,19 +717,19 @@ export default function CreateLeaguePage() {
       const league = await createLeague.mutateAsync({
         name,
         format,
-        sport: (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass' || format === 'sacks' || format === 'ints') ? 'americanfootball_nfl' : sport,
-        duration: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && seasonType === 'custom_range' ? 'custom_range'
+        sport: (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? 'americanfootball_nfl' : sport,
+        duration: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? 'custom_range'
           : isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point'].includes(format) ? getDfsStartDate()
-          : (format === 'td_pass' || format === 'sacks' || format === 'ints') ? new Date().toISOString()
+          : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? new Date().toISOString()
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
           : startsAt || undefined,
-        ends_at: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
-          : (format === 'td_pass' || format === 'sacks' || format === 'ints') ? getSeasonEndDate('americanfootball_nfl')
+        ends_at: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
+          : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? getSeasonEndDate('americanfootball_nfl')
           : format === 'survivor' ? getSeasonEndDate(sport)
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : endsAt === 'end_of_season' ? getSeasonEndDate((format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : sport)
@@ -1738,29 +1774,30 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
-              {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && seasonType === 'custom_range' && (
+              {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' && (
                 <input
                   type="date"
                   value={hrDerbyEndDate}
                   onChange={(e) => setHrDerbyEndDate(e.target.value)}
-                  min={(format === 'sacks' || format === 'ints' || format === 'td_pass') ? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : getDfsStartDate()}
+                  min={(format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') ? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : getDfsStartDate()}
                   className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                 />
               )}
               <p className="text-xs text-text-muted mt-1.5">
-                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && seasonType === 'custom_range'
+                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range'
                   ? 'Pick the date your league wraps up.'
                   : seasonType === 'full_season'
                     ? format === 'three_point'
                       ? 'Runs through end of NBA regular season.'
-                      : (format === 'sacks' || format === 'ints' || format === 'td_pass')
+                      : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass')
                         ? 'Runs through end of NFL regular season.'
                         : 'Runs through end of MLB regular season.'
                     : 'One night only — highest score wins.'}
               </p>
             </div>
-            {(format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints') && (() => {
-              const isNflContest = format === 'sacks' || format === 'ints'
+            {(format === 'hr_derby' || format === 'three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') && (() => {
+              const isNflContest = format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions'
+              const nflPlayerNoun = format === 'receptions' ? 'pass catcher' : 'defender'
               const reuseOptions = isNflContest
                 ? [
                     { value: '1', label: '1x' },
@@ -1781,17 +1818,17 @@ export default function CreateLeaguePage() {
               const nflMaxUses = pickReuse === 'season' ? '1' : pickReuse
               const helper = isNflContest
                 ? (pickReuse === 'unlimited'
-                    ? 'No reuse limit — pick the same defender as many weeks as you want.'
+                    ? `No reuse limit — pick the same ${nflPlayerNoun} as many weeks as you want.`
                     : nflMaxUses === '1'
-                      ? 'Each defender can only be used once all season.'
-                      : `Each defender can be used up to ${nflMaxUses} times this season.`)
+                      ? `Each ${nflPlayerNoun} can only be used once all season.`
+                      : `Each ${nflPlayerNoun} can be used up to ${nflMaxUses} times this season.`)
                 : (pickReuse === 'weekly'
                     ? `Each ${playerNoun} can only be used once per Mon-Sun week.`
                     : `No reuse limit — pick the same ${playerNoun} on back-to-back ${cadenceNoun}.`)
               return (
                 <div>
                   <label className="text-xs text-text-muted block mb-1">
-                    {isNflContest ? 'Max Uses per Defender' : 'Player Reuse'}
+                    {isNflContest ? `Max Uses per ${nflPlayerNoun === 'pass catcher' ? 'Pass Catcher' : 'Defender'}` : 'Player Reuse'}
                   </label>
                   <div className="flex gap-2 flex-wrap">
                     {reuseOptions.map((opt) => {

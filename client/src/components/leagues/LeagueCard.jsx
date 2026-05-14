@@ -15,6 +15,8 @@ const FORMAT_LABELS = {
   three_point: '3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
+  tackles: 'Solo Tackles Contest',
+  receptions: 'Receptions Contest',
   td_pass: 'TD Pass Competition',
 }
 

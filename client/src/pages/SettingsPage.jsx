@@ -403,6 +403,8 @@ export default function SettingsPage() {
             { key: 'three_point_contest', label: '3PT Shooters' },
             { key: 'sacks_contest', label: 'Sack Leaders' },
             { key: 'ints_contest', label: 'INT Leaders' },
+            { key: 'tackles_contest', label: 'Tackle Leaders' },
+            { key: 'receptions_contest', label: 'Receivers' },
             { key: 'strikeouts_contest', label: 'Pitchers' },
           ].map((s) => (
             <button

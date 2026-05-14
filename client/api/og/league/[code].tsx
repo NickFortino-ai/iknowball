@@ -65,6 +65,12 @@ const FORMAT_LABELS = {
   mlb_dfs: 'MLB DAILY FANTASY',
   hr_derby: 'HOME RUN DERBY',
   td_pass: 'PASSING TD COMPETITION',
+  sacks: 'SACKS CONTEST',
+  ints: 'INTERCEPTIONS CONTEST',
+  tackles: 'SOLO TACKLES CONTEST',
+  receptions: 'RECEPTIONS CONTEST',
+  three_point: '3-POINT CONTEST',
+  strikeouts: 'STRIKEOUTS CONTEST',
 }
 
 const SPORT_LABELS = {

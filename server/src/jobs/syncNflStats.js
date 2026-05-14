@@ -122,6 +122,20 @@ export async function syncNflStatsCurrentWeek() {
     } catch (e) {
       logger.error({ err: e }, 'Interceptions Contest scoring failed')
     }
+    // Score Solo Tackles Contest picks (idp_tkl_solo) against the freshly-synced stats
+    try {
+      const { scoreAllTacklesPicks } = await import('../services/tacklesService.js')
+      await scoreAllTacklesPicks()
+    } catch (e) {
+      logger.error({ err: e }, 'Solo Tackles Contest scoring failed')
+    }
+    // Score Receptions Contest picks (rec) against the freshly-synced stats
+    try {
+      const { scoreAllReceptionsPicks } = await import('../services/receptionsService.js')
+      await scoreAllReceptionsPicks()
+    } catch (e) {
+      logger.error({ err: e }, 'Receptions Contest scoring failed')
+    }
     // Score traditional fantasy H2H matchups for this week (auto keeps
     // fantasy_matchups totals fresh — no admin button required for the
     // common drift case)

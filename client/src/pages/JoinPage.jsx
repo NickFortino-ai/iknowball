@@ -9,6 +9,17 @@ const FORMAT_LABELS = {
   survivor: 'Survivor',
   squares: 'Squares',
   bracket: 'Bracket',
+  fantasy: 'Fantasy Football',
+  nba_dfs: 'NBA Daily Fantasy',
+  mlb_dfs: 'MLB Daily Fantasy',
+  hr_derby: 'Home Run Derby',
+  strikeouts: 'Strikeouts Contest',
+  three_point: '3-Point Contest',
+  sacks: 'Sacks Contest',
+  ints: 'Interceptions Contest',
+  tackles: 'Solo Tackles Contest',
+  receptions: 'Receptions Contest',
+  td_pass: 'TD Pass Competition',
 }
 
 const SPORT_LABELS = {

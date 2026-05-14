@@ -27,6 +27,8 @@ import StrikeoutsView from '../components/leagues/StrikeoutsView'
 import ThreePointView from '../components/leagues/ThreePointView'
 import SacksView from '../components/leagues/SacksView'
 import IntsView from '../components/leagues/IntsView'
+import TacklesView from '../components/leagues/TacklesView'
+import ReceptionsView from '../components/leagues/ReceptionsView'
 import TdPassView from '../components/leagues/TdPassView'
 import LeagueReport from '../components/leagues/LeagueReport'
 import FantasyUnderfillBanner from '../components/leagues/FantasyUnderfillBanner'
@@ -81,6 +83,8 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings) {
     three_point: ['Picks', memberOrStandings, 'Thread'],
     sacks: ['Picks', memberOrStandings, 'Thread'],
     ints: ['Picks', memberOrStandings, 'Thread'],
+    tackles: ['Picks', memberOrStandings, 'Thread'],
+    receptions: ['Picks', memberOrStandings, 'Thread'],
     td_pass: ['Picks', memberOrStandings, 'Thread'],
   }
   return TABS[league.format] || [memberOrStandings, 'Thread']
@@ -99,6 +103,8 @@ const FORMAT_LABELS = {
   three_point: '3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
+  tackles: 'Solo Tackles Contest',
+  receptions: 'Receptions Contest',
   td_pass: 'TD Pass Competition',
 }
 
@@ -348,7 +354,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
-  const { data: fantasySettings } = useFantasySettings(['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'fantasy'].includes(league.format) ? league.id : null)
+  const { data: fantasySettings } = useFantasySettings(['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format) ? league.id : null)
   const isTraditionalFantasy = league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap'
   const currentNflWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
   const { data: liveMatchupData } = useFantasyMatchupLive(
@@ -586,19 +592,24 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       ]
     }
 
-    if (league.format === 'sacks' || league.format === 'ints') {
+    if (league.format === 'sacks' || league.format === 'ints' || league.format === 'tackles' || league.format === 'receptions') {
       const raw = fantasySettings?.pick_reuse
       const maxUses = raw === 'unlimited' ? Infinity
         : raw === 'season' ? 1
         : (parseInt(raw, 10) || 1)
+      const isOffense = league.format === 'receptions'
+      const poolNoun = isOffense ? 'pass catcher' : 'defender'
       const reuseRule = maxUses === Infinity
-        ? 'No reuse limit — pick the same defender as many weeks as you want.'
+        ? `No reuse limit — pick the same ${poolNoun} as many weeks as you want.`
         : maxUses === 1
-          ? 'Each defender can only be used once all season.'
-          : `Each defender can be used up to ${maxUses} times this season.`
-      const stat = league.format === 'sacks' ? 'sack' : 'interception'
+          ? `Each ${poolNoun} can only be used once all season.`
+          : `Each ${poolNoun} can be used up to ${maxUses} times this season.`
+      const stat = league.format === 'sacks' ? 'sack'
+        : league.format === 'ints' ? 'interception'
+        : league.format === 'tackles' ? 'solo tackle'
+        : 'reception'
       return [
-        `Pick up to 3 NFL defenders each week that you think will record ${stat}s.`,
+        `Pick up to 3 NFL ${poolNoun}s each week that you think will record ${stat}s.`,
         reuseRule,
         'You can change your picks until each player\'s game starts.',
         `Every ${stat} your picks record adds to your league total.`,
@@ -678,7 +689,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 const sType = fantasySettings?.season_type
                 const fFormat = fantasySettings?.format
                 const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
-                const showTable = isMultiNight || f === 'hr_derby' || f === 'strikeouts' || f === 'three_point' || f === 'sacks' || f === 'ints' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
+                const showTable = isMultiNight || f === 'hr_derby' || f === 'strikeouts' || f === 'three_point' || f === 'sacks' || f === 'ints' || f === 'tackles' || f === 'receptions' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
                 if (!showTable) return null
                 // Prefer the actual member array; if the detail endpoint
                 // didn't include it (some flows skip it), fall back to
@@ -861,7 +872,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
   const isDaily = league.settings?.pick_frequency === 'daily'
   const { data: tournament } = useBracketTournament(league.format === 'bracket' ? league.id : null)
   const updateTournament = useUpdateBracketTournament()
-  const { data: fantasySettings } = useFantasySettings(league.format === 'fantasy' ? league.id : null)
+  const { data: fantasySettings } = useFantasySettings(['fantasy', 'mlb_dfs', 'sacks', 'ints', 'tackles', 'receptions'].includes(league.format) ? league.id : null)
   const updateFantasySettings = useUpdateFantasySettings()
 
   async function saveIrSpots(n) {
@@ -963,7 +974,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           />
           <p className="text-[10px] text-text-muted mt-1">Picks open when the first game on this date loads.</p>
         </div>
-      ) : (league.format === 'bracket' || league.format === 'td_pass' || league.format === 'sacks' || league.format === 'ints' || (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap')) ? null : (<>
+      ) : (league.format === 'bracket' || league.format === 'td_pass' || league.format === 'sacks' || league.format === 'ints' || league.format === 'tackles' || league.format === 'receptions' || (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap')) ? null : (<>
       {/* Duration — options match what was offered in Create League for
           this format. Daily-pick contests (3-Point, HR Derby, Strikeouts,
           MLB DFS) only ever offered Full Season + Select Date. Generic
@@ -1069,6 +1080,52 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           </p>
         </div>
       )}
+
+      {(league.format === 'sacks' || league.format === 'ints' || league.format === 'tackles' || league.format === 'receptions') && (() => {
+        const isOffense = league.format === 'receptions'
+        const noun = isOffense ? 'Pass Catcher' : 'Defender'
+        // Server stores 'season' as the legacy alias for '1'. Treat both as the same active state.
+        const raw = fantasySettings?.pick_reuse
+        const current = raw === 'season' ? '1' : (raw || '1')
+        const options = [
+          { value: '1', label: '1x' },
+          { value: '2', label: '2x' },
+          { value: '3', label: '3x' },
+          { value: '4', label: '4x' },
+          { value: 'unlimited', label: 'Unlimited' },
+        ]
+        return (
+          <div>
+            <label className="block text-xs text-text-muted mb-2">Max Uses per {noun}</label>
+            <div className="flex flex-wrap gap-2">
+              {options.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={async () => {
+                    try {
+                      await updateFantasySettings.mutateAsync({ leagueId: league.id, pick_reuse: opt.value })
+                      toast('Reuse limit updated', 'success')
+                    } catch (err) {
+                      toast(err.message || 'Failed to update', 'error')
+                    }
+                  }}
+                  disabled={updateFantasySettings.isPending}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    current === opt.value
+                      ? 'bg-accent text-white border border-accent'
+                      : 'bg-bg-primary text-text-secondary border border-text-primary/20'
+                  } ${updateFantasySettings.isPending && current !== opt.value ? 'opacity-40 cursor-not-allowed' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-text-primary mt-1">
+              How many times a single {noun.toLowerCase()} can be picked across the season.
+            </p>
+          </div>
+        )
+      })()}
 
       {league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && fantasySettings?.draft_status !== 'completed' && (
         <>
@@ -1628,7 +1685,7 @@ export default function LeagueDetailPage() {
   // Bracket leagues don't auto-fallback to a default arena — they should be black
   // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
   // image lives on the bracket itself, not as a page-wide backdrop.
-  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'fantasy'].includes(league.format)
+  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format)
 
   function startBackdropDrag(e) {
     e.preventDefault()
@@ -1723,8 +1780,8 @@ export default function LeagueDetailPage() {
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
-        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'text-center' : ''}>
-        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
+        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'text-center' : ''}>
+        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
           <h1 className="font-display text-3xl">{league.name}</h1>
           <button
             onClick={() => setShowSettingsModal(true)}
@@ -1737,7 +1794,7 @@ export default function LeagueDetailPage() {
             </svg>
           </button>
         </div>
-        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
           {isCommissioner && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded text-tier-hof">
               Commissioner
@@ -2356,6 +2413,18 @@ export default function LeagueDetailPage() {
       {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'ints' && (
         <div className="relative z-10">
           <IntsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
+        </div>
+      )}
+
+      {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'tackles' && (
+        <div className="relative z-10">
+          <TacklesView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
+        </div>
+      )}
+
+      {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'receptions' && (
+        <div className="relative z-10">
+          <ReceptionsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
         </div>
       )}
 

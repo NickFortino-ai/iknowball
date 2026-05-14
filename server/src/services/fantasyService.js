@@ -180,6 +180,7 @@ export async function createFantasySettings(leagueId, settings = {}) {
     champion_metric,
     single_week,
     scoring_rules,
+    pick_reuse,
   } = settings
 
   const { data, error } = await supabase
@@ -205,6 +206,7 @@ export async function createFantasySettings(leagueId, settings = {}) {
       ...(season_type && { season_type }),
       ...(champion_metric && { champion_metric }),
       ...(single_week && { single_week }),
+      ...(pick_reuse && { pick_reuse }),
     })
     .select()
     .single()
@@ -247,7 +249,21 @@ const SEASON_ALLOWED_FIELDS = new Set([
 ])
 
 export async function updateFantasySettings(leagueId, updates) {
-  const current = await getFantasySettings(leagueId)
+  let current = await getFantasySettings(leagueId)
+  // Lazy-init: pre-existing single-stat contest leagues were created before
+  // we started inserting a fantasy_settings row for them. Create one now so
+  // the commissioner edit lands somewhere instead of throwing.
+  if (!current) {
+    const { data: league } = await supabase
+      .from('leagues')
+      .select('format')
+      .eq('id', leagueId)
+      .single()
+    const isSingleStatContest = league && ['sacks', 'ints', 'tackles', 'receptions', 'hr_derby', 'strikeouts', 'three_point'].includes(league.format)
+    if (isSingleStatContest) {
+      current = await createFantasySettings(leagueId, { format: league.format })
+    }
+  }
   const draftDone = current?.draft_status === 'completed'
 
   if (draftDone) {

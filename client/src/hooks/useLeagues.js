@@ -1441,6 +1441,96 @@ export function useIntsStandings(leagueId) {
   })
 }
 
+// === Solo Tackles Contest ===
+export function useTacklesPlayers() {
+  return useQuery({
+    queryKey: ['tackles', 'players'],
+    queryFn: () => api.get('/tackles/players'),
+    staleTime: 60_000,
+  })
+}
+
+export function useTacklesPicks(leagueId) {
+  return useQuery({
+    queryKey: ['tackles', leagueId, 'picks'],
+    queryFn: () => api.get(`/tackles/picks?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 2 * 60 * 1000,
+  })
+}
+
+export function useTacklesUsed(leagueId) {
+  return useQuery({
+    queryKey: ['tackles', leagueId, 'used'],
+    queryFn: () => api.get(`/tackles/used?league_id=${leagueId}`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useSubmitTacklesPicks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/tackles/picks', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['tackles', variables.league_id] })
+    },
+  })
+}
+
+export function useTacklesStandings(leagueId) {
+  return useQuery({
+    queryKey: ['tackles', leagueId, 'standings'],
+    queryFn: () => api.get(`/tackles/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
+// === Receptions Contest ===
+export function useReceptionsPlayers() {
+  return useQuery({
+    queryKey: ['receptions', 'players'],
+    queryFn: () => api.get('/receptions/players'),
+    staleTime: 60_000,
+  })
+}
+
+export function useReceptionsPicks(leagueId) {
+  return useQuery({
+    queryKey: ['receptions', leagueId, 'picks'],
+    queryFn: () => api.get(`/receptions/picks?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 2 * 60 * 1000,
+  })
+}
+
+export function useReceptionsUsed(leagueId) {
+  return useQuery({
+    queryKey: ['receptions', leagueId, 'used'],
+    queryFn: () => api.get(`/receptions/used?league_id=${leagueId}`),
+    enabled: !!leagueId,
+  })
+}
+
+export function useSubmitReceptionsPicks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/receptions/picks', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['receptions', variables.league_id] })
+    },
+  })
+}
+
+export function useReceptionsStandings(leagueId) {
+  return useQuery({
+    queryKey: ['receptions', leagueId, 'standings'],
+    queryFn: () => api.get(`/receptions/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
 // === TD Pass Competition ===
 export function useTdPassQbs(leagueId) {
   return useQuery({
