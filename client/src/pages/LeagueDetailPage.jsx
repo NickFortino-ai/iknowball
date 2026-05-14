@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite } from '../hooks/useLeagues'
 import { useAcceptInvitation } from '../hooks/useInvitations'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
@@ -1568,13 +1568,18 @@ export default function LeagueDetailPage() {
   const pendingReviewCount = Array.isArray(fantasyTradesData) ? fantasyTradesData.filter((t) => t.status === 'pending_review').length : 0
   const acceptInvitation = useAcceptInvitation()
   const joinOpenLeague = useJoinOpenLeague()
+  const requestInvite = useRequestInvite()
+  const [inviteRequested, setInviteRequested] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
   const todayDate = new Date().toLocaleDateString('en-CA')
   const isDfsFormat = ['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point'].includes(league?.format)
   const { data: nbaLiveData } = useNbaDfsLive(league?.format === 'nba_dfs' ? id : null, todayDate)
   const { data: mlbLiveData } = useMlbDfsLive(league?.format === 'mlb_dfs' ? id : null, todayDate)
-  const [showInviteModal, setShowInviteModal] = useState(searchParams.get('invite') === '1')
+  // ?invite=1 opens the modal; ?invite=<username> opens it pre-filled.
+  const inviteParam = searchParams.get('invite')
+  const [showInviteModal, setShowInviteModal] = useState(!!inviteParam)
+  const initialInviteUsername = inviteParam && inviteParam !== '1' ? inviteParam : null
   const [editingNote, setEditingNote] = useState(false)
   const [noteExpanded, setNoteExpanded] = useState(() => {
     try {
@@ -1758,6 +1763,22 @@ export default function LeagueDetailPage() {
     }
   }
 
+  async function handleRequestInvite() {
+    try {
+      const result = await requestInvite.mutateAsync(league.id)
+      setInviteRequested(true)
+      if (result?.status === 'invitation_pending') {
+        toast('You already have a pending invitation — check your notifications', 'info')
+      } else if (result?.status === 'already_sent') {
+        toast('Already sent — the commissioner will follow up', 'info')
+      } else {
+        toast('Request sent! The commissioner will be notified.', 'success')
+      }
+    } catch (err) {
+      toast(err.message || 'Failed to send request', 'error')
+    }
+  }
+
   // Only show the preview banner when the user has a way to join: either
   // they have a pending invitation, or the league is publicly open.
   const canJoinFromPreview = !isMember && (pendingInvitation || league.visibility === 'open')
@@ -1791,9 +1812,19 @@ export default function LeagueDetailPage() {
         </div>
       )}
       {!isMember && !canJoinFromPreview && (
-        <div className="sticky top-14 z-30 bg-bg-card border-b border-text-primary/15 text-text-secondary">
-          <div className="max-w-5xl mx-auto px-4 py-3 text-sm text-center">
-            You're previewing this league. It's invite-only — ask the commissioner for an invite to join.
+        <div className="sticky top-14 z-30 bg-bg-card border-b border-text-primary/15">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-bold uppercase tracking-wider text-text-muted">Previewing this league</div>
+              <div className="text-sm text-text-secondary truncate">Invite-only — ask the commissioner to invite you</div>
+            </div>
+            <button
+              onClick={handleRequestInvite}
+              disabled={requestInvite.isPending || inviteRequested}
+              className="bg-accent text-white font-display text-base px-5 py-2 rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
+            >
+              {inviteRequested ? 'Request Sent' : requestInvite.isPending ? 'Sending…' : 'Request Invite'}
+            </button>
           </div>
         </div>
       )}
@@ -2108,7 +2139,7 @@ export default function LeagueDetailPage() {
       )}
 
       {showInviteModal && (
-        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} format={league.format} memberIds={league.members?.map(m => m.user_id) || []} onClose={() => {
+        <InvitePlayerModal leagueId={league.id} inviteCode={league.invite_code} leagueName={league.name} format={league.format} memberIds={league.members?.map(m => m.user_id) || []} initialUsername={initialInviteUsername} onClose={() => {
           setShowInviteModal(false)
           if (searchParams.has('invite')) {
             searchParams.delete('invite')

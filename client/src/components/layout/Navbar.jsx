@@ -72,6 +72,7 @@ function getNotificationIcon(n) {
     case 'connection_request': return '\uD83E\uDD1D' // 🤝
     case 'connection_accepted': return '\uD83E\uDD1D' // 🤝
     case 'league_invitation': return '\uD83D\uDCE8' // 📨
+    case 'invite_requested': return '\u270B' // raised hand — invite request
     case 'league_deleted': return '\uD83D\uDDD1\uFE0F' // 🗑️
     case 'streak_milestone': return '\uD83D\uDD25' // 🔥
     case 'league_at_risk': return '\u26A0\uFE0F' // ⚠️
@@ -176,6 +177,16 @@ function getNotificationRoute(notification) {
       // out before accepting. Falls back to the league hub if the metadata
       // is somehow missing the leagueId.
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : '/leagues'
+    case 'invite_requested': {
+      // Commissioner tapped a "user is asking to join" notification. Open
+      // the league with the Invite Player modal pre-filled with the
+      // requester's username so one click finishes the loop.
+      if (!metadata?.leagueId) return '/leagues'
+      const handle = metadata.requesterUsername
+      return handle
+        ? `/leagues/${metadata.leagueId}?invite=${encodeURIComponent(handle)}`
+        : `/leagues/${metadata.leagueId}?invite=1`
+    }
     case 'headlines': {
       // If the headline week is more than 10 days old, it's archived
       const weekEnd = metadata?.weekEnd

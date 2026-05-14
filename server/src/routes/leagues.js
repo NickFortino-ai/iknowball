@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { supabase } from '../config/supabase.js'
+import { logger } from '../utils/logger.js'
 import {
   createLeague,
   joinLeague,
@@ -501,6 +502,82 @@ router.post('/:id/invitations/email', requireAuth, validate(emailInviteSchema), 
 
   await sendLeagueInviteEmail(req.validated.email, league.name, league.invite_code)
   res.json({ message: 'Invitation email sent' })
+})
+
+// Non-member asks the commissioner to invite them. Sends one notification
+// to the commissioner with the requester's id pre-loaded into metadata so
+// tapping it deep-links to the Invite Player modal. Idempotent per
+// (commissioner, requester, league) within 24h — repeat taps don't spam.
+router.post('/:id/request-invite', requireAuth, async (req, res) => {
+  const { data: league, error: leagueErr } = await supabase
+    .from('leagues')
+    .select('id, name, status, commissioner_id, visibility')
+    .eq('id', req.params.id)
+    .single()
+
+  if (leagueErr || !league) return res.status(404).json({ error: 'League not found' })
+  if (league.status === 'completed') return res.status(400).json({ error: 'This league is no longer accepting members' })
+  if (league.commissioner_id === req.user.id) return res.status(400).json({ error: "You're the commissioner of this league" })
+
+  // Already a member?
+  const { data: member } = await supabase
+    .from('league_members')
+    .select('id')
+    .eq('league_id', league.id)
+    .eq('user_id', req.user.id)
+    .maybeSingle()
+  if (member) return res.status(400).json({ error: 'You are already a member of this league' })
+
+  // Already have a pending invitation? Skip silently — they should just accept that one.
+  const { data: pendingInv } = await supabase
+    .from('league_invitations')
+    .select('id')
+    .eq('league_id', league.id)
+    .eq('invited_user_id', req.user.id)
+    .eq('status', 'pending')
+    .maybeSingle()
+  if (pendingInv) {
+    return res.json({ status: 'invitation_pending', message: 'You already have a pending invitation' })
+  }
+
+  // Idempotency window — 24h. If the commissioner already saw a request from
+  // this user in that window, return ok without creating a duplicate.
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { data: recentReq } = await supabase
+    .from('notifications')
+    .select('id, metadata, created_at')
+    .eq('user_id', league.commissioner_id)
+    .eq('type', 'invite_requested')
+    .gte('created_at', dayAgo)
+  const dupe = (recentReq || []).find((n) =>
+    n.metadata?.requesterId === req.user.id && n.metadata?.leagueId === league.id
+  )
+  if (dupe) {
+    return res.json({ status: 'already_sent', message: 'Your request was sent — the commissioner will follow up' })
+  }
+
+  // Pull requester display name for the notification message
+  const { data: requester } = await supabase
+    .from('users')
+    .select('username, display_name')
+    .eq('id', req.user.id)
+    .single()
+  const handle = requester?.username || requester?.display_name || 'A user'
+
+  const { error: notifErr } = await supabase
+    .from('notifications')
+    .insert({
+      user_id: league.commissioner_id,
+      type: 'invite_requested',
+      message: `@${handle} is asking to be invited to ${league.name}`,
+      metadata: { leagueId: league.id, requesterId: req.user.id, requesterUsername: requester?.username },
+    })
+  if (notifErr) {
+    logger.error({ notifErr }, 'Failed to create invite_requested notification')
+    return res.status(500).json({ error: 'Failed to send request' })
+  }
+
+  res.json({ status: 'sent' })
 })
 
 // ============================================

@@ -110,6 +110,12 @@ export function useOpenLeagues() {
   })
 }
 
+export function useRequestInvite() {
+  return useMutation({
+    mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/request-invite`),
+  })
+}
+
 export function useJoinOpenLeague() {
   const queryClient = useQueryClient()
 

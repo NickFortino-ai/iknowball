@@ -10,8 +10,8 @@ const STATUS_STYLES = {
   declined: 'text-text-muted',
 }
 
-export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, format, memberIds = [], onClose }) {
-  const [query, setQuery] = useState('')
+export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, format, memberIds = [], initialUsername = null, onClose }) {
+  const [query, setQuery] = useState(initialUsername || '')
   const [email, setEmail] = useState('')
   const [linkCopied, setLinkCopied] = useState(false)
   const { data: searchResults } = useSearchUsers(query)
