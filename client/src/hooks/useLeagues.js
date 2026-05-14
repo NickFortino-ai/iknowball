@@ -115,9 +115,11 @@ export function useJoinOpenLeague() {
 
   return useMutation({
     mutationFn: (leagueId) => api.post(`/leagues/${leagueId}/join-open`),
-    onSuccess: () => {
+    onSuccess: (_, leagueId) => {
       queryClient.invalidateQueries({ queryKey: ['leagues'] })
       queryClient.invalidateQueries({ queryKey: ['leagues', 'open'] })
+      // Flip the league detail view from preview → member immediately.
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId] })
     },
   })
 }

@@ -15,9 +15,14 @@ export function useAcceptInvitation() {
 
   return useMutation({
     mutationFn: (invitationId) => api.post(`/users/me/invitations/${invitationId}/accept`),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['invitations'] })
       queryClient.invalidateQueries({ queryKey: ['leagues'] })
+      // If the response carries league_id, invalidate that league's detail
+      // cache so a non-member preview page flips to member view immediately.
+      if (result?.league_id) {
+        queryClient.invalidateQueries({ queryKey: ['leagues', result.league_id] })
+      }
     },
   })
 }

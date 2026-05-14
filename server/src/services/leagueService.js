@@ -801,19 +801,19 @@ export async function getMyLeagues(userId, userTz) {
 }
 
 export async function getLeagueDetails(leagueId, userId) {
-  // Verify membership
+  // Membership lookup — non-members still get a preview view so they can
+  // decide whether to accept an invitation / join an open league before
+  // committing. The response carries an `is_member` flag the client uses
+  // to gate write-action UI (picks, settings, thread) and surface a
+  // prominent "Join League" CTA instead.
   const { data: member } = await supabase
     .from('league_members')
     .select('role, auto_connect')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
-  if (!member) {
-    const err = new Error('You are not a member of this league')
-    err.status = 403
-    throw err
-  }
+  const isMember = !!member
 
   const { data: league, error } = await supabase
     .from('leagues')
@@ -825,6 +825,22 @@ export async function getLeagueDetails(leagueId, userId) {
     const err = new Error('League not found')
     err.status = 404
     throw err
+  }
+
+  // Non-members get a pending-invitation lookup so the client can offer
+  // "Accept Invitation" vs "Join Open League" with one call.
+  let myPendingInvitation = null
+  if (!isMember) {
+    const { data: inv } = await supabase
+      .from('league_invitations')
+      .select('id, created_at, inviter:inviter_id(id, username, display_name)')
+      .eq('league_id', leagueId)
+      .eq('invited_user_id', userId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    myPendingInvitation = inv || null
   }
 
   // Get members with user details
@@ -872,7 +888,7 @@ export async function getLeagueDetails(leagueId, userId) {
   // has_locked_picks tells the frontend which settings to disable
   let settingsEditable = false
   let hasLockedPicks = false
-  if (member.role === 'commissioner') {
+  if (member?.role === 'commissioner') {
     settingsEditable = true
     if (league.status !== 'open') {
       hasLockedPicks = await checkLeagueHasLockedPicks(leagueId, league)
@@ -882,7 +898,9 @@ export async function getLeagueDetails(leagueId, userId) {
   // Check if all league mates are already in user's squad
   const otherMemberIds = (members || []).map(m => m.user_id).filter(id => id !== userId)
   let allConnected = false
-  if (otherMemberIds.length > 0) {
+  if (!isMember) {
+    allConnected = false // not relevant for non-members
+  } else if (otherMemberIds.length > 0) {
     const { count } = await supabase
       .from('connections')
       .select('id', { count: 'exact', head: true })
@@ -916,11 +934,13 @@ export async function getLeagueDetails(leagueId, userId) {
 
   return {
     ...league,
-    my_role: member.role,
-    my_auto_connect: member.auto_connect ?? true,
+    is_member: isMember,
+    my_role: member?.role ?? null,
+    my_auto_connect: member?.auto_connect ?? true,
+    my_pending_invitation: myPendingInvitation,
     all_members_connected: allConnected,
     members: members || [],
-    pending_invitations: pendingInvitations || [],
+    pending_invitations: isMember ? (pendingInvitations || []) : [],
     current_week: activeWeek || null,
     settings_editable: settingsEditable,
     has_locked_picks: hasLockedPicks,

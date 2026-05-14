@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague } from '../hooks/useLeagues'
+import { useAcceptInvitation } from '../hooks/useInvitations'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -43,11 +44,34 @@ import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'mlb_dfs']
 
-function getLeagueTabs(league, isBracketLocked, fantasySettings) {
+function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true) {
   const isOpen = league.status === 'open'
   const isCompleted = league.status === 'completed'
   const memberOrStandings = isOpen ? 'Members' : 'Standings'
   const reportTab = isCompleted && REPORT_FORMATS.includes(league.format) ? ['Report'] : []
+
+  // Non-member preview tabs — strip member-only surfaces (own-pick entry,
+  // private chat, draft room, transactions). Standings/members/bracket/live
+  // are public-ish info that gives a real feel for the league.
+  if (!isMember) {
+    if (league.format === 'bracket') {
+      return isBracketLocked ? ['Bracket', 'Standings'] : ['Bracket', memberOrStandings]
+    }
+    if (league.format === 'squares') {
+      return ['Board', 'Members']
+    }
+    if (league.format === 'fantasy') {
+      const isSalaryCap = fantasySettings?.format === 'salary_cap'
+      return isSalaryCap
+        ? ['Live', memberOrStandings, ...reportTab]
+        : ['Matchups', memberOrStandings, 'Players', ...reportTab]
+    }
+    if (['nba_dfs', 'mlb_dfs'].includes(league.format)) {
+      return ['Live', memberOrStandings, ...reportTab]
+    }
+    // pickem, survivor, single-stat contests, td_pass — show standings only
+    return [memberOrStandings]
+  }
 
   if (league.format === 'pickem') {
     return ['Picks', memberOrStandings, 'Thread']
@@ -776,7 +800,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         <ScoringRulesDisplay rules={fantasySettings.scoring_rules} format={fantasySettings.scoring_format} />
       )}
 
-      {league.status !== 'completed' && !league.all_members_connected && (
+      {league.is_member !== false && league.status !== 'completed' && !league.all_members_connected && (
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <span className="text-xs text-text-muted">Add league mates to squad when league ends</span>
           <button
@@ -1542,6 +1566,8 @@ export default function LeagueDetailPage() {
   const { data: threadUnread } = useThreadUnread(id)
   const { data: fantasyTradesData } = useFantasyTrades(league?.format === 'fantasy' ? id : null)
   const pendingReviewCount = Array.isArray(fantasyTradesData) ? fantasyTradesData.filter((t) => t.status === 'pending_review').length : 0
+  const acceptInvitation = useAcceptInvitation()
+  const joinOpenLeague = useJoinOpenLeague()
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
   const todayDate = new Date().toLocaleDateString('en-CA')
@@ -1680,8 +1706,14 @@ export default function LeagueDetailPage() {
 
   const isBracketLocked = league.format === 'bracket' && bracketTournament &&
     new Date(bracketTournament.locks_at) <= new Date()
-  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings)
   const isCommissioner = league.commissioner_id === profile?.id
+  // Non-members can preview a league before committing. The server returns
+  // a stripped-but-useful detail payload with `is_member: false` so the page
+  // can render normally; we just gate write-action UI and show a prominent
+  // Join CTA at the top.
+  const isMember = league.is_member !== false
+  const pendingInvitation = league.my_pending_invitation
+  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings, isMember)
   // Bracket leagues don't auto-fallback to a default arena — they should be black
   // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
   // image lives on the bracket itself, not as a page-wide backdrop.
@@ -1712,8 +1744,59 @@ export default function LeagueDetailPage() {
     }
   }
 
+  async function handleJoinFromPreview() {
+    try {
+      if (pendingInvitation) {
+        await acceptInvitation.mutateAsync(pendingInvitation.id)
+        toast(`You've joined ${league.name}!`, 'success')
+      } else if (league.visibility === 'open') {
+        await joinOpenLeague.mutateAsync(league.id)
+        toast(`You've joined ${league.name}!`, 'success')
+      }
+    } catch (err) {
+      toast(err.message || 'Failed to join league', 'error')
+    }
+  }
+
+  // Only show the preview banner when the user has a way to join: either
+  // they have a pending invitation, or the league is publicly open.
+  const canJoinFromPreview = !isMember && (pendingInvitation || league.visibility === 'open')
+  const joinButtonLabel = pendingInvitation ? 'Accept Invitation' : 'Join League'
+  const joinPending = acceptInvitation.isPending || joinOpenLeague.isPending
+
   return (
     <div className="relative">
+      {/* Non-member preview banner — sticky to the top so it stays visible
+          while the user scrolls through standings, members, and settings.
+          Tucks under the global navbar (z-40) via z-30. */}
+      {!isMember && canJoinFromPreview && (
+        <div className="sticky top-14 z-30 bg-accent text-white shadow-lg" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-bold uppercase tracking-wider opacity-80">Previewing this league</div>
+              <div className="text-sm font-semibold truncate">
+                {pendingInvitation
+                  ? `Invited by @${pendingInvitation.inviter?.username || 'someone'}`
+                  : `Check it out — open to all`}
+              </div>
+            </div>
+            <button
+              onClick={handleJoinFromPreview}
+              disabled={joinPending}
+              className="bg-white text-accent font-display text-base px-5 py-2 rounded-lg hover:bg-white/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
+            >
+              {joinPending ? 'Joining…' : joinButtonLabel}
+            </button>
+          </div>
+        </div>
+      )}
+      {!isMember && !canJoinFromPreview && (
+        <div className="sticky top-14 z-30 bg-bg-card border-b border-text-primary/15 text-text-secondary">
+          <div className="max-w-5xl mx-auto px-4 py-3 text-sm text-center">
+            You're previewing this league. It's invite-only — ask the commissioner for an invite to join.
+          </div>
+        </div>
+      )}
       {/* Full hero backdrop — full viewport width, positioned absolutely behind content */}
       {hasBackdrop && (
         <div

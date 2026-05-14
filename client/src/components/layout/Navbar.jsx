@@ -172,7 +172,10 @@ function getNotificationRoute(notification) {
     case 'direct_message':
       return '/messages'
     case 'league_invitation':
-      return '/leagues'
+      // Deep-link straight into the league preview so the user can scope it
+      // out before accepting. Falls back to the league hub if the metadata
+      // is somehow missing the leagueId.
+      return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : '/leagues'
     case 'headlines': {
       // If the headline week is more than 10 days old, it's archived
       const weekEnd = metadata?.weekEnd
@@ -507,20 +510,33 @@ export default function Navbar() {
                       <div className="max-h-80 overflow-y-auto">
                         {invitations?.map((invite) => (
                           <div key={invite.id} className="px-4 py-3 border-b border-border last:border-b-0">
-                            <div className="text-sm font-medium mb-1">{invite.leagues?.name}</div>
-                            <div className="text-xs text-text-muted mb-2">
-                              {FORMAT_LABELS[invite.leagues?.format]} · {SPORT_LABELS[invite.leagues?.sport]} · from @{invite.inviter?.username}
-                            </div>
+                            {/* Tap the card to preview the league before committing.
+                                The Accept/Decline buttons stop propagation so quick
+                                action still works without navigating away. */}
+                            <button
+                              onClick={() => {
+                                if (!invite.leagues?.id) return
+                                setShowInvites(false)
+                                setShowMobileMenu(false)
+                                navigate(`/leagues/${invite.leagues.id}`)
+                              }}
+                              className="block w-full text-left hover:opacity-80 transition-opacity"
+                            >
+                              <div className="text-sm font-medium mb-1">{invite.leagues?.name}</div>
+                              <div className="text-xs text-text-muted mb-2">
+                                {FORMAT_LABELS[invite.leagues?.format]} · {SPORT_LABELS[invite.leagues?.sport]} · from @{invite.inviter?.username}
+                              </div>
+                            </button>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => handleAccept(invite.id)}
+                                onClick={(e) => { e.stopPropagation(); handleAccept(invite.id) }}
                                 disabled={acceptInvitation.isPending}
                                 className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
                               >
                                 Accept
                               </button>
                               <button
-                                onClick={() => handleDecline(invite.id)}
+                                onClick={(e) => { e.stopPropagation(); handleDecline(invite.id) }}
                                 disabled={declineInvitation.isPending}
                                 className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-secondary hover:bg-border transition-colors disabled:opacity-50"
                               >
@@ -1026,20 +1042,30 @@ export default function Navbar() {
                   <div className="max-h-80 overflow-y-auto">
                     {invitations?.map((invite) => (
                       <div key={invite.id} className="px-4 py-3 border-b border-border last:border-b-0">
-                        <div className="text-sm font-medium mb-1">{invite.leagues?.name}</div>
-                        <div className="text-xs text-text-muted mb-2">
-                          {FORMAT_LABELS[invite.leagues?.format]} · {SPORT_LABELS[invite.leagues?.sport]} · from @{invite.inviter?.username}
-                        </div>
+                        <button
+                          onClick={() => {
+                            if (!invite.leagues?.id) return
+                            setShowInvites(false)
+                            setShowMobileMenu(false)
+                            navigate(`/leagues/${invite.leagues.id}`)
+                          }}
+                          className="block w-full text-left hover:opacity-80 transition-opacity"
+                        >
+                          <div className="text-sm font-medium mb-1">{invite.leagues?.name}</div>
+                          <div className="text-xs text-text-muted mb-2">
+                            {FORMAT_LABELS[invite.leagues?.format]} · {SPORT_LABELS[invite.leagues?.sport]} · from @{invite.inviter?.username}
+                          </div>
+                        </button>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => handleAccept(invite.id)}
+                            onClick={(e) => { e.stopPropagation(); handleAccept(invite.id) }}
                             disabled={acceptInvitation.isPending}
                             className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
                           >
                             Accept
                           </button>
                           <button
-                            onClick={() => handleDecline(invite.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDecline(invite.id) }}
                             disabled={declineInvitation.isPending}
                             className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-bg-secondary text-text-secondary hover:bg-border transition-colors disabled:opacity-50"
                           >
