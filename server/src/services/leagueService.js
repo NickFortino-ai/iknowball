@@ -682,12 +682,17 @@ export async function joinLeague(userId, inviteCode) {
     throw error
   }
 
-  // Clean up any pending invitations for this user in this league
+  // Clean up any pending invitations for this user in this league. The FK
+  // column on league_invitations is invited_user_id (migration 005);
+  // an earlier version of this code used the non-existent column
+  // `recipient_id`, which silently no-op'd and left stale invitation cards
+  // visible in the navbar even after a user joined via invite code or via
+  // the open-join path.
   await supabase
     .from('league_invitations')
     .delete()
     .eq('league_id', league.id)
-    .eq('recipient_id', userId)
+    .eq('invited_user_id', userId)
     .eq('status', 'pending')
 
   return league
@@ -833,7 +838,7 @@ export async function getLeagueDetails(leagueId, userId) {
   if (!isMember) {
     const { data: inv } = await supabase
       .from('league_invitations')
-      .select('id, created_at, inviter:inviter_id(id, username, display_name)')
+      .select('id, created_at, inviter:invited_by(id, username, display_name)')
       .eq('league_id', leagueId)
       .eq('invited_user_id', userId)
       .eq('status', 'pending')

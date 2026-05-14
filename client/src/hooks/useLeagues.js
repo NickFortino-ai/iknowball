@@ -126,6 +126,9 @@ export function useJoinOpenLeague() {
       queryClient.invalidateQueries({ queryKey: ['leagues', 'open'] })
       // Flip the league detail view from preview → member immediately.
       queryClient.invalidateQueries({ queryKey: ['leagues', leagueId] })
+      // Drop any pending invitation card from the navbar — joinLeague
+      // cleans up the row server-side, but the client cache needs a nudge.
+      queryClient.invalidateQueries({ queryKey: ['invitations'] })
     },
   })
 }
