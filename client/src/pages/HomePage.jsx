@@ -419,7 +419,7 @@ export default function HomePage() {
         {/* League Formats */}
         <div className="mb-16">
           <h2 className="font-display text-3xl text-center mb-3">Run Your League</h2>
-          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">15 formats. 10 sports. Unlimited leagues. Play with friends all year round.</p>
+          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">17 formats. 10 sports. Unlimited leagues. Play with friends all year round.</p>
 
           {/* Row 1: Traditional Fantasy Football (featured) + Salary Cap Fantasy Football */}
           <div className="grid lg:grid-cols-5 gap-4 mb-4">
@@ -514,13 +514,16 @@ export default function HomePage() {
           </div>
 
           {/* Row 5: 3-Point Contest + Strikeouts + Sacks + Interceptions
-              — the daily/weekly stat-collection contest set */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              + Solo Tackles + Receptions — daily/weekly stat-collection
+              contest set */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { title: '3-Point Contest', desc: 'Pick 3 NBA shooters per night. Most threes across the season wins.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NBA' },
               { title: 'Strikeouts Contest', desc: 'Pick 3 MLB pitchers per day. Most strikeouts across the season wins.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'MLB' },
               { title: 'Sacks Contest', desc: 'Pick 3 NFL defenders per week. Most sacks across the season wins.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL' },
               { title: 'Interceptions Contest', desc: 'Pick 3 NFL defenders per week. Most interceptions across the season wins.', gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL' },
+              { title: 'Solo Tackles Contest', desc: 'Pick 3 NFL defenders per week. Most solo tackles across the season wins.', gradient: 'from-emerald-800/25 via-emerald-900/15 to-transparent', sports: 'NFL' },
+              { title: 'Receptions Contest', desc: 'Pick 3 NFL pass catchers per week. Most receptions across the season wins.', gradient: 'from-yellow-800/25 via-yellow-900/15 to-transparent', sports: 'NFL' },
             ].map((mode) => (
               <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
                 <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} pointer-events-none`} />
