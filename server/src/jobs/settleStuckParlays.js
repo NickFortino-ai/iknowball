@@ -126,31 +126,42 @@ export async function settleStuckParlays() {
     logger.error({ err }, 'Failed to finalize stuck games')
   }
 
-  // Step 2: Settle parlay legs whose game is final but leg status is still pending/locked
-  const { data: stuckLegs, error } = await supabase
+  // Step 2: Settle parlay legs whose game is final or postponed but the leg
+  // is still pending/locked. Postponed games are treated as a push so the
+  // parlay can settle on its remaining legs — otherwise it stays locked
+  // forever.
+  const { data: allStuck, error } = await supabase
     .from('parlay_legs')
-    .select('id, picked_team, parlay_id, games!inner(winner)')
+    .select('id, picked_team, parlay_id, games!inner(status, winner)')
     .in('status', ['pending', 'locked'])
-    .eq('games.status', 'final')
+    .in('games.status', ['final', 'postponed'])
 
   if (error) {
     logger.error({ error }, 'Failed to query stuck parlay legs')
     return
   }
 
-  if (!stuckLegs?.length) return
+  if (!allStuck?.length) return
 
-  logger.info({ count: stuckLegs.length }, 'Found stuck parlay legs, settling')
+  const finalCount = allStuck.filter((l) => l.games.status === 'final').length
+  const postponedCount = allStuck.filter((l) => l.games.status === 'postponed').length
+  logger.info({ finalCount, postponedCount }, 'Found stuck parlay legs, settling')
 
-  for (const leg of stuckLegs) {
-    const winner = leg.games.winner
+  for (const leg of allStuck) {
+    const gameStatus = leg.games.status
     let legStatus
-    if (winner === null) {
+    if (gameStatus === 'postponed') {
+      // Postponed games can never resolve — push the leg so parlays settle
       legStatus = 'push'
-    } else if (leg.picked_team === winner) {
-      legStatus = 'won'
     } else {
-      legStatus = 'lost'
+      const winner = leg.games.winner
+      if (winner === null) {
+        legStatus = 'push'
+      } else if (leg.picked_team === winner) {
+        legStatus = 'won'
+      } else {
+        legStatus = 'lost'
+      }
     }
 
     const { error: updateError } = await supabase
@@ -164,7 +175,7 @@ export async function settleStuckParlays() {
   }
 
   // Settle affected parlays
-  const parlayIds = [...new Set(stuckLegs.map((l) => l.parlay_id))]
+  const parlayIds = [...new Set(allStuck.map((l) => l.parlay_id))]
   for (const parlayId of parlayIds) {
     try {
       await trySettleParlay(parlayId)
@@ -173,5 +184,5 @@ export async function settleStuckParlays() {
     }
   }
 
-  logger.info({ legsFixed: stuckLegs.length, parlaysChecked: parlayIds.length }, 'Stuck parlay cleanup complete')
+  logger.info({ legsFixed: allStuck.length, parlaysChecked: parlayIds.length }, 'Stuck parlay cleanup complete')
 }
