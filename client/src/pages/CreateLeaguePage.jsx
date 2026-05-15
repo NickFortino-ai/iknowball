@@ -229,8 +229,8 @@ Commissioner controls: league length (defaults to full NFL season), team count. 
   {
     value: 'pickem',
     label: "Pick'em",
-    description: 'Pick the winners of the games. Best record at the end wins.',
-    details: `A pick-the-winners league. The commissioner sets the slate — a single sport or all sports, a single week or a full season — and every member picks who they think will win each game. Build the best record across the league's run on a leaderboard that updates with every result.
+    description: 'Pick the winners of the games. Most points at the end wins.',
+    details: `A pick-the-winners league. The commissioner sets the slate — a single sport or all sports, a single week or a full season — and every member picks who they think will win each game. Earn points for the picks you get right, lose points for the ones you don't. Most points at the end of the league's run wins.
 
 When the league ends, the points you earned during play transfer to your global IKB score. The winner also earns a bonus equal to the number of members in the league.
 
@@ -396,7 +396,7 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       key: 'nfl-pickem',
       format: 'pickem',
       label: "NFL Pick'em",
-      description: 'Pick the winners of NFL games. Best record at the end wins.',
+      description: 'Pick the winners of NFL games. Most points at the end wins.',
       preset: { sport: 'americanfootball_nfl' },
     },
   ],
@@ -418,7 +418,7 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       key: 'nba-pickem',
       format: 'pickem',
       label: "NBA Pick'em",
-      description: 'Pick the winners of NBA games. Best record at the end wins.',
+      description: 'Pick the winners of NBA games. Most points at the end wins.',
       preset: { sport: 'basketball_nba' },
     },
   ],
@@ -437,7 +437,7 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       key: 'mlb-pickem',
       format: 'pickem',
       label: "MLB Pick'em",
-      description: 'Pick the winners of MLB games. Best record at the end wins.',
+      description: 'Pick the winners of MLB games. Most points at the end wins.',
       preset: { sport: 'baseball_mlb' },
     },
   ],
