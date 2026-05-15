@@ -2,7 +2,7 @@ export default function PrivacyPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="font-display text-2xl text-text-primary mb-1">Privacy Policy</h1>
-      <p className="text-sm text-text-muted mb-6">Last Updated: February 17, 2026</p>
+      <p className="text-sm text-text-muted mb-6">Last Updated: May 15, 2026</p>
 
       <div className="space-y-6">
         <section className="bg-bg-card rounded-xl p-5">
@@ -30,7 +30,7 @@ export default function PrivacyPage() {
             <div>
               <h3 className="text-sm font-semibold text-text-primary mb-1">Payment Information</h3>
               <p className="text-sm text-text-secondary leading-relaxed">
-                If you purchase access to the App, payment is processed through Stripe. We do not store your credit card number or payment details — Stripe handles all payment information securely. We only receive confirmation that your payment was successful.
+                Payments made on the I KNOW BALL website are processed by Stripe; payments made through the iOS app are processed by Apple via in-app purchase. In either case, we do not receive or store your credit card number or payment details — Stripe and Apple handle all payment information securely. We only receive confirmation that your payment was successful and the plan you purchased.
               </p>
             </div>
             <div>
