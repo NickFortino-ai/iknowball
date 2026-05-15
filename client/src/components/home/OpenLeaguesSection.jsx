@@ -55,7 +55,7 @@ function getLeagueHeadline(league) {
 
 const FORMAT_DESCRIPTIONS = {
   survivor: "Pick one team to win each period. If they lose, you lose a life. You can't reuse a team. The last manager standing takes the league.",
-  pickem: 'Pick the winner of every game. Underdogs are worth more — points are scaled by real odds. Climb the standings to win.',
+  pickem: 'Pick the winners of the games. Top of the standings at the end wins.',
   bracket: 'Fill out a postseason bracket and ride your picks all the way through. Most points across all rounds wins.',
   fantasy: 'Draft a team, set your lineup each week, work the waiver wire, and battle your league mates. Standard NFL fantasy with custom scoring.',
   nba_dfs: 'Build a fresh roster every night under a salary cap. No draft, no commitment — just pick the best lineup of the day.',

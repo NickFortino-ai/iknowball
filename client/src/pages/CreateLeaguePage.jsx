@@ -229,10 +229,10 @@ Commissioner controls: league length (defaults to full NFL season), team count. 
   {
     value: 'pickem',
     label: "Pick'em",
-    description: 'Pick game winners with odds-based scoring — your points reflect the real odds',
-    details: `A picks league where everyone chooses winners from the same slate of games. The twist: IKB scores on odds, not just right or wrong. A chalk pick on the favorite pays less; nailing an underdog pays big. That means one gutsy upset call can leapfrog you over someone who played it safe all week. League picks live on their own leaderboard throughout the duration.
+    description: 'Pick the winners of the games. Best record at the end wins.',
+    details: `A pick-the-winners league. The commissioner sets the slate — a single sport or all sports, a single week or a full season — and every member picks who they think will win each game. Build the best record across the league's run on a leaderboard that updates with every result.
 
-When the league ends, all the pick points you earned during play transfer to your global IKB score. On top of that, the winner gets a bonus equal to the number of members in the league.
+When the league ends, the points you earned during play transfer to your global IKB score. The winner also earns a bonus equal to the number of members in the league.
 
 Commissioner controls: sport (single or all), duration (this week, custom range, or full season), pick frequency (daily or weekly), games per period, lock time (game start or submission), and open vs invite-only. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
@@ -396,7 +396,7 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       key: 'nfl-pickem',
       format: 'pickem',
       label: "NFL Pick'em",
-      description: 'Pick NFL game winners with odds-based scoring',
+      description: 'Pick the winners of NFL games. Best record at the end wins.',
       preset: { sport: 'americanfootball_nfl' },
     },
   ],
@@ -418,7 +418,7 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       key: 'nba-pickem',
       format: 'pickem',
       label: "NBA Pick'em",
-      description: 'Pick NBA game winners with odds-based scoring',
+      description: 'Pick the winners of NBA games. Best record at the end wins.',
       preset: { sport: 'basketball_nba' },
     },
   ],
@@ -437,7 +437,7 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       key: 'mlb-pickem',
       format: 'pickem',
       label: "MLB Pick'em",
-      description: 'Pick MLB game winners with odds-based scoring',
+      description: 'Pick the winners of MLB games. Best record at the end wins.',
       preset: { sport: 'baseball_mlb' },
     },
   ],

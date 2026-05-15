@@ -234,7 +234,7 @@ export default function JoinLeaguePage() {
                             {league.settings?.pick_frequency && <div><span className="text-text-muted">Picks:</span> {league.settings.pick_frequency === 'daily' ? 'Daily' : 'Weekly'}</div>}
                             {league.settings?.lives && <div><span className="text-text-muted">Lives:</span> {league.settings.lives}</div>}
                             {league.format === 'survivor' && <div className="text-text-muted italic">Pick one team per period. If they lose, you lose a life. Can't reuse teams.</div>}
-                            {league.format === 'pickem' && <div className="text-text-muted italic">Pick game winners scored by odds. Top of the standings at the end wins.</div>}
+                            {league.format === 'pickem' && <div className="text-text-muted italic">Pick the winners of the games. Top of the standings at the end wins.</div>}
                             {league.format === 'hr_derby' && <div className="text-text-muted italic">Pick 3 hitters per day. Each player usable once per week. Most HRs wins.</div>}
                             {league.format === 'strikeouts' && <div className="text-text-muted italic">Pick 3 pitchers per day. Each player usable once per week. Most strikeouts wins.</div>}
                             {league.format === 'three_point' && <div className="text-text-muted italic">Pick 3 NBA shooters per night. Most made 3-pointers wins.</div>}
