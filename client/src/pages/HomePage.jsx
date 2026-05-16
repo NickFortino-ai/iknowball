@@ -420,7 +420,7 @@ export default function HomePage() {
         {/* League Formats */}
         <div className="mb-16">
           <h2 className="font-display text-3xl text-center mb-3">Run Your League</h2>
-          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">17 formats. 10 sports. Unlimited leagues. Play with friends all year round.</p>
+          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">18 formats. 10 sports. Unlimited leagues. Play with friends all year round.</p>
 
           {/* Row 1: Traditional Fantasy Football (featured) + Salary Cap Fantasy Football */}
           <div className="grid lg:grid-cols-5 gap-4 mb-4">
@@ -519,7 +519,7 @@ export default function HomePage() {
               contest set */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { title: '3-Point Contest', desc: 'Pick 3 NBA shooters per night. Most threes across the season wins.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NBA' },
+              { title: '3-Point Contest', desc: 'Pick 3 shooters per night. Most threes across the season wins.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NBA · WNBA' },
               { title: 'Strikeouts Contest', desc: 'Pick 3 MLB pitchers per day. Most strikeouts across the season wins.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'MLB' },
               { title: 'Sacks Contest', desc: 'Pick 3 NFL defenders per week. Most sacks across the season wins.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL' },
               { title: 'Interceptions Contest', desc: 'Pick 3 NFL defenders per week. Most interceptions across the season wins.', gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL' },
