@@ -26,6 +26,7 @@ import MlbDfsView from '../components/leagues/MlbDfsView'
 import HrDerbyView from '../components/leagues/HrDerbyView'
 import StrikeoutsView from '../components/leagues/StrikeoutsView'
 import ThreePointView from '../components/leagues/ThreePointView'
+import WnbaThreePointView from '../components/leagues/WnbaThreePointView'
 import SacksView from '../components/leagues/SacksView'
 import IntsView from '../components/leagues/IntsView'
 import TacklesView from '../components/leagues/TacklesView'
@@ -105,6 +106,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
     hr_derby: ['Picks', memberOrStandings, 'Thread'],
     strikeouts: ['Picks', memberOrStandings, 'Thread'],
     three_point: ['Picks', memberOrStandings, 'Thread'],
+    wnba_three_point: ['Picks', memberOrStandings, 'Thread'],
     sacks: ['Picks', memberOrStandings, 'Thread'],
     ints: ['Picks', memberOrStandings, 'Thread'],
     tackles: ['Picks', memberOrStandings, 'Thread'],
@@ -124,7 +126,8 @@ const FORMAT_LABELS = {
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
   strikeouts: 'Strikeouts Contest',
-  three_point: '3-Point Contest',
+  three_point: 'NBA 3-Point Contest',
+  wnba_three_point: 'WNBA 3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
   tackles: 'Solo Tackles Contest',
@@ -378,7 +381,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
-  const { data: fantasySettings } = useFantasySettings(['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format) ? league.id : null)
+  const { data: fantasySettings } = useFantasySettings(['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format) ? league.id : null)
   const isTraditionalFantasy = league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap'
   const currentNflWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
   const { data: liveMatchupData } = useFantasyMatchupLive(
@@ -603,12 +606,13 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       ]
     }
 
-    if (league.format === 'three_point') {
+    if (league.format === 'three_point' || league.format === 'wnba_three_point') {
+      const isWnba = league.format === 'wnba_three_point'
       const reuseRule = fantasySettings?.pick_reuse === 'unlimited'
         ? 'No reuse limit — pick the same shooter on back-to-back nights if you want.'
         : 'Each player can only be used once per week (Monday–Sunday). All players reset on Monday.'
       return [
-        'Pick up to 3 NBA shooters each night that you think will hit threes.',
+        `Pick up to 3 ${isWnba ? 'WNBA' : 'NBA'} shooters each night that you think will hit threes.`,
         reuseRule,
         'You can change your picks for the current day until games start.',
         'The more 3-pointers your picks hit, the more points you earn.',
@@ -713,7 +717,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 const sType = fantasySettings?.season_type
                 const fFormat = fantasySettings?.format
                 const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
-                const showTable = isMultiNight || f === 'hr_derby' || f === 'strikeouts' || f === 'three_point' || f === 'sacks' || f === 'ints' || f === 'tackles' || f === 'receptions' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
+                const showTable = isMultiNight || f === 'hr_derby' || f === 'strikeouts' || f === 'three_point' || f === 'wnba_three_point' || f === 'sacks' || f === 'ints' || f === 'tackles' || f === 'receptions' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
                 if (!showTable) return null
                 // Prefer the actual member array; if the detail endpoint
                 // didn't include it (some flows skip it), fall back to
@@ -896,7 +900,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
   const isDaily = league.settings?.pick_frequency === 'daily'
   const { data: tournament } = useBracketTournament(league.format === 'bracket' ? league.id : null)
   const updateTournament = useUpdateBracketTournament()
-  const { data: fantasySettings } = useFantasySettings(['fantasy', 'mlb_dfs', 'sacks', 'ints', 'tackles', 'receptions'].includes(league.format) ? league.id : null)
+  const { data: fantasySettings } = useFantasySettings(['fantasy', 'mlb_dfs', 'sacks', 'ints', 'tackles', 'receptions', 'three_point', 'wnba_three_point', 'hr_derby', 'strikeouts'].includes(league.format) ? league.id : null)
   const updateFantasySettings = useUpdateFantasySettings()
 
   async function saveIrSpots(n) {
@@ -1005,7 +1009,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           formats (Pick'em, Squares, NBA DFS Salary Cap) keep the full
           set with This Week + Playoffs Only. */}
       {(() => {
-      const dailyContestFormats = ['three_point', 'hr_derby', 'strikeouts', 'mlb_dfs']
+      const dailyContestFormats = ['three_point', 'wnba_three_point', 'hr_derby', 'strikeouts', 'mlb_dfs']
       const formatDurationOptions = dailyContestFormats.includes(league.format)
         ? [
             { value: 'full_season', label: 'Full Season' },
@@ -1573,7 +1577,7 @@ export default function LeagueDetailPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
   const todayDate = new Date().toLocaleDateString('en-CA')
-  const isDfsFormat = ['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point'].includes(league?.format)
+  const isDfsFormat = ['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'wnba_three_point'].includes(league?.format)
   const { data: nbaLiveData } = useNbaDfsLive(league?.format === 'nba_dfs' ? id : null, todayDate)
   const { data: mlbLiveData } = useMlbDfsLive(league?.format === 'mlb_dfs' ? id : null, todayDate)
   // ?invite=1 opens the modal; ?invite=<username> opens it pre-filled.
@@ -1722,7 +1726,7 @@ export default function LeagueDetailPage() {
   // Bracket leagues don't auto-fallback to a default arena — they should be black
   // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
   // image lives on the bracket itself, not as a page-wide backdrop.
-  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format)
+  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format)
 
   function startBackdropDrag(e) {
     e.preventDefault()
@@ -1894,8 +1898,8 @@ export default function LeagueDetailPage() {
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
-        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'text-center' : ''}>
-        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
+        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'text-center' : ''}>
+        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
           <h1 className="font-display text-3xl">{league.name}</h1>
           <button
             onClick={() => setShowSettingsModal(true)}
@@ -1908,7 +1912,7 @@ export default function LeagueDetailPage() {
             </svg>
           </button>
         </div>
-        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
           {isCommissioner && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded text-tier-hof">
               Commissioner
@@ -2515,6 +2519,12 @@ export default function LeagueDetailPage() {
       {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'three_point' && (
         <div className="relative z-10">
           <ThreePointView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
+        </div>
+      )}
+
+      {(tabs[activeTab] === 'Picks' || tabs[activeTab] === 'Standings') && league.format === 'wnba_three_point' && (
+        <div className="relative z-10">
+          <WnbaThreePointView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : 'picks'} />
         </div>
       )}
 

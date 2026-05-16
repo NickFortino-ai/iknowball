@@ -20,6 +20,7 @@ import { scoreNBADFS } from './scoreNBADFS.js'
 import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
 import { settleWNBAProps } from './settleWNBAProps.js'
+import { scoreAllWnbaThreePointPicks } from '../services/wnbaThreePointService.js'
 import { settleMLBProps } from './settleMLBProps.js'
 import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
@@ -242,6 +243,13 @@ export function startScheduler() {
       try { await settleWNBAProps() } catch (err) { logger.error({ err }, 'WNBA prop auto-settlement failed') }
     })
     logger.info('WNBA prop auto-settlement scheduled: every 2 minutes')
+
+    // WNBA 3-Point Contest scoring — same cadence as prop settlement so picks
+    // turn from yellow → green within a couple minutes of game final.
+    cron.schedule('*/2 * * * *', async () => {
+      try { await scoreAllWnbaThreePointPicks() } catch (err) { logger.error({ err }, 'WNBA 3-Point Contest scoring failed') }
+    })
+    logger.info('WNBA 3-Point Contest scoring scheduled: every 2 minutes')
 
     cron.schedule('*/2 * * * *', async () => {
       try { await settleMLBProps() } catch (err) { logger.error({ err }, 'MLB prop auto-settlement failed') }

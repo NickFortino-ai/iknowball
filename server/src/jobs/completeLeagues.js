@@ -627,6 +627,37 @@ async function getSacksStandings(league) {
   return ranked
 }
 
+async function getWnbaThreePointStandings(league) {
+  const { data: picks } = await supabase
+    .from('wnba_three_point_picks')
+    .select('user_id, made_threes')
+    .eq('league_id', league.id)
+
+  if (!picks?.length) return []
+
+  const userMap = {}
+  for (const p of picks) {
+    if (!userMap[p.user_id]) userMap[p.user_id] = { user_id: p.user_id, totalThrees: 0 }
+    userMap[p.user_id].totalThrees += p.made_threes || 0
+  }
+
+  const standings = Object.values(userMap)
+  standings.sort((a, b) => b.totalThrees - a.totalThrees)
+
+  const ranked = []
+  let i = 0
+  while (i < standings.length) {
+    let j = i
+    while (j < standings.length && standings[j].totalThrees === standings[i].totalThrees) j++
+    const sharedRank = i + 1
+    for (let k = i; k < j; k++) {
+      ranked.push({ user_id: standings[k].user_id, rank: sharedRank })
+    }
+    i = j
+  }
+  return ranked
+}
+
 async function getThreePointStandings(league) {
   const { data: picks } = await supabase
     .from('three_point_picks')
@@ -806,7 +837,7 @@ export async function completeLeagues() {
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
-    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'])
+    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
     .lte('ends_at', earlyWindow)
@@ -980,7 +1011,12 @@ export async function completeLeagues() {
       } else if (league.format === 'three_point') {
         const standings = await getThreePointStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, '3-Point Contest')
+          await awardPositionBasedPoints(league, standings, 'NBA 3-Point Contest')
+        }
+      } else if (league.format === 'wnba_three_point') {
+        const standings = await getWnbaThreePointStandings(league)
+        if (standings?.length > 0) {
+          await awardPositionBasedPoints(league, standings, 'WNBA 3-Point Contest')
         }
       } else if (league.format === 'sacks') {
         const standings = await getSacksStandings(league)

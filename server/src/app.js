@@ -30,6 +30,7 @@ import mlbDfsRouter from './routes/mlbDfs.js'
 import hrDerbyRouter from './routes/hrDerby.js'
 import strikeoutsRouter from './routes/strikeouts.js'
 import threePointRouter from './routes/threePoint.js'
+import wnbaThreePointRouter from './routes/wnbaThreePoint.js'
 import sacksRouter from './routes/sacks.js'
 import intsRouter from './routes/ints.js'
 import tacklesRouter from './routes/tackles.js'
@@ -87,6 +88,7 @@ app.use('/api/mlb-dfs', mlbDfsRouter)
 app.use('/api/hr-derby', hrDerbyRouter)
 app.use('/api/strikeouts', strikeoutsRouter)
 app.use('/api/three-point', threePointRouter)
+app.use('/api/wnba-three-point', wnbaThreePointRouter)
 app.use('/api/sacks', sacksRouter)
 app.use('/api/ints', intsRouter)
 app.use('/api/tackles', tacklesRouter)

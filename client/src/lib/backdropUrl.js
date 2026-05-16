@@ -14,6 +14,7 @@ export function getBackdropFilterKey(league) {
   if (!league) return undefined
   const { format, settings } = league
   if (format === 'three_point') return 'three_point_contest'
+  if (format === 'wnba_three_point') return 'wnba_three_point_contest'
   if (format === 'sacks') return 'sacks_contest'
   if (format === 'ints') return 'ints_contest'
   if (format === 'tackles') return 'tackles_contest'

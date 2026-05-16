@@ -15,7 +15,8 @@ const FORMAT_LABELS = {
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
   strikeouts: 'Strikeouts Contest',
-  three_point: '3-Point Contest',
+  three_point: 'NBA 3-Point Contest',
+  wnba_three_point: 'WNBA 3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
   tackles: 'Solo Tackles Contest',
@@ -238,6 +239,7 @@ export default function JoinLeaguePage() {
                             {league.format === 'hr_derby' && <div className="text-text-muted italic">Pick 3 hitters per day. Each player usable once per week. Most HRs wins.</div>}
                             {league.format === 'strikeouts' && <div className="text-text-muted italic">Pick 3 pitchers per day. Each player usable once per week. Most strikeouts wins.</div>}
                             {league.format === 'three_point' && <div className="text-text-muted italic">Pick 3 NBA shooters per night. Most made 3-pointers wins.</div>}
+                            {league.format === 'wnba_three_point' && <div className="text-text-muted italic">Pick 3 WNBA shooters per night. Most made 3-pointers wins.</div>}
                             {league.format === 'sacks' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most sacks across the season wins.</div>}
                             {league.format === 'ints' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most interceptions across the season wins.</div>}
                             {league.format === 'tackles' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most solo tackles across the season wins.</div>}

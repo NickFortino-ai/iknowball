@@ -1362,6 +1362,51 @@ export function useThreePointStandings(leagueId) {
   })
 }
 
+// WNBA 3-Point Contest hooks (mirror NBA version)
+export function useWnbaThreePointPlayers(date) {
+  return useQuery({
+    queryKey: ['wnba-three-point', 'players', date],
+    queryFn: () => api.get(`/wnba-three-point/players?date=${date}`),
+    enabled: !!date,
+  })
+}
+
+export function useWnbaThreePointPicks(leagueId, date) {
+  return useQuery({
+    queryKey: ['wnba-three-point', leagueId, 'picks', date],
+    queryFn: () => api.get(`/wnba-three-point/picks?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+    refetchInterval: 2 * 60 * 1000,
+  })
+}
+
+export function useWnbaThreePointUsed(leagueId, date) {
+  return useQuery({
+    queryKey: ['wnba-three-point', leagueId, 'used', date],
+    queryFn: () => api.get(`/wnba-three-point/used?league_id=${leagueId}&date=${date}`),
+    enabled: !!leagueId && !!date,
+  })
+}
+
+export function useSubmitWnbaThreePointPicks() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/wnba-three-point/picks', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['wnba-three-point', variables.league_id] })
+    },
+  })
+}
+
+export function useWnbaThreePointStandings(leagueId) {
+  return useQuery({
+    queryKey: ['wnba-three-point', leagueId, 'standings'],
+    queryFn: () => api.get(`/wnba-three-point/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
 // === Sacks Contest ===
 export function useSacksPlayers() {
   return useQuery({

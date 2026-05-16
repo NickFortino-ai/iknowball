@@ -259,7 +259,7 @@ export async function updateFantasySettings(leagueId, updates) {
       .select('format')
       .eq('id', leagueId)
       .single()
-    const isSingleStatContest = league && ['sacks', 'ints', 'tackles', 'receptions', 'hr_derby', 'strikeouts', 'three_point'].includes(league.format)
+    const isSingleStatContest = league && ['sacks', 'ints', 'tackles', 'receptions', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(league.format)
     if (isSingleStatContest) {
       current = await createFantasySettings(leagueId, { format: league.format })
     }

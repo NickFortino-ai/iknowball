@@ -69,7 +69,8 @@ const FORMAT_LABELS = {
   ints: 'INTERCEPTIONS CONTEST',
   tackles: 'SOLO TACKLES CONTEST',
   receptions: 'RECEPTIONS CONTEST',
-  three_point: '3-POINT CONTEST',
+  three_point: 'NBA 3-POINT CONTEST',
+  wnba_three_point: 'WNBA 3-POINT CONTEST',
   strikeouts: 'STRIKEOUTS CONTEST',
 }
 

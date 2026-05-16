@@ -373,7 +373,7 @@ export async function createLeague(userId, data) {
   // Create fantasy settings if format is fantasy
   // (also for single-stat contests so the commissioner can edit pick_reuse
   // via the gear icon — those routes read fantasy_settings.pick_reuse).
-  const NEEDS_FANTASY_SETTINGS = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions']
+  const NEEDS_FANTASY_SETTINGS = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions']
   if (NEEDS_FANTASY_SETTINGS.includes(league.format)) {
     const { createFantasySettings } = await import('./fantasyService.js')
     await createFantasySettings(league.id, data.fantasy_settings || {})
@@ -1004,7 +1004,7 @@ export async function updateLeague(leagueId, userId, data) {
     // bracket, TD Pass, and survivor are deliberately omitted: their
     // windows are bound to a schedule (NFL/tournament) or to a "last one
     // standing" condition that ends the league naturally.
-    const ENDS_AT_EDITABLE_FORMATS = ['hr_derby', 'strikeouts', 'three_point', 'sacks', 'ints', 'tackles', 'receptions', 'nba_dfs', 'mlb_dfs', 'pickem']
+    const ENDS_AT_EDITABLE_FORMATS = ['hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'nba_dfs', 'mlb_dfs', 'pickem']
     const onlyEndsAtOrAlwaysAllowed = Object.keys(data).every((k) => k === 'ends_at' || alwaysAllowed.includes(k))
     const isCompleted = league.status === 'completed'
     if (onlyEndsAtOrAlwaysAllowed && !isCompleted && ENDS_AT_EDITABLE_FORMATS.includes(league.format)) {
