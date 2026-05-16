@@ -85,6 +85,32 @@ async function fetchPlayerSeasonAvgs(espnId, preferType = null) {
 }
 
 /**
+ * Sample-size regression toward replacement level. Without this, a 9-AB
+ * call-up who happened to slug a HR + 3B in those ABs computes to ~12 FPPG
+ * and prices to ~$6,300 — same neighborhood as an established 400-AB hitter
+ * with the same FPPG. The Bayesian blend below pulls small samples back
+ * toward a 3-FPPG replacement baseline (~$3,200 salary) using 30 phantom
+ * "replacement" ABs as the prior. By ~150 AB the prior fades to <20% weight;
+ * by 200+ AB it has almost no effect.
+ */
+const BATTER_REPLACEMENT_FPPG = 3
+const BATTER_PHANTOM_AB = 30
+function shrinkBatterFppg(fppg, ab) {
+  if (!ab || ab >= 200) return fppg
+  return (fppg * ab + BATTER_REPLACEMENT_FPPG * BATTER_PHANTOM_AB) / (ab + BATTER_PHANTOM_AB)
+}
+
+// Same idea for pitchers. Replacement RP-tier is ~8 FPPG. 20 phantom IP
+// keeps a 5-IP cameo from outrunning the prior; established starters
+// (80+ IP) get the prior at <3% weight.
+const PITCHER_REPLACEMENT_FPPG = 8
+const PITCHER_PHANTOM_IP = 20
+function shrinkPitcherFppg(fppg, ip) {
+  if (!ip || ip >= 80) return fppg
+  return (fppg * ip + PITCHER_REPLACEMENT_FPPG * PITCHER_PHANTOM_IP) / (ip + PITCHER_PHANTOM_IP)
+}
+
+/**
  * MLB DFS fantasy points formula (batters):
  * Single: 3, Double: 5, Triple: 8, HR: 10, RBI: 2, Run: 2, SB: 5, Walk: 2
  * Per-game average used for salary calc.
@@ -318,7 +344,15 @@ export async function generateMLBSalaries(date, season = 2026) {
         const gameFptsFn = isPitcher ? mlbPitcherGameFpts : mlbBatterGameFpts
         // Season-heavy weights: 25% recent, 30% mid, 45% full season
         // Prevents hot-streak players from outpricing established stars
-        const fppg = calcWeightedFppg(gameFptsFn, gameLog, seasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
+        let fppg = calcWeightedFppg(gameFptsFn, gameLog, seasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
+        // Sample-size regression — keeps tiny-sample call-ups (e.g. 9-AB
+        // rookie with a hot first week) from being priced as everyday
+        // starters. See shrinkBatterFppg / shrinkPitcherFppg above.
+        if (isPitcher) {
+          fppg = shrinkPitcherFppg(fppg, avgs?.ip || 0)
+        } else {
+          fppg = shrinkBatterFppg(fppg, avgs?.ab || 0)
+        }
 
         const displayPos = isPitcher ? 'SP' : position
         let salary = isPitcher ? mlbPitcherFppgToSalary(fppg) : mlbFppgToSalary(fppg)
@@ -354,7 +388,8 @@ export async function generateMLBSalaries(date, season = 2026) {
           const pitchAvgs = await fetchPlayerSeasonAvgs(espnId, 'pitching')
           if (pitchAvgs) {
             const pitchSeasonFppg = calcMLBPitcherFppg(pitchAvgs)
-            const pitchFppg = calcWeightedFppg(mlbPitcherGameFpts, gameLog, pitchSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
+            let pitchFppg = calcWeightedFppg(mlbPitcherGameFpts, gameLog, pitchSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
+            pitchFppg = shrinkPitcherFppg(pitchFppg, pitchAvgs?.ip || 0)
             let pitchSalary = mlbPitcherFppgToSalary(pitchFppg)
             pitchSalary = applyDefensiveAdjustment(pitchSalary, opponentAbbrev, defRankings, 30)
             const pitchScarcity = POSITION_SCARCITY['SP'] || 1.0
