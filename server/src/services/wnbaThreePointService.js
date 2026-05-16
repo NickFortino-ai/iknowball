@@ -64,6 +64,11 @@ async function fetchAthlete3PMForType(espnId, seasonType, season) {
 // Fetch 3PM totals for a batch of athletes. Concurrency-capped (6 at a
 // time) so we don't burst-hammer ESPN. Per-athlete result cached for the
 // `ATHLETE_TOTAL_TTL` window.
+//
+// WNBA picker shows REGULAR SEASON 3PM only — that's the phase WNBA is
+// currently in. Mirrors the NBA decision to show the phase that's
+// actually happening (playoffs for NBA). When WNBA reaches playoffs in
+// the fall, flip this to type 3 (post) or expose a per-league setting.
 export async function fetchSeason3PMTotals(espnIds, season = 2026) {
   const result = {}
   const now = Date.now()
@@ -81,14 +86,7 @@ export async function fetchSeason3PMTotals(espnIds, season = 2026) {
   const CONCURRENCY = 6
   for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
     const batch = toFetch.slice(i, i + CONCURRENCY)
-    const totals = await Promise.all(batch.map(async (id) => {
-      // Regular season + postseason summed. Postseason is best-effort —
-      // an error or empty response there contributes 0.
-      const reg = await fetchAthlete3PMForType(id, 2, season)
-      let post = 0
-      try { post = await fetchAthlete3PMForType(id, 3, season) } catch {}
-      return reg + post
-    }))
+    const totals = await Promise.all(batch.map((id) => fetchAthlete3PMForType(id, 2, season)))
     for (let j = 0; j < batch.length; j++) {
       const id = batch[j]
       const total = totals[j]

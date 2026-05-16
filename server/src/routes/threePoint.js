@@ -38,6 +38,11 @@ async function fetchAthlete3PMForType(espnId, seasonType, season = 2026) {
   }
 }
 
+// NBA picker shows POSTSEASON 3PM only — we shipped this format with the
+// playoffs in full swing, and ranking by reg-season totals (mostly
+// 50-game samples for half the league) drowned out hot postseason
+// shooters. Once we hit the offseason, flip this back to type 2 (regular)
+// or sum both via a season-toggle setting on the league.
 async function fetchNbaSeason3PMTotals(espnIds, season = 2026) {
   const result = {}
   const now = Date.now()
@@ -55,12 +60,7 @@ async function fetchNbaSeason3PMTotals(espnIds, season = 2026) {
   const CONCURRENCY = 6
   for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
     const batch = toFetch.slice(i, i + CONCURRENCY)
-    const totals = await Promise.all(batch.map(async (id) => {
-      const reg = await fetchAthlete3PMForType(id, 2, season)
-      let post = 0
-      try { post = await fetchAthlete3PMForType(id, 3, season) } catch {}
-      return reg + post
-    }))
+    const totals = await Promise.all(batch.map((id) => fetchAthlete3PMForType(id, 3, season)))
     for (let j = 0; j < batch.length; j++) {
       const id = batch[j]
       const total = totals[j]
