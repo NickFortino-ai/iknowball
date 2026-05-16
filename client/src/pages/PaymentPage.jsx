@@ -45,6 +45,25 @@ async function navigateAfterPayment(fetchProfile, navigate) {
     await fetchProfile()
     return
   }
+  // Card-on-landing flow: user tapped a format card pre-signup, we stashed
+  // their intent; drop them straight on /leagues/create with the format
+  // (and optional sport) pre-selected.
+  const pendingCreate = (() => {
+    try {
+      const raw = localStorage.getItem('pendingCreateFormat')
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })()
+  if (pendingCreate?.format) {
+    try { localStorage.removeItem('pendingCreateFormat') } catch {}
+    const params = new URLSearchParams({ format: pendingCreate.format })
+    if (pendingCreate.sport) params.set('sport', pendingCreate.sport)
+    const target = `/leagues/create?${params.toString()}`
+    localStorage.setItem('onboardingReturnPath', target)
+    navigate(target, { replace: true })
+    await fetchProfile()
+    return
+  }
   await fetchProfile()
   const updatedProfile = useAuthStore.getState().profile
   navigate(isNewUser(updatedProfile) ? '/' : '/picks', { replace: true })

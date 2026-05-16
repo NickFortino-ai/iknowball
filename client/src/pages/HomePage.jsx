@@ -274,12 +274,71 @@ function MyActiveLeagues() {
   )
 }
 
+// Format card — used for every league-format entry on the landing page.
+// One styling pattern, two sizes (regular vs featured). Mobile-tight
+// padding so single-stat contests don't get tall on small screens.
+function FormatCard({ title, desc, gradient, sports, featured = false, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative w-full text-left rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/50 transition-colors ${
+        featured ? 'sm:max-w-3xl sm:mx-auto block' : ''
+      }`}
+    >
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} pointer-events-none`} />
+      <div className={`relative ${featured ? 'p-5 sm:p-8' : 'p-4 sm:p-6'}`}>
+        {featured && (
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-accent">Featured</span>
+          </div>
+        )}
+        <h3 className={`font-display text-white mb-1.5 ${featured ? 'text-2xl sm:text-3xl' : 'text-lg'}`}>{title}</h3>
+        <p className={`text-text-secondary leading-relaxed mb-2 ${featured ? 'text-sm sm:text-base max-w-2xl' : 'text-sm'}`}>{desc}</p>
+        <div className="text-xs text-text-muted">{sports}</div>
+      </div>
+    </button>
+  )
+}
+
 export default function HomePage() {
   const { isAuthenticated, profile, session } = useAuth()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const forceHeadlines = searchParams.get('headlines') === '1'
   const [selectedTier, setSelectedTier] = useState(null)
   const headlinesRef = useRef(null)
+
+  // Touch vs mouse — swaps "Tap" / "Click" in the league-section subtitle.
+  // matchMedia '(hover: none)' is true on touch devices (no hover capability).
+  const [actionWord, setActionWord] = useState('Tap')
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(hover: hover)')
+    setActionWord(mq.matches ? 'Click' : 'Tap')
+    const handler = (e) => setActionWord(e.matches ? 'Click' : 'Tap')
+    mq.addEventListener?.('change', handler)
+    return () => mq.removeEventListener?.('change', handler)
+  }, [])
+
+  // Card → create-league flow. Unauth users get stashed an intent so the
+  // signup/payment funnel can drop them on /leagues/create with the right
+  // format pre-selected on the other side. Paid users go direct.
+  function handleStartLeague(format, sport) {
+    try {
+      localStorage.setItem('pendingCreateFormat', JSON.stringify({ format, sport: sport || null }))
+    } catch {}
+    if (!isAuthenticated) {
+      navigate('/signup')
+    } else if (!profile?.is_paid) {
+      navigate('/payment')
+    } else {
+      const params = new URLSearchParams({ format })
+      if (sport) params.set('sport', sport)
+      try { localStorage.removeItem('pendingCreateFormat') } catch {}
+      navigate(`/leagues/create?${params.toString()}`)
+    }
+  }
 
   // Auto-scroll to headlines when coming from notification
   useEffect(() => {
@@ -367,123 +426,77 @@ export default function HomePage() {
         {/* League Formats */}
         <div className="mb-16">
           <h2 className="font-display text-3xl text-center mb-3">Run Your League</h2>
-          <p className="text-text-muted text-center mb-8 max-w-lg mx-auto">18 formats. 10 sports. Unlimited leagues. Play with friends all year round.</p>
+          <p className="text-text-muted text-center mb-8 max-w-xl mx-auto">
+            18 formats. 10 sports. Play all year round. {actionWord} a card to start a league.
+          </p>
 
-          {/* Row 1: Traditional Fantasy Football (featured) + Salary Cap Fantasy Football */}
-          <div className="grid lg:grid-cols-5 gap-4 mb-4">
-            <Link to="/signup" className="group lg:col-span-3 relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/50 transition-colors">
-              <div className="absolute inset-0 bg-gradient-to-br from-green-800/30 via-green-900/20 to-transparent pointer-events-none" />
-              <div className="relative p-6 sm:p-8">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-accent">Featured</span>
-                </div>
-                <h3 className="font-display text-2xl sm:text-3xl text-white mb-2">Traditional Fantasy Football</h3>
-                <p className="text-sm text-text-secondary leading-relaxed mb-4 max-w-md">Snake draft, weekly lineups, waiver wire, trades, and a full playoff bracket. Fast, accurate stat updates, smooth user experience, and visually appealing. Commissioners love IKB.</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">NFL</span>
-                  <span className="text-sm text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
-                </div>
-              </div>
-            </Link>
-            <Link to="/signup" className="group lg:col-span-2 relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden hover:border-accent/50 transition-colors">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-800/25 via-emerald-900/15 to-transparent pointer-events-none" />
-              <div className="relative p-6">
-                <h3 className="font-display text-xl text-white mb-2">Salary Cap Fantasy Football</h3>
-                <p className="text-sm text-text-secondary leading-relaxed mb-4">Draft under a salary cap — every player has a price. Build a new roster each week and compete for the highest score. No waivers, no trades, just roster-building strategy.</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">NFL</span>
-                  <span className="text-xs text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
-                </div>
-              </div>
-            </Link>
+          {/* Row 1: Fantasy Football (featured, consolidated) */}
+          <div className="mb-4">
+            <FormatCard
+              featured
+              title="Fantasy Football"
+              desc="Two ways to play: full snake-draft season league (waivers, trades, playoff bracket) or weekly Salary Cap (no draft, fresh roster every week). Fast stat updates, sharp visuals."
+              gradient="from-green-800/30 via-green-900/20 to-transparent"
+              sports="NFL"
+              onClick={() => handleStartLeague('fantasy')}
+            />
           </div>
 
           {/* Row 2: Pick'em + Survivor + Brackets */}
           <div className="grid sm:grid-cols-3 gap-4 mb-4">
             {[
-              { title: "Pick'em", desc: "The classic. Pick the winners of upcoming games — by yourself or against a league of friends. Rack up points for picks you get right across a week, a stretch, or a whole season.", gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA' },
-              { title: 'Survivor', desc: "Pick one team to win each day (or week). If they lose, you lose a life. Can't reuse a team. Last one standing wins.", gradient: 'from-red-800/25 via-red-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA' },
-              { title: 'Brackets', desc: 'Fill out a bracket and compete with your league. March Madness, NFL playoffs, NBA playoffs — every major tournament covered.', gradient: 'from-violet-800/25 via-violet-900/15 to-transparent', sports: 'NCAAB · NFL · NBA · All Playoffs' },
+              { title: "Pick'em", desc: 'Pick the winners. Most points at the end wins.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA', format: 'pickem' },
+              { title: 'Survivor', desc: "Pick one team per period. Lose, you burn a life. Can't reuse a team. Last one standing wins.", gradient: 'from-red-800/25 via-red-900/15 to-transparent', sports: 'NFL · NBA · MLB · NHL · NCAA', format: 'survivor' },
+              { title: 'Brackets', desc: 'Fill out a tournament bracket. Most points across all rounds wins.', gradient: 'from-violet-800/25 via-violet-900/15 to-transparent', sports: 'NCAAB · NFL · NBA · All Playoffs', format: 'bracket' },
             ].map((mode) => (
-              <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
-                <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} pointer-events-none`} />
-                <div className="relative">
-                  <h3 className="font-display text-lg text-white mb-2">{mode.title}</h3>
-                  <p className="text-sm text-text-secondary leading-relaxed mb-3">{mode.desc}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-text-muted">{mode.sports}</span>
-                    <span className="text-xs text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
-                  </div>
-                </div>
-              </Link>
+              <FormatCard key={mode.title} {...mode} onClick={() => handleStartLeague(mode.format)} />
             ))}
           </div>
 
-          {/* Row 3: TD Survivor + Passing TD Competition + NBA DFS */}
+          {/* Row 3: TD Survivor + Passing TD + Daily Fantasy (consolidated NBA + MLB DFS) */}
           <div className="grid sm:grid-cols-3 gap-4 mb-4">
             {[
-              { title: 'Touchdown Survivor', desc: 'Pick one player to score a non-passing TD each week. Rush, reception, return — any TD counts. Miss and you lose a life.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL' },
-              { title: 'Passing TD Competition', desc: "Pick the QB you think will throw the most touchdowns each week — can't re-use a QB. The user with the most passing touchdowns at the end of the year wins.", gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL' },
-              { title: 'NBA Daily Fantasy', desc: 'Build a fresh roster every night under a salary cap. No draft, no season commitment — just nightly lineup strategy.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'NBA' },
+              { title: 'Touchdown Survivor', desc: 'Pick a player to score a non-passing TD each week. Miss, you burn a life.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL', format: 'survivor', sport: 'americanfootball_nfl' },
+              { title: 'Passing TD Competition', desc: 'Pick a QB each week (no repeats). Most passing TDs across the season wins.', gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL', format: 'td_pass' },
+              { title: 'Daily Fantasy', desc: 'Build a fresh lineup every game day under a salary cap. No draft, no season commitment.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'NBA · MLB', format: null /* sport-picker on next step */ },
             ].map((mode) => (
-              <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
-                <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} pointer-events-none`} />
-                <div className="relative">
-                  <h3 className="font-display text-lg text-white mb-2">{mode.title}</h3>
-                  <p className="text-sm text-text-secondary leading-relaxed mb-3">{mode.desc}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-text-muted">{mode.sports}</span>
-                    <span className="text-xs text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
-                  </div>
-                </div>
-              </Link>
+              <FormatCard
+                key={mode.title}
+                {...mode}
+                onClick={() => {
+                  if (mode.format) {
+                    handleStartLeague(mode.format, mode.sport)
+                  } else {
+                    // Daily Fantasy — no format preset; user picks NBA vs MLB on create page
+                    handleStartLeague('nba_dfs') // default into NBA DFS; create page lets them flip
+                  }
+                }}
+              />
             ))}
           </div>
 
-          {/* Row 4: MLB DFS + Squares + Home Run Derby */}
-          <div className="grid sm:grid-cols-3 gap-4 mb-4">
+          {/* Row 4: Squares + Home Run Derby */}
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
             {[
-              { title: 'MLB Daily Fantasy', desc: 'Set a new lineup every game day under a salary cap. Stack hitters, pick pitchers, chase the big night.', gradient: 'from-sky-800/25 via-sky-900/15 to-transparent', sports: 'MLB' },
-              { title: 'Squares', desc: 'There is no better way to get a whole party of people engaged in the game than squares. Use squares for the Super Bowl or any game you\'re watching with friends!', gradient: 'from-purple-800/25 via-purple-900/15 to-transparent', sports: 'NFL · NBA · MLB · NCAA' },
-              { title: 'Home Run Derby', desc: 'Pick 3 hitters per day. Each player usable once per week. Most homers across the season wins.', gradient: 'from-amber-800/25 via-amber-900/15 to-transparent', sports: 'MLB' },
+              { title: 'Squares', desc: 'Pick squares on a 10×10 grid. Score lands on your row+column at the end of any quarter, you win that quarter.', gradient: 'from-purple-800/25 via-purple-900/15 to-transparent', sports: 'NFL · NBA · MLB · NCAA', format: 'squares' },
+              { title: 'Home Run Derby', desc: 'Pick 3 hitters per day. Most home runs across the season wins.', gradient: 'from-amber-800/25 via-amber-900/15 to-transparent', sports: 'MLB', format: 'hr_derby' },
             ].map((mode) => (
-              <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
-                <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} pointer-events-none`} />
-                <div className="relative">
-                  <h3 className="font-display text-lg text-white mb-2">{mode.title}</h3>
-                  <p className="text-sm text-text-secondary leading-relaxed mb-3">{mode.desc}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-text-muted">{mode.sports}</span>
-                    <span className="text-xs text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
-                  </div>
-                </div>
-              </Link>
+              <FormatCard key={mode.title} {...mode} onClick={() => handleStartLeague(mode.format)} />
             ))}
           </div>
 
-          {/* Row 5: 3-Point Contest + Strikeouts + Sacks + Interceptions
-              + Solo Tackles + Receptions — daily/weekly stat-collection
-              contest set */}
+          {/* Row 5: stat-collection contests — short copy so the cards
+              don't get tall on mobile where they're full-width. */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { title: '3-Point Contest', desc: 'Pick 3 shooters per night. Most threes across the season wins.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NBA · WNBA' },
-              { title: 'Strikeouts Contest', desc: 'Pick 3 MLB pitchers per day. Most strikeouts across the season wins.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'MLB' },
-              { title: 'Sacks Contest', desc: 'Pick 3 NFL defenders per week. Most sacks across the season wins.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL' },
-              { title: 'Interceptions Contest', desc: 'Pick 3 NFL defenders per week. Most interceptions across the season wins.', gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL' },
-              { title: 'Solo Tackles Contest', desc: 'Pick 3 NFL defenders per week. Most solo tackles across the season wins.', gradient: 'from-emerald-800/25 via-emerald-900/15 to-transparent', sports: 'NFL' },
-              { title: 'Receptions Contest', desc: 'Pick 3 NFL pass catchers per week. Most receptions across the season wins.', gradient: 'from-yellow-800/25 via-yellow-900/15 to-transparent', sports: 'NFL' },
+              { title: '3-Point Contest', desc: 'Pick 3 shooters per night. Most threes wins.', gradient: 'from-orange-700/25 via-orange-900/15 to-transparent', sports: 'NBA · WNBA', format: 'three_point' },
+              { title: 'Strikeouts Contest', desc: 'Pick 3 pitchers per day. Most strikeouts wins.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'MLB', format: 'strikeouts' },
+              { title: 'Sacks Contest', desc: 'Pick 3 defenders per week. Most sacks wins.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL', format: 'sacks' },
+              { title: 'Interceptions Contest', desc: 'Pick 3 defenders per week. Most interceptions wins.', gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL', format: 'ints' },
+              { title: 'Solo Tackles Contest', desc: 'Pick 3 defenders per week. Most solo tackles wins.', gradient: 'from-emerald-800/25 via-emerald-900/15 to-transparent', sports: 'NFL', format: 'tackles' },
+              { title: 'Receptions Contest', desc: 'Pick 3 pass catchers per week. Most receptions wins.', gradient: 'from-yellow-800/25 via-yellow-900/15 to-transparent', sports: 'NFL', format: 'receptions' },
             ].map((mode) => (
-              <Link key={mode.title} to="/signup" className="group relative rounded-2xl border border-text-primary/20 bg-bg-primary overflow-hidden p-6 hover:border-accent/50 transition-colors">
-                <div className={`absolute inset-0 bg-gradient-to-br ${mode.gradient} pointer-events-none`} />
-                <div className="relative">
-                  <h3 className="font-display text-lg text-white mb-2">{mode.title}</h3>
-                  <p className="text-sm text-text-secondary leading-relaxed mb-3">{mode.desc}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-text-muted">{mode.sports}</span>
-                    <span className="text-xs text-accent font-semibold group-hover:translate-x-0.5 transition-transform">Start Playing →</span>
-                  </div>
-                </div>
-              </Link>
+              <FormatCard key={mode.title} {...mode} onClick={() => handleStartLeague(mode.format)} />
             ))}
           </div>
         </div>

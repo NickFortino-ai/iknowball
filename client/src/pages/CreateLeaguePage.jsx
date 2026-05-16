@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useNflSeasonOpener } from '../hooks/useLeagues'
 import { api } from '../lib/api'
 import { getBackdropUrl } from '../lib/backdropUrl'
@@ -498,14 +498,20 @@ const DURATION_OPTIONS = [
 export default function CreateLeaguePage() {
   const navigate = useNavigate()
   const createLeague = useCreateLeague()
+  // ?format=X[&sport=Y] from the landing page card-tap flow. Used once
+  // on mount to pre-select the format and (optionally) sport so the user
+  // lands directly on the right configuration step.
+  const [searchParams] = useSearchParams()
+  const initialFormat = searchParams.get('format') || ''
+  const initialSport = searchParams.get('sport') || ''
 
   const [name, setName] = useState('')
-  const [format, setFormat] = useState('')
+  const [format, setFormat] = useState(initialFormat)
   const [expandedCardKey, setExpandedCardKey] = useState(null)
   const [selectedCardKey, setSelectedCardKey] = useState(null)
   const [collapsedCategories, setCollapsedCategories] = useState(() => new Set())
   const settingsRef = useRef(null)
-  const [sport, setSport] = useState('')
+  const [sport, setSport] = useState(initialSport)
   const [duration, setDuration] = useState('')
   const [maxMembers, setMaxMembers] = useState('')
   const [startsAt, setStartsAt] = useState('')

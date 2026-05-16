@@ -20,7 +20,23 @@ export default function LoginPage() {
     try {
       await signIn(identifier, password)
       const pendingCode = localStorage.getItem('pendingInviteCode')
-      navigate(pendingCode ? `/join/${pendingCode}` : '/')
+      if (pendingCode) { navigate(`/join/${pendingCode}`); return }
+      // Card-on-landing flow: user tapped a format card while logged out,
+      // signed in instead of signing up — drop them on /leagues/create.
+      const pendingCreate = (() => {
+        try {
+          const raw = localStorage.getItem('pendingCreateFormat')
+          return raw ? JSON.parse(raw) : null
+        } catch { return null }
+      })()
+      if (pendingCreate?.format) {
+        try { localStorage.removeItem('pendingCreateFormat') } catch {}
+        const params = new URLSearchParams({ format: pendingCreate.format })
+        if (pendingCreate.sport) params.set('sport', pendingCreate.sport)
+        navigate(`/leagues/create?${params.toString()}`)
+        return
+      }
+      navigate('/')
     } catch (err) {
       setError(err.message)
     } finally {
