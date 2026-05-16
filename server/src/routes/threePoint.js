@@ -8,54 +8,67 @@ import { logger } from '../utils/logger.js'
 const router = Router()
 router.use(requireAuth)
 
-// Cache ESPN season 3PM leaders (refreshed every 30 min)
-let threeLeadersCache = null
-let threeLeadersCacheTime = 0
-const THREE_CACHE_TTL = 30 * 60 * 1000
+// ESPN's `/leaders` endpoint reports 3PM as a per-game AVERAGE (category
+// name `3PointsMadePerGame`, displayName "Average 3-Point Field Goals
+// Made"). The right total for the picker comes from each athlete's
+// `/types/<2|3>/athletes/<id>/statistics/0` response which exposes the
+// total separately ("3-Point Field Goals Made" without "Average" in the
+// displayName). 30-min per-athlete cache keeps the call volume sane.
+const athleteTotalCache = new Map() // espnId -> { total, ts }
+const ATHLETE_TOTAL_TTL = 30 * 60 * 1000
 
-// Fetch ESPN's 3PM leaders for one season type and merge into accumulator.
-// types/2 = regular season, types/3 = postseason. Adding playoff makes is
-// the right call during the postseason window — players who don't make
-// the playoffs simply get 0 added.
-async function fetch3PMForType(seasonType, accumulator) {
-  const targetAbbrevs = new Set(['3PM', 'TPM', 'threePointFieldGoalsMade'])
-  const res = await fetch(`https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/types/${seasonType}/leaders?limit=200`)
-  if (!res.ok) throw new Error(`ESPN returned ${res.status} for type ${seasonType}`)
-  const data = await res.json()
-  for (const cat of data.categories || []) {
-    const abbr = cat.abbreviation || cat.name || ''
-    if (!targetAbbrevs.has(abbr)) continue
-    for (const leader of cat.leaders || []) {
-      const ref = leader.athlete?.$ref || ''
-      const m = ref.match(/\/athletes\/(\d+)/)
-      if (!m) continue
-      accumulator[m[1]] = (accumulator[m[1]] || 0) + Math.round(leader.value)
+async function fetchAthlete3PMForType(espnId, seasonType, season = 2026) {
+  const url = `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/${season}/types/${seasonType}/athletes/${espnId}/statistics/0`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return 0
+    const data = await res.json()
+    const cats = data.splits?.categories || []
+    for (const cat of cats) {
+      if (cat.name !== 'offensive') continue
+      for (const s of cat.stats || []) {
+        if (s.abbreviation === '3PM' && !(s.displayName || '').toLowerCase().includes('average')) {
+          return Math.round(Number(s.value) || 0)
+        }
+      }
     }
-    break
+    return 0
+  } catch {
+    return 0
   }
 }
 
-async function getSeason3PMLeaders() {
-  if (threeLeadersCache && Date.now() - threeLeadersCacheTime < THREE_CACHE_TTL) return threeLeadersCache
-  const map = {}
-  // Regular season is required; postseason is best-effort. If the
-  // postseason endpoint hasn't started populating yet (off-season) it
-  // returns an empty leaders array, not an error, so we just continue.
-  try {
-    await fetch3PMForType(2, map)
-  } catch (err) {
-    logger.error({ err }, 'Failed to fetch ESPN 3PM regular-season leaders')
-    return threeLeadersCache || {}
+async function fetchNbaSeason3PMTotals(espnIds, season = 2026) {
+  const result = {}
+  const now = Date.now()
+  const toFetch = []
+  for (const id of espnIds) {
+    const cached = athleteTotalCache.get(id)
+    if (cached && now - cached.ts < ATHLETE_TOTAL_TTL) {
+      result[id] = cached.total
+    } else {
+      toFetch.push(id)
+    }
   }
-  try {
-    await fetch3PMForType(3, map)
-  } catch (err) {
-    logger.warn({ err }, 'Failed to fetch ESPN 3PM postseason leaders (continuing with regular only)')
+  if (!toFetch.length) return result
+
+  const CONCURRENCY = 6
+  for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
+    const batch = toFetch.slice(i, i + CONCURRENCY)
+    const totals = await Promise.all(batch.map(async (id) => {
+      const reg = await fetchAthlete3PMForType(id, 2, season)
+      let post = 0
+      try { post = await fetchAthlete3PMForType(id, 3, season) } catch {}
+      return reg + post
+    }))
+    for (let j = 0; j < batch.length; j++) {
+      const id = batch[j]
+      const total = totals[j]
+      result[id] = total
+      athleteTotalCache.set(id, { total, ts: Date.now() })
+    }
   }
-  threeLeadersCache = map
-  threeLeadersCacheTime = Date.now()
-  logger.info({ count: Object.keys(map).length }, 'Refreshed ESPN 3PM leaders cache (regular + postseason)')
-  return map
+  return result
 }
 
 function getWeekStart(dateStr) {
@@ -77,10 +90,10 @@ router.get('/players', async (req, res) => {
   const { date } = req.query
   if (!date) return res.status(400).json({ error: 'date required' })
   const pool = await getNBAPlayerPool(date)
-  const leaders = await getSeason3PMLeaders()
+  const totals = await fetchNbaSeason3PMTotals(pool.map((p) => p.espn_player_id).filter(Boolean))
   const enriched = pool.map((p) => ({
     ...p,
-    season_threes: leaders[p.espn_player_id] || 0,
+    season_threes: totals[p.espn_player_id] || 0,
   }))
   enriched.sort((a, b) => b.season_threes - a.season_threes || b.salary - a.salary)
   res.json(enriched)

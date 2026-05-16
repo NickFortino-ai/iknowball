@@ -22,53 +22,81 @@ import { logger } from '../utils/logger.js'
 const rosterCache = new Map()
 const ROSTER_TTL = 24 * 60 * 60 * 1000
 
-// Season 3PM leaders cache (regular + post combined). 30-min refresh during
-// active play.
-let leadersCache = null
-let leadersCacheTime = 0
-const LEADERS_TTL = 30 * 60 * 1000
+// Per-athlete 3PM total cache. ESPN's leaderboard `/leaders` endpoint
+// reports the 3PM category as a per-game AVERAGE (category name
+// `3PointsMadePerGame`, displayName "Average 3-Point Field Goals Made"),
+// even though the rest of the response looks like a total. To show real
+// season totals in the picker we hit the per-athlete `/statistics/0`
+// endpoint which exposes both the total and the per-game avg side-by-side.
+// 30-min TTL keeps it fresh during live play without hammering ESPN.
+const athleteTotalCache = new Map() // espnId -> { total, ts }
+const ATHLETE_TOTAL_TTL = 30 * 60 * 1000
 
 // ---------------------------------------------------------------------------
 // ESPN helpers
 // ---------------------------------------------------------------------------
 
-async function fetch3PMForType(seasonType, accumulator) {
-  const targetAbbrevs = new Set(['3PM', 'TPM', 'threePointFieldGoalsMade'])
-  const url = `https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba/seasons/2026/types/${seasonType}/leaders?limit=200`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`ESPN WNBA leaders ${seasonType} returned ${res.status}`)
-  const data = await res.json()
-  for (const cat of data.categories || []) {
-    const abbr = cat.abbreviation || cat.name || ''
-    if (!targetAbbrevs.has(abbr)) continue
-    for (const leader of cat.leaders || []) {
-      const ref = leader.athlete?.$ref || ''
-      const m = ref.match(/\/athletes\/(\d+)/)
-      if (!m) continue
-      accumulator[m[1]] = (accumulator[m[1]] || 0) + Math.round(leader.value)
+// Fetch one athlete's season 3PM TOTAL (regular + post combined). Pulls
+// from /seasons/<y>/types/<2|3>/athletes/<id>/statistics/0 — that response
+// lists 3PM twice: once as "3-Point Field Goals Made" (total) and once as
+// "Average 3-Point Field Goals Made". We want the non-Average one.
+async function fetchAthlete3PMForType(espnId, seasonType, season) {
+  const url = `https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba/seasons/${season}/types/${seasonType}/athletes/${espnId}/statistics/0`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return 0
+    const data = await res.json()
+    const cats = data.splits?.categories || []
+    for (const cat of cats) {
+      if (cat.name !== 'offensive') continue
+      for (const s of cat.stats || []) {
+        if (s.abbreviation === '3PM' && !(s.displayName || '').toLowerCase().includes('average')) {
+          return Math.round(Number(s.value) || 0)
+        }
+      }
     }
-    break
+    return 0
+  } catch {
+    return 0
   }
 }
 
-export async function getWnbaSeason3PMLeaders() {
-  if (leadersCache && Date.now() - leadersCacheTime < LEADERS_TTL) return leadersCache
-  const map = {}
-  try {
-    await fetch3PMForType(2, map)
-  } catch (err) {
-    logger.error({ err: err.message }, 'WNBA 3PM regular-season leaders fetch failed')
-    return leadersCache || {}
+// Fetch 3PM totals for a batch of athletes. Concurrency-capped (6 at a
+// time) so we don't burst-hammer ESPN. Per-athlete result cached for the
+// `ATHLETE_TOTAL_TTL` window.
+export async function fetchSeason3PMTotals(espnIds, season = 2026) {
+  const result = {}
+  const now = Date.now()
+  const toFetch = []
+  for (const id of espnIds) {
+    const cached = athleteTotalCache.get(id)
+    if (cached && now - cached.ts < ATHLETE_TOTAL_TTL) {
+      result[id] = cached.total
+    } else {
+      toFetch.push(id)
+    }
   }
-  try {
-    await fetch3PMForType(3, map)
-  } catch (err) {
-    // Postseason is best-effort
-    logger.warn({ err: err.message }, 'WNBA 3PM postseason leaders fetch skipped')
+  if (!toFetch.length) return result
+
+  const CONCURRENCY = 6
+  for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
+    const batch = toFetch.slice(i, i + CONCURRENCY)
+    const totals = await Promise.all(batch.map(async (id) => {
+      // Regular season + postseason summed. Postseason is best-effort —
+      // an error or empty response there contributes 0.
+      const reg = await fetchAthlete3PMForType(id, 2, season)
+      let post = 0
+      try { post = await fetchAthlete3PMForType(id, 3, season) } catch {}
+      return reg + post
+    }))
+    for (let j = 0; j < batch.length; j++) {
+      const id = batch[j]
+      const total = totals[j]
+      result[id] = total
+      athleteTotalCache.set(id, { total, ts: Date.now() })
+    }
   }
-  leadersCache = map
-  leadersCacheTime = Date.now()
-  return map
+  return result
 }
 
 // Pull team roster (with espn_player_id, name, headshot, position) for one
@@ -177,16 +205,17 @@ export async function getWNBAPlayerPool(date) {
   const teamIds = Object.keys(teamGameInfo)
   const rosters = await Promise.all(teamIds.map((tid) => fetchTeamRoster(tid, teamGameInfo[tid].abbrev)))
 
-  // Merge season 3PM totals.
-  const leaders = await getWnbaSeason3PMLeaders()
-
+  // Build the pool first (without 3PM totals), then fetch totals for just
+  // the athletes who actually appear in tonight's pool. This bounds the
+  // /statistics calls to whoever is playing — typically 100-200 players,
+  // cached for 30 min per athlete.
   const pool = []
   for (let i = 0; i < teamIds.length; i++) {
     const info = teamGameInfo[teamIds[i]]
     for (const p of rosters[i]) {
       pool.push({
         ...p,
-        season_threes: leaders[p.espn_player_id] || 0,
+        season_threes: 0,
         game_state: info.state,
         game_period: info.period,
         game_clock: info.clock,
@@ -194,6 +223,11 @@ export async function getWNBAPlayerPool(date) {
         espn_event_id: eventByTeamId[teamIds[i]] || null,
       })
     }
+  }
+
+  const totals = await fetchSeason3PMTotals(pool.map((p) => p.espn_player_id))
+  for (const p of pool) {
+    p.season_threes = totals[p.espn_player_id] || 0
   }
 
   pool.sort((a, b) => b.season_threes - a.season_threes || a.player_name.localeCompare(b.player_name))
