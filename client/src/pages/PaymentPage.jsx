@@ -242,39 +242,53 @@ export default function PaymentPage() {
     )
   }
 
+  // Pull invite-flow league context if HeroLayout supplied it (window stash
+  // avoids requiring useOutletContext when this page is mounted standalone)
+  const inviteLeague = (typeof window !== 'undefined' && window.__ikb_invite_league) || null
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md bg-bg-primary rounded-2xl p-7 border border-text-primary/20">
-        <h1 className="font-display text-4xl text-center text-text-primary mb-2 tracking-wide">I KNOW BALL</h1>
-        <p className="text-text-primary/80 text-center text-sm mb-6 leading-relaxed">
-          The all-in-one fantasy and sports prediction platform.
-        </p>
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-bg-primary/40 backdrop-blur-md rounded-2xl p-6 sm:p-7 border border-white/15">
+        {/* IKB pill header — visual unity with /signup, /login */}
+        <div className="flex justify-center mb-5">
+          <div className="inline-flex items-center px-4 py-1.5 bg-accent/15 border-2 border-accent rounded-lg">
+            <span className="font-display text-xs sm:text-sm text-accent tracking-[0.35em]">
+              I KNOW BALL
+            </span>
+          </div>
+        </div>
+
+        {inviteLeague && (
+          <p className="text-white/85 text-center text-sm mb-5">
+            One step from joining <span className="font-semibold">{inviteLeague.name}</span>.
+          </p>
+        )}
 
         {(error || status === 'cancelled') && (
-          <div className="bg-incorrect/10 border border-incorrect rounded-lg p-3 mb-5 text-sm text-incorrect">
+          <div className="bg-incorrect/15 border border-incorrect rounded-lg p-3 mb-4 text-sm text-incorrect">
             {error || 'Payment was cancelled. Try again when you\'re ready.'}
           </div>
         )}
 
         {/* What you get */}
-        <div className="bg-bg-primary border border-text-primary/20 rounded-xl p-4 mb-5">
+        <div className="bg-bg-primary/40 backdrop-blur-sm border border-white/15 rounded-xl p-4 mb-5">
           <div className="font-display text-sm text-accent uppercase tracking-wider mb-3">What you get</div>
-          <ul className="space-y-2 text-sm text-text-primary">
+          <ul className="space-y-2 text-sm text-white">
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">Live picks</span> across NFL, NBA, MLB, NHL, college, golf — scored by Vegas odds in real time.</span>
+              <span><span className="font-semibold">Live picks</span> across NFL, NBA, MLB, WNBA, NHL, college, golf — scored by Vegas odds in real time.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">14+ league formats</span> — fantasy football, daily fantasy, HR Derby, 3-Point Contest, Sacks, Survivor, Brackets, Squares, and more.</span>
+              <span><span className="font-semibold">18 league formats</span> — Fantasy Football, Salary Cap DFS, Pick'em, Survivor, Brackets, Squares, NBA/WNBA 3-Point Contests, HR Derby, Strikeouts, Sacks, Interceptions, Solo Tackles, Receptions, TD Pass, and more.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">Global leaderboard</span> climbing from Rookie to GOAT — every pick counts toward your tier forever.</span>
+              <span><span className="font-semibold">Global tier ladder</span> — climb Rookie → Baller → Elite → Hall of Famer → GOAT as every pick lifetime-counts toward your rank.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">Sports-centric social hub</span> — post takes, react to friends' picks, and watch the feed light up with wins, streaks, and league results.</span>
+              <span><span className="font-semibold">Social hub built for sports</span> — post takes, react to friends' picks, watch the feed light up with wins, streaks, and league results.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
@@ -289,30 +303,30 @@ export default function PaymentPage() {
             onClick={() => setPlan('monthly')}
             className={`flex-1 py-3 rounded-xl text-center transition-all ${
               plan === 'monthly'
-                ? 'bg-accent/10 border-2 border-accent'
-                : 'bg-bg-primary border border-text-primary/20 hover:border-text-primary/40'
+                ? 'bg-accent/15 border-2 border-accent'
+                : 'bg-bg-primary/40 backdrop-blur-sm border border-white/15 hover:border-white/30'
             }`}
           >
-            <div className="font-display text-lg text-text-primary">
+            <div className="font-display text-lg text-white">
               {isNative ? products.monthly?.priceString || '$0.99' : '$1'}
             </div>
-            <div className="text-xs text-text-primary/70">per month</div>
+            <div className="text-xs text-white/70">per month</div>
           </button>
           <button
             onClick={() => setPlan('yearly')}
             className={`flex-1 py-3 rounded-xl text-center transition-all relative ${
               plan === 'yearly'
-                ? 'bg-accent/10 border-2 border-accent'
-                : 'bg-bg-primary border border-text-primary/20 hover:border-text-primary/40'
+                ? 'bg-accent/15 border-2 border-accent'
+                : 'bg-bg-primary/40 backdrop-blur-sm border border-white/15 hover:border-white/30'
             }`}
           >
             <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-correct text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
               Save 17%
             </div>
-            <div className="font-display text-lg text-text-primary">
+            <div className="font-display text-lg text-white">
               {isNative ? products.yearly?.priceString || '$9.99' : '$10'}
             </div>
-            <div className="text-xs text-text-primary/70">per year</div>
+            <div className="text-xs text-white/70">per year</div>
           </button>
         </div>
 
@@ -329,7 +343,7 @@ export default function PaymentPage() {
         </button>
 
         {/* Auto-renewal disclosure */}
-        <p className="text-[10px] text-text-primary/60 text-center mb-2 leading-relaxed">
+        <p className="text-[10px] text-white/65 text-center mb-2 leading-relaxed">
           {isNative
             ? 'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in Settings > Apple ID > Subscriptions.'
             : `Your subscription will auto-renew at ${plan === 'yearly' ? '$10.00/year' : '$1.00/month'} until cancelled. You can manage or cancel anytime from your account settings.`
@@ -337,7 +351,7 @@ export default function PaymentPage() {
         </p>
 
         {/* Terms + Privacy links (required by Apple guideline 3.1.2 for auto-renewing subscriptions) */}
-        <p className="text-[10px] text-text-primary/60 text-center mb-4 leading-relaxed">
+        <p className="text-[10px] text-white/65 text-center mb-4 leading-relaxed">
           By subscribing you agree to our{' '}
           <a href="https://iknowball.club/terms" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Terms of Use</a>
           {' '}and{' '}
@@ -349,7 +363,7 @@ export default function PaymentPage() {
           <button
             onClick={handleRestore}
             disabled={restoringPurchase}
-            className="w-full text-text-primary/80 hover:text-text-primary text-sm transition-colors mb-2"
+            className="w-full text-white/85 hover:text-white text-sm transition-colors mb-2"
           >
             {restoringPurchase ? 'Restoring...' : 'Restore Purchase'}
           </button>
@@ -360,7 +374,7 @@ export default function PaymentPage() {
           !showPromo ? (
             <button
               onClick={() => setShowPromo(true)}
-              className="w-full text-text-primary/80 hover:text-text-primary text-sm transition-colors"
+              className="w-full text-white/85 hover:text-white text-sm transition-colors"
             >
               Have a promo code?
             </button>
@@ -372,7 +386,7 @@ export default function PaymentPage() {
                 onChange={(e) => setPromoCode(e.target.value)}
                 placeholder="Enter code"
                 required
-                className="flex-1 bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors"
+                className="flex-1 bg-bg-input/80 border border-white/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors"
               />
               <button
                 type="submit"

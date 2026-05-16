@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import PasswordInput from '../components/ui/PasswordInput'
 
@@ -10,6 +10,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const signIn = useAuthStore((s) => s.signIn)
   const navigate = useNavigate()
+  const ctx = useOutletContext() || {}
+  const { leaguePreview } = ctx
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -27,31 +29,42 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-bg-primary rounded-2xl p-8 border border-text-primary/20">
-        <h1 className="font-display text-3xl text-center mb-2">Welcome Back</h1>
-        <p className="text-text-secondary text-center mb-8">Sign in to get back in the game</p>
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-bg-primary/40 backdrop-blur-md rounded-2xl p-6 sm:p-7 border border-white/15">
+        <div className="flex justify-center mb-5">
+          <div className="inline-flex items-center px-4 py-1.5 bg-accent/15 border-2 border-accent rounded-lg">
+            <span className="font-display text-xs sm:text-sm text-accent tracking-[0.35em]">
+              I KNOW BALL
+            </span>
+          </div>
+        </div>
+
+        {leaguePreview && (
+          <p className="text-white/85 text-center text-sm mb-4">
+            Sign in to join <span className="font-semibold">{leaguePreview.name}</span>.
+          </p>
+        )}
 
         {error && (
-          <div className="bg-incorrect-muted border border-incorrect rounded-lg p-3 mb-6 text-sm text-incorrect">
+          <div className="bg-incorrect/15 border border-incorrect rounded-lg p-3 mb-4 text-sm text-incorrect">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Username or Email</label>
+            <label className="block text-sm text-white/80 mb-1">Username or Email</label>
             <input
               type="text"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               required
-              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-bg-input/80 border border-white/20 rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
               placeholder="username or email"
             />
           </div>
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Password</label>
+            <label className="block text-sm text-white/80 mb-1">Password</label>
             <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -73,7 +86,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-text-secondary mt-6 text-sm">
+        <p className="text-center text-white/80 mt-5 text-sm">
           Don't have an account?{' '}
           <Link to="/signup" className="text-accent hover:underline">Sign up</Link>
         </p>

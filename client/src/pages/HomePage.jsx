@@ -290,33 +290,9 @@ export default function HomePage() {
     }
   }, [forceHeadlines])
 
-  const HERO_IMAGES = [
-    'nba-msg.webp',
-    'nfl-lambeau.webp',
-    'mlb-wrigley.webp',
-    'nba-american-airlines.webp',
-    'nfl-superdome.webp',
-    'mlb-fenway.webp',
-    'nba-intuit-dome.webp',
-    'nfl-arrowhead.webp',
-    'mlb-dodger.webp',
-    'nba-little-caesars.webp',
-    'nfl-atandt.webp',
-    'mlb-globe-life-field.webp',
-    'nba-fiserv.webp',
-    'nfl-gillette.webp',
-    'mlb-pnc.webp',
-    'nfl-us-bank.webp',
-    'mlb-oracle.webp',
-  ].map(getBackdropUrl)
-  const [heroIdx, setHeroIdx] = useState(0)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHeroIdx((i) => (i + 1) % HERO_IMAGES.length)
-    }, 11000)
-    return () => clearInterval(interval)
-  }, [])
+  // Cycling backdrop has moved into HeroLayout so it persists across
+  // /signup, /login, /payment navigations. HomePage's own hero block was
+  // stripped along with the local HERO_IMAGES + heroIdx state.
 
   const { data: landingPreview } = useLandingPreview()
   const previewMlb = landingPreview?.mlbGame
@@ -332,63 +308,34 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero with cycling stadium backdrops — full width like league backdrops */}
-      <div className="relative text-center mb-0 overflow-hidden">
-        {/* Backdrop images */}
-        <div className="absolute inset-0">
-          {HERO_IMAGES.map((src, i) => (
-            <img
-              key={src}
-              src={src}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{
-                opacity: i === heroIdx ? 1 : 0,
-                transform: i === heroIdx ? 'scale(1.05)' : 'scale(1)',
-                transition: i === heroIdx
-                  ? 'opacity 2.5s ease-in-out, transform 15s ease-out'
-                  : 'opacity 2.5s ease-in-out, transform 0.01s 2.6s',
-              }}
-              loading={i <= 1 ? 'eager' : 'lazy'}
-            />
-          ))}
-          {/* Dark gradient overlay — stronger at bottom for fade into content */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-bg-primary" />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 py-16 sm:py-24 px-4">
-          <h1 className="font-display text-5xl sm:text-7xl text-accent mb-4 tracking-tight drop-shadow-lg">
-            I KNOW BALL
-            <InfoTooltip text="I KNOW BALL is the all-in-one sports platform for people who live and breathe sports. Pick winners using live Vegas odds, run fantasy leagues with the best visuals in the game, and prove you actually know ball." />
-          </h1>
-          <p className="text-white/90 text-lg sm:text-xl max-w-lg mx-auto mb-8 drop-shadow">
-            Win leagues. Pick winners.<br />Prove you know ball.
-          </p>
-          {!isAuthenticated ? (
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/signup" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
-                Sign Up
-              </Link>
-              <Link to="/login" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-white/20 hover:border-white/40 hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
-                Sign In
-              </Link>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/leagues" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
-                Go to Leagues
-              </Link>
-              <Link to="/picks" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
-                Make Your Picks
-              </Link>
-            </div>
-          )}
-        </div>
+      {/* Hero (wordmark + cycling backdrops) is owned by HeroLayout — this
+          page just renders the CTA row directly under the wordmark, plus
+          the landing content below. Removes the visual jump when users
+          navigate to /signup, /login, /payment. */}
+      <div className="text-center mb-10 sm:mb-14">
+        {!isAuthenticated ? (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to="/signup" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              Sign Up
+            </Link>
+            <Link to="/login" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-white/20 hover:border-white/40 hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              Sign In
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to="/leagues" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              Go to Leagues
+            </Link>
+            <Link to="/picks" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
+              Make Your Picks
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Content container */}
-      <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-8 sm:py-12">
+      <div className="max-w-2xl lg:max-w-5xl mx-auto py-4 sm:py-8">
 
       {/* Welcome Card — new users only (account < 7 days old, not all tasks done) */}
       {isAuthenticated && profile?.created_at && (Date.now() - new Date(profile.created_at).getTime() < 7 * 24 * 60 * 60 * 1000) && (

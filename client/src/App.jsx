@@ -35,6 +35,7 @@ import MessagesPage from './pages/MessagesPage'
 import MessageThreadPage from './pages/MessageThreadPage'
 import GuidelinesPage from './pages/GuidelinesPage'
 import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
+import HeroLayout from './components/layouts/HeroLayout'
 import InstallPrompt from './components/pwa/InstallPrompt'
 // Push notifications disabled until APNs backend is wired up
 // import { initPushNotifications } from './lib/pushNotifications'
@@ -56,13 +57,20 @@ function AppRoutes() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+        {/* All entry/auth/payment routes share a persistent hero layout.
+            The wordmark + cycling backdrop live in HeroLayout and don't
+            remount when navigating between these routes, so the visual
+            doesn't jump. For /join/:code the layout swaps to the league's
+            own backdrop, which then persists through signup → payment. */}
+        <Route element={<HeroLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/join/:code" element={<JoinPage />} />
+        </Route>
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/payment" element={<PaymentPage />} />
-        <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/faq" element={<FAQPage />} />

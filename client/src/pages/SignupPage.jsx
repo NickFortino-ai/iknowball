@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import PasswordInput from '../components/ui/PasswordInput'
 
@@ -11,6 +11,11 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const signUp = useAuthStore((s) => s.signUp)
   const navigate = useNavigate()
+  // Optional context from HeroLayout — present when this page is rendered
+  // under the layout. Falls back to safe defaults if a future caller mounts
+  // it standalone.
+  const ctx = useOutletContext() || {}
+  const { leaguePreview } = ctx
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -32,24 +37,33 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-bg-primary rounded-2xl p-8 border border-text-primary/20">
-        <h1 className="font-display text-3xl text-center mb-2">Join the Game</h1>
-        <p className="text-text-secondary text-center mb-8">
-          {localStorage.getItem('pendingInviteCode')
-            ? 'Create your account to join the league'
-            : 'Create your account and start picking'}
-        </p>
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-bg-primary/40 backdrop-blur-md rounded-2xl p-6 sm:p-7 border border-white/15">
+        {/* IKB pill header — mirrors the league-card monogram for visual
+            consistency. No headline text per design direction. */}
+        <div className="flex justify-center mb-5">
+          <div className="inline-flex items-center px-4 py-1.5 bg-accent/15 border-2 border-accent rounded-lg">
+            <span className="font-display text-xs sm:text-sm text-accent tracking-[0.35em]">
+              I KNOW BALL
+            </span>
+          </div>
+        </div>
+
+        {leaguePreview && (
+          <p className="text-white/85 text-center text-sm mb-4">
+            One account → join <span className="font-semibold">{leaguePreview.name}</span> and every future league.
+          </p>
+        )}
 
         {error && (
-          <div className="bg-incorrect-muted border border-incorrect rounded-lg p-3 mb-6 text-sm text-incorrect">
+          <div className="bg-incorrect/15 border border-incorrect rounded-lg p-3 mb-4 text-sm text-incorrect">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Username</label>
+            <label className="block text-sm text-white/80 mb-1">Username</label>
             <input
               type="text"
               value={username}
@@ -58,23 +72,23 @@ export default function SignupPage() {
               minLength={3}
               maxLength={20}
               pattern="^[a-zA-Z0-9_]+$"
-              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-bg-input/80 border border-white/20 rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
               placeholder="ballknower42"
             />
           </div>
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Email</label>
+            <label className="block text-sm text-white/80 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-bg-input/80 border border-white/20 rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
               placeholder="you@example.com"
             />
           </div>
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Password</label>
+            <label className="block text-sm text-white/80 mb-1">Password</label>
             <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -91,11 +105,11 @@ export default function SignupPage() {
           </button>
         </form>
 
-        <p className="text-center text-text-secondary mt-6 text-sm">
+        <p className="text-center text-white/80 mt-5 text-sm">
           Already have an account?{' '}
           <Link to="/login" className="text-accent hover:underline">Sign in</Link>
         </p>
-        <p className="text-center text-text-muted mt-3 text-xs">
+        <p className="text-center text-white/60 mt-3 text-xs">
           By signing up, you agree to our{' '}
           <Link to="/guidelines" className="text-accent hover:underline">Community Guidelines</Link>
         </p>
