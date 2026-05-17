@@ -2406,7 +2406,12 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Picks' && league.format === 'survivor' && (() => {
-        const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
+        // Once the league is active, Day 1 is live (the activation cron flips
+        // status when either leagues.starts_at OR the first league_week has
+        // started — the latter matters because the ET-anchor fix can pull
+        // Day 1 earlier than leagues.starts_at). Suppress the "starts later"
+        // banner in that case.
+        const notStartedYet = league.status === 'open' && league.starts_at && new Date(league.starts_at) > new Date()
         return (
           <div className="relative z-10">
             {notStartedYet && (
