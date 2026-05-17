@@ -136,33 +136,48 @@ function getOrderStorageKey(userId) {
   return userId ? `leaderboard_tab_order_v1:${userId}` : 'leaderboard_tab_order_v1'
 }
 
-function loadTabOrder(userId) {
+// Map a list of saved labels back to the corresponding DEFAULT_TABS
+// entries, appending any new tabs added since the user last reordered.
+function labelsToTabs(labels) {
+  if (!Array.isArray(labels)) return DEFAULT_TABS
+  const ordered = []
+  for (const label of labels) {
+    const t = DEFAULT_TABS.find((d) => d.label === label)
+    if (t && !ordered.includes(t)) ordered.push(t)
+  }
+  for (const t of DEFAULT_TABS) {
+    if (!ordered.includes(t)) ordered.push(t)
+  }
+  return ordered
+}
+
+// Initial load uses (1) server-supplied order from the user profile if
+// present, (2) localStorage as a fallback for sessions before server sync
+// existed. Once profile.leaderboard_tab_order is set, the server value
+// wins on every render.
+function loadTabOrder(userId, serverOrder) {
+  if (Array.isArray(serverOrder) && serverOrder.length) return labelsToTabs(serverOrder)
   try {
     const saved = localStorage.getItem(getOrderStorageKey(userId))
     if (!saved) return DEFAULT_TABS
-    const labels = JSON.parse(saved)
-    if (!Array.isArray(labels)) return DEFAULT_TABS
-    const ordered = []
-    for (const label of labels) {
-      const t = DEFAULT_TABS.find((d) => d.label === label)
-      if (t && !ordered.includes(t)) ordered.push(t)
-    }
-    // Append any new tabs added since the user last saved their order.
-    for (const t of DEFAULT_TABS) {
-      if (!ordered.includes(t)) ordered.push(t)
-    }
-    return ordered
+    return labelsToTabs(JSON.parse(saved))
   } catch {
     return DEFAULT_TABS
   }
 }
 
 function saveTabOrder(userId, tabs) {
+  const labels = tabs.map((t) => t.label)
   try {
-    localStorage.setItem(getOrderStorageKey(userId), JSON.stringify(tabs.map((t) => t.label)))
+    localStorage.setItem(getOrderStorageKey(userId), JSON.stringify(labels))
   } catch {
     // localStorage might be unavailable (private mode, etc.) — silently ignore.
   }
+  // Persist server-side so the order syncs across devices. Fire and forget
+  // — local cache + localStorage already gave the user instant feedback;
+  // a network blip here just means the next device load reads the stale
+  // server value (which is fine, they'll re-sync on next reorder).
+  api.patch('/users/me', { leaderboard_tab_order: labels }).catch(() => {})
 }
 
 // Pointer-based drag reorder. Lighter than pulling in a dnd library, and works
@@ -229,11 +244,16 @@ function ReorderableTabs({ tabs, setTabs, activeLabel, setActiveLabel, editMode,
 
   return (
     <div
-      className="flex overflow-x-auto items-center gap-2 pb-2 mb-6 scrollbar-hide -mx-4 px-4"
+      className={`flex items-center gap-2 pb-2 mb-6 scrollbar-hide -mx-4 px-4 ${editMode ? 'overflow-x-visible flex-wrap' : 'overflow-x-auto'}`}
       ref={scrollRef}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      // While editing, kill native touch panning on the strip so the
+      // browser doesn't hijack drag gestures as horizontal scroll —
+      // pointer events route to handlePointerMove instead. Off in normal
+      // mode so the strip can still scroll horizontally on mobile.
+      style={editMode ? { touchAction: 'none' } : undefined}
     >
       <button
         type="button"
@@ -258,7 +278,10 @@ function ReorderableTabs({ tabs, setTabs, activeLabel, setActiveLabel, editMode,
             ref={(el) => { if (el) tabRefs.current[t.label] = el }}
             onPointerDown={(e) => handlePointerDown(e, t.label)}
             onClick={() => { if (!editMode) setActiveLabel(t.label) }}
-            style={isDragging ? { transform: `translateX(${dragX}px)`, zIndex: 10 } : undefined}
+            style={{
+              ...(isDragging ? { transform: `translateX(${dragX}px)`, zIndex: 10 } : {}),
+              ...(editMode ? { touchAction: 'none' } : {}),
+            }}
             className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1 select-none ${
               isActive
                 ? 'bg-accent text-white'
@@ -298,7 +321,8 @@ function ReorderableTabs({ tabs, setTabs, activeLabel, setActiveLabel, editMode,
 export default function LeaderboardPage() {
   const { profile } = useAuth()
   const userId = profile?.id
-  const [tabs, setTabs] = useState(() => loadTabOrder(userId))
+  const serverOrder = profile?.leaderboard_tab_order
+  const [tabs, setTabs] = useState(() => loadTabOrder(userId, serverOrder))
   const [activeLabel, setActiveLabel] = useState(tabs[0]?.label || 'Global')
   const [editMode, setEditMode] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState(null)
@@ -306,10 +330,11 @@ export default function LeaderboardPage() {
   const [searchedUser, setSearchedUser] = useState(null)
   const scrollRef = useRef(null)
 
-  // Reload order if userId arrives after first render (auth loads async).
+  // Reload order when userId arrives or when server-side order changes
+  // (e.g., user reordered on another device).
   useEffect(() => {
-    setTabs(loadTabOrder(userId))
-  }, [userId])
+    setTabs(loadTabOrder(userId, serverOrder))
+  }, [userId, JSON.stringify(serverOrder)])
 
   const tab = useMemo(() => tabs.find((t) => t.label === activeLabel) || tabs[0], [tabs, activeLabel])
   const isLeaguesTab = tab.scope === 'leagues'

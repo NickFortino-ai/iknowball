@@ -40,6 +40,10 @@ const updateSchema = z.object({
   has_seen_onboarding: z.boolean().optional(),
   has_dismissed_readiness_banner: z.boolean().optional(),
   has_dismissed_standings_roster_banner: z.boolean().optional(),
+  // Ordered array of Leaderboard tab labels (e.g. ['Global', 'NFL', …]).
+  // Persisted server-side so the user's chosen order follows them across
+  // devices (desktop ↔ mobile). Null/missing means default order.
+  leaderboard_tab_order: z.array(z.string()).nullable().optional(),
   timezone: z.string().max(50).optional(),
   backdrop_image: z.string().max(200).nullable().optional(),
   backdrop_y: z.number().min(0).max(100).nullable().optional(),
