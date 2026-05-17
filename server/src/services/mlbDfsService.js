@@ -331,6 +331,70 @@ export async function generateMLBSalaries(date, season = 2026) {
         const headshot = athlete.headshot?.href || null
         const injury = athlete.injuries?.[0]
         const injuryStatus = injury?.status || null
+        const opponentLabel = `${isHome ? 'vs' : '@'} ${opponentAbbrev}`
+
+        // Two-way players (Ohtani): always emit BOTH a hitter row (id=espnId,
+        // position=UTIL) and a pitcher row (id=espnId-P, position=SP),
+        // regardless of which position group ESPN slots them under. ESPN
+        // sometimes lists Ohtani in the SP group; without this dual emit,
+        // the hitter row would be missing entirely and he'd appear only as
+        // "SP · NS" at the bottom of the list on non-pitching days.
+        if (isTwoWayPlayer(name)) {
+          const gameLog = await fetchGameLog(espnId, 'baseball/mlb', season)
+
+          const batAvgs = await fetchPlayerSeasonAvgs(espnId, 'batting')
+          if (batAvgs) {
+            const batSeasonFppg = calcMLBBatterFppg(batAvgs)
+            let batFppg = calcWeightedFppg(mlbBatterGameFpts, gameLog, batSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
+            batFppg = shrinkBatterFppg(batFppg, batAvgs?.ab || 0)
+            let batSalary = mlbFppgToSalary(batFppg)
+            batSalary = applyDefensiveAdjustment(batSalary, opponentAbbrev, defRankings, 30)
+            const batScarcity = POSITION_SCARCITY['UTIL'] || 1.0
+            batSalary = Math.round(batSalary * batScarcity / 100) * 100
+            batSalary = Math.max(2500, Math.min(6500, batSalary))
+            salaries.push({
+              player_name: name,
+              team: teamAbbrev,
+              position: 'UTIL',
+              espn_player_id: espnId,
+              game_date: date,
+              season,
+              salary: batSalary,
+              opponent: opponentLabel,
+              game_starts_at: gameStartsAt,
+              headshot_url: headshot,
+              injury_status: injuryStatus,
+              is_pitcher: false,
+            })
+          }
+
+          const pitchAvgs = await fetchPlayerSeasonAvgs(espnId, 'pitching')
+          if (pitchAvgs) {
+            const pitchSeasonFppg = calcMLBPitcherFppg(pitchAvgs)
+            let pitchFppg = calcWeightedFppg(mlbPitcherGameFpts, gameLog, pitchSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
+            pitchFppg = shrinkPitcherFppg(pitchFppg, pitchAvgs?.ip || 0)
+            let pitchSalary = mlbPitcherFppgToSalary(pitchFppg)
+            pitchSalary = applyDefensiveAdjustment(pitchSalary, opponentAbbrev, defRankings, 30)
+            const pitchScarcity = POSITION_SCARCITY['SP'] || 1.0
+            pitchSalary = Math.round(pitchSalary * pitchScarcity / 100) * 100
+            pitchSalary = Math.max(5500, Math.min(11200, pitchSalary))
+            salaries.push({
+              player_name: name,
+              team: teamAbbrev,
+              position: 'SP',
+              espn_player_id: pitcherIdSuffix(espnId),
+              game_date: date,
+              season,
+              salary: pitchSalary,
+              opponent: opponentLabel,
+              game_starts_at: gameStartsAt,
+              headshot_url: headshot,
+              injury_status: injuryStatus,
+              is_pitcher: true,
+            })
+          }
+          continue
+        }
 
         const avgs = await fetchPlayerSeasonAvgs(espnId)
         let seasonFppg
@@ -372,45 +436,12 @@ export async function generateMLBSalaries(date, season = 2026) {
           game_date: date,
           season,
           salary,
-          opponent: `${isHome ? 'vs' : '@'} ${opponentAbbrev}`,
+          opponent: opponentLabel,
           game_starts_at: gameStartsAt,
           headshot_url: headshot,
           injury_status: injuryStatus,
           is_pitcher: isPitcher,
         })
-
-        // Two-way player: emit a second entry under the opposite role so users
-        // can draft Ohtani as SP separately from drafting him as a hitter, and
-        // the Strikeouts contest sees him in the pitcher pool. Suffix the
-        // espn_player_id with -P to satisfy the unique constraint and keep
-        // downstream stats lookups unambiguous.
-        if (isTwoWayPlayer(name) && !isPitcher) {
-          const pitchAvgs = await fetchPlayerSeasonAvgs(espnId, 'pitching')
-          if (pitchAvgs) {
-            const pitchSeasonFppg = calcMLBPitcherFppg(pitchAvgs)
-            let pitchFppg = calcWeightedFppg(mlbPitcherGameFpts, gameLog, pitchSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
-            pitchFppg = shrinkPitcherFppg(pitchFppg, pitchAvgs?.ip || 0)
-            let pitchSalary = mlbPitcherFppgToSalary(pitchFppg)
-            pitchSalary = applyDefensiveAdjustment(pitchSalary, opponentAbbrev, defRankings, 30)
-            const pitchScarcity = POSITION_SCARCITY['SP'] || 1.0
-            pitchSalary = Math.round(pitchSalary * pitchScarcity / 100) * 100
-            pitchSalary = Math.max(5500, Math.min(11200, pitchSalary))
-            salaries.push({
-              player_name: name,
-              team: teamAbbrev,
-              position: 'SP',
-              espn_player_id: pitcherIdSuffix(espnId),
-              game_date: date,
-              season,
-              salary: pitchSalary,
-              opponent: `${isHome ? 'vs' : '@'} ${opponentAbbrev}`,
-              game_starts_at: gameStartsAt,
-              headshot_url: headshot,
-              injury_status: injuryStatus,
-              is_pitcher: true,
-            })
-          }
-        }
         }
       }
     }
