@@ -368,12 +368,16 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero (wordmark + cycling backdrops) is owned by HeroLayout — this
-          page just renders the CTA row directly under the wordmark, plus
-          the landing content below. Removes the visual jump when users
-          navigate to /signup, /login, /payment. */}
+          page renders the tagline + CTA row directly under the wordmark.
+          The tagline stays HERE on the homepage but is intentionally
+          absent from /signup, /login, /payment (where the form card is
+          the focus). */}
       <div className="text-center mb-10 sm:mb-14">
+        <p className="text-white/90 text-lg sm:text-xl max-w-lg mx-auto mb-7 drop-shadow">
+          Win leagues. Pick winners.<br />Prove you know ball.
+        </p>
         {!isAuthenticated ? (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
             <Link to="/signup" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
               Sign Up
             </Link>
@@ -382,7 +386,7 @@ export default function HomePage() {
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
             <Link to="/leagues" className="w-full sm:w-auto text-center bg-white/5 backdrop-blur-md border border-accent/50 hover:border-accent hover:bg-white/10 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors">
               Go to Leagues
             </Link>
