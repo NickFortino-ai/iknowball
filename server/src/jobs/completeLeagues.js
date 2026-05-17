@@ -757,17 +757,39 @@ async function getHRDerbyStandings(league) {
 export async function completeLeagues() {
   const now = new Date().toISOString()
 
-  // Activate open leagues whose start date has passed
-  const { data: openLeagues, error: openErr } = await supabase
+  // Activate open leagues whose start date has passed. We use two signals:
+  //  - leagues.starts_at <= now (the user-picked start)
+  //  - earliest league_weeks.starts_at <= now (the first actual period)
+  // The second matters for survivor (and any period-based format) where the
+  // ET-anchor fix can move Day 1 earlier than leagues.starts_at — without
+  // this, Day 1 is live and pickable but the league is still labeled "open"
+  // (Members tab, no readiness flag).
+  const { data: openByStart } = await supabase
     .from('leagues')
     .select('id, format')
     .eq('status', 'open')
     .not('starts_at', 'is', null)
     .lte('starts_at', now)
 
-  if (openErr) {
-    logger.error({ error: openErr }, 'Failed to fetch open leagues for activation')
-  } else if (openLeagues?.length) {
+  const { data: openWeeks } = await supabase
+    .from('league_weeks')
+    .select('league_id, leagues!inner(id, format, status)')
+    .eq('leagues.status', 'open')
+    .lte('starts_at', now)
+
+  const openLeagues = []
+  const seen = new Set()
+  for (const l of openByStart || []) {
+    if (!seen.has(l.id)) { seen.add(l.id); openLeagues.push(l) }
+  }
+  for (const w of openWeeks || []) {
+    const id = w.leagues?.id || w.league_id
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    openLeagues.push({ id, format: w.leagues?.format })
+  }
+
+  if (openLeagues.length) {
     const toActivate = []
     for (const league of openLeagues) {
       // Bracket leagues stay open until their lock time passes
