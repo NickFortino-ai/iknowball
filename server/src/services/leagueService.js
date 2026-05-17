@@ -530,10 +530,20 @@ export async function generateLeagueWeeks(league) {
       current.setUTCDate(current.getUTCDate() + 1)
     }
   } else {
-    // Weekly mode: Monday 10:00 UTC to next Monday 09:59 UTC
-    const day = current.getUTCDay()
-    current.setUTCDate(current.getUTCDate() - ((day + 6) % 7))
-    current.setUTCHours(10, 0, 0, 0)
+    // Weekly mode: Mon 6 AM ET → next Mon 5:59 AM ET. Anchor Week 1 to
+    // the Monday of the ET week containing starts_at — same reason as
+    // daily mode: a starts_at like 2026-05-18T00:00Z (= Sun May 17 8 PM
+    // ET) should belong to the ET week ending on that Sunday, not get
+    // rolled forward to "next Monday UTC".
+    const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    // Find the Monday of the ET week containing startEtDate.
+    const [y, m, d] = startEtDate.split('-').map(Number)
+    const probe = new Date(Date.UTC(y, m - 1, d, 12)) // noon UTC to dodge any DST boundary weirdness
+    const probeDay = probe.getUTCDay() // 0=Sun..6=Sat
+    const daysBackToMon = (probeDay + 6) % 7 // 0 for Mon, 1 for Tue, ..., 6 for Sun
+    probe.setUTCDate(probe.getUTCDate() - daysBackToMon)
+    const mondayEtDate = probe.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    current.setTime(new Date(`${mondayEtDate}T10:00:00.000Z`).getTime())
 
     while (current < end) {
       const weekEnd = new Date(current)
@@ -558,6 +568,23 @@ export async function generateLeagueWeeks(league) {
     if (error) {
       logger.error({ error, leagueId: league.id }, 'Failed to generate league weeks')
     }
+  }
+
+  // Sanity log — when investigating "Day 1 is on the wrong date" reports,
+  // this single line shows starts_at + the first period's ET interpretation
+  // side-by-side so the bug class is easy to catch in production logs.
+  if (periods.length > 0) {
+    const first = periods[0]
+    const fmt = (iso) => new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York' })
+    logger.info({
+      leagueId: league.id,
+      format: league.format,
+      pickFrequency: isDaily ? 'daily' : 'weekly',
+      startsAtEt: fmt(league.starts_at),
+      day1StartEt: fmt(first.starts_at),
+      day1EndEt: fmt(first.ends_at),
+      periodCount: periods.length,
+    }, 'Survivor periods generated')
   }
 }
 
