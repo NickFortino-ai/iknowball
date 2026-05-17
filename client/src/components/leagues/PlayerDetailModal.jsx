@@ -24,9 +24,12 @@ function InjuryBadge({ status }) {
 
 /**
  * Returns the column set used in the per-week stats table for a given position.
- * Skill positions share the same set; QB / K / DEF have their own.
+ * Skill positions share the same set; QB / K / DEF have their own. For K,
+ * trick-play stats (rush/rec/pass) are appended only when at least one
+ * tracked week has a non-zero value — keeps the normal kicker table tight
+ * while exposing the source of unexpected points when they appear.
  */
-function columnsFor(position) {
+function columnsFor(position, weeks) {
   if (position === 'QB') {
     return [
       { key: 'pts', label: 'Pts' },
@@ -45,12 +48,23 @@ function columnsFor(position) {
     ]
   }
   if (position === 'K') {
-    return [
+    const cols = [
       { key: 'pts', label: 'Pts' },
       { key: 'fgm', label: 'FG' },
       { key: 'fgm_50_plus', label: '50+' },
       { key: 'xpm', label: 'XP' },
     ]
+    const anyNonZero = (key) => (weeks || []).some((w) => (Number(w[key]) || 0) !== 0)
+    if (anyNonZero('rush_yd') || anyNonZero('rush_td')) {
+      cols.push({ key: 'rush_yd', label: 'RuYD' }, { key: 'rush_td', label: 'RuTD' })
+    }
+    if (anyNonZero('rec') || anyNonZero('rec_yd') || anyNonZero('rec_td')) {
+      cols.push({ key: 'rec', label: 'REC' }, { key: 'rec_yd', label: 'ReYD' }, { key: 'rec_td', label: 'ReTD' })
+    }
+    if (anyNonZero('pass_yd') || anyNonZero('pass_td')) {
+      cols.push({ key: 'pass_yd', label: 'PaYD' }, { key: 'pass_td', label: 'PaTD' })
+    }
+    return cols
   }
   if (position === 'DEF') {
     return [
@@ -104,6 +118,12 @@ function CurrentWeekNarrative({ position, week }) {
   } else if (position === 'K') {
     if (week.fgm != null) parts.push(`${week.fgm} field goal${week.fgm !== 1 ? 's' : ''} made${week.fgm_50_plus ? ` (${week.fgm_50_plus} from 50+)` : ''}`)
     if (week.xpm != null) parts.push(`${week.xpm} extra point${week.xpm !== 1 ? 's' : ''} made`)
+    // Trick-play stats — rare for kickers, but if they exist they contribute
+    // to the total points, so surface them rather than leaving the user
+    // wondering where the extra pts came from.
+    if (week.rush_yd || week.rush_td) parts.push(`${week.rush_yd || 0} rushing yards${week.rush_td ? `, ${week.rush_td} rushing TD` : ''}`)
+    if (week.rec || week.rec_yd) parts.push(`${week.rec || 0} reception${week.rec !== 1 ? 's' : ''} for ${week.rec_yd || 0} yards${week.rec_td ? `, ${week.rec_td} rec TD` : ''}`)
+    if (week.pass_yd || week.pass_td) parts.push(`${week.pass_yd || 0} passing yards${week.pass_td ? `, ${week.pass_td} pass TD` : ''}`)
   } else if (position === 'DEF') {
     const items = []
     if (week.def_sack) items.push(`${week.def_sack} sack${week.def_sack !== 1 ? 's' : ''}`)
@@ -140,7 +160,7 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
   if (!previous.length) {
     return <p className="text-xs text-text-muted text-center py-3">No previous games.</p>
   }
-  const columns = columnsFor(position)
+  const columns = columnsFor(position, [...(previous || []), ...(currentWeek ? [currentWeek] : [])])
   return (
     <div className="overflow-x-auto -mx-2 px-2">
       <table className="min-w-full text-xs">
