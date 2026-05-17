@@ -92,7 +92,13 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
 
   // Skip completed leagues entirely. Brackets also show readiness when open
   // (so users know whether they've filled out their bracket before lock).
-  const activeLeagues = leagues.filter((l) => l.status === 'active' || (l.status === 'open' && l.format === 'bracket'))
+  // Survivor leagues also show readiness when open: with ET-anchored Day 1
+  // periods, the first period can be live (and needing a pick) before the
+  // league's leagues.starts_at timestamp triggers the activation cron.
+  const activeLeagues = leagues.filter((l) =>
+    l.status === 'active' ||
+    (l.status === 'open' && (l.format === 'bracket' || l.format === 'survivor'))
+  )
   if (!activeLeagues.length) return result
 
   // Group by format for batched queries
