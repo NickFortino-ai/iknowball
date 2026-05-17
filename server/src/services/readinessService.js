@@ -204,25 +204,47 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
 }
 
 async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
+  // Split injured players into Out (red downgrade) and yellow-flag (Q / DTD /
+  // Doubtful / IR — yellow downgrade). Probable doesn't downgrade.
+  const isYellowStatus = (s) => s && s !== 'Probable' && s !== 'Out'
+  const downgradeAttention = (leagueId, detail) => {
+    // Only downgrade from 'ready' — don't overwrite a more severe 'action'.
+    const cur = result.get(leagueId)
+    if (cur?.state === 'action') return
+    set(result, leagueId, 'attention', detail)
+  }
+
   // ── NBA daily (Three-Point) ─────────────────────────────────────
   if (byFormat.three_point?.length) {
     const leagueIds = byFormat.three_point.map((l) => l.id)
-    const { data: outRows } = await supabase
+    const { data: salaryRows } = await supabase
       .from('nba_dfs_salaries')
-      .select('espn_player_id')
+      .select('espn_player_id, injury_status')
       .eq('game_date', todayET)
-      .eq('injury_status', 'Out')
-    const outIds = (outRows || []).map((r) => r.espn_player_id).filter(Boolean)
-    if (outIds.length) {
+      .not('injury_status', 'is', null)
+    const outIds = []
+    const yellowIds = []
+    for (const r of salaryRows || []) {
+      if (r.injury_status === 'Out') outIds.push(r.espn_player_id)
+      else if (isYellowStatus(r.injury_status)) yellowIds.push(r.espn_player_id)
+    }
+    if (outIds.length || yellowIds.length) {
       const { data: badPicks } = await supabase
         .from('three_point_picks')
         .select('league_id, espn_player_id')
         .in('league_id', leagueIds)
         .eq('user_id', userId)
         .eq('game_date', todayET)
-        .in('espn_player_id', outIds)
-      const hit = new Set((badPicks || []).map((p) => p.league_id))
-      for (const id of hit) set(result, id, 'action', 'Injured player on lineup — swap before tip-off')
+        .in('espn_player_id', [...outIds, ...yellowIds])
+      const outSet = new Set(outIds)
+      const outHit = new Set()
+      const yellowHit = new Set()
+      for (const p of badPicks || []) {
+        if (outSet.has(p.espn_player_id)) outHit.add(p.league_id)
+        else yellowHit.add(p.league_id)
+      }
+      for (const id of outHit) set(result, id, 'action', 'Injured player on lineup — swap before tip-off')
+      for (const id of yellowHit) if (!outHit.has(id)) downgradeAttention(id, 'Questionable/DTD player on lineup')
     }
   }
 
@@ -231,13 +253,19 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
   if (byFormat.hr_derby?.length) mlbDaily.push({ table: 'hr_derby_picks', leagues: byFormat.hr_derby })
   if (byFormat.strikeouts?.length) mlbDaily.push({ table: 'strikeouts_picks', leagues: byFormat.strikeouts })
   if (mlbDaily.length) {
-    const { data: outRows } = await supabase
+    const { data: salaryRows } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id')
+      .select('espn_player_id, injury_status')
       .eq('game_date', todayET)
-      .eq('injury_status', 'Out')
-    const outIds = (outRows || []).map((r) => r.espn_player_id).filter(Boolean)
-    if (outIds.length) {
+      .not('injury_status', 'is', null)
+    const outIds = []
+    const yellowIds = []
+    for (const r of salaryRows || []) {
+      if (r.injury_status === 'Out') outIds.push(r.espn_player_id)
+      else if (isYellowStatus(r.injury_status)) yellowIds.push(r.espn_player_id)
+    }
+    if (outIds.length || yellowIds.length) {
+      const outSet = new Set(outIds)
       for (const { table, leagues } of mlbDaily) {
         const leagueIds = leagues.map((l) => l.id)
         const { data: badPicks } = await supabase
@@ -246,9 +274,15 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
           .in('league_id', leagueIds)
           .eq('user_id', userId)
           .eq('game_date', todayET)
-          .in('espn_player_id', outIds)
-        const hit = new Set((badPicks || []).map((p) => p.league_id))
-        for (const id of hit) set(result, id, 'action', 'Injured player on lineup — swap before first pitch')
+          .in('espn_player_id', [...outIds, ...yellowIds])
+        const outHit = new Set()
+        const yellowHit = new Set()
+        for (const p of badPicks || []) {
+          if (outSet.has(p.espn_player_id)) outHit.add(p.league_id)
+          else yellowHit.add(p.league_id)
+        }
+        for (const id of outHit) set(result, id, 'action', 'Injured player on lineup — swap before first pitch')
+        for (const id of yellowHit) if (!outHit.has(id)) downgradeAttention(id, 'Questionable/DTD player on lineup')
       }
     }
   }
@@ -259,13 +293,19 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
   if (byFormat.ints?.length) nflWeekly.push({ table: 'ints_picks', col: 'sleeper_player_id', leagues: byFormat.ints })
   if (byFormat.td_pass?.length) nflWeekly.push({ table: 'td_pass_picks', col: 'qb_player_id', leagues: byFormat.td_pass })
   if (nflWeekly.length) {
-    const { data: outPlayers } = await supabase
+    const { data: injuredPlayers } = await supabase
       .from('nfl_players')
-      .select('id')
-      .in('injury_status', ['Out', 'IR'])
+      .select('id, injury_status')
+      .not('injury_status', 'is', null)
       .not('team', 'is', null)
-    const outIds = (outPlayers || []).map((p) => p.id)
-    if (outIds.length) {
+    const outIds = []
+    const yellowIds = []
+    for (const p of injuredPlayers || []) {
+      if (p.injury_status === 'Out' || p.injury_status === 'IR') outIds.push(p.id)
+      else if (isYellowStatus(p.injury_status)) yellowIds.push(p.id)
+    }
+    if (outIds.length || yellowIds.length) {
+      const outSet = new Set(outIds)
       const { getCurrentNflWeek } = await import('./tdPassService.js')
       const { week, season } = await getCurrentNflWeek()
       for (const { table, col, leagues } of nflWeekly) {
@@ -277,9 +317,15 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
           .eq('user_id', userId)
           .eq('week', week)
           .eq('season', season)
-          .in(col, outIds)
-        const hit = new Set((badPicks || []).map((p) => p.league_id))
-        for (const id of hit) set(result, id, 'action', `Injured player on Week ${week} pick — swap before kickoff`)
+          .in(col, [...outIds, ...yellowIds])
+        const outHit = new Set()
+        const yellowHit = new Set()
+        for (const p of badPicks || []) {
+          if (outSet.has(p[col])) outHit.add(p.league_id)
+          else yellowHit.add(p.league_id)
+        }
+        for (const id of outHit) set(result, id, 'action', `Injured player on Week ${week} pick — swap before kickoff`)
+        for (const id of yellowHit) if (!outHit.has(id)) downgradeAttention(id, `Questionable player on Week ${week} pick`)
       }
     }
   }
