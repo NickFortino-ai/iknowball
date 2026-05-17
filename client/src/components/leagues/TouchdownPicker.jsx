@@ -101,7 +101,7 @@ export default function TouchdownPicker({ league, pickWeek, onPick }) {
                       : player.injury_status === 'Questionable' ? 'bg-yellow-500/20 text-yellow-500'
                       : 'bg-text-primary/10 text-text-muted'
                     }`}>
-                      {player.injury_status === 'Day-To-Day' ? 'DTD' : player.injury_status.charAt(0)}
+                      {player.injury_status === 'Day-To-Day' ? 'DTD' : player.injury_status === 'IR' ? 'IR' : player.injury_status.charAt(0)}
                     </span>
                   )}
                   {player.used && (
