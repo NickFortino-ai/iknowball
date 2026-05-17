@@ -180,80 +180,31 @@ function saveTabOrder(userId, tabs) {
   api.patch('/users/me', { leaderboard_tab_order: labels }).catch(() => {})
 }
 
-// Pointer-based drag reorder. Lighter than pulling in a dnd library, and works
-// on both touch and mouse. While dragging, the held tab follows the pointer
-// via translateX; when its center crosses another tab's center, the order
-// array is mutated and on release we persist to localStorage.
+// Reorder via chevron buttons rather than drag. The previous pointer-drag
+// implementation was unpredictable on mobile (overflow-x-auto hijack,
+// flex-wrap multi-row complications) and produced jumpy swaps. Tap-to-
+// move is boring and reliable: each tab in edit mode shows ◀ ▶ buttons
+// that swap it one slot in either direction. Active state and label
+// click still work in normal mode.
 function ReorderableTabs({ tabs, setTabs, activeLabel, setActiveLabel, editMode, onToggleEdit, onScoringInfoClick, userId, scrollRef }) {
-  const tabRefs = useRef({})
-  const [dragLabel, setDragLabel] = useState(null)
-  const [dragX, setDragX] = useState(0)
-  const dragRef = useRef({ pointerId: null, startX: 0, startScrollLeft: 0 })
-
-  function handlePointerDown(e, label) {
-    if (!editMode) return
-    if (e.target.closest('button')?.dataset?.scoringInfo) return
-    e.preventDefault()
-    dragRef.current = {
-      pointerId: e.pointerId,
-      startX: e.clientX,
-      startScrollLeft: scrollRef.current?.scrollLeft || 0,
-    }
-    setDragLabel(label)
-    setDragX(0)
-    try { e.target.setPointerCapture(e.pointerId) } catch {}
-  }
-
-  function handlePointerMove(e) {
-    if (!editMode || dragLabel === null || e.pointerId !== dragRef.current.pointerId) return
-    const scrollDelta = (scrollRef.current?.scrollLeft || 0) - dragRef.current.startScrollLeft
-    const dx = e.clientX - dragRef.current.startX + scrollDelta
-    setDragX(dx)
-
-    // Find which neighbor's midpoint we've crossed and swap.
-    const dragRect = tabRefs.current[dragLabel]?.getBoundingClientRect()
-    if (!dragRect) return
-    const draggedCenter = dragRect.left + dragRect.width / 2 + (dx - (dragX || 0))
-    for (const t of tabs) {
-      if (t.label === dragLabel) continue
-      const r = tabRefs.current[t.label]?.getBoundingClientRect()
-      if (!r) continue
-      const center = r.left + r.width / 2
-      const fromIdx = tabs.findIndex((x) => x.label === dragLabel)
-      const toIdx = tabs.findIndex((x) => x.label === t.label)
-      const movingRight = toIdx > fromIdx
-      if ((movingRight && e.clientX > center) || (!movingRight && e.clientX < center)) {
-        const next = [...tabs]
-        const [moved] = next.splice(fromIdx, 1)
-        next.splice(toIdx, 0, moved)
-        setTabs(next)
-        // Reset visual offset relative to new position.
-        dragRef.current.startX = e.clientX
-        setDragX(0)
-        return
-      }
-    }
-  }
-
-  function handlePointerUp() {
-    if (dragLabel === null) return
-    setDragLabel(null)
-    setDragX(0)
-    saveTabOrder(userId, tabs)
+  function moveTab(label, direction) {
+    setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.label === label)
+      if (idx < 0) return prev
+      const target = direction === 'left' ? idx - 1 : idx + 1
+      if (target < 0 || target >= prev.length) return prev
+      const next = [...prev]
+      const [moved] = next.splice(idx, 1)
+      next.splice(target, 0, moved)
+      saveTabOrder(userId, next)
+      return next
+    })
   }
 
   return (
     <div
-      className={`flex items-center gap-2 pb-2 mb-6 scrollbar-hide -mx-4 px-4 ${editMode ? 'overflow-x-visible flex-wrap' : 'overflow-x-auto'}`}
+      className={`flex items-center gap-2 pb-2 mb-6 scrollbar-hide -mx-4 px-4 ${editMode ? 'flex-wrap' : 'overflow-x-auto'}`}
       ref={scrollRef}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      // While editing, kill native touch panning on the strip so the
-      // browser doesn't hijack drag gestures as horizontal scroll —
-      // pointer events route to handlePointerMove instead. Off in normal
-      // mode so the strip can still scroll horizontally on mobile.
-      style={editMode ? { touchAction: 'none' } : undefined}
     >
       <button
         type="button"
@@ -271,43 +222,63 @@ function ReorderableTabs({ tabs, setTabs, activeLabel, setActiveLabel, editMode,
       </button>
       {tabs.map((t, i) => {
         const isActive = activeLabel === t.label
-        const isDragging = dragLabel === t.label
+        const canMoveLeft = i > 0
+        const canMoveRight = i < tabs.length - 1
         return (
           <div
             key={t.label}
-            ref={(el) => { if (el) tabRefs.current[t.label] = el }}
-            onPointerDown={(e) => handlePointerDown(e, t.label)}
             onClick={() => { if (!editMode) setActiveLabel(t.label) }}
-            style={{
-              ...(isDragging ? { transform: `translateX(${dragX}px)`, zIndex: 10 } : {}),
-              ...(editMode ? { touchAction: 'none' } : {}),
-            }}
-            className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-1 select-none ${
-              isActive
+            className={`flex-shrink-0 px-1 py-1 rounded-lg flex items-center select-none ${
+              isActive && !editMode
                 ? 'bg-accent text-white'
-                : 'bg-bg-primary border border-text-primary/20 text-text-primary hover:border-text-primary/40'
-            } ${editMode ? 'cursor-grab animate-wiggle relative shadow-md' : 'cursor-pointer'} ${
-              isDragging ? 'cursor-grabbing opacity-90 ring-2 ring-accent' : 'transition-colors'
-            }`}
+                : 'bg-bg-primary border border-text-primary/20 text-text-primary'
+            } ${editMode ? '' : 'cursor-pointer hover:border-text-primary/40 transition-colors'}`}
           >
-            {/* Three vertical dots handle on the FIRST tab in edit mode is offered as the entry to edit;
-                when already in edit mode, every tab gets a tiny grip dot pattern. */}
+            {/* Left chevron — edit mode only */}
             {editMode && (
-              <span className="text-text-muted/70 leading-none mr-0.5" aria-hidden>⋮⋮</span>
-            )}
-            {t.label}
-            {t.scope === 'leagues' && (
               <button
                 type="button"
-                data-scoring-info="1"
-                onClick={(e) => { e.stopPropagation(); onScoringInfoClick() }}
-                className="inline-flex items-center ml-0.5 opacity-70 hover:opacity-100 transition-opacity"
-                aria-label="Scoring info"
+                onClick={(e) => { e.stopPropagation(); moveTab(t.label, 'left') }}
+                disabled={!canMoveLeft}
+                aria-label={`Move ${t.label} left`}
+                className="px-1.5 py-1 text-text-muted hover:text-text-primary disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+            )}
+
+            {/* Label — clickable in normal mode for tab activation */}
+            <span className={`text-sm font-semibold ${editMode ? 'px-1' : 'px-3'} py-1 inline-flex items-center gap-1`}>
+              {t.label}
+              {t.scope === 'leagues' && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onScoringInfoClick() }}
+                  className="inline-flex items-center ml-0.5 opacity-70 hover:opacity-100 transition-opacity"
+                  aria-label="Scoring info"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                </button>
+              )}
+            </span>
+
+            {/* Right chevron — edit mode only */}
+            {editMode && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); moveTab(t.label, 'right') }}
+                disabled={!canMoveRight}
+                aria-label={`Move ${t.label} right`}
+                className="px-1.5 py-1 text-text-muted hover:text-text-primary disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M9 18l6-6-6-6" />
                 </svg>
               </button>
             )}
