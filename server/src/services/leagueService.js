@@ -501,10 +501,17 @@ export async function generateLeagueWeeks(league) {
   const startsAtMs = new Date(league.starts_at).getTime()
 
   if (isDaily) {
-    // Daily mode: one entry per day
-    // Use 10:00 UTC to 09:59 UTC boundaries (6 AM ET to 5:59 AM ET)
-    // so US evening games land on the correct calendar date
-    current.setUTCHours(10, 0, 0, 0)
+    // Daily mode: one entry per ET calendar day. Period boundaries are
+    // 10:00 UTC → 09:59 UTC the next day (= 6 AM ET → 5:59 AM ET) so US
+    // evening games attach to the correct calendar date.
+    //
+    // ET-DATE anchor: previously we did `current.setUTCHours(10, 0, 0, 0)`,
+    // which on a starts_at like 2026-05-18T00:00Z (= May 17 8 PM ET) jumped
+    // forward to May 18 6 AM ET, skipping the entire May 17 ET sports day.
+    // Anchor day 1 instead to the ET calendar date of starts_at so a
+    // commissioner who picks "May 17" gets May 17 games on day 1.
+    const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    current.setTime(new Date(`${startEtDate}T10:00:00.000Z`).getTime())
 
     while (current < end) {
       const dayEnd = new Date(current)
