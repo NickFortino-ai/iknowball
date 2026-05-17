@@ -542,7 +542,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                             </svg>
                           )}
                         </div>
-                        <div className="text-xs text-text-muted">{player.position} · {player.team} {player.opponent}</div>
+                        <div className="text-xs text-text-muted">{player.position} · <span className="text-white">{player.team}</span> {player.opponent}</div>
                       </div>
                     </button>
                     <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
@@ -665,7 +665,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                       <InjuryBadge status={player.injury_status} />
                     </div>
                     <div className="text-xs text-text-muted">
-                      {player.position} · {player.team} {player.opponent}
+                      {player.position} · <span className="text-white">{player.team}</span> {player.opponent}
                       {player.lineup_status === 'confirmed' && player.batting_order ? ` · #${player.batting_order} in lineup` : ''}
                     </div>
                   </div>
