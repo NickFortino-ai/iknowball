@@ -58,23 +58,19 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
     throw err
   }
 
-  // Picks are allowed before league.starts_at — but only for games on or
-  // after the league actually begins. Picking a game that starts before the
-  // league does would be settled outside the league's lifecycle and is
-  // exactly the failure mode that caused the May 5/6 disaster.
-  if (league?.starts_at && new Date(game.starts_at) < new Date(league.starts_at)) {
-    const err = new Error("That game starts before the league does — pick a game on or after the league start date.")
-    err.status = 400
-    throw err
-  }
-
   if (new Date(game.starts_at) <= new Date()) {
     const err = new Error('This game has already started')
     err.status = 400
     throw err
   }
 
-  // Determine the correct league week for this game based on its start time
+  // Validity = the game falls within one of this league's generated
+  // periods. We used to compare game.starts_at < league.starts_at, but
+  // that's too strict now that Day 1's window is anchored to the ET
+  // calendar date of starts_at (so the period legitimately starts BEFORE
+  // league.starts_at when a commissioner picks a same-day evening kickoff).
+  // The period lookup is the source of truth — if it lands in a period,
+  // it'll be scored; if not, this pick wouldn't survive any cron.
   const { data: gameWeek } = await supabase
     .from('league_weeks')
     .select('id')
@@ -82,6 +78,12 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
     .lte('starts_at', game.starts_at)
     .gte('ends_at', game.starts_at)
     .maybeSingle()
+
+  if (!gameWeek) {
+    const err = new Error("That game falls outside this league's schedule — pick a game on or after the league start date.")
+    err.status = 400
+    throw err
+  }
 
   const resolvedWeekId = gameWeek?.id || weekId
 
@@ -213,15 +215,10 @@ export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
     player.team === getTeamAbbrev(g.home_team) || player.team === getTeamAbbrev(g.away_team)
   )
 
-  // Block picks for games that start before the league does — same
-  // failure-mode protection as the team-pick path.
-  if (playerGame && league?.starts_at && new Date(playerGame.starts_at) < new Date(league.starts_at)) {
-    const err = new Error("That game starts before the league does — pick a player whose game is on or after the league start date.")
-    err.status = 400
-    throw err
-  }
-
-  // Determine the league week
+  // Validity = the player's game falls within one of this league's
+  // generated periods (mirrors the team-pick path). Replaces the old
+  // `game.starts_at < league.starts_at` check, which was too strict once
+  // periods became ET-calendar-anchored.
   const { data: weeks } = await supabase
     .from('league_weeks')
     .select('id, starts_at, ends_at')
@@ -231,7 +228,13 @@ export async function submitTouchdownPick(leagueId, userId, weekId, playerId) {
   let resolvedWeekId = weekId
   if (playerGame && weeks?.length) {
     const gameWeek = weeks.find((w) => playerGame.starts_at >= w.starts_at && playerGame.starts_at <= w.ends_at)
-    if (gameWeek) resolvedWeekId = gameWeek.id
+    if (gameWeek) {
+      resolvedWeekId = gameWeek.id
+    } else {
+      const err = new Error("That game falls outside this league's schedule — pick a player whose game is on or after the league start date.")
+      err.status = 400
+      throw err
+    }
   }
 
   // Check if player has been used before
