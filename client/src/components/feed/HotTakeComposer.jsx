@@ -8,6 +8,7 @@ import Avatar from '../ui/Avatar'
 import InfoTooltip from '../ui/InfoTooltip'
 import TeamAutocomplete from './TeamAutocomplete'
 import { toast } from '../ui/Toast'
+import { supabase } from '../../lib/supabase'
 
 const MAX_CHARS = 2000
 const IMAGE_URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+\.(jpg|jpeg|png|gif|webp)(\?[^\s]*)?/gi
@@ -295,51 +296,92 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     return m?.[1] || null
   }
 
+  function blobToFile(blob) {
+    const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg')
+    return new File([blob], `dropped.${ext}`, { type: blob.type })
+  }
+
+  async function fetchUrlAsFile(url) {
+    // Path A: direct fetch — works for same-origin or CORS-permissive hosts.
+    try {
+      const res = await fetch(url, { mode: 'cors' })
+      if (res.ok) {
+        const blob = await res.blob()
+        if (blob.type.startsWith('image/')) return blobToFile(blob)
+      }
+    } catch (err) {
+      // CORS failure throws TypeError; fall through to proxy.
+      console.warn('[drop] direct fetch failed, will try server proxy:', err.message)
+    }
+
+    // Path B: server proxy. Browser CORS doesn't apply server-to-server.
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+      const proxyRes = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`, { headers })
+      if (!proxyRes.ok) {
+        const errBody = await proxyRes.json().catch(() => ({}))
+        console.warn('[drop] proxy returned', proxyRes.status, errBody)
+        return null
+      }
+      const blob = await proxyRes.blob()
+      return blobToFile(blob)
+    } catch (err) {
+      console.warn('[drop] proxy fetch threw:', err.message)
+      return null
+    }
+  }
+
   async function handleDrop(e) {
     e.preventDefault()
     setDragging(false)
 
-    // Three drag sources, in priority order:
-    //   1. OS file drop (Finder, Desktop) — dataTransfer.files
-    //   2. dataTransfer.items containing a File — sometimes set when dragging
-    //      an inline image from another browser tab
-    //   3. URL-only drag — fetch the URL and wrap it in a File (handles
-    //      cross-tab image drags where only text/uri-list / text/html is set)
-    let file = e.dataTransfer?.files?.[0] || null
-
-    if (!file && e.dataTransfer?.items) {
-      for (const item of e.dataTransfer.items) {
+    // Read dataTransfer state synchronously — it may be cleared on yield.
+    const dt = e.dataTransfer
+    const directFile = dt?.files?.[0] || null
+    let itemFile = null
+    if (dt?.items) {
+      for (const item of dt.items) {
         if (item.kind === 'file') {
           const f = item.getAsFile()
-          if (f) { file = f; break }
+          if (f) { itemFile = f; break }
         }
+      }
+    }
+    const url =
+      (dt?.getData('text/uri-list') || '').trim() ||
+      extractImgSrcFromHtml(dt?.getData('text/html')) ||
+      (dt?.getData('text/plain') || '').trim()
+
+    console.log('[drop] sources:', {
+      directFile: directFile ? `${directFile.name} (${directFile.type})` : null,
+      itemFile: itemFile ? `${itemFile.name} (${itemFile.type})` : null,
+      url: url || null,
+      types: dt ? Array.from(dt.types) : [],
+    })
+
+    let file = directFile || itemFile
+    if (!file && url) {
+      file = await fetchUrlAsFile(url)
+      if (!file) {
+        toast('Could not load that image. Try saving it and uploading directly.', 'error')
+        return
       }
     }
 
     if (!file) {
-      const url = (e.dataTransfer?.getData('text/uri-list') || '').trim()
-        || extractImgSrcFromHtml(e.dataTransfer?.getData('text/html'))
-      if (url) {
-        try {
-          const res = await fetch(url, { mode: 'cors' })
-          if (!res.ok) throw new Error(`HTTP ${res.status}`)
-          const blob = await res.blob()
-          const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg')
-          file = new File([blob], `dropped.${ext}`, { type: blob.type })
-        } catch (_) {
-          toast('Could not load that image — the source site may block cross-origin downloads. Try saving and uploading directly.', 'error')
-          return
-        }
-      }
+      console.warn('[drop] no usable file or URL found in dataTransfer')
+      return
     }
 
-    if (!file) return
     if (file.type.startsWith('video/')) {
       removeImage()
       selectVideo(file)
     } else if (file.type.startsWith('image/')) {
       removeVideo()
       selectImage(file)
+    } else {
+      console.warn('[drop] unsupported file type:', file.type)
     }
     if (!expanded) setExpanded(true)
   }
