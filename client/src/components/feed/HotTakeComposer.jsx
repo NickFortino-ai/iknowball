@@ -289,10 +289,50 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
     setDragging(false)
   }
 
-  function handleDrop(e) {
+  function extractImgSrcFromHtml(html) {
+    if (!html) return null
+    const m = html.match(/<img[^>]+src=["']([^"']+)["']/i)
+    return m?.[1] || null
+  }
+
+  async function handleDrop(e) {
     e.preventDefault()
     setDragging(false)
-    const file = e.dataTransfer?.files?.[0]
+
+    // Three drag sources, in priority order:
+    //   1. OS file drop (Finder, Desktop) — dataTransfer.files
+    //   2. dataTransfer.items containing a File — sometimes set when dragging
+    //      an inline image from another browser tab
+    //   3. URL-only drag — fetch the URL and wrap it in a File (handles
+    //      cross-tab image drags where only text/uri-list / text/html is set)
+    let file = e.dataTransfer?.files?.[0] || null
+
+    if (!file && e.dataTransfer?.items) {
+      for (const item of e.dataTransfer.items) {
+        if (item.kind === 'file') {
+          const f = item.getAsFile()
+          if (f) { file = f; break }
+        }
+      }
+    }
+
+    if (!file) {
+      const url = (e.dataTransfer?.getData('text/uri-list') || '').trim()
+        || extractImgSrcFromHtml(e.dataTransfer?.getData('text/html'))
+      if (url) {
+        try {
+          const res = await fetch(url, { mode: 'cors' })
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const blob = await res.blob()
+          const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg')
+          file = new File([blob], `dropped.${ext}`, { type: blob.type })
+        } catch (_) {
+          toast('Could not load that image — the source site may block cross-origin downloads. Try saving and uploading directly.', 'error')
+          return
+        }
+      }
+    }
+
     if (!file) return
     if (file.type.startsWith('video/')) {
       removeImage()
