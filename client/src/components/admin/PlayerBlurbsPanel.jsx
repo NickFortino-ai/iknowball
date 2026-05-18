@@ -19,7 +19,12 @@ export default function PlayerBlurbsPanel() {
   const [historyPlayerId, setHistoryPlayerId] = useState(null)
   const [history, setHistory] = useState([])
   const [week, setWeek] = useState(1)
+  const [search, setSearch] = useState('')
   const season = new Date().getFullYear()
+
+  const filteredPlayers = search.trim()
+    ? players.filter((p) => p.full_name?.toLowerCase().includes(search.trim().toLowerCase()))
+    : players
 
   const fetchPlayers = useCallback(async () => {
     setLoading(true)
@@ -43,11 +48,19 @@ export default function PlayerBlurbsPanel() {
   }
 
   const selectAll = () => {
-    if (selected.size === players.length) {
-      setSelected(new Set())
-    } else {
-      setSelected(new Set(players.map((p) => p.id)))
-    }
+    // Acts on the currently visible (filtered) set — toggles on/off based on
+    // whether every visible player is already selected.
+    const allVisibleSelected = filteredPlayers.length > 0
+      && filteredPlayers.every((p) => selected.has(p.id))
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        for (const p of filteredPlayers) next.delete(p.id)
+      } else {
+        for (const p of filteredPlayers) next.add(p.id)
+      }
+      return next
+    })
   }
 
   const handleGenerate = async () => {
@@ -156,6 +169,14 @@ export default function PlayerBlurbsPanel() {
           ))}
         </div>
 
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search players…"
+          className="flex-1 min-w-[12rem] max-w-sm px-3 py-1.5 rounded-lg bg-bg-card border border-text-primary/20 text-sm text-text-primary placeholder-text-muted"
+        />
+
         <div className="flex items-center gap-2 ml-auto">
           <label className="text-xs text-text-muted">Week</label>
           <input
@@ -175,7 +196,7 @@ export default function PlayerBlurbsPanel() {
           onClick={selectAll}
           className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-bg-card border border-text-primary/20 text-text-secondary hover:bg-bg-card/80"
         >
-          {selected.size === players.length ? 'Deselect All' : 'Select All'}
+          {filteredPlayers.length > 0 && filteredPlayers.every((p) => selected.has(p.id)) ? 'Deselect All' : 'Select All'}
         </button>
         <button
           onClick={handleGenerate}
@@ -198,9 +219,13 @@ export default function PlayerBlurbsPanel() {
       {/* Player list */}
       {loading ? (
         <LoadingSpinner />
+      ) : filteredPlayers.length === 0 ? (
+        <p className="text-sm text-text-muted text-center py-8">
+          {search.trim() ? `No players matching "${search}"` : 'No players found'}
+        </p>
       ) : (
         <div className="space-y-1">
-          {players.map((player) => {
+          {filteredPlayers.map((player) => {
             const isSelected = selected.has(player.id)
             const blurb = player.blurb
             const isEditing = editingId === blurb?.id
