@@ -8,6 +8,7 @@ import { toast } from '../ui/Toast'
 const SPORT_DISPLAY = {
   basketball_nba: 'NBA Champion',
   americanfootball_nfl: 'NFL Champion',
+  americanfootball_ufl: 'UFL Champion',
   baseball_mlb: 'MLB Champion',
   basketball_ncaab: 'NCAAB Champion',
   americanfootball_ncaaf: 'NCAAF Champion',
