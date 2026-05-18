@@ -275,10 +275,10 @@ export function startScheduler() {
     })
     logger.info('Survivor stuck-pick backfill scheduled: every 10 minutes')
 
-    cron.schedule('*/30 * * * *', async () => {
+    cron.schedule('0 * * * *', async () => {
       try { await sendSurvivorPickReminders() } catch (err) { logger.error({ err }, 'Survivor pick reminder job failed') }
     })
-    logger.info('Survivor pick reminders scheduled: every 30 minutes')
+    logger.info('Survivor pick reminders scheduled: hourly')
 
     cron.schedule('*/30 * * * *', async () => {
       try { await settleStuckParlays() } catch (err) { logger.error({ err }, 'Stuck parlay cleanup job failed') }
