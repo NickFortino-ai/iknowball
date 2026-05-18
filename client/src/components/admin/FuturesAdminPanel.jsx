@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket } from '../../hooks/useAdmin'
+import { useSyncFutures, useAdminFuturesMarkets, useCloseFuturesMarket, useSettleFuturesMarket, useCreateFuturesMarket, useUpdateFuturesMarket } from '../../hooks/useAdmin'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { formatOdds } from '../../lib/scoring'
@@ -38,6 +38,37 @@ export default function FuturesAdminPanel() {
   const closeMarket = useCloseFuturesMarket()
   const settleMarket = useSettleFuturesMarket()
   const createMarket = useCreateFuturesMarket()
+  const updateMarket = useUpdateFuturesMarket()
+
+  // Inline edit state — the row being edited and a draft of its outcomes/title.
+  const [editingId, setEditingId] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editOutcomes, setEditOutcomes] = useState([])
+
+  function startEdit(market) {
+    const outcomes = typeof market.outcomes === 'string' ? JSON.parse(market.outcomes) : market.outcomes || []
+    setEditingId(market.id)
+    setEditTitle(market.title)
+    setEditOutcomes(outcomes.map((o) => ({ name: o.name, odds: String(o.odds) })))
+    setSettlingId(null)
+  }
+
+  async function handleSaveEdit() {
+    const outcomes = editOutcomes
+      .filter((o) => o.name.trim())
+      .map((o) => ({ name: o.name.trim(), odds: parseInt(o.odds) || 100 }))
+    if (!editTitle.trim() || outcomes.length < 2) {
+      toast('Need a title and at least 2 outcomes', 'error')
+      return
+    }
+    try {
+      await updateMarket.mutateAsync({ marketId: editingId, title: editTitle.trim(), outcomes })
+      toast('Market updated', 'success')
+      setEditingId(null)
+    } catch (err) {
+      toast(err.message || 'Failed to update', 'error')
+    }
+  }
 
   async function handleCreate() {
     const outcomes = newOutcomes.filter((o) => o.name.trim()).map((o) => ({
@@ -256,8 +287,15 @@ export default function FuturesAdminPanel() {
                     actions={
                       <div className="flex gap-2">
                         <button
+                          onClick={() => startEdit(market)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
                           onClick={() => {
                             setSettlingId(market.id)
+                            setEditingId(null)
                             setWinnerInput('')
                           }}
                           className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
@@ -281,6 +319,17 @@ export default function FuturesAdminPanel() {
                         onSettle={() => handleSettle(market.id)}
                         onCancel={() => setSettlingId(null)}
                         isPending={settleMarket.isPending}
+                      />
+                    )}
+                    editUI={editingId === market.id && (
+                      <EditUI
+                        editTitle={editTitle}
+                        setEditTitle={setEditTitle}
+                        editOutcomes={editOutcomes}
+                        setEditOutcomes={setEditOutcomes}
+                        onSave={handleSaveEdit}
+                        onCancel={() => setEditingId(null)}
+                        isPending={updateMarket.isPending}
                       />
                     )}
                   />
@@ -350,7 +399,7 @@ export default function FuturesAdminPanel() {
   )
 }
 
-function MarketRow({ market, actions, settleUI }) {
+function MarketRow({ market, actions, settleUI, editUI }) {
   const outcomes = typeof market.outcomes === 'string' ? JSON.parse(market.outcomes) : market.outcomes || []
   const synced = market.last_synced_at
     ? new Date(market.last_synced_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -368,6 +417,90 @@ function MarketRow({ market, actions, settleUI }) {
         <div className="shrink-0">{actions}</div>
       </div>
       {settleUI}
+      {editUI}
+    </div>
+  )
+}
+
+function EditUI({ editTitle, setEditTitle, editOutcomes, setEditOutcomes, onSave, onCancel, isPending }) {
+  function updateOutcome(i, field, value) {
+    setEditOutcomes((prev) => {
+      const next = [...prev]
+      next[i] = { ...next[i], [field]: value }
+      return next
+    })
+  }
+  function removeOutcome(i) {
+    setEditOutcomes((prev) => prev.filter((_, idx) => idx !== i))
+  }
+  function addOutcome() {
+    setEditOutcomes((prev) => [...prev, { name: '', odds: '' }])
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border space-y-3">
+      <div>
+        <label className="text-xs text-text-muted block mb-1">Title</label>
+        <input
+          type="text"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-text-muted block mb-1">Outcomes (name + American odds). Remove eliminated teams; tweak odds as the field narrows.</label>
+        <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          {editOutcomes.map((o, i) => (
+            <div key={i} className="flex gap-2">
+              <input
+                type="text"
+                value={o.name}
+                onChange={(e) => updateOutcome(i, 'name', e.target.value)}
+                placeholder="Outcome"
+                className="flex-1 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+              />
+              <input
+                type="text"
+                value={o.odds}
+                onChange={(e) => updateOutcome(i, 'odds', e.target.value)}
+                placeholder="+150"
+                className="w-24 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary"
+              />
+              <button
+                type="button"
+                onClick={() => removeOutcome(i)}
+                className="px-2 py-1 rounded-lg text-xs bg-incorrect/20 text-incorrect hover:bg-incorrect/30 transition-colors"
+                title="Remove this outcome"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addOutcome}
+          className="mt-2 text-xs text-accent hover:text-accent/80 transition-colors"
+        >
+          + add outcome
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={onSave}
+          disabled={isPending}
+          className="bg-correct hover:bg-correct/90 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+        >
+          {isPending ? 'Saving...' : 'Save Changes'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="bg-bg-card-hover text-text-secondary px-4 py-1.5 rounded-lg text-xs font-medium transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }

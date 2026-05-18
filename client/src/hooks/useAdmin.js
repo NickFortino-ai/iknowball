@@ -267,6 +267,18 @@ export function useCreateFuturesMarket() {
   })
 }
 
+export function useUpdateFuturesMarket() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ marketId, title, outcomes }) =>
+      api.patch(`/admin/futures/markets/${marketId}`, { title, outcomes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminFuturesMarkets'] })
+      queryClient.invalidateQueries({ queryKey: ['futuresMarkets'] })
+    },
+  })
+}
+
 // Team names for bracket autocomplete
 export function useTeamsForSport(sport) {
   return useQuery({
