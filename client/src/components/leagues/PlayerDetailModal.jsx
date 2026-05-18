@@ -267,26 +267,29 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
               )}
             </div>
 
-            {/* Injury update */}
-            {data.injury_detail && (
-              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500 shrink-0">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" />
-                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
-                  <span className="text-xs uppercase font-semibold tracking-wider text-yellow-500">Injury Update</span>
-                  <InjuryBadge status={data.injury_detail.status} />
-                </div>
-                {data.injury_detail.body_part && (
-                  <div className="text-xs text-text-secondary">{data.injury_detail.body_part}</div>
-                )}
-                {data.injury_detail.detail && (
-                  <div className="text-xs text-text-secondary mt-1">{data.injury_detail.detail}</div>
-                )}
-              </div>
-            )}
+            {/* Player Notes — uses the published blurb when one exists, else
+                falls back to the injury detail text (so the body part /
+                ESPN injury note doesn't disappear when there's no blurb).
+                Injury status remains visible in the header badge for
+                quick-scan. */}
+            {(() => {
+              const blurbText = data.blurb?.content?.trim()
+              const injuryParts = []
+              if (data.injury_detail?.body_part) injuryParts.push(data.injury_detail.body_part)
+              if (data.injury_detail?.detail) injuryParts.push(data.injury_detail.detail)
+              const fallback = injuryParts.join(' — ')
+              const notesText = blurbText || fallback
+              if (!notesText) return null
+              return (
+                <>
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-1.5">Player Notes</div>
+                    <p className="text-sm text-text-primary leading-relaxed">{notesText}</p>
+                  </div>
+                  <div className="border-t border-text-primary/10" />
+                </>
+              )
+            })()}
 
             {/* Current week narrative */}
             <div>
@@ -295,16 +298,6 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
               </h3>
               <CurrentWeekNarrative position={data.player.position} week={data.current_week} />
             </div>
-
-            <div className="border-t border-text-primary/10" />
-
-            {/* Player Notes (published blurb) */}
-            {data.blurb && (
-              <div>
-                <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-1.5">Player Notes</div>
-                <p className="text-sm text-text-primary leading-relaxed">{data.blurb.content}</p>
-              </div>
-            )}
 
             <div className="border-t border-text-primary/10" />
 
