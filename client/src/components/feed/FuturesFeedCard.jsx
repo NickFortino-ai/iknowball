@@ -99,12 +99,91 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
 }
 
 /**
- * Standalone modal version of the futures hit card (for notification tap).
- * Same design as the feed card but rendered as a modal overlay.
+ * Standalone modal opened when a futures-result notification is tapped.
+ * Wins render the original gold/trophy card; losses render a separate
+ * gray/red card showing the actual winner and the points lost.
  */
 export function FuturesHitModal({ pick, market, user, onClose }) {
-  const logoUrl = getTeamLogoUrl(pick.picked_outcome, market?.sport_key)
+  const isHit = pick.is_correct === true
+  const userLogoUrl = getTeamLogoUrl(pick.picked_outcome, market?.sport_key)
+  const winnerLogoUrl = market?.winning_outcome
+    ? getTeamLogoUrl(market.winning_outcome, market.sport_key)
+    : null
   const pickDate = formatPickDate(pick.created_at)
+  const userName = user?.display_name || user?.username
+
+  if (!isHit) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={onClose}>
+        <div
+          className="bg-bg-secondary w-full max-w-sm rounded-2xl overflow-hidden border border-incorrect/30"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-gradient-to-b from-incorrect/15 to-transparent px-6 pt-6 pb-4 text-center">
+            <div className="text-xs font-bold text-incorrect uppercase tracking-wider mb-3">Futures Result</div>
+
+            {userLogoUrl ? (
+              <img
+                src={userLogoUrl}
+                alt=""
+                className="w-20 h-20 object-contain mx-auto mb-3 opacity-50"
+                onError={(e) => {
+                  const fb = getTeamLogoFallbackUrl(pick.picked_outcome, market?.sport_key)
+                  if (fb && e.target.src !== fb) e.target.src = fb
+                  else e.target.style.display = 'none'
+                }}
+              />
+            ) : (
+              <div className="text-5xl mb-3 opacity-60">{'💔'}</div>
+            )}
+
+            <div className="font-display text-xl text-text-primary line-through opacity-70">
+              {pick.picked_outcome}
+            </div>
+            <div className="text-xs text-text-muted mt-1">{market?.title}</div>
+          </div>
+
+          <div className="px-6 pb-4">
+            <p className="text-xs text-text-secondary text-center leading-relaxed">
+              On {pickDate}, {userName} predicted {pick.picked_outcome} would win the {market?.title?.replace(' Winner', '')}.
+              {market?.winning_outcome ? (
+                <> The winner was <span className="font-semibold text-text-primary">{market.winning_outcome}</span>.</>
+              ) : null}
+            </p>
+          </div>
+
+          {market?.winning_outcome && winnerLogoUrl && (
+            <div className="px-6 pb-4 flex items-center justify-center gap-2">
+              <img
+                src={winnerLogoUrl}
+                alt=""
+                className="w-10 h-10 object-contain"
+                onError={(e) => {
+                  const fb = getTeamLogoFallbackUrl(market.winning_outcome, market.sport_key)
+                  if (fb && e.target.src !== fb) e.target.src = fb
+                  else e.target.style.display = 'none'
+                }}
+              />
+              <span className="text-sm font-semibold text-text-primary">{market.winning_outcome}</span>
+            </div>
+          )}
+
+          <div className="px-6 pb-6 flex items-center justify-center gap-3 border-t border-text-primary/10 pt-4">
+            <Avatar user={user} size="md" />
+            <span className="font-semibold text-text-primary">{userName}</span>
+            <span className="font-display text-2xl text-incorrect">{pick.points_earned}</span>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full py-3 text-sm text-text-muted hover:text-text-primary border-t border-text-primary/10 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={onClose}>
@@ -115,14 +194,14 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
         {/* Header */}
         <div className="bg-gradient-to-b from-yellow-500/20 to-transparent px-6 pt-6 pb-4 text-center">
           <div className="text-sm font-bold text-yellow-500 mb-4">
-            {user?.display_name || user?.username} called this on {pickDate}!
+            {userName} called this on {pickDate}!
           </div>
 
           {/* Team logo or trophy */}
-          {logoUrl ? (
-            <img src={logoUrl} alt="" className="w-24 h-24 object-contain mx-auto mb-3" onError={(e) => { const fb = getTeamLogoFallbackUrl(pick.picked_outcome, market?.sport_key); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />
+          {userLogoUrl ? (
+            <img src={userLogoUrl} alt="" className="w-24 h-24 object-contain mx-auto mb-3" onError={(e) => { const fb = getTeamLogoFallbackUrl(pick.picked_outcome, market?.sport_key); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />
           ) : (
-            <div className="text-6xl mb-3">{'\uD83C\uDFC6'}</div>
+            <div className="text-6xl mb-3">{'🏆'}</div>
           )}
 
           <div className="font-display text-xl text-text-primary">
@@ -134,14 +213,14 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
         {/* Narrative */}
         <div className="px-6 pb-4">
           <p className="text-xs text-text-secondary text-center leading-relaxed">
-            On {pickDate}, {user?.display_name || user?.username} predicted that {pick.picked_outcome} would win the {market?.title?.replace(' Winner', '')}. They were right.
+            On {pickDate}, {userName} predicted that {pick.picked_outcome} would win the {market?.title?.replace(' Winner', '')}. They were right.
           </p>
         </div>
 
         {/* User + points */}
         <div className="px-6 pb-6 flex items-center justify-center gap-3 border-t border-text-primary/10 pt-4">
           <Avatar user={user} size="md" />
-          <span className="font-semibold text-text-primary">{user?.display_name || user?.username}</span>
+          <span className="font-semibold text-text-primary">{userName}</span>
           <span className="font-display text-2xl text-correct">+{pick.points_earned}</span>
         </div>
 
