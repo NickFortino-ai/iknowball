@@ -8,6 +8,7 @@ import { api } from '../../lib/api'
 const sportTabs = [
   { label: 'All', key: '' },
   { label: 'NBA', key: 'basketball_nba' },
+  { label: 'WNBA', key: 'basketball_wnba' },
   { label: 'NFL', key: 'americanfootball_nfl' },
   { label: 'UFL', key: 'americanfootball_ufl' },
   { label: 'MLB', key: 'baseball_mlb' },
