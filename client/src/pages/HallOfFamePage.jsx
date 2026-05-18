@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
 import { RoyaltyContent } from './RoyaltyPage'
 import { RecordBookContent } from './RecordBookPage'
-import { HeadlinesArchiveContent } from './HeadlinesArchivePage'
 
 const HERO_IMAGES = [
   '/hall-of-fame/basketball-hof.webp',
@@ -31,14 +29,10 @@ function SectionToggle({ title, open, onToggle }) {
 
 export default function HallOfFamePage() {
   const [searchParams] = useSearchParams()
-  const { profile } = useAuth()
-  const isAdmin = !!profile?.is_admin
   const section = searchParams.get('section')
   const recordParam = searchParams.get('record')
   const [openSections, setOpenSections] = useState(
-    section === 'records' ? { records: true }
-      : section === 'headlines' && isAdmin ? { headlines: true }
-      : { royalty: true }
+    section === 'records' ? { records: true } : { royalty: true }
   )
   const [heroIdx, setHeroIdx] = useState(0)
 
@@ -116,18 +110,6 @@ export default function HallOfFamePage() {
           )}
         </div>
 
-        {/* Headlines Archive — hidden from non-admins while we fix the
-            recordsBroken data source (see HomePage for details). */}
-        {isAdmin && (
-          <div>
-            <SectionToggle title="Headlines Archive" open={openSections.headlines} onToggle={() => toggle('headlines')} />
-            {openSections.headlines && (
-              <div className="pb-4 lg:max-w-4xl">
-                <HeadlinesArchiveContent />
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

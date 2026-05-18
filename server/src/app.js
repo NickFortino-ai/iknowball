@@ -21,7 +21,6 @@ import notificationsRouter from './routes/notifications.js'
 import pushRouter from './routes/push.js'
 import emailRouter from './routes/email.js'
 import futuresRouter from './routes/futures.js'
-import recapsRouter from './routes/recaps.js'
 import recordsRouter from './routes/records.js'
 import hotTakesRouter from './routes/hotTakes.js'
 import dfsRouter from './routes/dfs.js'
@@ -74,7 +73,6 @@ app.use('/api/notifications', notificationsRouter)
 app.use('/api/push', pushRouter)
 app.use('/api/email', emailRouter)
 app.use('/api/futures', futuresRouter)
-app.use('/api/recaps', recapsRouter)
 app.use('/api/records', recordsRouter)
 app.use('/api/hot-takes', hotTakesRouter)
 app.use('/api/reports', reportsRouter)

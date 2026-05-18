@@ -9,8 +9,6 @@ import { syncLiveScores } from './syncLiveScores.js'
 import { completeLeagues } from './completeLeagues.js'
 import { autoEliminateMissedPicks, backfillStuckSurvivorPicks } from '../services/survivorService.js'
 import { sendSurvivorPickReminders } from './sendSurvivorPickReminders.js'
-import { generateWeeklyRecap } from './generateRecap.js'
-import { sendRecapNotifications } from './sendRecapNotifications.js'
 import { snapshotCrowns } from './snapshotCrowns.js'
 import { snapshotRanks } from './snapshotRanks.js'
 import { recalculateRecords } from './recalculateRecords.js'
@@ -68,19 +66,6 @@ export function startScheduler() {
       try { await syncLiveScores() } catch (err) { logger.error({ err }, 'Live scores sync job failed') }
     })
     logger.info('Live scores sync scheduled: every 1 minute')
-  }
-
-  if (env.ENABLE_WEEKLY_RECAP) {
-    cron.schedule('0 8 * * 1', async () => {
-      try { await generateWeeklyRecap() } catch (err) { logger.error({ err }, 'Weekly recap job failed') }
-    }, { timezone: 'America/New_York' })
-    logger.info('Weekly recap scheduled: Monday at 8:00 AM EST (visible to users at 9:00 AM Pacific)')
-
-    // Send recap notifications/emails once visible_after has passed
-    cron.schedule('*/5 * * * *', async () => {
-      try { await sendRecapNotifications() } catch (err) { logger.error({ err }, 'Recap notification job failed') }
-    })
-    logger.info('Recap notifications scheduled: every 5 minutes (sends when visible_after passes)')
   }
 
   // Send scheduled emails every minute

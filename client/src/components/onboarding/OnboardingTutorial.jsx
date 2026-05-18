@@ -101,7 +101,7 @@ export default function OnboardingTutorial() {
       if (location.pathname !== targetPath) {
         navigate(stepData.page)
       } else if (stepData.page.includes('?')) {
-        // Same path but need query params (e.g. /?headlines=1)
+        // Same path but query params changed — re-navigate so the page picks them up.
         navigate(stepData.page, { replace: true })
       }
     }

@@ -461,34 +461,6 @@ export function useUnmuteUser() {
   })
 }
 
-// Weekly Recap
-export function useUpdateRecap() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({ recapId, recap_content }) =>
-      api.patch(`/admin/recaps/${recapId}`, { recap_content }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recaps'] })
-    },
-  })
-}
-
-export function useGenerateRecap() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    // Recap generation + audit + possible retry can run 60+ seconds, which
-    // exceeds the default 30s first-attempt timeout. Use longTimeout so the
-    // UI doesn't surface a false "request timed out" while the server is
-    // still working (and usually finishing fine).
-    mutationFn: () => api.post('/admin/generate-recap', undefined, { longTimeout: true }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recaps'] })
-    },
-  })
-}
-
 // Player Search (for position overrides)
 export function useAdminPlayerSearch(query) {
   return useQuery({

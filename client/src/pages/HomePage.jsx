@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import InfoTooltip from '../components/ui/InfoTooltip'
-import HeadlinesCard from '../components/home/HeadlinesCard'
 import OpenLeaguesSection from '../components/home/OpenLeaguesSection'
 import TierUsersModal from '../components/home/TierUsersModal'
 import { useMyLeagues } from '../hooks/useLeagues'
@@ -304,10 +303,7 @@ function FormatCard({ title, desc, gradient, sports, featured = false, onClick }
 export default function HomePage() {
   const { isAuthenticated, profile, session } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const forceHeadlines = searchParams.get('headlines') === '1'
   const [selectedTier, setSelectedTier] = useState(null)
-  const headlinesRef = useRef(null)
 
   // Touch vs mouse — swaps "Tap" / "Click" in the league-section subtitle.
   // matchMedia '(hover: none)' is true on touch devices (no hover capability).
@@ -339,15 +335,6 @@ export default function HomePage() {
       navigate(`/leagues/create?${params.toString()}`)
     }
   }
-
-  // Auto-scroll to headlines when coming from notification
-  useEffect(() => {
-    if (forceHeadlines && headlinesRef.current) {
-      setTimeout(() => {
-        headlinesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 300)
-    }
-  }, [forceHeadlines])
 
   // Cycling backdrop has moved into HeroLayout so it persists across
   // /signup, /login, /payment navigations. HomePage's own hero block was
@@ -405,22 +392,11 @@ export default function HomePage() {
         <WelcomeCard userId={session?.user?.id} profile={profile} />
       )}
 
-      {/* Logged-in: Open Leagues + Active Leagues + Headlines */}
+      {/* Logged-in: Open Leagues + Active Leagues */}
       {isAuthenticated && (
         <>
           <MyActiveLeagues />
           <OpenLeaguesSection />
-          {/* Headlines hidden from non-admins while we dial in the data
-              pipeline — recordsBroken was pulling from user_sport_stats
-              (per-user-per-sport bests) instead of the authoritative
-              records table, so Claude's recaps were telling users about
-              non-existent new records. Admins still see the card so they
-              can QA generated output before we flip it back on. */}
-          {profile?.is_admin && (
-            <div ref={headlinesRef}>
-              <HeadlinesCard forceExpanded={forceHeadlines} />
-            </div>
-          )}
         </>
       )}
 
