@@ -151,4 +151,52 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
+// Player-name autocomplete for the admin futures editor (and similar admin
+// surfaces). Returns a flat array of distinct full names for the given
+// sport, sourced from whichever table actually has roster data:
+//   - NFL: nfl_players (where team is not null)
+//   - NBA / WNBA / MLB: distinct player_name from the most recent DFS salary
+//     batch (these tables are wiped daily but always contain the current
+//     active rosters, which is exactly what we need for MVP/award markets)
+//   - Anything else: []
+router.get('/players', requireAuth, async (req, res) => {
+  const { sport } = req.query
+  if (!sport) return res.status(400).json({ error: 'sport query param required' })
+
+  try {
+    if (sport === 'americanfootball_nfl') {
+      const { data } = await supabase
+        .from('nfl_players')
+        .select('full_name')
+        .not('team', 'is', null)
+        .not('full_name', 'is', null)
+        .order('full_name')
+        .limit(2000)
+      return res.json([...new Set((data || []).map((p) => p.full_name))])
+    }
+
+    if (sport === 'basketball_nba') {
+      const { data } = await supabase
+        .from('nba_dfs_salaries')
+        .select('player_name')
+        .not('player_name', 'is', null)
+        .limit(5000)
+      return res.json([...new Set((data || []).map((p) => p.player_name))].sort())
+    }
+
+    if (sport === 'baseball_mlb') {
+      const { data } = await supabase
+        .from('mlb_dfs_salaries')
+        .select('player_name')
+        .not('player_name', 'is', null)
+        .limit(5000)
+      return res.json([...new Set((data || []).map((p) => p.player_name))].sort())
+    }
+
+    return res.json([])
+  } catch (err) {
+    return res.json([])
+  }
+})
+
 export default router

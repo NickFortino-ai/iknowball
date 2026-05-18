@@ -28,10 +28,19 @@ export default function FuturesAdminPanel() {
   const [teamSuggestions, setTeamSuggestions] = useState([])
   const [focusedOutcome, setFocusedOutcome] = useState(null)
 
-  // Fetch teams for autocomplete when sport changes
+  // Fetch teams AND players in parallel for autocomplete. Merged so the
+  // admin can type either a team name (championship markets) or a player
+  // name (MVP / award markets) and get matching suggestions.
   useEffect(() => {
     if (!showCreate) return
-    api.get(`/teams?sport=${newSport}`).then(setTeamSuggestions).catch(() => setTeamSuggestions([]))
+    Promise.allSettled([
+      api.get(`/teams?sport=${newSport}`),
+      api.get(`/teams/players?sport=${newSport}`),
+    ]).then(([teamsRes, playersRes]) => {
+      const teams = teamsRes.status === 'fulfilled' ? teamsRes.value : []
+      const players = playersRes.status === 'fulfilled' ? playersRes.value : []
+      setTeamSuggestions([...new Set([...teams, ...players])])
+    })
   }, [newSport, showCreate])
 
   const { data: markets, isLoading } = useAdminFuturesMarkets(sportFilter || undefined)
@@ -194,7 +203,7 @@ export default function FuturesAdminPanel() {
                     }}
                     onFocus={() => setFocusedOutcome(i)}
                     onBlur={() => setTimeout(() => setFocusedOutcome(null), 150)}
-                    placeholder="e.g. Boston Celtics"
+                    placeholder="Team or player name"
                     className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder-text-muted"
                   />
                   {filtered.length > 0 && (
