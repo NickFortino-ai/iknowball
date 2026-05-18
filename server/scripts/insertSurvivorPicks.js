@@ -23,7 +23,7 @@ const supabase = createClient(
 )
 
 const LEAGUE_NAME = 'I WILL SURVIVE'
-const USERNAMES = ['siddkic', 'dmoney140', 'ustabadger', 'ballsohard']
+const USERNAMES = ['siddkid', 'Desmond_Fortino', 'Ustadbadger', 'BallSoHard']
 const TARGET_TEAM = 'Los Angeles Dodgers'
 
 const DRY_RUN = !process.argv.includes('--commit')

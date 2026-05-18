@@ -43,11 +43,14 @@ async function main() {
 
   const { data: members } = await supabase
     .from('league_members')
-    .select('user_id, is_alive, lives_remaining, eliminated_week, joined_at, users(username)')
+    .select('user_id, is_alive, lives_remaining, eliminated_week, joined_at, users(username, display_name)')
     .eq('league_id', league.id)
   console.log(`\nMEMBERS (${members?.length || 0}):`)
+  console.log('  username           | display_name       | alive | lives | elim_wk')
   for (const m of members || []) {
-    console.log(`  ${m.users?.username?.padEnd(15)} alive=${m.is_alive} lives=${m.lives_remaining} elim_wk=${m.eliminated_week ?? '-'}`)
+    const un = (m.users?.username || '').padEnd(18)
+    const dn = (m.users?.display_name || '').padEnd(18)
+    console.log(`  ${un} | ${dn} | ${m.is_alive ? 'YES' : 'no '}   | ${m.lives_remaining}     | ${m.eliminated_week ?? '-'}`)
   }
 
   const { data: picks } = await supabase
