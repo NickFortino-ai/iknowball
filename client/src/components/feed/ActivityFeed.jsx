@@ -106,6 +106,9 @@ export default function ActivityFeed({ onUserTap, scope = 'squad', targetUserId 
       else if (item.type === 'streak') targets.push({ target_type: 'streak_event', target_id: item.streak.id })
       else if (item.type === 'record') targets.push({ target_type: 'record_history', target_id: item.record.id })
       else if (item.type === 'hot_take') targets.push({ target_type: 'hot_take', target_id: item.hot_take.id })
+      else if (item.type === 'futures_pick' || item.type === 'futures_hit') {
+        targets.push({ target_type: 'futures_pick', target_id: item.futures.id })
+      }
       else if (item.type === 'head_to_head') {
         targets.push({ target_type: 'head_to_head', target_id: item.id })
       }
