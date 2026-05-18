@@ -501,12 +501,13 @@ export async function getUsedTeams(leagueId, userId) {
  * Checks ESPN box score for non-passing TDs by each picked player.
  */
 export async function scoreTouchdownSurvivorPicks(gameId) {
-  // Find locked touchdown survivor picks for this game
+  // Find unsettled touchdown survivor picks for this game. Accept both
+  // 'locked' and 'pending' — see scoreSurvivorPicks for rationale.
   const { data: rawPicks, error } = await supabase
     .from('survivor_picks')
     .select('*, leagues(name, settings, starts_at), league_weeks(week_number, starts_at)')
     .eq('game_id', gameId)
-    .eq('status', 'locked')
+    .in('status', ['locked', 'pending'])
     .not('player_id', 'is', null)
 
   if (error || !rawPicks?.length) return
@@ -668,12 +669,17 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
 }
 
 export async function scoreSurvivorPicks(gameId, winner) {
-  // Find all locked survivor picks for this game
+  // Find all unsettled survivor picks for this game. We accept both 'locked'
+  // (the happy path — lockPicks ran before the game finalized) and 'pending'
+  // (lockPicks missed it, e.g. because scoreGames flipped upcoming→final on
+  // a stale ESPN snapshot before lockPicks could see 'upcoming'). Without
+  // the 'pending' fallback the pick stays unsettled forever and the user
+  // never gets eliminated, blocking the league from declaring a winner.
   const { data: rawPicks, error } = await supabase
     .from('survivor_picks')
     .select('*, leagues(name, settings, starts_at), league_weeks(week_number, starts_at)')
     .eq('game_id', gameId)
-    .eq('status', 'locked')
+    .in('status', ['locked', 'pending'])
 
   if (error) {
     logger.error({ error, gameId }, 'Failed to fetch survivor picks for scoring')
@@ -857,7 +863,7 @@ export async function backfillStuckSurvivorPicks() {
   const { data: stuck, error } = await supabase
     .from('survivor_picks')
     .select('game_id, games!inner(status, winner)')
-    .eq('status', 'locked')
+    .in('status', ['locked', 'pending'])
     .eq('games.status', 'final')
     .limit(200)
 
