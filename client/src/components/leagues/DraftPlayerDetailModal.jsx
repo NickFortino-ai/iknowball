@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDraftPlayerDetail, useMockDraftPlayerDetail } from '../../hooks/useLeagues'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -152,13 +152,12 @@ function Body({ data, onDraft }) {
         </div>
       </div>
 
-      {/* Injury detail */}
-      {player.injury_body_part && (
-        <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3">
-          <div className="text-xs uppercase font-semibold tracking-wider text-yellow-500 mb-1">Injury</div>
-          <div className="text-xs text-text-secondary">{player.injury_body_part}</div>
-        </div>
-      )}
+      {/* Player Notes — published blurbs (admin-written), most recent on
+          top with prior weeks behind a toggle. Falls back to the ESPN
+          injury body-part text when no blurb exists. Replaces the
+          standalone injury box; status badge in the header carries the
+          quick-scan signal. */}
+      <PlayerNotesSection blurbs={data.blurbs} blurb={data.blurb} injuryDetail={{ body_part: player.injury_body_part }} />
 
       {/* Last season summary */}
       {isRookie ? (
@@ -259,6 +258,61 @@ function PreviousGamesTable({ position, weeks }) {
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function PlayerNotesSection({ blurbs, blurb, injuryDetail }) {
+  const [showPrev, setShowPrev] = useState(false)
+  const list = Array.isArray(blurbs) && blurbs.length ? blurbs : (blurb ? [blurb] : [])
+  const current = list[0]
+  const previous = list.slice(1)
+
+  let currentText = current?.content?.trim()
+  if (!currentText) {
+    const parts = []
+    if (injuryDetail?.body_part) parts.push(injuryDetail.body_part)
+    if (injuryDetail?.detail) parts.push(injuryDetail.detail)
+    currentText = parts.join(' — ')
+  }
+  if (!currentText) return null
+
+  function dateLabel(b) {
+    if (!b?.published_at) return ''
+    return new Date(b.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <div className="text-xs uppercase tracking-wider text-accent font-semibold">Player Notes</div>
+        {current && dateLabel(current) && (
+          <div className="text-[10px] text-text-muted">{dateLabel(current)}</div>
+        )}
+      </div>
+      <p className="text-sm text-text-primary leading-relaxed">{currentText}</p>
+
+      {previous.length > 0 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowPrev((v) => !v)}
+            className="text-xs text-accent hover:text-accent/80 transition-colors font-semibold"
+          >
+            {showPrev ? 'Hide previous notes' : `See previous notes (${previous.length})`}
+          </button>
+          {showPrev && (
+            <div className="mt-2 space-y-3 border-l-2 border-text-primary/10 pl-3">
+              {previous.map((b) => (
+                <div key={b.id}>
+                  <div className="text-[10px] text-text-muted mb-1">{dateLabel(b)}</div>
+                  <p className="text-xs text-text-secondary leading-relaxed">{b.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

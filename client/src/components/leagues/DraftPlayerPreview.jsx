@@ -166,6 +166,15 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
         </div>
       </div>
 
+      {/* Player Notes — admin-written blurbs, most recent on top.
+          Visible by default since this is the most useful intel during
+          a live draft. Older blurbs collapse behind a toggle. */}
+      <PlayerNotesSection
+        blurbs={data.blurbs}
+        blurb={data.blurb}
+        injuryDetail={{ body_part: player.injury_body_part }}
+      />
+
       {/* Expanded section */}
       {expanded && (
         <div className="border-t border-text-primary/10 px-3 md:px-5 py-4 space-y-4">
@@ -216,6 +225,61 @@ export default function DraftPlayerPreview({ leagueId, mockScoring, playerId, on
                 </div>
               )}
             </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlayerNotesSection({ blurbs, blurb, injuryDetail }) {
+  const [showPrev, setShowPrev] = useState(false)
+  const list = Array.isArray(blurbs) && blurbs.length ? blurbs : (blurb ? [blurb] : [])
+  const current = list[0]
+  const previous = list.slice(1)
+
+  let currentText = current?.content?.trim()
+  if (!currentText) {
+    const parts = []
+    if (injuryDetail?.body_part) parts.push(injuryDetail.body_part)
+    if (injuryDetail?.detail) parts.push(injuryDetail.detail)
+    currentText = parts.join(' — ')
+  }
+  if (!currentText) return null
+
+  function dateLabel(b) {
+    if (!b?.published_at) return ''
+    return new Date(b.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  return (
+    <div className="border-t border-text-primary/10 px-3 md:px-5 py-3">
+      <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <div className="text-xs uppercase tracking-wider text-accent font-semibold">Player Notes</div>
+        {current && dateLabel(current) && (
+          <div className="text-[10px] text-text-muted">{dateLabel(current)}</div>
+        )}
+      </div>
+      <p className="text-sm text-text-primary leading-relaxed">{currentText}</p>
+
+      {previous.length > 0 && (
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowPrev((v) => !v)}
+            className="text-xs text-accent hover:text-accent/80 transition-colors font-semibold"
+          >
+            {showPrev ? 'Hide previous notes' : `See previous notes (${previous.length})`}
+          </button>
+          {showPrev && (
+            <div className="mt-2 space-y-3 border-l-2 border-text-primary/10 pl-3">
+              {previous.map((b) => (
+                <div key={b.id}>
+                  <div className="text-[10px] text-text-muted mb-1">{dateLabel(b)}</div>
+                  <p className="text-xs text-text-secondary leading-relaxed">{b.content}</p>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

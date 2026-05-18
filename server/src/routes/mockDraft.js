@@ -130,9 +130,10 @@ router.get('/players/:playerId/detail', requireAuth, async (req, res) => {
   try {
     const data = await getDraftPlayerDetail(req.params.playerId, { scoringFormat: scoring })
     try {
-      const { getPublishedBlurb } = await import('../services/playerBlurbService.js')
-      const blurb = await getPublishedBlurb(req.params.playerId)
-      if (blurb) data.blurb = blurb
+      const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
+      const blurbs = await getPublishedBlurbsForPlayer(req.params.playerId)
+      data.blurbs = blurbs
+      if (blurbs[0]) data.blurb = blurbs[0]
     } catch {}
     res.json(data)
   } catch (err) {
