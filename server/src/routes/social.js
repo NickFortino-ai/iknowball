@@ -165,7 +165,7 @@ router.post('/comments/:commentId/like', requireAuth, async (req, res) => {
 
 // Feed reactions
 const feedReactionSchema = z.object({
-  target_type: z.enum(['pick', 'parlay', 'streak_event', 'record_history', 'hot_take']),
+  target_type: z.enum(['pick', 'parlay', 'streak_event', 'record_history', 'hot_take', 'futures_pick']),
   target_id: z.string().uuid(),
   reaction_type: z.enum(['fire', 'clown', 'goat', 'clap']),
 })
