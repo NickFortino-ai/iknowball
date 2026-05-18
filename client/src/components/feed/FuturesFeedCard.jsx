@@ -136,7 +136,18 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
                 }}
               />
             ) : (
-              <div className="text-5xl mb-3 opacity-60">{'💔'}</div>
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                className="w-20 h-20 mx-auto mb-3 text-incorrect"
+              >
+                <path
+                  d="M5 5 L19 19 M19 5 L5 19"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                />
+              </svg>
             )}
 
             <div className="font-display text-xl text-text-primary line-through opacity-70">
