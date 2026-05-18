@@ -4,40 +4,6 @@ import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { toast } from '../components/ui/Toast'
 
-/**
- * Resize an image to fit within maxDimension on the long edge and re-encode
- * as JPEG at the given quality. Returns a new File with a sensible name.
- * Preserves aspect ratio. Used to keep clipboard-pasted PNGs under the
- * 5 MB upload cap (a 4K PNG via clipboard is routinely 15+ MB).
- */
-function resizeImage(file, maxDimension = 2048, quality = 0.9) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const objectUrl = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl)
-      const scale = Math.min(1, maxDimension / Math.max(img.width, img.height))
-      const w = Math.round(img.width * scale)
-      const h = Math.round(img.height * scale)
-      const canvas = document.createElement('canvas')
-      canvas.width = w
-      canvas.height = h
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, 0, 0, w, h)
-      canvas.toBlob((blob) => {
-        if (!blob) { reject(new Error('canvas.toBlob returned null')); return }
-        const baseName = (file.name || 'pasted').replace(/\.\w+$/, '')
-        resolve(new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }))
-      }, 'image/jpeg', quality)
-    }
-    img.onerror = (err) => {
-      URL.revokeObjectURL(objectUrl)
-      reject(err)
-    }
-    img.src = objectUrl
-  })
-}
-
 export function useCreateHotTake() {
   const queryClient = useQueryClient()
 
@@ -251,18 +217,19 @@ export function useHotTakeImageUpload() {
     // Auto-downscale if the image is over the size cap. Clipboard pastes
     // commonly produce huge PNGs (e.g. a 4096×4096 promo from 1.9 MB on
     // disk becomes 15+ MB PNG via clipboard), so a hard reject is a bad
-    // user experience. Resize to 2048px on the long edge as JPEG; that
-    // keeps high-quality photos well under 5 MB without user action.
+    // UX. resizeImage caps width at 2400 and re-encodes as WebP @ 0.92,
+    // which keeps high-quality photos well under 5 MB.
     let working = file
     if (working.size > 5 * 1024 * 1024) {
       try {
-        working = await resizeImage(working, 2048, 0.9)
+        const blob = await resizeImage(working)
+        const baseName = (file.name || 'pasted').replace(/\.\w+$/, '')
+        working = new File([blob], `${baseName}.webp`, { type: blob.type || 'image/webp' })
       } catch (err) {
         toast('Could not process this image. Try a different file.', 'error')
         return
       }
       if (working.size > 5 * 1024 * 1024) {
-        // Still too big after resize → unusual (huge gradient maps, etc).
         toast('Image is too large even after resizing. Try a smaller file.', 'error')
         return
       }
