@@ -8,6 +8,7 @@ import { syncFutures } from './syncFutures.js'
 import { syncLiveScores } from './syncLiveScores.js'
 import { completeLeagues } from './completeLeagues.js'
 import { autoEliminateMissedPicks, backfillStuckSurvivorPicks } from '../services/survivorService.js'
+import { sendSurvivorPickReminders } from './sendSurvivorPickReminders.js'
 import { generateWeeklyRecap } from './generateRecap.js'
 import { sendRecapNotifications } from './sendRecapNotifications.js'
 import { snapshotCrowns } from './snapshotCrowns.js'
@@ -273,6 +274,11 @@ export function startScheduler() {
       try { await backfillStuckSurvivorPicks() } catch (err) { logger.error({ err }, 'Survivor stuck-pick backfill failed') }
     })
     logger.info('Survivor stuck-pick backfill scheduled: every 10 minutes')
+
+    cron.schedule('*/30 * * * *', async () => {
+      try { await sendSurvivorPickReminders() } catch (err) { logger.error({ err }, 'Survivor pick reminder job failed') }
+    })
+    logger.info('Survivor pick reminders scheduled: every 30 minutes')
 
     cron.schedule('*/30 * * * *', async () => {
       try { await settleStuckParlays() } catch (err) { logger.error({ err }, 'Stuck parlay cleanup job failed') }

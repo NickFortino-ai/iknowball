@@ -30,6 +30,7 @@ const CATEGORIES = [
       { key: 'league_invitation', label: 'League invitations' },
       { key: 'league_thread_mention', label: 'Mentions in league threads' },
       { key: 'survivor_result', label: 'Survivor daily results' },
+      { key: 'survivor_pick_reminder', label: 'Survivor pick reminders' },
       { key: 'league_report', label: 'League reports' },
     ],
   },
