@@ -26,7 +26,8 @@ export function usePickReactionsBatch(pickIds) {
   const key = pickIds?.length ? pickIds.join(',') : ''
   return useQuery({
     queryKey: ['pickReactionsBatch', key],
-    queryFn: () => api.get(`/social/picks/reactions/batch?pickIds=${key}`),
+    // POST not GET — a query string of 100+ UUIDs blows past the URL length cap.
+    queryFn: () => api.post('/social/picks/reactions/batch', { pickIds }),
     enabled: !!pickIds?.length,
   })
 }
@@ -110,7 +111,9 @@ export function useFeedReactionsBatch(items) {
   const key = items?.length ? JSON.stringify(items) : ''
   return useQuery({
     queryKey: ['feedReactionsBatch', key],
-    queryFn: () => api.get(`/social/feed/reactions/batch?items=${encodeURIComponent(JSON.stringify(items))}`),
+    // POST not GET — feed items serialized to JSON in a query string hits
+    // the URL length cap once the feed has more than ~50 entries.
+    queryFn: () => api.post('/social/feed/reactions/batch', { items }),
     enabled: !!items?.length,
   })
 }

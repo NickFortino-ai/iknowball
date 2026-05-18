@@ -39,6 +39,14 @@ router.get('/picks/reactions/batch', requireAuth, async (req, res) => {
   res.json(reactions)
 })
 
+// POST variant — query strings choke once you have ~100 UUIDs (each 36
+// chars + comma puts the URL well past most server / proxy limits).
+router.post('/picks/reactions/batch', requireAuth, async (req, res) => {
+  const pickIds = Array.isArray(req.body?.pickIds) ? req.body.pickIds : []
+  const reactions = await getReactionsForPicks(pickIds)
+  res.json(reactions)
+})
+
 const commentSchema = z.object({
   content: z.string().min(1).max(280),
   parent_id: z.string().uuid().nullable().optional(),
@@ -173,6 +181,12 @@ router.get('/feed/reactions/batch', requireAuth, async (req, res) => {
   try {
     items = JSON.parse(req.query.items || '[]')
   } catch (_) { /* ignore parse errors */ }
+  const reactions = await getFeedReactionsBatch(items)
+  res.json(reactions)
+})
+
+router.post('/feed/reactions/batch', requireAuth, async (req, res) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items : []
   const reactions = await getFeedReactionsBatch(items)
   res.json(reactions)
 })
