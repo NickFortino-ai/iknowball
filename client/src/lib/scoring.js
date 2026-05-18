@@ -1,7 +1,7 @@
 export const BASE_RISK_POINTS = 10
 
 export const TIERS = {
-  LOST: { name: 'Lost', minPoints: -Infinity, color: 'tier-lost' },
+  LOST: { name: 'Learning', minPoints: -Infinity, color: 'tier-lost' },
   ROOKIE: { name: 'Rookie', minPoints: 0, color: 'tier-rookie' },
   BALLER: { name: 'Baller', minPoints: 100, color: 'tier-baller' },
   ELITE: { name: 'Elite', minPoints: 500, color: 'tier-elite' },

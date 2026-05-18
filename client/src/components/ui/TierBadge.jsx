@@ -1,5 +1,5 @@
 const tierColors = {
-  Lost: 'text-tier-lost border-tier-lost/30',
+  Learning: 'text-tier-lost border-tier-lost/30',
   Rookie: 'text-tier-rookie border-tier-rookie/30',
   Baller: 'text-tier-baller border-tier-baller/30',
   Elite: 'text-tier-elite border-tier-elite/30',

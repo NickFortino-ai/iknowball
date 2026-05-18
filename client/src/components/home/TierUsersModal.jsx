@@ -7,11 +7,11 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import UserProfileModal from '../profile/UserProfileModal'
 
 const TIER_BLURBS = {
-  Lost: "They're finding their way. First step toward knowing ball is realizing you don't know ball yet.",
+  Learning: "They're finding their way. First step toward knowing ball is realizing you don't know ball yet.",
 }
 
 const TIER_COLORS = {
-  Lost: 'var(--color-tier-lost)',
+  Learning: 'var(--color-tier-lost)',
   Rookie: 'var(--color-tier-rookie)',
   Baller: 'var(--color-tier-baller)',
   Elite: 'var(--color-tier-elite)',

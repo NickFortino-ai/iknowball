@@ -243,7 +243,7 @@ export async function getUserRankOnLeaderboard(userId, scope = 'global', sportKe
   return null
 }
 
-const VALID_TIERS = ['Lost', 'Rookie', 'Baller', 'Elite', 'Hall of Famer', 'GOAT']
+const VALID_TIERS = ['Learning', 'Rookie', 'Baller', 'Elite', 'Hall of Famer', 'GOAT']
 
 export async function getUsersByTier(tierName) {
   if (!VALID_TIERS.includes(tierName)) {

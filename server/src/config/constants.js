@@ -1,5 +1,5 @@
 export const TIERS = {
-  LOST: { name: 'Lost', minPoints: -Infinity, color: 'red' },
+  LOST: { name: 'Learning', minPoints: -Infinity, color: 'red' },
   ROOKIE: { name: 'Rookie', minPoints: 0, color: 'gray' },
   BALLER: { name: 'Baller', minPoints: 100, color: 'blue' },
   ELITE: { name: 'Elite', minPoints: 500, color: 'purple' },

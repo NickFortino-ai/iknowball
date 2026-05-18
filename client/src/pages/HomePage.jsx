@@ -14,7 +14,7 @@ import { useLandingPreview } from '../hooks/useLandingPreview'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../lib/teamLogos'
 
 const tiers = [
-  { name: 'Lost', points: '<0', color: 'border-tier-lost text-tier-lost', desc: 'Gone negative' },
+  { name: 'Learning', points: '<0', color: 'border-tier-lost text-tier-lost', desc: 'Finding your way' },
   { name: 'Rookie', points: '0+', color: 'border-tier-rookie text-tier-rookie', desc: 'Just getting started' },
   { name: 'Baller', points: '100+', color: 'border-tier-baller text-tier-baller', desc: 'Proving yourself' },
   { name: 'Elite', points: '500+', color: 'border-tier-elite text-tier-elite', desc: 'A True Pro' },
