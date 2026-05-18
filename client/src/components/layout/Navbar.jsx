@@ -1117,16 +1117,24 @@ export default function Navbar() {
                       const isSurvivorWin = n.type === 'survivor_win'
                       const isLeagueWin = n.type === 'league_win'
                       const isSurvivorStreakEnd = n.type === 'survivor_result' && n.metadata?.streakEnded
+                      const isStreakMilestone = n.type === 'streak_milestone' && n.metadata?.streakId
                       const hotTakeId = n.metadata?.hotTakeId || (n.metadata?.targetType === 'hot_take' ? n.metadata.targetId : null)
-                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || route
+                      const tappable = n.metadata?.pickId || n.metadata?.parlayId || n.metadata?.propPickId || n.metadata?.futuresPickId || hotTakeId || isSurvivorWin || isLeagueWin || isSurvivorStreakEnd || isStreakMilestone || route
                       return (
                         <div
                           key={n.id}
                           className={`px-4 py-3 border-b border-border last:border-b-0${tappable ? ' cursor-pointer hover:bg-bg-card-hover transition-colors' : ''}`}
                           onClick={() => {
-                            if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
+                            // Mirror the desktop dropdown handler (line ~598).
+                            // futuresPickId must be checked first — futures
+                            // notifications also carry a pickId fallback, so
+                            // dropping that branch sends a futures tap to
+                            // PickDetailModal where it 404s as "Pick not found".
+                            if (n.metadata?.futuresPickId) { setSelectedFuturesPickId(n.metadata.futuresPickId); setShowInvites(false) }
+                            else if (n.metadata?.pickId) { setSelectedPickId(n.metadata.pickId); setShowInvites(false) }
                             else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                             else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
+                            else if (isStreakMilestone) { setSelectedStreakId(n.metadata.streakId); setShowInvites(false) }
                             else if (hotTakeId) { setSelectedHotTakeId(hotTakeId); setShowInvites(false) }
                             else if (isSurvivorWin) {
                               if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
