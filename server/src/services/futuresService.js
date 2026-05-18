@@ -212,7 +212,7 @@ export async function getFuturesPickById(pickId) {
 
   const { data: user } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji')
+    .select('id, username, display_name, avatar_url, avatar_emoji, title_preference')
     .eq('id', pick.user_id)
     .single()
 

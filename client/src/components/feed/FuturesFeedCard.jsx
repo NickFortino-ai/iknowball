@@ -48,7 +48,7 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
 
         {/* Narrative subtext */}
         <p className="text-xs text-text-secondary text-center mb-3 px-2 leading-relaxed">
-          On {formatPickDate(futures.pick_date)}, {item.display_name || item.username} predicted that {futures.picked_outcome} would win the {futures.market_title?.replace(' Winner', '')}. They were right.
+          On {formatPickDate(futures.pick_date)}, {item.display_name || item.username} predicted that {futures.picked_outcome} would win the {futures.market_title?.replace(' Winner', '')}. {pronouns.subject === 'they' ? 'They were' : pronouns.subject === 'he' ? 'He was' : 'She was'} right.
         </p>
 
         {/* User avatar + points */}
@@ -111,6 +111,8 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
     : null
   const pickDate = formatPickDate(pick.created_at)
   const userName = user?.display_name || user?.username
+  const pronouns = getPronouns(user?.title_preference)
+  const wasRight = `${pronouns.subject === 'they' ? 'They were' : pronouns.subject === 'he' ? 'He was' : 'She was'} right`
 
   if (!isHit) {
     return (
@@ -213,7 +215,7 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
         {/* Narrative */}
         <div className="px-6 pb-4">
           <p className="text-xs text-text-secondary text-center leading-relaxed">
-            On {pickDate}, {userName} predicted that {pick.picked_outcome} would win the {market?.title?.replace(' Winner', '')}. They were right.
+            On {pickDate}, {userName} predicted that {pick.picked_outcome} would win the {market?.title?.replace(' Winner', '')}. {wasRight}.
           </p>
         </div>
 
