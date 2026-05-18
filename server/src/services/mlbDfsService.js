@@ -340,11 +340,21 @@ export async function generateMLBSalaries(date, season = 2026) {
         // the hitter row would be missing entirely and he'd appear only as
         // "SP · NS" at the bottom of the list on non-pitching days.
         if (isTwoWayPlayer(name)) {
+          // Always emit BOTH rows for a two-way player — never gate on the
+          // stats fetch succeeding. ESPN's /stats endpoint sometimes drops
+          // the 'batting' category when they classify the player as a
+          // pitcher (and vice-versa), which is why an earlier version of
+          // this code silently lost Ohtani's hitter row when ESPN had him
+          // tagged as SP. Missing season stats = floor-price row, not a
+          // missing row. Shrinkage pulls the FPPG toward replacement level
+          // when sample size is small or zero.
           const gameLog = await fetchGameLog(espnId, 'baseball/mlb', season)
-
           const batAvgs = await fetchPlayerSeasonAvgs(espnId, 'batting')
-          if (batAvgs) {
-            const batSeasonFppg = calcMLBBatterFppg(batAvgs)
+          const pitchAvgs = await fetchPlayerSeasonAvgs(espnId, 'pitching')
+
+          // Hitter row (always)
+          {
+            const batSeasonFppg = batAvgs ? calcMLBBatterFppg(batAvgs) : 0
             let batFppg = calcWeightedFppg(mlbBatterGameFpts, gameLog, batSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
             batFppg = shrinkBatterFppg(batFppg, batAvgs?.ab || 0)
             let batSalary = mlbFppgToSalary(batFppg)
@@ -368,9 +378,9 @@ export async function generateMLBSalaries(date, season = 2026) {
             })
           }
 
-          const pitchAvgs = await fetchPlayerSeasonAvgs(espnId, 'pitching')
-          if (pitchAvgs) {
-            const pitchSeasonFppg = calcMLBPitcherFppg(pitchAvgs)
+          // Pitcher row (always)
+          {
+            const pitchSeasonFppg = pitchAvgs ? calcMLBPitcherFppg(pitchAvgs) : 0
             let pitchFppg = calcWeightedFppg(mlbPitcherGameFpts, gameLog, pitchSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
             pitchFppg = shrinkPitcherFppg(pitchFppg, pitchAvgs?.ip || 0)
             let pitchSalary = mlbPitcherFppgToSalary(pitchFppg)
