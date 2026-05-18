@@ -9,7 +9,7 @@ import { fetchAll } from '../utils/fetchAll.js'
  */
 const POSITION_LIMITS = { QB: 34, RB: 30, WR: 30, TE: 15, DEF: 10 }
 
-export async function getTopPlayersByPosition(season) {
+export async function getTopPlayersByPosition(season, { unlimited = false } = {}) {
   const scoringCol = 'pts_half_ppr' // default ranking column
   const { data: stats } = await supabase
     .from('nfl_player_stats')
@@ -68,8 +68,17 @@ export async function getTopPlayersByPosition(season) {
   const result = {}
   for (const [pos, limit] of Object.entries(POSITION_LIMITS)) {
     const group = byPosition[pos] || []
-    group.sort((a, b) => b.seasonPoints - a.seasonPoints)
-    result[pos] = group.slice(0, limit)
+    // Sort: established players (with games played) by season points,
+    // then everyone else (offseason / preseason) alphabetically.
+    group.sort((a, b) => {
+      if (a.gamesPlayed !== b.gamesPlayed) {
+        if (!a.gamesPlayed) return 1
+        if (!b.gamesPlayed) return -1
+      }
+      if (a.seasonPoints !== b.seasonPoints) return b.seasonPoints - a.seasonPoints
+      return (a.full_name || '').localeCompare(b.full_name || '')
+    })
+    result[pos] = unlimited ? group : group.slice(0, limit)
   }
 
   return result

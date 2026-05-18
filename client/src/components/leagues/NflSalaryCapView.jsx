@@ -3,6 +3,7 @@ import { useNflDfsPlayers, useNflDfsRoster, useSaveNflDfsRoster, useFantasySetti
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import PlayerDetailModal from './PlayerDetailModal'
 
 const SLOTS = [
   { key: 'QB', label: 'QB', positions: ['QB'] },
@@ -31,6 +32,7 @@ export default function NflSalaryCapView({ league }) {
 
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
+  const [detailPlayerId, setDetailPlayerId] = useState(null)
 
   // Build current lineup from saved roster
   const lineup = useMemo(() => {
@@ -244,7 +246,11 @@ export default function NflSalaryCapView({ league }) {
                 key={player.id}
                 className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setDetailPlayerId(player.id)}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 -mx-1 px-1 py-1 rounded-lg transition-colors"
+                >
                   {player.headshot_url ? (
                     <img
                       src={player.headshot_url}
@@ -262,7 +268,7 @@ export default function NflSalaryCapView({ league }) {
                     <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
                   </div>
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${(player.salary || 0).toLocaleString()}</span>
-                </div>
+                </button>
                 <button
                   onClick={() => addPlayer(player)}
                   className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
@@ -274,6 +280,7 @@ export default function NflSalaryCapView({ league }) {
           </div>
         )}
       </div>
+      <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
     </div>
   )
 }

@@ -215,10 +215,8 @@ function PlayerNotesSection({ blurbs, blurb, injuryDetail }) {
   if (!currentText) return null
 
   function periodLabel(b) {
-    if (!b) return ''
-    if (b.week != null && b.season != null) return `Week ${b.week} · ${b.season}`
-    if (b.published_at) return new Date(b.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    return ''
+    if (!b?.published_at) return ''
+    return new Date(b.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
   return (

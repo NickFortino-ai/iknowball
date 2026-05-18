@@ -261,7 +261,7 @@ export default function PlayerBlurbsPanel() {
 
                   {/* Blurb status indicator */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {blurb ? (
+                    {blurb && (
                       <>
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                           blurb.status === 'published' ? 'bg-correct/20 text-correct' : 'bg-yellow-500/20 text-yellow-500'
@@ -280,13 +280,15 @@ export default function PlayerBlurbsPanel() {
                           </button>
                         )}
                       </>
-                    ) : (
-                      <button
-                        onClick={() => { setCreatingFor(isCreating ? null : player.id); setCreateContent('') }}
-                        className="text-accent text-lg leading-none hover:text-accent/80"
-                        title="Add blurb"
-                      >+</button>
                     )}
+                    {/* + always present so admins can publish a new blurb on top
+                        of an existing one. Old blurbs stay in history; the
+                        newest becomes current Player Notes. */}
+                    <button
+                      onClick={() => { setCreatingFor(isCreating ? null : player.id); setCreateContent('') }}
+                      className="text-accent text-lg leading-none hover:text-accent/80"
+                      title="Add new blurb"
+                    >+</button>
                     <button
                       onClick={() => loadHistory(player.id)}
                       className="text-text-muted text-xs hover:text-text-primary"

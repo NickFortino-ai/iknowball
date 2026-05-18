@@ -1070,7 +1070,10 @@ router.get('/blurbs/players', async (req, res) => {
   const position = req.query.position || null
 
   const { getTopPlayersByPosition } = await import('../services/playerBlurbService.js')
-  const byPosition = await getTopPlayersByPosition(season)
+  // Admin needs the full active roster, not the top-N fantasy cut — they're
+  // writing notes for backups and rookies too (e.g. Fernando Mendoza, Kenneth
+  // Gainwell). The search bar narrows things down client-side.
+  const byPosition = await getTopPlayersByPosition(season, { unlimited: true })
 
   // Flatten all positions or filter to one
   let players
