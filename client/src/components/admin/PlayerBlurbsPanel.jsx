@@ -5,6 +5,21 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 
 const POSITIONS = ['all', 'QB', 'RB', 'WR', 'TE', 'DEF']
 
+// Injury filter chips. 'Any' matches any non-null injury_status. Specific
+// statuses match exactly. NFL most commonly returns Questionable / Doubtful /
+// Probable / Out / IR. DTD is rare for NFL (more common in NBA/MLB) but
+// included for completeness since Sleeper occasionally surfaces it.
+const INJURY_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'any', label: 'Any injury' },
+  { key: 'Out', label: 'Out' },
+  { key: 'IR', label: 'IR' },
+  { key: 'Doubtful', label: 'Doubtful' },
+  { key: 'Questionable', label: 'Questionable' },
+  { key: 'Probable', label: 'Probable' },
+  { key: 'Day-To-Day', label: 'DTD' },
+]
+
 export default function PlayerBlurbsPanel() {
   const [position, setPosition] = useState('all')
   const [players, setPlayers] = useState([])
@@ -20,11 +35,20 @@ export default function PlayerBlurbsPanel() {
   const [history, setHistory] = useState([])
   const [week, setWeek] = useState(1)
   const [search, setSearch] = useState('')
+  const [injuryFilter, setInjuryFilter] = useState('all')
   const season = new Date().getFullYear()
 
-  const filteredPlayers = search.trim()
-    ? players.filter((p) => p.full_name?.toLowerCase().includes(search.trim().toLowerCase()))
-    : players
+  const filteredPlayers = (() => {
+    let list = players
+    const q = search.trim().toLowerCase()
+    if (q) list = list.filter((p) => p.full_name?.toLowerCase().includes(q))
+    if (injuryFilter === 'any') {
+      list = list.filter((p) => !!p.injury_status)
+    } else if (injuryFilter !== 'all') {
+      list = list.filter((p) => p.injury_status === injuryFilter)
+    }
+    return list
+  })()
 
   const fetchPlayers = useCallback(async () => {
     setLoading(true)
@@ -190,6 +214,29 @@ export default function PlayerBlurbsPanel() {
         </div>
       </div>
 
+      {/* Injury status filter */}
+      <div className="flex flex-wrap gap-1">
+        {INJURY_FILTERS.map((f) => {
+          const active = injuryFilter === f.key
+          // Active styling must use literal Tailwind classes — dynamic
+          // bg-${tone} strings get tree-shaken by the JIT compiler.
+          const activeClass = !active ? 'bg-bg-card text-text-secondary border border-transparent'
+            : f.key === 'Out' || f.key === 'IR' ? 'bg-incorrect/30 text-incorrect border border-incorrect/50'
+            : f.key === 'Questionable' || f.key === 'Doubtful' || f.key === 'Day-To-Day' ? 'bg-yellow-500/30 text-yellow-500 border border-yellow-500/50'
+            : f.key === 'Probable' ? 'bg-correct/30 text-correct border border-correct/50'
+            : 'bg-accent text-white border border-transparent'
+          return (
+            <button
+              key={f.key}
+              onClick={() => setInjuryFilter(f.key)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${activeClass}`}
+            >
+              {f.label}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
         <button
@@ -221,7 +268,11 @@ export default function PlayerBlurbsPanel() {
         <LoadingSpinner />
       ) : filteredPlayers.length === 0 ? (
         <p className="text-sm text-text-muted text-center py-8">
-          {search.trim() ? `No players matching "${search}"` : 'No players found'}
+          {search.trim()
+            ? `No players matching "${search}"`
+            : injuryFilter !== 'all'
+              ? `No players with ${injuryFilter === 'any' ? 'any injury' : injuryFilter} status`
+              : 'No players found'}
         </p>
       ) : (
         <div className="space-y-1">
