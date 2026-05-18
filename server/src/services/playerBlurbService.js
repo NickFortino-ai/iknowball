@@ -365,6 +365,22 @@ export async function getPublishedBlurb(playerId) {
 }
 
 /**
+ * All published blurbs for a player, most recent first. Used by the
+ * user-facing player detail modal to show prior weeks' notes behind a
+ * 'See previous notes' toggle.
+ */
+export async function getPublishedBlurbsForPlayer(playerId, limit = 20) {
+  const { data } = await supabase
+    .from('player_blurbs')
+    .select('id, content, season, week, published_at')
+    .eq('player_id', playerId)
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .limit(limit)
+  return data || []
+}
+
+/**
  * Get all blurbs for a player (admin — includes drafts and archived).
  */
 export async function getPlayerBlurbHistory(playerId) {

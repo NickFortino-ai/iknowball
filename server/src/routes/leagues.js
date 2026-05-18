@@ -1319,9 +1319,10 @@ router.get('/:id/fantasy/standings', requireAuth, async (req, res) => {
 router.get('/:id/fantasy/draft-player-detail/:playerId', requireAuth, async (req, res) => {
   const data = await getDraftPlayerDetail(req.params.playerId, { leagueId: req.params.id })
   try {
-    const { getPublishedBlurb } = await import('../services/playerBlurbService.js')
-    const blurb = await getPublishedBlurb(req.params.playerId)
-    if (blurb) data.blurb = blurb
+    const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
+    const blurbs = await getPublishedBlurbsForPlayer(req.params.playerId)
+    data.blurbs = blurbs
+    if (blurbs[0]) data.blurb = blurbs[0] // back-compat for legacy field
   } catch {}
   res.json(data)
 })
@@ -1405,11 +1406,14 @@ router.get('/:id/fantasy/roster/:userId', requireAuth, async (req, res) => {
 router.get('/:id/fantasy/players/:playerId/detail', requireAuth, async (req, res) => {
   try {
     const data = await getPlayerDetail(req.params.id, req.params.playerId)
-    // Attach published blurb if available
+    // Attach full published blurb history (most recent first). The modal
+    // shows the latest as Player Notes and folds the rest into a
+    // "Previous notes" toggle.
     try {
-      const { getPublishedBlurb } = await import('../services/playerBlurbService.js')
-      const blurb = await getPublishedBlurb(req.params.playerId)
-      if (blurb) data.blurb = blurb
+      const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
+      const blurbs = await getPublishedBlurbsForPlayer(req.params.playerId)
+      data.blurbs = blurbs
+      if (blurbs[0]) data.blurb = blurbs[0] // back-compat
     } catch {}
     res.json(data)
   } catch (err) {

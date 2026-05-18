@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePlayerDetail } from '../../hooks/useLeagues'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
@@ -196,6 +196,66 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
   )
 }
 
+function PlayerNotesSection({ blurbs, blurb, injuryDetail }) {
+  const [showPrev, setShowPrev] = useState(false)
+
+  // Prefer the full history array; fall back to the legacy single-blurb shape.
+  const list = Array.isArray(blurbs) && blurbs.length ? blurbs : (blurb ? [blurb] : [])
+  const current = list[0]
+  const previous = list.slice(1)
+
+  // Fallback to ESPN injury text when there's no blurb at all
+  let currentText = current?.content?.trim()
+  if (!currentText) {
+    const parts = []
+    if (injuryDetail?.body_part) parts.push(injuryDetail.body_part)
+    if (injuryDetail?.detail) parts.push(injuryDetail.detail)
+    currentText = parts.join(' — ')
+  }
+  if (!currentText) return null
+
+  function periodLabel(b) {
+    if (!b) return ''
+    if (b.week != null && b.season != null) return `Week ${b.week} · ${b.season}`
+    if (b.published_at) return new Date(b.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return ''
+  }
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <div className="text-xs uppercase tracking-wider text-accent font-semibold">Player Notes</div>
+        {current && periodLabel(current) && (
+          <div className="text-[10px] text-text-muted">{periodLabel(current)}</div>
+        )}
+      </div>
+      <p className="text-sm text-text-primary leading-relaxed">{currentText}</p>
+
+      {previous.length > 0 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowPrev((v) => !v)}
+            className="text-xs text-accent hover:text-accent/80 transition-colors font-semibold"
+          >
+            {showPrev ? 'Hide previous notes' : `See previous notes (${previous.length})`}
+          </button>
+          {showPrev && (
+            <div className="mt-2 space-y-3 border-l-2 border-text-primary/10 pl-3">
+              {previous.map((b) => (
+                <div key={b.id}>
+                  <div className="text-[10px] text-text-muted mb-1">{periodLabel(b)}</div>
+                  <p className="text-xs text-text-secondary leading-relaxed">{b.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PlayerDetailModal({ leagueId, playerId, onClose, playerContext, onDrop, onTrade, onClaim, onAdd }) {
   const { data, isLoading } = usePlayerDetail(leagueId, playerId)
   const contentRef = useRef(null)
@@ -267,29 +327,13 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
               )}
             </div>
 
-            {/* Player Notes — uses the published blurb when one exists, else
-                falls back to the injury detail text (so the body part /
-                ESPN injury note doesn't disappear when there's no blurb).
-                Injury status remains visible in the header badge for
-                quick-scan. */}
-            {(() => {
-              const blurbText = data.blurb?.content?.trim()
-              const injuryParts = []
-              if (data.injury_detail?.body_part) injuryParts.push(data.injury_detail.body_part)
-              if (data.injury_detail?.detail) injuryParts.push(data.injury_detail.detail)
-              const fallback = injuryParts.join(' — ')
-              const notesText = blurbText || fallback
-              if (!notesText) return null
-              return (
-                <>
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-1.5">Player Notes</div>
-                    <p className="text-sm text-text-primary leading-relaxed">{notesText}</p>
-                  </div>
-                  <div className="border-t border-text-primary/10" />
-                </>
-              )
-            })()}
+            {/* Player Notes — current blurb on top, prior weeks collapsed
+                behind a toggle so they don't push everything down. Falls
+                back to ESPN injury text only when no blurb exists at all. */}
+            <PlayerNotesSection blurbs={data.blurbs} blurb={data.blurb} injuryDetail={data.injury_detail} />
+            {(data.blurbs?.length || data.blurb || data.injury_detail?.body_part || data.injury_detail?.detail) && (
+              <div className="border-t border-text-primary/10" />
+            )}
 
             {/* Current week narrative */}
             <div>
