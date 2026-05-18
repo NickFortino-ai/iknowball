@@ -504,20 +504,23 @@ export async function scoreTouchdownSurvivorPicks(gameId) {
   // Find locked touchdown survivor picks for this game
   const { data: rawPicks, error } = await supabase
     .from('survivor_picks')
-    .select('*, leagues(name, settings, starts_at), league_weeks(week_number)')
+    .select('*, leagues(name, settings, starts_at), league_weeks(week_number, starts_at)')
     .eq('game_id', gameId)
     .eq('status', 'locked')
     .not('player_id', 'is', null)
 
   if (error || !rawPicks?.length) return
 
-  // Defense in depth: skip picks tied to leagues that haven't started yet.
-  // Submit endpoints already block this, but this guard means even an errant
-  // pick row (manual insert, future bug) can't trigger eliminations.
+  // Defense in depth: skip picks whose period hasn't started yet. We check
+  // league_weeks.starts_at instead of leagues.starts_at because the
+  // ET-anchored period boundary can fall earlier than the league's nominal
+  // start date — without this, a legit Day 1 pick can't settle.
   const nowMs = Date.now()
   const picks = rawPicks.filter((p) => {
-    const ts = p.leagues?.starts_at
-    return !ts || new Date(ts).getTime() <= nowMs
+    const periodStart = p.league_weeks?.starts_at
+    if (periodStart) return new Date(periodStart).getTime() <= nowMs
+    const leagueStart = p.leagues?.starts_at
+    return !leagueStart || new Date(leagueStart).getTime() <= nowMs
   })
   if (!picks.length) return
 
@@ -668,7 +671,7 @@ export async function scoreSurvivorPicks(gameId, winner) {
   // Find all locked survivor picks for this game
   const { data: rawPicks, error } = await supabase
     .from('survivor_picks')
-    .select('*, leagues(name, settings, starts_at), league_weeks(week_number)')
+    .select('*, leagues(name, settings, starts_at), league_weeks(week_number, starts_at)')
     .eq('game_id', gameId)
     .eq('status', 'locked')
 
@@ -679,11 +682,17 @@ export async function scoreSurvivorPicks(gameId, winner) {
 
   if (!rawPicks?.length) return
 
-  // Defense in depth: skip picks tied to leagues that haven't started yet.
+  // Defense in depth: skip picks whose period hasn't started yet. We check
+  // league_weeks.starts_at instead of leagues.starts_at because the
+  // ET-anchored period boundary can fall earlier than the league's nominal
+  // start date — without this, a legitimate Day 1 pick whose game has
+  // finished stays stuck at 'locked' forever.
   const nowMs = Date.now()
   const picks = rawPicks.filter((p) => {
-    const ts = p.leagues?.starts_at
-    return !ts || new Date(ts).getTime() <= nowMs
+    const periodStart = p.league_weeks?.starts_at
+    if (periodStart) return new Date(periodStart).getTime() <= nowMs
+    const leagueStart = p.leagues?.starts_at
+    return !leagueStart || new Date(leagueStart).getTime() <= nowMs
   })
   if (!picks.length) return
 
@@ -835,6 +844,41 @@ export async function scoreSurvivorPicks(gameId, winner) {
   }
 
   logger.info({ gameId, picksScored: picks.length }, 'Survivor picks scored')
+}
+
+/**
+ * Backfill: rescue any survivor picks stuck at 'locked' whose game has already
+ * finalized. scoreGames calls scoreSurvivorPicks inline when it finalizes a
+ * game, but if that call no-ops (e.g. starts_at guard, transient error), the
+ * pick stays locked forever. This catches those leftovers so an outage or a
+ * scoring-filter bug can't leave users hanging in 'locked' limbo.
+ */
+export async function backfillStuckSurvivorPicks() {
+  const { data: stuck, error } = await supabase
+    .from('survivor_picks')
+    .select('game_id, games!inner(status, winner)')
+    .eq('status', 'locked')
+    .eq('games.status', 'final')
+    .limit(200)
+
+  if (error) {
+    logger.error({ error }, 'backfillStuckSurvivorPicks: query failed')
+    return
+  }
+  if (!stuck?.length) return
+
+  const byGame = new Map()
+  for (const p of stuck) {
+    if (!byGame.has(p.game_id)) byGame.set(p.game_id, p.games?.winner ?? null)
+  }
+  for (const [gameId, winner] of byGame) {
+    try {
+      await scoreSurvivorPicks(gameId, winner)
+    } catch (err) {
+      logger.error({ err, gameId }, 'backfillStuckSurvivorPicks: rescore threw')
+    }
+  }
+  logger.info({ rescuedGames: byGame.size, picksProcessed: stuck.length }, 'Backfilled stuck survivor picks')
 }
 
 export async function autoEliminateMissedPicks() {
