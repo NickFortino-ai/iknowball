@@ -5,20 +5,24 @@ import { createNotification } from '../services/notificationService.js'
 /**
  * Survivor pick reminders.
  *
- * Fires once per (user, league_week) when:
- *  - the league is active
- *  - the current period is open (starts_at <= now <= ends_at)
+ * Fires ONCE PER USER, only on the league's first period (Day 1 / Week 1).
+ * Users typically know to keep picking after Day 1; the goal is to catch
+ * the day-of-launch case where members forgot to pick at all.
+ *
+ * Conditions to fire:
+ *  - league is active
+ *  - the FIRST period is currently open (starts_at <= now <= ends_at)
  *  - the user is alive
- *  - the user hasn't submitted a pick for the current period
+ *  - the user hasn't submitted a pick for the first period
  *  - we haven't already sent a reminder for this (user, period)
  *
  * Dedupe is via the notifications table itself: each reminder writes
  * metadata.leagueWeekId, so a follow-up cron run sees the existing row
- * and skips. This makes the job idempotent — safe to run on any cadence.
+ * and skips. The job is idempotent — safe to run on any cadence.
  *
- * Guard: skip overnight (between midnight and 8 AM ET) so the push
- * doesn't wake users up. Most sports days have first kickoffs well
- * after 8 AM ET anyway, so this only delays the reminder by a few hours.
+ * Guard: skip overnight (before 8 AM ET, after 11 PM ET) so the push
+ * doesn't wake users up. The 8 AM-11 PM window leaves 15 hours where
+ * the reminder can fire — plenty of time to catch a Day-1 oversight.
  */
 export async function sendSurvivorPickReminders() {
   const now = new Date()
@@ -40,17 +44,19 @@ export async function sendSurvivorPickReminders() {
 
   let totalSent = 0
   for (const league of leagues) {
-    // Current period: a week containing now
-    const { data: weeks } = await supabase
+    // Only fire during the FIRST period — find the lowest week_number for
+    // this league, then only proceed if that period is currently open.
+    const { data: firstWeeks } = await supabase
       .from('league_weeks')
       .select('id, week_number, starts_at, ends_at')
       .eq('league_id', league.id)
-      .lte('starts_at', nowIso)
-      .gte('ends_at', nowIso)
+      .order('week_number', { ascending: true })
       .limit(1)
 
-    if (!weeks?.length) continue
-    const currentWeek = weeks[0]
+    if (!firstWeeks?.length) continue
+    const currentWeek = firstWeeks[0]
+    const isOpenNow = currentWeek.starts_at <= nowIso && currentWeek.ends_at >= nowIso
+    if (!isOpenNow) continue // first period hasn't started yet, or already ended
 
     const { data: members } = await supabase
       .from('league_members')
