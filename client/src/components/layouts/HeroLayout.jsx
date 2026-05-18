@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Outlet, Link, useParams } from 'react-router-dom'
+import { Outlet, Link, useParams, useLocation } from 'react-router-dom'
 import { getBackdropUrl } from '../../lib/backdropUrl'
+import { useAuthStore } from '../../stores/authStore'
 
 // ---------------------------------------------------------------------------
 // HeroLayout — persistent hero across /, /signup, /login, /payment, /join/:code
@@ -29,8 +30,28 @@ function readPendingInviteCode() {
 
 export default function HeroLayout() {
   const params = useParams()
-  // /join/:code provides code in URL; other routes inherit from localStorage
-  const code = params.code || readPendingInviteCode()
+  const location = useLocation()
+  const session = useAuthStore((s) => s.session)
+
+  // Only the auth-funnel routes consume pendingInviteCode. The home page (/)
+  // always shows the IKB cycling hero, never the invite-league hero — a stale
+  // pendingInviteCode in localStorage shouldn't bleed through to the signed-in
+  // home page. /join/:code always uses the URL code regardless.
+  const isInviteFlowRoute =
+    location.pathname.startsWith('/join') ||
+    location.pathname === '/signup' ||
+    location.pathname === '/login' ||
+    location.pathname === '/payment'
+  const code = params.code || (isInviteFlowRoute ? readPendingInviteCode() : null)
+
+  // Clean up stale pendingInviteCode for a logged-in user on the home page.
+  // They either already joined or abandoned the flow; either way the code
+  // shouldn't follow them around.
+  useEffect(() => {
+    if (session?.user && location.pathname === '/') {
+      try { localStorage.removeItem('pendingInviteCode') } catch {}
+    }
+  }, [session?.user, location.pathname])
 
   const [leaguePreview, setLeaguePreview] = useState(null)
   const [leagueLoaded, setLeagueLoaded] = useState(false)
