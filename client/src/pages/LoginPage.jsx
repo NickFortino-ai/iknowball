@@ -47,14 +47,6 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="bg-bg-primary/40 backdrop-blur-md rounded-2xl p-6 sm:p-7 border border-white/15">
-        <div className="flex justify-center mb-5">
-          <div className="inline-flex items-center px-4 py-1.5 bg-accent/15 border-2 border-accent rounded-lg">
-            <span className="font-display text-xs sm:text-sm text-accent tracking-[0.35em]">
-              I KNOW BALL
-            </span>
-          </div>
-        </div>
-
         {leaguePreview && (
           <p className="text-white/85 text-center text-sm mb-4">
             Sign in to join <span className="font-semibold">{leaguePreview.name}</span>.
