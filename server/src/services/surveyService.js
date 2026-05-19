@@ -25,7 +25,9 @@ const Q_TEAMS = {
   prompt: 'How many teams can you name from this sport?',
   options: [
     { value: 'all', label: 'All' },
-    { value: 'some', label: 'Some' },
+    { value: 'more_than_half', label: 'More than half' },
+    { value: 'less_than_half', label: 'Less than half' },
+    { value: 'a_few', label: 'A few' },
     { value: 'none', label: 'None' },
   ],
 }
