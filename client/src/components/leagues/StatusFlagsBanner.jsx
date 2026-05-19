@@ -21,7 +21,7 @@ const DOTS = [
   {
     color: 'bg-incorrect',
     label: 'Red',
-    description: 'Action needed — you haven\'t made this period\'s pick or set your lineup yet.',
+    description: 'Action needed — you haven\'t made this period\'s pick or set your lineup yet, or one of your starters is out.',
   },
 ]
 
