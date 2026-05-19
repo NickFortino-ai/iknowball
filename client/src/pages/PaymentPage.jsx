@@ -268,21 +268,6 @@ export default function PaymentPage() {
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="bg-bg-primary/40 backdrop-blur-md rounded-2xl p-6 sm:p-7 border border-white/15">
-        {/* IKB pill header — visual unity with /signup, /login */}
-        <div className="flex justify-center mb-5">
-          <div className="inline-flex items-center px-4 py-1.5 bg-accent/15 border-2 border-accent rounded-lg">
-            <span className="font-display text-xs sm:text-sm text-accent tracking-[0.35em]">
-              I KNOW BALL
-            </span>
-          </div>
-        </div>
-
-        {inviteLeague && (
-          <p className="text-white/85 text-center text-sm mb-5">
-            One step from joining <span className="font-semibold">{inviteLeague.name}</span>.
-          </p>
-        )}
-
         {(error || status === 'cancelled') && (
           <div className="bg-incorrect/15 border border-incorrect rounded-lg p-3 mb-4 text-sm text-incorrect">
             {error || 'Payment was cancelled. Try again when you\'re ready.'}
@@ -291,27 +276,35 @@ export default function PaymentPage() {
 
         {/* What you get */}
         <div className="bg-bg-primary/40 backdrop-blur-sm border border-white/15 rounded-xl p-4 mb-5">
-          <div className="font-display text-sm text-accent uppercase tracking-wider mb-3">What you get</div>
+          <div className="font-display text-sm text-accent uppercase tracking-wider mb-3">What you get for under $1 per month</div>
           <ul className="space-y-2 text-sm text-white">
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">Live picks</span> across NFL, NBA, MLB, WNBA, NHL, college, golf — scored by Vegas odds in real time.</span>
+              <span>The best fantasy and sports prediction app in the game.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">18 league formats</span> — Fantasy Football, Salary Cap DFS, Pick'em, Survivor, Brackets, Squares, NBA/WNBA 3-Point Contests, HR Derby, Strikeouts, Sacks, Interceptions, Solo Tackles, Receptions, TD Pass, and more.</span>
+              <span>Connection to a competitive community of sports fans.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">Global tier ladder</span> — climb Rookie → Baller → Elite → Hall of Famer → GOAT as every pick lifetime-counts toward your rank.</span>
+              <span>An array of odds-based picks daily — test your prediction powers.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">Social hub built for sports</span> — post takes, react to friends' picks, watch the feed light up with wins, streaks, and league results.</span>
+              <span>18 league formats — create or join Fantasy Football leagues, Salary Cap DFS, Survivor, Brackets, Squares, and much more.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span><span className="font-semibold">Zero ads, zero data sales.</span> Your subscription is the product — not you.</span>
+              <span>Your whole pick history tracked forever — every win, streak, and tier climb stays with you.</span>
+            </li>
+            <li className="flex gap-2.5">
+              <span className="text-accent shrink-0 mt-0.5">●</span>
+              <span>A sports-centric social hub — post takes, react to friends' picks, watch the feed light up with wins.</span>
+            </li>
+            <li className="flex gap-2.5">
+              <span className="text-accent shrink-0 mt-0.5">●</span>
+              <span>Zero ads, zero data sales.</span>
             </li>
           </ul>
         </div>
