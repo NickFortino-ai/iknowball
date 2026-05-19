@@ -64,6 +64,16 @@ export async function sendPickInjuryWarnings() {
     sentSet,
   })
 
+  // ── WNBA 3-Point Contest ───────────────────────────────────────────
+  // WNBA has no dfs_salaries table — pull Out players from team_intel
+  // (which syncInjuries populates per-team for basketball_wnba) and
+  // match wnba_three_point_picks by player_name.
+  sentTotal += await runWnbaThreePointWarnings({
+    label: 'WNBA 3-Point Contest',
+    today,
+    sentSet,
+  })
+
   // ── MLB HR Derby ──────────────────────────────────────────────────
   sentTotal += await runDailyEspnFormat({
     table: 'hr_derby_picks',
@@ -287,6 +297,61 @@ async function runWeeklyNflFormat({ table, playerKey, label, sportKey, season, w
     try {
       await createNotification(p.user_id, NOTIF_TYPE, body, {
         player_key: dedupPlayerKey,
+        league_id: p.league_id,
+        period_key: periodKey,
+        format: label,
+      })
+      sent++
+    } catch (err) {
+      logger.error({ err, p }, `${label} injury warning failed`)
+    }
+  }
+  return sent
+}
+
+/**
+ * WNBA 3-Point Contest injury warnings. No wnba_dfs_salaries table to
+ * key off, so we pull Out player NAMES from team_intel (sport_key =
+ * basketball_wnba — syncInjuries populates per-team) and match
+ * wnba_three_point_picks by player_name + game_date.
+ */
+async function runWnbaThreePointWarnings({ label, today, sentSet }) {
+  const pron = pronounsForSport('basketball_wnba')
+
+  const { data: intel } = await supabase
+    .from('team_intel')
+    .select('injuries')
+    .eq('sport_key', 'basketball_wnba')
+
+  const outNames = new Set()
+  for (const row of intel || []) {
+    for (const inj of row.injuries || []) {
+      if (inj?.status === 'Out' && inj?.name) outNames.add(inj.name)
+    }
+  }
+  if (!outNames.size) return 0
+
+  const { data: picks } = await supabase
+    .from('wnba_three_point_picks')
+    .select('user_id, league_id, espn_player_id, player_name, leagues(name)')
+    .eq('game_date', today)
+    .in('player_name', [...outNames])
+
+  if (!picks?.length) return 0
+
+  let sent = 0
+  for (const p of picks) {
+    const periodKey = `date:${today}`
+    const playerKey = `espn:${p.espn_player_id}`
+    const dedupKey = `${p.user_id}|${playerKey}|${p.league_id}|${periodKey}`
+    if (sentSet.has(dedupKey)) continue
+    sentSet.add(dedupKey)
+
+    const leagueName = p.leagues?.name || `your ${label}`
+    const body = `${p.player_name} is Out tonight — ${pron.subjContraction} on your ${leagueName} lineup. Swap ${pron.object} out before the game starts to avoid a 0 threes contribution.`
+    try {
+      await createNotification(p.user_id, NOTIF_TYPE, body, {
+        player_key: playerKey,
         league_id: p.league_id,
         period_key: periodKey,
         format: label,
