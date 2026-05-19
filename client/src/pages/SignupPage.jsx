@@ -62,6 +62,23 @@ export default function SignupPage() {
               minLength={3}
               maxLength={20}
               pattern="^[a-zA-Z0-9_]+$"
+              onInvalid={(e) => {
+                const v = e.target.validity
+                if (v.patternMismatch) {
+                  e.target.setCustomValidity(
+                    e.target.value.includes(' ')
+                      ? 'Please remove the spaces from your username.'
+                      : 'Username can only contain letters, numbers, and underscores.'
+                  )
+                } else if (v.tooShort) {
+                  e.target.setCustomValidity('Username must be at least 3 characters.')
+                } else if (v.valueMissing) {
+                  e.target.setCustomValidity('Please choose a username.')
+                } else {
+                  e.target.setCustomValidity('')
+                }
+              }}
+              onInput={(e) => e.target.setCustomValidity('')}
               className="w-full bg-bg-input/80 border border-white/20 rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
               placeholder="ballknower42"
             />
