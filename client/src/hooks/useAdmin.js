@@ -527,3 +527,27 @@ export function useRejectBackdrop() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'backdrop-submissions'] }),
   })
 }
+
+export function useAdminSurveyLeagues() {
+  return useQuery({
+    queryKey: ['admin', 'surveys', 'leagues'],
+    queryFn: () => api.get('/admin/surveys/leagues'),
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useDesignateSurvey() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ league_id, enabled }) => api.post('/admin/surveys/designate', { league_id, enabled }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] }),
+  })
+}
+
+export function useAdminSurveyResponses(leagueId) {
+  return useQuery({
+    queryKey: ['admin', 'surveys', 'responses', leagueId],
+    queryFn: () => api.get(`/admin/surveys/responses?league_id=${leagueId}`),
+    enabled: !!leagueId,
+  })
+}

@@ -9,6 +9,7 @@ import { syncLiveScores } from './syncLiveScores.js'
 import { completeLeagues } from './completeLeagues.js'
 import { autoEliminateMissedPicks, backfillStuckSurvivorPicks } from '../services/survivorService.js'
 import { sendSurvivorPickReminders } from './sendSurvivorPickReminders.js'
+import { sendSurveyInviteNudges } from './sendSurveyInviteNudges.js'
 import { snapshotCrowns } from './snapshotCrowns.js'
 import { snapshotRanks } from './snapshotRanks.js'
 import { recalculateRecords } from './recalculateRecords.js'
@@ -264,6 +265,11 @@ export function startScheduler() {
       try { await sendSurvivorPickReminders() } catch (err) { logger.error({ err }, 'Survivor pick reminder job failed') }
     })
     logger.info('Survivor pick reminders scheduled: hourly')
+
+    cron.schedule('30 * * * *', async () => {
+      try { await sendSurveyInviteNudges() } catch (err) { logger.error({ err }, 'Survey invite nudge job failed') }
+    })
+    logger.info('Survey invite nudges scheduled: hourly')
 
     cron.schedule('*/30 * * * *', async () => {
       try { await settleStuckParlays() } catch (err) { logger.error({ err }, 'Stuck parlay cleanup job failed') }

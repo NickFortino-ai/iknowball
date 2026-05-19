@@ -48,6 +48,11 @@ import {
   muteUser,
   unmuteUser,
 } from '../services/contentFilterService.js'
+import {
+  ENTRY_QUESTIONS,
+  EXIT_QUESTIONS,
+  sportLabel as surveySportLabel,
+} from '../services/surveyService.js'
 
 const router = Router()
 
@@ -1261,6 +1266,254 @@ router.put('/app-settings/:key', requireAuth, requireAdmin, async (req, res) => 
     .single()
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
+})
+
+// ── User Surveys ─────────────────────────────────────────────────────
+// Three lists: eligible (not started, designatable), in_progress
+// (designated + started, not yet ended), completed (ended, responses
+// viewable). Designation flips `survey_enabled` on the league.
+
+router.get('/surveys/leagues', async (req, res) => {
+  const nowIso = new Date().toISOString()
+  const { data: leagues, error } = await supabase
+    .from('leagues')
+    .select('id, name, sport, format, starts_at, ends_at, survey_enabled, status, created_at')
+    .order('starts_at', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+
+  const eligible = []
+  const inProgress = []
+  const completed = []
+  for (const l of leagues || []) {
+    const started = l.starts_at && l.starts_at <= nowIso
+    const ended = l.ends_at && l.ends_at <= nowIso
+    if (!started && !l.survey_enabled && l.status !== 'archived' && l.status !== 'completed') {
+      eligible.push(l)
+    } else if (l.survey_enabled && started && !ended) {
+      inProgress.push(l)
+    } else if (l.survey_enabled && ended) {
+      completed.push(l)
+    } else if (l.survey_enabled && !started) {
+      // Designated but not started yet — show in eligible so admin can
+      // un-designate before lock-in.
+      eligible.push(l)
+    }
+  }
+
+  // For in_progress and completed, fetch response counts in one round
+  // trip per bucket.
+  const tally = async (ids) => {
+    if (!ids.length) return {}
+    const { data: rows } = await supabase
+      .from('user_surveys')
+      .select('league_id, survey_type, submitted_at, dismissed_at')
+      .in('league_id', ids)
+    const map = {}
+    for (const id of ids) map[id] = { entry: 0, exit: 0, dismissed: 0 }
+    for (const r of rows || []) {
+      if (!map[r.league_id]) continue
+      if (r.submitted_at) map[r.league_id][r.survey_type] = (map[r.league_id][r.survey_type] || 0) + 1
+      else if (r.dismissed_at) map[r.league_id].dismissed += 1
+    }
+    return map
+  }
+  const inProgressCounts = await tally(inProgress.map((l) => l.id))
+  const completedCounts = await tally(completed.map((l) => l.id))
+  const memberCount = async (ids) => {
+    if (!ids.length) return {}
+    const { data: rows } = await supabase
+      .from('league_members')
+      .select('league_id')
+      .in('league_id', ids)
+    const counts = {}
+    for (const r of rows || []) counts[r.league_id] = (counts[r.league_id] || 0) + 1
+    return counts
+  }
+  const inProgressMembers = await memberCount(inProgress.map((l) => l.id))
+  const completedMembers = await memberCount(completed.map((l) => l.id))
+
+  res.json({
+    eligible,
+    in_progress: inProgress.map((l) => ({
+      ...l,
+      counts: inProgressCounts[l.id],
+      member_count: inProgressMembers[l.id] || 0,
+    })),
+    completed: completed.map((l) => ({
+      ...l,
+      counts: completedCounts[l.id],
+      member_count: completedMembers[l.id] || 0,
+    })),
+  })
+})
+
+router.post('/surveys/designate', async (req, res) => {
+  const { league_id, enabled } = req.body
+  if (!league_id || typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'league_id and enabled required' })
+  }
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('id, starts_at, status')
+    .eq('id', league_id)
+    .maybeSingle()
+  if (!league) return res.status(404).json({ error: 'league not found' })
+
+  // Lock once started — admin can't toggle mid-experiment via this route.
+  // (We still allow disabling pre-start.)
+  const nowIso = new Date().toISOString()
+  if (league.starts_at && league.starts_at <= nowIso) {
+    return res.status(400).json({ error: 'league already started; designation locked' })
+  }
+
+  const { error } = await supabase
+    .from('leagues')
+    .update({ survey_enabled: enabled })
+    .eq('id', league_id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ ok: true })
+})
+
+router.get('/surveys/responses', async (req, res) => {
+  const { league_id } = req.query
+  if (!league_id) return res.status(400).json({ error: 'league_id required' })
+
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('id, name, sport, format, starts_at, ends_at')
+    .eq('id', league_id)
+    .maybeSingle()
+  if (!league) return res.status(404).json({ error: 'league not found' })
+
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, joined_at, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .eq('league_id', league_id)
+
+  const { data: surveys } = await supabase
+    .from('user_surveys')
+    .select('user_id, survey_type, responses, submitted_at, dismissed_at')
+    .eq('league_id', league_id)
+
+  const byUser = {}
+  for (const m of members || []) {
+    byUser[m.user_id] = {
+      user: m.users || { id: m.user_id },
+      joined_at: m.joined_at,
+      entry: null,
+      exit: null,
+      entry_dismissed_at: null,
+      exit_dismissed_at: null,
+    }
+  }
+  for (const s of surveys || []) {
+    if (!byUser[s.user_id]) {
+      byUser[s.user_id] = {
+        user: { id: s.user_id },
+        joined_at: null,
+        entry: null,
+        exit: null,
+        entry_dismissed_at: null,
+        exit_dismissed_at: null,
+      }
+    }
+    const slot = byUser[s.user_id]
+    if (s.submitted_at) slot[s.survey_type] = { responses: s.responses, submitted_at: s.submitted_at }
+    if (s.dismissed_at) slot[`${s.survey_type}_dismissed_at`] = s.dismissed_at
+  }
+
+  // Aggregates — only for fully numeric (Q4) we can compute mean; others
+  // are categorical so we count.
+  const tally = (key, surveyType) => {
+    const counts = {}
+    let sum = 0
+    let n = 0
+    for (const u of Object.values(byUser)) {
+      const r = u[surveyType]?.responses?.[key]
+      if (r === undefined || r === null || r === '') continue
+      if (typeof r === 'number' || /^[0-9]+$/.test(String(r))) {
+        sum += Number(r); n += 1
+      }
+      counts[r] = (counts[r] || 0) + 1
+    }
+    return { counts, mean: n ? sum / n : null, n }
+  }
+
+  const entryQs = ENTRY_QUESTIONS.map((q) => ({ id: q.id, prompt: q.prompt, ...tally(q.id, 'entry') }))
+  const exitQs = EXIT_QUESTIONS.map((q) => ({ id: q.id, prompt: q.prompt, ...tally(q.id, 'exit') }))
+
+  res.json({
+    league: { ...league, sport_label: surveySportLabel(league.sport) },
+    entry_questions: ENTRY_QUESTIONS,
+    exit_questions: EXIT_QUESTIONS,
+    aggregates: { entry: entryQs, exit: exitQs },
+    responses: Object.values(byUser).sort((a, b) =>
+      (a.user.display_name || a.user.username || '').localeCompare(b.user.display_name || b.user.username || '')
+    ),
+  })
+})
+
+// CSV download. Rows: one row per (user × surveyType). Columns: user
+// identifiers + each question id.
+router.get('/surveys/responses.csv', async (req, res) => {
+  const { league_id } = req.query
+  if (!league_id) return res.status(400).json({ error: 'league_id required' })
+
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('id, name')
+    .eq('id', league_id)
+    .maybeSingle()
+  if (!league) return res.status(404).json({ error: 'league not found' })
+
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, users(username, display_name)')
+    .eq('league_id', league_id)
+
+  const { data: surveys } = await supabase
+    .from('user_surveys')
+    .select('user_id, survey_type, responses, submitted_at, dismissed_at')
+    .eq('league_id', league_id)
+
+  const memberByUser = {}
+  for (const m of members || []) memberByUser[m.user_id] = m.users
+
+  const escape = (s) => {
+    if (s === null || s === undefined) return ''
+    const str = String(s)
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) return `"${str.replace(/"/g, '""')}"`
+    return str
+  }
+
+  const headerKeys = [
+    'survey_type', 'user_id', 'username', 'display_name', 'submitted_at', 'dismissed_at',
+    ...ENTRY_QUESTIONS.map((q) => `entry_${q.id}`),
+    ...EXIT_QUESTIONS.map((q) => `exit_${q.id}`),
+  ]
+  const lines = [headerKeys.join(',')]
+
+  for (const s of surveys || []) {
+    const u = memberByUser[s.user_id] || {}
+    const row = {
+      survey_type: s.survey_type,
+      user_id: s.user_id,
+      username: u.username || '',
+      display_name: u.display_name || '',
+      submitted_at: s.submitted_at || '',
+      dismissed_at: s.dismissed_at || '',
+    }
+    if (s.survey_type === 'entry') {
+      for (const q of ENTRY_QUESTIONS) row[`entry_${q.id}`] = s.responses?.[q.id] ?? ''
+    } else {
+      for (const q of EXIT_QUESTIONS) row[`exit_${q.id}`] = s.responses?.[q.id] ?? ''
+    }
+    lines.push(headerKeys.map((k) => escape(row[k] ?? '')).join(','))
+  }
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+  res.setHeader('Content-Disposition', `attachment; filename="surveys-${league.name.replace(/[^a-z0-9-]/gi, '_')}.csv"`)
+  res.send(lines.join('\n'))
 })
 
 export default router

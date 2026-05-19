@@ -1691,3 +1691,12 @@ export function useSubmitTdPassPick() {
     },
   })
 }
+
+export function useSurveyStatus(leagueId) {
+  return useQuery({
+    queryKey: ['survey-status', leagueId],
+    queryFn: () => api.get(`/surveys/status?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    staleTime: 60 * 1000,
+  })
+}

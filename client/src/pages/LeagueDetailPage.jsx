@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite, useSurveyStatus } from '../hooks/useLeagues'
+import SurveyModal from '../components/leagues/SurveyModal'
 import { useAcceptInvitation } from '../hooks/useInvitations'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
@@ -1573,6 +1574,8 @@ export default function LeagueDetailPage() {
   const acceptInvitation = useAcceptInvitation()
   const joinOpenLeague = useJoinOpenLeague()
   const requestInvite = useRequestInvite()
+  const { data: surveyStatus } = useSurveyStatus(id)
+  const [surveyOpen, setSurveyOpen] = useState(true)
   const [inviteRequested, setInviteRequested] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
@@ -2150,6 +2153,17 @@ export default function LeagueDetailPage() {
             setSearchParams(searchParams, { replace: true })
           }
         }} />
+      )}
+
+      {isMember && surveyOpen && surveyStatus?.surveyType && (
+        <SurveyModal
+          leagueId={league.id}
+          surveyType={surveyStatus.surveyType}
+          questions={surveyStatus.questions}
+          sportLabel={surveyStatus.sportLabel}
+          topNote={surveyStatus.topNote}
+          onClose={() => setSurveyOpen(false)}
+        />
       )}
 
       {/* Commissioner's Note */}

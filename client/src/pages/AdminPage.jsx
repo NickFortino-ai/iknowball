@@ -14,6 +14,7 @@ import PlayerBlurbsPanel from '../components/admin/PlayerBlurbsPanel'
 import AdminToolsPanel from '../components/admin/AdminToolsPanel'
 import DashboardPanel from '../components/admin/DashboardPanel'
 import SeasonDatesPanel from '../components/admin/SeasonDatesPanel'
+import UserSurveysPanel from '../components/admin/UserSurveysPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import Avatar from '../components/ui/Avatar'
@@ -256,6 +257,7 @@ export default function AdminPage() {
           { key: 'seasons', label: 'Seasons' },
           { key: 'tools', label: 'Tools' },
           { key: 'overrides', label: 'Overrides' },
+          { key: 'surveys', label: 'Surveys' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -588,6 +590,8 @@ export default function AdminPage() {
       {adminSection === 'playerblurbs' && <PlayerBlurbsPanel />}
 
       {adminSection === 'seasons' && <SeasonDatesPanel />}
+
+      {adminSection === 'surveys' && <UserSurveysPanel />}
 
       {adminSection === 'tools' && <AdminToolsPanel />}
 

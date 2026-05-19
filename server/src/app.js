@@ -44,6 +44,7 @@ import messagesRouter from './routes/messages.js'
 import backdropSubmissionsRouter from './routes/backdropSubmissions.js'
 import newsRouter from './routes/news.js'
 import publicLandingRouter from './routes/publicLanding.js'
+import surveysRouter from './routes/surveys.js'
 
 const app = express()
 
@@ -96,6 +97,7 @@ app.use('/api/receptions', receptionsRouter)
 app.use('/api/td-pass', tdPassRouter)
 app.use('/api/news', newsRouter)
 app.use('/api/public', publicLandingRouter)
+app.use('/api/surveys', surveysRouter)
 
 app.use(errorHandler)
 
