@@ -157,7 +157,7 @@ export default function JoinPage() {
       <div className="bg-bg-primary/40 backdrop-blur-md rounded-2xl p-5 sm:p-6 border border-white/15 mb-4">
         {commissionerName && (
           <p className="text-white/80 text-sm text-center mb-3">
-            Invited by <span className="font-semibold text-white">@{commissionerName}</span>
+            Invited by <span className="font-semibold text-white">{commissionerName}</span>
           </p>
         )}
         {tagline && (
