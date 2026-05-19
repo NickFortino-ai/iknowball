@@ -637,7 +637,7 @@ export default function SettingsPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-text-primary">Plan</span>
-              <span className="text-sm text-text-secondary font-semibold">{profile.subscription_plan === 'yearly' ? '$10/year' : '$1/month'}</span>
+              <span className="text-sm text-text-secondary font-semibold">{profile.subscription_plan === 'yearly' ? '$9.99/year' : '$0.99/month'}</span>
             </div>
             {profile.subscription_expires_at && (
               <div className="flex items-center justify-between">

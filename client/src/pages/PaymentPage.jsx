@@ -320,7 +320,7 @@ export default function PaymentPage() {
             }`}
           >
             <div className="font-display text-lg text-white">
-              {isNative ? products.monthly?.priceString || '$0.99' : '$1'}
+              {isNative ? products.monthly?.priceString || '$0.99' : '$0.99'}
             </div>
             <div className="text-xs text-white/70">per month</div>
           </button>
@@ -336,7 +336,7 @@ export default function PaymentPage() {
               Save 17%
             </div>
             <div className="font-display text-lg text-white">
-              {isNative ? products.yearly?.priceString || '$9.99' : '$10'}
+              {isNative ? products.yearly?.priceString || '$9.99' : '$9.99'}
             </div>
             <div className="text-xs text-white/70">per year</div>
           </button>
@@ -350,7 +350,7 @@ export default function PaymentPage() {
         >
           {loading ? 'Processing...' : isNative
             ? products[plan] ? `Subscribe — ${products[plan].priceString}` : 'Purchase unavailable'
-            : `Subscribe — ${plan === 'yearly' ? '$10/year' : '$1/month'}`
+            : `Subscribe — ${plan === 'yearly' ? '$9.99/year' : '$0.99/month'}`
           }
         </button>
 
