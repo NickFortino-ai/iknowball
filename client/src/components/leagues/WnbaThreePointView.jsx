@@ -11,6 +11,39 @@ function todayLocal() {
   return new Date().toLocaleDateString('en-CA')
 }
 
+// Initials from a full name. "Jovana Nogic" → "JN", "Sue" → "S".
+function initialsOf(name) {
+  if (!name) return '?'
+  const parts = String(name).trim().split(/\s+/).slice(0, 2)
+  return parts.map((p) => p[0]?.toUpperCase() || '').join('') || '?'
+}
+
+/**
+ * Headshot avatar with a graceful fallback to initials when the image
+ * is missing OR fails to load. The previous `onError` handler just hid
+ * the broken <img> which left an empty space — this swaps to a circle
+ * with the player's initials instead. `className` controls sizing so
+ * callers can pass responsive Tailwind variants (e.g. w-8 lg:w-10).
+ */
+function PlayerHeadshot({ player, className = 'w-10 h-10' }) {
+  const [errored, setErrored] = useState(false)
+  if (player?.headshot_url && !errored) {
+    return (
+      <img
+        src={player.headshot_url}
+        alt=""
+        className={`${className} rounded-full object-cover bg-bg-secondary shrink-0`}
+        onError={() => setErrored(true)}
+      />
+    )
+  }
+  return (
+    <div className={`${className} rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold`}>
+      {initialsOf(player?.player_name || player?.full_name)}
+    </div>
+  )
+}
+
 function tomorrowLocal() {
   const d = new Date()
   d.setDate(d.getDate() + 1)
@@ -271,10 +304,7 @@ export default function WnbaThreePointView({ league, tab = 'picks' }) {
                               </div>
                             ) : (
                               <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
-                                {pick.headshot_url && (
-                                  <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                                    onError={(e) => { e.target.style.display = 'none' }} />
-                                )}
+                                <PlayerHeadshot player={pick} className="w-8 h-8 lg:w-10 lg:h-10" />
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5">
                                     <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
@@ -304,10 +334,7 @@ export default function WnbaThreePointView({ league, tab = 'picks' }) {
                                 <div className="space-y-1.5">
                                   {recentByDate[d].map((pick, i) => (
                                     <div key={i} className="flex items-center gap-2 lg:gap-3 bg-bg-primary/10 border border-text-primary/10 rounded-lg px-2.5 lg:px-4 py-2 lg:py-3">
-                                      {pick.headshot_url && (
-                                        <img src={pick.headshot_url} alt="" className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                                          onError={(e) => { e.target.style.display = 'none' }} />
-                                      )}
+                                      <PlayerHeadshot player={pick} className="w-8 h-8 lg:w-10 lg:h-10" />
                                       <div className="flex-1 min-w-0">
                                         <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
                                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -381,10 +408,7 @@ export default function WnbaThreePointView({ league, tab = 'picks' }) {
                 const injuryStatus = poolEntry?.injury_status || player.injury_status
                 return (
                   <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5">
-                    {player.headshot_url && (
-                      <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                        onError={(e) => { e.target.style.display = 'none' }} />
-                    )}
+                    <PlayerHeadshot player={player} className="w-10 h-10" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
@@ -505,14 +529,7 @@ export default function WnbaThreePointView({ league, tab = 'picks' }) {
                   }`}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {player.headshot_url ? (
-                      <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                        onError={(e) => { e.target.style.display = 'none' }} />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
-                        {player.position}
-                      </div>
-                    )}
+                    <PlayerHeadshot player={player} size={10} />
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
                       <div className="text-xs text-text-muted">
@@ -557,10 +574,7 @@ export default function WnbaThreePointView({ league, tab = 'picks' }) {
                   <div className="space-y-1.5">
                     {picks.map((pick, i) => (
                       <div key={i} className="flex items-center gap-2 bg-bg-primary/20 border border-text-primary/10 rounded-lg px-2.5 py-2">
-                        {pick.headshot_url && (
-                          <img src={pick.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                            onError={(e) => { e.target.style.display = 'none' }} />
-                        )}
+                        <PlayerHeadshot player={pick} className="w-8 h-8" />
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-bold text-text-primary truncate">{pick.player_name}</div>
                           <div className="text-[10px] text-text-muted">{pick.team}</div>

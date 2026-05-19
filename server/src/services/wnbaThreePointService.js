@@ -130,7 +130,11 @@ async function fetchTeamRoster(teamId, teamAbbrev) {
         player_name: a.displayName,
         team: teamAbbrev,
         position: a.position?.abbreviation || a.position?.name || null,
-        headshot_url: a.headshot?.href || `https://a.espncdn.com/i/headshots/wnba/players/full/${a.id}.png`,
+        // Only set headshot_url if ESPN actually gave us one. The
+        // constructed fallback URL frequently 404s for newer / less
+        // prominent players; better to let the client render initials
+        // immediately than wait for an HTTP failure.
+        headshot_url: a.headshot?.href || null,
       }))
     rosterCache.set(teamId, { players, ts: Date.now() })
     return players
