@@ -66,7 +66,7 @@ export default function SurveyModal({ leagueId, surveyType, questions, sportLabe
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/70" />
       <div
-        className="relative bg-bg-card border border-text-primary/15 w-full max-w-md rounded-2xl p-6"
+        className="relative bg-bg-primary border border-text-primary/20 w-full max-w-md rounded-2xl p-6 text-text-primary"
         onClick={(e) => e.stopPropagation()}
       >
         {thanks ? (
@@ -109,7 +109,7 @@ export default function SurveyModal({ leagueId, surveyType, questions, sportLabe
                     key={opt.value}
                     disabled={submitting}
                     onClick={() => recordAnswer(opt.value)}
-                    className="w-full text-left px-4 py-3 rounded-lg text-sm bg-bg-primary border border-text-primary/15 text-text-primary hover:bg-accent/10 hover:border-accent transition-colors disabled:opacity-50"
+                    className="w-full text-left px-4 py-3 rounded-lg text-sm bg-bg-primary border border-text-primary/20 text-text-primary hover:bg-accent/10 hover:border-accent transition-colors disabled:opacity-50"
                   >
                     {opt.label}
                   </button>
@@ -148,7 +148,7 @@ function ScaleInput({ min, max, minLabel, maxLabel, onPick, disabled }) {
             key={v}
             disabled={disabled}
             onClick={() => onPick(v)}
-            className="aspect-square rounded-lg bg-bg-primary border border-text-primary/15 text-text-primary font-display text-base hover:bg-accent/10 hover:border-accent transition-colors disabled:opacity-50"
+            className="aspect-square rounded-lg bg-bg-primary border border-text-primary/20 text-text-primary font-display text-base hover:bg-accent/10 hover:border-accent transition-colors disabled:opacity-50"
           >
             {v}
           </button>
