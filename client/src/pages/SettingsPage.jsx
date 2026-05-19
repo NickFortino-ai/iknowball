@@ -470,7 +470,13 @@ export default function SettingsPage() {
               with explicit width/height attributes the browser knows the
               16:9 aspect ratio before the bytes finish downloading, so the
               tile renders at the right size from the very first frame. */}
-          {(availableBackdrops || []).map((b) => (
+          {/* Dedupe by label so players who appear in multiple contest
+              backdrop sets (e.g. Jerry/Larry/Terrell in both Receptions
+              and TD Legends) show as a single tile in the picker. First
+              occurrence wins, which respects the existing sort_order. */}
+          {(availableBackdrops || []).filter((b, i, arr) =>
+            arr.findIndex((x) => (x.label || '') === (b.label || '')) === i
+          ).map((b) => (
             <button
               key={b.filename}
               type="button"
