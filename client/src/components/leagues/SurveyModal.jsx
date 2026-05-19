@@ -80,9 +80,9 @@ export default function SurveyModal({ leagueId, surveyType, questions, sportLabe
         ) : (
           <>
             {step === 0 && (
-              <p className="text-sm text-text-secondary mb-5">
+              <p className="text-sm mb-5">
                 <span className="font-display text-accent">IKB</span>
-                <span className="font-display"> is extremely interested in the psychology of watching, tracking, and enjoying sports. If you're open to it, please answer a few quick questions about your experience.</span>
+                <span className="font-display text-text-primary"> is extremely interested in the psychology of watching, tracking, and enjoying sports. If you're open to it, please answer a few quick questions about your experience.</span>
               </p>
             )}
 
@@ -127,7 +127,7 @@ export default function SurveyModal({ leagueId, surveyType, questions, sportLabe
                 disabled={submitting}
                 className="text-xs text-text-muted hover:text-text-primary underline disabled:opacity-50"
               >
-                Permanently dismiss
+                Dismiss
               </button>
             </div>
           </>
