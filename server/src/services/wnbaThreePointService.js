@@ -175,7 +175,7 @@ export async function getWNBAPlayerPool(date) {
   const events = await fetchWnbaScoreboardForDate(date)
   if (!events.length) return []
 
-  // Collect unique team_id -> { abbrev, startsAt, state, period, clock }
+  // Collect unique team_id -> { abbrev, opponent, startsAt, state, period, clock }
   const teamGameInfo = {}
   const eventByTeamId = {}
   for (const ev of events) {
@@ -188,12 +188,17 @@ export async function getWNBAPlayerPool(date) {
     const state = liveStatuses.includes(statusType) ? 'in'
       : finalStatuses.includes(statusType) ? 'post'
       : 'pre'
-    for (const c of comp.competitors || []) {
+    const competitors = comp.competitors || []
+    for (const c of competitors) {
       const teamId = String(c.team?.id || '')
       const abbrev = (c.team?.abbreviation || '').toUpperCase()
       if (!teamId || !abbrev) continue
+      const opp = competitors.find((x) => String(x.team?.id || '') !== teamId)
+      const oppAbbrev = (opp?.team?.abbreviation || '').toUpperCase()
+      const isHome = c.homeAway === 'home'
       teamGameInfo[teamId] = {
         abbrev,
+        opponent: oppAbbrev ? (isHome ? `vs ${oppAbbrev}` : `@ ${oppAbbrev}`) : null,
         startsAt: ev.date || comp.date || null,
         state,
         period: status?.period ? String(status.period) : null,
@@ -218,6 +223,7 @@ export async function getWNBAPlayerPool(date) {
       pool.push({
         ...p,
         season_threes: 0,
+        opponent: info.opponent,
         game_state: info.state,
         game_period: info.period,
         game_clock: info.clock,
