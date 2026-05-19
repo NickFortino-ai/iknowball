@@ -111,6 +111,18 @@ export default function JoinPage() {
     }
   }
 
+  // Auto-redirect logged-in-but-unpaid users straight to /payment so they
+  // never have to tap an extra "Complete Payment to Join" button. The
+  // payment page knows about pendingInviteCode and will send them back
+  // here once payment lands.
+  useEffect(() => {
+    if (!league) return
+    if (!session) return
+    if (profile && !profile.is_paid) {
+      navigate('/payment', { replace: true })
+    }
+  }, [league, session, profile, navigate])
+
   if (loading) {
     return <div className="py-12 flex justify-center"><LoadingSpinner /></div>
   }

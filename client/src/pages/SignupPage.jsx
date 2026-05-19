@@ -23,8 +23,10 @@ export default function SignupPage() {
     setLoading(true)
     try {
       await signUp(email, password, username)
-      const pendingCode = localStorage.getItem('pendingInviteCode')
-      navigate(pendingCode ? `/join/${pendingCode}` : '/payment')
+      // Always go straight to payment — PaymentPage knows to redirect
+      // back to /join/<code> on success when pendingInviteCode is set.
+      // Saves the user an extra "Complete Payment to Join" button tap.
+      navigate('/payment')
     } catch (err) {
       if (err.message?.toLowerCase().includes('already registered') || err.message?.toLowerCase().includes('already exists')) {
         setError('There is already an account associated with this email. For help, send an email to admin@iknowball.club')
