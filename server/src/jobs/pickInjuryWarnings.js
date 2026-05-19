@@ -12,6 +12,19 @@ function todayET() {
 }
 
 /**
+ * Sport-aware pronouns for notification copy. Default he/him for every
+ * men's sport. Women's sports (WNBA / Women's NCAAB / etc.) → she/her.
+ * Per the user: "all players from any sport other than wnba and wncaab
+ * are he/him/his pronouns. and women's sports are she/her/hers".
+ */
+function pronounsForSport(sportKey) {
+  const isFemaleSport = sportKey === 'basketball_wnba' || sportKey === 'basketball_wncaab'
+  return isFemaleSport
+    ? { subjContraction: "she's", object: 'her' }
+    : { subjContraction: "he's", object: 'him' }
+}
+
+/**
  * Send "your picked player is OUT" warnings across pick-based contest formats:
  *   3-Point Contest, HR Derby, Strikeouts (NBA/MLB - keyed by espn_player_id + game_date)
  *   Sacks, Interceptions, Passing TD (NFL - keyed by sleeper player id + week)
@@ -46,6 +59,7 @@ export async function sendPickInjuryWarnings() {
     salaryTable: 'nba_dfs_salaries',
     label: '3-Point Contest',
     statName: 'threes',
+    sportKey: 'basketball_nba',
     today,
     sentSet,
   })
@@ -56,6 +70,7 @@ export async function sendPickInjuryWarnings() {
     salaryTable: 'mlb_dfs_salaries',
     label: 'HR Derby',
     statName: 'home runs',
+    sportKey: 'baseball_mlb',
     today,
     sentSet,
   })
@@ -66,6 +81,7 @@ export async function sendPickInjuryWarnings() {
     salaryTable: 'mlb_dfs_salaries',
     label: 'Strikeouts Contest',
     statName: 'strikeouts',
+    sportKey: 'baseball_mlb',
     today,
     sentSet,
   })
@@ -76,6 +92,7 @@ export async function sendPickInjuryWarnings() {
     slotTable: 'nba_dfs_roster_slots',
     salaryTable: 'nba_dfs_salaries',
     label: 'NBA DFS',
+    sportKey: 'basketball_nba',
     today,
     sentSet,
   })
@@ -86,6 +103,7 @@ export async function sendPickInjuryWarnings() {
     slotTable: 'mlb_dfs_roster_slots',
     salaryTable: 'mlb_dfs_salaries',
     label: 'MLB DFS',
+    sportKey: 'baseball_mlb',
     today,
     sentSet,
   })
@@ -98,6 +116,7 @@ export async function sendPickInjuryWarnings() {
         table: 'sacks_picks',
         playerKey: 'sleeper_player_id',
         label: 'Sacks Contest',
+        sportKey: 'americanfootball_nfl',
         season: state.season,
         week: state.week,
         sentSet,
@@ -106,6 +125,7 @@ export async function sendPickInjuryWarnings() {
         table: 'ints_picks',
         playerKey: 'sleeper_player_id',
         label: 'Interceptions Contest',
+        sportKey: 'americanfootball_nfl',
         season: state.season,
         week: state.week,
         sentSet,
@@ -114,6 +134,7 @@ export async function sendPickInjuryWarnings() {
         table: 'td_pass_picks',
         playerKey: 'qb_player_id',
         label: 'Passing TD Competition',
+        sportKey: 'americanfootball_nfl',
         season: state.season,
         week: state.week,
         sentSet,
@@ -126,7 +147,8 @@ export async function sendPickInjuryWarnings() {
   if (sentTotal > 0) logger.info({ sent: sentTotal }, 'Pick injury warnings sent')
 }
 
-async function runDailyEspnFormat({ table, salaryTable, label, statName, today, sentSet }) {
+async function runDailyEspnFormat({ table, salaryTable, label, statName, sportKey, today, sentSet }) {
+  const pron = pronounsForSport(sportKey)
   // Find Out players in today's salaries
   const { data: outSalaries } = await supabase
     .from(salaryTable)
@@ -159,7 +181,7 @@ async function runDailyEspnFormat({ table, salaryTable, label, statName, today, 
 
     const playerName = nameById[p.espn_player_id] || 'A player'
     const leagueName = p.leagues?.name || `your ${label}`
-    const body = `${playerName} is Out tonight — they're on your ${leagueName} lineup. Swap them out before the game starts to avoid a 0 ${statName} contribution.`
+    const body = `${playerName} is Out tonight — ${pron.subjContraction} on your ${leagueName} lineup. Swap ${pron.object} out before the game starts to avoid a 0 ${statName} contribution.`
     try {
       await createNotification(p.user_id, NOTIF_TYPE, body, {
         player_key: playerKey,
@@ -175,7 +197,8 @@ async function runDailyEspnFormat({ table, salaryTable, label, statName, today, 
   return sent
 }
 
-async function runDfsRosterFormat({ rosterTable, slotTable, salaryTable, label, today, sentSet }) {
+async function runDfsRosterFormat({ rosterTable, slotTable, salaryTable, label, sportKey, today, sentSet }) {
+  const pron = pronounsForSport(sportKey)
   // Find Out players in today's salaries
   const { data: outSalaries } = await supabase
     .from(salaryTable)
@@ -210,7 +233,7 @@ async function runDfsRosterFormat({ rosterTable, slotTable, salaryTable, label, 
 
     const playerName = nameById[slot.espn_player_id] || 'A player'
     const leagueName = roster.leagues?.name || `your ${label}`
-    const body = `${playerName} is Out tonight — they're on your ${leagueName} ${label} roster. Swap them out before the game starts.`
+    const body = `${playerName} is Out tonight — ${pron.subjContraction} on your ${leagueName} ${label} roster. Swap ${pron.object} out before the game starts.`
     try {
       await createNotification(roster.user_id, NOTIF_TYPE, body, {
         player_key: playerKey,
@@ -226,7 +249,8 @@ async function runDfsRosterFormat({ rosterTable, slotTable, salaryTable, label, 
   return sent
 }
 
-async function runWeeklyNflFormat({ table, playerKey, label, season, week, sentSet }) {
+async function runWeeklyNflFormat({ table, playerKey, label, sportKey, season, week, sentSet }) {
+  const pron = pronounsForSport(sportKey)
   // Find Out NFL players
   const { data: outPlayers } = await supabase
     .from('nfl_players')
@@ -259,7 +283,7 @@ async function runWeeklyNflFormat({ table, playerKey, label, season, week, sentS
 
     const meta = nameById[playerId] || { name: 'A player', status: 'Out' }
     const leagueName = p.leagues?.name || `your ${label}`
-    const body = `${meta.name} (${meta.status}) is on your ${leagueName} pick this week. Swap them out before kickoff.`
+    const body = `${meta.name} (${meta.status}) is on your ${leagueName} pick this week. Swap ${pron.object} out before kickoff.`
     try {
       await createNotification(p.user_id, NOTIF_TYPE, body, {
         player_key: dedupPlayerKey,

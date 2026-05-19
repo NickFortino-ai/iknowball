@@ -112,7 +112,7 @@ export async function sendNflInjuryWarnings() {
 
     const player = playerById[w.player_id]
     const status = player?.injury_status || 'Out'
-    const body = `${player?.full_name || 'A player'} (${status}) is on your ${w.league_name} starting lineup. Swap them out before kickoff!`
+    const body = `${player?.full_name || 'A player'} (${status}) is on your ${w.league_name} starting lineup. Swap him out before kickoff!`
     try {
       await createNotification(w.user_id, 'nfl_injury_warning', body, {
         player_id: w.player_id,
