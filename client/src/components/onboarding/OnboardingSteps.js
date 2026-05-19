@@ -26,16 +26,8 @@ const ONBOARDING_STEPS = [
     page: '/',
     targetSelector: '[data-onboarding="open-leagues"]',
     title: 'Join an Open League',
-    body: "Scroll horizontally to browse leagues you can jump into right now. Tap any card for details — format, members already in, and how the global bonus scales with league size — then hit Join. Your own leagues live in the row above.",
+    body: "Scroll horizontally to browse leagues you can jump into right now. Tap any card for details — format, members already in, and how the global bonus scales with league size — then hit Join. Your own leagues live in the row above. You can also browse the full list anytime from the Leagues page.",
     position: 'bottom',
-    freeScroll: true,
-  },
-  {
-    page: '/leagues/join',
-    targetSelector: null,
-    title: 'Join Open Leagues',
-    body: "Browse leagues created by other users and jump right in. Leagues span different sports and formats — find one that fits your style and start competing.",
-    position: 'center',
     freeScroll: true,
   },
   {
