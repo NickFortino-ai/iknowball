@@ -1925,7 +1925,11 @@ export default function LeagueDetailPage() {
               for open-visibility leagues (the banner explicitly tells them to);
               only the commissioner sees the "Invite Player" autocomplete that
               creates server-side invitations. */}
-          {(isCommissioner || league.visibility === 'open') && (league.status === 'open' || (league.format === 'fantasy' && fantasySettings?.draft_status === 'pending')) && league.format !== 'bracket' && (
+          {(isCommissioner || league.visibility === 'open') && (
+            league.status === 'open'
+            || (league.format === 'fantasy' && fantasySettings?.draft_status === 'pending')
+            || (league.status === 'active' && league.joins_locked_at && new Date(league.joins_locked_at) > new Date())
+          ) && league.format !== 'bracket' && (
             <div className="flex items-center gap-5">
               <button
                 onClick={async () => {
