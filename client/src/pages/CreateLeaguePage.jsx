@@ -629,7 +629,6 @@ export default function CreateLeaguePage() {
   const fileInputRef = useRef(null)
   const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : (format === 'mlb_dfs' || format === 'hr_derby') ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'wnba_three_point' ? 'wnba_three_point_contest' : format === 'sacks' ? 'sacks_contest' : format === 'ints' ? 'ints_contest' : format === 'tackles' ? 'tackles_contest' : format === 'receptions' ? 'receptions_contest' : format === 'strikeouts' ? 'strikeouts_contest' : sport || undefined
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
-  const [joinsLockedAt, setJoinsLockedAt] = useState('')
 
   // NBA DFS start date
   const [dfsStartOption, setDfsStartOption] = useState('today')
@@ -770,17 +769,16 @@ export default function CreateLeaguePage() {
         settings,
         fantasy_settings: fantasySettings,
         visibility,
-        // Squares always locks at first pitch/tip-off. Otherwise: honor the
-        // user's "Open Until" if they set one (open-visibility leagues only).
-        // For DFS-style formats with no override, default to the league start
-        // date so leagues don't stay joinable after the contest begins.
+        // Squares always locks at first pitch/tip-off. DFS-style formats
+        // auto-lock at the league start so leagues don't stay joinable
+        // after the contest begins. Other formats stay open until the
+        // league starts; commissioners gate participation via max_members
+        // rather than a separate close-to-joins time.
         joins_locked_at: format === 'squares' && gameId
           ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
-          : visibility === 'open' && joinsLockedAt
-            ? joinsLockedAt
-            : ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format)
-              ? getDfsStartDate()
-              : undefined,
+          : ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format)
+            ? getDfsStartDate()
+            : undefined,
         backdrop_image: backdropImage || undefined,
       })
       // Upload custom backdrop if selected
@@ -2247,26 +2245,6 @@ export default function CreateLeaguePage() {
               : 'Only people with the invite code can join.'}
           </p>
         </div>
-
-        {visibility === 'open' && (
-          <div>
-            <label className="block text-sm font-semibold text-text-secondary mb-2">
-              Open Until <span className="text-text-muted font-normal">(optional)</span>
-            </label>
-            <input
-              type="datetime-local"
-              value={joinsLockedAt}
-              onChange={(e) => setJoinsLockedAt(e.target.value)}
-              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-            />
-            <p className="text-xs text-text-muted mt-1.5">
-              After this time, no new members can join.
-              {['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format) && (
-                <> Leave blank to auto-lock when the league starts.</>
-              )}
-            </p>
-          </div>
-        )}
 
         {/* Backdrop picker — after all settings so format/mode influence available options */}
         {format && (
