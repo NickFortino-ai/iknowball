@@ -386,7 +386,7 @@ export default function PaymentPage() {
           !showPromo ? (
             <button
               onClick={() => setShowPromo(true)}
-              className="w-full text-white/85 hover:text-white text-sm transition-colors"
+              className="w-full border-2 border-accent text-accent hover:bg-accent/10 font-display tracking-wide py-2.5 rounded-lg text-sm sm:text-base transition-colors"
             >
               Have a promo code?
             </button>
