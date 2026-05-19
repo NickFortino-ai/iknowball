@@ -26,8 +26,23 @@ function WelcomeCard({ userId, profile }) {
   const navigate = useNavigate()
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(`ikb_welcome_dismissed_${userId}`) === '1')
 
-  // Derive checklist from actual user data so it survives localStorage clears
-  const hasProfile = !!(profile?.avatar_url || profile?.display_name || profile?.bio)
+  // Derive checklist from actual user data so it survives localStorage clears.
+  // display_name on its own doesn't count — the server auto-fills it with the
+  // username at signup, so every new account would otherwise read "done." We
+  // want signals the user actually edited something: avatar, emoji, bio, a
+  // display_name they changed from their username, or any social handle.
+  const hasProfile = !!(
+    profile?.avatar_url ||
+    profile?.avatar_emoji ||
+    profile?.bio ||
+    (profile?.display_name && profile.display_name !== profile.username) ||
+    profile?.x_handle ||
+    profile?.instagram_handle ||
+    profile?.tiktok_handle ||
+    profile?.snapchat_handle ||
+    profile?.youtube_handle ||
+    profile?.threads_handle
+  )
   // Latch first_pick: once points go non-zero, persist the flag so returning to 0 doesn't reset it
   if (profile?.total_points != null && profile.total_points !== 0) {
     localStorage.setItem(`ikb_welcome_first_pick_${userId}`, '1')
