@@ -771,10 +771,16 @@ export async function completeLeagues() {
     .not('starts_at', 'is', null)
     .lte('starts_at', now)
 
+  // Only survivor and pickem actually consume league_weeks for picks. Daily
+  // DFS/contest formats have weekly rows generated as a side-effect of
+  // generateLeagueWeeks() but never read them, so a back-anchored "Week 1"
+  // shouldn't trigger early activation for those formats. Restrict the
+  // league_weeks signal to the formats that actually use it.
   const { data: openWeeks } = await supabase
     .from('league_weeks')
     .select('league_id, leagues!inner(id, format, status)')
     .eq('leagues.status', 'open')
+    .in('leagues.format', ['survivor', 'pickem'])
     .lte('starts_at', now)
 
   const openLeagues = []
