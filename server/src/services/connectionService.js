@@ -1303,7 +1303,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     if (viralIds.length > 0) {
       const { data: viralTakes } = await supabase
         .from('hot_takes')
-        .select('id, user_id, content, team_tags, user_tags, image_url, created_at')
+        .select('id, user_id, content, team_tags, user_tags, image_url, image_urls, video_url, post_type, created_at')
         .in('id', viralIds)
         .order('created_at', { ascending: false })
         .limit(10)
@@ -1336,6 +1336,9 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
             team_tags: take.team_tags,
             user_tags: take.user_tags,
             image_url: take.image_url,
+            image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
+            video_url: take.video_url,
+            post_type: take.post_type || 'post',
           },
           remindCount: remindCounts[take.id],
           viral: true,

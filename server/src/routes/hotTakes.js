@@ -475,7 +475,9 @@ router.get('/:id', requireAuth, async (req, res) => {
       team_tags: take.team_tags,
       user_tags: take.user_tags,
       image_url: take.image_url,
+      image_urls: take.image_urls || (take.image_url ? [take.image_url] : null),
       video_url: take.video_url,
+      post_type: take.post_type || 'post',
       tagged_users,
     },
   })
