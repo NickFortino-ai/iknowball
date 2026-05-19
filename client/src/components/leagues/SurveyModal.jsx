@@ -39,10 +39,13 @@ export default function SurveyModal({ leagueId, surveyType, questions, sportLabe
         responses: next,
       })
       setThanks(true)
-      queryClient.invalidateQueries({ queryKey: ['survey-status', leagueId] })
+      // Defer the invalidation — running it immediately would flip
+      // surveyStatus.surveyType to null at the parent and unmount this
+      // modal before the Thanks! flash has a chance to render.
       setTimeout(() => {
         onClose()
-      }, 2000)
+        queryClient.invalidateQueries({ queryKey: ['survey-status', leagueId] })
+      }, 3000)
     } catch (err) {
       setError(err?.message || 'Failed to save. Please try again.')
       setSubmitting(false)
