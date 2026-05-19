@@ -300,7 +300,7 @@ export default function PaymentPage() {
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
-              <span>A sports-centric social hub — post takes, react to friends' picks, watch the feed light up with wins.</span>
+              <span>A sports-centric social hub — post images, videos, or text, connect with other users, link all your socials to get followed everywhere.</span>
             </li>
             <li className="flex gap-2.5">
               <span className="text-accent shrink-0 mt-0.5">●</span>
