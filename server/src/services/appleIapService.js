@@ -61,3 +61,42 @@ export async function verifyTransaction(jwsString) {
 
   return decoded
 }
+
+// Verify + decode an App Store Server Notification v2 signed payload.
+// Apple POSTs these whenever a subscription state changes (renewal,
+// cancel, refund, etc). Same prod-first / sandbox-fallback pattern as
+// transaction verification, because sandbox-environment notifications
+// come from TestFlight / App Review even on a production binary.
+export async function verifyNotification(signedPayload) {
+  let decoded
+  try {
+    decoded = await getProdVerifier().verifyAndDecodeNotification(signedPayload)
+  } catch (prodErr) {
+    try {
+      decoded = await getSandboxVerifier().verifyAndDecodeNotification(signedPayload)
+    } catch (sandboxErr) {
+      logger.warn({ prodErr: prodErr.message, sandboxErr: sandboxErr.message }, 'Apple notification JWS rejected by both environments')
+      throw prodErr
+    }
+  }
+  return decoded
+}
+
+// The notification's data carries signed transaction + renewal-info JWS
+// strings. Decode either with whichever verifier accepted the parent
+// notification — try prod first then sandbox to match.
+export async function verifyTransactionLoose(jwsString) {
+  try {
+    return await getProdVerifier().verifyAndDecodeTransaction(jwsString)
+  } catch {
+    return await getSandboxVerifier().verifyAndDecodeTransaction(jwsString)
+  }
+}
+
+export async function verifyRenewalInfo(jwsString) {
+  try {
+    return await getProdVerifier().verifyAndDecodeRenewalInfo(jwsString)
+  } catch {
+    return await getSandboxVerifier().verifyAndDecodeRenewalInfo(jwsString)
+  }
+}

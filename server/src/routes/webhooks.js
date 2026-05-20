@@ -4,6 +4,7 @@ import Stripe from 'stripe'
 import { supabase } from '../config/supabase.js'
 import { env } from '../config/env.js'
 import { logger } from '../utils/logger.js'
+import { verifyNotification, verifyTransactionLoose, verifyRenewalInfo } from '../services/appleIapService.js'
 
 const router = Router()
 const stripe = new Stripe(env.STRIPE_SECRET_KEY)
@@ -192,6 +193,159 @@ router.post(
     }
 
     res.json({ received: true })
+  }
+)
+
+// App Store Server Notifications v2 — Apple posts here on every
+// subscription state change (renew, expire, refund, revoke, etc).
+// Configure the URL in App Store Connect → App Information →
+// App Store Server Notifications → Production / Sandbox Server URL.
+//
+// Body is JSON ({ signedPayload }), so we use express.json here.
+// Notifications are signed — `verifyNotification` walks the JWS and
+// throws if the chain doesn't verify against Apple's root certs.
+//
+// Always ACK with 200 once we've signed-verified the payload, even if
+// our DB update fails — Apple will retry indefinitely on non-200, and
+// a duplicate webhook on a transient DB error would clog the queue.
+router.post(
+  '/apple-iap',
+  express.json({ limit: '512kb' }),
+  async (req, res) => {
+    const { signedPayload } = req.body || {}
+    if (!signedPayload) {
+      return res.status(400).json({ error: 'signedPayload required' })
+    }
+
+    let notif
+    try {
+      notif = await verifyNotification(signedPayload)
+    } catch (err) {
+      logger.warn({ err: err.message }, 'Apple notification verification failed')
+      return res.status(400).json({ error: 'Invalid notification signature' })
+    }
+
+    const type = notif.notificationType
+    const data = notif.data || {}
+    const subtype = notif.subtype
+
+    try {
+      let tx = null
+      if (data.signedTransactionInfo) {
+        tx = await verifyTransactionLoose(data.signedTransactionInfo)
+      }
+      let renewal = null
+      if (data.signedRenewalInfo) {
+        renewal = await verifyRenewalInfo(data.signedRenewalInfo)
+      }
+
+      const originalTxId = tx?.originalTransactionId || renewal?.originalTransactionId
+      if (!originalTxId) {
+        logger.warn({ type, subtype }, 'Apple notification missing originalTransactionId')
+        return res.json({ received: true })
+      }
+
+      // Look up the user we previously associated with this transaction
+      const { data: user } = await supabase
+        .from('users')
+        .select('id, subscription_status, is_paid')
+        .eq('apple_original_transaction_id', originalTxId)
+        .maybeSingle()
+
+      if (!user) {
+        // No user — could be a TestFlight notification before we
+        // persisted the original purchase, or a transaction tied to a
+        // deleted account. Log and ACK.
+        logger.info({ type, subtype, originalTxId }, 'Apple notification for unknown txId')
+        return res.json({ received: true })
+      }
+
+      const productId = tx?.productId || ''
+      const isYearly = productId.includes('yearly') || productId.includes('annual')
+
+      const updates = { updated_at: new Date().toISOString() }
+
+      switch (type) {
+        case 'DID_RENEW': {
+          // Successful renewal — bump expiry, keep them paid.
+          if (tx?.expiresDate) {
+            updates.subscription_expires_at = new Date(tx.expiresDate).toISOString()
+          }
+          if (productId) updates.subscription_plan = isYearly ? 'yearly' : 'monthly'
+          updates.is_paid = true
+          updates.subscription_status = 'active'
+          break
+        }
+        case 'EXPIRED':
+        case 'GRACE_PERIOD_EXPIRED': {
+          // No more access — subscription lapsed.
+          updates.is_paid = false
+          updates.subscription_status = 'expired'
+          break
+        }
+        case 'REFUND':
+        case 'REVOKE': {
+          // Apple refunded the user or revoked family-sharing access.
+          updates.is_paid = false
+          updates.subscription_status = 'refunded'
+          break
+        }
+        case 'REFUND_REVERSED': {
+          // Apple reversed a previous refund — restore access. Don't
+          // shift expires_at; the underlying period is unchanged.
+          updates.is_paid = true
+          updates.subscription_status = 'active'
+          break
+        }
+        case 'DID_CHANGE_RENEWAL_PREF': {
+          // User toggled plan (monthly ↔ yearly). New plan applies on
+          // next renewal; record it so the UI matches the user's intent.
+          if (renewal?.autoRenewProductId) {
+            const next = renewal.autoRenewProductId
+            updates.subscription_plan =
+              (next.includes('yearly') || next.includes('annual')) ? 'yearly' : 'monthly'
+          }
+          break
+        }
+        case 'DID_CHANGE_RENEWAL_STATUS': {
+          // User turned auto-renew off or on. Doesn't change access yet,
+          // but record so we can surface a "cancels Oct 5" UI later.
+          updates.auto_renew_enabled = renewal?.autoRenewStatus === 1
+          break
+        }
+        case 'SUBSCRIBED':
+        case 'DID_RECOVER': {
+          // Re-subscribed after a lapse or recovered from billing retry.
+          if (tx?.expiresDate) {
+            updates.subscription_expires_at = new Date(tx.expiresDate).toISOString()
+          }
+          if (productId) updates.subscription_plan = isYearly ? 'yearly' : 'monthly'
+          updates.is_paid = true
+          updates.subscription_status = 'active'
+          break
+        }
+        default:
+          logger.info({ type, subtype, userId: user.id }, 'Apple notification — no state change applied')
+          return res.json({ received: true })
+      }
+
+      const { error: updErr } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', user.id)
+
+      if (updErr) {
+        logger.error({ err: updErr, userId: user.id, type }, 'Failed to apply Apple notification update')
+        // Still 200 — see note above about Apple retry behavior.
+      } else {
+        logger.info({ userId: user.id, type, subtype, updates }, 'Apple notification applied')
+      }
+
+      res.json({ received: true })
+    } catch (err) {
+      logger.error({ err, type, subtype }, 'Apple notification handler error')
+      res.status(200).json({ received: true })
+    }
   }
 )
 
