@@ -464,14 +464,16 @@ export async function getPublishedBlurb(playerId) {
  * user-facing player detail modal to show prior weeks' notes behind a
  * 'See previous notes' toggle.
  */
-export async function getPublishedBlurbsForPlayer(playerId, limit = 20) {
-  const { data } = await supabase
+export async function getPublishedBlurbsForPlayer(playerId, limit = 20, sport = null) {
+  let q = supabase
     .from('player_blurbs')
-    .select('id, content, season, week, published_at')
+    .select('id, content, season, week, published_at, sport')
     .eq('player_id', playerId)
     .eq('status', 'published')
     .order('published_at', { ascending: false })
     .limit(limit)
+  if (sport) q = q.eq('sport', sport)
+  const { data } = await q
   return data || []
 }
 

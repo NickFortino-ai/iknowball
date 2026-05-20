@@ -302,6 +302,19 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
           )}
         </div>
 
+        {/* Player Notes (admin blurb) */}
+        {data?.blurb && (
+          <div className="px-5 py-4 border-b border-text-primary/10">
+            <h3 className="text-xs text-text-muted uppercase tracking-wider mb-2 font-semibold">Player Notes</h3>
+            <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{data.blurb.content}</p>
+            {data.blurb.published_at && (
+              <div className="text-[10px] text-text-muted mt-1.5">
+                {new Date(data.blurb.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Season Averages */}
         {data?.averages && (
           <div className="px-5 py-4 border-b border-text-primary/10">

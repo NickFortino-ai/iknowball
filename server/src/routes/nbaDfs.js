@@ -478,6 +478,7 @@ router.get('/player/lookup', async (req, res) => {
 // ESPN sport paths for game logs
 const ESPN_SPORT_PATHS = {
   basketball_nba: 'basketball/nba',
+  basketball_wnba: 'basketball/wnba',
   baseball_mlb: 'baseball/mlb',
   americanfootball_nfl: 'football/nfl',
   icehockey_nhl: 'hockey/nhl',
@@ -634,7 +635,24 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       }
     }
 
-    res.json({ games, averages, sport, isPitcher })
+    // Attach published blurbs scoped to this sport so the universal
+    // PlayerDetailModal can render admin-written analysis alongside the
+    // gamelog.
+    const blurbSport = ({
+      basketball_nba: 'nba',
+      basketball_wnba: 'wnba',
+      baseball_mlb: 'mlb',
+      americanfootball_nfl: 'nfl',
+    })[sport] || null
+    let blurbs = []
+    if (blurbSport) {
+      try {
+        const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
+        blurbs = await getPublishedBlurbsForPlayer(espnId, 10, blurbSport)
+      } catch {}
+    }
+
+    res.json({ games, averages, sport, isPitcher, blurbs, blurb: blurbs[0] || null })
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch game log' })
   }

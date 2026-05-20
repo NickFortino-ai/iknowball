@@ -5,6 +5,7 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import InjuryBadge from '../ui/InjuryBadge'
+import PlayerDetailModal from '../ui/PlayerDetailModal'
 import UserProfileModal from '../profile/UserProfileModal'
 
 function todayLocal() {
@@ -92,6 +93,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
   const [initDate, setInitDate] = useState(null)
   const [editing, setEditing] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [detailPlayer, setDetailPlayer] = useState(null)
 
   if (initDate !== date) {
     setInitDate(date)
@@ -488,7 +490,11 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
               return (
                 <div
                   key={player.espn_player_id}
-                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors ${
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDetailPlayer(player)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDetailPlayer(player) }}
+                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 transition-colors cursor-pointer ${
                     isUsedElsewhere ? 'opacity-40' : 'hover:bg-text-primary/5'
                   }`}
                 >
@@ -502,7 +508,10 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-bold text-text-primary truncate block">{player.player_name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                        <InjuryBadge status={player.injury_status} />
+                      </div>
                       <div className="text-xs text-text-muted">
                         {player.position} · <span className="text-white">{player.team}</span> · {player.opponent}
                         {isUsedElsewhere && <span className="ml-1">· Used this week</span>}
@@ -512,7 +521,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                   </div>
                   {(!hasSavedPicks || editing) && (
                     <button
-                      onClick={() => addPlayer(player)}
+                      onClick={(e) => { e.stopPropagation(); addPlayer(player) }}
                       disabled={selected.length >= 3 || isUsedElsewhere}
                       className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none disabled:opacity-30 disabled:cursor-not-allowed"
                     >
@@ -563,6 +572,9 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
             </div>
           )}
         </div>
+      )}
+      {detailPlayer && (
+        <PlayerDetailModal player={detailPlayer} onClose={() => setDetailPlayer(null)} sport="baseball_mlb" />
       )}
     </div>
   )
