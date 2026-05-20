@@ -400,9 +400,9 @@ export default function PlayerBlurbsPanel() {
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {history.map((h) => (
                           <div key={h.id} className={`rounded-lg border p-2 text-xs ${
-                            h.status === 'published' ? 'border-correct/30 bg-correct/5'
-                            : h.status === 'draft' ? 'border-yellow-500/30 bg-yellow-500/5'
-                            : 'border-text-primary/10 bg-bg-card/50 opacity-60'
+                            h.status === 'published' ? 'border-correct/50'
+                            : h.status === 'draft' ? 'border-yellow-500/50'
+                            : 'border-text-primary/15 opacity-60'
                           }`}>
                             <div className="flex items-center justify-between mb-1">
                               <span className={`font-bold ${
@@ -413,10 +413,10 @@ export default function PlayerBlurbsPanel() {
                                   {h.generated_by === 'ai' ? 'AI' : 'Manual'} · W{h.week || '?'}
                                   {h.published_at && ` · ${new Date(h.published_at).toLocaleDateString()}`}
                                 </span>
-                                <button onClick={() => handleDelete(h.id)} className="text-incorrect hover:underline">Del</button>
+                                <button onClick={() => handleDelete(h.id)} className="text-incorrect hover:underline">Delete</button>
                               </div>
                             </div>
-                            <p className="text-text-secondary">{h.content}</p>
+                            <p className="text-text-primary">{h.content}</p>
                           </div>
                         ))}
                       </div>
