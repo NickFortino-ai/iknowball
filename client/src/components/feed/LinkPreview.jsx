@@ -4,60 +4,71 @@ import { displayUrl } from '../../lib/urlUtils'
 
 function TweetEmbed({ tweetId, url }) {
   const containerRef = useRef(null)
-  // 'pending' while the embed is mounting, 'loaded' on success, 'failed' on
-  // explicit error. Only show the fallback card on 'failed' — previously the
-  // fallback was tied to !loaded which rendered alongside the iframe for the
-  // few hundred ms between mount and the createTweet().then() callback,
-  // making the post look like it had a duplicate preview.
+  // Track which tweetId we've successfully kicked off a render for. Without
+  // this, a race between renderTweet calls (script-load callback + polling
+  // interval + remounts) could call createTweet twice into the same
+  // container, appending two iframes for one tweet.
+  const renderedForRef = useRef(null)
+  // Track active intervals so cleanup on unmount / tweetId change kills
+  // any in-flight polling that would otherwise fire renderTweet later.
+  const intervalRef = useRef(null)
   const [status, setStatus] = useState('pending')
 
   useEffect(() => {
     if (!tweetId || !containerRef.current) return
+    let cancelled = false
 
-    // Load Twitter widget.js if not already loaded
     function renderTweet() {
-      if (window.twttr?.widgets) {
-        containerRef.current.innerHTML = ''
-        window.twttr.widgets
-          .createTweet(tweetId, containerRef.current, {
-            theme: 'dark',
-            conversation: 'none',
-            dnt: true,
-          })
-          .then((el) => setStatus(el ? 'loaded' : 'failed'))
-          .catch(() => setStatus('failed'))
-      }
+      if (cancelled) return
+      if (!window.twttr?.widgets) return
+      if (renderedForRef.current === tweetId) return
+      renderedForRef.current = tweetId
+      containerRef.current.innerHTML = ''
+      window.twttr.widgets
+        .createTweet(tweetId, containerRef.current, {
+          theme: 'dark',
+          conversation: 'none',
+          dnt: true,
+        })
+        .then((el) => { if (!cancelled) setStatus(el ? 'loaded' : 'failed') })
+        .catch(() => { if (!cancelled) setStatus('failed') })
+    }
+
+    function pollForWidget() {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      intervalRef.current = setInterval(() => {
+        if (window.twttr?.widgets) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+          renderTweet()
+        }
+      }, 100)
+      setTimeout(() => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
+      }, 5000)
     }
 
     if (window.twttr?.widgets) {
       renderTweet()
+    } else if (!document.getElementById('twitter-wjs')) {
+      const script = document.createElement('script')
+      script.id = 'twitter-wjs'
+      script.src = 'https://platform.twitter.com/widgets.js'
+      script.async = true
+      script.onload = pollForWidget
+      document.head.appendChild(script)
     } else {
-      // Load the script once
-      if (!document.getElementById('twitter-wjs')) {
-        const script = document.createElement('script')
-        script.id = 'twitter-wjs'
-        script.src = 'https://platform.twitter.com/widgets.js'
-        script.async = true
-        script.onload = () => {
-          // widgets.js sets window.twttr after load, but needs a tick
-          const check = setInterval(() => {
-            if (window.twttr?.widgets) {
-              clearInterval(check)
-              renderTweet()
-            }
-          }, 100)
-          setTimeout(() => clearInterval(check), 5000)
-        }
-        document.head.appendChild(script)
-      } else {
-        // Script tag exists but hasn't loaded yet
-        const check = setInterval(() => {
-          if (window.twttr?.widgets) {
-            clearInterval(check)
-            renderTweet()
-          }
-        }, 100)
-        setTimeout(() => clearInterval(check), 5000)
+      pollForWidget()
+    }
+
+    return () => {
+      cancelled = true
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
     }
   }, [tweetId])
