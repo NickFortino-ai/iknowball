@@ -205,10 +205,18 @@ router.post('/verify-apple-iap', async (req, res) => {
       return res.json({ success: true })
     }
 
-    // Determine subscription period from product ID
+    // Determine subscription plan from product ID
     const productId = decoded.productId || ''
     const isYearly = productId.includes('yearly') || productId.includes('annual')
-    const periodDays = isYearly ? 365 : 30
+
+    // Use Apple's authoritative expiresDate from the verified transaction.
+    // Hardcoded `Date.now() + 30 days` math would over-credit sandbox
+    // testers (sandbox compresses monthly to 5 min and yearly to 1 hour),
+    // hiding renewal bugs during QA. Fall back to a hardcoded period only
+    // if Apple somehow didn't return an expiresDate.
+    const expiresAt = decoded.expiresDate
+      ? new Date(decoded.expiresDate).toISOString()
+      : new Date(Date.now() + (isYearly ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString()
 
     // Mark user as subscribed
     const { error } = await supabase
@@ -219,7 +227,7 @@ router.post('/verify-apple-iap', async (req, res) => {
         payment_source: 'apple',
         subscription_status: 'active',
         subscription_plan: isYearly ? 'yearly' : 'monthly',
-        subscription_expires_at: new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString(),
+        subscription_expires_at: expiresAt,
       })
       .eq('id', req.user.id)
 
