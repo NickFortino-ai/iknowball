@@ -114,11 +114,13 @@ export default function JoinPage() {
   // Auto-redirect logged-in-but-unpaid users straight to /payment so they
   // never have to tap an extra "Complete Payment to Join" button. The
   // payment page knows about pendingInviteCode and will send them back
-  // here once payment lands.
+  // here once payment lands. Skip lifetime users (VIP promo grantees) —
+  // they have access but is_paid may be false, so without this check
+  // they'd bounce uselessly through /payment and back.
   useEffect(() => {
     if (!league) return
     if (!session) return
-    if (profile && !profile.is_paid) {
+    if (profile && !profile.is_paid && !profile.is_lifetime) {
       navigate('/payment', { replace: true })
     }
   }, [league, session, profile, navigate])

@@ -228,6 +228,23 @@ router.post(
     const type = notif.notificationType
     const data = notif.data || {}
     const subtype = notif.subtype
+    const notificationUuid = notif.notificationUUID
+
+    // Idempotency: if we've already processed this notificationUUID, ACK
+    // and skip. Apple retries on non-2xx and occasionally double-fires
+    // even on 2xx during sandbox testing — without this guard we'd run
+    // the state change twice.
+    if (notificationUuid) {
+      const { data: existing } = await supabase
+        .from('apple_notifications')
+        .select('notification_uuid')
+        .eq('notification_uuid', notificationUuid)
+        .maybeSingle()
+      if (existing) {
+        logger.info({ notificationUuid, type }, 'Apple notification already processed — skipping')
+        return res.json({ received: true })
+      }
+    }
 
     try {
       let tx = null
@@ -339,6 +356,22 @@ router.post(
         // Still 200 — see note above about Apple retry behavior.
       } else {
         logger.info({ userId: user.id, type, subtype, updates }, 'Apple notification applied')
+      }
+
+      // Record the notification so future duplicates short-circuit. We
+      // log even on update failure so retries don't double-apply.
+      if (notificationUuid) {
+        await supabase
+          .from('apple_notifications')
+          .insert({
+            notification_uuid: notificationUuid,
+            notification_type: type,
+            subtype: subtype || null,
+            original_transaction_id: originalTxId,
+            user_id: user.id,
+          })
+          .then(() => {})
+          .catch((err) => logger.warn({ err: err.message, notificationUuid }, 'Could not log Apple notification'))
       }
 
       res.json({ received: true })
