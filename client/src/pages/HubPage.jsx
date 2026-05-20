@@ -314,9 +314,9 @@ export default function HubPage() {
         </div>
       )}
 
-      {/* Add Connection */}
+      {/* Search User */}
       <div className="mb-6">
-        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Add Connection</h2>
+        <h2 className="text-xs text-text-muted uppercase tracking-wider mb-3">Search User</h2>
         <div className="relative">
           <input
             type="text"
@@ -327,24 +327,28 @@ export default function HubPage() {
           />
 
           {searchQuery.length >= 2 && searchResults?.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden">
+            <div className="absolute top-full left-0 right-0 mt-1 z-10 space-y-1.5">
               {searchResults.map((user) => {
                 const isConnected = connectedUserIds.has(user.id)
                 return (
                   <div
                     key={user.id}
-                    className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-bg-card-hover transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedUserId(user.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedUserId(user.id) }}
+                    className="w-full text-left px-4 py-3 flex items-center gap-3 bg-bg-primary border border-text-primary/20 rounded-lg hover:bg-text-primary/5 transition-colors cursor-pointer"
                   >
                     <Avatar user={user} size="lg" />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{user.display_name || user.username}</div>
+                      <div className="text-sm font-medium text-text-primary truncate">{user.display_name || user.username}</div>
                       <div className="text-xs text-text-muted">@{user.username}</div>
                     </div>
                     {isConnected ? (
                       <span className="text-xs text-text-muted font-medium flex-shrink-0">Connected</span>
                     ) : (
                       <button
-                        onClick={() => handleSendRequest(user.username)}
+                        onClick={(e) => { e.stopPropagation(); handleSendRequest(user.username) }}
                         disabled={sendRequest.isPending}
                         className="py-1 px-3 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 flex-shrink-0"
                       >
@@ -358,7 +362,7 @@ export default function HubPage() {
           )}
 
           {searchQuery.length >= 2 && searchResults?.length === 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-border rounded-xl shadow-lg z-10 px-4 py-3 text-sm text-text-muted">
+            <div className="absolute top-full left-0 right-0 mt-1 z-10 bg-bg-primary border border-text-primary/20 rounded-lg px-4 py-3 text-sm text-text-muted">
               No users found
             </div>
           )}
