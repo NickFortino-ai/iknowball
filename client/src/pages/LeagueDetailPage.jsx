@@ -1420,8 +1420,9 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           </div>
         </>
       )}
-      {/* Visibility toggle — all formats */}
-      {expanded && (
+      {/* Visibility toggle — hidden once the league is active because it
+          stops affecting joinability and just confuses the commish. */}
+      {expanded && league.status !== 'active' && (
         <div className="mt-4">
           <label className="block text-xs text-text-muted mb-1">League Visibility</label>
           <div className="flex gap-2">
@@ -2610,6 +2611,15 @@ export default function LeagueDetailPage() {
                 &times;
               </button>
             </div>
+
+            {league.ends_at && !(league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap') && (
+              <div className="flex items-baseline justify-between mb-4 px-1">
+                <span className="text-xs uppercase tracking-wider text-text-muted">Runs until</span>
+                <span className="text-sm font-semibold text-text-primary">
+                  {new Date(league.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}
+                </span>
+              </div>
+            )}
 
             <LeagueConditions league={league} isCommissioner={isCommissioner} updateLeague={updateLeague} bracketTournament={bracketTournament} bracketEntries={bracketEntries} fantasySettings={fantasySettings} />
 
