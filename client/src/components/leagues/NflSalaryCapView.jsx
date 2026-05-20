@@ -280,7 +280,9 @@ export default function NflSalaryCapView({ league }) {
           </div>
         )}
       </div>
-      <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+      {detailPlayerId && (
+        <PlayerDetailModal leagueId={league.id} playerId={detailPlayerId} onClose={() => setDetailPlayerId(null)} />
+      )}
     </div>
   )
 }
