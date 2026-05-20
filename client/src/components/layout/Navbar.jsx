@@ -94,6 +94,7 @@ function getNotificationIcon(n) {
       if (n.message?.includes('lost a life')) return '\u26A0\uFE0F' // ⚠️
       return '\u2705' // ✅ survived
     case 'survivor_pick_reminder': return '\u23F0' // ⏰
+    case 'roster_reminder': return '\u23F0' // ⏰
     case 'survivor_win': return '\uD83D\uDC51' // 👑
     case 'league_report': return '\uD83D\uDCCB' // 📋
     case 'league_win':
@@ -197,6 +198,7 @@ function getNotificationRoute(notification) {
     case 'squares_quarter_win':
     case 'survivor_result':
     case 'survivor_pick_reminder':
+    case 'roster_reminder':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
 
     // Fantasy football notifications — all route to the league with a tab hint
