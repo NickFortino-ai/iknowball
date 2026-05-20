@@ -3,7 +3,19 @@ import { api } from '../../lib/api'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
-const POSITIONS = ['all', 'QB', 'RB', 'WR', 'TE', 'DEF']
+const SPORTS = [
+  { key: 'nfl', label: 'NFL' },
+  { key: 'nba', label: 'NBA' },
+  { key: 'wnba', label: 'WNBA' },
+  { key: 'mlb', label: 'MLB' },
+]
+
+const POSITIONS_BY_SPORT = {
+  nfl: ['all', 'QB', 'RB', 'WR', 'TE', 'DEF'],
+  nba: ['all', 'PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'],
+  wnba: ['all', 'G', 'F', 'C'],
+  mlb: ['all', 'SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'OF', 'DH'],
+}
 
 // Injury filter chips. 'Any' matches any non-null injury_status. Specific
 // statuses match exactly. NFL most commonly returns Questionable / Doubtful /
@@ -21,6 +33,7 @@ const INJURY_FILTERS = [
 ]
 
 export default function PlayerBlurbsPanel() {
+  const [sport, setSport] = useState('nfl')
   const [position, setPosition] = useState('all')
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(false)
@@ -53,13 +66,13 @@ export default function PlayerBlurbsPanel() {
   const fetchPlayers = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await api.get(`/admin/blurbs/players?season=${season}&position=${position}`)
+      const data = await api.get(`/admin/blurbs/players?season=${season}&position=${position}&sport=${sport}`)
       setPlayers(data)
     } catch (err) {
       toast(err.message, 'error')
     }
     setLoading(false)
-  }, [position, season])
+  }, [position, season, sport])
 
   useEffect(() => { fetchPlayers() }, [fetchPlayers])
 
@@ -140,7 +153,7 @@ export default function PlayerBlurbsPanel() {
 
   const handleCreate = async (playerId) => {
     try {
-      await api.post('/admin/blurbs', { player_id: playerId, content: createContent, season, week })
+      await api.post('/admin/blurbs', { player_id: playerId, content: createContent, season, week, sport })
       toast('Blurb created', 'success')
       setCreatingFor(null)
       setCreateContent('')
@@ -175,12 +188,29 @@ export default function PlayerBlurbsPanel() {
 
   const draftCount = players.filter((p) => p.blurb?.status === 'draft').length
 
+  const positionOptions = POSITIONS_BY_SPORT[sport] || ['all']
+
   return (
     <div className="space-y-4">
+      {/* Sport selector */}
+      <div className="flex flex-wrap gap-1">
+        {SPORTS.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => { setSport(s.key); setPosition('all'); setSelected(new Set()) }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              sport === s.key ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1">
-          {POSITIONS.map((pos) => (
+        <div className="flex gap-1 flex-wrap">
+          {positionOptions.map((pos) => (
             <button
               key={pos}
               onClick={() => setPosition(pos)}
@@ -245,13 +275,15 @@ export default function PlayerBlurbsPanel() {
         >
           {filteredPlayers.length > 0 && filteredPlayers.every((p) => selected.has(p.id)) ? 'Deselect All' : 'Select All'}
         </button>
-        <button
-          onClick={handleGenerate}
-          disabled={generating || !selected.size}
-          className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white disabled:opacity-50"
-        >
-          {generating ? 'Generating...' : `Generate AI Blurbs (${selected.size})`}
-        </button>
+        {sport === 'nfl' && (
+          <button
+            onClick={handleGenerate}
+            disabled={generating || !selected.size}
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white disabled:opacity-50"
+          >
+            {generating ? 'Generating...' : `Generate AI Blurbs (${selected.size})`}
+          </button>
+        )}
         {draftCount > 0 && (
           <button
             onClick={handlePublishAll}
@@ -305,9 +337,11 @@ export default function PlayerBlurbsPanel() {
                         }`}>{player.injury_status}</span>
                       )}
                     </div>
-                    <div className="text-[10px] text-text-muted">
-                      {player.seasonPoints} pts · {player.gamesPlayed} GP · {player.avgPoints} avg
-                    </div>
+                    {sport === 'nfl' && (
+                      <div className="text-[10px] text-text-muted">
+                        {player.seasonPoints} pts · {player.gamesPlayed} GP · {player.avgPoints} avg
+                      </div>
+                    )}
                   </div>
 
                   {/* Blurb status indicator */}

@@ -85,6 +85,80 @@ export async function getTopPlayersByPosition(season, { unlimited = false } = {}
 }
 
 /**
+ * Get a player pool for a non-NFL sport. NBA/MLB players live in the
+ * per-day salary tables keyed by espn_player_id; we collapse those into a
+ * one-row-per-player view for the admin blurb writer. WNBA has no salary
+ * table — we read distinct picks from the contest table instead, which
+ * limits the list to players who've actually been picked at least once
+ * (acceptable until/unless we add a WNBA roster sync job).
+ */
+export async function getPlayersForSport(sport) {
+  if (sport === 'nba' || sport === 'mlb') {
+    const table = sport === 'nba' ? 'nba_dfs_salaries' : 'mlb_dfs_salaries'
+    // Pull the most recent ~60 days of salary rows so the player set stays
+    // current without dragging in retired players. Dedup by espn_player_id,
+    // keeping the row with the latest game_date so injury_status/position
+    // reflect the most recent state.
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 60)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const rows = await fetchAll(
+      supabase
+        .from(table)
+        .select('espn_player_id, player_name, team, position, injury_status, headshot_url, game_date')
+        .gte('game_date', cutoffStr)
+        .not('espn_player_id', 'is', null)
+        .order('game_date', { ascending: false })
+    )
+    const byId = new Map()
+    for (const r of rows) {
+      if (!byId.has(r.espn_player_id)) {
+        byId.set(r.espn_player_id, {
+          id: r.espn_player_id,
+          full_name: r.player_name,
+          position: r.position,
+          team: r.team,
+          injury_status: r.injury_status || null,
+          headshot_url: r.headshot_url || null,
+          seasonPoints: 0,
+          gamesPlayed: 0,
+          avgPoints: 0,
+        })
+      }
+    }
+    return [...byId.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
+  }
+
+  if (sport === 'wnba') {
+    const rows = await fetchAll(
+      supabase
+        .from('wnba_three_point_picks')
+        .select('espn_player_id, player_name, team, position')
+        .not('espn_player_id', 'is', null)
+    )
+    const byId = new Map()
+    for (const r of rows) {
+      if (!byId.has(r.espn_player_id)) {
+        byId.set(r.espn_player_id, {
+          id: r.espn_player_id,
+          full_name: r.player_name,
+          position: r.position || null,
+          team: r.team || null,
+          injury_status: null,
+          headshot_url: null,
+          seasonPoints: 0,
+          gamesPlayed: 0,
+          avgPoints: 0,
+        })
+      }
+    }
+    return [...byId.values()].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))
+  }
+
+  return []
+}
+
+/**
  * Fetch recent weekly stats for a set of players (last 4 weeks).
  */
 async function getRecentStats(playerIds, season, currentWeek) {
@@ -303,16 +377,19 @@ export async function generateBlurbs(playerIds, season, currentWeek) {
 export async function publishBlurb(blurbId) {
   const { data: blurb } = await supabase
     .from('player_blurbs')
-    .select('id, player_id')
+    .select('id, player_id, sport')
     .eq('id', blurbId)
     .single()
   if (!blurb) throw Object.assign(new Error('Blurb not found'), { status: 404 })
 
-  // Archive any currently published blurb for this player
+  // Archive any currently published blurb for this player in the same
+  // sport. ESPN ids and NFL Sleeper ids are different namespaces but
+  // we scope just in case.
   await supabase
     .from('player_blurbs')
     .update({ status: 'archived', updated_at: new Date().toISOString() })
     .eq('player_id', blurb.player_id)
+    .eq('sport', blurb.sport)
     .eq('status', 'published')
 
   const { error } = await supabase
@@ -328,21 +405,30 @@ export async function publishBlurb(blurbId) {
  * Bulk publish all draft blurbs.
  */
 export async function publishAllDrafts() {
-  // Get all draft blurbs with their player_ids
+  // Get all draft blurbs with their player_ids + sport
   const drafts = await fetchAll(
-    supabase.from('player_blurbs').select('id, player_id').eq('status', 'draft')
+    supabase.from('player_blurbs').select('id, player_id, sport').eq('status', 'draft')
   )
   if (!drafts.length) return { published: 0 }
 
-  // Archive existing published blurbs for these players
-  const playerIds = [...new Set(drafts.map((d) => d.player_id))]
-  for (let i = 0; i < playerIds.length; i += 100) {
-    const chunk = playerIds.slice(i, i + 100)
-    await supabase
-      .from('player_blurbs')
-      .update({ status: 'archived', updated_at: new Date().toISOString() })
-      .in('player_id', chunk)
-      .eq('status', 'published')
+  // Archive existing published blurbs for these (sport, player) pairs.
+  // Group drafts by sport so each archive call stays in its namespace.
+  const idsBySport = {}
+  for (const d of drafts) {
+    if (!idsBySport[d.sport]) idsBySport[d.sport] = new Set()
+    idsBySport[d.sport].add(d.player_id)
+  }
+  for (const [sport, set] of Object.entries(idsBySport)) {
+    const ids = [...set]
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100)
+      await supabase
+        .from('player_blurbs')
+        .update({ status: 'archived', updated_at: new Date().toISOString() })
+        .eq('sport', sport)
+        .in('player_id', chunk)
+        .eq('status', 'published')
+    }
   }
 
   // Publish all drafts

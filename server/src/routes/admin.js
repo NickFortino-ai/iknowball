@@ -1055,27 +1055,36 @@ router.get('/pending-counts', async (req, res) => {
 router.get('/blurbs/players', async (req, res) => {
   const season = Number(req.query.season) || new Date().getFullYear()
   const position = req.query.position || null
+  const sport = (req.query.sport || 'nfl').toLowerCase()
 
-  const { getTopPlayersByPosition } = await import('../services/playerBlurbService.js')
-  // Admin needs the full active roster, not the top-N fantasy cut — they're
-  // writing notes for backups and rookies too (e.g. Fernando Mendoza, Kenneth
-  // Gainwell). The search bar narrows things down client-side.
-  const byPosition = await getTopPlayersByPosition(season, { unlimited: true })
+  const { getTopPlayersByPosition, getPlayersForSport } = await import('../services/playerBlurbService.js')
 
-  // Flatten all positions or filter to one
   let players
-  if (position && position !== 'all') {
-    players = byPosition[position.toUpperCase()] || []
+  if (sport === 'nfl') {
+    // Admin needs the full active roster, not the top-N fantasy cut — they're
+    // writing notes for backups and rookies too (e.g. Fernando Mendoza, Kenneth
+    // Gainwell). The search bar narrows things down client-side.
+    const byPosition = await getTopPlayersByPosition(season, { unlimited: true })
+    if (position && position !== 'all') {
+      players = byPosition[position.toUpperCase()] || []
+    } else {
+      players = Object.values(byPosition).flat().sort((a, b) => b.seasonPoints - a.seasonPoints)
+    }
   } else {
-    players = Object.values(byPosition).flat().sort((a, b) => b.seasonPoints - a.seasonPoints)
+    players = await getPlayersForSport(sport)
+    if (position && position !== 'all') {
+      players = players.filter((p) => (p.position || '').toUpperCase() === position.toUpperCase())
+    }
   }
 
-  // Attach current blurb status for each player
+  // Attach current blurb status for each player. Scope by sport so an NBA
+  // espn_player_id doesn't accidentally match a same-string NFL player_id.
   const playerIds = players.map((p) => p.id)
   if (playerIds.length) {
     const { data: blurbs } = await supabase
       .from('player_blurbs')
       .select('player_id, status, id, content')
+      .eq('sport', sport)
       .in('player_id', playerIds)
       .in('status', ['draft', 'published'])
     const blurbMap = {}
@@ -1107,11 +1116,19 @@ router.post('/blurbs/generate', async (req, res) => {
 
 // Create a manual blurb
 router.post('/blurbs', async (req, res) => {
-  const { player_id, content, season, week } = req.body
+  const { player_id, content, season, week, sport } = req.body
   if (!player_id || !content) return res.status(400).json({ error: 'player_id and content required' })
   const { data, error } = await supabase
     .from('player_blurbs')
-    .insert({ player_id, content, status: 'draft', season: season || new Date().getFullYear(), week, generated_by: 'manual' })
+    .insert({
+      player_id,
+      content,
+      status: 'draft',
+      season: season || new Date().getFullYear(),
+      week,
+      generated_by: 'manual',
+      sport: (sport || 'nfl').toLowerCase(),
+    })
     .select()
     .single()
   if (error) return res.status(500).json({ error: error.message })
