@@ -538,15 +538,47 @@ const NFL_GAME_COLS = (statMap) => ({
 
 // Player game log — last 10 games (supports NBA, MLB, and NFL)
 router.get('/player/:espnId/gamelog', async (req, res) => {
-  const { espnId } = req.params
+  const { espnId: rawId } = req.params
   const sport = req.query.sport || 'basketball_nba'
   const espnPath = ESPN_SPORT_PATHS[sport] || 'basketball/nba'
+
+  // For NFL the path param may be a Sleeper id (single-stat contests like
+  // Sacks/Ints/Tackles/Receptions key on sleeper_player_id). nfl_players
+  // stores the ESPN equivalent in `espn_id`, so resolve it here. The
+  // blurb lookup below still keys on the original path param because
+  // admin blurbs for NFL are stored under the Sleeper id.
+  let espnId = rawId
+  if (sport === 'americanfootball_nfl') {
+    const { data: nflRow } = await supabase
+      .from('nfl_players')
+      .select('espn_id')
+      .eq('id', rawId)
+      .maybeSingle()
+    if (nflRow?.espn_id) espnId = nflRow.espn_id
+  }
 
   try {
     const seasonYear = new Date().getFullYear()
     const seasonParam = sport !== 'basketball_nba' ? `?season=${seasonYear}` : ''
     const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog${seasonParam}`)
-    if (!response.ok) return res.status(404).json({ error: 'Player not found' })
+    if (!response.ok) {
+      // No gamelog but the row still wants blurbs — fall through with
+      // empty games/averages so the modal can render notes alone.
+      const blurbSport = ({
+        basketball_nba: 'nba',
+        basketball_wnba: 'wnba',
+        baseball_mlb: 'mlb',
+        americanfootball_nfl: 'nfl',
+      })[sport] || null
+      let blurbs = []
+      if (blurbSport) {
+        try {
+          const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
+          blurbs = await getPublishedBlurbsForPlayer(rawId, 10, blurbSport)
+        } catch {}
+      }
+      return res.json({ games: [], averages: null, sport, isPitcher: false, blurbs, blurb: blurbs[0] || null })
+    }
     const data = await response.json()
 
     const labels = data.labels || []
@@ -648,7 +680,9 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     if (blurbSport) {
       try {
         const { getPublishedBlurbsForPlayer } = await import('../services/playerBlurbService.js')
-        blurbs = await getPublishedBlurbsForPlayer(espnId, 10, blurbSport)
+        // Blurbs are keyed on the original path param (Sleeper id for NFL,
+        // ESPN id for everyone else) to match how admin writes them.
+        blurbs = await getPublishedBlurbsForPlayer(rawId, 10, blurbSport)
       } catch {}
     }
 

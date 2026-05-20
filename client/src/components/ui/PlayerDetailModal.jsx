@@ -249,7 +249,11 @@ function NFLGameLog({ games, position }) {
 }
 
 export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'basketball_nba' }) {
-  const { data, isLoading } = useNbaDfsPlayerGamelog(player?.espn_player_id, sport)
+  // ESPN id is the preferred lookup key. NFL single-stat contests (Sacks,
+  // Ints, Tackles, Receptions) carry sleeper_player_id instead — the
+  // server resolves that to espn_id via nfl_players.espn_id.
+  const lookupId = player?.espn_player_id || player?.sleeper_player_id || player?.id
+  const { data, isLoading } = useNbaDfsPlayerGamelog(lookupId, sport)
 
   if (!player) return null
 
