@@ -555,7 +555,7 @@ export default function Navbar() {
                           <div key={req.id} className="px-4 py-3 border-b border-border last:border-b-0">
                             <div className="text-sm font-medium mb-1">Connection Request</div>
                             <div className="text-xs text-text-muted mb-2">
-                              @{req.requester?.username} wants to connect
+                              <span className="font-semibold text-text-primary">@{req.requester?.username}</span> wants to connect
                             </div>
                             <div className="flex gap-2">
                               <button
@@ -1084,7 +1084,7 @@ export default function Navbar() {
                       <div key={req.id} className="px-4 py-3 border-b border-border last:border-b-0">
                         <div className="text-sm font-medium mb-1">Connection Request</div>
                         <div className="text-xs text-text-muted mb-2">
-                          @{req.requester?.username} wants to connect
+                          <span className="font-semibold text-text-primary">@{req.requester?.username}</span> wants to connect
                         </div>
                         <div className="flex gap-2">
                           <button
