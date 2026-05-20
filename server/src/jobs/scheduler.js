@@ -20,7 +20,7 @@ import { scoreNBADFS } from './scoreNBADFS.js'
 import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
 import { settleWNBAProps } from './settleWNBAProps.js'
-import { scoreAllWnbaThreePointPicks } from '../services/wnbaThreePointService.js'
+import { scoreAllWnbaThreePointPicks, tightenWnbaThreePointJoinLocks } from '../services/wnbaThreePointService.js'
 import { settleMLBProps } from './settleMLBProps.js'
 import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
@@ -237,6 +237,15 @@ export function startScheduler() {
       try { await scoreAllWnbaThreePointPicks() } catch (err) { logger.error({ err }, 'WNBA 3-Point Contest scoring failed') }
     })
     logger.info('WNBA 3-Point Contest scoring scheduled: every 2 minutes')
+
+    // Tighten WNBA 3-Point Contest join locks to the first tip-off of the
+    // league's start date. Hourly is plenty — ESPN's scoreboard publishes
+    // game times days in advance, so the lock converges on the right value
+    // long before the contest actually starts.
+    cron.schedule('15 * * * *', async () => {
+      try { await tightenWnbaThreePointJoinLocks() } catch (err) { logger.error({ err }, 'WNBA 3-Point join-lock tightener failed') }
+    })
+    logger.info('WNBA 3-Point join-lock tightener scheduled: hourly')
 
     cron.schedule('*/2 * * * *', async () => {
       try { await settleMLBProps() } catch (err) { logger.error({ err }, 'MLB prop auto-settlement failed') }

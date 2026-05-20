@@ -274,6 +274,64 @@ export async function buildWnbaGameStateByTeam(date) {
 }
 
 // ---------------------------------------------------------------------------
+// Join-lock tightening
+// ---------------------------------------------------------------------------
+
+/**
+ * Tighten joins_locked_at for WNBA 3-Point Contest leagues to the first
+ * tip-off of the league's start date. Mirrors the NBA DFS tightener, but
+ * pulls game times from the ESPN scoreboard since WNBA has no salaries
+ * table.
+ *
+ * Runs idempotently — only writes when the new lock would actually move
+ * the existing one earlier (or replace a null). Safe to run on any
+ * cadence.
+ */
+export async function tightenWnbaThreePointJoinLocks() {
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, starts_at, joins_locked_at')
+    .eq('format', 'wnba_three_point')
+    .in('status', ['open', 'active'])
+
+  if (!leagues?.length) return
+
+  // Cache per-date scoreboard lookups so leagues sharing a start date
+  // only hit ESPN once per run.
+  const firstGameCache = new Map()
+
+  for (const league of leagues) {
+    if (!league.starts_at) continue
+    // ET calendar date of the league's start
+    const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+
+    let firstTipIso = firstGameCache.get(startEtDate)
+    if (firstTipIso === undefined) {
+      const events = await fetchWnbaScoreboardForDate(startEtDate)
+      const times = (events || [])
+        .map((ev) => ev.date || ev.competitions?.[0]?.date)
+        .filter(Boolean)
+        .map((t) => new Date(t).getTime())
+        .filter((ms) => Number.isFinite(ms))
+      firstTipIso = times.length ? new Date(Math.min(...times)).toISOString() : null
+      firstGameCache.set(startEtDate, firstTipIso)
+    }
+
+    if (!firstTipIso) continue
+
+    const tipOff = new Date(firstTipIso)
+    const currentLock = league.joins_locked_at ? new Date(league.joins_locked_at) : null
+    if (!currentLock || currentLock > tipOff) {
+      await supabase
+        .from('leagues')
+        .update({ joins_locked_at: tipOff.toISOString() })
+        .eq('id', league.id)
+      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Tightened WNBA 3-Point joins_locked_at to first tip-off')
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Scoring
 // ---------------------------------------------------------------------------
 
