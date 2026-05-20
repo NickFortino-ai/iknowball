@@ -4,7 +4,12 @@ import { displayUrl } from '../../lib/urlUtils'
 
 function TweetEmbed({ tweetId, url }) {
   const containerRef = useRef(null)
-  const [loaded, setLoaded] = useState(false)
+  // 'pending' while the embed is mounting, 'loaded' on success, 'failed' on
+  // explicit error. Only show the fallback card on 'failed' — previously the
+  // fallback was tied to !loaded which rendered alongside the iframe for the
+  // few hundred ms between mount and the createTweet().then() callback,
+  // making the post look like it had a duplicate preview.
+  const [status, setStatus] = useState('pending')
 
   useEffect(() => {
     if (!tweetId || !containerRef.current) return
@@ -19,8 +24,8 @@ function TweetEmbed({ tweetId, url }) {
             conversation: 'none',
             dnt: true,
           })
-          .then(() => setLoaded(true))
-          .catch(() => setLoaded(false))
+          .then((el) => setStatus(el ? 'loaded' : 'failed'))
+          .catch(() => setStatus('failed'))
       }
     }
 
@@ -60,7 +65,7 @@ function TweetEmbed({ tweetId, url }) {
   return (
     <div className="mt-2" onClick={(e) => e.stopPropagation()}>
       <div ref={containerRef} className="max-w-full [&>*]:!m-0" />
-      {!loaded && (
+      {status === 'failed' && (
         <a
           href={url}
           target="_blank"

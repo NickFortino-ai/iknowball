@@ -303,6 +303,10 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
   const [editUserTags, setEditUserTags] = useState([])
   const [editMentionQuery, setEditMentionQuery] = useState('')
   const [existingImageUrl, setExistingImageUrl] = useState(null)
+  // Preserve the full image_urls array across edits so multi-image posts
+  // don't collapse to a single image when the user edits text without
+  // re-uploading the images.
+  const [existingImageUrls, setExistingImageUrls] = useState(null)
   const [existingVideoUrl, setExistingVideoUrl] = useState(null)
   const updateHotTake = useUpdateHotTake()
   const deleteHotTake = useDeleteHotTake()
@@ -333,6 +337,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setEditSport(null)
     setEditTeamSearch('')
     setExistingImageUrl(hot_take.image_url || null)
+    setExistingImageUrls(hot_take.image_urls?.length ? hot_take.image_urls : (hot_take.image_url ? [hot_take.image_url] : null))
     setExistingVideoUrl(hot_take.video_url || null)
     setEditing(true)
   }
@@ -346,6 +351,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     setEditSport(null)
     setEditTeamSearch('')
     setExistingImageUrl(null)
+    setExistingImageUrls(null)
     setExistingVideoUrl(null)
     removeImage()
     removeVideo()
@@ -356,7 +362,10 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     if (!trimmed || trimmed.length > MAX_CHARS) return
 
     let imageUrl = existingImageUrl
-    let imageUrls
+    // Default to whatever array the post already had — only overwrite if
+    // the user actually uploaded a new batch. Without this, the server
+    // collapses image_urls to a single-element array on every edit.
+    let imageUrls = existingImageUrls || undefined
     if (hasImage) {
       const urls = await uploadImage()
       if (!urls && hasImage) return // upload failed
@@ -391,6 +400,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
 
   function handleRemoveImage() {
     setExistingImageUrl(null)
+    setExistingImageUrls(null)
     removeImage()
   }
 
@@ -404,6 +414,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
     if (!file) { e.target.value = ''; return }
     if (file.type.startsWith('video/')) {
       setExistingImageUrl(null)
+      setExistingImageUrls(null)
       removeImage()
       setExistingVideoUrl(null)
       selectVideo(file)
@@ -411,6 +422,7 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
       setExistingVideoUrl(null)
       removeVideo()
       setExistingImageUrl(null)
+      setExistingImageUrls(null)
       selectImage(file)
     }
     e.target.value = ''
