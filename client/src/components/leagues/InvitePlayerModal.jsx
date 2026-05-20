@@ -54,10 +54,13 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, fo
   const pendingInvites = (invitations || []).filter((i) => i.status === 'pending')
   const pastInvites = (invitations || []).filter((i) => i.status !== 'pending')
 
-  // Filter connections: exclude users already invited or already members
+  // Filter connections: exclude users already invited or already members.
+  // Connections come back keyed by `user_id` (not `id`), so the previous
+  // `memberIdSet.has(c.id)` always returned false and members slipped
+  // through the filter.
   const invitedUsernames = new Set((invitations || []).map((i) => i.user?.username))
   const memberIdSet = new Set(memberIds)
-  const availableConnections = (connections || []).filter((c) => !invitedUsernames.has(c.username) && !memberIdSet.has(c.id))
+  const availableConnections = (connections || []).filter((c) => !invitedUsernames.has(c.username) && !memberIdSet.has(c.user_id))
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
