@@ -95,6 +95,7 @@ function getNotificationIcon(n) {
       return '\u2705' // ✅ survived
     case 'survivor_pick_reminder': return '\u23F0' // ⏰
     case 'roster_reminder': return '\u23F0' // ⏰
+    case 'og_welcome': return '\u2B50' // ⭐
     case 'survivor_win': return '\uD83D\uDC51' // 👑
     case 'league_report': return '\uD83D\uDCCB' // 📋
     case 'league_win':
@@ -200,6 +201,8 @@ function getNotificationRoute(notification) {
     case 'survivor_pick_reminder':
     case 'roster_reminder':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
+    case 'og_welcome':
+      return '/hall-of-fame?section=royalty'
 
     // Fantasy football notifications — all route to the league with a tab hint
     case 'fantasy_trade_proposed':

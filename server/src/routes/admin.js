@@ -1533,4 +1533,37 @@ router.get('/surveys/responses.csv', async (req, res) => {
   res.send(lines.join('\n'))
 })
 
+// One-shot: send the OG welcome notification to every is_og user that
+// hasn't already received one. Idempotent — calling twice won't double up.
+router.post('/ogs/notify-welcome', async (req, res) => {
+  const { createNotification } = await import('../services/notificationService.js')
+  const { data: ogs } = await supabase
+    .from('users')
+    .select('id, username')
+    .eq('is_og', true)
+  if (!ogs?.length) return res.json({ sent: 0, skipped: 0 })
+
+  const ids = ogs.map((o) => o.id)
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('user_id')
+    .eq('type', 'og_welcome')
+    .in('user_id', ids)
+  const already = new Set((existing || []).map((n) => n.user_id))
+
+  const message = 'You are officially an IKB OG. You have been instrumental in bringing this app to life. Thank you so much.'
+  let sent = 0
+  let skipped = 0
+  for (const og of ogs) {
+    if (already.has(og.id)) { skipped++; continue }
+    try {
+      await createNotification(og.id, 'og_welcome', message, {})
+      sent++
+    } catch (err) {
+      logger.error({ err, userId: og.id }, 'Failed to send OG welcome')
+    }
+  }
+  res.json({ sent, skipped, total: ogs.length })
+})
+
 export default router
