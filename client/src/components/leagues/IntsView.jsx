@@ -291,7 +291,14 @@ export default function IntsView({ league, tab = 'picks' }) {
                 const savedPick = (myPicks || []).find((p) => p.sleeper_player_id === player.sleeper_player_id)
                 const ints = Number(savedPick?.ints) || 0
                 return (
-                  <div key={player.sleeper_player_id} className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5">
+                  <div
+                    key={player.sleeper_player_id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailPlayer(player)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDetailPlayer(player) }}
+                    className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors"
+                  >
                     {player.headshot_url && (
                       <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
                         onError={(e) => { e.target.style.display = 'none' }} />
@@ -313,7 +320,7 @@ export default function IntsView({ league, tab = 'picks' }) {
                     )}
                     {(!hasSavedPicks || editing) && (
                       <button
-                        onClick={() => removePlayer(player.sleeper_player_id)}
+                        onClick={(e) => { e.stopPropagation(); removePlayer(player.sleeper_player_id) }}
                         className="p-2 text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
                       >
                         &times;

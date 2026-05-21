@@ -409,7 +409,14 @@ export default function WnbaThreePointView({ league, tab = 'picks' }) {
                 const poolEntry = (players || []).find((p) => p.espn_player_id === player.espn_player_id)
                 const injuryStatus = poolEntry?.injury_status || player.injury_status
                 return (
-                  <div key={player.espn_player_id} className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5">
+                  <div
+                    key={player.espn_player_id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailPlayer(player)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDetailPlayer(player) }}
+                    className="flex items-center gap-2 bg-bg-primary/10 border border-text-primary/15 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-text-primary/5 transition-colors"
+                  >
                     <PlayerHeadshot player={player} className="w-10 h-10" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
@@ -432,7 +439,7 @@ export default function WnbaThreePointView({ league, tab = 'picks' }) {
                     ) : null}
                     {(!hasSavedPicks || (editing && !isPickLocked(savedPick))) && (
                       <button
-                        onClick={() => removePlayer(player.espn_player_id)}
+                        onClick={(e) => { e.stopPropagation(); removePlayer(player.espn_player_id) }}
                         className="p-2 text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
                       >
                         &times;
