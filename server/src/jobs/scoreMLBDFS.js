@@ -115,11 +115,15 @@ export async function fetchCompletedGameStats(date) {
     if (!competition) continue
 
     const statusType = competition.status?.type?.name || event.status?.type?.name
-    const isFinal = statusType === 'STATUS_FINAL'
+    // Broaden FINAL detection — ESPN uses STATUS_FINAL for typical games
+    // but also variants like STATUS_FINAL_PEN, STATUS_FINAL_GAME_1 (DH),
+    // STATUS_FINAL_NIGHT, etc. Anything containing 'FINAL' is good.
+    const isFinal = !!statusType && statusType.includes('FINAL')
     const isLive = ['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD'].includes(statusType)
 
     if (!isFinal && !isLive) {
       allFinal = false
+      logger.debug({ gameId: event.id, statusType, date }, 'MLB game skipped — not final/live')
       continue
     }
     if (!isFinal) allFinal = false
@@ -532,26 +536,27 @@ export async function scoreMLBDFS() {
     logger.info({ date: today, players: playerStats.length, allFinal }, 'MLB DFS scoring pass complete')
   }
 
-  // Check yesterday for late games — re-score if no winner has been awarded yet
+  // Always re-scrape yesterday too. West Coast late games (Ohtani, etc.)
+  // often finish after midnight ET and ESPN rolls them off today's
+  // scoreboard before we get a full stat line — re-running yesterday
+  // catches those late-finishing pitcher Ks. Previously this branch was
+  // gated on yesterdayWinners=0, which meant once a winner was awarded
+  // the picks could be frozen with a stale K count.
   const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
   yesterday.setDate(yesterday.getDate() - 1)
   const yesterdayStr = yesterday.toISOString().split('T')[0]
 
-  const { count: yesterdayWinners } = await supabase
-    .from('mlb_dfs_nightly_results')
-    .select('id', { count: 'exact', head: true })
-    .eq('game_date', yesterdayStr)
-    .eq('season', season)
-    .eq('is_night_winner', true)
-
-  if (!yesterdayWinners || yesterdayWinners === 0) {
+  try {
     const yester = await fetchCompletedGameStats(yesterdayStr)
     if (yester.playerStats.length > 0) {
       await upsertPlayerStats(yester.playerStats, yesterdayStr, season)
       await scoreRosters(yesterdayStr, season, yester.allFinal)
       await scoreHRDerbyPicks(yesterdayStr)
       await scoreStrikeoutsPicks(yesterdayStr)
-      logger.info({ date: yesterdayStr, players: yester.playerStats.length, allFinal: yester.allFinal }, 'Scored yesterday MLB DFS games')
+      logger.info({ date: yesterdayStr, players: yester.playerStats.length, allFinal: yester.allFinal }, 'Re-scored yesterday MLB DFS games')
     }
+  } catch (err) {
+    logger.error({ err, date: yesterdayStr }, 'Failed yesterday re-scrape pass')
   }
+
 }
