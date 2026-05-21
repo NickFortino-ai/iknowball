@@ -50,7 +50,7 @@ export async function settleMLBProps() {
   // tomorrow's UTC date and misses the lookup.
   const gameDates = new Set()
   for (const p of props) {
-    const date = new Date(p.games.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const date = new Date(p.games.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
     gameDates.add(date)
   }
 

@@ -58,7 +58,7 @@ export async function settleNBAProps() {
   // the lookup entirely (e.g. 8pm CT tip → 02:00 UTC next day).
   const gameDates = new Set()
   for (const prop of props) {
-    const date = new Date(prop.games.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const date = new Date(prop.games.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
     gameDates.add(date)
   }
 

@@ -32,7 +32,7 @@ function set(result, leagueId, state, detail) {
 async function getDoneSportsForToday(sportKeys, userTz) {
   const done = new Set()
   if (!sportKeys?.length) return done
-  const tz = userTz || 'America/New_York'
+  const tz = userTz || 'America/Los_Angeles'
   const todayLocal = new Date().toLocaleDateString('en-CA', { timeZone: tz })
   let offset
   try {
@@ -123,7 +123,7 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
 
   // Today in the user's local timezone — matches what the user sees as
   // "tonight" in the picks UI. Falls back to ET if the user has no tz set.
-  const tz = userTz || 'America/New_York'
+  const tz = userTz || 'America/Los_Angeles'
   const todayET = new Date().toLocaleDateString('en-CA', { timeZone: tz })
   const yesterdayET = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: tz })
 
@@ -381,7 +381,7 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
   // not keep pinning the card to yesterday all day long.
   let yesterdayStillLive = false
   const nowEtHour = parseInt(
-    new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }),
+    new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }),
     10
   )
   const inOverlapWindow = nowEtHour < 8
