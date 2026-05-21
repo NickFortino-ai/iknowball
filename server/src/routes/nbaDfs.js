@@ -583,12 +583,16 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
 
     const labels = data.labels || []
     const eventsMap = data.events || {}
-    // Prefer regular season, fall back to any season type with games
-    const regSeason = data.seasonTypes?.find((s) => s.displayName?.includes('Regular'))
-    const anySeason = regSeason || data.seasonTypes?.[0]
+    // Pull games from EVERY season type — regular season, playoffs,
+    // play-in, whatever ESPN exposes. The sort-by-date-desc below then
+    // surfaces the actual most recent games to the top, so during the
+    // playoffs the player's playoff games (not stale regular-season
+    // ones) lead the modal.
     const allGames = []
-    for (const cat of anySeason?.categories || []) {
-      for (const ev of cat.events || []) allGames.push(ev)
+    for (const seasonType of data.seasonTypes || []) {
+      for (const cat of seasonType.categories || []) {
+        for (const ev of cat.events || []) allGames.push(ev)
+      }
     }
 
     const isMLB = sport === 'baseball_mlb'
