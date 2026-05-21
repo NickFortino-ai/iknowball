@@ -292,9 +292,6 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
                   {player.opponent ? ` ${player.opponent}` : ''}
                 </div>
               )}
-              {player.salary && (
-                <div className="text-lg font-semibold text-accent mt-1">${player.salary.toLocaleString()}</div>
-              )}
             </div>
           </div>
           {onAdd && (
