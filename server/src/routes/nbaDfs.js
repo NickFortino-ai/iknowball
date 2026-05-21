@@ -560,10 +560,37 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     if (nflRow?.espn_id) espnId = nflRow.espn_id
   }
 
+  // Helper — fetch one season's gamelog from ESPN. Returns parsed JSON
+  // or null. Pulled out so we can backfill from prior season when the
+  // current season is sparse (returning-from-IL players, early career,
+  // offseason snapshots).
+  async function fetchGamelogJson(year) {
+    const param = year ? `?season=${year}` : ''
+    try {
+      const r = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog${param}`)
+      if (!r.ok) return null
+      return await r.json()
+    } catch {
+      return null
+    }
+  }
+
+  function eventsFromGamelog(data) {
+    const out = []
+    for (const seasonType of data?.seasonTypes || []) {
+      for (const cat of seasonType.categories || []) {
+        for (const ev of cat.events || []) out.push(ev)
+      }
+    }
+    return out
+  }
+
   try {
     const seasonYear = new Date().getFullYear()
-    const seasonParam = sport !== 'basketball_nba' ? `?season=${seasonYear}` : ''
-    const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog${seasonParam}`)
+    // NBA's gamelog endpoint returns the current season by default.
+    // Other sports prefer an explicit season param.
+    const useSeasonParam = sport !== 'basketball_nba'
+    const response = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/gamelog${useSeasonParam ? `?season=${seasonYear}` : ''}`)
     if (!response.ok) {
       // No gamelog but the row still wants blurbs — fall through with
       // empty games/averages so the modal can render notes alone.
@@ -585,16 +612,21 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     const data = await response.json()
 
     const labels = data.labels || []
-    const eventsMap = data.events || {}
+    const eventsMap = { ...(data.events || {}) }
     // Pull games from EVERY season type — regular season, playoffs,
     // play-in, whatever ESPN exposes. The sort-by-date-desc below then
-    // surfaces the actual most recent games to the top, so during the
-    // playoffs the player's playoff games (not stale regular-season
-    // ones) lead the modal.
-    const allGames = []
-    for (const seasonType of data.seasonTypes || []) {
-      for (const cat of seasonType.categories || []) {
-        for (const ev of cat.events || []) allGames.push(ev)
+    // surfaces the actual most recent games to the top.
+    const allGames = eventsFromGamelog(data)
+
+    // If the current season has fewer than 10 games (returning-from-IL,
+    // early career, offseason), backfill from the prior season so the
+    // modal always feels populated. The merged set is still sorted by
+    // date desc and sliced to 10, so order stays correct.
+    if (allGames.length < 10 && useSeasonParam) {
+      const prior = await fetchGamelogJson(seasonYear - 1)
+      if (prior) {
+        Object.assign(eventsMap, prior.events || {})
+        allGames.push(...eventsFromGamelog(prior))
       }
     }
 

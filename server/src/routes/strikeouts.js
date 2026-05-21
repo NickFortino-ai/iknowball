@@ -8,8 +8,16 @@ import { logger } from '../utils/logger.js'
 const router = Router()
 router.use(requireAuth)
 
-// Cache ESPN season strikeout leaders (refreshed every 30 min). ESPN's
-// pitching leaderboard for type=2 (regular season) is keyed by abbrev "SO".
+// Season strikeout totals — aggregated from our own mlb_dfs_player_stats
+// table. ESPN's leaderboard endpoint was previously the source but it
+// caps at the top 200 by raw count and excludes pitchers returning
+// from injury / low-volume relievers, so Strider/Rodon/etc. showed 0
+// despite real K totals. Our box-score scrape covers every pitcher
+// who appeared in any game we tracked this season.
+//
+// Cached for 30 min — same TTL as the old ESPN feed. The aggregation
+// is cheap (one query, group-by espn_player_id) so refreshing
+// frequently is fine.
 let kLeadersCache = null
 let kLeadersCacheTime = 0
 const K_CACHE_TTL = 30 * 60 * 1000
@@ -17,28 +25,32 @@ const K_CACHE_TTL = 30 * 60 * 1000
 async function getSeasonStrikeoutLeaders() {
   if (kLeadersCache && Date.now() - kLeadersCacheTime < K_CACHE_TTL) return kLeadersCache
   try {
-    const res = await fetch('https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/seasons/2026/types/2/leaders?limit=200')
-    if (!res.ok) throw new Error(`ESPN returned ${res.status}`)
-    const data = await res.json()
+    const season = new Date().getFullYear()
+    // Supabase caps select() at 1000 rows by default, but daily pitcher
+    // rows × ~200 active pitchers × 30+ games can blow past that fast.
+    // Page through to make sure we sum the full season.
+    const { fetchAll } = await import('../utils/fetchAll.js')
+    const rows = await fetchAll(
+      supabase
+        .from('mlb_dfs_player_stats')
+        .select('espn_player_id, strikeouts')
+        .eq('season', season)
+        .eq('is_pitcher', true)
+    )
     const kMap = {}
-    for (const cat of data.categories || []) {
-      const abbr = cat.abbreviation || cat.name || ''
-      // ESPN exposes pitcher Ks as "SO" or "K" depending on the season feed
-      if (abbr === 'SO' || abbr === 'K' || abbr === 'strikeOuts') {
-        for (const leader of cat.leaders || []) {
-          const ref = leader.athlete?.$ref || ''
-          const match = ref.match(/\/athletes\/(\d+)/)
-          if (match) kMap[match[1]] = Math.round(leader.value)
-        }
-        break
-      }
+    for (const r of rows) {
+      // Strip the -P suffix two-way players (Ohtani) carry — the
+      // strikeouts contest matches pitchers by raw ESPN athlete id.
+      const id = (r.espn_player_id || '').replace(/-P$/, '')
+      if (!id) continue
+      kMap[id] = (kMap[id] || 0) + (Number(r.strikeouts) || 0)
     }
     kLeadersCache = kMap
     kLeadersCacheTime = Date.now()
-    logger.info({ count: Object.keys(kMap).length }, 'Refreshed ESPN strikeout leaders cache')
+    logger.info({ count: Object.keys(kMap).length }, 'Refreshed season strikeout totals (from box scores)')
     return kMap
   } catch (err) {
-    logger.error({ err }, 'Failed to fetch ESPN strikeout leaders')
+    logger.error({ err }, 'Failed to aggregate season strikeouts from box scores')
     return kLeadersCache || {}
   }
 }
