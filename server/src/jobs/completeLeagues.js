@@ -840,6 +840,33 @@ export async function completeLeagues() {
     }
   }
 
+  // Reverse-flip: daily contest leagues that were prematurely activated
+  // under the old logic (or by hand) should drop back to 'open' if their
+  // joins_locked_at is still in the future. Critical because 'open'
+  // status is what surfaces a league on the landing page + join page —
+  // last-minute joiners can't discover an 'active' league.
+  {
+    const DAILY_OPEN_FORMATS = [
+      'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
+      'three_point', 'wnba_three_point',
+    ]
+    const { data: prematurelyActive } = await supabase
+      .from('leagues')
+      .select('id, format, joins_locked_at')
+      .eq('status', 'active')
+      .in('format', DAILY_OPEN_FORMATS)
+      .not('joins_locked_at', 'is', null)
+      .gt('joins_locked_at', now)
+    if (prematurelyActive?.length) {
+      const ids = prematurelyActive.map((l) => l.id)
+      await supabase
+        .from('leagues')
+        .update({ status: 'open', updated_at: new Date().toISOString() })
+        .in('id', ids)
+      logger.info({ count: ids.length }, 'Rolled prematurely-active daily contest leagues back to open')
+    }
+  }
+
   // Clamp full_season leagues to season end dates (if admin has set them)
   const { data: seasonDates } = await supabase
     .from('season_dates')
