@@ -511,9 +511,12 @@ const MLB_GAME_COLS = (statMap) => ({
 })
 
 // Separate parser for MLB pitcher game logs — ESPN returns different
-// columns (IP, ER, K, etc.) for pitchers than for hitters.
+// columns (IP, ER, K, etc.) for pitchers than for hitters. We don't
+// pull `result` here on purpose — the outer mapper already sets it
+// from `detail.gameResult` (the team's W/L). Pitcher decision is
+// often blank for no-decision starts; falling back to team result
+// keeps the left column populated.
 const MLB_PITCHER_GAME_COLS = (statMap) => ({
-  result: statMap['W-L'] || '',  // sometimes encoded
   ip: statMap.IP || '0.0',
   h: parseInt(statMap.H) || 0,
   r: parseInt(statMap.R) || 0,

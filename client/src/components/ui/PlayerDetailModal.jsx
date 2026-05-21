@@ -263,10 +263,10 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
   const isPitcher = !!data?.isPitcher
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-t-2xl md:rounded-2xl max-h-[85vh] overflow-y-auto scrollbar-hide"
+        className="relative bg-bg-primary border border-text-primary/20 w-full max-w-md rounded-2xl max-h-[85vh] overflow-y-auto scrollbar-hide"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -287,7 +287,8 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
               </div>
               {(player.position || player.team) && (
                 <div className="text-sm text-text-muted">
-                  {[player.position, player.team].filter(Boolean).join(' · ')}
+                  {player.position ? <>{player.position} · </> : null}
+                  {player.team && <span className="text-text-primary font-semibold">{player.team}</span>}
                   {player.opponent ? ` ${player.opponent}` : ''}
                 </div>
               )}
