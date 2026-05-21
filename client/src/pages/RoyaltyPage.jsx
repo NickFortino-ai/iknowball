@@ -381,29 +381,36 @@ function OGSection({ onUserTap }) {
     <div className="mt-6 pt-6 border-t border-border/50">
       <div className="flex items-center justify-center gap-2 mb-1">
         <OGBadge size="md" />
-        <h3 className="font-display text-lg text-[#C8960C] tracking-wide">The OGs</h3>
+        <h3 className="font-display text-lg text-accent tracking-wide">The OGs</h3>
       </div>
       <p className="text-xs text-text-muted text-center mb-4">
         The earliest IKB members who shaped the app
       </p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {ogs.map((og) => (
-          <button
-            key={og.id}
-            onClick={() => onUserTap?.(og.id)}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-text-primary/10 bg-bg-primary/30 hover:bg-text-primary/5 transition-colors"
-          >
-            <Avatar user={og} size="xl" className="bg-bg-primary/40 border border-[#C8960C]/30" />
-            <div className="text-sm font-semibold text-text-primary truncate w-full text-center">
-              {og.display_name || og.username}
-            </div>
-            <div className="text-[10px] text-text-muted truncate w-full text-center">@{og.username}</div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <TierBadge tier={og.tier} size="xs" />
-              <OGBadge size="sm" />
-            </div>
-          </button>
-        ))}
+      {/* Match CategoryCrown layout — centered avatar + name, no card chrome. */}
+      <div className="lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
+        <div className="lg:max-w-7xl lg:mx-auto lg:px-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 lg:grid-cols-none lg:flex lg:flex-wrap lg:justify-center lg:gap-x-6 lg:gap-y-4">
+            {ogs.map((og) => (
+              <div
+                key={og.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onUserTap?.(og.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onUserTap?.(og.id) }}
+                className="text-center py-5 cursor-pointer group lg:flex-1 lg:min-w-0"
+              >
+                <div className="flex justify-center mb-1 lg:mb-2">
+                  <Avatar user={og} size="xl" className="bg-bg-primary/40 lg:hidden" />
+                  <Avatar user={og} size="2xl" className="bg-bg-primary/40 hidden lg:flex" />
+                </div>
+                <div className="text-sm lg:text-base font-medium text-text-primary group-hover:text-accent transition-colors truncate">
+                  {og.display_name || og.username}
+                </div>
+                <div className="text-xs lg:text-sm text-text-muted truncate">@{og.username}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

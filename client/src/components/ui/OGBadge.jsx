@@ -1,6 +1,6 @@
-// OG badge — earliest active users who helped Nick build IKB. Rendered
-// as an inline SVG so it stays crisp at any size and inherits the
-// Royalty gold palette (matches the crown SVGs in RoyaltyPage).
+// OG badge — earliest active users who helped Nick build IKB. Inline
+// SVG that uses the IKB accent orange so it reads as on-brand alongside
+// the rest of the dark UI.
 
 const SIZE_PX = {
   xs: 20,
@@ -23,22 +23,21 @@ export default function OGBadge({ size = 'md', className = '' }) {
     >
       <title>OG — one of the earliest IKB members</title>
       <defs>
-        <radialGradient id="og-fill" cx="35%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#FFE066" />
-          <stop offset="55%" stopColor="#DAA520" />
-          <stop offset="100%" stopColor="#8B6914" />
-        </radialGradient>
+        <linearGradient id="og-orange" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FF6A1A" />
+          <stop offset="100%" stopColor="#CC3D00" />
+        </linearGradient>
       </defs>
-      <circle cx="20" cy="20" r="18" fill="url(#og-fill)" stroke="#8B6914" strokeWidth="1.5" />
+      <circle cx="20" cy="20" r="18" fill="url(#og-orange)" />
       <text
         x="20"
         y="20"
         textAnchor="middle"
         dominantBaseline="central"
         fontFamily="'Audiowide', sans-serif"
-        fontSize="14"
+        fontSize="13"
         fontWeight="700"
-        fill="#1A1A25"
+        fill="#FFFFFF"
       >
         OG
       </text>
