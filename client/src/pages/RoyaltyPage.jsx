@@ -379,12 +379,11 @@ function OGSection({ onUserTap }) {
   if (!ogs?.length) return null
   return (
     <div className="mt-6 pt-6 border-t border-border/50">
-      <div className="flex items-center justify-center gap-2 mb-1">
-        <OGBadge size="md" />
-        <h3 className="font-display text-lg text-accent tracking-wide">The OGs</h3>
+      <div className="flex justify-center mb-3">
+        <OGBadge size="xl" />
       </div>
-      <p className="text-xs text-text-muted text-center mb-4">
-        The earliest IKB members who shaped the app
+      <p className="text-sm text-text-primary text-center mb-4 px-4">
+        <span className="text-accent font-semibold">The OG&apos;s</span> are the earliest IKB members who were crucial in bringing the app to life.
       </p>
       {/* Match CategoryCrown layout — centered avatar + name, no card chrome. */}
       <div className="lg:w-screen lg:relative lg:left-1/2 lg:-translate-x-1/2">
