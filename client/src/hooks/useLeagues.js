@@ -1497,7 +1497,7 @@ export function useIntsStandings(leagueId) {
   })
 }
 
-// === Solo Tackles Contest ===
+// === Tackles Contest ===
 export function useTacklesPlayers() {
   return useQuery({
     queryKey: ['tackles', 'players'],

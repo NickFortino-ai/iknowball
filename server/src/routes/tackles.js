@@ -7,17 +7,17 @@ import { logger } from '../utils/logger.js'
 const router = Router()
 router.use(requireAuth)
 
-// Defensive positions eligible for the Solo Tackles Contest. Tackles can
+// Defensive positions eligible for the Tackles Contest. Tackles can
 // come from anywhere on defense — linebackers and safeties lead the league,
 // but cornerbacks and linemen rack up plenty too. Sorting by season
-// idp_tkl_solo naturally surfaces the tackle leaders.
+// total tackles (solo + 0.5 * ast) naturally surfaces the tackle leaders.
 const DEFENSIVE_POSITIONS = [
   'DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB',
 ]
 
 // Curated preseason ranking — top solo-tackle producers from last season
 // plus high-volume LBs / safeties expected to play every down. Used for
-// pool order before any 2026 idp_tkl_solo stats exist. Once any defender
+// pool order before any 2026 tackle stats exist. Once any defender
 // records a solo tackle on the season, sorting flips to live totals desc.
 const PRESEASON_TACKLE_RANKING = [
   'Bobby Wagner', 'Roquan Smith', 'Foyesade Oluokun', 'Zaire Franklin',
@@ -49,12 +49,15 @@ router.get('/players', async (req, res) => {
 
   const { data: tackleStats } = await supabase
     .from('nfl_player_stats')
-    .select('player_id, idp_tkl_solo')
+    .select('player_id, idp_tkl_solo, idp_tkl_ast')
     .eq('season', season)
 
+  // Total tackles = solo + 0.5 * assisted (industry standard).
   const tackleMap = {}
   for (const s of (tackleStats || [])) {
-    tackleMap[s.player_id] = (tackleMap[s.player_id] || 0) + (Number(s.idp_tkl_solo) || 0)
+    const solo = Number(s.idp_tkl_solo) || 0
+    const ast = Number(s.idp_tkl_ast) || 0
+    tackleMap[s.player_id] = (tackleMap[s.player_id] || 0) + solo + 0.5 * ast
   }
 
   const matchupByTeam = await getCurrentWeekMatchups()

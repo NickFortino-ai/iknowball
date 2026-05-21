@@ -47,7 +47,7 @@ const FORMAT_LABELS = {
   wnba_three_point: 'WNBA 3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
-  tackles: 'Solo Tackles Contest',
+  tackles: 'Tackles Contest',
   receptions: 'Receptions Contest',
   td_pass: 'TD Pass Competition',
 }

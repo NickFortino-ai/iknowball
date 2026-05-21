@@ -19,7 +19,7 @@ const FORMAT_LABELS = {
   wnba_three_point: 'WNBA 3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
-  tackles: 'Solo Tackles Contest',
+  tackles: 'Tackles Contest',
   receptions: 'Receptions Contest',
   td_pass: 'TD Pass Competition',
 }
@@ -242,7 +242,7 @@ export default function JoinLeaguePage() {
                             {league.format === 'wnba_three_point' && <div className="text-text-muted italic">Pick 3 WNBA shooters per night. Most made 3-pointers wins.</div>}
                             {league.format === 'sacks' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most sacks across the season wins.</div>}
                             {league.format === 'ints' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most interceptions across the season wins.</div>}
-                            {league.format === 'tackles' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most solo tackles across the season wins.</div>}
+                            {league.format === 'tackles' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most tackles across the season wins.</div>}
                             {league.format === 'receptions' && <div className="text-text-muted italic">Pick 3 NFL pass catchers per week. Most receptions across the season wins.</div>}
                             {(league.format === 'nba_dfs' || league.format === 'mlb_dfs') && <div className="text-text-muted italic">Build a daily lineup under a salary cap. Highest fantasy points wins.</div>}
                           </div>

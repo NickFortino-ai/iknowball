@@ -488,7 +488,7 @@ export default function HomePage() {
               { title: 'Strikeouts Contest', desc: 'Pick 3 pitchers per day. Most strikeouts wins.', gradient: 'from-blue-800/25 via-blue-900/15 to-transparent', sports: 'MLB', format: 'strikeouts' },
               { title: 'Sacks Contest', desc: 'Pick 3 defenders per week. Most sacks wins.', gradient: 'from-rose-800/25 via-rose-900/15 to-transparent', sports: 'NFL', format: 'sacks' },
               { title: 'Interceptions Contest', desc: 'Pick 3 defenders per week. Most interceptions wins.', gradient: 'from-cyan-800/25 via-cyan-900/15 to-transparent', sports: 'NFL', format: 'ints' },
-              { title: 'Solo Tackles Contest', desc: 'Pick 3 defenders per week. Most solo tackles wins.', gradient: 'from-emerald-800/25 via-emerald-900/15 to-transparent', sports: 'NFL', format: 'tackles' },
+              { title: 'Tackles Contest', desc: 'Pick 3 defenders per week. Most tackles wins.', gradient: 'from-emerald-800/25 via-emerald-900/15 to-transparent', sports: 'NFL', format: 'tackles' },
               { title: 'Receptions Contest', desc: 'Pick 3 pass catchers per week. Most receptions wins.', gradient: 'from-yellow-800/25 via-yellow-900/15 to-transparent', sports: 'NFL', format: 'receptions' },
             ].map((mode) => (
               <FormatCard key={mode.title} {...mode} onClick={() => handleStartLeague(mode.format)} />

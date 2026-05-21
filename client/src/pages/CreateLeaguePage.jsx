@@ -196,15 +196,15 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
   },
   {
     value: 'tackles',
-    label: 'Solo Tackles Contest',
-    description: 'Pick 3 NFL defenders per week — score points for every solo tackle they record',
-    details: `Pick up to 3 NFL defenders each week — LBs, safeties, corners, anyone on defense. Every solo tackle each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
+    label: 'Tackles Contest',
+    description: 'Pick 3 NFL defenders per week — score points for every tackle they record',
+    details: `Pick up to 3 NFL defenders each week — LBs, safeties, corners, anyone on defense. Every tackle each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
 
 When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
 
 Commissioner controls: league length (defaults to full NFL season), player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'Solo Tackles Contest Winner Bonus (Full Season, 18 weeks)',
+      title: 'Tackles Contest Winner Bonus (Full Season, 18 weeks)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
       footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',

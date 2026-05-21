@@ -131,7 +131,7 @@ const FORMAT_LABELS = {
   wnba_three_point: 'WNBA 3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
-  tackles: 'Solo Tackles Contest',
+  tackles: 'Tackles Contest',
   receptions: 'Receptions Contest',
   td_pass: 'TD Pass Competition',
 }
@@ -635,7 +635,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
           : `Each ${poolNoun} can be used up to ${maxUses} times this season.`
       const stat = league.format === 'sacks' ? 'sack'
         : league.format === 'ints' ? 'interception'
-        : league.format === 'tackles' ? 'solo tackle'
+        : league.format === 'tackles' ? 'tackle'
         : 'reception'
       return [
         `Pick up to 3 NFL ${poolNoun}s each week that you think will record ${stat}s.`,

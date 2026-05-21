@@ -286,7 +286,7 @@ export default function TacklesView({ league, tab = 'picks' }) {
           </div>
 
           {selected.length === 0 ? (
-            <p className="text-sm text-text-muted text-center py-4">Pick up to 3 defenders who you think will rack up solo tackles this week</p>
+            <p className="text-sm text-text-muted text-center py-4">Pick up to 3 defenders who you think will rack up tackles this week</p>
           ) : (
             <div className="space-y-2">
               {selected.map((player) => {
@@ -393,7 +393,7 @@ export default function TacklesView({ league, tab = 'picks' }) {
 
         {filteredPlayers.length > 0 && (
           <div className="flex items-center justify-end px-4 py-2 border-b border-text-primary/10">
-            <span className="text-xs font-semibold text-text-primary">Solo Tackles</span>
+            <span className="text-xs font-semibold text-text-primary">Tackles</span>
           </div>
         )}
 

@@ -1081,7 +1081,7 @@ export async function completeLeagues() {
           const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
           const fraction = Math.min(1, weeksPlayed / 18)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
-          await awardPositionBasedPoints(league, standings, 'Solo Tackles Contest', bonusFn)
+          await awardPositionBasedPoints(league, standings, 'Tackles Contest', bonusFn)
         }
       } else if (league.format === 'receptions') {
         const standings = await getReceptionsStandings(league)

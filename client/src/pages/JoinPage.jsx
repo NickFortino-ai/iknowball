@@ -18,7 +18,7 @@ const FORMAT_LABELS = {
   wnba_three_point: 'WNBA 3-Point Contest',
   sacks: 'Sacks Contest',
   ints: 'Interceptions Contest',
-  tackles: 'Solo Tackles Contest',
+  tackles: 'Tackles Contest',
   receptions: 'Receptions Contest',
   td_pass: 'TD Pass Competition',
 }
@@ -53,7 +53,7 @@ const FORMAT_TAGLINES = {
   wnba_three_point: 'Pick 3 WNBA shooters per night. Most threes wins.',
   sacks: 'Pick 3 NFL defenders per week. Most sacks wins.',
   ints: 'Pick 3 NFL defenders per week. Most interceptions wins.',
-  tackles: 'Pick 3 NFL defenders per week. Most solo tackles wins.',
+  tackles: 'Pick 3 NFL defenders per week. Most tackles wins.',
   receptions: 'Pick 3 NFL pass catchers per week. Most receptions wins.',
   td_pass: 'Pick one QB per week (no repeats). Most passing TDs wins.',
 }
