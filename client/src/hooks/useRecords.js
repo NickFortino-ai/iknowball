@@ -55,3 +55,11 @@ export function useRoyalty() {
     refetchInterval: 60_000,
   })
 }
+
+export function useOGs() {
+  return useQuery({
+    queryKey: ['ogs'],
+    queryFn: () => api.get('/users/ogs/list'),
+    staleTime: 5 * 60 * 1000,
+  })
+}

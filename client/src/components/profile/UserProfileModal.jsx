@@ -14,6 +14,7 @@ import { useMemo } from 'react'
 import { getTier } from '../../lib/scoring'
 import { toast } from '../ui/Toast'
 import TierBadge from '../ui/TierBadge'
+import OGBadge from '../ui/OGBadge'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PickHistoryByMonth from './PickHistoryByMonth'
 import SocialLinks from '../ui/SocialLinks'
@@ -596,6 +597,7 @@ export default function UserProfileModal({ userId, onClose }) {
             {/* Tier + Points + Rank */}
             <div className="flex items-center gap-3 mb-4">
               <TierBadge tier={getTier(user.total_points).name} size="md" />
+              {user.is_og && <OGBadge size="md" />}
               <span className="font-display text-2xl text-accent">{user.total_points} pts</span>
               <span className="text-text-muted text-sm ml-auto">
                 Rank #{user.rank} of {user.total_users}

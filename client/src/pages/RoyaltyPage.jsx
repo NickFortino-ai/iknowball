@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useRoyalty } from '../hooks/useRecords'
+import { useRoyalty, useOGs } from '../hooks/useRecords'
 import UserProfileModal from '../components/profile/UserProfileModal'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
 import ErrorState from '../components/ui/ErrorState'
 import TierBadge from '../components/ui/TierBadge'
 import Avatar from '../components/ui/Avatar'
+import OGBadge from '../components/ui/OGBadge'
 
 const JEWEL_THEMES = {
   default:   { light: '#FF4D6A', mid: '#DC143C', dark: '#A0001C', deep: '#700014', glow: '#FF2040' },
@@ -373,6 +374,41 @@ function CategoryCrown({ crown, index, onUserTap }) {
   )
 }
 
+function OGSection({ onUserTap }) {
+  const { data: ogs } = useOGs()
+  if (!ogs?.length) return null
+  return (
+    <div className="mt-6 pt-6 border-t border-border/50">
+      <div className="flex items-center justify-center gap-2 mb-1">
+        <OGBadge size="md" />
+        <h3 className="font-display text-lg text-[#C8960C] tracking-wide">The OGs</h3>
+      </div>
+      <p className="text-xs text-text-muted text-center mb-4">
+        The earliest IKB members who shaped the app
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {ogs.map((og) => (
+          <button
+            key={og.id}
+            onClick={() => onUserTap?.(og.id)}
+            className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-text-primary/10 bg-bg-primary/30 hover:bg-text-primary/5 transition-colors"
+          >
+            <Avatar user={og} size="xl" className="bg-bg-primary/40 border border-[#C8960C]/30" />
+            <div className="text-sm font-semibold text-text-primary truncate w-full text-center">
+              {og.display_name || og.username}
+            </div>
+            <div className="text-[10px] text-text-muted truncate w-full text-center">@{og.username}</div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <TierBadge tier={og.tier} size="xs" />
+              <OGBadge size="sm" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function RoyaltyContent() {
   const { data: royalty, isLoading, isError, refetch } = useRoyalty()
   const [profileUserId, setProfileUserId] = useState(null)
@@ -412,6 +448,8 @@ export function RoyaltyContent() {
             </div>
           </>
         )}
+
+        <OGSection onUserTap={setProfileUserId} />
       </div>
       <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
     </>

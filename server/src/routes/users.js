@@ -113,7 +113,7 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, title_preference, x_handle, instagram_handle, tiktok_handle, snapchat_handle, youtube_handle, venmo_handle, threads_handle, backdrop_image, backdrop_y, created_at')
+    .select('id, username, display_name, avatar_url, avatar_emoji, bio, sports_interests, total_points, tier, title_preference, x_handle, instagram_handle, tiktok_handle, snapchat_handle, youtube_handle, venmo_handle, threads_handle, backdrop_image, backdrop_y, created_at, is_og')
     .eq('id', id)
     .single()
 
@@ -526,6 +526,18 @@ router.patch('/me', requireAuth, validate(updateSchema), async (req, res) => {
   if (error) throw error
 
   res.json(data)
+})
+
+// OG users — earliest curated members shown under Royalty in the Hall of
+// Fame. Ordered by created_at ASC so the longest-tenured OGs lead.
+router.get('/ogs/list', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, avatar_emoji, tier, total_points, created_at')
+    .eq('is_og', true)
+    .order('created_at', { ascending: true })
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data || [])
 })
 
 export default router
