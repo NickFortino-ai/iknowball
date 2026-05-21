@@ -766,7 +766,7 @@ export async function completeLeagues() {
   // (Members tab, no readiness flag).
   const { data: openByStart } = await supabase
     .from('leagues')
-    .select('id, format')
+    .select('id, format, joins_locked_at')
     .eq('status', 'open')
     .not('starts_at', 'is', null)
     .lte('starts_at', now)
@@ -797,6 +797,16 @@ export async function completeLeagues() {
 
   if (openLeagues.length) {
     const toActivate = []
+    const nowMs = new Date(now).getTime()
+    // Daily contest formats use joins_locked_at as the real "go live"
+    // moment — first tip-off of the slate. Until that passes, the
+    // league should stay 'open' so users can still join and the card
+    // doesn't prematurely flip to active. Survivor and pickem activate
+    // off starts_at / league_weeks directly, so they're not gated here.
+    const DAILY_OPEN_FORMATS = new Set([
+      'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
+      'three_point', 'wnba_three_point',
+    ])
     for (const league of openLeagues) {
       // Bracket leagues stay open until their lock time passes
       if (league.format === 'bracket') {
@@ -808,6 +818,14 @@ export async function completeLeagues() {
         if (tourney?.locks_at && new Date(tourney.locks_at) > new Date(now)) {
           continue // lock time hasn't passed yet — stay open
         }
+      }
+      // Daily contests: defer activation until joins_locked_at (first
+      // tip-off). If joins_locked_at isn't set yet, the tightener will
+      // populate it from the ESPN scoreboard on its next run and we'll
+      // pick this league back up.
+      if (DAILY_OPEN_FORMATS.has(league.format)) {
+        if (!league.joins_locked_at) continue
+        if (new Date(league.joins_locked_at).getTime() > nowMs) continue
       }
       toActivate.push(league.id)
     }
