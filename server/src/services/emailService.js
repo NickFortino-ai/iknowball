@@ -485,6 +485,46 @@ export async function sendTemplateBracketEmail(subject, body, templateId) {
   return { total: uniqueUserIds.length, sent, failed, errors }
 }
 
+// Operational alert email — sent to every is_admin user. Used by
+// monitoring crons (stat coverage, etc.) so issues land in inbox
+// instead of being buried in the in-app notification drawer.
+export async function sendAdminEmail(subject, body) {
+  const transport = getTransporter()
+  const { data: admins } = await supabase
+    .from('users')
+    .select('id, email, username')
+    .eq('is_admin', true)
+    .not('email', 'is', null)
+  if (!admins?.length) {
+    logger.warn({ subject }, 'sendAdminEmail called but no admins have email set')
+    return { sent: 0 }
+  }
+
+  const html = `<div style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; font-size: 14px; line-height: 1.5; color: #111;">
+    <pre style="white-space: pre-wrap; font-family: SF Mono, Menlo, monospace; font-size: 13px; background: #f5f5f7; padding: 12px; border-radius: 8px;">${body
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')}</pre>
+  </div>`
+
+  let sent = 0
+  for (const a of admins) {
+    try {
+      await transport.sendMail({
+        from: `"I KNOW BALL Ops" <${env.SMTP_FROM}>`,
+        to: a.email,
+        subject: `[IKB Ops] ${subject}`,
+        html,
+        text: body,
+      })
+      sent++
+    } catch (err) {
+      logger.error({ err: err.message, email: a.email }, 'Failed to send admin email')
+    }
+  }
+  return { sent, total: admins.length }
+}
+
 export async function unsubscribeUser(userId) {
   const { error } = await supabase
     .from('users')

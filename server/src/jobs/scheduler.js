@@ -282,10 +282,20 @@ export function startScheduler() {
     })
     logger.info('Roster reminders scheduled: every 30 minutes')
 
-    cron.schedule('0 4 * * *', async () => {
+    // Stat coverage verifier — hourly during the active game window
+    // (10am-2am PT) so we catch + auto-heal stale values within ~1
+    // hour of the game ending. The 4am pass is a final safety net
+    // before standings are widely viewed in the morning.
+    cron.schedule('15 10-23 * * *', async () => {
       try { await verifyStatCoverage() } catch (err) { logger.error({ err }, 'Stat coverage verification failed') }
     }, { timezone: 'America/Los_Angeles' })
-    logger.info('Stat coverage verification scheduled: 4am PT daily')
+    cron.schedule('15 0-2 * * *', async () => {
+      try { await verifyStatCoverage() } catch (err) { logger.error({ err }, 'Stat coverage verification failed') }
+    }, { timezone: 'America/Los_Angeles' })
+    cron.schedule('0 4 * * *', async () => {
+      try { await verifyStatCoverage() } catch (err) { logger.error({ err }, 'Stat coverage verification (morning) failed') }
+    }, { timezone: 'America/Los_Angeles' })
+    logger.info('Stat coverage verification scheduled: hourly 10am-2am PT + 4am safety')
 
     cron.schedule('30 * * * *', async () => {
       try { await sendSurveyInviteNudges() } catch (err) { logger.error({ err }, 'Survey invite nudge job failed') }
