@@ -10,6 +10,7 @@ import { completeLeagues } from './completeLeagues.js'
 import { autoEliminateMissedPicks, backfillStuckSurvivorPicks } from '../services/survivorService.js'
 import { sendSurvivorPickReminders } from './sendSurvivorPickReminders.js'
 import { sendRosterReminders } from './sendRosterReminders.js'
+import { verifyStatCoverage } from './verifyStatCoverage.js'
 import { sendSurveyInviteNudges } from './sendSurveyInviteNudges.js'
 import { snapshotCrowns } from './snapshotCrowns.js'
 import { snapshotRanks } from './snapshotRanks.js'
@@ -280,6 +281,11 @@ export function startScheduler() {
       try { await sendRosterReminders() } catch (err) { logger.error({ err }, 'Roster reminder job failed') }
     })
     logger.info('Roster reminders scheduled: every 30 minutes')
+
+    cron.schedule('0 4 * * *', async () => {
+      try { await verifyStatCoverage() } catch (err) { logger.error({ err }, 'Stat coverage verification failed') }
+    }, { timezone: 'America/Los_Angeles' })
+    logger.info('Stat coverage verification scheduled: 4am PT daily')
 
     cron.schedule('30 * * * *', async () => {
       try { await sendSurveyInviteNudges() } catch (err) { logger.error({ err }, 'Survey invite nudge job failed') }
