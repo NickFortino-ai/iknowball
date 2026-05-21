@@ -95,9 +95,22 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
   // Survivor leagues also show readiness when open: with ET-anchored Day 1
   // periods, the first period can be live (and needing a pick) before the
   // league's leagues.starts_at timestamp triggers the activation cron.
+  // Daily contests stay 'open' until the slate's first tipoff (see the
+  // activation logic in completeLeagues.js). The pick window is open all
+  // day right up until that tipoff, so readiness has to fire for open
+  // ones — otherwise the user sees no corner flag on the card for hours
+  // even though they need to make their picks.
+  const DAILY_OPEN_FORMATS = new Set([
+    'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
+    'three_point', 'wnba_three_point',
+  ])
   const activeLeagues = leagues.filter((l) =>
     l.status === 'active' ||
-    (l.status === 'open' && (l.format === 'bracket' || l.format === 'survivor'))
+    (l.status === 'open' && (
+      l.format === 'bracket' ||
+      l.format === 'survivor' ||
+      DAILY_OPEN_FORMATS.has(l.format)
+    ))
   )
   if (!activeLeagues.length) return result
 
