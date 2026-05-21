@@ -300,33 +300,56 @@ export async function tightenWnbaThreePointJoinLocks() {
   // only hit ESPN once per run.
   const firstGameCache = new Map()
 
+  const nowMs = Date.now()
   for (const league of leagues) {
     if (!league.starts_at) continue
-    // ET calendar date of the league's start
-    const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    // Determine the calendar date (in PT) the league belongs to. Stored
+    // starts_at is often UTC midnight on the chosen calendar date — a
+    // naive PT conversion rolls that back to the PREVIOUS day (UTC 00:00
+    // = PT 17:00 previous day), which made us look up yesterday's games
+    // and lock joins to a tip-off that had already passed.
+    //
+    // Take whichever PT date is later — the league's stored start date
+    // or today — so we always lock to a tip-off that's still upcoming.
+    const startMs = new Date(league.starts_at).getTime()
+    const candidateDates = new Set()
+    candidateDates.add(new Date(startMs).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }))
+    // Add a noon offset to dodge the midnight-UTC edge case.
+    candidateDates.add(new Date(startMs + 12 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }))
+    candidateDates.add(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }))
 
-    let firstTipIso = firstGameCache.get(startEtDate)
-    if (firstTipIso === undefined) {
-      const events = await fetchWnbaScoreboardForDate(startEtDate)
-      const times = (events || [])
-        .map((ev) => ev.date || ev.competitions?.[0]?.date)
-        .filter(Boolean)
-        .map((t) => new Date(t).getTime())
-        .filter((ms) => Number.isFinite(ms))
-      firstTipIso = times.length ? new Date(Math.min(...times)).toISOString() : null
-      firstGameCache.set(startEtDate, firstTipIso)
+    // Look at each candidate date and pick the earliest tip-off that
+    // hasn't already passed.
+    let bestTipOff = null
+    for (const date of candidateDates) {
+      let firstTipIso = firstGameCache.get(date)
+      if (firstTipIso === undefined) {
+        const events = await fetchWnbaScoreboardForDate(date)
+        const times = (events || [])
+          .map((ev) => ev.date || ev.competitions?.[0]?.date)
+          .filter(Boolean)
+          .map((t) => new Date(t).getTime())
+          .filter((ms) => Number.isFinite(ms) && ms > nowMs)
+        firstTipIso = times.length ? new Date(Math.min(...times)).toISOString() : null
+        firstGameCache.set(date, firstTipIso)
+      }
+      if (!firstTipIso) continue
+      const ms = new Date(firstTipIso).getTime()
+      if (!bestTipOff || ms < new Date(bestTipOff).getTime()) bestTipOff = firstTipIso
     }
 
-    if (!firstTipIso) continue
+    if (!bestTipOff) continue
 
-    const tipOff = new Date(firstTipIso)
+    const tipOff = new Date(bestTipOff)
     const currentLock = league.joins_locked_at ? new Date(league.joins_locked_at) : null
-    if (!currentLock || currentLock > tipOff) {
+    // Update if there's no lock OR the existing lock is in the past OR
+    // we found an earlier upcoming tip-off than what's currently set.
+    if (!currentLock || currentLock.getTime() <= nowMs || currentLock > tipOff) {
       await supabase
         .from('leagues')
         .update({ joins_locked_at: tipOff.toISOString() })
         .eq('id', league.id)
-      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Tightened WNBA 3-Point joins_locked_at to first tip-off')
+      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Tightened WNBA 3-Point joins_locked_at to first upcoming tip-off')
     }
   }
 }
