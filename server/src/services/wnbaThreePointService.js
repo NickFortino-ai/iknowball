@@ -303,7 +303,7 @@ export async function tightenWnbaThreePointJoinLocks() {
   for (const league of leagues) {
     if (!league.starts_at) continue
     // ET calendar date of the league's start
-    const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
 
     let firstTipIso = firstGameCache.get(startEtDate)
     if (firstTipIso === undefined) {
@@ -347,8 +347,8 @@ function normalizeName(n) {
 export async function scoreAllWnbaThreePointPicks() {
   // Today (ET) and yesterday — covers late-finishing late-night games that
   // span past midnight UTC but settle on the prior US calendar date.
-  const todayEt = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  const yesterdayEt = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const todayEt = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+  const yesterdayEt = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
 
   for (const date of [todayEt, yesterdayEt]) {
     const events = await fetchWnbaScoreboardForDate(date)

@@ -1,12 +1,9 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { generateMLBSalaries, isTwoWayPlayer, pitcherIdSuffix } from '../services/mlbDfsService.js'
+import { todaySportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
-
-function todayET() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-}
 
 /**
  * True if mlb_dfs_salaries for the date is missing OR ESPN's scoreboard
@@ -491,7 +488,7 @@ async function scoreHRDerbyPicks(date) {
  * Main job: generate MLB salaries for today/tomorrow, score games.
  */
 export async function scoreMLBDFS() {
-  const today = todayET()
+  const today = todaySportsDay()
   const season = 2026
 
   // Refresh today's salaries if missing or if MLB added a game we
@@ -505,7 +502,7 @@ export async function scoreMLBDFS() {
   }
 
   // Same for tomorrow.
-  const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
   tomorrowDate.setDate(tomorrowDate.getDate() + 1)
   const tomorrow = tomorrowDate.toISOString().split('T')[0]
 
@@ -542,9 +539,7 @@ export async function scoreMLBDFS() {
   // catches those late-finishing pitcher Ks. Previously this branch was
   // gated on yesterdayWinners=0, which meant once a winner was awarded
   // the picks could be frozen with a stale K count.
-  const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
-  yesterday.setDate(yesterday.getDate() - 1)
-  const yesterdayStr = yesterday.toISOString().split('T')[0]
+  const yesterdayStr = yesterdaySportsDay()
 
   try {
     const yester = await fetchCompletedGameStats(yesterdayStr)

@@ -6,6 +6,7 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
+import { todaySportsDay, tomorrowSportsDay } from '../../lib/sportsDay'
 
 const SLOTS = [
   { key: 'SP', label: 'SP', positions: ['SP'] },
@@ -84,13 +85,11 @@ function slotBorderClass(gameState) {
 }
 
 function todayLocal() {
-  return new Date().toLocaleDateString('en-CA')
+  return todaySportsDay()
 }
 
 function tomorrowLocal() {
-  const d = new Date()
-  d.setDate(d.getDate() + 1)
-  return d.toLocaleDateString('en-CA')
+  return tomorrowSportsDay()
 }
 
 function formatDateLabel(dateStr) {

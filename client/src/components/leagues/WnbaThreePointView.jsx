@@ -7,9 +7,10 @@ import Avatar from '../ui/Avatar'
 import InjuryBadge from '../ui/InjuryBadge'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import UserProfileModal from '../profile/UserProfileModal'
+import { todaySportsDay, tomorrowSportsDay } from '../../lib/sportsDay'
 
 function todayLocal() {
-  return new Date().toLocaleDateString('en-CA')
+  return todaySportsDay()
 }
 
 // Initials from a full name. "Jovana Nogic" → "JN", "Sue" → "S".
@@ -46,9 +47,7 @@ function PlayerHeadshot({ player, className = 'w-10 h-10' }) {
 }
 
 function tomorrowLocal() {
-  const d = new Date()
-  d.setDate(d.getDate() + 1)
-  return d.toLocaleDateString('en-CA')
+  return tomorrowSportsDay()
 }
 
 function formatDateLabel(dateStr) {

@@ -4,11 +4,11 @@ import { logger } from '../utils/logger.js'
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
 function todayET() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
 }
 
 function tomorrowET() {
-  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
   d.setDate(d.getDate() + 1)
   return d.toISOString().split('T')[0]
 }

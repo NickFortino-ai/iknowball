@@ -6,7 +6,7 @@ import { calculateNBAFantasyPoints, generateNBASalaries } from '../services/nbaD
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
 function todayET() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
 }
 
 /**
@@ -422,7 +422,7 @@ export async function scoreNBADFS() {
   }
 
   // Same for tomorrow so users can pick a day in advance.
-  const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
   tomorrowDate.setDate(tomorrowDate.getDate() + 1)
   const tomorrow = tomorrowDate.toISOString().split('T')[0]
 
@@ -457,7 +457,7 @@ export async function scoreNBADFS() {
   }
 
   // Also check yesterday in case late games weren't scored or weren't finalized
-  const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
   yesterday.setDate(yesterday.getDate() - 1)
   const yesterdayStr = yesterday.toISOString().split('T')[0]
 

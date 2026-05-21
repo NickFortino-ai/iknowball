@@ -13,7 +13,7 @@ const NOT_READY = (reason, periodKey, firstGameAt) => ({ ready: false, reason, p
 const READY = () => ({ ready: true })
 
 function todayET() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
 }
 
 async function earliestDfsGameStart(table, gameDate) {

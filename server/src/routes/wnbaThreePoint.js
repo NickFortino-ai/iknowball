@@ -193,7 +193,7 @@ router.get('/standings', async (req, res) => {
     .eq('league_id', league_id)
     .order('game_date', { ascending: false })
 
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
   const stateByTeam = await buildWnbaGameStateByTeam(today)
 
   const now = Date.now()
