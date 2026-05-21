@@ -124,14 +124,20 @@ router.get('/', requireAuth, async (req, res, next) => {
       .maybeSingle()
 
     if (cached) {
+      // Tweet/YouTube IDs are derivable from the URL itself — re-extract
+      // on cache hit so rows that were stored with null IDs (cached before
+      // the x.com handler existed, or before YouTube extraction was wired)
+      // still render the embed instead of falling through to "no data".
+      const tweetId = cached.tweet_id || extractTweetId(cached.url)
+      const youtubeVideoId = cached.youtube_video_id || extractYoutubeVideoId(cached.url)
       return res.json({
         url: cached.url,
         title: cached.title,
         description: cached.description,
         image: cached.image,
         siteName: cached.site_name,
-        youtubeVideoId: cached.youtube_video_id,
-        tweetId: cached.tweet_id,
+        youtubeVideoId,
+        tweetId,
       })
     }
 
