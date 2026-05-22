@@ -8,8 +8,10 @@ import { toast } from '../ui/Toast'
 import PlayerDetailModal from './PlayerDetailModal'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
 import FantasyMyRankings from './FantasyMyRankings'
+import PlayerHeadshot from '../ui/PlayerHeadshot'
 
 const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+
 
 // Sortable stat columns shown in the strip on the right of each row.
 // `key` matches the server-side sort param + the row.stats[key] field.
@@ -41,17 +43,17 @@ const DEF_STAT_COLUMNS = [
 ]
 
 const INJURY_COLORS = {
-  Out: 'bg-incorrect text-white',
-  Questionable: 'bg-yellow-500 text-black',
-  Probable: 'bg-correct text-white',
-  'Day-To-Day': 'bg-yellow-500 text-black',
+  Out: 'text-incorrect',
+  Questionable: 'text-yellow-400',
+  Probable: 'text-correct',
+  'Day-To-Day': 'text-yellow-400',
 }
 
 function InjuryBadge({ status }) {
   if (!status) return null
   const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
   return (
-    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'}`} title={status}>
+    <span className={`text-[11px] font-mono font-bold ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
       {label}
     </span>
   )
@@ -219,9 +221,11 @@ export default function FantasyPlayerBrowser({ league }) {
           <div className="divide-y divide-border">
             {pendingClaims.map((claim) => (
               <div key={claim.id} className="flex items-center gap-3 px-4 py-2">
-                {claim.add_player?.headshot_url && (
-                  <img src={claim.add_player.headshot_url} alt="" className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                )}
+                <PlayerHeadshot
+                  name={claim.add_player?.full_name}
+                  url={claim.add_player?.headshot_url}
+                  size="xs"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-semibold truncate">+ {claim.add_player?.full_name}</div>
                   <div className="text-[10px] text-text-muted">
@@ -324,15 +328,12 @@ export default function FantasyPlayerBrowser({ league }) {
                     {player.adp_rank || idx + 1}
                   </div>
                   <div className="w-[170px] lg:w-[230px] flex items-center gap-2 px-1 py-2.5">
-                    {player.headshot_url && (
-                      <img
-                        src={player.headshot_url}
-                        alt=""
-                        className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => openPlayerDetail(player.id)}
-                        onError={(e) => { e.target.style.display = 'none' }}
-                      />
-                    )}
+                    <PlayerHeadshot
+                      name={player.full_name}
+                      url={player.headshot_url}
+                      size="md"
+                      onClick={() => openPlayerDetail(player.id)}
+                    />
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openPlayerDetail(player.id)}>
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
@@ -419,9 +420,11 @@ export default function FantasyPlayerBrowser({ league }) {
                         dropPlayerId === r.player_id ? 'border-accent bg-accent/10' : 'border-border bg-bg-primary hover:bg-bg-card-hover'
                       }`}
                     >
-                      {r.nfl_players?.headshot_url && (
-                        <img src={r.nfl_players.headshot_url} alt="" className="w-7 h-7 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-                      )}
+                      <PlayerHeadshot
+                        name={r.nfl_players?.full_name}
+                        url={r.nfl_players?.headshot_url}
+                        size="sm"
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold truncate">{r.nfl_players?.full_name}</div>
                         <div className="text-[10px] text-text-muted">{r.nfl_players?.position} · {r.slot.toUpperCase()}</div>

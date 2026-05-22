@@ -44,17 +44,17 @@ function matchesPositionFilter(playerPos, filter) {
 }
 
 const INJURY_COLORS = {
-  Out: 'bg-incorrect/20 text-incorrect',
-  Questionable: 'bg-yellow-500/20 text-yellow-500',
-  Probable: 'bg-correct/20 text-correct',
-  'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
+  Out: 'text-incorrect',
+  Questionable: 'text-yellow-400',
+  Probable: 'text-correct',
+  'Day-To-Day': 'text-yellow-400',
 }
 
 function InjuryBadge({ status }) {
   if (!status) return null
   const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
   return (
-    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'}`} title={status}>
+    <span className={`text-[11px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
       {label}
     </span>
   )

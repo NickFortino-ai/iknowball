@@ -29,13 +29,13 @@ function buildSlotMeta(rosterSlots) {
 function InjuryBadge({ status }) {
   if (!status || status === 'Probable') return null
   const colors = {
-    Out: 'bg-incorrect/20 text-incorrect',
-    IR: 'bg-incorrect/20 text-incorrect',
-    Questionable: 'bg-yellow-500/20 text-yellow-500',
-    Doubtful: 'bg-yellow-500/20 text-yellow-500',
-    'Day-To-Day': 'bg-yellow-500/20 text-yellow-500',
+    Out: 'text-incorrect',
+    IR: 'text-incorrect',
+    Questionable: 'text-yellow-400',
+    Doubtful: 'text-yellow-400',
+    'Day-To-Day': 'text-yellow-400',
   }
-  return <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${colors[status] || 'bg-yellow-500/20 text-yellow-500'}`}>{status[0]}</span>
+  return <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${colors[status] || 'text-yellow-400'}`}>{status[0]}</span>
 }
 
 // Strip " D/ST" suffix — slot label already shows position

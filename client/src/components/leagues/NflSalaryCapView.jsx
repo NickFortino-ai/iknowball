@@ -3,6 +3,7 @@ import { useNflDfsPlayers, useNflDfsRoster, useSaveNflDfsRoster, useFantasySetti
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import PlayerHeadshot from '../ui/PlayerHeadshot'
 import PlayerDetailModal from './PlayerDetailModal'
 
 const SLOTS = [
@@ -161,14 +162,7 @@ export default function NflSalaryCapView({ league }) {
                 <span className="text-xs font-bold text-accent w-7 shrink-0">{slot.label}</span>
                 {player ? (
                   <>
-                    {player.headshot_url && (
-                      <img
-                        src={player.headshot_url}
-                        alt=""
-                        className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                        onError={(e) => { e.target.style.display = 'none' }}
-                      />
-                    )}
+                    <PlayerHeadshot name={player.full_name} url={player.headshot_url} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold text-text-primary truncate">{player.full_name}</span>
@@ -251,18 +245,7 @@ export default function NflSalaryCapView({ league }) {
                   onClick={() => setDetailPlayerId(player.id)}
                   className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 -mx-1 px-1 py-1 rounded-lg transition-colors"
                 >
-                  {player.headshot_url ? (
-                    <img
-                      src={player.headshot_url}
-                      alt=""
-                      className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                      onError={(e) => { e.target.style.display = 'none' }}
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
-                      {player.position}
-                    </div>
-                  )}
+                  <PlayerHeadshot name={player.full_name} url={player.headshot_url} size="md" />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-bold text-text-primary truncate block">{player.full_name}</span>
                     <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>

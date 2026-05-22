@@ -1,10 +1,18 @@
+// Injury indicator — colored letter only, no pill background. The
+// color carries the meaning, the letter carries the specifics.
+//   Q   bright yellow   Questionable
+//   D   bright yellow   Doubtful
+//   DTD bright yellow   Day-To-Day
+//   O   red             Out
+//   IR  red             Injured Reserve
+//   P   green           Probable
 const INJURY_COLORS = {
-  Out: 'bg-incorrect text-white',
-  IR: 'bg-incorrect text-white',
-  Questionable: 'bg-yellow-500 text-black',
-  Doubtful: 'bg-yellow-500 text-black',
-  Probable: 'bg-correct text-white',
-  'Day-To-Day': 'bg-yellow-500 text-black',
+  Out: 'text-incorrect',
+  IR: 'text-incorrect',
+  Questionable: 'text-yellow-400',
+  Doubtful: 'text-yellow-400',
+  Probable: 'text-correct',
+  'Day-To-Day': 'text-yellow-400',
 }
 
 function shortLabel(status) {
@@ -21,7 +29,7 @@ export default function InjuryBadge({ status, className = '' }) {
   if (!status) return null
   return (
     <span
-      className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${INJURY_COLORS[status] || 'bg-text-primary/10 text-text-muted'} ${className}`}
+      className={`text-[11px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'} ${className}`}
       title={status}
     >
       {shortLabel(status)}
