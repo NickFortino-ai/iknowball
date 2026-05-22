@@ -17,10 +17,13 @@ import { logger } from '../utils/logger.js'
 // Caches
 // ---------------------------------------------------------------------------
 
-// Roster cache: teamId -> { players, ts }. WNBA rosters change rarely; 24h
-// TTL is plenty.
+// Roster cache: teamId -> { players, ts }. Player list itself changes
+// rarely, but each row carries injury_status — which can flip multiple
+// times in a single day during gameday churn. 30 min keeps cleared
+// players from staying flagged Out for too long while still bounding
+// ESPN load (15 teams × 2 fetches/hr = 30 calls/hr peak).
 const rosterCache = new Map()
-const ROSTER_TTL = 24 * 60 * 60 * 1000
+const ROSTER_TTL = 30 * 60 * 1000
 
 // League-wide teams list cache. Teams don't change mid-season; 12h TTL.
 let teamsCache = null
