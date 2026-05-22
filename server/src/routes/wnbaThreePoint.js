@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
-import { getWNBAPlayerPool, buildWnbaGameStateByTeam } from '../services/wnbaThreePointService.js'
+import { getWNBAPlayerPool, buildWnbaGameStateByTeam, getAllWnbaPlayers } from '../services/wnbaThreePointService.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -44,6 +44,18 @@ router.get('/picks', async (req, res) => {
 
   const picks = data || []
   const stateByTeam = await buildWnbaGameStateByTeam(date)
+  // Enrich saved picks with the current injury_status from ESPN's roster
+  // so a player flipped to Out after lock surfaces a red badge instead of
+  // looking healthy. The league-wide roster is cached 24h per team
+  // inside the service, so this is cheap on repeat picks loads.
+  const injuryByEspnId = {}
+  const espnIds = new Set(picks.map((p) => p.espn_player_id).filter(Boolean))
+  if (espnIds.size) {
+    const roster = await getAllWnbaPlayers()
+    for (const r of roster) {
+      if (espnIds.has(r.espn_player_id)) injuryByEspnId[r.espn_player_id] = r.injury_status || null
+    }
+  }
   const enriched = picks.map((p) => {
     const g = stateByTeam[(p.team || '').toUpperCase()]
     return {
@@ -51,6 +63,7 @@ router.get('/picks', async (req, res) => {
       game_state: g?.state || null,
       game_period: g?.period || null,
       game_starts_at: g?.startsAt || null,
+      injury_status: injuryByEspnId[p.espn_player_id] || null,
     }
   })
 
@@ -196,6 +209,18 @@ router.get('/standings', async (req, res) => {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
   const stateByTeam = await buildWnbaGameStateByTeam(today)
 
+  // Pull today's injury statuses so the standings UI can flag picked-but-out
+  // players — mirror of the NBA route's nba_dfs_salaries join. WNBA has no
+  // salaries table, so source from the cached ESPN team rosters.
+  const todayEspnIds = new Set((picks || []).filter((p) => p.game_date === today).map((p) => p.espn_player_id).filter(Boolean))
+  const injuryByEspnId = {}
+  if (todayEspnIds.size) {
+    const roster = await getAllWnbaPlayers()
+    for (const r of roster) {
+      if (todayEspnIds.has(r.espn_player_id)) injuryByEspnId[r.espn_player_id] = r.injury_status || null
+    }
+  }
+
   const now = Date.now()
   const userMap = {}
   for (const uid of allMemberIds) userMap[uid] = { totalThrees: 0, picks: [] }
@@ -216,6 +241,7 @@ router.get('/standings', async (req, res) => {
       game_state: hideFromOpponent ? null : (g?.state || null),
       game_period: hideFromOpponent ? null : (g?.period || null),
       game_starts_at: hideFromOpponent ? null : (g?.startsAt || null),
+      injury_status: hideFromOpponent ? null : (isToday ? (injuryByEspnId[p.espn_player_id] || null) : null),
       hidden: hideFromOpponent,
     })
   }
