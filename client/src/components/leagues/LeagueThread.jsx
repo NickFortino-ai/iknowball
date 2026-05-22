@@ -213,6 +213,11 @@ export default function LeagueThread({ league }) {
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
           const sameAuthor = prev && prev.user_id === msg.user_id
+          // Surface a subtle timestamp on a same-author follow-up that
+          // crosses a calendar day from the previous message, so a
+          // fresh reply nested under a 4-day-old cluster header doesn't
+          // look 4 days old itself.
+          const crossesDay = sameAuthor && new Date(prev.created_at).toDateString() !== new Date(msg.created_at).toDateString()
 
           return (
             <div key={msg.id}>
@@ -233,8 +238,15 @@ export default function LeagueThread({ league }) {
                       </span>
                     </div>
                   )}
-                  <div className="text-sm text-text-primary leading-relaxed">
-                    {renderContent(msg.content, msg.tagged_users)}
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-sm text-text-primary leading-relaxed flex-1 min-w-0">
+                      {renderContent(msg.content, msg.tagged_users)}
+                    </div>
+                    {crossesDay && (
+                      <span className="text-[10px] text-text-muted/70 shrink-0">
+                        {timeAgo(msg.created_at)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
