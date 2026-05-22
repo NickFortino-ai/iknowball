@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { generateMLBSalaries, isTwoWayPlayer, pitcherIdSuffix } from '../services/mlbDfsService.js'
-import { todaySportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
+import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -502,9 +502,7 @@ export async function scoreMLBDFS() {
   }
 
   // Same for tomorrow.
-  const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
-  const tomorrow = tomorrowDate.toISOString().split('T')[0]
+  const tomorrow = tomorrowSportsDay()
 
   if (await mlbSalariesAreStale(tomorrow, season)) {
     try {

@@ -26,12 +26,28 @@ export function todaySportsDay() {
 }
 
 /**
+ * Add N days to a YYYY-MM-DD string and return the result as a YYYY-MM-DD
+ * string. Noon-anchored so DST transitions never flip the date. Negative
+ * `days` works fine.
+ */
+export function addDaysSportsDay(dateStr, days) {
+  const d = new Date(`${dateStr}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
+/**
  * The previous sports day as YYYY-MM-DD.
  */
 export function yesterdaySportsDay() {
-  const d = new Date(new Date().toLocaleString('en-US', { timeZone: SPORTS_TZ }))
-  d.setDate(d.getDate() - 1)
-  return d.toISOString().split('T')[0]
+  return addDaysSportsDay(todaySportsDay(), -1)
+}
+
+/**
+ * The next sports day as YYYY-MM-DD.
+ */
+export function tomorrowSportsDay() {
+  return addDaysSportsDay(todaySportsDay(), 1)
 }
 
 /**

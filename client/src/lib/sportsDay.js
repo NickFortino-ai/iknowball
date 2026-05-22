@@ -12,9 +12,12 @@ export function todaySportsDay() {
 }
 
 export function tomorrowSportsDay() {
-  const d = new Date(new Date().toLocaleString('en-US', { timeZone: SPORTS_TZ }))
-  d.setDate(d.getDate() + 1)
-  return d.toISOString().split('T')[0]
+  // Anchor on the PT calendar date, then add a day via noon-anchored Date math.
+  // The earlier implementation used `toISOString().split('T')[0]` which returns
+  // a UTC date — for users in PT (or further west) during evening hours, that
+  // is the day AFTER PT-tomorrow, so the contest views requested the wrong date
+  // and got an empty player pool.
+  return addDaysSportsDay(todaySportsDay(), 1)
 }
 
 export function addDaysSportsDay(dateStr, days) {

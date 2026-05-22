@@ -663,6 +663,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     })
 
     // Season averages
+    const seasonParam = useSeasonParam ? `?season=${seasonYear}` : ''
     const statsRes = await fetch(`https://site.api.espn.com/apis/common/v3/sports/${espnPath}/athletes/${espnId}/stats${seasonParam}`)
     let averages = null
     if (statsRes.ok) {

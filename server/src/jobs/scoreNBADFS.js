@@ -2,12 +2,13 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { calculateNBAFantasyPoints, generateNBASalaries } from '../services/nbaDfsService.js'
+import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
-function todayET() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-}
+// Misnamed for legacy reasons — sports day is anchored to PT, not ET. Kept
+// as a thin alias to avoid a sweeping rename.
+const todayET = todaySportsDay
 
 /**
  * Decide whether nba_dfs_salaries for a given date needs (re)generation.
@@ -422,9 +423,7 @@ export async function scoreNBADFS() {
   }
 
   // Same for tomorrow so users can pick a day in advance.
-  const tomorrowDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
-  const tomorrow = tomorrowDate.toISOString().split('T')[0]
+  const tomorrow = tomorrowSportsDay()
 
   if (await nbaSalariesAreStale(tomorrow, season)) {
     try {
@@ -457,9 +456,7 @@ export async function scoreNBADFS() {
   }
 
   // Also check yesterday in case late games weren't scored or weren't finalized
-  const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-  yesterday.setDate(yesterday.getDate() - 1)
-  const yesterdayStr = yesterday.toISOString().split('T')[0]
+  const yesterdayStr = yesterdaySportsDay()
 
   // Check if yesterday has unfinalized results (no winner set yet) or no results at all
   const { count: yesterdayResults } = await supabase
