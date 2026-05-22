@@ -79,8 +79,12 @@ function WelcomeCard({ userId, profile }) {
       label: 'Read the FAQ',
       done: checklist.read_faq,
       onClick: () => {
+        // Mark read on tap so it persists on next render via the
+        // localStorage check above. forceUpdate keeps this render
+        // honest. Previously called a non-existent setChecklist
+        // which threw and silently killed navigation.
         localStorage.setItem(`ikb_welcome_read_faq_${userId}`, '1')
-        setChecklist((prev) => ({ ...prev, read_faq: true }))
+        forceUpdate((n) => n + 1)
         navigate('/faq')
       },
     },
@@ -93,7 +97,7 @@ function WelcomeCard({ userId, profile }) {
   ]
 
   return (
-    <div className="bg-bg-card rounded-2xl border border-border p-6 mb-8">
+    <div className="bg-bg-primary border border-text-primary/20 rounded-2xl p-6 mb-8">
       <h2 className="font-display text-2xl text-accent mb-2">Welcome to I KNOW BALL</h2>
       <p className="text-text-secondary mb-4">You're in. Here's how to get started:</p>
       <div className="space-y-2">
@@ -101,10 +105,10 @@ function WelcomeCard({ userId, profile }) {
           <button
             key={item.key}
             onClick={item.onClick}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left border transition-colors ${
               item.done
-                ? 'bg-correct/10 text-correct'
-                : 'bg-bg-card-hover hover:bg-accent/10 text-text-primary hover:text-accent'
+                ? 'bg-bg-primary border-correct/30 text-correct hover:bg-correct/5'
+                : 'bg-bg-primary border-text-primary/20 text-text-primary hover:border-accent hover:text-accent'
             }`}
           >
             {item.done ? (
