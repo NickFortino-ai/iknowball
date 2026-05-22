@@ -130,26 +130,23 @@ export async function getPlayersForSport(sport) {
   }
 
   if (sport === 'wnba') {
-    // wnba_three_point_picks has no `position` column (migration 193) —
-    // WNBA player rosters live in ESPN, not our DB. Position stays null
-    // for the admin row; the WNBA position filter still narrows to
-    // 'all' meaningfully because the chip set is tiny (G/F/C).
-    const rows = await fetchAll(
-      supabase
-        .from('wnba_three_point_picks')
-        .select('espn_player_id, player_name, team')
-        .not('espn_player_id', 'is', null)
-    )
+    // Full league roster from ESPN (12 teams × ~12 players ≈ 144) so an
+    // admin can write a blurb for any WNBA player, not just ones who've
+    // been picked in a 3-Point contest. Cached per team for 24h inside
+    // the service, so this stays cheap on repeat tab opens.
+    const { getAllWnbaPlayers } = await import('./wnbaThreePointService.js')
+    const roster = await getAllWnbaPlayers()
     const byId = new Map()
-    for (const r of rows) {
-      if (!byId.has(r.espn_player_id)) {
-        byId.set(r.espn_player_id, {
-          id: r.espn_player_id,
-          full_name: r.player_name,
-          position: null,
-          team: r.team || null,
-          injury_status: null,
-          headshot_url: null,
+    for (const p of roster) {
+      if (!p.espn_player_id) continue
+      if (!byId.has(p.espn_player_id)) {
+        byId.set(p.espn_player_id, {
+          id: p.espn_player_id,
+          full_name: p.player_name,
+          position: p.position || null,
+          team: p.team || null,
+          injury_status: p.injury_status || null,
+          headshot_url: p.headshot_url || null,
           seasonPoints: 0,
           gamesPlayed: 0,
           avgPoints: 0,

@@ -22,6 +22,11 @@ import { logger } from '../utils/logger.js'
 const rosterCache = new Map()
 const ROSTER_TTL = 24 * 60 * 60 * 1000
 
+// League-wide teams list cache. Teams don't change mid-season; 12h TTL.
+let teamsCache = null
+let teamsCacheTs = 0
+const TEAMS_TTL = 12 * 60 * 60 * 1000
+
 // Per-athlete 3PM total cache. ESPN's leaderboard `/leaders` endpoint
 // reports the 3PM category as a per-game AVERAGE (category name
 // `3PointsMadePerGame`, displayName "Average 3-Point Field Goals Made"),
@@ -135,6 +140,7 @@ async function fetchTeamRoster(teamId, teamAbbrev) {
         // prominent players; better to let the client render initials
         // immediately than wait for an HTTP failure.
         headshot_url: a.headshot?.href || null,
+        injury_status: a.injuries?.[0]?.status || null,
       }))
     rosterCache.set(teamId, { players, ts: Date.now() })
     return players
@@ -142,6 +148,46 @@ async function fetchTeamRoster(teamId, teamAbbrev) {
     logger.error({ err: err.message, teamId }, 'WNBA team roster fetch error')
     return []
   }
+}
+
+// Fetch the WNBA teams list (12 teams). Cached 12h since teams don't
+// change mid-season.
+async function fetchAllWnbaTeams() {
+  if (teamsCache && Date.now() - teamsCacheTs < TEAMS_TTL) return teamsCache
+  const url = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams'
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return teamsCache || []
+    const data = await res.json()
+    // ESPN shape: { sports: [{ leagues: [{ teams: [{ team: { id, abbreviation, ... } }] }] }] }
+    const raw = data.sports?.[0]?.leagues?.[0]?.teams || []
+    const teams = raw
+      .map((t) => ({
+        id: t.team?.id ? String(t.team.id) : null,
+        abbrev: (t.team?.abbreviation || '').toUpperCase(),
+      }))
+      .filter((t) => t.id && t.abbrev)
+    teamsCache = teams
+    teamsCacheTs = Date.now()
+    return teams
+  } catch (err) {
+    logger.error({ err: err.message }, 'WNBA teams list fetch error')
+    return teamsCache || []
+  }
+}
+
+/**
+ * Every WNBA player, league-wide. Fetches the teams list and each team's
+ * roster (cached per team). Used by the admin blurbs panel so blurbs can
+ * be written for players who haven't been picked in a 3-Point contest
+ * yet. The live 3-Point picker (getWNBAPlayerPool) still narrows by
+ * tonight's matchups — that's the right behavior for users.
+ */
+export async function getAllWnbaPlayers() {
+  const teams = await fetchAllWnbaTeams()
+  if (!teams.length) return []
+  const rosters = await Promise.all(teams.map((t) => fetchTeamRoster(t.id, t.abbrev)))
+  return rosters.flat()
 }
 
 // Fetch the WNBA scoreboard for one date and return the games. ET is the
