@@ -931,18 +931,29 @@ router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
     .eq('key', league.sport)
     .single()
   if (!sport) return res.json([])
-  // Query completed games between these two teams after the bracket locked (playoff games only)
+  // Query completed games between these two teams after the bracket locked (playoff games only).
+  // We don't use a SQL .eq match on team names because `games.home_team` is the raw ESPN/feed
+  // name (e.g. "Montréal Canadiens") while the bracket matchup stores the normalized form
+  // ("Montreal Canadiens"). bracketService already strips accents the same way when counting
+  // series wins — mirror that here so the per-game list isn't empty while the series score is right.
   let query = supabase
     .from('games')
     .select('id, home_team, away_team, home_score, away_score, winner, starts_at, status, season')
     .eq('sport_id', sport.id)
     .eq('status', 'final')
-    .or(`and(home_team.eq.${team1},away_team.eq.${team2}),and(home_team.eq.${team2},away_team.eq.${team1})`)
     .order('starts_at', { ascending: true })
   if (tournament?.locks_at) {
     query = query.gte('starts_at', tournament.locks_at)
   }
-  const { data: filtered } = await query
+  const { data: allGames } = await query
+  const stripAccents = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const nTeam1 = stripAccents(team1)
+  const nTeam2 = stripAccents(team2)
+  const filtered = (allGames || []).filter((g) => {
+    const nHome = stripAccents(g.home_team)
+    const nAway = stripAccents(g.away_team)
+    return (nHome === nTeam1 && nAway === nTeam2) || (nHome === nTeam2 && nAway === nTeam1)
+  })
   // Attach top scorers for each game
   if (filtered.length) {
     const gameIds = filtered.map((g) => g.id)
