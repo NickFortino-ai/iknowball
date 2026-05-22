@@ -1089,8 +1089,13 @@ router.get('/blurbs/players', async (req, res) => {
       .in('status', ['draft', 'published'])
     const blurbMap = {}
     for (const b of blurbs || []) {
-      // Prefer published, then draft
-      if (!blurbMap[b.player_id] || b.status === 'published') blurbMap[b.player_id] = b
+      // Prefer the draft over the published one. The published blurb is
+      // already live; the draft is what needs admin attention (publish
+      // or edit). Surfacing only the published one made fresh drafts
+      // written on top of an existing published blurb effectively
+      // invisible — no Draft badge, no Publish button, no contribution
+      // to the Publish All Drafts count.
+      if (!blurbMap[b.player_id] || b.status === 'draft') blurbMap[b.player_id] = b
     }
     for (const p of players) {
       p.blurb = blurbMap[p.id] || null
