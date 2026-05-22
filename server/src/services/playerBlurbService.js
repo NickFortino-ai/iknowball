@@ -130,10 +130,14 @@ export async function getPlayersForSport(sport) {
   }
 
   if (sport === 'wnba') {
+    // wnba_three_point_picks has no `position` column (migration 193) —
+    // WNBA player rosters live in ESPN, not our DB. Position stays null
+    // for the admin row; the WNBA position filter still narrows to
+    // 'all' meaningfully because the chip set is tiny (G/F/C).
     const rows = await fetchAll(
       supabase
         .from('wnba_three_point_picks')
-        .select('espn_player_id, player_name, team, position')
+        .select('espn_player_id, player_name, team')
         .not('espn_player_id', 'is', null)
     )
     const byId = new Map()
@@ -142,7 +146,7 @@ export async function getPlayersForSport(sport) {
         byId.set(r.espn_player_id, {
           id: r.espn_player_id,
           full_name: r.player_name,
-          position: r.position || null,
+          position: null,
           team: r.team || null,
           injury_status: null,
           headshot_url: null,
