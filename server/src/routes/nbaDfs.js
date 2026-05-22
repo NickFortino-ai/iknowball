@@ -618,11 +618,13 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
     // surfaces the actual most recent games to the top.
     const allGames = eventsFromGamelog(data)
 
-    // If the current season has fewer than 10 games (returning-from-IL,
-    // early career, offseason), backfill from the prior season so the
-    // modal always feels populated. The merged set is still sorted by
-    // date desc and sliced to 10, so order stays correct.
-    if (allGames.length < 10 && useSeasonParam) {
+    // Backfill from prior season ONLY when the current season is empty
+    // (offseason, just-called-up rookie, returning-from-IL with no games
+    // back yet). Previous threshold of <10 misled users mid-season — e.g.
+    // an early-WNBA player with 5 GP this year showed 5 current + 5
+    // prior-season games mashed together with no separator, contradicting
+    // the "5 GP" in Season Averages.
+    if (allGames.length === 0 && useSeasonParam) {
       const prior = await fetchGamelogJson(seasonYear - 1)
       if (prior) {
         Object.assign(eventsMap, prior.events || {})
