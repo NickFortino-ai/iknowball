@@ -45,6 +45,7 @@ function matchesPositionFilter(playerPos, filter) {
 
 const INJURY_COLORS = {
   Out: 'text-incorrect',
+  IR: 'text-incorrect',
   Questionable: 'text-yellow-400',
   Probable: 'text-correct',
   'Day-To-Day': 'text-yellow-400',
@@ -54,7 +55,7 @@ function InjuryBadge({ status }) {
   if (!status) return null
   const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
   return (
-    <span className={`text-[11px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
+    <span className={`text-[12px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
       {label}
     </span>
   )

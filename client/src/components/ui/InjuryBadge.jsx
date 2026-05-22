@@ -29,7 +29,7 @@ export default function InjuryBadge({ status, className = '' }) {
   if (!status) return null
   return (
     <span
-      className={`text-[11px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'} ${className}`}
+      className={`text-[12px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'} ${className}`}
       title={status}
     >
       {shortLabel(status)}

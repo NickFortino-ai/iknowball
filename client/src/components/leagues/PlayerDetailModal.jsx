@@ -16,7 +16,7 @@ const INJURY_COLORS = {
 function InjuryBadge({ status }) {
   if (!status) return null
   return (
-    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${INJURY_COLORS[status] || 'text-text-muted'}`}>
+    <span className={`text-[12px] font-mono font-bold px-2 py-0.5 rounded ${INJURY_COLORS[status] || 'text-text-muted'}`}>
       {status}
     </span>
   )
