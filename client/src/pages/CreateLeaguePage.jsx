@@ -589,10 +589,12 @@ export default function CreateLeaguePage() {
     else if (format === 'nba_dfs' || (format === 'fantasy' && fantasyFormat === 'salary_cap')) setSalaryCap(60000)
     // HR Derby + 3-Point Contest + Strikeouts share the daily-pick pattern:
     // tomorrow start (gives players a day to join), full season unless
-    // commissioner picks custom range.
+    // commissioner picks custom range. Always snap to full_season on entry
+    // so the picker has the "Full Season" pill highlighted by default
+    // regardless of what the user had selected on a prior format.
     if (format === 'hr_derby' || format === 'three_point' || format === 'wnba_three_point' || format === 'strikeouts') {
       setDfsStartOption('tomorrow')
-      if (seasonType === 'single_week') setSeasonType('full_season')
+      setSeasonType('full_season')
     }
     // Sacks + Interceptions + Tackles + Receptions Contests share NFL
     // weekly cadence. Default reuse is 2x — strict enough to keep variety
