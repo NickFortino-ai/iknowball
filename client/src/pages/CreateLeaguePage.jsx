@@ -1061,7 +1061,7 @@ export default function CreateLeaguePage() {
         </div>}
 
         {/* Duration (not for fantasy/DFS/squares/bracket — bracket runs from picks lock to championship game) */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
@@ -1150,7 +1150,7 @@ export default function CreateLeaguePage() {
         </>}
 
         {/* Max Members — only standalone for formats without their own settings section */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'pickem', 'survivor', 'squares', 'td_pass'].includes(format) && <div>
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'survivor', 'squares', 'td_pass'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">
             Max Members <span className="text-text-muted font-normal">(optional)</span>
           </label>
