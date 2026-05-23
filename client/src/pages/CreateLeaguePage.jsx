@@ -1014,7 +1014,7 @@ export default function CreateLeaguePage() {
         <div ref={settingsRef} aria-hidden="true" />
 
         {/* Sport (hidden for format-locked sports) */}
-        {!['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format) && <div>
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
