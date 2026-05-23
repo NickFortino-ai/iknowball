@@ -1007,7 +1007,7 @@ export default function CreateLeaguePage() {
         <div ref={settingsRef} aria-hidden="true" />
 
         {/* Sport (hidden for format-locked sports) */}
-        {!['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'td_pass'].includes(format) && <div>
+        {!['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
@@ -1707,7 +1707,7 @@ export default function CreateLeaguePage() {
           </div>
         )}
 
-        {(format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') && (
+        {(format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">
               {format === 'mlb_dfs' ? 'MLB Daily Fantasy Settings'
@@ -1715,6 +1715,8 @@ export default function CreateLeaguePage() {
                 : format === 'wnba_three_point' ? 'WNBA 3-Point Contest Settings'
                 : format === 'sacks' ? 'Sacks Contest Settings'
                 : format === 'ints' ? 'Interceptions Contest Settings'
+                : format === 'tackles' ? 'Tackles Contest Settings'
+                : format === 'receptions' ? 'Receptions Contest Settings'
                 : format === 'strikeouts' ? 'Strikeouts Contest Settings'
                 : format === 'td_pass' ? 'TD Pass Competition Settings'
                 : 'Home Run Derby Settings'}
@@ -1738,7 +1740,7 @@ export default function CreateLeaguePage() {
                 </div>
               </div>
             )}
-            {format !== 'sacks' && format !== 'ints' && format !== 'td_pass' && (
+            {format !== 'sacks' && format !== 'ints' && format !== 'tackles' && format !== 'receptions' && format !== 'td_pass' && (
               <div>
                 <label className="text-xs text-text-muted block mb-1">League Starts</label>
                 {/* note: HR Derby / 3-Point Contest / Strikeouts / MLB DFS all use this picker */}
@@ -1773,10 +1775,10 @@ export default function CreateLeaguePage() {
             )}
             <div>
               <label className="text-xs text-text-muted block mb-1">
-                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass') ? 'League Length' : 'Season Type'}
+                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') ? 'League Length' : 'Season Type'}
               </label>
               <div className="flex gap-2">
-                {((format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'td_pass')
+                {((format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass')
                   ? [
                       { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
                       { value: 'custom_range', label: 'Select Date' },
