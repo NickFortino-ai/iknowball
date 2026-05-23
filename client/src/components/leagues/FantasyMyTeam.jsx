@@ -529,7 +529,7 @@ export default function FantasyMyTeam({ league }) {
 
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${editMode && (isCurrentWeek || isFutureWeek) ? 'pb-32 md:pb-0' : ''}`}>
       {/* Week navigator */}
       <div className="flex items-center justify-center gap-4">
         <button
@@ -820,7 +820,12 @@ export default function FantasyMyTeam({ league }) {
       )}
 
       {editMode && (isCurrentWeek || isFutureWeek) && (
-        <div className="sticky bottom-0 z-40 flex gap-2 px-4 py-3 bg-bg-primary/90 backdrop-blur-xl border-t border-text-primary/15 -mx-4 md:mx-0 md:border-0 md:bg-transparent md:backdrop-blur-none md:px-2 md:py-0 md:bottom-4">
+        // Mobile: fixed above the BottomTabBar (h-14 + safe-area). sticky
+        // bottom-0 silently fails inside this layout — an ancestor overflow
+        // ate the stickiness, so the button rendered at the natural bottom
+        // of the content and the user had to scroll to reach it. Desktop
+        // keeps sticky-bottom-4 inside the page layout.
+        <div className="fixed bottom-14 left-0 right-0 z-40 flex gap-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-primary/90 backdrop-blur-xl border-t border-text-primary/15 md:sticky md:left-auto md:right-auto md:bottom-4 md:px-2 md:pt-0 md:pb-0 md:border-0 md:bg-transparent md:backdrop-blur-none">
           <button
             type="button"
             onClick={() => { handleReset(); setSelected(null); setEditMode(false) }}
