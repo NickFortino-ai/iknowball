@@ -127,11 +127,15 @@ function calcMLBBatterFppg(avgs) {
 /**
  * MLB DFS fantasy points formula (pitchers):
  * IP: 3 per inning, K: 2, W: 5, SV: 5, ER: -2, BB: -0.5, H: -0.5
- * Per-start average used for salary calc.
+ * Per-appearance average used for salary calc. Numerator sums production
+ * across every appearance (ip, k, etc. are season totals), so the divisor
+ * must also be appearances (GP), not starts. Dividing by GS inflated
+ * openers' per-game ratios ~10x (e.g. Hudson GP=24/GS=2 priced as a top
+ * ace at $11.1k).
  */
 function calcMLBPitcherFppg(avgs) {
   if (!avgs || avgs.gp < 1) return 0
-  const gp = avgs.gs || avgs.gp
+  const gp = avgs.gp || avgs.gs
   if (gp <= 0) return 0
   const ipPerGame = avgs.ip / gp
   const kPerGame = avgs.k / gp
