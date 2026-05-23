@@ -5,6 +5,22 @@ const ESPN_BASE = 'https://site.api.espn.com/apis/common/v3/sports'
 /**
  * Fetch a player's game log from ESPN.
  * Returns array of per-game stat objects (most recent first).
+ *
+ * ESPN structures every sport's gamelog as:
+ *   data.labels  — flat array of stat column labels (top-level, NOT per-category)
+ *   data.names   — semantic stat names, same length/order as labels
+ *   data.seasonTypes[].categories[].events[].stats — flat per-game value arrays
+ *
+ * The top-level data.categories array carries only group metadata (e.g. NFL:
+ * "passing" count=11, "rushing" count=5) and never has events directly. The
+ * previous implementation read cat.labels + cat.events at this level and so
+ * silently produced empty statMaps for every sport.
+ *
+ * Each returned statMap is keyed by BOTH label and semantic name. NBA/MLB
+ * labels are unique so existing scoring functions reading by label keep
+ * working. NFL labels collide (YDS appears in both passing and rushing
+ * groups), so the NFL scoring function must read by semantic name
+ * (passingYards, rushingYards, receivingYards, etc.).
  */
 export async function fetchGameLog(espnId, sportPath, season) {
   try {
@@ -13,18 +29,20 @@ export async function fetchGameLog(espnId, sportPath, season) {
     if (!res.ok) return null
     const data = await res.json()
 
-    const categories = data.categories || data.seasonTypes || []
+    const labels = data.labels || []
+    const names = data.names || []
     const games = []
 
-    for (const cat of categories) {
-      const events = cat.events || []
-      const labels = cat.labels || []
-      for (const evt of events) {
-        const stats = evt.stats || []
-        if (!stats.length) continue
-        const statMap = {}
-        labels.forEach((l, i) => { statMap[l] = stats[i] })
-        games.push(statMap)
+    for (const seasonType of (data.seasonTypes || [])) {
+      for (const cat of (seasonType.categories || [])) {
+        for (const evt of (cat.events || [])) {
+          const stats = evt.stats || []
+          if (!stats.length) continue
+          const statMap = {}
+          labels.forEach((l, i) => { statMap[l] = stats[i] })
+          names.forEach((n, i) => { statMap[n] = stats[i] })
+          games.push(statMap)
+        }
       }
     }
 
