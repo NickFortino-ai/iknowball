@@ -475,8 +475,10 @@ const SPORT_OPTIONS = [
 
 // Sports where daily picks make sense (games happen most days during season)
 const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'basketball_wncaab', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl', 'all'])
-// Sports where weekly picks make sense (NFL is the obvious one — games only on weekends)
-const WEEKLY_ELIGIBLE_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf', 'americanfootball_ufl', 'all'])
+// Weekly picks are valid for every sport — even daily-cadence ones (NBA, MLB,
+// etc.) can run "pick once per Mon–Sun" if the commissioner prefers it.
+// Daily eligibility above governs whether the "Daily" pill is enabled.
+const WEEKLY_ELIGIBLE_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf', 'americanfootball_ufl', 'basketball_nba', 'basketball_ncaab', 'basketball_wncaab', 'basketball_wnba', 'baseball_mlb', 'icehockey_nhl', 'all'])
 
 function allowedFrequencies(sport) {
   const allowed = []
