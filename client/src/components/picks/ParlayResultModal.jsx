@@ -19,6 +19,16 @@ export default function ParlayResultModal({ parlayId, onClose }) {
   const createFlex = useCreateFlex()
   const [flexing, setFlexing] = useState(false)
   const [flexText, setFlexText] = useState('')
+  const [expandedLegs, setExpandedLegs] = useState(() => new Set())
+
+  function toggleLeg(legId) {
+    setExpandedLegs((prev) => {
+      const next = new Set(prev)
+      if (next.has(legId)) next.delete(legId)
+      else next.add(legId)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (!parlayId) return
@@ -129,21 +139,51 @@ export default function ParlayResultModal({ parlayId, onClose }) {
                 const legWon = leg.status === 'won'
                 const legLost = leg.status === 'lost'
                 const legPush = leg.status === 'push'
+                const isExpanded = expandedLegs.has(leg.id)
+                const game = leg.games
+                const homeScore = game?.home_score
+                const awayScore = game?.away_score
+                const hasScore = homeScore != null && awayScore != null
+                const pickedIsHome = leg.picked_team === 'home'
 
                 return (
-                  <div key={leg.id} className="flex items-center justify-between bg-bg-secondary rounded-lg px-3 py-2 text-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-text-muted text-xs uppercase">
-                        {leg.games?.sports?.name || ''}
+                  <div key={leg.id} className="bg-bg-secondary rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => toggleLeg(leg.id)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-text-primary/5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-text-muted text-xs uppercase">
+                          {leg.games?.sports?.name || ''}
+                        </span>
+                        <span className="text-text-primary font-medium truncate">{team}</span>
+                        {odds != null && (
+                          <span className="text-text-muted text-xs">{formatOdds(odds)}</span>
+                        )}
+                      </div>
+                      <span className={`text-xs font-bold ${legWon ? 'text-correct' : legLost ? 'text-incorrect' : legPush ? 'text-text-muted' : ''}`}>
+                        {legWon ? 'W' : legLost ? 'L' : legPush ? 'P' : ''}
                       </span>
-                      <span className="text-text-primary font-medium truncate">{team}</span>
-                      {odds != null && (
-                        <span className="text-text-muted text-xs">{formatOdds(odds)}</span>
-                      )}
-                    </div>
-                    <span className={`text-xs font-bold ${legWon ? 'text-correct' : legLost ? 'text-incorrect' : legPush ? 'text-text-muted' : ''}`}>
-                      {legWon ? 'W' : legLost ? 'L' : legPush ? 'P' : ''}
-                    </span>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-3 pb-2.5 pt-1 border-t border-text-primary/5">
+                        {hasScore ? (
+                          <div className="flex items-center justify-center gap-4 text-sm">
+                            <div className="flex flex-col items-center min-w-0">
+                              <span className={`text-xs ${pickedIsHome ? 'text-text-muted' : 'text-text-secondary'} truncate max-w-[8rem]`}>{game.away_team}</span>
+                              <span className={`font-display text-xl ${!pickedIsHome ? 'text-text-primary' : 'text-text-muted'}`}>{awayScore}</span>
+                            </div>
+                            <span className="text-text-muted text-xs">@</span>
+                            <div className="flex flex-col items-center min-w-0">
+                              <span className={`text-xs ${pickedIsHome ? 'text-text-secondary' : 'text-text-muted'} truncate max-w-[8rem]`}>{game.home_team}</span>
+                              <span className={`font-display text-xl ${pickedIsHome ? 'text-text-primary' : 'text-text-muted'}`}>{homeScore}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-text-muted text-center py-1">Final score unavailable</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
