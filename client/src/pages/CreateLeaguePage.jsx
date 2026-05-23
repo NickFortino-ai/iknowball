@@ -564,12 +564,6 @@ export default function CreateLeaguePage() {
     }
   }, [traditionalLocked, fantasyFormat])
 
-  // Clamp playoff team count down if the user shrinks the league past it
-  // (e.g. picked Top 8 then dropped league size to 6 → forces back to 6).
-  useEffect(() => {
-    if (playoffTeams > numTeams) setPlayoffTeams(numTeams >= 6 ? 6 : 4)
-  }, [numTeams, playoffTeams])
-
   // Auto-select sport for specific formats
   useEffect(() => {
     if (format === 'fantasy' && fantasyFormat === 'traditional') setSport('americanfootball_nfl')
@@ -643,6 +637,14 @@ export default function CreateLeaguePage() {
   const playoffStartWeek = championshipWeek - (playoffRounds - 1)
   const [salaryCap, setSalaryCap] = useState(60000)
   const [seasonType, setSeasonType] = useState('full_season')
+
+  // Clamp playoff team count down if the user shrinks the league past it
+  // (e.g. picked Top 8 then dropped league size to 6 → forces back to 6).
+  // Placed AFTER playoffTeams/numTeams declarations to avoid the TDZ.
+  useEffect(() => {
+    if (playoffTeams > numTeams) setPlayoffTeams(numTeams >= 6 ? 6 : 4)
+  }, [numTeams, playoffTeams])
+
   const [championMetric, setChampionMetric] = useState('total_points')
   const [singleWeek, setSingleWeek] = useState(1)
 
