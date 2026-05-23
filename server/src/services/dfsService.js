@@ -313,20 +313,35 @@ export async function scoreNflDfsWeek(week, season) {
 /**
  * Calculate NFL fantasy points from a single game stat map (ESPN gamelog).
  * Half-PPR scoring.
+ *
+ * Must read by semantic name (passingYards, rushingYards, receivingYards,
+ * etc.) — never by short label. ESPN's NFL gamelog reuses labels (YDS, TD,
+ * AVG, LNG) across passing/rushing/receiving groups, so label-keyed reads
+ * silently capture the wrong group depending on player position:
+ *   QB:  labels YDS/TD = rushing (overwrites passing)
+ *   RB:  labels YDS/TD = receiving (overwrites rushing)
+ *   WR/TE: labels YDS/TD = rushing (overwrites receiving)
+ * The shared parser populates statMap by both labels and names; we always
+ * read names here.
  */
 function nflGameFpts(statMap) {
-  // NFL gamelog labels vary by position — handle common ones
-  const passYds = parseFloat(statMap['YDS'] || statMap['PYDS'] || 0)
-  const passTD = parseFloat(statMap['TD'] || statMap['PTD'] || 0)
-  const int = parseFloat(statMap['INT'] || 0)
-  const rushYds = parseFloat(statMap['RYDS'] || 0)
-  const rushTD = parseFloat(statMap['RTD'] || 0)
-  const rec = parseFloat(statMap['REC'] || 0)
-  const recYds = parseFloat(statMap['RECYDS'] || 0)
-  const recTD = parseFloat(statMap['RECTD'] || 0)
-  const fumLost = parseFloat(statMap['FUML'] || 0)
+  const passYds = parseFloat(statMap['passingYards']) || 0
+  const passTD = parseFloat(statMap['passingTouchdowns']) || 0
+  const int = parseFloat(statMap['interceptions']) || 0
+  const rushYds = parseFloat(statMap['rushingYards']) || 0
+  const rushTD = parseFloat(statMap['rushingTouchdowns']) || 0
+  const rec = parseFloat(statMap['receptions']) || 0
+  const recYds = parseFloat(statMap['receivingYards']) || 0
+  const recTD = parseFloat(statMap['receivingTouchdowns']) || 0
+  const fumLost = parseFloat(statMap['fumblesLost']) || 0
 
-  // Basic half-PPR
+  // Treat a row with no real production as DNP (bye / inactive) — without
+  // this guard, all-zero rows would average into L4/L8 and drag down
+  // recency-weighted FPPG for healthy players who missed a single game.
+  const anyProduction = passYds || passTD || int || rushYds || rushTD
+    || rec || recYds || recTD || fumLost
+  if (!anyProduction) return null
+
   return passYds * 0.04 + passTD * 4 - int * 2
     + rushYds * 0.1 + rushTD * 6
     + rec * 0.5 + recYds * 0.1 + recTD * 6
