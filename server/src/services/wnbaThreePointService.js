@@ -337,11 +337,18 @@ export async function buildWnbaGameStateByTeam(date) {
  * cadence.
  */
 export async function tightenWnbaThreePointJoinLocks() {
+  // Only tighten OPEN leagues. Once a league is active, joins_locked_at
+  // is set in stone — re-tightening would push it to the NEXT upcoming
+  // tip-off (since yesterday's lock is now in the past), and the
+  // reverse-flip cron in completeLeagues would then demote the league
+  // back to 'open' because joins_locked_at > now. That's what caused
+  // active leagues to appear "not started yet" on subsequent days, with
+  // the Members tab showing instead of Standings.
   const { data: leagues } = await supabase
     .from('leagues')
     .select('id, starts_at, joins_locked_at')
     .eq('format', 'wnba_three_point')
-    .in('status', ['open', 'active'])
+    .eq('status', 'open')
 
   if (!leagues?.length) return
 
@@ -412,9 +419,11 @@ function normalizeName(n) {
 }
 
 /**
- * Score every wnba_three_point_picks row whose game has finished. Pulls
- * box stats per ESPN event and updates `made_threes` on each matching pick.
- * Idempotent — only writes when the value differs from what's stored.
+ * Score every wnba_three_point_picks row from games that are LIVE or
+ * final. Pulls box stats per ESPN event and updates `made_threes` on
+ * each matching pick. Idempotent — only writes when the value differs.
+ * Live scoring matches the NBA 3-Point behavior so users see their
+ * picks tick up in real time instead of waiting for game final.
  */
 export async function scoreAllWnbaThreePointPicks() {
   // Today (ET) and yesterday — covers late-finishing late-night games that
@@ -422,13 +431,15 @@ export async function scoreAllWnbaThreePointPicks() {
   const todayEt = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
   const yesterdayEt = new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
 
+  const LIVE_STATUSES = new Set(['STATUS_IN_PROGRESS', 'STATUS_END_PERIOD', 'STATUS_HALFTIME', 'STATUS_OVERTIME'])
   for (const date of [todayEt, yesterdayEt]) {
     const events = await fetchWnbaScoreboardForDate(date)
-    const finalEvents = events.filter((ev) => {
+    const eligibleEvents = events.filter((ev) => {
       const status = ev.competitions?.[0]?.status || ev.status
-      return status?.type?.name === 'STATUS_FINAL'
+      const name = status?.type?.name
+      return name === 'STATUS_FINAL' || LIVE_STATUSES.has(name)
     })
-    if (!finalEvents.length) continue
+    if (!eligibleEvents.length) continue
 
     // Picks for this date that aren't fully scored yet
     const { data: picks } = await supabase
@@ -437,8 +448,8 @@ export async function scoreAllWnbaThreePointPicks() {
       .eq('game_date', date)
     if (!picks?.length) continue
 
-    // For each final event, fetch box stats once and apply to all matching picks
-    for (const ev of finalEvents) {
+    // For each eligible event, fetch box stats once and apply to all matching picks
+    for (const ev of eligibleEvents) {
       let boxStats
       try {
         boxStats = await fetchPlayerBoxStats('basketball_wnba', ev.id)
