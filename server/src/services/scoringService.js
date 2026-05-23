@@ -240,7 +240,13 @@ export async function trySettleParlay(parlayId) {
   // If any leg lost, settle immediately as lost
   if (hasLost) {
     const pointsEarned = -parlay.risk_points
-    const { error: updateError } = await supabase
+    // Race guard: only this caller wins the settlement. The read-then-write
+    // pattern with a status check above can let two concurrent callers both
+    // pass the early-return guard and double-credit. Gate the UPDATE on the
+    // current status not yet being 'settled' and require the row to come
+    // back — if it doesn't, another caller beat us and we must NOT call
+    // increment_user_points or createNotification.
+    const { data: updated, error: updateError } = await supabase
       .from('parlays')
       .update({
         status: 'settled',
@@ -249,11 +255,14 @@ export async function trySettleParlay(parlayId) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', parlayId)
+      .neq('status', 'settled')
+      .select('id')
 
     if (updateError) {
       logger.error({ updateError, parlayId }, 'Failed to settle losing parlay')
       return
     }
+    if (!updated?.length) return // another caller already settled this parlay
 
     const { error: pointsError } = await supabase
       .rpc('increment_user_points', {
@@ -292,7 +301,8 @@ export async function trySettleParlay(parlayId) {
   const wonLegs = legs.filter((l) => l.status === 'won')
 
   if (wonLegs.length === 0) {
-    // All pushes — no points change
+    // All pushes — no points change. Conditional UPDATE so a concurrent
+    // second caller doesn't re-flip a row already settled.
     await supabase
       .from('parlays')
       .update({
@@ -304,6 +314,7 @@ export async function trySettleParlay(parlayId) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', parlayId)
+      .neq('status', 'settled')
     return
   }
 
@@ -317,7 +328,11 @@ export async function trySettleParlay(parlayId) {
   const rewardPoints = Math.max(1, Math.round(BASE_RISK_POINTS * (combinedMultiplier - 1)))
   const pointsEarned = rewardPoints
 
-  const { error: updateError } = await supabase
+  // Race guard: same atomic settle-or-bail pattern as the losing branch.
+  // The bug this prevents fired 38ms apart for the same parlay and
+  // double-credited the user. Now only the caller whose UPDATE actually
+  // flips status from non-settled → settled proceeds to credit + notify.
+  const { data: updated, error: updateError } = await supabase
     .from('parlays')
     .update({
       status: 'settled',
@@ -328,11 +343,14 @@ export async function trySettleParlay(parlayId) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', parlayId)
+    .neq('status', 'settled')
+    .select('id')
 
   if (updateError) {
     logger.error({ updateError, parlayId }, 'Failed to settle winning parlay')
     return
   }
+  if (!updated?.length) return // another caller already settled this parlay
 
   const { error: pointsError } = await supabase
     .rpc('increment_user_points', {
