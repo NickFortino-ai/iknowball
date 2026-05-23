@@ -614,8 +614,14 @@ export default function CreateLeaguePage() {
   const [faabStartingBudget, setFaabStartingBudget] = useState(100)
   const [tradeReview, setTradeReview] = useState('commissioner')
   const [playoffTeams, setPlayoffTeams] = useState(4)
-  const [playoffStartWeek, setPlayoffStartWeek] = useState(16)
   const [championshipWeek, setChampionshipWeek] = useState(17)
+  // Playoff start is derived from teams + championship week — no need for
+  // a separate picker. Standard bracket sizing:
+  //   2 teams → 1 round (championship only)
+  //   3-4 teams → 2 rounds (semis + championship)
+  //   5-8 teams → 3 rounds (QF + semis + championship; 5-7 with byes)
+  const playoffRounds = playoffTeams <= 2 ? 1 : playoffTeams <= 4 ? 2 : 3
+  const playoffStartWeek = championshipWeek - (playoffRounds - 1)
   const [salaryCap, setSalaryCap] = useState(60000)
   const [seasonType, setSeasonType] = useState('full_season')
   const [championMetric, setChampionMetric] = useState('total_points')
@@ -1548,35 +1554,12 @@ export default function CreateLeaguePage() {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => {
-                      setPlayoffTeams(n)
-                      // Smart default: 4 teams → start week 16 (3 rounds incl. champ)
-                      // 6 teams → start week 15 (top 2 byes, then QF/SF/Champ over 3 weeks)
-                      // 8 teams → start week 15 (3 rounds: QF/SF/Champ)
-                      setPlayoffStartWeek(n === 4 ? 16 : 15)
-                    }}
+                    onClick={() => setPlayoffTeams(n)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       playoffTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
                     }`}
                   >
                     Top {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Playoffs Start Week</label>
-              <div className="flex gap-2">
-                {[14, 15, 16, 17].map((w) => (
-                  <button
-                    key={w}
-                    type="button"
-                    onClick={() => setPlayoffStartWeek(w)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      playoffStartWeek === w ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    Wk {w}
                   </button>
                 ))}
               </div>
@@ -1597,7 +1580,9 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-text-muted mt-1">NFL season is 18 weeks. Most leagues use Week 17 to avoid playoff resters in Week 18.</p>
+              <p className="text-[10px] text-text-muted mt-1">
+                Playoffs start Week {playoffStartWeek}. Week 17 championship dodges the Week 18 starter-rest lottery.
+              </p>
             </div>
             </>}
           </div>
