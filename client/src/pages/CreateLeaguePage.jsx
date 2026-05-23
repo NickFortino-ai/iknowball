@@ -635,6 +635,10 @@ export default function CreateLeaguePage() {
   const [dfsStartCustom, setDfsStartCustom] = useState('')
   // HR Derby + 3-Point Contest custom end date — used when seasonType === 'custom_range'
   const [hrDerbyEndDate, setHrDerbyEndDate] = useState('')
+  // NFL contests (sacks / ints / tackles / receptions / td_pass) custom start date.
+  // Daily contests already pick start via the Today/Tomorrow/Custom row above, so
+  // this is NFL-only. Empty string means "start immediately."
+  const [nflContestStartDate, setNflContestStartDate] = useState('')
   // 3-Point Contest player reuse rule: 'weekly' (default — once per Mon-Sun)
   // or 'unlimited' (commissioner override). Stored on fantasy_settings.pick_reuse.
   const [pickReuse, setPickReuse] = useState('weekly')
@@ -748,6 +752,7 @@ export default function CreateLeaguePage() {
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format) ? getDfsStartDate()
+          : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') && seasonType === 'custom_range' && nflContestStartDate ? new Date(`${nflContestStartDate}T00:00:00`).toISOString()
           : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? new Date().toISOString()
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
@@ -1812,17 +1817,43 @@ export default function CreateLeaguePage() {
                   </button>
                 ))}
               </div>
-              {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' && (
+              {(format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-text-muted block mb-1">Starts</label>
+                    <input
+                      type="date"
+                      value={nflContestStartDate}
+                      onChange={(e) => setNflContestStartDate(e.target.value)}
+                      min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                      className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-text-muted block mb-1">Ends</label>
+                    <input
+                      type="date"
+                      value={hrDerbyEndDate}
+                      onChange={(e) => setHrDerbyEndDate(e.target.value)}
+                      min={nflContestStartDate || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                      className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                </div>
+              )}
+              {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point') && seasonType === 'custom_range' && (
                 <input
                   type="date"
                   value={hrDerbyEndDate}
                   onChange={(e) => setHrDerbyEndDate(e.target.value)}
-                  min={(format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') ? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : getDfsStartDate()}
+                  min={getDfsStartDate()}
                   className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                 />
               )}
               <p className="text-xs text-text-muted mt-1.5">
-                {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range'
+                {(format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range'
+                  ? 'Pick a start date (optional) and the date your league wraps up.'
+                  : (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point') && seasonType === 'custom_range'
                   ? 'Pick the date your league wraps up.'
                   : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'single_week'
                     ? 'Runs through this week’s Monday Night Football.'
