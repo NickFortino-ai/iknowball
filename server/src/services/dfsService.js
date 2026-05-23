@@ -473,10 +473,16 @@ export async function generateSalaries(week, season) {
       salary = Math.max(2500, Math.min(5000, 5000 - (posCount - 1) * 75))
       salary = Math.round(salary / 100) * 100
     } else if (player.espn_id) {
-      // Use weighted FPPG from game log
+      // Use weighted FPPG from game log. Season-level signal is derived
+      // from the gamelog itself — Sleeper's projections/{season}/0
+      // endpoint silently stopped populating pts_half_ppr in early 2026
+      // (every projection comes back null), so we no longer rely on it
+      // for pricing. calcWeightedFppg's `seasonAvgFppg || avg(gameFpts)`
+      // fallback handles the season-average computation when we pass 0.
+      // If Sleeper restores the field later, we can revisit whether to
+      // mix the pre-season projection back in.
       const gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season)
-      const seasonFppg = player.projected_pts_half_ppr || 0
-      const fppg = calcWeightedFppg(nflGameFpts, gameLog, seasonFppg, { recentN: 4, midN: 8 })
+      const fppg = calcWeightedFppg(nflGameFpts, gameLog, 0, { recentN: 4, midN: 8 })
       salary = nflFppgToSalary(fppg, pos)
 
       // Apply defensive adjustment
