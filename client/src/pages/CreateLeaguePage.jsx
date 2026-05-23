@@ -608,6 +608,17 @@ export default function CreateLeaguePage() {
       setPickReuse('weekly')
     }
   }, [format, fantasyFormat])
+
+  // NBA / MLB survivor and pick'em default to daily (game-by-game cadence)
+  // instead of the weekly default that suits NFL. Triggered whenever the
+  // chosen sport changes for these formats.
+  useEffect(() => {
+    if ((format === 'survivor' || format === 'pickem')
+      && (sport === 'basketball_nba' || sport === 'baseball_mlb')) {
+      const allowed = allowedFrequencies(sport)
+      if (allowed.includes('daily')) setPickFrequency('daily')
+    }
+  }, [format, sport])
   const [scoringFormat, setScoringFormat] = useState('ppr')
   const [scoringRules, setScoringRules] = useState(null) // null = use preset
   const [numTeams, setNumTeams] = useState(10)
