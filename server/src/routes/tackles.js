@@ -145,7 +145,7 @@ router.get('/used', async (req, res) => {
   }
   const exhausted = Object.entries(counts)
     .filter(([_, c]) => c >= maxUses)
-    .map(([id]) => ({ sleeper_player_id: id, player_name: names[id] }))
+    .map(([id, c]) => ({ sleeper_player_id: id, player_name: names[id], uses: c, max_uses: maxUses }))
   res.json(exhausted)
 })
 

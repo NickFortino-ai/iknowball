@@ -92,6 +92,7 @@ export default function IntsView({ league, tab = 'picks' }) {
   // Defenders fully exhausted given the league's pick_reuse setting
   // (server returns only exhausted; partial usage doesn't appear).
   const usedPlayerIds = new Set((usedPlayers || []).map((u) => u.sleeper_player_id))
+  const usageById = new Map((usedPlayers || []).map((u) => [u.sleeper_player_id, u]))
   const thisWeekPickIds = new Set((myPicks || []).map((p) => p.sleeper_player_id))
   const selectedIds = new Set(selected.map((p) => p.sleeper_player_id))
 
@@ -431,7 +432,10 @@ export default function IntsView({ league, tab = 'picks' }) {
                     </div>
                     <div className="text-xs text-text-muted">
                       {player.position} · <span className="text-white">{player.team}</span>{player.opponent ? ` ${player.home_away === 'home' ? 'vs' : '@'} ${player.opponent}` : ''}
-                      {isExhausted && <span className="ml-1">· Used up this season</span>}
+                      {isExhausted && (() => {
+                        const u = usageById.get(player.sleeper_player_id)
+                        return <span className="ml-1">· Used {u?.uses ?? '?'}/{u?.max_uses ?? '?'} this season</span>
+                      })()}
                     </div>
                   </div>
                   <span className="font-display text-base text-white whitespace-nowrap shrink-0">{player.season_ints || 0}</span>
