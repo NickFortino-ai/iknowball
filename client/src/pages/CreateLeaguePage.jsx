@@ -1032,9 +1032,9 @@ export default function CreateLeaguePage() {
         {format && <>
         <div ref={settingsRef} aria-hidden="true" />
 
-        {/* Sport (hidden for format-locked sports + sport-locked survivor presets) */}
+        {/* Sport (hidden for format-locked sports + sport-locked survivor/pickem presets) */}
         {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format)
-          && !(format === 'survivor' && sport && sport !== 'all') && <div>
+          && !((format === 'survivor' || format === 'pickem') && sport && sport !== 'all') && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
@@ -1085,20 +1085,28 @@ export default function CreateLeaguePage() {
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
-            {DURATION_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setDuration(opt.value)}
-                className={`px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors ${
-                  duration === opt.value
-                    ? 'bg-accent text-white border-accent'
-                    : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+            {DURATION_OPTIONS.map((opt) => {
+              // Auto-relabel "Full Season" to "Remainder of Regular Season"
+              // once the sport's season is underway, so a mid-season league
+              // create reads accurately.
+              const label = opt.value === 'full_season' && isSeasonUnderway(sport)
+                ? 'Remainder of Regular Season'
+                : opt.label
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDuration(opt.value)}
+                  className={`px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors ${
+                    duration === opt.value
+                      ? 'bg-accent text-white border-accent'
+                      : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
