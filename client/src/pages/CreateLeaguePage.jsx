@@ -1032,8 +1032,9 @@ export default function CreateLeaguePage() {
         {format && <>
         <div ref={settingsRef} aria-hidden="true" />
 
-        {/* Sport (hidden for format-locked sports) */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format) && <div>
+        {/* Sport (hidden for format-locked sports + sport-locked survivor presets) */}
+        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format)
+          && !(format === 'survivor' && sport && sport !== 'all') && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
@@ -1992,39 +1993,43 @@ export default function CreateLeaguePage() {
                 ))}
               </div>
             </div>
-            <div>
-              <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
-              <div className="flex gap-2">
-                {['weekly', 'daily'].map((value) => {
-                  const isAllowed = allowedFrequencies(sport).includes(value)
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      disabled={!isAllowed}
-                      onClick={() => setPickFrequency(value)}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        pickFrequency === value
-                          ? 'bg-accent text-white'
-                          : isAllowed
-                            ? 'bg-bg-input text-text-secondary'
-                            : 'bg-bg-input/50 text-text-muted opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      {value === 'weekly' ? 'Weekly' : 'Daily'}
-                    </button>
-                  )
-                })}
-              </div>
-              {pickFrequency === 'daily' && (
-                <div className="text-[10px] text-text-muted mt-1">One pick per day instead of per week</div>
-              )}
-              {allowedFrequencies(sport).length === 1 && (
-                <div className="text-[10px] text-text-muted mt-1">
-                  This sport only supports {allowedFrequencies(sport)[0]} picks.
+            {/* NFL is always weekly. Skip the picker since it'd be a single
+                disabled option, which is just noise. */}
+            {sport !== 'americanfootball_nfl' && (
+              <div>
+                <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
+                <div className="flex gap-2">
+                  {['weekly', 'daily'].map((value) => {
+                    const isAllowed = allowedFrequencies(sport).includes(value)
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        disabled={!isAllowed}
+                        onClick={() => setPickFrequency(value)}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                          pickFrequency === value
+                            ? 'bg-accent text-white'
+                            : isAllowed
+                              ? 'bg-bg-input text-text-secondary'
+                              : 'bg-bg-input/50 text-text-muted opacity-50 cursor-not-allowed'
+                        }`}
+                      >
+                        {value === 'weekly' ? 'Weekly' : 'Daily'}
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-            </div>
+                {pickFrequency === 'daily' && (
+                  <div className="text-[10px] text-text-muted mt-1">One pick per day instead of per week</div>
+                )}
+                {allowedFrequencies(sport).length === 1 && (
+                  <div className="text-[10px] text-text-muted mt-1">
+                    This sport only supports {allowedFrequencies(sport)[0]} picks.
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <label className="text-xs text-text-muted">
                 If all eliminated in same {pickFrequency === 'daily' ? 'day' : 'week'}, all survive

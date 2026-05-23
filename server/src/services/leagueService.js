@@ -411,8 +411,9 @@ export async function createLeague(userId, data) {
       const nowMs = Date.now()
       const isFutureKickoff = firstKickoff && new Date(firstKickoff).getTime() > nowMs
       const startsAtMs = league.starts_at ? new Date(league.starts_at).getTime() : 0
-      // Only override if the league's existing starts_at is already in the
-      // past or unset — don't stomp a user-chosen future start date.
+      const updates = {}
+      // Only override starts_at if the league's existing one is already in
+      // the past or unset — don't stomp a user-chosen future start date.
       if (startsAtMs <= nowMs) {
         let newStartsAt = isFutureKickoff ? firstKickoff : null
         if (!newStartsAt) {
@@ -421,11 +422,23 @@ export async function createLeague(userId, data) {
           const candidate = new Date(yr, 8, 9)
           newStartsAt = (candidate > today ? candidate : new Date(yr + 1, 8, 9)).toISOString()
         }
-        await supabase.from('leagues').update({ starts_at: newStartsAt }).eq('id', league.id)
+        updates.starts_at = newStartsAt
         league.starts_at = newStartsAt
       }
+      // Joins close at the next NFL kickoff. Letting late joiners in after
+      // a game has already started would mean they're picking from a smaller
+      // information-disadvantaged team pool. Skip if joins are already
+      // locked to a future moment by the user.
+      const existingLockMs = league.joins_locked_at ? new Date(league.joins_locked_at).getTime() : 0
+      if (isFutureKickoff && existingLockMs <= nowMs) {
+        updates.joins_locked_at = firstKickoff
+        league.joins_locked_at = firstKickoff
+      }
+      if (Object.keys(updates).length) {
+        await supabase.from('leagues').update(updates).eq('id', league.id)
+      }
     } catch (err) {
-      logger.error({ err, leagueId: league.id }, 'Failed to set NFL survivor starts_at')
+      logger.error({ err, leagueId: league.id }, 'Failed to set NFL survivor starts_at / joins_locked_at')
     }
   }
 
