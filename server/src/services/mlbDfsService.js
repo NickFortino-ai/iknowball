@@ -100,14 +100,25 @@ function shrinkBatterFppg(fppg, ab) {
   return (fppg * ab + BATTER_REPLACEMENT_FPPG * BATTER_PHANTOM_AB) / (ab + BATTER_PHANTOM_AB)
 }
 
-// Same idea for pitchers. Replacement RP-tier is ~8 FPPG. 20 phantom IP
-// keeps a 5-IP cameo from outrunning the prior; established starters
-// (80+ IP) get the prior at <3% weight.
+// Role-aware Bayesian shrinkage. A starter's per-IP rate stats (K/9, ERA)
+// stabilize much faster than a reliever's per-appearance numbers, so the
+// prior weight (phantom IP) should be smaller for starters. Without this
+// split, an elite arm like Skenes with ~50 IP gets shrunk toward the
+// 8-FPPG baseline as if his sample were as noisy as a reliever's, and
+// ends up priced below journeyman SPs with more total volume.
+//   Starter:           phantom 8 IP,  threshold 60 IP (shrinkage stops by 60 IP)
+//   Reliever/unproven: phantom 20 IP, threshold 80 IP (current behavior)
 const PITCHER_REPLACEMENT_FPPG = 8
-const PITCHER_PHANTOM_IP = 20
-function shrinkPitcherFppg(fppg, ip) {
-  if (!ip || ip >= 80) return fppg
-  return (fppg * ip + PITCHER_REPLACEMENT_FPPG * PITCHER_PHANTOM_IP) / (ip + PITCHER_PHANTOM_IP)
+const PITCHER_PHANTOM_IP_STARTER = 8
+const PITCHER_PHANTOM_IP_RELIEVER = 20
+const PITCHER_SHRINK_THRESHOLD_STARTER = 60
+const PITCHER_SHRINK_THRESHOLD_RELIEVER = 80
+function shrinkPitcherFppg(fppg, ip, role) {
+  if (!ip) return fppg
+  const phantomIP = role === 'starter' ? PITCHER_PHANTOM_IP_STARTER : PITCHER_PHANTOM_IP_RELIEVER
+  const threshold = role === 'starter' ? PITCHER_SHRINK_THRESHOLD_STARTER : PITCHER_SHRINK_THRESHOLD_RELIEVER
+  if (ip >= threshold) return fppg
+  return (fppg * ip + PITCHER_REPLACEMENT_FPPG * phantomIP) / (ip + phantomIP)
 }
 
 /**
@@ -443,8 +454,8 @@ export async function generateMLBSalaries(date, season = 2026) {
           {
             const pitchSeasonFppg = pitchAvgs ? calcMLBPitcherFppg(pitchAvgs) : 0
             let pitchFppg = calcWeightedFppg(mlbPitcherGameFpts, gameLog, pitchSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
-            pitchFppg = shrinkPitcherFppg(pitchFppg, pitchAvgs?.ip || 0)
             const pitchRole = classifyPitcherRole(pitchAvgs)
+            pitchFppg = shrinkPitcherFppg(pitchFppg, pitchAvgs?.ip || 0, pitchRole)
             let pitchSalary = pitcherSalaryForRole(pitchFppg, pitchRole)
             pitchSalary = applyDefensiveAdjustment(pitchSalary, opponentAbbrev, defRankings, 30)
             const pitchScarcity = POSITION_SCARCITY['SP'] || 1.0
@@ -484,14 +495,14 @@ export async function generateMLBSalaries(date, season = 2026) {
         // Sample-size regression — keeps tiny-sample call-ups (e.g. 9-AB
         // rookie with a hot first week) from being priced as everyday
         // starters. See shrinkBatterFppg / shrinkPitcherFppg above.
+        const pitcherRole = isPitcher ? classifyPitcherRole(avgs) : null
         if (isPitcher) {
-          fppg = shrinkPitcherFppg(fppg, avgs?.ip || 0)
+          fppg = shrinkPitcherFppg(fppg, avgs?.ip || 0, pitcherRole)
         } else {
           fppg = shrinkBatterFppg(fppg, avgs?.ab || 0)
         }
 
         const displayPos = isPitcher ? 'SP' : position
-        const pitcherRole = isPitcher ? classifyPitcherRole(avgs) : null
         let salary = isPitcher
           ? pitcherSalaryForRole(fppg, pitcherRole)
           : mlbFppgToSalary(fppg)
