@@ -1916,17 +1916,22 @@ export default function CreateLeaguePage() {
               const cadenceNoun = format === 'strikeouts' ? 'days' : 'nights'
               // Map legacy 'season' value to '1' for display purposes
               const nflMaxUses = pickReuse === 'season' ? '1' : pickReuse
-              const helper = isNflContest
-                ? (pickReuse === 'unlimited'
-                    ? `No reuse limit — pick the same ${nflPlayerNoun} as many weeks as you want.`
-                    : nflMaxUses === '1'
-                      ? `Each ${nflPlayerNoun} can only be used once all season.`
-                      : `Each ${nflPlayerNoun} can be used up to ${nflMaxUses} times this season.`)
-                : (pickReuse === 'weekly'
-                    ? `Each ${playerNoun} can only be used once per Mon-Sun week.`
-                    : `No reuse limit — pick the same ${playerNoun} on back-to-back ${cadenceNoun}.`)
+              // For single-week NFL contests, reuse caps are meaningless
+              // (everyone picks once, league ends). Grey the picker out.
+              const reuseDisabled = isNflContest && seasonType === 'single_week'
+              const helper = reuseDisabled
+                ? 'Not applicable for a single-week league — each player only gets used once.'
+                : isNflContest
+                  ? (pickReuse === 'unlimited'
+                      ? `No reuse limit — pick the same ${nflPlayerNoun} as many weeks as you want.`
+                      : nflMaxUses === '1'
+                        ? `Each ${nflPlayerNoun} can only be used once all season.`
+                        : `Each ${nflPlayerNoun} can be used up to ${nflMaxUses} times this season.`)
+                  : (pickReuse === 'weekly'
+                      ? `Each ${playerNoun} can only be used once per Mon-Sun week.`
+                      : `No reuse limit — pick the same ${playerNoun} on back-to-back ${cadenceNoun}.`)
               return (
-                <div>
+                <div className={reuseDisabled ? 'opacity-50' : ''}>
                   <label className="text-xs text-text-muted block mb-1">
                     {isNflContest ? `Max Uses per ${nflPlayerNoun === 'pass catcher' ? 'Pass Catcher' : 'Defender'}` : 'Player Reuse'}
                   </label>
@@ -1938,9 +1943,14 @@ export default function CreateLeaguePage() {
                         <button
                           key={opt.value}
                           type="button"
+                          disabled={reuseDisabled}
                           onClick={() => setPickReuse(opt.value)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                            isActive ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                            reuseDisabled
+                              ? 'bg-bg-secondary/40 text-text-muted cursor-not-allowed'
+                              : isActive
+                                ? 'bg-accent text-white'
+                                : 'bg-bg-secondary text-text-secondary hover:bg-border'
                           }`}
                         >
                           {opt.label}
