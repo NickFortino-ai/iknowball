@@ -583,9 +583,9 @@ export default function CreateLeaguePage() {
     if (format === 'receptions') setSport('americanfootball_nfl')
     // Squares needs a specific game — bump 'all' off so the picker isn't stuck.
     if (format === 'squares' && sport === 'all') setSport('americanfootball_nfl')
-    // Per-format salary cap default — MLB pricing settled lower than NBA, so
-    // it caps at $40k by default with $50k as the bigger option.
-    if (format === 'mlb_dfs') setSalaryCap(40000)
+    // Per-format salary cap default — MLB pricing settles lower than NBA,
+    // so MLB defaults to $45k (middle of the 40/45/50 options).
+    if (format === 'mlb_dfs') setSalaryCap(45000)
     else if (format === 'nba_dfs' || (format === 'fantasy' && fantasyFormat === 'salary_cap')) setSalaryCap(60000)
     // HR Derby + 3-Point Contest + Strikeouts share the daily-pick pattern:
     // tomorrow start (gives players a day to join), full season unless
