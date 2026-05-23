@@ -131,9 +131,8 @@ export default function ScoringRulesEditor({ value, onChange }) {
 
   return (
     <div className="space-y-3">
-      {/* Preset picker */}
+      {/* Preset picker (no inner label — the outer field already says "Scoring") */}
       <div>
-        <label className="block text-xs text-text-muted mb-2">Scoring</label>
         <div className="flex gap-2 flex-wrap">
           {[
             { value: 'ppr', label: 'PPR' },
