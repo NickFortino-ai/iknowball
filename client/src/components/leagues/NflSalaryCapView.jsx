@@ -229,7 +229,10 @@ export default function NflSalaryCapView({ league }) {
               ))}
             </div>
             {(SLOTS.length - filledCount) > 0 && (
-              <span className="text-xs text-text-muted shrink-0">
+              <span
+                key={`${remaining}-${filledCount}`}
+                className="text-xs text-text-muted shrink-0"
+              >
                 ${Math.round(remaining / (SLOTS.length - filledCount)).toLocaleString()} avg/player
               </span>
             )}

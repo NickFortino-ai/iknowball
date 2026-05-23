@@ -627,7 +627,14 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
               ))}
             </div>
             {(SLOTS.length - filledSlots) > 0 && (
-              <span className="text-xs text-text-muted shrink-0">
+              // key forces a remount on every value change. The sticky
+              // right-column panel was holding stale text on iOS WebView —
+              // React mutated the DOM correctly but Safari didn't repaint
+              // the sticky element until a scroll forced a layout pass.
+              <span
+                key={`${remainingSalary}-${filledSlots}`}
+                className="text-xs text-text-muted shrink-0"
+              >
                 ${Math.round(remainingSalary / (SLOTS.length - filledSlots)).toLocaleString()} avg/player
               </span>
             )}
