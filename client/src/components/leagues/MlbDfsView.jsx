@@ -494,13 +494,8 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden mb-4">
-          <div className="px-4 py-3 border-b border-text-primary/10 flex items-center justify-between gap-3">
+          <div className="px-4 py-3 border-b border-text-primary/10">
             <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
-            {(SLOTS.length - filledSlots) > 0 && (
-              <span className="text-xs text-text-muted">
-                ${Math.round(remainingSalary / (SLOTS.length - filledSlots)).toLocaleString()} avg/player
-              </span>
-            )}
           </div>
           {SLOTS.map((slot) => {
             const rosterPlayer = roster[slot.key]
@@ -615,20 +610,27 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
             placeholder="Search players..."
             className="w-full bg-bg-primary/40 border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
           />
-          <div className="flex gap-1.5 flex-wrap">
-            {POSITION_FILTERS.map((pos) => (
-              <button
-                key={pos}
-                onClick={() => setPosFilter(pos)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  posFilter === pos
-                    ? 'bg-accent text-white'
-                    : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
-                }`}
-              >
-                {pos}
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap">
+              {POSITION_FILTERS.map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => setPosFilter(pos)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                    posFilter === pos
+                      ? 'bg-accent text-white'
+                      : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+                  }`}
+                >
+                  {pos}
+                </button>
+              ))}
+            </div>
+            {(SLOTS.length - filledSlots) > 0 && (
+              <span className="text-xs text-text-muted shrink-0">
+                ${Math.round(remainingSalary / (SLOTS.length - filledSlots)).toLocaleString()} avg/player
+              </span>
+            )}
           </div>
         </div>
 

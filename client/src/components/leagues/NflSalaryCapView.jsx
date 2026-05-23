@@ -147,13 +147,8 @@ export default function NflSalaryCapView({ league }) {
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
-          <div className="px-4 py-3 border-b border-text-primary/10 flex items-center justify-between gap-3">
+          <div className="px-4 py-3 border-b border-text-primary/10">
             <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
-            {(SLOTS.length - filledCount) > 0 && (
-              <span className="text-xs text-text-muted">
-                ${Math.round(remaining / (SLOTS.length - filledCount)).toLocaleString()} avg/player
-              </span>
-            )}
           </div>
           {SLOTS.map((slot) => {
             const player = lineup[slot.key]
@@ -213,24 +208,31 @@ export default function NflSalaryCapView({ league }) {
             placeholder="Search players..."
             className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
           />
-          <div className="flex gap-1.5 flex-wrap">
-            {POS_FILTERS.map((pos) => (
-              <button
-                key={pos}
-                onClick={() => setPosFilter(pos)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  pos === 'OUT'
-                    ? posFilter === pos
-                      ? 'bg-incorrect/20 text-incorrect border border-incorrect/40'
-                      : 'border border-incorrect/30 text-incorrect/70 hover:bg-incorrect/10'
-                    : posFilter === pos
-                      ? 'bg-accent text-white'
-                      : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
-                }`}
-              >
-                {pos === 'OUT' ? 'O' : pos}
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap">
+              {POS_FILTERS.map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => setPosFilter(pos)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                    pos === 'OUT'
+                      ? posFilter === pos
+                        ? 'bg-incorrect/20 text-incorrect border border-incorrect/40'
+                        : 'border border-incorrect/30 text-incorrect/70 hover:bg-incorrect/10'
+                      : posFilter === pos
+                        ? 'bg-accent text-white'
+                        : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+                  }`}
+                >
+                  {pos === 'OUT' ? 'O' : pos}
+                </button>
+              ))}
+            </div>
+            {(SLOTS.length - filledCount) > 0 && (
+              <span className="text-xs text-text-muted shrink-0">
+                ${Math.round(remaining / (SLOTS.length - filledCount)).toLocaleString()} avg/player
+              </span>
+            )}
           </div>
         </div>
 
