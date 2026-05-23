@@ -50,3 +50,23 @@ export function isSeasonUnderway(sportKey) {
   const now = new Date()
   return new Date(start) <= now && now <= new Date(end)
 }
+
+/**
+ * End of the current NFL week — used by single-week contest leagues
+ * (sacks / ints / tackles / receptions / td_pass). Returns the upcoming
+ * Tuesday 09:00 in the user's local time, which sits comfortably after
+ * Monday Night Football wraps. Already-Tuesday-morning bumps to next
+ * Tuesday so a Tuesday-create still includes the full week ahead.
+ */
+export function getNflWeekEnd() {
+  const d = new Date()
+  const day = d.getDay() // Sun=0, Mon=1, Tue=2, ...
+  // Days until next Tuesday 09:00. If it's already Tuesday past 9am we
+  // jump to the next Tuesday; before 9am Tuesday counts as still in
+  // this week (catches a Tuesday-morning makeup game).
+  let daysUntilTuesday = (2 - day + 7) % 7
+  if (daysUntilTuesday === 0 && d.getHours() >= 9) daysUntilTuesday = 7
+  d.setDate(d.getDate() + daysUntilTuesday)
+  d.setHours(9, 0, 0, 0)
+  return d.toISOString()
+}
