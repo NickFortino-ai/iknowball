@@ -511,6 +511,11 @@ export default function CreateLeaguePage() {
   const [format, setFormat] = useState(initialFormat)
   const [expandedCardKey, setExpandedCardKey] = useState(null)
   const [selectedCardKey, setSelectedCardKey] = useState(null)
+  // True only when the card the user picked locks sport to a specific value
+  // (e.g. "NFL Survivor", "NBA Pick'em"). Generic cards ("Survivor",
+  // "Pick'em") leave sport unlocked so the picker should stay visible
+  // for the user to pick + change a sport mid-create.
+  const [sportPresetLocked, setSportPresetLocked] = useState(false)
   const [collapsedCategories, setCollapsedCategories] = useState(() => new Set())
   const settingsRef = useRef(null)
   const [sport, setSport] = useState(initialSport)
@@ -943,6 +948,9 @@ export default function CreateLeaguePage() {
                       onClick={() => {
                         setSelectedCardKey(card.key)
                         setFormat(card.format)
+                        // A specific (non-'all') sport preset means the card
+                        // locks the sport — hide the picker on the next render.
+                        setSportPresetLocked(!!(card.preset?.sport && card.preset.sport !== 'all'))
                         if (card.preset?.sport !== undefined) setSport(card.preset.sport)
                         if (card.preset?.fantasyFormat) setFantasyFormat(card.preset.fantasyFormat)
                         if (card.preset?.survivorMode !== undefined) {
@@ -1051,7 +1059,7 @@ export default function CreateLeaguePage() {
 
         {/* Sport (hidden for format-locked sports + sport-locked survivor/pickem presets) */}
         {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format)
-          && !((format === 'survivor' || format === 'pickem') && sport && sport !== 'all') && <div>
+          && !((format === 'survivor' || format === 'pickem') && sportPresetLocked) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
