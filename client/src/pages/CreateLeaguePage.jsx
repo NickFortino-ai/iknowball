@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useNflSeasonOpener } from '../hooks/useLeagues'
+import { useTeamsForSport } from '../hooks/useHotTakes'
 import { api } from '../lib/api'
 import { getBackdropUrl } from '../lib/backdropUrl'
 import { useGames } from '../hooks/useGames'
@@ -487,6 +488,48 @@ function allowedFrequencies(sport) {
   return allowed
 }
 
+// Inline team-name input with a suggestion dropdown. Used by Squares so
+// commissioners scheduling a future game (before it's in the schedule API)
+// can pick from canonical team names — the eventually-synced game matches
+// cleanly without near-miss typos like "49ers" vs "Niners".
+function TeamNameAutocomplete({ value, onChange, placeholder, teams }) {
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef(null)
+  const q = (value || '').trim().toLowerCase()
+  const matches = q.length > 0 && Array.isArray(teams)
+    ? teams.filter((t) => t.toLowerCase().includes(q) && t.toLowerCase() !== q).slice(0, 6)
+    : []
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder={placeholder}
+        maxLength={50}
+        className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+      />
+      {open && matches.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-bg-primary border border-text-primary/20 rounded-lg max-h-48 overflow-y-auto shadow-lg">
+          {matches.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); onChange(t); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-text-primary/5"
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const DURATION_OPTIONS = [
   { value: 'this_week', label: 'This Week Only' },
   { value: 'custom_range', label: 'Custom Date Range' },
@@ -529,6 +572,11 @@ export default function CreateLeaguePage() {
   const [squaresDate, setSquaresDate] = useState('')
   const squaresSport = format === 'squares' && sport && sport !== 'all' ? sport : undefined
   const { data: allSquaresGames } = useGames(squaresSport, 'upcoming', 90)
+  // Canonical team-name list for the chosen squares sport — feeds the
+  // row/col autocomplete so a commissioner setting up a future game
+  // (before the schedule API has it) picks the same name the eventual
+  // synced game will use.
+  const { data: squaresTeams } = useTeamsForSport(squaresSport || null)
   const squaresGames = squaresDate
     ? (allSquaresGames || []).filter((g) => {
         const d = new Date(g.starts_at)
@@ -2192,24 +2240,20 @@ export default function CreateLeaguePage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-text-muted mb-1">Row Team Name</label>
-                <input
-                  type="text"
+                <TeamNameAutocomplete
                   value={rowTeamName}
-                  onChange={(e) => setRowTeamName(e.target.value)}
+                  onChange={setRowTeamName}
                   placeholder="Away"
-                  maxLength={50}
-                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                  teams={squaresTeams}
                 />
               </div>
               <div>
                 <label className="block text-xs text-text-muted mb-1">Column Team Name</label>
-                <input
-                  type="text"
+                <TeamNameAutocomplete
                   value={colTeamName}
-                  onChange={(e) => setColTeamName(e.target.value)}
+                  onChange={setColTeamName}
                   placeholder="Home"
-                  maxLength={50}
-                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                  teams={squaresTeams}
                 />
               </div>
             </div>
