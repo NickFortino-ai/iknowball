@@ -481,8 +481,15 @@ export async function generateSalaries(week, season) {
       // fallback handles the season-average computation when we pass 0.
       // If Sleeper restores the field later, we can revisit whether to
       // mix the pre-season projection back in.
+      //
+      // Recency weights tuned to NFL's 17-game sample: L4 is ~24% of
+      // the season, so the calcWeightedFppg default of 50% on L4 was
+      // too volatile — one big game spikes pricing for a month. 40/35/25
+      // keeps recency-aware while protecting against single-game noise.
       const gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season)
-      const fppg = calcWeightedFppg(nflGameFpts, gameLog, 0, { recentN: 4, midN: 8 })
+      const fppg = calcWeightedFppg(nflGameFpts, gameLog, 0, {
+        recentN: 4, midN: 8, wRecent: 0.40, wMid: 0.35, wFull: 0.25,
+      })
       salary = nflFppgToSalary(fppg, pos)
 
       // Apply defensive adjustment
