@@ -564,6 +564,12 @@ export default function CreateLeaguePage() {
     }
   }, [traditionalLocked, fantasyFormat])
 
+  // Clamp playoff team count down if the user shrinks the league past it
+  // (e.g. picked Top 8 then dropped league size to 6 → forces back to 6).
+  useEffect(() => {
+    if (playoffTeams > numTeams) setPlayoffTeams(numTeams >= 6 ? 6 : 4)
+  }, [numTeams, playoffTeams])
+
   // Auto-select sport for specific formats
   useEffect(() => {
     if (format === 'fantasy' && fantasyFormat === 'traditional') setSport('americanfootball_nfl')
@@ -1550,18 +1556,27 @@ export default function CreateLeaguePage() {
             <div>
               <label className="text-xs text-text-muted block mb-1">Playoff Teams</label>
               <div className="flex gap-2">
-                {[4, 6, 8].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setPlayoffTeams(n)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      playoffTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    Top {n}
-                  </button>
-                ))}
+                {[4, 6, 8].map((n) => {
+                  // Can't have more playoff teams than total teams in the league.
+                  const isDisabled = n > numTeams
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      disabled={isDisabled}
+                      onClick={() => setPlayoffTeams(n)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        isDisabled
+                          ? 'bg-bg-secondary/40 text-text-muted/40 cursor-not-allowed'
+                          : playoffTeams === n
+                            ? 'bg-accent text-white'
+                            : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                      }`}
+                    >
+                      Top {n}
+                    </button>
+                  )
+                })}
               </div>
             </div>
             <div>
