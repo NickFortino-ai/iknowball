@@ -133,6 +133,12 @@ export function useSyncMLBSalaries() {
   })
 }
 
+export function useSyncNFLSalaries() {
+  return useMutation({
+    mutationFn: ({ week, season }) => api.post('/admin/dfs/generate-salaries', { week, season }),
+  })
+}
+
 export function useRecalculateRecords() {
   const queryClient = useQueryClient()
   return useMutation({
