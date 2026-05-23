@@ -200,7 +200,7 @@ function mlbFppgToSalary(fppg) {
 }
 
 /**
- * Calculate salary from MLB pitcher FPPG.
+ * Calculate salary from MLB pitcher FPPG (true-starter curve).
  * Steeper curve so elite aces (Skenes-tier) consistently hit $10,500+.
  *   elite 38 FPPG → $11,200
  *   strong 30 FPPG → $10,400
@@ -214,6 +214,53 @@ function mlbPitcherFppgToSalary(fppg) {
   // Quadratic curve: elite pitchers cost significantly more
   const salary = Math.round((5500 + fppg * 100 + fppg * fppg * 2) / 100) * 100
   return Math.max(5500, Math.min(11200, salary))
+}
+
+/**
+ * Salary curve for relievers / openers / unproven pitchers. Flatter and
+ * lower-capped than the starter curve — a reliever's per-appearance
+ * upside is naturally bounded (1-2 IP per outing), and you don't want
+ * the quadratic term blowing them up the way it does for true aces.
+ *   elite 15 FPPG → $8,000 (cap)
+ *   strong 10 FPPG → $7,200
+ *   solid 7 FPPG → $6,500
+ *   value 4 FPPG → $6,100
+ *   replacement 0 FPPG → $5,500
+ */
+function mlbRelieverFppgToSalary(fppg) {
+  if (!fppg || fppg <= 0) return 5500
+  const salary = Math.round((5500 + fppg * 120 + fppg * fppg * 5) / 100) * 100
+  return Math.max(5500, Math.min(8000, salary))
+}
+
+/**
+ * Classify a pitcher as starter / reliever / unproven from season totals.
+ * Used to pick the right salary curve. The divisor here is GP (same fix
+ * as calcMLBPitcherFppg) so openers can't hide behind a deflated GS.
+ *
+ * Thresholds:
+ *   GP < 5            → 'unproven' (not enough data to trust as starter)
+ *   IP / GP < 4.5     → 'reliever' (modern starters clear 4.5; openers
+ *                       and relief arms sit well under 2.5)
+ *   otherwise         → 'starter'
+ *
+ * Both 'reliever' and 'unproven' price off the flat reliever curve.
+ */
+function classifyPitcherRole(avgs) {
+  if (!avgs || !avgs.gp || avgs.gp < 5) return 'unproven'
+  if (avgs.ip <= 0) return 'unproven'
+  const ipPerGame = avgs.ip / avgs.gp
+  if (ipPerGame >= 4.5) return 'starter'
+  return 'reliever'
+}
+
+function pitcherSalaryForRole(fppg, role) {
+  if (role === 'starter') return mlbPitcherFppgToSalary(fppg)
+  return mlbRelieverFppgToSalary(fppg)
+}
+
+function pitcherSalaryCapForRole(role) {
+  return role === 'starter' ? 11200 : 8000
 }
 
 /**
@@ -387,11 +434,12 @@ export async function generateMLBSalaries(date, season = 2026) {
             const pitchSeasonFppg = pitchAvgs ? calcMLBPitcherFppg(pitchAvgs) : 0
             let pitchFppg = calcWeightedFppg(mlbPitcherGameFpts, gameLog, pitchSeasonFppg, { recentN: 10, midN: 20, wRecent: 0.25, wMid: 0.30, wFull: 0.45 })
             pitchFppg = shrinkPitcherFppg(pitchFppg, pitchAvgs?.ip || 0)
-            let pitchSalary = mlbPitcherFppgToSalary(pitchFppg)
+            const pitchRole = classifyPitcherRole(pitchAvgs)
+            let pitchSalary = pitcherSalaryForRole(pitchFppg, pitchRole)
             pitchSalary = applyDefensiveAdjustment(pitchSalary, opponentAbbrev, defRankings, 30)
             const pitchScarcity = POSITION_SCARCITY['SP'] || 1.0
             pitchSalary = Math.round(pitchSalary * pitchScarcity / 100) * 100
-            pitchSalary = Math.max(5500, Math.min(11200, pitchSalary))
+            pitchSalary = Math.max(5500, Math.min(pitcherSalaryCapForRole(pitchRole), pitchSalary))
             salaries.push({
               player_name: name,
               team: teamAbbrev,
@@ -433,13 +481,16 @@ export async function generateMLBSalaries(date, season = 2026) {
         }
 
         const displayPos = isPitcher ? 'SP' : position
-        let salary = isPitcher ? mlbPitcherFppgToSalary(fppg) : mlbFppgToSalary(fppg)
+        const pitcherRole = isPitcher ? classifyPitcherRole(avgs) : null
+        let salary = isPitcher
+          ? pitcherSalaryForRole(fppg, pitcherRole)
+          : mlbFppgToSalary(fppg)
         salary = applyDefensiveAdjustment(salary, opponentAbbrev, defRankings, 30)
         // Apply position scarcity multiplier
         const scarcity = POSITION_SCARCITY[displayPos] || 1.0
         salary = Math.round(salary * scarcity / 100) * 100
         // Re-clamp after adjustments to enforce hard caps
-        if (isPitcher) salary = Math.max(5500, Math.min(11200, salary))
+        if (isPitcher) salary = Math.max(5500, Math.min(pitcherSalaryCapForRole(pitcherRole), salary))
         else salary = Math.max(2500, Math.min(6500, salary))
 
         salaries.push({
