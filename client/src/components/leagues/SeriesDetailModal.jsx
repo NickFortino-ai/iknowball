@@ -130,7 +130,16 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
           ) : (
             <div className="space-y-2">
               {games.map((game, idx) => {
-                const topIsHome = game.home_team === teamTop
+                // Accent-insensitive comparisons — games.home_team can be
+                // "Montréal Canadiens" while teamTop / game_top_scorers.team
+                // store the normalized "Montreal Canadiens". Strict equality
+                // ate the Canadiens top scorer; we'd render a Game 1 score
+                // but no leading scorer on the side whose name had an accent.
+                const stripAccents = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+                const nHome = stripAccents(game.home_team)
+                const nAway = stripAccents(game.away_team)
+                const nTop = stripAccents(teamTop)
+                const topIsHome = nHome === nTop
                 const scoreTop = topIsHome ? game.home_score : game.away_score
                 const scoreBottom = topIsHome ? game.away_score : game.home_score
                 const topWon = (topIsHome && game.winner === 'home') || (!topIsHome && game.winner === 'away')
@@ -138,8 +147,8 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
 
                 // Find top scorers for each team in this game
                 const topScorers = game.top_scorers || []
-                const homeScorer = topScorers.find((s) => s.team === game.home_team)
-                const awayScorer = topScorers.find((s) => s.team === game.away_team)
+                const homeScorer = topScorers.find((s) => stripAccents(s.team) === nHome)
+                const awayScorer = topScorers.find((s) => stripAccents(s.team) === nAway)
                 const scorerForTop = topIsHome ? homeScorer : awayScorer
                 const scorerForBottom = topIsHome ? awayScorer : homeScorer
 
