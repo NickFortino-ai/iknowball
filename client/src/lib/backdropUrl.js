@@ -20,6 +20,7 @@ export function getBackdropFilterKey(league) {
   if (format === 'tackles') return 'tackles_contest'
   if (format === 'receptions') return 'receptions_contest'
   if (format === 'strikeouts') return 'strikeouts_contest'
+  if (format === 'hr_derby') return 'hr_derby_contest'
   if (format === 'td_pass') return 'td_pass_competition'
   if (format === 'survivor' && settings?.survivor_mode === 'touchdown') return 'touchdown_survivor'
   if (league.sport === 'all') return undefined
