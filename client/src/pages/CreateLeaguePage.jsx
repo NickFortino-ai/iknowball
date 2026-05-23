@@ -725,7 +725,9 @@ export default function CreateLeaguePage() {
         : (format === 'nba_dfs' || format === 'mlb_dfs')
           ? 'ppr'
           : scoringFormat,
-      num_teams: numTeams,
+      // Salary cap has no fixed team count — leave num_teams null so the
+      // global-rankings job correctly skips it when grouping leagues by shape.
+      num_teams: format === 'fantasy' && fantasyFormat === 'salary_cap' ? null : numTeams,
       draft_mode: format === 'fantasy' && fantasyFormat === 'traditional' ? draftMode : undefined,
       draft_pick_timer: format === 'fantasy' && fantasyFormat === 'traditional' && draftMode === 'live' ? draftPickTimer : undefined,
       draft_location: format === 'fantasy' && fantasyFormat === 'traditional' && draftLocation ? draftLocation : undefined,
@@ -762,7 +764,12 @@ export default function CreateLeaguePage() {
           : isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
-          : format === 'fantasy' ? numTeams : maxMembers ? parseInt(maxMembers, 10) : undefined,
+          // Traditional fantasy uses numTeams as the hard cap (H2H schedule
+          // needs it). Salary cap accepts an optional max from maxMembers,
+          // empty = unlimited.
+          : format === 'fantasy' && fantasyFormat === 'traditional' ? numTeams
+          : format === 'fantasy' && fantasyFormat === 'salary_cap' ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
+          : maxMembers ? parseInt(maxMembers, 10) : undefined,
         starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format) ? getDfsStartDate()
           : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') && seasonType === 'custom_range' && nflContestStartDate ? new Date(`${nflContestStartDate}T00:00:00`).toISOString()
           : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? new Date().toISOString()
@@ -1281,24 +1288,43 @@ export default function CreateLeaguePage() {
               </p>
             )}
 
-            {/* Number of Teams (shared) */}
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Number of Teams</label>
-              <div className="flex gap-2 flex-wrap">
-                {[6, 8, 10, 12, 14, 16, 20].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setNumTeams(n)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      numTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+            {/* Traditional: fixed team count drives the H2H schedule, so it's
+                a pill picker. Salary cap is points-based and has no schedule,
+                so we only ask for an optional cap. */}
+            {fantasyFormat === 'traditional' ? (
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Number of Teams</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[6, 8, 10, 12, 14, 16, 20].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setNumTeams(n)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        numTeams === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="text-xs text-text-muted block mb-1">
+                  Max Teams <span className="text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  value={maxMembers}
+                  onChange={(e) => setMaxMembers(e.target.value)}
+                  placeholder="No limit"
+                  min={2}
+                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                />
+                <p className="text-[10px] text-text-muted mt-1">Leave blank to allow unlimited members.</p>
+              </div>
+            )}
 
             {/* Salary Cap specific settings */}
             {fantasyFormat === 'salary_cap' && (
