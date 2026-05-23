@@ -168,13 +168,23 @@ function mlbBatterGameFpts(statMap) {
 
 /**
  * Calculate MLB pitcher fantasy points from a single game stat map (ESPN gamelog).
+ *
+ * ESPN packs W and SV into compound text fields, not standalone stat columns:
+ *   Dec ("wins-losses"):              "-" | "W(2-1)" | "L(1-1)"
+ *   Rel ("saves-blownSaves-holds"):   "-" | "SV(1)"   | "BLSV(1)" | "HLD(1)"
+ * Reading statMap['W'] / statMap['SV'] silently returns NaN — recency would
+ * undercount wins and saves while the /stats season-totals path correctly
+ * counted them, causing the L10/L20 components to systematically underrate
+ * pitchers who pick up decisions or saves.
  */
 function mlbPitcherGameFpts(statMap) {
   const ip = parseFloat(statMap['IP']) || 0
   if (ip === 0) return null
   const k = parseInt(statMap['K'] || statMap['SO']) || 0
-  const w = parseInt(statMap['W']) || 0
-  const sv = parseInt(statMap['SV']) || 0
+  const decStr = String(statMap['Dec'] || '')
+  const relStr = String(statMap['Rel'] || '')
+  const w = decStr.startsWith('W') ? 1 : 0
+  const sv = relStr.startsWith('SV(') ? 1 : 0
   const er = parseInt(statMap['ER']) || 0
   const bb = parseInt(statMap['BB']) || 0
   const h = parseInt(statMap['H']) || 0
