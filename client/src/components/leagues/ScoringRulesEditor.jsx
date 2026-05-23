@@ -109,6 +109,11 @@ export default function ScoringRulesEditor({ value, onChange }) {
     setPreset(p)
     if (p !== 'custom') {
       onChange(buildFromPreset(p))
+    } else {
+      // "Custom" is a no-op for the rules themselves (it just flips the
+      // indicator), so on its own it confuses users. Auto-expand Advanced
+      // so they can immediately see and edit the per-stat fields.
+      setAdvancedOpen(true)
     }
   }
 
@@ -128,7 +133,7 @@ export default function ScoringRulesEditor({ value, onChange }) {
     <div className="space-y-3">
       {/* Preset picker */}
       <div>
-        <label className="block text-xs text-text-muted mb-2">Scoring Preset</label>
+        <label className="block text-xs text-text-muted mb-2">Scoring</label>
         <div className="flex gap-2 flex-wrap">
           {[
             { value: 'ppr', label: 'PPR' },
