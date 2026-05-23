@@ -781,8 +781,13 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
 
       {/* My Roster */}
       <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
-        <div className="px-4 py-3 border-b border-text-primary/10">
+        <div className="px-4 py-3 border-b border-text-primary/10 flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
+          {(9 - filledSlots) > 0 && (
+            <span className="text-xs text-text-muted">
+              ${Math.round(remainingSalary / (9 - filledSlots)).toLocaleString()} avg/player
+            </span>
+          )}
         </div>
         {SLOTS.map((slot) => {
           const rosterPlayer = roster[slot.key]

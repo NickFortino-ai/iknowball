@@ -494,8 +494,13 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm overflow-hidden mb-4">
-          <div className="px-4 py-3 border-b border-text-primary/10">
+          <div className="px-4 py-3 border-b border-text-primary/10 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
+            {(SLOTS.length - filledSlots) > 0 && (
+              <span className="text-xs text-text-muted">
+                ${Math.round(remainingSalary / (SLOTS.length - filledSlots)).toLocaleString()} avg/player
+              </span>
+            )}
           </div>
           {SLOTS.map((slot) => {
             const rosterPlayer = roster[slot.key]
