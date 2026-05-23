@@ -588,12 +588,12 @@ export default function CreateLeaguePage() {
       setDfsStartOption('tomorrow')
       if (seasonType === 'single_week') setSeasonType('full_season')
     }
-    // Sacks + Interceptions + Solo Tackles + Receptions Contests share NFL
-    // weekly cadence with default once-per-season reuse. No daily start
-    // option — picks are weekly so dfsStartOption isn't used.
+    // Sacks + Interceptions + Tackles + Receptions Contests share NFL
+    // weekly cadence. Default reuse is 2x — strict enough to keep variety
+    // but generous enough that users aren't locked out of obvious favorites
+    // (Micah Parsons in sacks, Jefferson in receptions) after a single use.
     if (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') {
-      setPickReuse('1')
-      if (seasonType === 'single_week') setSeasonType('full_season')
+      setPickReuse('2')
     } else if (format === 'td_pass') {
       // TD Pass auto-starts at next NFL kickoff and runs the full season
       // by default; user can pick a custom end date instead.
