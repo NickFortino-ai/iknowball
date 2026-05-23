@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 /**
  * Reusable scoring-rules editor for NFL fantasy leagues.
@@ -75,14 +75,45 @@ function buildFromPreset(preset) {
 }
 
 function NumberField({ label, value, onChange, step = 0.5, hint }) {
+  // Keep a local string so the input can transiently be empty (or just "-"
+  // or ".") while the user is typing without snapping back to 0. Previous
+  // controlled-with-parseFloat approach turned "" → 0 on every keystroke,
+  // making it impossible to backspace through a value and type a fresh one.
+  const [text, setText] = useState(() => String(value ?? 0))
+
+  // Resync if the parent value changes from elsewhere (preset switch, etc.),
+  // but only when our local text doesn't already represent that number — so
+  // we don't clobber mid-edit state.
+  useEffect(() => {
+    const parsed = parseFloat(text)
+    if (Number.isNaN(parsed) || parsed !== (value ?? 0)) {
+      setText(String(value ?? 0))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
   return (
     <label className="block">
       <span className="text-[10px] uppercase text-text-muted tracking-wider block mb-1">{label}</span>
       <input
         type="number"
         step={step}
-        value={value ?? 0}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        value={text}
+        onChange={(e) => {
+          const v = e.target.value
+          setText(v)
+          // Empty / partial-typing states ("-", ".") don't commit; the user
+          // is still typing. Commit as soon as it's a real number.
+          if (v === '' || v === '-' || v === '.') return
+          const n = parseFloat(v)
+          if (!Number.isNaN(n)) onChange(n)
+        }}
+        onBlur={() => {
+          if (text === '' || text === '-' || text === '.') {
+            setText('0')
+            onChange(0)
+          }
+        }}
         className="w-full bg-bg-input border border-border rounded-lg px-2.5 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent"
       />
       {hint && <div className="text-[9px] text-text-muted mt-0.5">{hint}</div>}
