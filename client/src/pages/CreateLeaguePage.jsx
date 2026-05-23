@@ -2237,24 +2237,29 @@ export default function CreateLeaguePage() {
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-text-muted mb-1">Row Team Name</label>
-                <TeamNameAutocomplete
-                  value={rowTeamName}
-                  onChange={setRowTeamName}
-                  placeholder="Away"
-                  teams={squaresTeams}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-text-muted mb-1">Column Team Name</label>
-                <TeamNameAutocomplete
-                  value={colTeamName}
-                  onChange={setColTeamName}
-                  placeholder="Home"
-                  teams={squaresTeams}
-                />
+            <div>
+              <p className="text-[10px] text-text-muted mb-2">
+                Row = away team, column = home team. Order matters — quarter scoring uses the away team's last digit for the row and the home team's for the column.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-text-muted mb-1">Away Team <span className="text-text-muted/70">(Row)</span></label>
+                  <TeamNameAutocomplete
+                    value={rowTeamName}
+                    onChange={setRowTeamName}
+                    placeholder="Away team"
+                    teams={squaresTeams}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-text-muted mb-1">Home Team <span className="text-text-muted/70">(Column)</span></label>
+                  <TeamNameAutocomplete
+                    value={colTeamName}
+                    onChange={setColTeamName}
+                    placeholder="Home team"
+                    teams={squaresTeams}
+                  />
+                </div>
               </div>
             </div>
             <div>
