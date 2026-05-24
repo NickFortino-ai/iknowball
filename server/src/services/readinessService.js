@@ -559,8 +559,17 @@ async function computeSurvivorReadiness(leagues, userId, result) {
     const hasPickForCurrent = userPicks.some((p) => p.league_week_id === week.id)
     if (hasPickForCurrent) {
       set(result, l.id, 'ready', 'Survivor pick submitted')
-    } else {
+      continue
+    }
+    // Period exists but no pick yet. Only flag when the period has
+    // actually started — for leagues that don't begin until later this
+    // week (or between periods waiting for the next), there's nothing
+    // urgent for the user to do yet.
+    const isActiveNow = week.starts_at <= now && week.ends_at >= now
+    if (isActiveNow) {
       set(result, l.id, 'action', "You haven't made this period's pick")
+    } else {
+      set(result, l.id, 'ready', 'Pick window opens soon')
     }
   }
 }
