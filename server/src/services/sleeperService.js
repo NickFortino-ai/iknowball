@@ -579,9 +579,40 @@ export async function syncWeeklyProjections(season, week) {
     return { updated: 0 }
   }
 
+  // Sleeper returns ~3000+ projection rows per week, including many for
+  // players our nfl_players table doesn't track (inactive / practice-squad
+  // / D-list). Inserting those triggers FK violations on player_id and
+  // silently fails the whole batch. Pre-fetch valid player IDs and also
+  // drop rows that have no actual point projection.
+  const validIds = new Set()
+  let pageStart = 0
+  const PAGE = 1000
+  // Pull all nfl_players IDs (table can have >1000 rows so paginate)
+  while (true) {
+    const { data: chunk, error: idErr } = await supabase
+      .from('nfl_players')
+      .select('id')
+      .range(pageStart, pageStart + PAGE - 1)
+    if (idErr) {
+      logger.error({ idErr }, 'Failed to fetch nfl_players ids for projection filtering')
+      break
+    }
+    if (!chunk?.length) break
+    for (const r of chunk) validIds.add(r.id)
+    if (chunk.length < PAGE) break
+    pageStart += PAGE
+  }
+
   // Build upsert rows
   const rows = data
-    .filter((proj) => proj.player_id && proj.stats)
+    .filter((proj) => {
+      if (!proj.player_id || !proj.stats) return false
+      if (!validIds.has(String(proj.player_id))) return false
+      // Must have at least one populated projection field worth pricing on
+      return proj.stats.pts_half_ppr != null
+        || proj.stats.pts_ppr != null
+        || proj.stats.pts_std != null
+    })
     .map((proj) => ({
       player_id: String(proj.player_id),
       season,
@@ -591,6 +622,13 @@ export async function syncWeeklyProjections(season, week) {
       pts_std: proj.stats.pts_std ?? null,
       updated_at: new Date().toISOString(),
     }))
+
+  logger.info({
+    raw: data.length,
+    valid_players: validIds.size,
+    after_filter: rows.length,
+    season, week,
+  }, 'Filtered weekly projections')
 
   // Batch upsert in chunks of 500
   let updated = 0
