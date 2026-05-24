@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncNFLSalaries, useEnrichEspnIds, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncNFLSalaries, useEnrichEspnIds, useSyncWeeklyProjections, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -64,6 +64,7 @@ export default function AdminPage() {
   const syncMLBSalaries = useSyncMLBSalaries()
   const syncNFLSalaries = useSyncNFLSalaries()
   const enrichEspnIds = useEnrichEspnIds()
+  const syncWeeklyProjections = useSyncWeeklyProjections()
   const sendEmailBlast = useSendEmailBlast()
   const sendTargetedEmail = useSendTargetedEmail()
   const sendTemplateBracketEmail = useSendTemplateBracketEmail()
@@ -908,6 +909,32 @@ export default function AdminPage() {
             className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {enrichEspnIds.isPending ? 'Enriching...' : 'Enrich NFL ESPN IDs'}
+          </button>
+          <button
+            onClick={async () => {
+              const weekStr = window.prompt('NFL week? (1-18)', '1')
+              if (!weekStr) return
+              const week = parseInt(weekStr, 10)
+              if (!Number.isInteger(week) || week < 1 || week > 22) {
+                toast('Invalid week — must be 1-18 (or up to 22 for playoffs)', 'error')
+                return
+              }
+              const seasonStr = window.prompt('NFL season? (e.g. 2025 or 2026)', '2026')
+              if (!seasonStr) return
+              const season = parseInt(seasonStr, 10)
+              if (!Number.isInteger(season) || season < 2020 || season > 2030) {
+                toast('Invalid season', 'error')
+                return
+              }
+              try {
+                const r = await syncWeeklyProjections.mutateAsync({ week, season })
+                toast(`Projections synced — week ${week}/${season}, ${r.updated || 0} rows`, 'success')
+              } catch (err) { toast(err.message || 'Failed', 'error') }
+            }}
+            disabled={syncWeeklyProjections.isPending}
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
+          >
+            {syncWeeklyProjections.isPending ? 'Syncing...' : 'Sync NFL Projections'}
           </button>
           <button
             onClick={async () => {

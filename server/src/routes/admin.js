@@ -880,7 +880,7 @@ router.delete('/player-position-overrides/:id', async (req, res) => {
 // Fantasy Football - Sleeper Sync
 // ============================================
 
-import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
+import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, syncWeeklyProjections, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
 import { generateSalaries, setSalaries } from '../services/dfsService.js'
 import { generateNBASalaries, setNBASalaries } from '../services/nbaDfsService.js'
 import { generateMLBSalaries } from '../services/mlbDfsService.js'
@@ -896,6 +896,24 @@ router.post('/fantasy/sync-players', async (req, res) => {
 router.post('/fantasy/enrich-espn-ids', async (req, res) => {
   res.json({ message: 'ESPN ID enrichment started — runs in background' })
   enrichEspnIds().catch((err) => logger.error({ err }, 'Background ESPN ID enrichment failed'))
+})
+
+// Pull Sleeper's per-week point projections for the target (season, week)
+// into nfl_player_projections. Used as the season-level signal for DFS
+// pricing, particularly for Week 1 cold start.
+router.post('/fantasy/sync-weekly-projections', async (req, res) => {
+  const week = parseInt(req.body.week, 10)
+  const season = parseInt(req.body.season, 10)
+  if (!Number.isInteger(week) || !Number.isInteger(season)) {
+    return res.status(400).json({ error: 'week and season required (integers)' })
+  }
+  try {
+    const result = await syncWeeklyProjections(season, week)
+    res.json(result)
+  } catch (err) {
+    logger.error({ err, week, season }, 'Weekly projections sync failed')
+    res.status(500).json({ error: err.message })
+  }
 })
 
 router.post('/fantasy/sync-schedule', async (req, res) => {

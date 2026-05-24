@@ -145,6 +145,12 @@ export function useEnrichEspnIds() {
   })
 }
 
+export function useSyncWeeklyProjections() {
+  return useMutation({
+    mutationFn: ({ week, season }) => api.post('/admin/fantasy/sync-weekly-projections', { week, season }),
+  })
+}
+
 export function useAdminDFSSalaries({ week, season, position = 'ALL', search = '' }) {
   return useQuery({
     queryKey: ['admin', 'dfs-salaries', week, season, position, search],

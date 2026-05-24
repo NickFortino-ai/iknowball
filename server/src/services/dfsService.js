@@ -438,6 +438,21 @@ export async function generateSalaries(week, season) {
   // Fetch defensive rankings (cached 6h)
   const defRankings = await fetchDefensiveRankings('football/nfl')
 
+  // Fetch Sleeper's weekly point projections for this week+season — these
+  // are real per-week forecasts that already bake in matchup, opponent
+  // strength, recent usage, etc. They drive the season-level signal in
+  // calcWeightedFppg (the 25% fullAvg term). For Week 1 / cold-start
+  // situations where the gamelog is empty or sparse, the projection is
+  // effectively the whole price. We never have to overwrite a real
+  // gamelog with a projection — the weighted blend handles both.
+  const { data: projectionRows } = await supabase
+    .from('nfl_player_projections')
+    .select('player_id, pts_half_ppr')
+    .eq('season', season)
+    .eq('week', week)
+  const projectionMap = new Map((projectionRows || []).map((r) => [r.player_id, Number(r.pts_half_ppr) || 0]))
+  logger.info({ projections_loaded: projectionMap.size, week, season }, 'Loaded Sleeper weekly projections for pricing')
+
   // TODO: We'd need to know each player's opponent this week for defensive adjustment.
   // For now, fetch NFL schedule for this week to build team→opponent map.
   let teamOpponentMap = {}
@@ -495,7 +510,11 @@ export async function generateSalaries(week, season) {
       if (!gameLog?.length) {
         gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season - 1)
       }
-      const fppg = calcWeightedFppg(nflGameFpts, gameLog, 0, {
+      // Pass Sleeper's weekly projection as seasonFppg. calcWeightedFppg's
+      // fullAvg term (25%) uses it directly; for empty gamelog (rookie /
+      // pure cold start) it becomes 100% of the price.
+      const projectionFppg = projectionMap.get(player.id) || 0
+      const fppg = calcWeightedFppg(nflGameFpts, gameLog, projectionFppg, {
         recentN: 4, midN: 8, wRecent: 0.40, wMid: 0.35, wFull: 0.25,
       })
       salary = nflFppgToSalary(fppg, pos)
