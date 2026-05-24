@@ -476,9 +476,25 @@ export async function generateSalaries(week, season) {
     }
   } catch { /* ignore */ }
 
+  // When Sleeper projections exist for this (season, week), tighten the
+  // generated pool to (a) DEFs (rank-based, no projection needed) and
+  // (b) players Sleeper actually projects to play. Without this filter
+  // we'd generate ~970 prices including deep practice-squad guys with
+  // no meaningful chance of playing; the realistic DFS pool is ~500.
+  // Falls back to "everyone" when no projections are loaded so an admin
+  // can still generate prices in seasons/weeks Sleeper hasn't published.
+  const pricingPool = projectionMap.size > 0
+    ? (players || []).filter((p) => p.position === 'DEF' || projectionMap.has(p.id))
+    : (players || [])
+  logger.info({
+    total_players: players?.length || 0,
+    pricing_pool: pricingPool.length,
+    projections_available: projectionMap.size,
+  }, 'NFL DFS pool sized for pricing')
+
   const salaries = []
 
-  for (const player of (players || [])) {
+  for (const player of pricingPool) {
     const pos = player.position
     let salary
 
