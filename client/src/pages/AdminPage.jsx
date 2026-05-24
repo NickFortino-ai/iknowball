@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncNFLSalaries, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncNFLSalaries, useEnrichEspnIds, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -62,6 +62,7 @@ export default function AdminPage() {
   const syncNBASalaries = useSyncNBASalaries()
   const syncMLBSalaries = useSyncMLBSalaries()
   const syncNFLSalaries = useSyncNFLSalaries()
+  const enrichEspnIds = useEnrichEspnIds()
   const sendEmailBlast = useSendEmailBlast()
   const sendTargetedEmail = useSendTargetedEmail()
   const sendTemplateBracketEmail = useSendTemplateBracketEmail()
@@ -891,6 +892,18 @@ export default function AdminPage() {
             className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {syncNflPlayers.isPending ? 'Syncing...' : 'Sync NFL Players'}
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                await enrichEspnIds.mutateAsync()
+                toast('ESPN ID enrichment started — runs in background (~30-60s)', 'success')
+              } catch (err) { toast(err.message || 'Failed', 'error') }
+            }}
+            disabled={enrichEspnIds.isPending}
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
+          >
+            {enrichEspnIds.isPending ? 'Enriching...' : 'Enrich NFL ESPN IDs'}
           </button>
           <button
             onClick={async () => {

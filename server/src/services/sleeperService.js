@@ -146,6 +146,87 @@ export async function syncPlayers() {
 }
 
 /**
+ * Fill in nfl_players.espn_id for any active player missing it by matching
+ * name+team against ESPN's per-team roster endpoint. Sleeper's espn_id field
+ * is sparsely populated, so we use ESPN's own rosters as the source of truth.
+ */
+const ESPN_NFL_ABBR = {
+  ARI: 'ari', ATL: 'atl', BAL: 'bal', BUF: 'buf', CAR: 'car', CHI: 'chi',
+  CIN: 'cin', CLE: 'cle', DAL: 'dal', DEN: 'den', DET: 'det', GB: 'gb',
+  HOU: 'hou', IND: 'ind', JAX: 'jax', KC: 'kc', LAC: 'lac', LAR: 'lar',
+  LV: 'lv', MIA: 'mia', MIN: 'min', NE: 'ne', NO: 'no', NYG: 'nyg',
+  NYJ: 'nyj', PHI: 'phi', PIT: 'pit', SEA: 'sea', SF: 'sf', TB: 'tb',
+  TEN: 'ten', WAS: 'wsh',
+}
+
+function normalizeNameForEspnMatch(name) {
+  if (!name) return ''
+  return name
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[.’'-]/g, '')
+    .replace(/\s+(jr|sr|ii|iii|iv|v)\.?$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export async function enrichEspnIds() {
+  logger.info('Starting ESPN ID enrichment')
+
+  // Build (team, normalizedName) → espn_id map from ESPN's per-team rosters
+  const espnMap = new Map()
+  let rosterErrors = 0
+  for (const [sleeperAbbr, espnSlug] of Object.entries(ESPN_NFL_ABBR)) {
+    try {
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${espnSlug}/roster`)
+      if (!res.ok) { rosterErrors++; continue }
+      const data = await res.json()
+      const groups = Array.isArray(data.athletes) ? data.athletes : []
+      for (const grp of groups) {
+        const items = Array.isArray(grp?.items) ? grp.items : (grp?.id ? [grp] : [])
+        for (const a of items) {
+          const name = a?.displayName || a?.fullName
+          if (!name || !a?.id) continue
+          espnMap.set(`${sleeperAbbr}|${normalizeNameForEspnMatch(name)}`, String(a.id))
+        }
+      }
+    } catch (err) {
+      logger.error({ err, sleeperAbbr }, 'Failed to fetch ESPN roster')
+      rosterErrors++
+    }
+  }
+
+  // Pull every active, team-rostered NFL player missing espn_id
+  const { data: missing, error } = await supabase
+    .from('nfl_players')
+    .select('id, full_name, team, position')
+    .is('espn_id', null)
+    .not('team', 'is', null)
+    .in('position', ['QB','RB','WR','TE','K','DE','DT','NT','DL','LB','ILB','OLB','MLB','CB','S','FS','SS','DB'])
+
+  if (error) {
+    logger.error({ error }, 'Failed to fetch players missing espn_id')
+    return { updated: 0, unmatched: 0, total: 0, roster_errors: rosterErrors }
+  }
+
+  let updated = 0
+  let unmatched = 0
+  for (const p of (missing || [])) {
+    const key = `${p.team}|${normalizeNameForEspnMatch(p.full_name)}`
+    const espnId = espnMap.get(key)
+    if (!espnId) { unmatched++; continue }
+    const { error: updateError } = await supabase
+      .from('nfl_players')
+      .update({ espn_id: espnId })
+      .eq('id', p.id)
+    if (!updateError) updated++
+  }
+
+  logger.info({ updated, unmatched, total: missing?.length || 0, roster_entries: espnMap.size, roster_errors: rosterErrors }, 'ESPN ID enrichment complete')
+  return { updated, unmatched, total: missing?.length || 0, roster_entries: espnMap.size, roster_errors: rosterErrors }
+}
+
+/**
  * Sync NFL schedule for a given season.
  */
 export async function syncSchedule(season = 2026) {

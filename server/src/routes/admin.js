@@ -880,7 +880,7 @@ router.delete('/player-position-overrides/:id', async (req, res) => {
 // Fantasy Football - Sleeper Sync
 // ============================================
 
-import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, getNFLState } from '../services/sleeperService.js'
+import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
 import { generateSalaries, setSalaries } from '../services/dfsService.js'
 import { generateNBASalaries, setNBASalaries } from '../services/nbaDfsService.js'
 import { generateMLBSalaries } from '../services/mlbDfsService.js'
@@ -888,6 +888,14 @@ import { generateMLBSalaries } from '../services/mlbDfsService.js'
 router.post('/fantasy/sync-players', async (req, res) => {
   const result = await syncPlayers()
   res.json(result)
+})
+
+// Fill in nfl_players.espn_id for active players Sleeper didn't have IDs for.
+// Walks each NFL team roster on ESPN (32 calls) — run in background to avoid
+// request timeout.
+router.post('/fantasy/enrich-espn-ids', async (req, res) => {
+  res.json({ message: 'ESPN ID enrichment started — runs in background' })
+  enrichEspnIds().catch((err) => logger.error({ err }, 'Background ESPN ID enrichment failed'))
 })
 
 router.post('/fantasy/sync-schedule', async (req, res) => {

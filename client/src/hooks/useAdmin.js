@@ -139,6 +139,12 @@ export function useSyncNFLSalaries() {
   })
 }
 
+export function useEnrichEspnIds() {
+  return useMutation({
+    mutationFn: () => api.post('/admin/fantasy/enrich-espn-ids'),
+  })
+}
+
 export function useRecalculateRecords() {
   const queryClient = useQueryClient()
   return useMutation({
