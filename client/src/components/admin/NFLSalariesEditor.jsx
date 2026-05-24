@@ -183,7 +183,15 @@ function SalaryRow({ row, onSave, onReset }) {
           <div className="min-w-0">
             <div className="font-medium truncate">{row.full_name}</div>
             {row.injury_status && (
-              <div className="text-[10px] uppercase text-incorrect">{row.injury_status}</div>
+              <div
+                className={`text-[10px] uppercase ${
+                  /^questionable$/i.test(row.injury_status)
+                    ? 'text-yellow-400'
+                    : 'text-incorrect'
+                }`}
+              >
+                {row.injury_status}
+              </div>
             )}
           </div>
         </div>
