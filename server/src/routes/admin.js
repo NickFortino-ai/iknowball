@@ -993,6 +993,99 @@ router.post('/dfs/generate-salaries', async (req, res) => {
   generateSalaries(week, season).catch((err) => logger.error({ err, week, season }, 'Background NFL salary generation failed'))
 })
 
+// List NFL DFS salaries for a given week with player names/positions/teams.
+// Optional filters: position (single position or 'ALL'), search (player name substring).
+router.get('/dfs/salaries', async (req, res) => {
+  const week = parseInt(req.query.week, 10)
+  const season = parseInt(req.query.season, 10)
+  if (!Number.isInteger(week) || !Number.isInteger(season)) {
+    return res.status(400).json({ error: 'week and season query params required (integers)' })
+  }
+  const position = req.query.position && req.query.position !== 'ALL' ? String(req.query.position) : null
+  const search = req.query.search ? String(req.query.search).trim() : ''
+
+  let query = supabase
+    .from('dfs_weekly_salaries')
+    .select('id, player_id, salary, algorithm_salary, manually_set, updated_at, nfl_players!inner(id, full_name, position, team, headshot_url, injury_status)')
+    .eq('nfl_week', week)
+    .eq('season', season)
+    .order('salary', { ascending: false })
+    .limit(1000)
+
+  if (position) {
+    query = query.eq('nfl_players.position', position)
+  }
+  if (search) {
+    query = query.ilike('nfl_players.full_name', `%${search}%`)
+  }
+
+  const { data, error } = await query
+  if (error) {
+    logger.error({ error, week, season }, 'Failed to fetch DFS salaries')
+    return res.status(500).json({ error: error.message })
+  }
+
+  // Flatten the player join for easier client consumption
+  const rows = (data || []).map((r) => ({
+    id: r.id,
+    player_id: r.player_id,
+    salary: r.salary,
+    algorithm_salary: r.algorithm_salary,
+    manually_set: r.manually_set,
+    updated_at: r.updated_at,
+    full_name: r.nfl_players?.full_name,
+    position: r.nfl_players?.position,
+    team: r.nfl_players?.team,
+    headshot_url: r.nfl_players?.headshot_url,
+    injury_status: r.nfl_players?.injury_status,
+  }))
+  res.json({ rows, count: rows.length })
+})
+
+// Set a manual salary override for one player+week+season.
+router.patch('/dfs/salaries/:id', async (req, res) => {
+  const id = req.params.id
+  const salary = parseInt(req.body.salary, 10)
+  if (!Number.isInteger(salary) || salary < 0) {
+    return res.status(400).json({ error: 'salary must be a non-negative integer' })
+  }
+  const { data, error } = await supabase
+    .from('dfs_weekly_salaries')
+    .update({ salary, manually_set: true, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, salary, manually_set, updated_at')
+    .single()
+  if (error) {
+    logger.error({ error, id, salary }, 'Failed to update DFS salary')
+    return res.status(500).json({ error: error.message })
+  }
+  res.json(data)
+})
+
+// Clear the manual override and restore the algorithm-computed salary.
+router.post('/dfs/salaries/:id/reset', async (req, res) => {
+  const id = req.params.id
+  const { data: existing, error: fetchErr } = await supabase
+    .from('dfs_weekly_salaries')
+    .select('id, algorithm_salary')
+    .eq('id', id)
+    .single()
+  if (fetchErr || !existing) {
+    return res.status(404).json({ error: 'salary row not found' })
+  }
+  const restored = existing.algorithm_salary ?? 0
+  const { data, error } = await supabase
+    .from('dfs_weekly_salaries')
+    .update({ salary: restored, manually_set: false, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, salary, manually_set, algorithm_salary, updated_at')
+    .single()
+  if (error) {
+    return res.status(500).json({ error: error.message })
+  }
+  res.json(data)
+})
+
 router.post('/dfs/salaries', async (req, res) => {
   const { salaries } = req.body
   if (!salaries?.length) return res.status(400).json({ error: 'salaries array required' })

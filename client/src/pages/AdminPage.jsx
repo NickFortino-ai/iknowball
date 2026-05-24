@@ -10,6 +10,7 @@ import ReportsPanel from '../components/admin/ReportsPanel'
 import ModerationPanel from '../components/admin/ModerationPanel'
 import PlayerPositionPanel from '../components/admin/PlayerPositionPanel'
 import BackdropSubmissionsPanel from '../components/admin/BackdropSubmissionsPanel'
+import NFLSalariesEditor from '../components/admin/NFLSalariesEditor'
 import PlayerBlurbsPanel from '../components/admin/PlayerBlurbsPanel'
 import AdminToolsPanel from '../components/admin/AdminToolsPanel'
 import DashboardPanel from '../components/admin/DashboardPanel'
@@ -259,6 +260,7 @@ export default function AdminPage() {
           { key: 'seasons', label: 'Seasons' },
           { key: 'tools', label: 'Tools' },
           { key: 'overrides', label: 'Overrides' },
+          { key: 'nflSalaries', label: 'NFL Salaries' },
           { key: 'surveys', label: 'Surveys' },
         ].map((tab) => (
           <button
@@ -594,6 +596,8 @@ export default function AdminPage() {
       {adminSection === 'seasons' && <SeasonDatesPanel />}
 
       {adminSection === 'surveys' && <UserSurveysPanel />}
+
+      {adminSection === 'nflSalaries' && <NFLSalariesEditor />}
 
       {adminSection === 'tools' && <AdminToolsPanel />}
 

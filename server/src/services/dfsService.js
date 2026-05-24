@@ -508,19 +508,41 @@ export async function generateSalaries(week, season) {
       player_id: player.id,
       nfl_week: week,
       season,
-      salary,
-      _pos: pos, // temp field for counting, not stored
+      salary,                  // initial guess — overwritten below if manually set
+      algorithm_salary: salary, // always the algo-computed price for reference
+      _pos: pos,               // temp field for counting, not stored
     })
   }
 
   // Remove temp field before upsert
   for (const s of salaries) delete s._pos
 
-  // Batch upsert
+  // Honor manual overrides — fetch existing rows that admins have edited
+  // and preserve their salary value while still refreshing algorithm_salary.
+  const { data: manualRows } = await supabase
+    .from('dfs_weekly_salaries')
+    .select('player_id, salary')
+    .eq('season', season)
+    .eq('nfl_week', week)
+    .eq('manually_set', true)
+
+  if (manualRows?.length) {
+    const manualMap = new Map(manualRows.map((r) => [r.player_id, r.salary]))
+    let preserved = 0
+    for (const s of salaries) {
+      if (manualMap.has(s.player_id)) {
+        s.salary = manualMap.get(s.player_id)
+        preserved++
+      }
+    }
+    logger.info({ preserved, manually_set: manualRows.length }, 'Preserved admin manual salary overrides')
+  }
+
+  // Batch upsert. updated_at is set by DB trigger / column default on update.
   const CHUNK = 500
   let upserted = 0
   for (let i = 0; i < salaries.length; i += CHUNK) {
-    const chunk = salaries.slice(i, i + CHUNK)
+    const chunk = salaries.slice(i, i + CHUNK).map((s) => ({ ...s, updated_at: new Date().toISOString() }))
     const { error: upsertError } = await supabase
       .from('dfs_weekly_salaries')
       .upsert(chunk, { onConflict: 'player_id,nfl_week,season' })
@@ -533,7 +555,7 @@ export async function generateSalaries(week, season) {
   }
 
   logger.info({ upserted, total: salaries.length, week, season }, 'DFS salary generation complete')
-  return { upserted, total: salaries.length }
+  return { upserted, total: salaries.length, manual_preserved: manualRows?.length || 0 }
 }
 
 /**

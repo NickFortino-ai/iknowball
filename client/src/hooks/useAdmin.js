@@ -145,6 +145,35 @@ export function useEnrichEspnIds() {
   })
 }
 
+export function useAdminDFSSalaries({ week, season, position = 'ALL', search = '' }) {
+  return useQuery({
+    queryKey: ['admin', 'dfs-salaries', week, season, position, search],
+    queryFn: () => {
+      const params = new URLSearchParams({ week: String(week), season: String(season), position })
+      if (search) params.set('search', search)
+      return api.get(`/admin/dfs/salaries?${params.toString()}`)
+    },
+    enabled: Number.isInteger(week) && Number.isInteger(season),
+    staleTime: 30_000,
+  })
+}
+
+export function useUpdateDFSSalary() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, salary }) => api.patch(`/admin/dfs/salaries/${id}`, { salary }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'dfs-salaries'] }),
+  })
+}
+
+export function useResetDFSSalary() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.post(`/admin/dfs/salaries/${id}/reset`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'dfs-salaries'] }),
+  })
+}
+
 export function useRecalculateRecords() {
   const queryClient = useQueryClient()
   return useMutation({
