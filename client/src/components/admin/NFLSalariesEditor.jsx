@@ -4,15 +4,15 @@ import { toast } from '../ui/Toast'
 
 const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'DEF']
 
-// NFL season runs Sept-Feb; default to current week if in-season, else week 1.
-// In offseason the admin will usually be QA-checking historical weeks anyway.
+// NFL seasons are named after the year they START (Sept Y → Feb Y+1).
+// Default to the "current" season from an admin's POV:
+//   Mar-Dec → current calendar year (offseason prep through regular season)
+//   Jan-Feb → previous year (playoffs of the season that began last fall)
 function defaultWeekAndSeason() {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1 // 1-12
-  // NFL season spans calendar years (Sept Y -> Feb Y+1). After Aug 1 use current year,
-  // before Sept use prior year as the season.
-  const season = month >= 8 ? year : year - 1
+  const season = month <= 2 ? year - 1 : year
   return { week: 1, season }
 }
 
