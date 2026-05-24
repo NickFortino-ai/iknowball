@@ -498,9 +498,24 @@ export async function generateSalaries(week, season) {
         salary = applyDefensiveAdjustment(salary, opponent, defRankings, 32)
       }
     } else {
-      // No ESPN ID — fall back to rank-based
+      // No ESPN ID — fall back to rank-based decay with position-aware caps.
+      // The previous implementation used a universal $4,500-$10,000 ceiling
+      // that ignored position curves; a TE without espn_id at search_rank 5
+      // would land at $9,600, well above the TE Path B cap of $8,500.
+      // Caps here intentionally sit BELOW each position's Path B cap — Path C
+      // means "we don't have real production data for this player," so the
+      // ceiling should be conservative (the algorithm-driven Path B tier is
+      // reserved for players we can actually price off of gamelogs).
+      const pathCParams = (
+        pos === 'QB' ? { cap: 8000, floor: 5500, step: 300 } :
+        pos === 'RB' ? { cap: 7500, floor: 3500, step: 250 } :
+        pos === 'WR' ? { cap: 7500, floor: 3500, step: 250 } :
+        pos === 'TE' ? { cap: 7000, floor: 3500, step: 200 } :
+                       { cap: 6500, floor: 3500, step: 150 }
+      )
       const posCount = salaries.filter((s) => s._pos === pos).length + 1
-      salary = Math.max(4500, Math.min(10000, 10000 - (posCount - 1) * 100))
+      const raw = pathCParams.cap - (posCount - 1) * pathCParams.step
+      salary = Math.max(pathCParams.floor, Math.min(pathCParams.cap, raw))
       salary = Math.round(salary / 100) * 100
     }
 

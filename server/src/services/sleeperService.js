@@ -162,19 +162,39 @@ const ESPN_NFL_ABBR = {
 function normalizeNameForEspnMatch(name) {
   if (!name) return ''
   return name
+    // Strip accents
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/[.’'-]/g, '')
+    // Strip periods, hyphens, and every common apostrophe variant
+    // (straight ', curly ', backtick `, left single quote ')
+    .replace(/[.’‘'`\-]/g, '')
+    // Strip generational suffix (jr, sr, ii-v) with optional period
     .replace(/\s+(jr|sr|ii|iii|iv|v)\.?$/i, '')
+    // Collapse whitespace
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+function lastFirstInitialKey(team, normalizedName) {
+  const parts = normalizedName.split(' ').filter(Boolean)
+  if (parts.length < 2) return null
+  const last = parts[parts.length - 1]
+  const firstInitial = parts[0][0]
+  if (!last || !firstInitial) return null
+  return `${team}|${last}|${firstInitial}`
 }
 
 export async function enrichEspnIds() {
   logger.info('Starting ESPN ID enrichment')
 
-  // Build (team, normalizedName) → espn_id map from ESPN's per-team rosters
-  const espnMap = new Map()
+  // Build two lookup maps from ESPN's per-team rosters:
+  //   exactMap:   team|normalizedFullName  → espn_id   (primary match)
+  //   initialMap: team|lastName|firstInit  → espn_id | 'AMBIGUOUS'
+  // Falling back to last+first-initial picks up rookies / suffix mismatches
+  // (Marvin Mims Jr. vs Marvin Mims, T.J. Watt vs TJ Watt) while still
+  // refusing ambiguous collisions like two J. Smith on the same team.
+  const exactMap = new Map()
+  const initialMap = new Map()
   let rosterErrors = 0
   for (const [sleeperAbbr, espnSlug] of Object.entries(ESPN_NFL_ABBR)) {
     try {
@@ -187,7 +207,13 @@ export async function enrichEspnIds() {
         for (const a of items) {
           const name = a?.displayName || a?.fullName
           if (!name || !a?.id) continue
-          espnMap.set(`${sleeperAbbr}|${normalizeNameForEspnMatch(name)}`, String(a.id))
+          const norm = normalizeNameForEspnMatch(name)
+          exactMap.set(`${sleeperAbbr}|${norm}`, String(a.id))
+          const initialKey = lastFirstInitialKey(sleeperAbbr, norm)
+          if (initialKey) {
+            if (initialMap.has(initialKey)) initialMap.set(initialKey, 'AMBIGUOUS')
+            else initialMap.set(initialKey, String(a.id))
+          }
         }
       }
     } catch (err) {
@@ -209,21 +235,45 @@ export async function enrichEspnIds() {
     return { updated: 0, unmatched: 0, total: 0, roster_errors: rosterErrors }
   }
 
-  let updated = 0
+  let updatedExact = 0
+  let updatedFuzzy = 0
   let unmatched = 0
   for (const p of (missing || [])) {
-    const key = `${p.team}|${normalizeNameForEspnMatch(p.full_name)}`
-    const espnId = espnMap.get(key)
+    const norm = normalizeNameForEspnMatch(p.full_name)
+    let espnId = exactMap.get(`${p.team}|${norm}`)
+    let matchedBy = 'exact'
+    if (!espnId) {
+      const initialKey = lastFirstInitialKey(p.team, norm)
+      if (initialKey) {
+        const fuzzy = initialMap.get(initialKey)
+        if (fuzzy && fuzzy !== 'AMBIGUOUS') {
+          espnId = fuzzy
+          matchedBy = 'fuzzy'
+        }
+      }
+    }
     if (!espnId) { unmatched++; continue }
     const { error: updateError } = await supabase
       .from('nfl_players')
       .update({ espn_id: espnId })
       .eq('id', p.id)
-    if (!updateError) updated++
+    if (!updateError) {
+      if (matchedBy === 'exact') updatedExact++
+      else updatedFuzzy++
+    }
   }
 
-  logger.info({ updated, unmatched, total: missing?.length || 0, roster_entries: espnMap.size, roster_errors: rosterErrors }, 'ESPN ID enrichment complete')
-  return { updated, unmatched, total: missing?.length || 0, roster_entries: espnMap.size, roster_errors: rosterErrors }
+  const result = {
+    updated: updatedExact + updatedFuzzy,
+    updated_exact: updatedExact,
+    updated_fuzzy: updatedFuzzy,
+    unmatched,
+    total: missing?.length || 0,
+    roster_entries: exactMap.size,
+    roster_errors: rosterErrors,
+  }
+  logger.info(result, 'ESPN ID enrichment complete')
+  return result
 }
 
 /**
