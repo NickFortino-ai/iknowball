@@ -25,7 +25,9 @@ export async function getPlayerPool(week, season, position = null) {
     }
   }
 
-  const { data, error } = await query.limit(200)
+  // Cap high enough to include all 32 DEFs (priced $2,500-$5,000,
+  // sorted last by salary DESC) alongside the ~500-player offensive pool.
+  const { data, error } = await query.limit(800)
   if (error) throw error
 
   return (data || []).map((d) => ({
