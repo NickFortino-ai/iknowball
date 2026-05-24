@@ -1569,16 +1569,18 @@ router.get('/surveys/responses', async (req, res) => {
   const tally = (key, surveyType) => {
     const counts = {}
     let sum = 0
+    let numericN = 0
     let n = 0
     for (const u of Object.values(byUser)) {
       const r = u[surveyType]?.responses?.[key]
       if (r === undefined || r === null || r === '') continue
+      n += 1
       if (typeof r === 'number' || /^[0-9]+$/.test(String(r))) {
-        sum += Number(r); n += 1
+        sum += Number(r); numericN += 1
       }
       counts[r] = (counts[r] || 0) + 1
     }
-    return { counts, mean: n ? sum / n : null, n }
+    return { counts, mean: numericN ? sum / numericN : null, n }
   }
 
   const entryQs = ENTRY_QUESTIONS.map((q) => ({ id: q.id, prompt: q.prompt, ...tally(q.id, 'entry') }))
