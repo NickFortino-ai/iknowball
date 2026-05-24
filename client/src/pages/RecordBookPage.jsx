@@ -64,6 +64,10 @@ function formatRecordValue(record) {
     case 'highest_overall_win_pct':
       return `${val}%`
     case 'biggest_underdog_hit':
+      // American odds (+750) reframed as profit-on-$10-stake so it reads
+      // the same way as biggest_parlay (risk → payout) instead of looking
+      // like a raw point value.
+      return `10 → ${Math.round(val / 10)}`
     case 'best_futures_hit':
       return val > 0 ? `+${val}` : `${val}`
     case 'biggest_parlay':
