@@ -172,12 +172,16 @@ function SalaryRow({ row, onSave, onReset }) {
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           {row.headshot_url ? (
-            <img src={row.headshot_url} alt="" className="h-7 w-7 rounded-full bg-bg-primary" />
+            <img
+              src={row.headshot_url}
+              alt=""
+              className="h-9 w-9 flex-shrink-0 rounded-full bg-bg-primary object-cover"
+            />
           ) : (
-            <div className="h-7 w-7 rounded-full bg-bg-primary" />
+            <div className="h-9 w-9 flex-shrink-0 rounded-full bg-bg-primary" />
           )}
-          <div>
-            <div className="font-medium">{row.full_name}</div>
+          <div className="min-w-0">
+            <div className="font-medium truncate">{row.full_name}</div>
             {row.injury_status && (
               <div className="text-[10px] uppercase text-incorrect">{row.injury_status}</div>
             )}

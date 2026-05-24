@@ -486,7 +486,15 @@ export async function generateSalaries(week, season) {
       // the season, so the calcWeightedFppg default of 50% on L4 was
       // too volatile — one big game spikes pricing for a month. 40/35/25
       // keeps recency-aware while protecting against single-game noise.
-      const gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season)
+      // Cold-start fallback: if the current season has no gamelog yet
+      // (preseason, very early Week 1, or a player who hasn't played yet),
+      // use the prior season's gamelog as the reference. Without this,
+      // every player floors to the position minimum during the offseason
+      // and pricing is meaningless until ~Week 3 of the real season.
+      let gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season)
+      if (!gameLog?.length) {
+        gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season - 1)
+      }
       const fppg = calcWeightedFppg(nflGameFpts, gameLog, 0, {
         recentN: 4, midN: 8, wRecent: 0.40, wMid: 0.35, wFull: 0.25,
       })
