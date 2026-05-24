@@ -479,14 +479,26 @@ export async function generateSalaries(week, season) {
   } catch { /* ignore */ }
 
   // When Sleeper projections exist for this (season, week), tighten the
-  // generated pool to (a) DEFs (rank-based, no projection needed) and
-  // (b) players Sleeper actually projects to play. Without this filter
-  // we'd generate ~970 prices including deep practice-squad guys with
-  // no meaningful chance of playing; the realistic DFS pool is ~500.
-  // Falls back to "everyone" when no projections are loaded so an admin
-  // can still generate prices in seasons/weeks Sleeper hasn't published.
-  const pricingPool = projectionMap.size > 0
-    ? (players || []).filter((p) => p.position === 'DEF' || projectionMap.has(p.id))
+  // generated pool to (a) DEFs (rank-based, no projection needed), (b)
+  // players Sleeper actually projects to play, AND (c) any player in
+  // the top SEARCH_RANK_SAFETY_NET by Sleeper ADP — that last clause is
+  // a safety net so a star can never be silently dropped from pricing
+  // if Sleeper omits them from a given week's projection set.
+  //
+  // If projection coverage drops below MIN_PROJECTIONS_FOR_TIGHTEN (a
+  // Sleeper outage / partial degradation), abandon the tighten entirely
+  // and price the full pool. The gamelog cold-start fallback inside the
+  // loop will keep producing real prices in that scenario; without this
+  // guard a partial Sleeper failure would collapse the pool to ~50
+  // players instead of producing any kind of usable slate.
+  const MIN_PROJECTIONS_FOR_TIGHTEN = 200
+  const SEARCH_RANK_SAFETY_NET = 300
+  const pricingPool = projectionMap.size >= MIN_PROJECTIONS_FOR_TIGHTEN
+    ? (players || []).filter((p) =>
+        p.position === 'DEF'
+        || projectionMap.has(p.id)
+        || (p.search_rank && p.search_rank <= SEARCH_RANK_SAFETY_NET)
+      )
     : (players || [])
   logger.info({
     total_players: players?.length || 0,
