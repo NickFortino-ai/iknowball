@@ -980,8 +980,9 @@ router.get('/fantasy/nfl-state', async (req, res) => {
 // DFS Salary Management
 router.post('/dfs/generate-salaries', async (req, res) => {
   const { week = 1, season = 2026 } = req.body
-  const result = await generateSalaries(week, season)
-  res.json(result)
+  // Run in background — too many ESPN API calls to complete in request timeout
+  res.json({ message: 'NFL salary generation started', week, season })
+  generateSalaries(week, season).catch((err) => logger.error({ err, week, season }, 'Background NFL salary generation failed'))
 })
 
 router.post('/dfs/salaries', async (req, res) => {
