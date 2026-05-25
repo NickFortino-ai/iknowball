@@ -224,7 +224,10 @@ function PlayerNotesSection({ blurbs, blurb, injuryDetail }) {
       <div className="flex items-baseline justify-between gap-2 mb-1.5">
         <div className="text-xs uppercase tracking-wider text-accent font-semibold">Player Notes</div>
         {current && periodLabel(current) && (
-          <div className="text-[10px] text-text-muted">{periodLabel(current)}</div>
+          <div className="text-[10px] text-text-muted">
+            {current.generated_by === 'espn' && <span className="mr-1.5">via ESPN</span>}
+            {periodLabel(current)}
+          </div>
         )}
       </div>
       <p className="text-sm text-text-primary leading-relaxed">{currentText}</p>

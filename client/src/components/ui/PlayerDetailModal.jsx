@@ -313,6 +313,7 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
             <p className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap">{data.blurb.content}</p>
             {data.blurb.published_at && (
               <div className="text-[10px] text-text-muted mt-1.5">
+                {data.blurb.generated_by === 'espn' && <span className="mr-1.5">via ESPN</span>}
                 {new Date(data.blurb.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </div>
             )}

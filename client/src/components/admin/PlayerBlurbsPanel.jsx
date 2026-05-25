@@ -432,27 +432,38 @@ export default function PlayerBlurbsPanel() {
                       <div className="text-xs text-text-muted">No history</div>
                     ) : (
                       <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {history.map((h) => (
-                          <div key={h.id} className={`rounded-lg border p-2 text-xs ${
-                            h.status === 'published' ? 'border-correct/50'
-                            : h.status === 'draft' ? 'border-yellow-500/50'
-                            : 'border-text-primary/15 opacity-60'
-                          }`}>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className={`font-bold ${
-                                h.status === 'published' ? 'text-correct' : h.status === 'draft' ? 'text-yellow-500' : 'text-text-muted'
-                              }`}>{h.status}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-text-muted">
-                                  {h.generated_by === 'ai' ? 'AI' : 'Manual'} · W{h.week || '?'}
-                                  {h.published_at && ` · ${new Date(h.published_at).toLocaleDateString()}`}
-                                </span>
-                                <button onClick={() => handleDelete(h.id)} className="text-incorrect hover:underline">Delete</button>
+                        {history.map((h) => {
+                          // Border color = source (manual / ai / espn). Status
+                          // is conveyed via the colored status label + opacity
+                          // dimming for archived rows.
+                          const sourceBorder = h.generated_by === 'ai'
+                            ? 'border-purple-500/60'
+                            : h.generated_by === 'espn'
+                              ? 'border-blue-500/60'
+                              : 'border-accent/60'
+                          const sourceLabel = h.generated_by === 'ai'
+                            ? 'AI'
+                            : h.generated_by === 'espn'
+                              ? 'ESPN'
+                              : 'Manual'
+                          return (
+                            <div key={h.id} className={`rounded-lg border p-2 text-xs ${sourceBorder} ${h.status === 'archived' ? 'opacity-60' : ''}`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className={`font-bold ${
+                                  h.status === 'published' ? 'text-correct' : h.status === 'draft' ? 'text-yellow-500' : 'text-text-muted'
+                                }`}>{h.status}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-text-muted">
+                                    {sourceLabel} · W{h.week || '?'}
+                                    {h.published_at && ` · ${new Date(h.published_at).toLocaleDateString()}`}
+                                  </span>
+                                  <button onClick={() => handleDelete(h.id)} className="text-incorrect hover:underline">Delete</button>
+                                </div>
                               </div>
+                              <p className="text-text-primary">{h.content}</p>
                             </div>
-                            <p className="text-text-primary">{h.content}</p>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>

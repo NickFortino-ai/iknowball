@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchAll } from '../utils/fetchAll.js'
 import { ODDS_TO_ESPN, INJURY_SPORTS, BASKETBALL_SPORTS } from '../config/espnTeamMap.js'
+import { writeEspnBlurb } from '../services/playerBlurbService.js'
 
 const SEVERITY_ORDER = { Out: 0, Doubtful: 1, Questionable: 2, Probable: 3, 'Day-To-Day': 4 }
 const NOTABLE_STATUSES = new Set(['Out', 'Doubtful', 'Questionable'])
@@ -189,12 +190,20 @@ function extractBasketballData(data) {
 
 function extractFootballInjuries(data) {
   const injuredMap = new Map()
+  const activeNames = new Set()
 
   for (const chart of data.depthchart || []) {
     if (!chart?.positions) continue
     for (const [, pos] of Object.entries(chart.positions)) {
       const posLabel = pos.position?.abbreviation || ''
       for (const athlete of pos.athletes || []) {
+        // Track every athlete that appears on this team's depth chart.
+        // Cleared-to-play detection requires both signals: "ESPN dropped
+        // them from the injury list" AND "they're still on the depth chart"
+        // — the second guard is what prevents transient API drops from
+        // firing a false 'Cleared to play.' update.
+        if (athlete.displayName) activeNames.add(athlete.displayName)
+
         if (!athlete.injuries?.length) continue
         if (injuredMap.has(athlete.id)) continue
         const inj = athlete.injuries[0]
@@ -213,7 +222,7 @@ function extractFootballInjuries(data) {
     (a, b) => (SEVERITY_ORDER[a.status] ?? 99) - (SEVERITY_ORDER[b.status] ?? 99)
   )
 
-  return { starters: [], injuries }
+  return { starters: [], injuries, activeNames }
 }
 
 async function getUpcomingTeams(sportKey) {
@@ -254,6 +263,11 @@ export async function syncInjuries() {
   logger.info('Starting injury sync')
   let totalSynced = 0
 
+  // Accumulated across all NFL teams in this sync. Used by the cleared-to-play
+  // branch below: a player is treated as cleared only if they're absent from
+  // ESPN's injury list AND present on a current depth chart.
+  const nflActiveNames = new Set()
+
   for (const [sportKey, sportPath] of Object.entries(INJURY_SPORTS)) {
     const teamNames = await getUpcomingTeams(sportKey)
     if (!teamNames.length) {
@@ -264,6 +278,7 @@ export async function syncInjuries() {
     const isBasketball = BASKETBALL_SPORTS.has(sportKey)
     const isWnba = sportKey === 'basketball_wnba'
     const isHockey = sportKey === 'icehockey_nhl'
+    const isNfl = sportKey === 'americanfootball_nfl'
     const sportMap = ODDS_TO_ESPN[sportKey] || {}
 
     // WNBA depth chart is empty server-side — use the league-wide injuries
@@ -299,9 +314,16 @@ export async function syncInjuries() {
           injuries = wnbaInjuriesByTeamId.get(String(espnId)) || []
         } else {
           const data = await fetchDepthChart(sportPath, espnId)
-          ;({ starters, injuries } = isBasketball
-            ? extractBasketballData(data)
-            : extractFootballInjuries(data))
+          if (isBasketball) {
+            ;({ starters, injuries } = extractBasketballData(data))
+          } else {
+            const extracted = extractFootballInjuries(data)
+            starters = extracted.starters
+            injuries = extracted.injuries
+            if (isNfl && extracted.activeNames) {
+              for (const n of extracted.activeNames) nflActiveNames.add(n)
+            }
+          }
         }
 
         const notableCount = injuries.filter((i) => NOTABLE_STATUSES.has(i.status)).length
@@ -391,13 +413,24 @@ export async function syncInjuries() {
   // Patch nfl_players.injury_status from team_intel so the fantasy UI
   // gets 10-minute injury freshness on game days. Without this loop the
   // fantasy display would only refresh once a day via syncPlayers.
+  //
+  // Also fans ESPN's rich injury prose (shortComment) into player_blurbs as
+  // generated_by='espn' rows, so the player detail modal shows the same
+  // narrative the game info modal does — no admin intervention required.
+  //
+  // Cleared-to-play detection: a player who was previously injured per our
+  // DB, no longer appears in ESPN's injury array, AND still appears on a
+  // current depth chart is treated as cleared. We clear injury_status and
+  // write a "Cleared to play." espn blurb. The depth-chart cross-reference
+  // (nflActiveNames) is what prevents transient ESPN drops from firing a
+  // false positive — if ESPN's API hiccups the player is missing from both.
   try {
     const { data: nflIntel } = await supabase
       .from('team_intel')
       .select('injuries')
       .eq('sport_key', 'americanfootball_nfl')
 
-    // Build normalized-name → { status, body_part } map
+    // Build normalized-name → { status, body_part, detail } map
     function normalizeName(name) {
       if (!name) return ''
       return String(name)
@@ -415,10 +448,14 @@ export async function syncInjuries() {
           espnByName[normalizeName(inj.name)] = {
             status: inj.status,
             body_part: inj.detail || null,
+            detail: inj.detail || null,
           }
         }
       }
     }
+
+    const activeNamesNorm = new Set()
+    for (const n of nflActiveNames) activeNamesNorm.add(normalizeName(n))
 
     if (Object.keys(espnByName).length) {
       // Pull all NFL players (only ones still on a team) so we can
@@ -434,11 +471,13 @@ export async function syncInjuries() {
 
       let updated = 0
       let cleared = 0
+      let blurbsWritten = 0
+      let clearedBlurbs = 0
       for (const p of nflPlayers || []) {
         const norm = normalizeName(p.full_name)
         const espn = espnByName[norm]
         if (espn) {
-          // ESPN reports an active injury — patch if different
+          // ESPN reports an active injury — patch status/body_part if different
           if (espn.status !== p.injury_status || espn.body_part !== p.injury_body_part) {
             await supabase
               .from('nfl_players')
@@ -446,16 +485,43 @@ export async function syncInjuries() {
               .eq('id', p.id)
             updated++
           }
+          // Fan the rich prose into player_blurbs (idempotent on content).
+          if (espn.detail) {
+            const res = await writeEspnBlurb({
+              playerId: p.id,
+              sport: 'nfl',
+              content: espn.detail,
+            })
+            if (res.action === 'inserted') blurbsWritten++
+          }
+        } else if (p.injury_status && activeNamesNorm.has(norm)) {
+          // Cleared-to-play: was injured, no longer in ESPN injuries,
+          // still on the depth chart. Safe to clear and announce.
+          await supabase
+            .from('nfl_players')
+            .update({ injury_status: null, injury_body_part: null })
+            .eq('id', p.id)
+          cleared++
+          const res = await writeEspnBlurb({
+            playerId: p.id,
+            sport: 'nfl',
+            content: 'Cleared to play.',
+          })
+          if (res.action === 'inserted') clearedBlurbs++
         }
-        // We DO NOT auto-clear stale injury statuses here. ESPN's depth
-        // chart only includes players currently flagged; if a player
-        // recovers, their entry disappears from the chart, but Sleeper
-        // (the nightly source-of-truth) will clear it the next morning.
-        // Auto-clearing here would risk false negatives — we'd rather
-        // wait one day to clear than risk flipping a 'Q' to clear and
-        // back to 'Q' as ESPN momentarily drops the entry.
       }
-      logger.info({ updated, cleared, espnCount: Object.keys(espnByName).length, nflPlayersCount: nflPlayers?.length || 0 }, 'NFL injury statuses patched from ESPN')
+      logger.info(
+        {
+          updated,
+          cleared,
+          blurbsWritten,
+          clearedBlurbs,
+          espnCount: Object.keys(espnByName).length,
+          activeDepthChartCount: activeNamesNorm.size,
+          nflPlayersCount: nflPlayers?.length || 0,
+        },
+        'NFL injury statuses patched from ESPN'
+      )
     }
   } catch (err) {
     logger.error({ err }, 'Failed to patch nfl_players injury statuses')

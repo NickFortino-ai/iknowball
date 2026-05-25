@@ -451,7 +451,7 @@ export async function publishAllDrafts() {
 export async function getPublishedBlurb(playerId) {
   const { data } = await supabase
     .from('player_blurbs')
-    .select('id, content, season, week, published_at')
+    .select('id, content, season, week, published_at, generated_by')
     .eq('player_id', playerId)
     .eq('status', 'published')
     .order('published_at', { ascending: false })
@@ -468,7 +468,7 @@ export async function getPublishedBlurb(playerId) {
 export async function getPublishedBlurbsForPlayer(playerId, limit = 20, sport = null) {
   let q = supabase
     .from('player_blurbs')
-    .select('id, content, season, week, published_at, sport')
+    .select('id, content, season, week, published_at, sport, generated_by')
     .eq('player_id', playerId)
     .eq('status', 'published')
     .order('published_at', { ascending: false })
@@ -488,4 +488,61 @@ export async function getPlayerBlurbHistory(playerId) {
     .eq('player_id', playerId)
     .order('created_at', { ascending: false })
   return data || []
+}
+
+/**
+ * Upsert an ESPN-sourced blurb. Auto-published, no admin moderation. If the
+ * latest 'espn' blurb for (player_id, sport) is already the same content,
+ * skips. Otherwise archives the prior 'espn' published row and inserts a new
+ * one. Does NOT touch manual/AI blurbs — those win on display via newest-wins
+ * only if their published_at is more recent.
+ *
+ * Returns { action: 'inserted' | 'skipped' }.
+ */
+export async function writeEspnBlurb({ playerId, sport, content, season, week }) {
+  if (!playerId || !sport || !content) return { action: 'skipped' }
+  const trimmed = String(content).trim()
+  if (!trimmed) return { action: 'skipped' }
+
+  const { data: latest } = await supabase
+    .from('player_blurbs')
+    .select('id, content, status')
+    .eq('player_id', playerId)
+    .eq('sport', sport)
+    .eq('generated_by', 'espn')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (latest && latest.content === trimmed && latest.status === 'published') {
+    return { action: 'skipped' }
+  }
+
+  // Archive any prior published ESPN row so history stays tidy.
+  await supabase
+    .from('player_blurbs')
+    .update({ status: 'archived', updated_at: new Date().toISOString() })
+    .eq('player_id', playerId)
+    .eq('sport', sport)
+    .eq('generated_by', 'espn')
+    .eq('status', 'published')
+
+  const { error } = await supabase
+    .from('player_blurbs')
+    .insert({
+      player_id: playerId,
+      sport,
+      content: trimmed,
+      status: 'published',
+      published_at: new Date().toISOString(),
+      season: season ?? null,
+      week: week ?? null,
+      generated_by: 'espn',
+    })
+
+  if (error) {
+    logger.error({ error, playerId, sport }, 'Failed to insert ESPN blurb')
+    return { action: 'skipped' }
+  }
+  return { action: 'inserted' }
 }
