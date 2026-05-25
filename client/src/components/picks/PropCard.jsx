@@ -84,7 +84,11 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
             </div>
             {prop.games.status === 'live' && prop.games.period && (
               <div className="text-[10px] text-accent">
-                Q{prop.games.period} {prop.games.clock}
+                {/* NBA/NFL/NHL send a numeric period — prefix Q. MLB sends
+                    a pre-formatted string like "Bot 4th" — pass through. */}
+                {/^[0-9]+$/.test(String(prop.games.period))
+                  ? `Q${prop.games.period}`
+                  : prop.games.period} {prop.games.clock}
               </div>
             )}
             {prop.games.status === 'final' && (
