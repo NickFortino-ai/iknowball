@@ -125,7 +125,7 @@ const createLeagueSchema = z.object({
     faab_starting_budget: z.number().int().min(1).max(10000).optional(),
     trade_review: z.enum(['commissioner', 'league_vote', 'none']).optional(),
     salary_cap: z.number().int().min(10000).max(200000).optional(),
-    season_type: z.enum(['full_season', 'single_week']).optional(),
+    season_type: z.enum(['full_season', 'single_week', 'custom_range']).optional(),
     champion_metric: z.enum(['total_points', 'most_wins']).optional(),
     single_week: z.number().int().min(1).max(18).optional(),
     playoff_teams: z.number().int().optional(),
