@@ -186,6 +186,35 @@ export function useResetDFSSalary() {
   })
 }
 
+export function useAdminWnbaDfsSalaries({ date, season, position = 'ALL', search = '' }) {
+  return useQuery({
+    queryKey: ['admin', 'wnba-dfs-salaries', date, season, position, search],
+    queryFn: () => {
+      const params = new URLSearchParams({ date, season: String(season), position })
+      if (search) params.set('search', search)
+      return api.get(`/admin/wnba-dfs/salaries?${params.toString()}`)
+    },
+    enabled: !!date && Number.isInteger(season),
+    staleTime: 30_000,
+  })
+}
+
+export function useUpdateWnbaDfsSalary() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, salary }) => api.patch(`/admin/wnba-dfs/salaries/${id}`, { salary }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'wnba-dfs-salaries'] }),
+  })
+}
+
+export function useResetWnbaDfsSalary() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }) => api.post(`/admin/wnba-dfs/salaries/${id}/reset`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'wnba-dfs-salaries'] }),
+  })
+}
+
 export function useRecalculateRecords() {
   const queryClient = useQueryClient()
   return useMutation({
