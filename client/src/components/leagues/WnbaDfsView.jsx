@@ -175,7 +175,7 @@ function LiveView({ league, date: leagueDate }) {
 
       {/* Pre-game note */}
       {!any_live && !all_final && first_tipoff && viewDate === today && (
-        <div className="rounded-xl border border-text-primary/10 bg-bg-primary p-4 mb-4 text-center">
+        <div className="rounded-xl border border-text-primary/10 bg-bg-primary/20 backdrop-blur-sm p-4 mb-4 text-center">
           <div className="text-sm text-text-secondary">First games tip off at <span className="text-text-primary font-semibold">{formatTipoff(first_tipoff)}</span></div>
         </div>
       )}
