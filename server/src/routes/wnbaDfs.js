@@ -91,7 +91,7 @@ router.post('/roster', async (req, res) => {
   }
 
   const settings = await getFantasySettings(league_id)
-  const salaryCap = settings.salary_cap || 60000
+  const salaryCap = settings?.salary_cap || 60000
 
   const data = await saveWNBADFSRoster(league_id, req.user.id, date, season || 2026, slots || [], salaryCap)
   res.json(data)
