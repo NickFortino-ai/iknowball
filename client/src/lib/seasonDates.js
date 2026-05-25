@@ -51,6 +51,81 @@ export function isSeasonUnderway(sportKey) {
   return new Date(start) <= now && now <= new Date(end)
 }
 
+// Approximate playoff/postseason end dates by sport. These are when the
+// championship round wraps up (NBA Finals, World Series, Stanley Cup, etc.)
+// — updated yearly. Returned in the same year-rollover style as
+// getSeasonEndDate: if the date is already past, roll forward a year so
+// "this year's playoffs" always points to the next live postseason.
+export function getPlayoffEndDate(sportKey) {
+  const year = new Date().getFullYear()
+  const dates = {
+    basketball_nba: `${year}-06-22`,
+    basketball_wnba: `${year}-10-20`,
+    baseball_mlb: `${year}-11-05`,
+    icehockey_nhl: `${year}-06-18`,
+    americanfootball_nfl: `${year + 1}-02-09`,
+    americanfootball_ufl: `${year}-06-15`,
+  }
+  const endDate = dates[sportKey]
+  if (!endDate) return null
+  if (new Date(endDate) < new Date()) {
+    const d = new Date(endDate)
+    d.setFullYear(d.getFullYear() + 1)
+    return d.toISOString().split('T')[0]
+  }
+  return endDate
+}
+
+// True only between the regular-season end and the playoff end — i.e.,
+// playoffs are happening right now. During the regular season returns false;
+// after the championship round returns false.
+export function arePlayoffsUnderway(sportKey) {
+  if (!sportKey || sportKey === 'all') return false
+  if (isSeasonUnderway(sportKey)) return false
+  const playoffEnd = getPlayoffEndDate(sportKey)
+  if (!playoffEnd) return false
+  const now = new Date()
+  return now <= new Date(playoffEnd)
+}
+
+// End date used by Full Season DFS/contest leagues. During the regular
+// season this is the regular-season end (consistent with the legacy
+// behavior). During playoffs we extend through the championship round so
+// "Full Season" picked in mid-May means "through the Finals", not "ended
+// last month". Falls back to regular-season end for sports without a
+// configured playoff date.
+export function getFullSeasonLeagueEndDate(sportKey) {
+  if (arePlayoffsUnderway(sportKey)) {
+    const playoffEnd = getPlayoffEndDate(sportKey)
+    if (playoffEnd) return playoffEnd
+  }
+  return getSeasonEndDate(sportKey)
+}
+
+// Sport-specific copy for the playoff button label and helper text.
+// Used when arePlayoffsUnderway returns true, so the Full Season option
+// reads as "Through the Finals" / "Runs through the NBA Finals." rather
+// than the generic regular-season language.
+export function getPlayoffsButtonLabel(sportKey) {
+  return ({
+    basketball_nba: 'Through the Finals',
+    basketball_wnba: 'Through the Finals',
+    baseball_mlb: 'Through the World Series',
+    icehockey_nhl: 'Through the Cup Finals',
+    americanfootball_nfl: 'Through the Super Bowl',
+  })[sportKey] || 'Through Postseason'
+}
+
+export function getPlayoffsHelperText(sportKey) {
+  return ({
+    basketball_nba: 'Runs through the NBA Finals.',
+    basketball_wnba: 'Runs through the WNBA Finals.',
+    baseball_mlb: 'Runs through the World Series.',
+    icehockey_nhl: 'Runs through the Stanley Cup Finals.',
+    americanfootball_nfl: 'Runs through the Super Bowl.',
+  })[sportKey] || 'Runs through end of postseason.'
+}
+
 /**
  * End of the current NFL week — used by single-week contest leagues
  * (sacks / ints / tackles / receptions / td_pass). Returns the upcoming

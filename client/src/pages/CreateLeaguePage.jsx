@@ -7,7 +7,7 @@ import { getBackdropUrl } from '../lib/backdropUrl'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
-import { getSeasonEndDate, isSeasonUnderway, getNflWeekEnd } from '../lib/seasonDates'
+import { getSeasonEndDate, isSeasonUnderway, getNflWeekEnd, arePlayoffsUnderway, getFullSeasonLeagueEndDate, getPlayoffsButtonLabel, getPlayoffsHelperText } from '../lib/seasonDates'
 
 // Winner-only tiered bonus (scaledWinnerBonus on server) — shared across
 // NBA DFS, MLB DFS, HR Derby, TD Pass, Bracket, and Survivor.
@@ -852,10 +852,12 @@ export default function CreateLeaguePage() {
           : format === 'survivor' ? getSeasonEndDate(sport)
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : endsAt === 'end_of_season' ? getSeasonEndDate((format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : format === 'wnba_three_point' ? 'basketball_wnba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : sport)
-          // DFS and fantasy salary-cap leagues with full_season run through
-          // the regular season only — auto-set ends_at to the regular-season end
+          // DFS and contest leagues with full_season auto-set ends_at to the
+          // regular-season end. During NBA/MLB/etc. playoffs, extend through
+          // the championship round so a mid-May "Full Season" pick means
+          // "through the Finals", not "ended last month".
           : (isFantasyFormat && seasonType === 'full_season')
-            ? getSeasonEndDate(
+            ? getFullSeasonLeagueEndDate(
                 (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba'
                 : format === 'wnba_three_point' ? 'basketball_wnba'
                 : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb'
@@ -1775,7 +1777,14 @@ export default function CreateLeaguePage() {
               <label className="text-xs text-text-muted block mb-1">League Length</label>
               <div className="flex gap-2">
                 {[
-                  { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
+                  {
+                    value: 'full_season',
+                    label: arePlayoffsUnderway('basketball_nba')
+                      ? getPlayoffsButtonLabel('basketball_nba')
+                      : isSeasonUnderway('basketball_nba')
+                        ? 'Remainder of Regular Season'
+                        : 'Full Season',
+                  },
                   { value: 'custom_range', label: 'Select Date' },
                 ].map((opt) => (
                   <button
@@ -1802,7 +1811,9 @@ export default function CreateLeaguePage() {
               <p className="text-xs text-text-muted mt-1.5">
                 {seasonType === 'custom_range'
                   ? 'Pick the date your league wraps up.'
-                  : 'Runs through end of NBA regular season.'}
+                  : arePlayoffsUnderway('basketball_nba')
+                    ? getPlayoffsHelperText('basketball_nba')
+                    : 'Runs through end of NBA regular season.'}
               </p>
             </div>
             {seasonType === 'full_season' && (
@@ -1912,26 +1923,35 @@ export default function CreateLeaguePage() {
                 {(format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') ? 'League Length' : 'Season Type'}
               </label>
               <div className="flex gap-2">
-                {((format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass')
-                  ? (
-                      // NFL weekly contests get a "This Week Only" middle option;
-                      // daily contests (hr_derby / strikeouts / 3-point) don't.
-                      (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass')
-                        ? [
-                            { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
-                            { value: 'single_week', label: 'This Week Only' },
-                            { value: 'custom_range', label: 'Select Date' },
-                          ]
-                        : [
-                            { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
-                            { value: 'custom_range', label: 'Select Date' },
-                          ]
-                    )
-                  : [
-                      { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
-                      { value: 'single_week', label: 'Single Night' },
+                {(() => {
+                  // Label morphs across three states: preseason ("Full Season"),
+                  // regular season ("Remainder of Regular Season"), and playoffs
+                  // ("Through the Finals" / "Through the World Series" / etc.)
+                  const fullSeasonLabel = arePlayoffsUnderway(sport)
+                    ? getPlayoffsButtonLabel(sport)
+                    : isSeasonUnderway(sport)
+                      ? 'Remainder of Regular Season'
+                      : 'Full Season'
+                  if (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') {
+                    // NFL weekly contests get a "This Week Only" middle option;
+                    // daily contests (hr_derby / strikeouts / 3-point) don't.
+                    if (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') {
+                      return [
+                        { value: 'full_season', label: fullSeasonLabel },
+                        { value: 'single_week', label: 'This Week Only' },
+                        { value: 'custom_range', label: 'Select Date' },
+                      ]
+                    }
+                    return [
+                      { value: 'full_season', label: fullSeasonLabel },
+                      { value: 'custom_range', label: 'Select Date' },
                     ]
-                ).map((opt) => (
+                  }
+                  return [
+                    { value: 'full_season', label: fullSeasonLabel },
+                    { value: 'single_week', label: 'Single Night' },
+                  ]
+                })().map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -1978,21 +1998,34 @@ export default function CreateLeaguePage() {
                 />
               )}
               <p className="text-xs text-text-muted mt-1.5">
-                {(format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range'
-                  ? 'Pick a start date (optional) and the date your league wraps up.'
-                  : (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point') && seasonType === 'custom_range'
-                  ? 'Pick the date your league wraps up.'
-                  : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'single_week'
-                    ? 'Runs through this week’s Monday Night Football.'
-                    : seasonType === 'full_season'
-                      ? format === 'three_point'
-                        ? 'Runs through end of NBA regular season.'
-                        : format === 'wnba_three_point'
-                          ? 'Runs through end of WNBA regular season.'
-                          : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass')
-                            ? 'Runs through end of NFL regular season.'
-                            : 'Runs through end of MLB regular season.'
-                      : 'One night only — highest score wins.'}
+                {(() => {
+                  if ((format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range') {
+                    return 'Pick a start date (optional) and the date your league wraps up.'
+                  }
+                  if ((format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point') && seasonType === 'custom_range') {
+                    return 'Pick the date your league wraps up.'
+                  }
+                  if ((format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'single_week') {
+                    return 'Runs through this week’s Monday Night Football.'
+                  }
+                  if (seasonType === 'full_season') {
+                    // Map format → implied sport so playoff-state copy stays
+                    // accurate. NFL contests are NFL-implied, NBA 3-point is
+                    // NBA-implied, etc.
+                    const impliedSport = format === 'three_point' ? 'basketball_nba'
+                      : format === 'wnba_three_point' ? 'basketball_wnba'
+                      : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') ? 'americanfootball_nfl'
+                      : 'baseball_mlb' // mlb_dfs / hr_derby / strikeouts
+                    if (arePlayoffsUnderway(impliedSport)) {
+                      return getPlayoffsHelperText(impliedSport)
+                    }
+                    if (impliedSport === 'basketball_nba') return 'Runs through end of NBA regular season.'
+                    if (impliedSport === 'basketball_wnba') return 'Runs through end of WNBA regular season.'
+                    if (impliedSport === 'americanfootball_nfl') return 'Runs through end of NFL regular season.'
+                    return 'Runs through end of MLB regular season.'
+                  }
+                  return 'One night only — highest score wins.'
+                })()}
               </p>
             </div>
             {(format === 'hr_derby' || format === 'three_point' || format === 'wnba_three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') && (() => {
