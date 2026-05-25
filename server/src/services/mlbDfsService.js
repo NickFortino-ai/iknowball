@@ -533,6 +533,35 @@ export async function generateMLBSalaries(date, season = 2026) {
     }
   }
 
+  // Preserve any lineup_status / batting_order that the 5-minute
+  // syncMLBLineups job has already populated for today. Without this
+  // snapshot+restore, every same-day regen (which fires whenever ESPN
+  // nudges a game time even by a few minutes) wipes the lineup data
+  // and users see no green check marks until the next lineup sync
+  // pass repopulates them.
+  const { data: existingLineupData } = await supabase
+    .from('mlb_dfs_salaries')
+    .select('espn_player_id, lineup_status, batting_order')
+    .eq('game_date', date)
+    .eq('season', season)
+  const lineupMap = new Map()
+  for (const row of existingLineupData || []) {
+    if (row.lineup_status != null || row.batting_order != null) {
+      lineupMap.set(row.espn_player_id, {
+        lineup_status: row.lineup_status,
+        batting_order: row.batting_order,
+      })
+    }
+  }
+  // Apply preserved lineup status onto the freshly generated rows
+  for (const s of salaries) {
+    const preserved = lineupMap.get(s.espn_player_id)
+    if (preserved) {
+      s.lineup_status = preserved.lineup_status
+      s.batting_order = preserved.batting_order
+    }
+  }
+
   // Clear stale entries — see scoreNBADFS for rationale.
   if (salaries.length > 0) {
     const { error: delErr } = await supabase

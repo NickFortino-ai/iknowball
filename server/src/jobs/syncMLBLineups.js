@@ -1,17 +1,8 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { todaySportsDay, tomorrowSportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
-
-function todayET() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-}
-
-function tomorrowET() {
-  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-  d.setDate(d.getDate() + 1)
-  return d.toISOString().split('T')[0]
-}
 
 /**
  * Fetch probable pitchers and confirmed lineups from ESPN for a given date.
@@ -117,9 +108,10 @@ async function fetchLineupsForDate(date) {
  * - Non-starting pitchers marked as NS
  */
 export async function syncMLBLineups() {
-  const today = todayET()
-  const tomorrow = tomorrowET()
+  const today = todaySportsDay()
+  const tomorrow = tomorrowSportsDay()
   let totalUpdated = 0
+  const perDate = {}
 
   for (const date of [today, tomorrow]) {
     // Check if we have salaries for this date
@@ -128,9 +120,19 @@ export async function syncMLBLineups() {
       .select('id', { count: 'exact', head: true })
       .eq('game_date', date)
 
-    if (!count) continue
+    if (!count) {
+      perDate[date] = { skipped: 'no salaries for date' }
+      continue
+    }
 
     const { teamProbables, confirmedBatters, lineupConfirmedTeams } = await fetchLineupsForDate(date)
+    perDate[date] = {
+      salary_rows: count,
+      probables: teamProbables.size,
+      confirmed_batters: confirmedBatters.size,
+      lineup_confirmed_teams: lineupConfirmedTeams.size,
+      updates: 0,
+    }
 
     // Update pitcher lineup_status based on probables
     if (teamProbables.size > 0) {
@@ -154,6 +156,7 @@ export async function syncMLBLineups() {
             .update({ lineup_status: newStatus })
             .eq('id', p.id)
           totalUpdated++
+          if (perDate[date]) perDate[date].updates++
         }
       }
     }
@@ -177,6 +180,7 @@ export async function syncMLBLineups() {
               .update({ lineup_status: 'confirmed', batting_order: order })
               .eq('id', b.id)
             totalUpdated++
+          if (perDate[date]) perDate[date].updates++
           }
         } else if (lineupConfirmedTeams.has(b.team)) {
           // Team's lineup is out and this player isn't in it — flag NS so the
@@ -187,13 +191,15 @@ export async function syncMLBLineups() {
               .update({ lineup_status: 'not_starting', batting_order: null })
               .eq('id', b.id)
             totalUpdated++
+          if (perDate[date]) perDate[date].updates++
           }
         }
       }
     }
   }
 
-  if (totalUpdated > 0) {
-    logger.info({ totalUpdated }, 'MLB lineup sync complete')
-  }
+  // Always log so a "no green checks today" investigation can verify the
+  // cron actually ran and see what ESPN returned, instead of trying to
+  // distinguish "ran but found nothing" from "didn't run at all".
+  logger.info({ totalUpdated, perDate }, 'MLB lineup sync complete')
 }
