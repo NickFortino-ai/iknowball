@@ -1329,21 +1329,34 @@ router.get('/season-dates', requireAuth, requireAdmin, async (req, res) => {
 })
 
 router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
-  const { sport_key, season_year, regular_season_ends_at } = req.body
+  const { sport_key, season_year, regular_season_ends_at, playoff_ends_at } = req.body
   if (!sport_key || !season_year || !regular_season_ends_at) {
     return res.status(400).json({ error: 'sport_key, season_year, and regular_season_ends_at are required' })
   }
 
   const { data, error } = await supabase
     .from('season_dates')
-    .upsert({ sport_key, season_year: Number(season_year), regular_season_ends_at, updated_at: new Date().toISOString() },
-      { onConflict: 'sport_key,season_year' })
+    .upsert({
+      sport_key,
+      season_year: Number(season_year),
+      regular_season_ends_at,
+      playoff_ends_at: playoff_ends_at || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'sport_key,season_year' })
     .select()
     .single()
 
   if (error) return res.status(500).json({ error: error.message })
 
-  // Clamp full_season leagues in this sport that have ends_at past the regular season end
+  // Clamp full_season leagues in this sport. Two modes:
+  // - playoff_ends_at not set: leagues past regular_season_ends_at get
+  //   clamped to regular_season_ends_at (legacy behavior).
+  // - playoff_ends_at set: only leagues past playoff_ends_at get clamped,
+  //   to playoff_ends_at. Leagues ending between regular-season-end and
+  //   playoff-end are left alone since we can't tell if they were meant
+  //   to be regular-season-bound (mis-set) or playoff-extended (correct).
+  //   Admin owns that decision.
+  const clampTarget = playoff_ends_at || regular_season_ends_at
   const EXCLUDED_FORMATS = ['fantasy', 'squares', 'bracket', 'survivor']
   const { data: leagues, error: leagueErr } = await supabase
     .from('leagues')
@@ -1351,7 +1364,7 @@ router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
     .eq('sport', sport_key)
     .eq('duration', 'full_season')
     .neq('status', 'completed')
-    .gt('ends_at', regular_season_ends_at)
+    .gt('ends_at', clampTarget)
 
   if (!leagueErr && leagues?.length) {
     let clamped = 0
@@ -1368,11 +1381,11 @@ router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
       }
       await supabase
         .from('leagues')
-        .update({ ends_at: regular_season_ends_at, updated_at: new Date().toISOString() })
+        .update({ ends_at: clampTarget, updated_at: new Date().toISOString() })
         .eq('id', league.id)
       clamped++
     }
-    logger.info({ sportKey: sport_key, seasonYear: season_year, clamped, total: leagues.length }, 'Clamped full_season league end dates to regular season end')
+    logger.info({ sportKey: sport_key, seasonYear: season_year, clamped, total: leagues.length, clampTarget, mode: playoff_ends_at ? 'playoff' : 'regular' }, 'Clamped full_season league end dates')
   }
 
   res.json(data)

@@ -26,14 +26,16 @@ export default function SeasonDatesPanel() {
   const [sportKey, setSportKey] = useState('')
   const [seasonYear, setSeasonYear] = useState(new Date().getFullYear())
   const [endsAt, setEndsAt] = useState('')
+  const [playoffEndsAt, setPlayoffEndsAt] = useState('')
 
   const saveMutation = useMutation({
     mutationFn: (body) => api.post('/admin/season-dates', body),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['admin', 'season-dates'] })
-      toast('Season end date saved — full_season leagues clamped', 'success')
+      toast('Season dates saved — full_season leagues clamped', 'success')
       setSportKey('')
       setEndsAt('')
+      setPlayoffEndsAt('')
     },
     onError: (err) => toast(err.message || 'Failed to save', 'error'),
   })
@@ -48,13 +50,14 @@ export default function SeasonDatesPanel() {
 
   function handleSave() {
     if (!sportKey || !endsAt) {
-      toast('Select a sport and enter an end date', 'error')
+      toast('Select a sport and enter a regular season end date', 'error')
       return
     }
     saveMutation.mutate({
       sport_key: sportKey,
       season_year: Number(seasonYear),
       regular_season_ends_at: new Date(endsAt).toISOString(),
+      playoff_ends_at: playoffEndsAt ? new Date(playoffEndsAt).toISOString() : null,
     })
   }
 
@@ -62,13 +65,13 @@ export default function SeasonDatesPanel() {
 
   return (
     <div>
-      <h2 className="font-display text-xl mb-4">Regular Season End Dates</h2>
+      <h2 className="font-display text-xl mb-4">Season End Dates</h2>
       <p className="text-sm text-text-muted mb-6">
-        Set the regular season end date for a sport. All full-season leagues (Pick'em, DFS, Salary Cap, HR Derby, TD Pass) in that sport will have their end dates clamped so they complete and award points on time.
+        Set the regular season and (optionally) postseason end dates for a sport. Full-season leagues (Pick'em, DFS, Salary Cap, HR Derby, TD Pass) get clamped to the playoff end if set, otherwise to the regular season end — so they complete and award points on time.
       </p>
 
       <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6">
-        <div className="grid sm:grid-cols-4 gap-3 mb-3">
+        <div className="grid sm:grid-cols-5 gap-3 mb-3">
           <div>
             <label className="text-xs text-text-muted mb-1 block">Sport</label>
             <select
@@ -92,11 +95,20 @@ export default function SeasonDatesPanel() {
             />
           </div>
           <div>
-            <label className="text-xs text-text-muted mb-1 block">Regular Season End Date</label>
+            <label className="text-xs text-text-muted mb-1 block">Regular Season End</label>
             <input
               type="datetime-local"
               value={endsAt}
               onChange={(e) => setEndsAt(e.target.value)}
+              className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-text-muted mb-1 block">Playoff End (optional)</label>
+            <input
+              type="datetime-local"
+              value={playoffEndsAt}
+              onChange={(e) => setPlayoffEndsAt(e.target.value)}
               className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
             />
           </div>
@@ -125,9 +137,16 @@ export default function SeasonDatesPanel() {
                 <span className="text-text-muted text-sm ml-2">{sd.season_year}</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-text-secondary">
-                  Ends {new Date(sd.regular_season_ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
-                </span>
+                <div className="text-right">
+                  <div className="text-sm text-text-secondary">
+                    Reg {new Date(sd.regular_season_ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                  {sd.playoff_ends_at && (
+                    <div className="text-xs text-text-muted">
+                      Playoffs {new Date(sd.playoff_ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={() => deleteMutation.mutate(sd.id)}
                   className="text-xs text-incorrect hover:underline"

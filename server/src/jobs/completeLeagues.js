@@ -867,21 +867,24 @@ export async function completeLeagues() {
     }
   }
 
-  // Clamp full_season leagues to season end dates (if admin has set them)
+  // Clamp full_season leagues to season end dates (if admin has set them).
+  // When playoff_ends_at is set, that's the ceiling (so playoff-extended
+  // leagues are honored); otherwise regular_season_ends_at is the ceiling.
   const { data: seasonDates } = await supabase
     .from('season_dates')
-    .select('sport_key, regular_season_ends_at')
+    .select('sport_key, regular_season_ends_at, playoff_ends_at')
 
   if (seasonDates?.length) {
     const CLAMP_EXCLUDED = ['squares', 'bracket', 'survivor']
     for (const sd of seasonDates) {
+      const clampTarget = sd.playoff_ends_at || sd.regular_season_ends_at
       const { data: overdue } = await supabase
         .from('leagues')
         .select('id, format')
         .eq('sport', sd.sport_key)
         .eq('duration', 'full_season')
         .neq('status', 'completed')
-        .gt('ends_at', sd.regular_season_ends_at)
+        .gt('ends_at', clampTarget)
 
       if (!overdue?.length) continue
       for (const league of overdue) {
@@ -897,9 +900,9 @@ export async function completeLeagues() {
         }
         await supabase
           .from('leagues')
-          .update({ ends_at: sd.regular_season_ends_at, updated_at: new Date().toISOString() })
+          .update({ ends_at: clampTarget, updated_at: new Date().toISOString() })
           .eq('id', league.id)
-        logger.info({ leagueId: league.id, sportKey: sd.sport_key, endsAt: sd.regular_season_ends_at }, 'Clamped league end date to season end')
+        logger.info({ leagueId: league.id, sportKey: sd.sport_key, endsAt: clampTarget, mode: sd.playoff_ends_at ? 'playoff' : 'regular' }, 'Clamped league end date')
       }
     }
   }
