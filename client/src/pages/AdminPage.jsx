@@ -267,7 +267,7 @@ export default function AdminPage() {
           { key: 'overrides', label: 'Overrides' },
           { key: 'nflSalaries', label: 'NFL Salaries' },
           { key: 'surveys', label: 'Surveys' },
-        ].filter((tab) => !(isHelperAdmin && tab.key === 'dashboard')).map((tab) => (
+        ].filter((tab) => !(isHelperAdmin && (tab.key === 'dashboard' || tab.key === 'email'))).map((tab) => (
           <button
             key={tab.key}
             onClick={() => setAdminSection(tab.key)}

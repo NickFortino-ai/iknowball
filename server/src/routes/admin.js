@@ -322,7 +322,7 @@ router.post('/recalculate-records', async (req, res) => {
   res.json({ message: `Record recalculation complete`, ...result })
 })
 
-router.post('/email-blast', async (req, res) => {
+router.post('/email-blast', requireFullAdmin, async (req, res) => {
   const { subject, body, scheduled_at } = req.body
   if (!subject || !body) {
     return res.status(400).json({ error: 'subject and body are required' })
@@ -340,7 +340,7 @@ router.post('/email-blast', async (req, res) => {
   res.json(result)
 })
 
-router.post('/email-targeted', async (req, res) => {
+router.post('/email-targeted', requireFullAdmin, async (req, res) => {
   const { subject, body, usernames, scheduled_at } = req.body
   if (!subject || !body || !usernames?.length) {
     return res.status(400).json({ error: 'subject, body, and usernames are required' })
@@ -359,7 +359,7 @@ router.post('/email-targeted', async (req, res) => {
   res.json(result)
 })
 
-router.post('/email-template-blast', async (req, res) => {
+router.post('/email-template-blast', requireFullAdmin, async (req, res) => {
   const { subject, body, templateId, scheduled_at } = req.body
   if (!subject || !body || !templateId) {
     return res.status(400).json({ error: 'subject, body, and templateId are required' })
@@ -378,7 +378,7 @@ router.post('/email-template-blast', async (req, res) => {
   res.json(result)
 })
 
-router.get('/email-logs', async (req, res) => {
+router.get('/email-logs', requireFullAdmin, async (req, res) => {
   const { data, error } = await supabase
     .from('email_logs')
     .select('*')
