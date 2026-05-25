@@ -616,21 +616,6 @@ export default function HomePage() {
             })()}
           </div>
 
-          {/* Scoring explainer */}
-          <div className="grid grid-cols-3 gap-3 max-w-2xl mx-auto">
-            <div className="rounded-xl border border-text-primary/15 bg-bg-primary p-4 text-center">
-              <div className="font-display text-2xl text-correct mb-1">+20</div>
-              <div className="text-text-muted text-xs">Underdog win</div>
-            </div>
-            <div className="rounded-xl border border-text-primary/15 bg-bg-primary p-4 text-center">
-              <div className="font-display text-2xl text-accent mb-1">+4</div>
-              <div className="text-text-muted text-xs">Favorite win</div>
-            </div>
-            <div className="rounded-xl border border-text-primary/15 bg-bg-primary p-4 text-center">
-              <div className="font-display text-2xl text-incorrect mb-1">-10</div>
-              <div className="text-text-muted text-xs">Wrong pick</div>
-            </div>
-          </div>
         </div>
 
         {/* Beyond the Games — Hub + Headlines */}
