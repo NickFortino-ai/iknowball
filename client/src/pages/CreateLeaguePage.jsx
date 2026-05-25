@@ -829,7 +829,7 @@ export default function CreateLeaguePage() {
         name,
         format,
         sport: (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : format === 'wnba_three_point' ? 'basketball_wnba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? 'americanfootball_nfl' : sport,
-        duration: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? 'custom_range'
+        duration: (format === 'nba_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? 'custom_range'
           : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'single_week' ? 'single_week'
           : isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
         max_members: format === 'nba_dfs'
@@ -846,7 +846,7 @@ export default function CreateLeaguePage() {
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
           : startsAt || undefined,
-        ends_at: (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
+        ends_at: (format === 'nba_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
           : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'single_week' ? getNflWeekEnd()
           : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? getSeasonEndDate('americanfootball_nfl')
           : format === 'survivor' ? getSeasonEndDate(sport)
@@ -1737,48 +1737,6 @@ export default function CreateLeaguePage() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-text-muted block mb-1">Season Type</label>
-              <div className="flex gap-2">
-                {[
-                  { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
-                  { value: 'single_week', label: 'Single Night' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setSeasonType(opt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      seasonType === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {seasonType === 'full_season' && (
-              <div>
-                <label className="text-xs text-text-muted block mb-1">Champion Determined By</label>
-                <div className="flex gap-2">
-                  {[
-                    { value: 'total_points', label: 'Most Total Points' },
-                    { value: 'most_wins', label: 'Most Nightly Wins' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setChampionMetric(opt.value)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                        championMetric === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div>
               <label className="text-xs text-text-muted block mb-1">League Starts</label>
               <div className="flex gap-2">
                 {[
@@ -1813,6 +1771,62 @@ export default function CreateLeaguePage() {
                   : 'Members cannot join after this date. Rosters lock at first tip-off each day.'}
               </p>
             </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">League Length</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
+                  { value: 'custom_range', label: 'Select Date' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSeasonType(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      seasonType === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {seasonType === 'custom_range' && (
+                <input
+                  type="date"
+                  value={hrDerbyEndDate}
+                  onChange={(e) => setHrDerbyEndDate(e.target.value)}
+                  min={getDfsStartDate()}
+                  className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                />
+              )}
+              <p className="text-xs text-text-muted mt-1.5">
+                {seasonType === 'custom_range'
+                  ? 'Pick the date your league wraps up.'
+                  : 'Runs through end of NBA regular season.'}
+              </p>
+            </div>
+            {seasonType === 'full_season' && (
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Champion Determined By</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'total_points', label: 'Most Total Points' },
+                    { value: 'most_wins', label: 'Most Nightly Wins' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setChampionMetric(opt.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        championMetric === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="text-xs text-text-muted block mb-1">Max Members</label>
               <input
