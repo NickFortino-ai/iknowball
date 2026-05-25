@@ -4,6 +4,7 @@ import { useJoinLeague, useOpenLeagues, useJoinOpenLeague } from '../hooks/useLe
 import { toast } from '../components/ui/Toast'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { getBackdropUrl } from '../lib/backdropUrl'
+import LeagueInfoModal from '../components/leagues/LeagueInfoModal'
 
 const FORMAT_LABELS = {
   pickem: "Pick'em",
@@ -97,7 +98,7 @@ export default function JoinLeaguePage() {
   const { data: openLeagues, isLoading } = useOpenLeagues()
   const navigate = useNavigate()
   const [joiningId, setJoiningId] = useState(null)
-  const [infoLeagueId, setInfoLeagueId] = useState(null)
+  const [infoLeague, setInfoLeague] = useState(null)
 
   async function handleCodeSubmit(e) {
     e.preventDefault()
@@ -115,6 +116,7 @@ export default function JoinLeaguePage() {
     try {
       const league = await joinOpen.mutateAsync(leagueId)
       toast('Joined league!', 'success')
+      setInfoLeague(null)
       navigate(`/leagues/${league.id}`)
     } catch (err) {
       toast(err.message || 'Failed to join league', 'error')
@@ -175,7 +177,11 @@ export default function JoinLeaguePage() {
               return (
                 <div
                   key={league.id}
-                  className="relative rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setInfoLeague(league)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setInfoLeague(league) }}
+                  className="relative rounded-xl border border-text-primary/20 bg-bg-primary overflow-hidden cursor-pointer hover:border-accent/40 transition-colors text-left"
                 >
                   {/* Backdrop image */}
                   {hasBackdrop && (
@@ -193,20 +199,7 @@ export default function JoinLeaguePage() {
                   <div className="relative z-10 p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-display text-xl text-white truncate">{league.name}</h3>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setInfoLeagueId(infoLeagueId === league.id ? null : league.id) }}
-                            className="text-text-muted hover:text-text-secondary transition-colors p-1 shrink-0"
-                            title="League Details"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10" />
-                              <line x1="12" y1="16" x2="12" y2="12" />
-                              <line x1="12" y1="8" x2="12.01" y2="8" />
-                            </svg>
-                          </button>
-                        </div>
+                        <h3 className="font-display text-xl text-white truncate">{league.name}</h3>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <span className="text-xs font-semibold text-accent">
                             {FORMAT_LABELS[league.format] || league.format}
@@ -225,33 +218,11 @@ export default function JoinLeaguePage() {
                           )}
                         </div>
                         <LeagueSettingsPreview league={league} />
-                        {infoLeagueId === league.id && (
-                          <div className="mt-3 bg-bg-primary border border-text-primary/20 rounded-lg p-3 text-xs text-text-secondary space-y-1.5">
-                            <div><span className="text-text-muted">Format:</span> <span className="text-text-primary font-semibold">{FORMAT_LABELS[league.format] || league.format}</span></div>
-                            <div><span className="text-text-muted">Sport:</span> {SPORT_LABELS[league.sport] || league.sport}</div>
-                            {league.starts_at && <div><span className="text-text-muted">Starts:</span> {formatStartDate(league.starts_at)}</div>}
-                            {formatRunsUntil(league) && <div><span className="text-text-muted">Runs until:</span> {formatRunsUntil(league)}</div>}
-                            {league.max_members && <div><span className="text-text-muted">Max members:</span> {league.max_members}</div>}
-                            {league.settings?.pick_frequency && <div><span className="text-text-muted">Picks:</span> {league.settings.pick_frequency === 'daily' ? 'Daily' : 'Weekly'}</div>}
-                            {league.settings?.lives && <div><span className="text-text-muted">Lives:</span> {league.settings.lives}</div>}
-                            {league.format === 'survivor' && <div className="text-text-muted italic">Pick one team per period. If they lose, you lose a life. Can't reuse teams.</div>}
-                            {league.format === 'pickem' && <div className="text-text-muted italic">Pick the winners of the games. Top of the standings at the end wins.</div>}
-                            {league.format === 'hr_derby' && <div className="text-text-muted italic">Pick 3 hitters per day. Each player usable once per week. Most HRs wins.</div>}
-                            {league.format === 'strikeouts' && <div className="text-text-muted italic">Pick 3 pitchers per day. Each player usable once per week. Most strikeouts wins.</div>}
-                            {league.format === 'three_point' && <div className="text-text-muted italic">Pick 3 NBA shooters per night. Most made 3-pointers wins.</div>}
-                            {league.format === 'wnba_three_point' && <div className="text-text-muted italic">Pick 3 WNBA shooters per night. Most made 3-pointers wins.</div>}
-                            {league.format === 'sacks' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most sacks across the season wins.</div>}
-                            {league.format === 'ints' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most interceptions across the season wins.</div>}
-                            {league.format === 'tackles' && <div className="text-text-muted italic">Pick 3 NFL defenders per week. Most tackles across the season wins.</div>}
-                            {league.format === 'receptions' && <div className="text-text-muted italic">Pick 3 NFL pass catchers per week. Most receptions across the season wins.</div>}
-                            {(league.format === 'nba_dfs' || league.format === 'mlb_dfs') && <div className="text-text-muted italic">Build a daily lineup under a salary cap. Highest fantasy points wins.</div>}
-                          </div>
-                        )}
                       </div>
 
                       <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         <button
-                          onClick={() => handleJoinOpen(league.id)}
+                          onClick={(e) => { e.stopPropagation(); handleJoinOpen(league.id) }}
                           disabled={joiningId === league.id}
                           className="px-6 py-2.5 rounded-xl font-display text-sm bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer"
                         >
@@ -266,6 +237,15 @@ export default function JoinLeaguePage() {
           </div>
         )}
       </div>
+
+      {infoLeague && (
+        <LeagueInfoModal
+          league={infoLeague}
+          onClose={() => setInfoLeague(null)}
+          onJoin={handleJoinOpen}
+          joining={joiningId === infoLeague?.id}
+        />
+      )}
     </div>
   )
 }
