@@ -35,10 +35,10 @@ export default function TierUsersModal({ tier, onClose }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-16" onClick={onClose}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
         <div
-          className="relative w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-6 pb-20 md:pb-6 max-h-[85vh] md:max-h-[75vh] flex flex-col"
+          className="relative w-full md:max-w-md rounded-2xl p-6 max-h-[calc(100vh-8rem)] flex flex-col"
           style={{
             backgroundColor: 'var(--color-bg-primary)',
             borderWidth: '1px',
