@@ -299,13 +299,17 @@ async function tightenJoinLocks() {
 
     const tipOff = new Date(firstGame.game_starts_at)
     const currentLock = league.joins_locked_at ? new Date(league.joins_locked_at) : null
-    if (!currentLock || currentLock > tipOff) {
+    // Always align joins_locked_at to first tipoff once we know it.
+    // create-league sets a placeholder DATE (midnight UTC) which lands
+    // before the actual tipoff, so we have to push FORWARD too — not
+    // just pull back. Skip only if already exactly aligned.
+    if (!currentLock || currentLock.getTime() !== tipOff.getTime()) {
       await supabase
         .from('leagues')
         .update({ joins_locked_at: tipOff.toISOString() })
         .eq('id', league.id)
 
-      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Tightened WNBA DFS joins_locked_at')
+      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Aligned WNBA DFS joins_locked_at to first tipoff')
     }
   }
 }

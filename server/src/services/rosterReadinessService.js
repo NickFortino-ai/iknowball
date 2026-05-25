@@ -91,10 +91,10 @@ async function checkTraditionalFantasy(league, userId, fantasySettings) {
 
 async function checkDailyDfs(league, userId, sport) {
   const gameDate = todayET()
-  const salariesTable = sport === 'nba' ? 'nba_dfs_salaries' : 'mlb_dfs_salaries'
-  const rostersTable = sport === 'nba' ? 'nba_dfs_rosters' : 'mlb_dfs_rosters'
-  const slotsTable = sport === 'nba' ? 'nba_dfs_roster_slots' : 'mlb_dfs_roster_slots'
-  const expected = sport === 'nba' ? 9 : 10
+  const salariesTable = sport === 'nba' ? 'nba_dfs_salaries' : sport === 'wnba' ? 'wnba_dfs_salaries' : 'mlb_dfs_salaries'
+  const rostersTable = sport === 'nba' ? 'nba_dfs_rosters' : sport === 'wnba' ? 'wnba_dfs_rosters' : 'mlb_dfs_rosters'
+  const slotsTable = sport === 'nba' ? 'nba_dfs_roster_slots' : sport === 'wnba' ? 'wnba_dfs_roster_slots' : 'mlb_dfs_roster_slots'
+  const expected = sport === 'mlb' ? 10 : 9  // NBA and WNBA both use 9-slot rosters
 
   const firstGameAt = await earliestDfsGameStart(salariesTable, gameDate)
   if (!firstGameAt) return READY()
@@ -205,6 +205,7 @@ export async function checkUserReadiness(league, fantasySettings, userId) {
       : checkTraditionalFantasy(league, userId, fantasySettings)
   }
   if (format === 'nba_dfs') return checkDailyDfs(league, userId, 'nba')
+  if (format === 'wnba_dfs') return checkDailyDfs(league, userId, 'wnba')
   if (format === 'mlb_dfs') return checkDailyDfs(league, userId, 'mlb')
   if (format === 'three_point') return checkDailyPicks(league, userId, 'three_point_picks', 'nba', 'NBA 3-Point')
   if (format === 'wnba_three_point') return checkDailyPicks(league, userId, 'wnba_three_point_picks', 'nba', 'WNBA 3-Point')

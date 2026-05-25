@@ -355,16 +355,20 @@ async function tightenJoinLocks() {
 
     if (!firstGame?.game_starts_at) continue
 
-    // Only tighten if current lock is after the first tip-off (or null)
+    // Align joins_locked_at to first tip-off. create-league sets a
+    // placeholder DATE-only value (midnight UTC of start_date) which
+    // lands BEFORE the actual tipoff in any US timezone, so we have to
+    // push forward too — not just pull back. Skip only if already
+    // exactly aligned.
     const tipOff = new Date(firstGame.game_starts_at)
     const currentLock = league.joins_locked_at ? new Date(league.joins_locked_at) : null
-    if (!currentLock || currentLock > tipOff) {
+    if (!currentLock || currentLock.getTime() !== tipOff.getTime()) {
       await supabase
         .from('leagues')
         .update({ joins_locked_at: tipOff.toISOString() })
         .eq('id', league.id)
 
-      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Tightened joins_locked_at to first tip-off')
+      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Aligned joins_locked_at to first tip-off')
     }
   }
 }
