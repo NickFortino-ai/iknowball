@@ -32,7 +32,11 @@ const sportTabs = [
 
 export default function AdminPage() {
   const { profile } = useAuth()
-  const [adminSection, setAdminSection] = useState('dashboard') // dashboard | props | brackets | email | futures | reports | moderation
+  // Helper admins see everything except the dashboard (revenue/growth/promo
+  // codes). Default their landing tab to props so they don't land on a
+  // blocked section.
+  const isHelperAdmin = profile?.admin_role === 'helper'
+  const [adminSection, setAdminSection] = useState(isHelperAdmin ? 'props' : 'dashboard')
   const [activeSport, setActiveSport] = useState(0)
   const [selectedGame, setSelectedGame] = useState(null)
   const [emailSubject, setEmailSubject] = useState('')
@@ -263,7 +267,7 @@ export default function AdminPage() {
           { key: 'overrides', label: 'Overrides' },
           { key: 'nflSalaries', label: 'NFL Salaries' },
           { key: 'surveys', label: 'Surveys' },
-        ].map((tab) => (
+        ].filter((tab) => !(isHelperAdmin && tab.key === 'dashboard')).map((tab) => (
           <button
             key={tab.key}
             onClick={() => setAdminSection(tab.key)}

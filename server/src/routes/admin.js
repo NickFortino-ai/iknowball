@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
+import { requireFullAdmin } from '../middleware/requireFullAdmin.js'
 import { logger } from '../utils/logger.js'
 import { syncOdds } from '../jobs/syncOdds.js'
 import { syncInjuries } from '../jobs/syncInjuries.js'
@@ -63,7 +64,7 @@ router.use(requireAuth, requireAdmin)
 // Admin Dashboard — Phase 1 daily-pulse metrics
 // ============================================
 
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', requireFullAdmin, async (req, res) => {
   const range = req.query.range || '30d'
   const days = range === '7d' ? 7 : range === '90d' ? 90 : 30
   const now = new Date()
