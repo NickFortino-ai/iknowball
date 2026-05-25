@@ -2213,7 +2213,7 @@ export default function CreateLeaguePage() {
               </div>
             )}
             {survivorMode === 'touchdown' && (
-              <p className="text-[10px] text-text-muted">League starts at the next NFL kickoff and runs until there's one survivor left or the end of the season.</p>
+              <p className="text-sm text-white">League starts at the next NFL kickoff and runs until there's one survivor left or the end of the season.</p>
             )}
           </div>
         )}
