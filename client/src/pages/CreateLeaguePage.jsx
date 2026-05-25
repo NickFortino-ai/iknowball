@@ -462,6 +462,20 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       description: 'Pick the winners of NBA games. Most points at the end wins.',
       preset: { sport: 'basketball_nba' },
     },
+    {
+      key: 'wnba-survivor',
+      format: 'survivor',
+      label: 'WNBA Survivor',
+      description: 'Pick a single WNBA team to win each period. Last one standing wins',
+      preset: { sport: 'basketball_wnba', survivorMode: 'standard' },
+    },
+    {
+      key: 'wnba-pickem',
+      format: 'pickem',
+      label: "WNBA Pick'em",
+      description: 'Pick the winners of WNBA games. Most points at the end wins.',
+      preset: { sport: 'basketball_wnba' },
+    },
   ],
   baseball: [
     { key: 'mlb-dfs', format: 'mlb_dfs' },
