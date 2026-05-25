@@ -400,7 +400,13 @@ export async function generateMLBSalaries(date, season = 2026) {
         const espnId = athlete.id
         const name = athlete.displayName || athlete.fullName
         if (!name) continue
-        const headshot = athlete.headshot?.href || null
+        // Some players (call-ups, recently DFA'd) come back without a
+        // headshot.href even though ESPN's CDN does have the image at the
+        // standard URL pattern. Construct the fallback URL from espn_id —
+        // ESPN serves a silhouette if the file genuinely doesn't exist,
+        // which the <img onError> handler hides anyway.
+        const headshot = athlete.headshot?.href
+          || (espnId ? `https://a.espncdn.com/i/headshots/mlb/players/full/${espnId}.png` : null)
         const injury = athlete.injuries?.[0]
         const injuryStatus = injury?.status || null
         const opponentLabel = `${isHome ? 'vs' : '@'} ${opponentAbbrev}`

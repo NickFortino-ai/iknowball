@@ -2,6 +2,17 @@ import { createPortal } from 'react-dom'
 import { useNbaDfsPlayerGamelog } from '../../hooks/useLeagues'
 import LoadingSpinner from './LoadingSpinner'
 
+// MLB two-way players appear in our salary table as two rows: one priced
+// off batting stats (UTIL) and one off pitching (SP, with -P suffix on
+// the espn id). In the modal we surface the dual role so the position
+// label matches reality.
+const TWO_WAY_PLAYER_NAMES = new Set(['shohei ohtani'])
+function twoWayPositionLabel(player) {
+  if (!player?.player_name) return null
+  if (!TWO_WAY_PLAYER_NAMES.has(player.player_name.toLowerCase().trim())) return null
+  return 'SP, DH'
+}
+
 function InjuryBadge({ status }) {
   if (!status) return null
   const colors = {
@@ -287,13 +298,17 @@ export default function PlayerDetailModal({ player, onClose, onAdd, sport = 'bas
                 <h2 className="font-display text-xl text-text-primary">{player.player_name}</h2>
                 <InjuryBadge status={player.injury_status} />
               </div>
-              {(player.position || player.team) && (
-                <div className="text-sm text-text-muted">
-                  {player.position ? <>{player.position} · </> : null}
-                  {player.team && <span className="text-text-primary font-semibold">{player.team}</span>}
-                  {player.opponent ? ` ${player.opponent}` : ''}
-                </div>
-              )}
+              {(() => {
+                const displayPosition = twoWayPositionLabel(player) || player.position
+                if (!displayPosition && !player.team) return null
+                return (
+                  <div className="text-sm text-text-muted">
+                    {displayPosition ? <>{displayPosition} · </> : null}
+                    {player.team && <span className="text-text-primary font-semibold">{player.team}</span>}
+                    {player.opponent ? ` ${player.opponent}` : ''}
+                  </div>
+                )
+              })()}
             </div>
           </div>
           {onAdd && (

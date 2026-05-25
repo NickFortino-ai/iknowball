@@ -558,6 +558,11 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
       .eq('id', rawId)
       .maybeSingle()
     if (nflRow?.espn_id) espnId = nflRow.espn_id
+  } else if (sport === 'baseball_mlb') {
+    // Two-way players (Ohtani) have a -P suffix on the pitcher row so it
+    // doesn't collide with the hitter row in mlb_dfs_salaries. ESPN's
+    // gamelog API uses the real athlete ID with no suffix — strip it.
+    espnId = rawId.replace(/-P$/, '')
   }
 
   // Helper — fetch one season's gamelog from ESPN. Returns parsed JSON
