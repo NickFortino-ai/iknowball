@@ -430,7 +430,7 @@ export async function generateSalaries(week, season) {
   // with their injury_status flagged so users can decide.
   const { data: players, error } = await supabase
     .from('nfl_players')
-    .select('id, position, search_rank, projected_pts_half_ppr, espn_id, team, injury_status')
+    .select('id, position, search_rank, projected_pts_half_ppr, espn_id, team, injury_status, depth_chart_order')
     .not('team', 'is', null)
     .in('position', ['QB', 'RB', 'WR', 'TE', 'DEF'])
     .order('search_rank', { ascending: true })
@@ -574,6 +574,19 @@ export async function generateSalaries(week, season) {
       const raw = pathCParams.cap - (posCount - 1) * pathCParams.step
       salary = Math.max(pathCParams.floor, Math.min(pathCParams.cap, raw))
       salary = Math.round(salary / 100) * 100
+    }
+
+    // QB depth-chart override. Without this, a third-string QB hits the QB
+    // floor ($5,500) plus position decay and ends up ~$6,800 — well above
+    // any reasonable price for a player who won't see the field. Sleeper's
+    // depth_chart_order (1 = starter, 2 = backup, 3+ = third string)
+    // already tells us the answer. Null is left at the algorithm price so
+    // rookies and unassigned players aren't penalized; this kicks in only
+    // when Sleeper has explicitly ranked them behind another QB. If a
+    // starter goes down, Sleeper bumps the next QB to depth_chart_order=1
+    // pretty quickly, so this stays self-correcting.
+    if (pos === 'QB' && player.depth_chart_order && player.depth_chart_order >= 2) {
+      salary = player.depth_chart_order === 2 ? 5000 : 4000
     }
 
     salaries.push({
