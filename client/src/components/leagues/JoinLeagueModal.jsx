@@ -62,6 +62,7 @@ const FORMAT_LABELS = {
   squares: 'Squares',
   fantasy: 'Fantasy',
   nba_dfs: 'NBA Daily Fantasy',
+  wnba_dfs: 'WNBA Daily Fantasy',
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
   strikeouts: 'Strikeouts Contest',

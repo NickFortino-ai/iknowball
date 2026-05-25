@@ -133,6 +133,12 @@ export function useSyncMLBSalaries() {
   })
 }
 
+export function useSyncWNBASalaries() {
+  return useMutation({
+    mutationFn: (date) => api.post('/admin/wnba-dfs/generate-salaries', { date, season: 2026 }),
+  })
+}
+
 export function useSyncNFLSalaries() {
   return useMutation({
     mutationFn: ({ week, season }) => api.post('/admin/dfs/generate-salaries', { week, season }),

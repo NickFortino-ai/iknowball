@@ -884,6 +884,7 @@ router.delete('/player-position-overrides/:id', async (req, res) => {
 import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, syncWeeklyProjections, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
 import { generateSalaries, setSalaries } from '../services/dfsService.js'
 import { generateNBASalaries, setNBASalaries } from '../services/nbaDfsService.js'
+import { generateWNBASalaries, setWNBASalaries } from '../services/wnbaDfsService.js'
 import { generateMLBSalaries } from '../services/mlbDfsService.js'
 
 router.post('/fantasy/sync-players', async (req, res) => {
@@ -1134,6 +1135,21 @@ router.post('/mlb-dfs/generate-salaries', async (req, res) => {
   if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
   res.json({ message: 'MLB salary generation started', date })
   generateMLBSalaries(date, season || 2026).catch((err) => logger.error({ err, date }, 'Background MLB salary generation failed'))
+})
+
+// WNBA DFS salary generation
+router.post('/wnba-dfs/generate-salaries', async (req, res) => {
+  const { date, season } = req.body
+  if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
+  res.json({ message: 'WNBA salary generation started', date })
+  generateWNBASalaries(date, season || 2026).catch((err) => logger.error({ err, date }, 'Background WNBA salary generation failed'))
+})
+
+router.post('/wnba-dfs/salaries', async (req, res) => {
+  const { salaries } = req.body
+  if (!salaries?.length) return res.status(400).json({ error: 'salaries array required' })
+  const result = await setWNBASalaries(salaries)
+  res.json(result)
 })
 
 // Backdrop submissions

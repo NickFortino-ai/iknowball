@@ -40,6 +40,7 @@ const FORMAT_LABELS = {
   bracket: 'Bracket',
   fantasy: 'Fantasy Football',
   nba_dfs: 'NBA Daily Fantasy',
+  wnba_dfs: 'WNBA Daily Fantasy',
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
   strikeouts: 'Strikeouts Contest',
@@ -231,7 +232,7 @@ function getNotificationRoute(notification) {
       //   pickInjuryWarnings.js sets format = '3-Point Contest' | 'HR Derby' | etc.
       if (metadata?.source === 'salary_cap') return `/leagues/${lid}?tab=Roster`
       if (metadata?.source === 'traditional') return `/leagues/${lid}?tab=My+Team`
-      if (metadata?.format === 'NBA DFS' || metadata?.format === 'MLB DFS') return `/leagues/${lid}?tab=Roster`
+      if (metadata?.format === 'NBA DFS' || metadata?.format === 'WNBA DFS' || metadata?.format === 'MLB DFS') return `/leagues/${lid}?tab=Roster`
       if (metadata?.format) return `/leagues/${lid}?tab=Picks`
       return `/leagues/${lid}`
     }

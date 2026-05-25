@@ -9,6 +9,7 @@ const FORMAT_LABELS = {
   bracket: 'Bracket',
   fantasy: 'Fantasy Football',
   nba_dfs: 'NBA Daily Fantasy',
+  wnba_dfs: 'WNBA Daily Fantasy',
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
   strikeouts: 'Strikeouts Contest',
@@ -131,7 +132,7 @@ export default function LeagueCard({ league, noLink }) {
           <span className="font-semibold text-accent">
             {FORMAT_LABELS[league.format]}
           </span>
-          {!['nba_dfs', 'mlb_dfs'].includes(league.format) && (
+          {!['nba_dfs', 'wnba_dfs', 'mlb_dfs'].includes(league.format) && (
             <span>{SPORT_LABELS[league.sport]}</span>
           )}
           <span>{league.member_count} {league.member_count === 1 ? 'member' : 'members'}</span>

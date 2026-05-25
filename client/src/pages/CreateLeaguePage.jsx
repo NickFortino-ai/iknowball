@@ -82,6 +82,24 @@ Commissioner controls: salary cap, team count, league duration, and lineup lock 
     },
   },
   {
+    value: 'wnba_dfs',
+    label: 'WNBA Daily Fantasy',
+    description: 'Build a nightly WNBA lineup under a salary cap and compete for the highest score',
+    details: `Build a nightly 9-player WNBA lineup (G, G, F, F, C, UTIL, UTIL, UTIL, UTIL) under a salary cap. Players are priced using a weighted algorithm that factors in recent performance and opponent defensive strength — so salaries shift nightly based on matchups and form. Scoring follows DraftKings-style WNBA rules. Your league tracks wins across every night of the duration.
+
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of the WNBA regular season.
+
+At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
+
+Commissioner controls: salary cap, team count, league duration, and lineup lock time. Custom backdrop from a curated library or upload your own.`,
+    bonusTable: {
+      title: 'WNBA DFS Winner Bonus (Full Season)',
+      columns: WINNER_BONUS_COLUMNS,
+      rows: WINNER_BONUS_ROWS,
+      footnote: 'Bonus prorated by nights_played out of the WNBA regular season. Position points (n+1−2×rank) are added on top.',
+    },
+  },
+  {
     value: 'mlb_dfs',
     label: 'MLB Daily Fantasy',
     description: 'Build a daily MLB lineup under a salary cap — scored on hits, HRs, RBIs, runs, and more',
@@ -423,6 +441,11 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       format: 'nba_dfs',
       preset: { sport: 'basketball_nba' },
     },
+    {
+      key: 'wnba-dfs',
+      format: 'wnba_dfs',
+      preset: { sport: 'basketball_wnba' },
+    },
     { key: 'three-point', format: 'three_point' },
     { key: 'wnba-three-point', format: 'wnba_three_point', preset: { sport: 'basketball_wnba' } },
     {
@@ -625,6 +648,7 @@ export default function CreateLeaguePage() {
     if (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') setSport('baseball_mlb')
     if (format === 'three_point') setSport('basketball_nba')
     if (format === 'wnba_three_point') setSport('basketball_wnba')
+    if (format === 'wnba_dfs') setSport('basketball_wnba')
     if (format === 'td_pass') setSport('americanfootball_nfl')
     if (format === 'sacks') setSport('americanfootball_nfl')
     if (format === 'ints') setSport('americanfootball_nfl')
@@ -635,7 +659,7 @@ export default function CreateLeaguePage() {
     // Per-format salary cap default — MLB pricing settles lower than NBA,
     // so MLB defaults to $45k (middle of the 40/45/50 options).
     if (format === 'mlb_dfs') setSalaryCap(45000)
-    else if (format === 'nba_dfs' || (format === 'fantasy' && fantasyFormat === 'salary_cap')) setSalaryCap(60000)
+    else if (format === 'nba_dfs' || format === 'wnba_dfs' || (format === 'fantasy' && fantasyFormat === 'salary_cap')) setSalaryCap(60000)
     // HR Derby + 3-Point Contest + Strikeouts share the daily-pick pattern:
     // tomorrow start (gives players a day to join), full season unless
     // commissioner picks custom range. Always snap to full_season on entry
@@ -709,7 +733,7 @@ export default function CreateLeaguePage() {
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
   const fileInputRef = useRef(null)
-  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : format === 'hr_derby' ? 'hr_derby_contest' : format === 'mlb_dfs' ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'wnba_three_point' ? 'wnba_three_point_contest' : format === 'sacks' ? 'sacks_contest' : format === 'ints' ? 'ints_contest' : format === 'tackles' ? 'tackles_contest' : format === 'receptions' ? 'receptions_contest' : format === 'strikeouts' ? 'strikeouts_contest' : sport || undefined
+  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : format === 'wnba_dfs' ? 'basketball_wnba' : format === 'hr_derby' ? 'hr_derby_contest' : format === 'mlb_dfs' ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'wnba_three_point' ? 'wnba_three_point_contest' : format === 'sacks' ? 'sacks_contest' : format === 'ints' ? 'ints_contest' : format === 'tackles' ? 'tackles_contest' : format === 'receptions' ? 'receptions_contest' : format === 'strikeouts' ? 'strikeouts_contest' : sport || undefined
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
 
   // NBA DFS start date
@@ -778,9 +802,9 @@ export default function CreateLeaguePage() {
     }
 
     // Fantasy settings passed separately
-    const isFantasyFormat = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions'].includes(format)
+    const isFantasyFormat = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions'].includes(format)
     const fantasySettings = isFantasyFormat ? {
-      format: (format === 'nba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : format === 'strikeouts' ? 'strikeouts' : format === 'three_point' ? 'three_point' : format === 'wnba_three_point' ? 'wnba_three_point' : format === 'sacks' ? 'sacks' : format === 'ints' ? 'ints' : format === 'tackles' ? 'tackles' : format === 'receptions' ? 'receptions' : fantasyFormat,
+      format: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'mlb_dfs') ? 'salary_cap' : format === 'hr_derby' ? 'hr_derby' : format === 'strikeouts' ? 'strikeouts' : format === 'three_point' ? 'three_point' : format === 'wnba_three_point' ? 'wnba_three_point' : format === 'sacks' ? 'sacks' : format === 'ints' ? 'ints' : format === 'tackles' ? 'tackles' : format === 'receptions' ? 'receptions' : fantasyFormat,
       pick_reuse: (format === 'hr_derby' || format === 'three_point' || format === 'wnba_three_point' || format === 'strikeouts' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? pickReuse : undefined,
       // NFL salary cap (DFS) leagues use half-PPR — that's what FanDuel
       // uses and what the salary algorithm is calibrated against. Keeping
@@ -792,7 +816,7 @@ export default function CreateLeaguePage() {
       // this column.
       scoring_format: fantasyFormat === 'salary_cap'
         ? 'half_ppr'
-        : (format === 'nba_dfs' || format === 'mlb_dfs')
+        : (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'mlb_dfs')
           ? 'ppr'
           : scoringFormat,
       // Salary cap has no fixed team count — leave num_teams null so the
@@ -818,21 +842,21 @@ export default function CreateLeaguePage() {
       playoff_start_week: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffStartWeek : undefined,
       championship_week: format === 'fantasy' && fantasyFormat === 'traditional' ? championshipWeek : undefined,
       scoring_rules: format === 'fantasy' && fantasyFormat === 'traditional' && scoringRules ? scoringRules : undefined,
-      salary_cap: (format === 'nba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
-      season_type: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
-      champion_metric: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'full_season' ? championMetric : undefined,
-      single_week: (format === 'nba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'single_week' ? singleWeek : undefined,
+      salary_cap: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
+      season_type: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
+      champion_metric: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'full_season' ? championMetric : undefined,
+      single_week: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'single_week' ? singleWeek : undefined,
     } : undefined
 
     try {
       const league = await createLeague.mutateAsync({
         name,
         format,
-        sport: (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : format === 'wnba_three_point' ? 'basketball_wnba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? 'americanfootball_nfl' : sport,
-        duration: (format === 'nba_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? 'custom_range'
+        sport: (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'wnba_dfs' || format === 'wnba_three_point') ? 'basketball_wnba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : (format === 'fantasy' || format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? 'americanfootball_nfl' : sport,
+        duration: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? 'custom_range'
           : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'single_week' ? 'single_week'
           : isFantasyFormat ? 'full_season' : format === 'td_pass' ? 'full_season' : format === 'survivor' ? 'full_season' : format === 'squares' ? 'custom_range' : format === 'bracket' ? 'custom_range' : (endsAt === 'end_of_season' ? 'custom_range' : duration),
-        max_members: format === 'nba_dfs'
+        max_members: (format === 'nba_dfs' || format === 'wnba_dfs')
           ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           // Traditional fantasy uses numTeams as the hard cap (H2H schedule
           // needs it). Salary cap accepts an optional max from maxMembers,
@@ -840,18 +864,18 @@ export default function CreateLeaguePage() {
           : format === 'fantasy' && fantasyFormat === 'traditional' ? numTeams
           : format === 'fantasy' && fantasyFormat === 'salary_cap' ? (maxMembers ? parseInt(maxMembers, 10) : undefined)
           : maxMembers ? parseInt(maxMembers, 10) : undefined,
-        starts_at: ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format) ? getDfsStartDate()
+        starts_at: ['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format) ? getDfsStartDate()
           : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') && seasonType === 'custom_range' && nflContestStartDate ? new Date(`${nflContestStartDate}T00:00:00`).toISOString()
           : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? new Date().toISOString()
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
           : startsAt || undefined,
-        ends_at: (format === 'nba_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
+        ends_at: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
           : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'single_week' ? getNflWeekEnd()
           : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? getSeasonEndDate('americanfootball_nfl')
           : format === 'survivor' ? getSeasonEndDate(sport)
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
-          : endsAt === 'end_of_season' ? getSeasonEndDate((format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : format === 'wnba_three_point' ? 'basketball_wnba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : sport)
+          : endsAt === 'end_of_season' ? getSeasonEndDate((format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba' : (format === 'wnba_dfs' || format === 'wnba_three_point') ? 'basketball_wnba' : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb' : sport)
           // DFS and contest leagues with full_season auto-set ends_at to the
           // regular-season end. During NBA/MLB/etc. playoffs, extend through
           // the championship round so a mid-May "Full Season" pick means
@@ -859,7 +883,7 @@ export default function CreateLeaguePage() {
           : (isFantasyFormat && seasonType === 'full_season')
             ? getFullSeasonLeagueEndDate(
                 (format === 'nba_dfs' || format === 'three_point') ? 'basketball_nba'
-                : format === 'wnba_three_point' ? 'basketball_wnba'
+                : (format === 'wnba_dfs' || format === 'wnba_three_point') ? 'basketball_wnba'
                 : (format === 'mlb_dfs' || format === 'hr_derby' || format === 'strikeouts') ? 'baseball_mlb'
                 : 'americanfootball_nfl'
               )
@@ -874,7 +898,7 @@ export default function CreateLeaguePage() {
         // rather than a separate close-to-joins time.
         joins_locked_at: format === 'squares' && gameId
           ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
-          : ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format)
+          : ['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point'].includes(format)
             ? getDfsStartDate()
             : undefined,
         backdrop_image: backdropImage || undefined,
@@ -899,8 +923,8 @@ export default function CreateLeaguePage() {
     }
   }
 
-  const autoSportFormats = ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'td_pass']
-  const noDurationFormats = ['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'squares', 'bracket', 'td_pass', 'survivor']
+  const autoSportFormats = ['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'td_pass']
+  const noDurationFormats = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'squares', 'bracket', 'td_pass', 'survivor']
   const canSubmit = name && format && (sport || autoSportFormats.includes(format)) && (noDurationFormats.includes(format) || duration)
     && (format !== 'bracket' || (templateId && locksAt))
     && (format !== 'squares' || gameId)
@@ -1108,7 +1132,7 @@ export default function CreateLeaguePage() {
         <div ref={settingsRef} aria-hidden="true" />
 
         {/* Sport (hidden for format-locked sports + sport-locked survivor/pickem presets) */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format)
+        {!['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format)
           && !((format === 'survivor' || format === 'pickem') && sportPresetLocked) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
@@ -1156,7 +1180,7 @@ export default function CreateLeaguePage() {
         </div>}
 
         {/* Duration (not for fantasy/DFS/squares/bracket — bracket runs from picks lock to championship game) */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
+        {!['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
           <div className="grid grid-cols-2 gap-2">
@@ -1253,7 +1277,7 @@ export default function CreateLeaguePage() {
         </>}
 
         {/* Max Members — only standalone for formats without their own settings section */}
-        {!['fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'survivor', 'squares', 'td_pass'].includes(format) && <div>
+        {!['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'survivor', 'squares', 'td_pass'].includes(format) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">
             Max Members <span className="text-text-muted font-normal">(optional)</span>
           </label>
@@ -1814,6 +1838,140 @@ export default function CreateLeaguePage() {
                   : arePlayoffsUnderway('basketball_nba')
                     ? getPlayoffsHelperText('basketball_nba')
                     : 'Runs through end of NBA regular season.'}
+              </p>
+            </div>
+            {seasonType === 'full_season' && (
+              <div>
+                <label className="text-xs text-text-muted block mb-1">Champion Determined By</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'total_points', label: 'Most Total Points' },
+                    { value: 'most_wins', label: 'Most Nightly Wins' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setChampionMetric(opt.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        championMetric === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Max Members</label>
+              <input
+                type="number"
+                value={maxMembers}
+                onChange={(e) => setMaxMembers(e.target.value)}
+                placeholder="No limit"
+                min={2}
+                className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+        )}
+
+        {format === 'wnba_dfs' && (
+          <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
+            <h3 className="font-display text-sm text-text-primary mb-1">WNBA Daily Fantasy Settings</h3>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">Salary Cap</label>
+              <div className="flex gap-2">
+                {[50000, 60000, 75000].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setSalaryCap(n)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      salaryCap === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    ${n.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">League Starts</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'today', label: 'Today' },
+                  { value: 'tomorrow', label: 'Tomorrow' },
+                  { value: 'custom', label: 'Select Date' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setDfsStartOption(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      dfsStartOption === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {dfsStartOption === 'custom' && (
+                <input
+                  type="date"
+                  value={dfsStartCustom}
+                  onChange={(e) => setDfsStartCustom(e.target.value)}
+                  min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                  className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                />
+              )}
+              <p className="text-xs text-text-muted mt-1.5">
+                {visibility === 'open'
+                  ? 'League is open until the first game on this date. Rosters lock at first tip-off each day.'
+                  : 'Members cannot join after this date. Rosters lock at first tip-off each day.'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-text-muted block mb-1">League Length</label>
+              <div className="flex gap-2">
+                {[
+                  {
+                    value: 'full_season',
+                    label: arePlayoffsUnderway('basketball_wnba')
+                      ? getPlayoffsButtonLabel('basketball_wnba')
+                      : isSeasonUnderway('basketball_wnba')
+                        ? 'Remainder of Regular Season'
+                        : 'Full Season',
+                  },
+                  { value: 'custom_range', label: 'Select Date' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSeasonType(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      seasonType === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {seasonType === 'custom_range' && (
+                <input
+                  type="date"
+                  value={hrDerbyEndDate}
+                  onChange={(e) => setHrDerbyEndDate(e.target.value)}
+                  min={getDfsStartDate()}
+                  className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                />
+              )}
+              <p className="text-xs text-text-muted mt-1.5">
+                {seasonType === 'custom_range'
+                  ? 'Pick the date your league wraps up.'
+                  : arePlayoffsUnderway('basketball_wnba')
+                    ? getPlayoffsHelperText('basketball_wnba')
+                    : 'Runs through end of WNBA regular season.'}
               </p>
             </div>
             {seasonType === 'full_season' && (

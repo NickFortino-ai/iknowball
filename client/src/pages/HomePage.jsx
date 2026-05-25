@@ -144,6 +144,7 @@ const FORMAT_LABELS = {
   bracket: 'Bracket',
   fantasy: 'Fantasy Football',
   nba_dfs: 'NBA DFS',
+  wnba_dfs: 'WNBA DFS',
   mlb_dfs: 'MLB DFS',
   hr_derby: 'HR Derby',
   strikeouts: 'Strikeouts',
@@ -216,7 +217,7 @@ function MyProfileRow({ profile }) {
 }
 
 // Formats that already contain the sport name in their label
-const SPORT_IN_FORMAT = { nba_dfs: true, mlb_dfs: true }
+const SPORT_IN_FORMAT = { nba_dfs: true, wnba_dfs: true, mlb_dfs: true }
 
 function formatWithSport(league) {
   const label = FORMAT_LABELS[league.format] || league.format

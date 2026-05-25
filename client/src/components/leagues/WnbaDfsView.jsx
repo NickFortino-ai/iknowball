@@ -1,0 +1,988 @@
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { useWnbaDfsPlayers, useWnbaDfsRoster, useSaveWnbaDfsRoster, useWnbaDfsStandings, useWnbaDfsLive, useFantasySettings } from '../../hooks/useLeagues'
+import PlayerDetailModal from '../ui/PlayerDetailModal'
+import { useAuth } from '../../hooks/useAuth'
+import { toast } from '../ui/Toast'
+import LoadingSpinner from '../ui/LoadingSpinner'
+import Avatar from '../ui/Avatar'
+import UserProfileModal from '../profile/UserProfileModal'
+import { todaySportsDay, tomorrowSportsDay } from '../../lib/sportsDay'
+
+// WNBA roster: 9 slots (2 G, 2 F, 1 C, 4 UTIL). Per migration 214,
+// G-slots accept guards only, F-slots accept forwards only, C-slot
+// accepts centers only, UTIL slots accept any of G/F/C.
+const SLOTS = [
+  { key: 'G1', label: 'G', positions: ['G'] },
+  { key: 'G2', label: 'G', positions: ['G'] },
+  { key: 'F1', label: 'F', positions: ['F'] },
+  { key: 'F2', label: 'F', positions: ['F'] },
+  { key: 'C', label: 'C', positions: ['C'] },
+  { key: 'UTIL1', label: 'UTIL', positions: ['G', 'F', 'C'] },
+  { key: 'UTIL2', label: 'UTIL', positions: ['G', 'F', 'C'] },
+  { key: 'UTIL3', label: 'UTIL', positions: ['G', 'F', 'C'] },
+  { key: 'UTIL4', label: 'UTIL', positions: ['G', 'F', 'C'] },
+]
+
+const SLOT_ORDER = ['G1', 'G2', 'F1', 'F2', 'C', 'UTIL1', 'UTIL2', 'UTIL3', 'UTIL4']
+
+function formatWnbaPeriod(p) {
+  if (!p) return ''
+  if (p <= 4) return `Q${p}`
+  if (p === 5) return 'OT'
+  return `${p - 4}OT`
+}
+
+function isPlayerEligibleForSlot(player, slot) {
+  // WNBA positions are single-letter (G, F, C) — no compound positions like NBA.
+  return slot.positions.includes(player.position)
+}
+
+const POSITION_FILTERS = ['All', 'G', 'F', 'C', 'OUT']
+
+function matchesPositionFilter(playerPos, filter) {
+  if (filter === 'All') return true
+  return playerPos === filter
+}
+
+const INJURY_COLORS = {
+  Out: 'text-incorrect',
+  IR: 'text-incorrect',
+  Questionable: 'text-yellow-400',
+  Probable: 'text-correct',
+  'Day-To-Day': 'text-yellow-400',
+}
+
+function InjuryBadge({ status }) {
+  if (!status) return null
+  const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
+  return (
+    <span className={`text-[12px] font-mono font-bold shrink-0 ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
+      {label}
+    </span>
+  )
+}
+
+// Get game state for a player: 'upcoming', 'live', or 'final'
+function getPlayerGameState(player) {
+  if (!player?.game_starts_at) return 'upcoming'
+  const now = new Date()
+  const start = new Date(player.game_starts_at)
+  if (start > now) return 'upcoming'
+  // Approximate: WNBA games last ~2 hours
+  const approxEnd = new Date(start.getTime() + 3 * 60 * 60 * 1000)
+  if (now < approxEnd) return 'live'
+  return 'final'
+}
+
+// Border class for roster slot based on game state
+function slotBorderClass(gameState) {
+  if (gameState === 'live') return 'border-l-2 border-l-accent'
+  if (gameState === 'final') return 'border-l-2 border-l-correct'
+  return 'border-l-2 border-l-text-primary/30'
+}
+
+function todayLocal() {
+  return todaySportsDay()
+}
+
+// ============================================
+// Live Tab
+// ============================================
+
+function shiftDate(dateStr, days) {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toLocaleDateString('en-CA')
+}
+
+function formatDateNav(dateStr) {
+  const today = new Date().toLocaleDateString('en-CA')
+  const yesterday = shiftDate(today, -1)
+  if (dateStr === today) return 'Today'
+  if (dateStr === yesterday) return 'Yesterday'
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function LiveView({ league, date: leagueDate }) {
+  const { profile } = useAuth()
+  const [viewDate, setViewDate] = useState(leagueDate)
+  const { data: liveData, isLoading } = useWnbaDfsLive(league.id, viewDate)
+  const [expandedUserId, setExpandedUserId] = useState(null)
+  const [expandedSlot, setExpandedSlot] = useState(null)
+
+  const today = new Date().toLocaleDateString('en-CA')
+  const leagueStart = league.starts_at
+    ? new Date(league.starts_at).toISOString().split('T')[0]
+    : today
+  const canGoBack = viewDate > leagueStart
+  const canGoForward = viewDate < today
+
+  function goBack() {
+    if (canGoBack) {
+      setViewDate(shiftDate(viewDate, -1))
+      setExpandedUserId(null)
+      setExpandedSlot(null)
+    }
+  }
+
+  function goForward() {
+    if (canGoForward) {
+      setViewDate(shiftDate(viewDate, 1))
+      setExpandedUserId(null)
+      setExpandedSlot(null)
+    }
+  }
+
+  if (isLoading) return <LoadingSpinner />
+
+  const { members, all_final, any_live, first_tipoff } = liveData || {}
+  const winner = all_final ? members?.[0] : null
+
+  function formatTipoff(isoStr) {
+    if (!isoStr) return null
+    return new Date(isoStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  }
+
+  return (
+    <div>
+      {/* Date navigation */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={goBack}
+          disabled={!canGoBack}
+          className="p-2 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span className="text-sm font-semibold text-text-primary">{formatDateNav(viewDate)}</span>
+        <button
+          onClick={goForward}
+          disabled={!canGoForward}
+          className="p-2 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {!members?.length ? (
+        <div className="text-center py-8 text-sm text-text-secondary">No rosters for this date.</div>
+      ) : (
+      <>
+
+      {/* Pre-game note */}
+      {!any_live && !all_final && first_tipoff && viewDate === today && (
+        <div className="rounded-xl border border-text-primary/10 bg-bg-primary p-4 mb-4 text-center">
+          <div className="text-sm text-text-secondary">First games tip off at <span className="text-text-primary font-semibold">{formatTipoff(first_tipoff)}</span></div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+      {members.map((m, idx) => {
+        const isMe = m.user_id === profile?.id
+        const isWinner = all_final && idx === 0
+        const isExpanded = expandedUserId === m.user_id
+        const borderColor = m.status === 'final' ? 'border-correct/50' : m.status === 'live' ? 'border-accent/50' : 'border-text-primary/20'
+        const playersLeft = m.slots?.filter((s) => s.game_status !== 'final').length || 0
+
+        return (
+          <div key={m.user_id} className={isWinner ? 'mb-4' : ''}>
+            <button
+              onClick={() => setExpandedUserId(isExpanded ? null : m.user_id)}
+              className={`w-full rounded-xl border ${borderColor} bg-bg-primary transition-all text-left ${
+                isWinner ? 'p-5 scale-[1.02]' : 'p-4'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Avatar user={m.user} size={isWinner ? 'xl' : 'lg'} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold truncate ${isWinner ? 'text-lg text-accent' : isMe ? 'text-accent text-base' : 'text-text-primary text-base'}`}>
+                      {m.user?.display_name || m.user?.username}
+                    </span>
+                    {isWinner && <span className="text-lg">{'🏆'}</span>}
+                  </div>
+                  {!m.has_roster && <div className="text-xs text-text-muted">No roster submitted</div>}
+                  {m.has_roster && playersLeft > 0 && !all_final && (
+                    <div className="text-xs text-text-muted">{playersLeft} player{playersLeft !== 1 ? 's' : ''} left</div>
+                  )}
+                </div>
+                <span className={`font-display ${isWinner ? 'text-2xl' : 'text-xl'} text-white`}>
+                  {Math.round(m.total_points * 10) / 10}
+                </span>
+                <svg
+                  className={`w-4 h-4 text-text-muted transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+
+            {isExpanded && m.slots?.length > 0 && (
+              <div className="mt-1 rounded-xl border border-text-primary/10 overflow-hidden">
+                {[...m.slots].sort((a, b) => {
+                  return SLOT_ORDER.indexOf(a.roster_slot) - SLOT_ORDER.indexOf(b.roster_slot)
+                }).map((slot) => {
+                  const hidden = slot.player_name === '????'
+                  const slotBorder = slot.game_status === 'live' ? 'border-l-accent' : slot.game_status === 'final' ? 'border-l-correct' : 'border-l-text-primary/20'
+                  const slotKey = `${m.user_id}-${slot.roster_slot}`
+                  const isSlotExpanded = expandedSlot === slotKey
+                  const hasStats = slot.stats && (slot.game_status === 'live' || slot.game_status === 'final')
+
+                  const isDNP = slot.game_status === 'final' && (!slot.stats || slot.stats.min === 0)
+                  const statLine = slot.stats && !isDNP ? [
+                    { label: 'PTS', value: slot.stats.pts },
+                    { label: 'REB', value: slot.stats.reb },
+                    { label: 'AST', value: slot.stats.ast },
+                    { label: 'STL', value: slot.stats.stl },
+                    { label: 'BLK', value: slot.stats.blk },
+                    { label: 'TO', value: slot.stats.to },
+                    { label: '3PM', value: slot.stats.threes },
+                  ].filter((s) => s.value > 0).map((s) => `${s.value} ${s.label}`).join(' · ') : null
+
+                  return (
+                    <div key={slot.roster_slot} className={`flex items-center gap-3 px-4 py-3.5 border-b border-text-primary/10 border-l-2 ${slotBorder} bg-bg-primary`}>
+                      <span className="text-sm font-bold text-text-muted w-10 shrink-0">{slot.roster_slot.replace(/[1-9]$/, '')}</span>
+                      {hidden ? (
+                        <span className="flex-1 text-base text-text-muted font-mono">????</span>
+                      ) : (
+                        <>
+                          {slot.headshot_url ? (
+                            <img src={slot.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
+                              onError={(e) => { e.target.style.display = 'none' }} />
+                          ) : (
+                            <div className="w-11 h-11 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold">
+                              {slot.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
+                            <div className="flex items-center gap-2 lg:w-44 lg:shrink-0">
+                              <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
+                              {slot.injury_status && <InjuryBadge status={slot.injury_status} />}
+                              {isDNP && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-incorrect/20 text-incorrect shrink-0">DNP</span>
+                              )}
+                            </div>
+                            {statLine && (
+                              <span className="text-xs text-text-muted block lg:hidden">{statLine}</span>
+                            )}
+                            <span className="text-sm text-text-secondary hidden lg:block lg:flex-1">{statLine || ''}</span>
+                            {(slot.game_status === 'live' || slot.game_status === 'final') && slot.away_team && (
+                              <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-xs lg:w-44 lg:shrink-0 lg:text-right">
+                                {slot.away_team} {slot.away_score ?? ''} @ {slot.home_team} {slot.home_score ?? ''}
+                                {slot.game_status === 'live' && slot.game_period && (
+                                  <span className="text-text-primary ml-1.5">{formatWnbaPeriod(slot.game_period)} {slot.game_clock}</span>
+                                )}
+                                {slot.game_status === 'final' && (
+                                  <span className="text-text-primary ml-1.5">Final</span>
+                                )}
+                              </span>
+                            )}
+                            {(slot.game_status === 'live' || slot.game_status === 'final') && !slot.away_team && (
+                              <span className="text-[11px] text-text-muted block mt-0.5 lg:mt-0 lg:text-xs lg:w-44 lg:shrink-0 lg:text-right">
+                                {slot.team} {slot.opponent}
+                                {slot.game_status === 'live' && slot.game_period && (
+                                  <span className="text-text-primary ml-1.5">{formatWnbaPeriod(slot.game_period)} {slot.game_clock}</span>
+                                )}
+                                {slot.game_status === 'final' && (
+                                  <span className="text-text-primary ml-1.5">Final</span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                          {(slot.game_status === 'live' || slot.game_status === 'final') && (
+                            <span className={`text-base lg:text-lg font-display shrink-0 lg:ml-6 lg:w-12 lg:text-right ${isDNP ? 'text-incorrect/60' : 'text-white'}`}>
+                              {isDNP ? '0' : Math.round((slot.points_earned || 0) * 10) / 10}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+      </div>
+      </>
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// Main Component
+// ============================================
+
+function tomorrowLocal() {
+  return tomorrowSportsDay()
+}
+
+function formatDateLabel(dateStr) {
+  const today = todayLocal()
+  const tomorrow = tomorrowLocal()
+  if (dateStr === today) return 'Today'
+  if (dateStr === tomorrow) return 'Tomorrow'
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+export default function WnbaDfsView({ league, tab = 'roster' }) {
+  const { profile } = useAuth()
+
+  const leagueStart = league.starts_at
+    ? new Date(league.starts_at).toISOString().split('T')[0]
+    : todayLocal()
+  const today = todayLocal()
+  const tomorrow = tomorrowLocal()
+
+  // Determine available dates: today and/or tomorrow, but not before league start
+  const availableDates = []
+  if (today >= leagueStart) availableDates.push(today)
+  if (tomorrow >= leagueStart) availableDates.push(tomorrow)
+  if (!availableDates.length) availableDates.push(leagueStart)
+
+  const [selectedDate, setSelectedDate] = useState(availableDates[0])
+  const date = selectedDate
+
+  const { data: fantasySettings } = useFantasySettings(league.id)
+  const salaryCap = fantasySettings?.salary_cap || 60000
+  const { data: players, isLoading: playersLoading } = useWnbaDfsPlayers(date)
+  const { data: existingRoster, isLoading: rosterLoading } = useWnbaDfsRoster(league.id, date)
+  const saveRoster = useSaveWnbaDfsRoster()
+  const { data: standingsData } = useWnbaDfsStandings(league.id)
+
+  const [roster, setRoster] = useState({})
+  const [posFilter, setPosFilter] = useState('All')
+  const [search, setSearch] = useState('')
+  const [initialized, setInitialized] = useState(false)
+  const [initDate, setInitDate] = useState(null)
+  const [selectedPlayer, setSelectedPlayer] = useState(null)
+  const [standingsUserId, setStandingsUserId] = useState(null)
+  const [editing, setEditing] = useState(false)
+
+  // Drag-reorder state
+  const [dragSource, setDragSource] = useState(null)
+  const [hoverSlot, setHoverSlot] = useState(null)
+  const slotRefs = useRef({})
+  const longPressTimer = useRef(null)
+  const dragStartY = useRef(0)
+  const dragCurrentY = useRef(0)
+  const dragEl = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(longPressTimer.current)
+      document.body.style.overflow = ''
+      document.body.style.touchAction = ''
+    }
+  }, [])
+
+  // Drag-reorder handlers — defined as refs to avoid stale closure issues
+  const dragSourceRef = useRef(null)
+  const hoverSlotRef = useRef(null)
+
+  // ── Drag-and-drop with hard cleanup guarantees ──────────────────────────
+  const docMoveRef = useRef(null)
+  const docUpRef = useRef(null)
+  const docCancelOnPredragRef = useRef(null)
+  const dragJustEndedAt = useRef(0)
+
+  function resetDragVisuals() {
+    if (dragEl.current) {
+      dragEl.current.style.transform = ''
+      dragEl.current.style.zIndex = ''
+      dragEl.current.style.position = ''
+      dragEl.current.style.pointerEvents = ''
+    }
+    document.body.style.overflow = ''
+    document.body.style.touchAction = ''
+  }
+
+  function detachDocListeners() {
+    if (docMoveRef.current) {
+      window.removeEventListener('pointermove', docMoveRef.current)
+      docMoveRef.current = null
+    }
+    if (docUpRef.current) {
+      window.removeEventListener('pointerup', docUpRef.current)
+      window.removeEventListener('pointercancel', docUpRef.current)
+      docUpRef.current = null
+    }
+    if (docCancelOnPredragRef.current) {
+      window.removeEventListener('pointermove', docCancelOnPredragRef.current)
+      window.removeEventListener('pointerup', docCancelOnPredragRef.current)
+      docCancelOnPredragRef.current = null
+    }
+  }
+
+  function handleDragStart(slotKey, e) {
+    const player = roster[slotKey]
+    if (!player) return
+    const gs = getPlayerGameState(player)
+    if (gs === 'live' || gs === 'final') return
+
+    const startY = e.clientY
+    const startX = e.clientX
+    const isMouse = e.pointerType === 'mouse'
+    dragStartY.current = startY
+
+    let beganDrag = false
+
+    function beginActualDrag() {
+      if (beganDrag) return
+      beganDrag = true
+      if (docCancelOnPredragRef.current) {
+        window.removeEventListener('pointermove', docCancelOnPredragRef.current)
+        docCancelOnPredragRef.current = null
+      }
+      window.removeEventListener('pointerup', cleanupPredrag)
+      window.removeEventListener('pointercancel', cleanupPredrag)
+      clearTimeout(longPressTimer.current)
+      attachDragHandlers()
+    }
+
+    function cleanupPredrag() {
+      clearTimeout(longPressTimer.current)
+      detachDocListeners()
+    }
+
+    const onPredragMove = (moveE) => {
+      const dx = Math.abs(moveE.clientX - startX)
+      const dy = Math.abs(moveE.clientY - startY)
+      if (isMouse && (dx > 8 || dy > 8)) {
+        beginActualDrag()
+        return
+      }
+      if (!isMouse && (dx > 8 || dy > 8)) {
+        cleanupPredrag()
+      }
+    }
+    docCancelOnPredragRef.current = onPredragMove
+    window.addEventListener('pointermove', onPredragMove, { passive: true })
+    window.addEventListener('pointerup', cleanupPredrag, { once: true, passive: true })
+    window.addEventListener('pointercancel', cleanupPredrag, { once: true, passive: true })
+
+    if (!isMouse) {
+      longPressTimer.current = setTimeout(beginActualDrag, 400)
+    }
+
+    function attachDragHandlers() {
+      setDragSource(slotKey)
+      dragSourceRef.current = slotKey
+      dragEl.current = slotRefs.current[slotKey]
+      document.body.style.overflow = 'hidden'
+      document.body.style.touchAction = 'none'
+
+      const onMove = (moveE) => {
+        if (!dragSourceRef.current) return
+        moveE.preventDefault?.()
+        const el = dragEl.current
+        if (el) {
+          const offset = moveE.clientY - dragStartY.current
+          el.style.transform = `translateY(${offset}px) scale(1.03)`
+          el.style.zIndex = '50'
+          el.style.position = 'relative'
+        }
+        if (el) el.style.pointerEvents = 'none'
+        const target = document.elementFromPoint(moveE.clientX, moveE.clientY)
+        if (el) el.style.pointerEvents = ''
+        const slotEl = target?.closest?.('[data-slot-key]')
+        const newHover = slotEl?.dataset?.slotKey || null
+        hoverSlotRef.current = newHover
+        setHoverSlot(newHover)
+      }
+
+      const onEnd = () => {
+        try {
+          const src = dragSourceRef.current
+          const tgt = hoverSlotRef.current
+          if (src && tgt && tgt !== src) {
+            const sourceSlotDef = SLOTS.find((s) => s.key === src)
+            const targetSlotDef = SLOTS.find((s) => s.key === tgt)
+            const draggedPlayer = roster[src]
+            const targetPlayer = roster[tgt]
+            if (draggedPlayer && targetSlotDef && isPlayerEligibleForSlot(draggedPlayer, targetSlotDef)) {
+              if (!targetPlayer) {
+                setRoster((prev) => {
+                  const next = { ...prev }
+                  next[tgt] = draggedPlayer
+                  delete next[src]
+                  return next
+                })
+              } else if (
+                sourceSlotDef &&
+                isPlayerEligibleForSlot(targetPlayer, sourceSlotDef) &&
+                getPlayerGameState(targetPlayer) === 'upcoming'
+              ) {
+                setRoster((prev) => ({
+                  ...prev,
+                  [src]: targetPlayer,
+                  [tgt]: draggedPlayer,
+                }))
+              }
+            }
+          }
+        } finally {
+          resetDragVisuals()
+          dragSourceRef.current = null
+          hoverSlotRef.current = null
+          setDragSource(null)
+          setHoverSlot(null)
+          dragEl.current = null
+          detachDocListeners()
+          dragJustEndedAt.current = Date.now()
+        }
+      }
+
+      docMoveRef.current = onMove
+      docUpRef.current = onEnd
+      window.addEventListener('pointermove', onMove, { passive: false })
+      window.addEventListener('pointerup', onEnd, { passive: true })
+      window.addEventListener('pointercancel', onEnd, { passive: true })
+    }
+  }
+
+  function handleDragMove() {}
+  function handleDragEnd() {}
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(longPressTimer.current)
+      resetDragVisuals()
+      detachDocListeners()
+    }
+  }, [])
+
+  // Reset roster state when date changes
+  if (initDate !== date) {
+    setInitDate(date)
+    setRoster({})
+    setInitialized(false)
+  }
+
+  // Initialize roster from existing data
+  if (!initialized && existingRoster?.wnba_dfs_roster_slots?.length && !Object.keys(roster).length) {
+    const loaded = {}
+    for (const slot of existingRoster.wnba_dfs_roster_slots) {
+      const player = players?.find((p) => p.espn_player_id === slot.espn_player_id)
+      if (player) loaded[slot.roster_slot] = player
+    }
+    if (Object.keys(loaded).length) {
+      setRoster(loaded)
+      setInitialized(true)
+    }
+  }
+
+  const usedSalary = Object.values(roster).reduce((sum, p) => sum + (p?.salary || 0), 0)
+  const remainingSalary = salaryCap - usedSalary
+  const filledSlots = Object.keys(roster).length
+  const usedPlayerIds = new Set(Object.values(roster).map((p) => p?.espn_player_id).filter(Boolean))
+  const hasSavedRoster = !!existingRoster?.wnba_dfs_roster_slots?.length
+  const allLocked = hasSavedRoster && Object.values(roster).length > 0 &&
+    Object.values(roster).every((p) => p && getPlayerGameState(p) !== 'upcoming')
+  const isViewMode = hasSavedRoster && !editing
+
+  const filteredPlayers = useMemo(() => {
+    if (!players) return []
+    const now = new Date()
+    return players.filter((p) => {
+      if (usedPlayerIds.has(p.espn_player_id)) return false
+      if (posFilter === 'OUT') return p.injury_status === 'Out'
+      if (p.injury_status === 'Out') return false
+      // Hide players whose games have started
+      const gameStarted = p.game_starts_at && new Date(p.game_starts_at) <= now
+      if (gameStarted && posFilter !== 'OUT') return false
+      if (!isViewMode && p.salary > remainingSalary) return false
+      if (!matchesPositionFilter(p.position, posFilter)) return false
+      if (search) {
+        const q = search.toLowerCase()
+        if (!p.player_name.toLowerCase().includes(q) && !p.team.toLowerCase().includes(q)) return false
+      }
+      return true
+    })
+  }, [players, posFilter, search, usedPlayerIds, remainingSalary, isViewMode])
+
+  function addPlayer(player) {
+    for (const slot of SLOTS) {
+      if (roster[slot.key]) continue
+      if (isPlayerEligibleForSlot(player, slot)) {
+        setRoster((prev) => ({ ...prev, [slot.key]: player }))
+        return
+      }
+    }
+    toast('No eligible slot available for this player', 'error')
+  }
+
+  function removeSlot(slotKey) {
+    const player = roster[slotKey]
+    if (player) {
+      const gs = getPlayerGameState(player)
+      if (gs !== 'upcoming') {
+        toast(`${player.player_name}'s game has started — locked`, 'error')
+        return
+      }
+    }
+    setRoster((prev) => {
+      const next = { ...prev }
+      delete next[slotKey]
+      return next
+    })
+  }
+
+  async function handleSubmit() {
+    const slots = Object.entries(roster).map(([slotKey, player]) => ({
+      roster_slot: slotKey,
+      player_name: player.player_name,
+      espn_player_id: player.espn_player_id,
+      position: player.position,
+      salary: player.salary,
+    }))
+
+    try {
+      await saveRoster.mutateAsync({ league_id: league.id, date, season: 2026, slots })
+      toast('Roster saved!', 'success')
+      setEditing(false)
+    } catch (err) {
+      toast(err.message || 'Failed to save roster', 'error')
+    }
+  }
+
+  // ============================================
+  // Live Tab
+  // ============================================
+  if (tab === 'live') {
+    return <LiveView league={league} date={date} />
+  }
+
+  // ============================================
+  // Standings Tab
+  // ============================================
+  if (tab === 'standings') {
+    const standings = standingsData?.standings || []
+    return (
+      <div>
+        {!standings.length ? (
+          <div className="text-center py-8 text-sm text-text-secondary">No results yet.</div>
+        ) : (
+          <div className="rounded-2xl border border-text-primary/20 overflow-hidden">
+            <div className="grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
+              <span>#</span>
+              <span>Player</span>
+              <span className="text-right">Wins</span>
+              <span className="text-right">Points</span>
+            </div>
+            {standings.map((s) => {
+              const isMe = s.user?.id === profile?.id
+              return (
+                <button
+                  key={s.user?.id}
+                  onClick={() => setStandingsUserId(s.user?.id)}
+                  className={`w-full grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3.5 items-center border-b border-text-primary/10 last:border-b-0 text-left hover:bg-text-primary/5 transition-colors cursor-pointer ${isMe ? 'bg-accent/5' : ''}`}
+                >
+                  <span className={`font-display text-xl ${s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{s.rank}</span>
+                  <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+                    <Avatar user={s.user} size="lg" className="shrink-0" />
+                    <span className={`font-bold truncate text-base ${isMe ? 'text-accent' : 'text-text-primary'}`}>
+                      {s.user?.display_name || s.user?.username}
+                    </span>
+                  </div>
+                  <span className="font-display text-lg text-text-primary text-right">{s.nightlyWins}</span>
+                  <span className="font-display text-xl text-white text-right">{Math.round(s.totalPoints * 10) / 10}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+        {standingsUserId && (
+          <UserProfileModal userId={standingsUserId} onClose={() => setStandingsUserId(null)} />
+        )}
+      </div>
+    )
+  }
+
+  // ============================================
+  // Roster Tab
+  // ============================================
+  if (playersLoading || rosterLoading) return <LoadingSpinner />
+
+  return (
+    <div className="lg:grid lg:grid-cols-2 lg:gap-6">
+      {/* Left column: roster */}
+      <div>
+      {/* Date sub-tabs */}
+      <div className="flex gap-2 mb-4">
+        {availableDates.map((d) => (
+          <button
+            key={d}
+            onClick={() => setSelectedDate(d)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              d === date ? 'border-2 border-accent text-accent bg-transparent' : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+            }`}
+          >
+            {formatDateLabel(d)}
+          </button>
+        ))}
+      </div>
+      {/* Salary Bar */}
+      <div className="rounded-xl border border-text-primary/20 bg-bg-primary/20 backdrop-blur-sm p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">Salary Cap</span>
+          <span className="text-xs text-text-primary font-semibold">{filledSlots}/9 slots</span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <span className={`font-display text-2xl ${remainingSalary < 0 ? 'text-incorrect' : 'text-correct'}`}>
+            ${remainingSalary.toLocaleString()}
+          </span>
+          <span className="text-xs text-text-primary">of ${salaryCap.toLocaleString()}</span>
+        </div>
+        <div className="mt-2 h-1.5 bg-text-primary/10 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${remainingSalary < 0 ? 'bg-incorrect' : 'bg-accent'}`}
+            style={{ width: `${Math.min((usedSalary / salaryCap) * 100, 100)}%` }}
+          />
+        </div>
+        {(9 - filledSlots) > 0 && (
+          <div className="mt-2 text-xs text-text-muted text-right">
+            ${Math.round(remainingSalary / (9 - filledSlots)).toLocaleString()} avg per player
+          </div>
+        )}
+      </div>
+
+      {/* My Roster */}
+      <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
+        <div className="px-4 py-3 border-b border-text-primary/10">
+          <h3 className="text-sm font-semibold text-text-primary">My Roster</h3>
+        </div>
+        {SLOTS.map((slot) => {
+          const rosterPlayer = roster[slot.key]
+          // Refresh injury status from latest players data
+          const player = rosterPlayer ? (players?.find((p) => p.espn_player_id === rosterPlayer.espn_player_id) || rosterPlayer) : null
+          const gameState = player ? getPlayerGameState(player) : null
+          const isLocked = gameState === 'live' || gameState === 'final'
+          const savedSlot = existingRoster?.wnba_dfs_roster_slots?.find((s) => s.roster_slot === slot.key)
+          const pointsEarned = savedSlot ? Number(savedSlot.points_earned) || 0 : 0
+          const showPoints = isLocked
+
+          // Drag visual feedback
+          const isDragSource = dragSource === slot.key
+          const isHoverTarget = hoverSlot === slot.key && dragSource && hoverSlot !== dragSource
+          const draggedPlayer = dragSource ? roster[dragSource] : null
+          const isEligibleTarget = isHoverTarget && draggedPlayer && isPlayerEligibleForSlot(draggedPlayer, slot)
+          const canSwap = isEligibleTarget && (!player || (isPlayerEligibleForSlot(player, SLOTS.find((s) => s.key === dragSource)) && getPlayerGameState(player) === 'upcoming'))
+
+          let dragClasses = ''
+          if (isDragSource) dragClasses = ' shadow-lg shadow-accent/30 ring-2 ring-accent/50'
+          else if (isHoverTarget && canSwap) dragClasses = ' ring-2 ring-accent/60 bg-accent/10'
+          else if (isHoverTarget && !canSwap) dragClasses = ' ring-2 ring-incorrect/40 bg-incorrect/5'
+          else if (dragSource && !isDragSource) dragClasses = ' opacity-50'
+
+          return (
+            <div
+              key={slot.key}
+              ref={(el) => { slotRefs.current[slot.key] = el }}
+              data-slot-key={slot.key}
+              onPointerDown={!isViewMode && player && !isLocked ? (e) => handleDragStart(slot.key, e) : undefined}
+              onPointerMove={handleDragMove}
+              onPointerUp={handleDragEnd}
+              onPointerCancel={handleDragEnd}
+              className={`flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary transition-all duration-150 select-none ${player ? slotBorderClass(gameState) : ''}${dragClasses}`}
+              style={{ touchAction: dragSource ? 'none' : undefined }}
+            >
+              <span className="text-xs font-bold text-accent w-10 shrink-0">{slot.label}</span>
+              {player ? (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (Date.now() - dragJustEndedAt.current < 300) return
+                      setSelectedPlayer(player)
+                    }}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
+                  >
+                    {player.headshot_url ? (
+                      <img
+                        src={player.headshot_url}
+                        alt=""
+                        className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
+                        onError={(e) => { e.target.style.display = 'none' }}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
+                        {player.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                        <InjuryBadge status={player.injury_status} />
+                        {isLocked && (
+                          <svg className="w-3 h-3 text-text-muted shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="text-xs text-text-muted">
+                        {player.position} · <span className="text-white">{player.team}</span> {player.opponent}
+                        {player.game_status === 'live' && player.game_period && (
+                          <span className="text-text-primary ml-1.5">{formatWnbaPeriod(player.game_period)} {player.game_clock}</span>
+                        )}
+                        {player.game_status === 'final' && (
+                          <span className="text-text-primary ml-1.5">Final</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                  {showPoints ? (
+                    <span className={`text-sm font-display ${gameState === 'live' ? 'text-accent' : 'text-text-primary'}`}>
+                      {Math.round(pointsEarned * 10) / 10}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-correct">${player.salary.toLocaleString()}</span>
+                  )}
+                  {!isLocked && !isViewMode && !dragSource && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeSlot(slot.key) }}
+                      className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
+                    >
+                      &times;
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="flex-1 text-xs text-text-muted italic">Empty</div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Action Button */}
+      {isViewMode ? (
+        <button
+          onClick={() => setEditing(true)}
+          disabled={allLocked}
+          className="w-full py-3 rounded-xl font-display bg-bg-card text-text-primary border border-text-primary/20 hover:bg-text-primary/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-6"
+        >
+          {allLocked ? 'Roster Locked' : 'Edit Roster'}
+        </button>
+      ) : (
+        <button
+          onClick={handleSubmit}
+          disabled={filledSlots < 9 || remainingSalary < 0 || saveRoster.isPending}
+          className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+        >
+          {saveRoster.isPending ? 'Saving...' : hasSavedRoster ? 'Save Roster' : 'Submit Roster'}
+        </button>
+      )}
+
+      {/* Player Pool */}
+      </div>
+
+      {/* Right column: player pool */}
+      <div className={`rounded-xl border border-text-primary/20 overflow-hidden lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto lg:sticky lg:top-4 ${isViewMode ? 'hidden lg:block' : ''}`}>
+        <div className="px-4 py-3 border-b border-text-primary/10">
+          <h3 className="text-sm font-semibold text-text-primary mb-3">Available Players</h3>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search players..."
+            className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3"
+          />
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap">
+              {POSITION_FILTERS.map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => setPosFilter(pos)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                    pos === 'OUT'
+                      ? posFilter === pos
+                        ? 'bg-incorrect/20 text-incorrect border border-incorrect/40'
+                        : 'border border-incorrect/30 text-incorrect/70 hover:bg-incorrect/10'
+                      : posFilter === pos
+                        ? 'bg-accent text-white'
+                        : 'border border-text-primary/20 text-text-primary hover:bg-text-primary/10'
+                  }`}
+                >
+                  {pos === 'OUT' ? 'O' : pos}
+                </button>
+              ))}
+            </div>
+            {(9 - filledSlots) > 0 && (
+              <span
+                key={`${remainingSalary}-${filledSlots}`}
+                className="text-xs text-text-muted shrink-0"
+              >
+                ${Math.round(remainingSalary / (9 - filledSlots)).toLocaleString()} avg/player
+              </span>
+            )}
+          </div>
+        </div>
+
+        {!filteredPlayers.length ? (
+          <div className="px-4 py-6 text-center text-xs text-text-muted">
+            {!players?.length ? 'No players available for this date yet.' : 'No players match your filters.'}
+          </div>
+        ) : (
+          <div className="max-h-[50vh] overflow-y-auto">
+            {filteredPlayers.map((player) => (
+              <div
+                key={player.espn_player_id}
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-text-primary/10 last:border-b-0 bg-bg-primary"
+              >
+                <button
+                  onClick={() => setSelectedPlayer(player)}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
+                >
+                  {player.headshot_url ? (
+                    <img
+                      src={player.headshot_url}
+                      alt=""
+                      className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
+                      onError={(e) => { e.target.src = ''; e.target.style.display = 'none' }}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold">
+                      {player.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
+                      <InjuryBadge status={player.injury_status} />
+                    </div>
+                    <div className="text-xs text-text-muted">{player.position} · <span className="text-white">{player.team}</span> {player.opponent}</div>
+                  </div>
+                  <span className="text-base font-semibold text-accent tabular-nums shrink-0">${player.salary.toLocaleString()}</span>
+                </button>
+                {!isViewMode && (
+                  <button
+                    onClick={() => addPlayer(player)}
+                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selectedPlayer && (
+        <PlayerDetailModal
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+          onAdd={posFilter !== 'OUT' ? addPlayer : null}
+        />
+      )}
+    </div>
+  )
+}

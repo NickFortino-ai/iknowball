@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite, useSurveyStatus } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useWnbaDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite, useSurveyStatus } from '../hooks/useLeagues'
 import SurveyModal from '../components/leagues/SurveyModal'
 import { useAcceptInvitation } from '../hooks/useInvitations'
 import { useAuth } from '../hooks/useAuth'
@@ -23,6 +23,7 @@ import FantasyStandings from '../components/leagues/FantasyStandings'
 import FantasyMatchup from '../components/leagues/FantasyMatchup'
 import FantasyLiveView from '../components/leagues/FantasyLiveView'
 import NbaDfsView from '../components/leagues/NbaDfsView'
+import WnbaDfsView from '../components/leagues/WnbaDfsView'
 import MlbDfsView from '../components/leagues/MlbDfsView'
 import HrDerbyView from '../components/leagues/HrDerbyView'
 import StrikeoutsView from '../components/leagues/StrikeoutsView'
@@ -44,7 +45,7 @@ import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
 import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
 
-const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'mlb_dfs']
+const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
 function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true) {
   const isOpen = league.status === 'open'
@@ -68,7 +69,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
         ? ['Live', memberOrStandings, ...reportTab]
         : ['Matchups', memberOrStandings, 'Players', ...reportTab]
     }
-    if (['nba_dfs', 'mlb_dfs'].includes(league.format)) {
+    if (['nba_dfs', 'wnba_dfs', 'mlb_dfs'].includes(league.format)) {
       return ['Live', memberOrStandings, ...reportTab]
     }
     // pickem, survivor, single-stat contests, td_pass — show standings only
@@ -103,6 +104,7 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
     survivor: ['Picks', memberOrStandings, 'Thread'],
     squares: ['Board', 'Members', 'Thread'],
     nba_dfs: ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread'],
+    wnba_dfs: ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread'],
     mlb_dfs: ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread'],
     hr_derby: ['Picks', memberOrStandings, 'Thread'],
     strikeouts: ['Picks', memberOrStandings, 'Thread'],
@@ -124,6 +126,7 @@ const FORMAT_LABELS = {
   bracket: 'Bracket',
   fantasy: 'Fantasy Football',
   nba_dfs: 'NBA Daily Fantasy',
+  wnba_dfs: 'WNBA Daily Fantasy',
   mlb_dfs: 'MLB Daily Fantasy',
   hr_derby: 'Home Run Derby',
   strikeouts: 'Strikeouts Contest',
@@ -382,7 +385,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
   const settings = league.settings || {}
   const isDaily = settings.pick_frequency === 'daily'
   const toggleAutoConnect = useToggleAutoConnect()
-  const { data: fantasySettings } = useFantasySettings(['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format) ? league.id : null)
+  const { data: fantasySettings } = useFantasySettings(['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format) ? league.id : null)
   const isTraditionalFantasy = league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap'
   const currentNflWeek = fantasySettings?.current_week || fantasySettings?.single_week || 1
   const { data: liveMatchupData } = useFantasyMatchupLive(
@@ -412,8 +415,8 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
     playoffs_only: 'Playoffs Only',
   }
 
-  if (league.format === 'nba_dfs') {
-    // NBA DFS specific items
+  if (league.format === 'nba_dfs' || league.format === 'wnba_dfs') {
+    // NBA / WNBA DFS specific items
     if (fantasySettings?.salary_cap) {
       items.push({ label: 'Salary Cap', value: `$${fantasySettings.salary_cap.toLocaleString()}` })
     }
@@ -574,6 +577,16 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       return `Build a new 9-player NBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. Tap a headshot to view player stats and injury info. The champion is determined by ${metric} over the season. Your finishing position impacts your global IKB score — see the table below.`
     }
 
+    if (league.format === 'wnba_dfs') {
+      const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$60,000'
+      const isSingleNight = fantasySettings?.season_type === 'single_week'
+      if (isSingleNight) {
+        return `Build a 9-player WNBA lineup under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. The player with the most fantasy points at the end of the night wins.`
+      }
+      const metric = fantasySettings?.champion_metric === 'most_wins' ? 'most nightly wins' : 'most total fantasy points'
+      return `Build a new 9-player WNBA lineup each night under a ${cap} salary cap. Each player locks when their game tips off, but you can swap unlocked players until their game starts. Players earn points based on their real stats — points, rebounds, assists, steals, blocks, and more. Tap a headshot to view player stats and injury info. The champion is determined by ${metric} over the season. Your finishing position impacts your global IKB score — see the table below.`
+    }
+
     if (league.format === 'mlb_dfs') {
       const cap = fantasySettings?.salary_cap ? `$${fantasySettings.salary_cap.toLocaleString()}` : '$40,000'
       const isSingleNight = fantasySettings?.season_type === 'single_week'
@@ -717,7 +730,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 const f = league.format
                 const sType = fantasySettings?.season_type
                 const fFormat = fantasySettings?.format
-                const isMultiNight = (f === 'nba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
+                const isMultiNight = (f === 'nba_dfs' || f === 'wnba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
                 const showTable = isMultiNight || f === 'hr_derby' || f === 'strikeouts' || f === 'three_point' || f === 'wnba_three_point' || f === 'sacks' || f === 'ints' || f === 'tackles' || f === 'receptions' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
                 if (!showTable) return null
                 // Prefer the actual member array; if the detail endpoint
@@ -1581,8 +1594,9 @@ export default function LeagueDetailPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [tabInitialized, setTabInitialized] = useState(false)
   const todayDate = new Date().toLocaleDateString('en-CA')
-  const isDfsFormat = ['nba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'wnba_three_point'].includes(league?.format)
+  const isDfsFormat = ['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'three_point', 'wnba_three_point'].includes(league?.format)
   const { data: nbaLiveData } = useNbaDfsLive(league?.format === 'nba_dfs' ? id : null, todayDate)
+  const { data: wnbaLiveData } = useWnbaDfsLive(league?.format === 'wnba_dfs' ? id : null, todayDate)
   const { data: mlbLiveData } = useMlbDfsLive(league?.format === 'mlb_dfs' ? id : null, todayDate)
   // ?invite=1 opens the modal; ?invite=<username> opens it pre-filled.
   const inviteParam = searchParams.get('invite')
@@ -1681,7 +1695,7 @@ export default function LeagueDetailPage() {
     }
 
     // DFS → default to Live tab when games have started
-    const liveData = league.format === 'nba_dfs' ? nbaLiveData : league.format === 'mlb_dfs' ? mlbLiveData : null
+    const liveData = league.format === 'nba_dfs' ? nbaLiveData : league.format === 'wnba_dfs' ? wnbaLiveData : league.format === 'mlb_dfs' ? mlbLiveData : null
     if (!liveData && isDfsFormat) return // still loading
 
     const hasLiveGames = liveData?.any_live || liveData?.all_final ||
@@ -1693,7 +1707,7 @@ export default function LeagueDetailPage() {
       if (liveIdx >= 0) setActiveTab(liveIdx)
     }
     setTabInitialized(true)
-  }, [league, tabInitialized, nbaLiveData, mlbLiveData, isDfsFormat])
+  }, [league, tabInitialized, nbaLiveData, wnbaLiveData, mlbLiveData, isDfsFormat])
 
   const [adjustingBackdrop, setAdjustingBackdrop] = useState(false)
   const [backdropY, setBackdropY] = useState(50)
@@ -1730,7 +1744,7 @@ export default function LeagueDetailPage() {
   // Bracket leagues don't auto-fallback to a default arena — they should be black
   // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
   // image lives on the bracket itself, not as a page-wide backdrop.
-  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format)
+  const hasBackdrop = league.backdrop_image || ['nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'fantasy'].includes(league.format)
 
   function startBackdropDrag(e) {
     e.preventDefault()
@@ -1848,7 +1862,7 @@ export default function LeagueDetailPage() {
           <img
             src={league.backdrop_image
               ? getBackdropUrl(league.backdrop_image)
-              : league.format === 'nba_dfs' ? '/nba-dfs-bg.png' : '/fantasy-football-bg.png'
+              : (league.format === 'nba_dfs' || league.format === 'wnba_dfs') ? '/nba-dfs-bg.png' : '/fantasy-football-bg.png'
             }
             alt=""
             className={`w-full h-full object-cover ${adjustingBackdrop ? 'opacity-60' : 'opacity-30'}`}
@@ -1902,8 +1916,8 @@ export default function LeagueDetailPage() {
         <Link to="/leagues" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
           &larr; My Leagues
         </Link>
-        <div className={['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'text-center' : ''}>
-        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
+        <div className={['bracket', 'fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'text-center' : ''}>
+        <div className={`flex items-center gap-2 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
           <h1 className="font-display text-3xl">{league.name}</h1>
           <button
             onClick={() => setShowSettingsModal(true)}
@@ -1916,7 +1930,7 @@ export default function LeagueDetailPage() {
             </svg>
           </button>
         </div>
-        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-5 mt-2 ${['bracket', 'fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'pickem', 'squares', 'survivor', 'td_pass'].includes(league.format) ? 'justify-center' : ''}`}>
           {isCommissioner && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded text-tier-hof">
               Commissioner
@@ -2349,7 +2363,7 @@ export default function LeagueDetailPage() {
       {!(league.format === 'bracket' && isBracketLocked) && (
       <div className="relative z-10 mb-6 flex gap-2 overflow-x-auto no-scrollbar scroll-smooth px-2 md:px-0 md:justify-center md:flex-wrap" style={{ WebkitOverflowScrolling: 'touch' }}>
         {tabs.map((tab, i) => {
-          const isLiveDisabled = tab === 'Live' && league.format === 'nba_dfs' && league.starts_at &&
+          const isLiveDisabled = tab === 'Live' && (league.format === 'nba_dfs' || league.format === 'wnba_dfs') && league.starts_at &&
             new Date(league.starts_at).toISOString().split('T')[0] > new Date().toLocaleDateString('en-CA')
 
           return (
@@ -2519,6 +2533,12 @@ export default function LeagueDetailPage() {
       {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Live' || tabs[activeTab] === 'Standings') && league.format === 'nba_dfs' && (
         <div className="relative z-10">
           <NbaDfsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'Live' ? 'live' : 'roster'} />
+        </div>
+      )}
+
+      {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Live' || tabs[activeTab] === 'Standings') && league.format === 'wnba_dfs' && (
+        <div className="relative z-10">
+          <WnbaDfsView league={league} tab={tabs[activeTab] === 'Standings' ? 'standings' : tabs[activeTab] === 'Live' ? 'live' : 'roster'} />
         </div>
       )}
 

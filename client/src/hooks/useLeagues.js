@@ -1075,6 +1075,69 @@ export function useNbaDfsStandings(leagueId) {
   })
 }
 
+// ============================================
+// WNBA DFS
+// ============================================
+
+export function useWnbaDfsPlayers(date) {
+  return useQuery({
+    queryKey: ['wnba-dfs', 'players', date],
+    queryFn: () => api.get(`/wnba-dfs/players?date=${date}`),
+    enabled: !!date,
+    refetchInterval: (query) => {
+      const hasLive = query.state.data?.some((p) => p.game_status === 'live')
+      return hasLive ? 25000 : 120000
+    },
+  })
+}
+
+export function useWnbaDfsRoster(leagueId, date, season = 2026) {
+  return useQuery({
+    queryKey: ['wnba-dfs', leagueId, 'roster', date],
+    queryFn: () => api.get(`/wnba-dfs/roster?league_id=${leagueId}&date=${date}&season=${season}`),
+    enabled: !!leagueId && !!date,
+    refetchInterval: (query) => {
+      const slots = query.state.data?.wnba_dfs_roster_slots || []
+      const anyLive = Array.isArray(slots) && slots.some((s) => s.game_status === 'live')
+      return anyLive ? 10000 : 60000
+    },
+  })
+}
+
+export function useSaveWnbaDfsRoster() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/wnba-dfs/roster', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['wnba-dfs', variables.league_id, 'roster'] })
+    },
+  })
+}
+
+export function useWnbaDfsLive(leagueId, date, season = 2026) {
+  return useQuery({
+    queryKey: ['wnba-dfs', leagueId, 'live', date],
+    queryFn: () => api.get(`/wnba-dfs/live?league_id=${leagueId}&date=${date}&season=${season}`),
+    enabled: !!leagueId && !!date,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const anyLive = data?.rosters?.some?.((r) =>
+        r.slots?.some?.((s) => s.game_status === 'live')
+      )
+      return anyLive ? 5000 : 30000
+    },
+  })
+}
+
+export function useWnbaDfsStandings(leagueId) {
+  return useQuery({
+    queryKey: ['wnba-dfs', leagueId, 'standings'],
+    queryFn: () => api.get(`/wnba-dfs/standings?league_id=${leagueId}`),
+    enabled: !!leagueId,
+    refetchInterval: 60000,
+  })
+}
+
 // MLB DFS hooks
 export function useMlbDfsPlayers(date) {
   return useQuery({

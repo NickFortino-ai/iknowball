@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGames } from '../hooks/useGames'
-import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncNFLSalaries, useEnrichEspnIds, useSyncWeeklyProjections, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
+import { useSyncOdds, useSyncInjuries, useScoreGames, useRecalculatePoints, useRecalculateRecords, useSyncNflPlayers, useSyncNBASalaries, useSyncMLBSalaries, useSyncWNBASalaries, useSyncNFLSalaries, useEnrichEspnIds, useSyncWeeklyProjections, useSendEmailBlast, useSendTargetedEmail, useSendTemplateBracketEmail, useBracketTemplates, useBracketTemplateUserCount, useEmailLogs, useAdminFeaturedProps, useVoidProp, useSettleProps, useAdminPendingCounts, useAdminLeagueSearch } from '../hooks/useAdmin'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchUsers } from '../hooks/useInvitations'
 import PropSyncPanel from '../components/admin/PropSyncPanel'
@@ -66,6 +66,7 @@ export default function AdminPage() {
   const syncNflPlayers = useSyncNflPlayers()
   const syncNBASalaries = useSyncNBASalaries()
   const syncMLBSalaries = useSyncMLBSalaries()
+  const syncWNBASalaries = useSyncWNBASalaries()
   const syncNFLSalaries = useSyncNFLSalaries()
   const enrichEspnIds = useEnrichEspnIds()
   const syncWeeklyProjections = useSyncWeeklyProjections()
@@ -965,6 +966,21 @@ export default function AdminPage() {
             className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
           >
             {syncMLBSalaries.isPending ? 'Syncing...' : 'Sync MLB Salaries'}
+          </button>
+          <button
+            onClick={async () => {
+              const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+              const dateStr = window.prompt('WNBA salary date (YYYY-MM-DD)?', today)
+              if (!dateStr) return
+              try {
+                await syncWNBASalaries.mutateAsync(dateStr)
+                toast('WNBA salary generation started — runs in background', 'success')
+              } catch (err) { toast(err.message || 'Failed', 'error') }
+            }}
+            disabled={syncWNBASalaries.isPending}
+            className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4 text-sm font-semibold text-text-primary hover:bg-bg-primary/80 transition-colors disabled:opacity-50 text-center"
+          >
+            {syncWNBASalaries.isPending ? 'Syncing...' : 'Sync WNBA Salaries'}
           </button>
           <button
             onClick={async () => {

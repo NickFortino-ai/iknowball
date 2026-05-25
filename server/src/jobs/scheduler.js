@@ -19,6 +19,7 @@ import { settleStuckParlays } from './settleStuckParlays.js'
 import { syncInjuries } from './syncInjuries.js'
 import { cleanupExpiredVideos } from './cleanupExpiredVideos.js'
 import { scoreNBADFS } from './scoreNBADFS.js'
+import { scoreWNBADFS } from './scoreWNBADFS.js'
 import { scoreMLBDFS } from './scoreMLBDFS.js'
 import { settleNBAProps } from './settleNBAProps.js'
 import { settleWNBAProps } from './settleWNBAProps.js'
@@ -134,6 +135,17 @@ export function startScheduler() {
       try { await scoreNBADFS() } catch (err) { logger.error({ err }, 'NBA DFS scoring job failed') }
     })
     logger.info('NBA DFS scoring scheduled: every 1 minute')
+
+    // WNBA DFS salary generation + scoring (same cadence as NBA)
+    cron.schedule('0 10 * * *', async () => {
+      try { await scoreWNBADFS() } catch (err) { logger.error({ err }, 'WNBA DFS salary generation failed') }
+    }, { timezone: 'America/New_York' })
+    logger.info('WNBA DFS salary generation scheduled: daily at 10:00 AM EST')
+
+    cron.schedule('*/2 * * * *', async () => {
+      try { await scoreWNBADFS() } catch (err) { logger.error({ err }, 'WNBA DFS scoring job failed') }
+    })
+    logger.info('WNBA DFS scoring scheduled: every 2 minutes')
 
     // MLB DFS salary generation — daily at 10:00 AM EST
     cron.schedule('0 10 * * *', async () => {
