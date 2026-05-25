@@ -274,11 +274,16 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
 }
 
 async function tightenJoinLocks() {
+  // Only tighten OPEN leagues. Once active, joins_locked_at is set in
+  // stone — re-aligning to "next first tipoff" on day 2 would push the
+  // lock to tomorrow, and the open/active flip cron in completeLeagues
+  // would demote the league back to 'open'. Same bug fix as
+  // tightenWnbaThreePointJoinLocks in wnbaThreePointService.
   const { data: leagues } = await supabase
     .from('leagues')
     .select('id, starts_at, joins_locked_at')
     .eq('format', 'wnba_dfs')
-    .in('status', ['open', 'active'])
+    .eq('status', 'open')
 
   if (!leagues?.length) return
 

@@ -335,7 +335,10 @@ async function tightenJoinLocks() {
     .from('leagues')
     .select('id, starts_at, joins_locked_at')
     .eq('format', 'nba_dfs')
-    .in('status', ['open', 'active'])
+    // Only tighten OPEN leagues. Once active, the lock is set in stone.
+    // Re-aligning to "next first tipoff" on day 2 would push the lock
+    // forward and the open/active flip cron would demote back to 'open'.
+    .eq('status', 'open')
 
   if (!leagues?.length) return
 
