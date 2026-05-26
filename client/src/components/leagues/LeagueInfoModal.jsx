@@ -106,12 +106,12 @@ export default function LeagueInfoModal({ league, onClose, onJoin, joining }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-16"
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-t-2xl md:rounded-2xl overflow-hidden max-h-[85vh] flex flex-col"
+        className="relative bg-bg-primary border border-text-primary/20 w-full md:max-w-md rounded-2xl overflow-hidden max-h-[calc(100vh-8rem)] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with backdrop */}
