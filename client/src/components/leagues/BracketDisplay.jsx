@@ -746,15 +746,15 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
     <div
       className={`xl:w-[calc(100vw-3rem)] ${useFacing ? '' : 'xl:max-w-[1400px]'} xl:-ml-[calc((100vw-3rem-100%)/2)] xl:self-center`}
     >
-      {/* Region tabs */}
+      {/* Region tabs — glass-edge styling matched to the main league tabs */}
       {showRegionTabs && (
-        <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
           <button
             onClick={() => setSelectedRegion(null)}
-            className={`shrink-0 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+            className={`relative shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors backdrop-blur-sm whitespace-nowrap ${
               !selectedRegion
-                ? 'bg-accent/20 text-accent'
-                : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                ? 'bg-bg-primary/20 text-accent border-2 border-accent'
+                : 'bg-bg-primary/20 text-text-primary hover:bg-bg-primary/40 border border-text-primary/15'
             }`}
           >
             All
@@ -763,10 +763,10 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
             <button
               key={region}
               onClick={() => setSelectedRegion(region)}
-              className={`shrink-0 px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+              className={`relative shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-colors backdrop-blur-sm whitespace-nowrap ${
                 selectedRegion === region
-                  ? 'bg-accent/20 text-accent'
-                  : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                  ? 'bg-bg-primary/20 text-accent border-2 border-accent'
+                  : 'bg-bg-primary/20 text-text-primary hover:bg-bg-primary/40 border border-text-primary/15'
               }`}
             >
               {region}
