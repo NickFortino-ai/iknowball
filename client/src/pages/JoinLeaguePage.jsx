@@ -202,7 +202,7 @@ export default function JoinLeaguePage() {
                       <div className="min-w-0 flex-1">
                         <h3 className="font-display text-xl text-white truncate">{league.name}</h3>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="text-xs font-semibold text-accent">
+                          <span className="text-sm font-semibold text-accent">
                             {FORMAT_LABELS[league.format] || league.format}
                           </span>
                           <span className="text-xs text-text-secondary">{SPORT_LABELS[league.sport] || league.sport}</span>

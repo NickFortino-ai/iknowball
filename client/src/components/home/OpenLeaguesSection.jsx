@@ -143,7 +143,7 @@ export default function OpenLeaguesSection() {
             )}
             <div className="relative p-4 flex flex-col flex-1">
               <div className="font-semibold text-sm text-white mb-1 line-clamp-2 leading-snug">{league.name}</div>
-              <div className="text-xs mb-1.5">
+              <div className="text-sm mb-1.5">
                 <span className="text-accent font-semibold">{getLeagueHeadline(league)}</span>
               </div>
               <div className="text-xs text-text-muted mb-1">
