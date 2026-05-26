@@ -86,13 +86,19 @@ export default function SurvivorView({ league }) {
 
   // If user hasn't picked for the current period, only show games within that period.
   // Once they've picked, show all upcoming games so they can pick a day ahead.
+  // Always drop games that start before the league does — pre-start games
+  // belong to no league_week and just clutter the slate with un-pickable rows
+  // (especially the "I picked Day 1, league hasn't started yet" case).
   const pickWeekGames = useMemo(() => {
     if (!games?.length) return []
+    const upcoming = league?.starts_at
+      ? games.filter((g) => g.starts_at >= league.starts_at)
+      : games
     if (!board?.user_has_picked && pickWeek?.starts_at && pickWeek?.ends_at) {
-      return games.filter((g) => g.starts_at >= pickWeek.starts_at && g.starts_at <= pickWeek.ends_at)
+      return upcoming.filter((g) => g.starts_at >= pickWeek.starts_at && g.starts_at <= pickWeek.ends_at)
     }
-    return games
-  }, [games, pickWeek, board?.user_has_picked])
+    return upcoming
+  }, [games, pickWeek, board?.user_has_picked, league?.starts_at])
 
   // Detect when user has used every available team in current period (pool expansion)
   const poolExpanded = useMemo(() => {
