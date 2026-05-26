@@ -2636,7 +2636,9 @@ export default function LeagueDetailPage() {
               <div className="flex items-baseline justify-between mb-4 px-1">
                 <span className="text-xs uppercase tracking-wider text-text-muted">Runs until</span>
                 <span className="text-sm font-semibold text-text-primary">
-                  {new Date(league.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}
+                  {league.format === 'survivor'
+                    ? 'Last one standing'
+                    : new Date(league.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}
                 </span>
               </div>
             )}
