@@ -2515,7 +2515,7 @@ export default function LeagueDetailPage() {
       )}
 
       {tabs[activeTab] === 'Standings' && league.format === 'fantasy' && (
-        <div className="relative z-10"><FantasyStandings league={league} isSalaryCap={fantasySettings?.format === 'salary_cap'} /></div>
+        <div className="relative z-10"><FantasyStandings league={league} isSalaryCap={fantasySettings?.format === 'salary_cap'} championMetric={fantasySettings?.champion_metric || 'total_points'} /></div>
       )}
 
       {tabs[activeTab] === 'Live' && league.format === 'fantasy' && (

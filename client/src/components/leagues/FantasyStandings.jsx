@@ -7,7 +7,11 @@ import UserProfileModal from '../profile/UserProfileModal'
 import { useFantasyStandings, useGlobalRank } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 
-export default function FantasyStandings({ league, isSalaryCap }) {
+export default function FantasyStandings({ league, isSalaryCap, championMetric }) {
+  // For salary cap leagues, highlight the column the league winner is
+  // judged on (most wins vs total points) in green so it's obvious.
+  const winsIsKey = isSalaryCap && championMetric === 'most_wins'
+  const pointsIsKey = isSalaryCap && championMetric === 'total_points'
   const [expandedUserId, setExpandedUserId] = useState(null)
   const [profileUserId, setProfileUserId] = useState(null)
   const [showGlobalRank, setShowGlobalRank] = useState(false)
@@ -88,9 +92,9 @@ export default function FantasyStandings({ league, isSalaryCap }) {
             <tr className="border-b border-text-primary/10 text-text-muted text-xs">
               <th className="py-3 px-2 text-center font-semibold w-10">#</th>
               <th className="py-3 px-2 text-left font-semibold">Manager</th>
-              <th className="py-3 px-3 text-center font-semibold cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('wl')}>{isSalaryCap ? 'Wins' : 'W-L'}</th>
+              <th className={`py-3 px-3 text-center font-semibold cursor-pointer select-none hover:text-text-primary ${winsIsKey ? 'text-correct' : ''}`} onClick={() => handleSortClick('wl')}>{isSalaryCap ? 'Wins' : 'W-L'}</th>
               <th
-                className={`py-3 px-3 text-center font-semibold ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`}
+                className={`py-3 px-3 text-center font-semibold ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''} ${pointsIsKey ? 'text-correct' : ''}`}
                 onClick={() => !isSalaryCap && handleSortClick('pf')}
               >
                 {isSalaryCap ? 'Points' : 'PF'}{sortCol === 'pf' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
@@ -176,8 +180,8 @@ export default function FantasyStandings({ league, isSalaryCap }) {
               <div className="py-3 px-2 text-left font-semibold w-44">Manager</div>
             </div>
             <div className="flex">
-              <div className="py-3 px-3 text-center font-semibold w-16 cursor-pointer select-none hover:text-text-primary" onClick={() => handleSortClick('wl')}>{isSalaryCap ? 'Wins' : 'W-L'}</div>
-              <div className={`py-3 px-3 text-center font-semibold w-16 ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''}`} onClick={() => !isSalaryCap && handleSortClick('pf')}>
+              <div className={`py-3 px-3 text-center font-semibold w-16 cursor-pointer select-none hover:text-text-primary ${winsIsKey ? 'text-correct' : ''}`} onClick={() => handleSortClick('wl')}>{isSalaryCap ? 'Wins' : 'W-L'}</div>
+              <div className={`py-3 px-3 text-center font-semibold w-16 ${!isSalaryCap ? 'cursor-pointer select-none hover:text-text-primary' : ''} ${pointsIsKey ? 'text-correct' : ''}`} onClick={() => !isSalaryCap && handleSortClick('pf')}>
                 {isSalaryCap ? 'Points' : 'PF'}{sortCol === 'pf' ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
               </div>
               {!isSalaryCap && (

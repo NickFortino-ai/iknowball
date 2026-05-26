@@ -1387,6 +1387,16 @@ export async function getFantasyStandings(leagueId) {
 
   if (!members?.length) return []
 
+  // For salary_cap leagues, sort respects champion_metric. Traditional
+  // fantasy uses the H2H record (wins DESC, PF tiebreak) regardless.
+  const { data: settingsRow } = await supabase
+    .from('fantasy_settings')
+    .select('format, champion_metric')
+    .eq('league_id', leagueId)
+    .maybeSingle()
+  const isSalaryCap = settingsRow?.format === 'salary_cap'
+  const championMetric = settingsRow?.champion_metric || 'total_points'
+
   // All matchups for this league, ordered so we can compute streaks
   // chronologically. Paginate for safety — very large leagues with long
   // seasons could approach the 1000-row cap.
@@ -1462,11 +1472,21 @@ export async function getFantasyStandings(leagueId) {
     games_played: t.wins + t.losses + t.ties,
   }))
 
-  // Sort: wins DESC, then PF DESC as tiebreaker
-  standings.sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins
-    return b.pf - a.pf
-  })
+  // Sort. Default: wins DESC, then PF DESC as tiebreaker (traditional
+  // H2H fantasy + salary_cap leagues with champion_metric='most_wins').
+  // For salary_cap leagues with champion_metric='total_points', sort by
+  // points (pf) DESC instead, wins as tiebreak.
+  if (isSalaryCap && championMetric === 'total_points') {
+    standings.sort((a, b) => {
+      if (b.pf !== a.pf) return b.pf - a.pf
+      return b.wins - a.wins
+    })
+  } else {
+    standings.sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins
+      return b.pf - a.pf
+    })
+  }
 
   return standings.map((s, i) => ({ ...s, rank: i + 1 }))
 }

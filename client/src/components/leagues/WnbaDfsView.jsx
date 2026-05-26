@@ -674,8 +674,8 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
             <div className="grid grid-cols-[2.5rem_1fr_3rem_5rem] gap-2 px-4 py-3 border-b border-text-primary/10 text-xs text-text-muted uppercase tracking-wider">
               <span>#</span>
               <span>Player</span>
-              <span className="text-right">Wins</span>
-              <span className="text-right">Points</span>
+              <span className={`text-right ${standingsData?.championMetric === 'most_wins' ? 'text-correct' : ''}`}>Wins</span>
+              <span className={`text-right ${standingsData?.championMetric !== 'most_wins' ? 'text-correct' : ''}`}>Points</span>
             </div>
             {standings.map((s) => {
               const isMe = s.user?.id === profile?.id
