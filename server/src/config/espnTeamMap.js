@@ -46,7 +46,9 @@ export const ESPN_TEAMS = {
     '8':      'Minnesota Lynx',
     '9':      'New York Liberty',
     '11':     'Phoenix Mercury',
+    '132052': 'Portland Fire',
     '14':     'Seattle Storm',
+    '131935': 'Toronto Tempo',
     '16':     'Washington Mystics',
   },
   americanfootball_nfl: {
