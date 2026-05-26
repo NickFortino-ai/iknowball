@@ -101,7 +101,7 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
   // ones — otherwise the user sees no corner flag on the card for hours
   // even though they need to make their picks.
   const DAILY_OPEN_FORMATS = new Set([
-    'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
+    'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
     'three_point', 'wnba_three_point',
   ])
   const activeLeagues = leagues.filter((l) =>
@@ -133,7 +133,7 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
   // last game ends.
   const relevantSportKeys = new Set()
   if (byFormat.nba_dfs?.length || byFormat.three_point?.length) relevantSportKeys.add('basketball_nba')
-  if (byFormat.wnba_three_point?.length) relevantSportKeys.add('basketball_wnba')
+  if (byFormat.wnba_dfs?.length || byFormat.wnba_three_point?.length) relevantSportKeys.add('basketball_wnba')
   if (byFormat.mlb_dfs?.length || byFormat.hr_derby?.length || byFormat.strikeouts?.length) relevantSportKeys.add('baseball_mlb')
   if (byFormat.survivor?.length) {
     for (const l of byFormat.survivor) {
@@ -146,6 +146,11 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     if (byFormat.nba_dfs?.length) {
       if (!doneSports.has('basketball_nba')) {
         await computeDfsReadiness(byFormat.nba_dfs, userId, todayET, 'nba_dfs_rosters', 'nba_dfs_roster_slots', 'nba_dfs_salaries', result, yesterdayET, 9)
+      }
+    }
+    if (byFormat.wnba_dfs?.length) {
+      if (!doneSports.has('basketball_wnba')) {
+        await computeDfsReadiness(byFormat.wnba_dfs, userId, todayET, 'wnba_dfs_rosters', 'wnba_dfs_roster_slots', 'wnba_dfs_salaries', result, yesterdayET, 9)
       }
     }
     if (byFormat.mlb_dfs?.length) {
@@ -386,9 +391,10 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
   )
   const inOverlapWindow = nowEtHour < 8
   if (inOverlapWindow && yesterdayET && yesterdayET !== todayET) {
-    const { data: sportRow } = await supabase.from('sports').select('id').eq('key',
-      rosterTable === 'nba_dfs_rosters' ? 'basketball_nba' : 'baseball_mlb'
-    ).single()
+    const sportKeyForTable = rosterTable === 'nba_dfs_rosters' ? 'basketball_nba'
+      : rosterTable === 'wnba_dfs_rosters' ? 'basketball_wnba'
+      : 'baseball_mlb'
+    const { data: sportRow } = await supabase.from('sports').select('id').eq('key', sportKeyForTable).single()
     if (sportRow) {
       const yStart = new Date(yesterdayET + 'T00:00:00-05:00')
       const yEnd = new Date(yStart.getTime() + 36 * 60 * 60 * 1000)
