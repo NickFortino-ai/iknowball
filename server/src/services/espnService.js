@@ -266,40 +266,49 @@ export async function fetchGameTopScorers(sportKey, espnEventId) {
 
     for (const teamBox of boxscore.players) {
       const teamName = teamBox.team?.displayName || teamBox.team?.name || ''
-      // Find the scoring statistics section
-      const stats = teamBox.statistics?.find((s) =>
-        s.labels?.includes('PTS') || s.labels?.includes('G') || s.labels?.includes('P')
-      )
-      if (!stats?.athletes?.length) continue
-
-      // Find the scoring column index (sport-specific)
-      const ptsIdx = stats.labels?.indexOf('PTS')
-      // For hockey: 'P' = points (goals+assists), 'G' = goals only
-      const hockeyPtsIdx = stats.labels?.indexOf('P')
-      const goalsIdx = stats.labels?.indexOf('G')
-      const scoreIdx = ptsIdx >= 0 ? ptsIdx : hockeyPtsIdx >= 0 ? hockeyPtsIdx : goalsIdx
-
-      if (scoreIdx < 0) continue
-
+      // NHL splits players into separate "forwards" / "defenses" groups —
+      // iterate every group with a usable scoring column. Was previously
+      // .find()-ing the first matching group only (i.e., forwards), which
+      // missed any team whose top scorer was a defenseman.
       let topScorer = null
       let topPoints = 0
-      for (const athlete of stats.athletes) {
-        const pts = parseInt(athlete.stats?.[scoreIdx] || '0', 10)
-        if (pts > topPoints) {
-          topPoints = pts
-          topScorer = {
-            team: teamName,
-            playerName: athlete.athlete?.displayName || '',
-            points: pts,
-            headshotUrl: athlete.athlete?.headshot?.href || null,
+      for (const stats of teamBox.statistics || []) {
+        if (!stats?.athletes?.length) continue
+
+        // Sport-specific scoring column. NBA uses 'PTS'. Hockey doesn't
+        // include a 'P' label by default in summary box scores, but does
+        // include 'G' (goals) and 'A' (assists) — combine them to compute
+        // a real point total. A defender with 2A beats a forward with 0G.
+        const labels = stats.labels || []
+        const ptsIdx = labels.indexOf('PTS')
+        const goalsIdx = labels.indexOf('G')
+        const assistsIdx = labels.indexOf('A')
+
+        if (ptsIdx < 0 && goalsIdx < 0) continue
+
+        for (const athlete of stats.athletes) {
+          const aStats = athlete.stats || []
+          let pts
+          if (ptsIdx >= 0) {
+            pts = parseInt(aStats[ptsIdx] || '0', 10)
+          } else {
+            const g = parseInt(aStats[goalsIdx] || '0', 10) || 0
+            const a = assistsIdx >= 0 ? (parseInt(aStats[assistsIdx] || '0', 10) || 0) : 0
+            pts = g + a
+          }
+          if (pts > topPoints) {
+            topPoints = pts
+            topScorer = {
+              team: teamName,
+              playerName: athlete.athlete?.displayName || '',
+              points: pts,
+              headshotUrl: athlete.athlete?.headshot?.href || null,
+            }
           }
         }
       }
-      // Skip when the box score is still empty (all athletes at 0) — the
-      // fire-and-forget call runs the moment a game flips to final, before
-      // ESPN's stats endpoint has fully populated. Returning a 0-pt
-      // "leader" stored a phantom top scorer (LeBron / Hartenstein at 0)
-      // that never got refreshed.
+      // Skip when the box score is still empty (all athletes at 0). The
+      // retry cron will pick this up on the next pass.
       if (topScorer && topPoints > 0) results.push(topScorer)
     }
     return results
