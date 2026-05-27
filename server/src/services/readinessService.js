@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { earliestDfsGameStart } from './rosterReadinessService.js'
 
 /**
  * Compute a per-league readiness state for a user, used by the My Leagues
@@ -408,6 +409,17 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
       yesterdayStillLive = (count || 0) > 0
     }
   }
+
+  // No-slate gate: if there are no games today for this sport (and last
+  // night's slate isn't still overlapping into the morning), skip readiness
+  // entirely so every league of this sport shows no clip. Without this,
+  // empty WNBA/MLB off-days red-flagged every member with "you haven't set
+  // tonight's lineup" for a slate that doesn't exist.
+  const dfsSport = rosterTable === 'nba_dfs_rosters' ? 'nba'
+    : rosterTable === 'wnba_dfs_rosters' ? 'wnba'
+    : 'mlb'
+  const firstGameToday = await earliestDfsGameStart(dfsSport, todayET)
+  if (!firstGameToday && !yesterdayStillLive) return
 
   const rosterByLeague = {}
   for (const r of todayRosters || []) rosterByLeague[r.league_id] = r

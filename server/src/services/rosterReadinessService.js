@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js'
+import { toSportsDay } from '../utils/sportsDay.js'
 
 // Per-format readiness checks for the roster_reminder cron. Each helper
 // returns { ready, reason, periodKey, firstGameAt } where:
@@ -12,19 +13,41 @@ import { supabase } from '../config/supabase.js'
 const NOT_READY = (reason, periodKey, firstGameAt) => ({ ready: false, reason, periodKey, firstGameAt })
 const READY = () => ({ ready: true })
 
+const DFS_SPORT_KEY = {
+  nba: 'basketball_nba',
+  wnba: 'basketball_wnba',
+  mlb: 'baseball_mlb',
+}
+
 function todayET() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
 }
 
-async function earliestDfsGameStart(table, gameDate) {
+// Authoritative slate check: read from the games table, not DFS salary
+// tables. Salary rows can get pre-populated or stay stale on off-days
+// (this fired a spurious WNBA "set your lineup" notification on 2026-05-27)
+// — the games table is the source of truth for whether a slate exists.
+// Postponed games don't count; if every game on the day is postponed the
+// slate effectively doesn't exist.
+export async function earliestDfsGameStart(sport, gameDate) {
+  const sportKey = DFS_SPORT_KEY[sport]
+  if (!sportKey) return null
+  // Wide UTC window; filter by PT calendar date in JS so DST never shifts
+  // the result.
+  const noonUtc = new Date(`${gameDate}T12:00:00Z`).getTime()
+  const widen = 18 * 60 * 60 * 1000
+  const start = new Date(noonUtc - widen).toISOString()
+  const end = new Date(noonUtc + widen + 24 * 60 * 60 * 1000).toISOString()
   const { data } = await supabase
-    .from(table)
-    .select('game_starts_at')
-    .eq('game_date', gameDate)
-    .not('game_starts_at', 'is', null)
-    .order('game_starts_at', { ascending: true })
-    .limit(1)
-  return data?.[0]?.game_starts_at ? new Date(data[0].game_starts_at) : null
+    .from('games')
+    .select('starts_at, status, sports!inner(key)')
+    .eq('sports.key', sportKey)
+    .neq('status', 'postponed')
+    .gte('starts_at', start)
+    .lte('starts_at', end)
+    .order('starts_at', { ascending: true })
+  const ptGames = (data || []).filter((g) => toSportsDay(g.starts_at) === gameDate)
+  return ptGames[0]?.starts_at ? new Date(ptGames[0].starts_at) : null
 }
 
 async function earliestNflGameForWeek(season, week) {
@@ -91,12 +114,11 @@ async function checkTraditionalFantasy(league, userId, fantasySettings) {
 
 async function checkDailyDfs(league, userId, sport) {
   const gameDate = todayET()
-  const salariesTable = sport === 'nba' ? 'nba_dfs_salaries' : sport === 'wnba' ? 'wnba_dfs_salaries' : 'mlb_dfs_salaries'
   const rostersTable = sport === 'nba' ? 'nba_dfs_rosters' : sport === 'wnba' ? 'wnba_dfs_rosters' : 'mlb_dfs_rosters'
   const slotsTable = sport === 'nba' ? 'nba_dfs_roster_slots' : sport === 'wnba' ? 'wnba_dfs_roster_slots' : 'mlb_dfs_roster_slots'
   const expected = sport === 'mlb' ? 10 : 9  // NBA and WNBA both use 9-slot rosters
 
-  const firstGameAt = await earliestDfsGameStart(salariesTable, gameDate)
+  const firstGameAt = await earliestDfsGameStart(sport, gameDate)
   if (!firstGameAt) return READY()
   const periodKey = `${league.id}:${sport}:${gameDate}`
 
@@ -119,8 +141,7 @@ async function checkDailyDfs(league, userId, sport) {
 
 async function checkDailyPicks(league, userId, picksTable, sport, label) {
   const gameDate = todayET()
-  const salariesTable = sport === 'nba' ? 'nba_dfs_salaries' : sport === 'mlb' ? 'mlb_dfs_salaries' : null
-  const firstGameAt = salariesTable ? await earliestDfsGameStart(salariesTable, gameDate) : null
+  const firstGameAt = await earliestDfsGameStart(sport, gameDate)
   if (!firstGameAt) return READY()
   const periodKey = `${league.id}:${picksTable}:${gameDate}`
 
