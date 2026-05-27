@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
+import { writeEspnBlurb } from './playerBlurbService.js'
 
 // 2 G / 2 F / 1 C / 4 UTIL = 9 slots. Step-1 data verification (208
 // league-wide players) showed ESPN tags every WNBA player as exactly G,
@@ -545,6 +546,7 @@ export async function refreshWNBAInjuries(date, season) {
     .in('espn_player_id', [...injuryByPlayer.keys()])
 
   let refreshed = 0
+  const blurbedPlayers = new Set()
   for (const row of existing || []) {
     const next = injuryByPlayer.get(String(row.espn_player_id))
     if (!next) continue
@@ -555,11 +557,29 @@ export async function refreshWNBAInjuries(date, season) {
       .eq('espn_player_id', row.espn_player_id)
       .eq('game_date', date)
       .eq('season', season)
-    if (!error) refreshed++
+    if (error) continue
+    refreshed++
+
+    // Fan ESPN's rich injury prose into player_blurbs so the player modal
+    // surfaces the same narrative the game intel modal does. Dedupe across
+    // today/tomorrow refreshes by tracking which espn_player_ids we've
+    // already blurbed this run. writeEspnBlurb is idempotent on content,
+    // so re-firing for the same prose just no-ops anyway.
+    if (blurbedPlayers.has(row.espn_player_id)) continue
+    if (next.injury_detail) {
+      await writeEspnBlurb({ playerId: row.espn_player_id, sport: 'wnba', content: next.injury_detail })
+      blurbedPlayers.add(row.espn_player_id)
+    } else if (row.injury_status && !next.injury_status) {
+      // Cleared-to-play: was injured, ESPN cleared. Player is still on
+      // the roster (we just read them off it), so no depth-chart guard
+      // needed — the WNBA/NBA/MLB roster endpoint is the source of truth.
+      await writeEspnBlurb({ playerId: row.espn_player_id, sport: 'wnba', content: 'Cleared to play.' })
+      blurbedPlayers.add(row.espn_player_id)
+    }
   }
 
   if (refreshed > 0) {
-    logger.info({ refreshed, date }, 'WNBA DFS injury statuses refreshed')
+    logger.info({ refreshed, blurbed: blurbedPlayers.size, date }, 'WNBA DFS injury statuses refreshed')
   }
-  return { refreshed }
+  return { refreshed, blurbed: blurbedPlayers.size }
 }

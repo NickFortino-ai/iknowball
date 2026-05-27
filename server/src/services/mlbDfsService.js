@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
+import { writeEspnBlurb } from './playerBlurbService.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -662,6 +663,7 @@ export async function refreshMLBInjuries(date, season) {
     .in('espn_player_id', [...injuryByPlayer.keys()])
 
   let refreshed = 0
+  const blurbedPlayers = new Set()
   for (const row of existing || []) {
     const next = injuryByPlayer.get(String(row.espn_player_id))
     if (!next) continue
@@ -672,13 +674,28 @@ export async function refreshMLBInjuries(date, season) {
       .eq('espn_player_id', row.espn_player_id)
       .eq('game_date', date)
       .eq('season', season)
-    if (!error) refreshed++
+    if (error) continue
+    refreshed++
+
+    // Fan ESPN's rich injury prose into player_blurbs. For two-way players
+    // the modal looks up blurbs by whichever id it was opened with (raw or
+    // `${id}-P`), so write both variants for the pitcher-row case to keep
+    // the SP modal in sync with the hitter modal. dedupe by espn_player_id
+    // so today/tomorrow refreshes don't double-fire.
+    if (blurbedPlayers.has(row.espn_player_id)) continue
+    if (next.injury_detail) {
+      await writeEspnBlurb({ playerId: row.espn_player_id, sport: 'mlb', content: next.injury_detail })
+      blurbedPlayers.add(row.espn_player_id)
+    } else if (row.injury_status && !next.injury_status) {
+      await writeEspnBlurb({ playerId: row.espn_player_id, sport: 'mlb', content: 'Cleared to play.' })
+      blurbedPlayers.add(row.espn_player_id)
+    }
   }
 
   if (refreshed > 0) {
-    logger.info({ refreshed, date }, 'MLB DFS injury statuses refreshed')
+    logger.info({ refreshed, blurbed: blurbedPlayers.size, date }, 'MLB DFS injury statuses refreshed')
   }
-  return { refreshed }
+  return { refreshed, blurbed: blurbedPlayers.size }
 }
 
 /**

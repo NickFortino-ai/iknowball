@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
+import { writeEspnBlurb } from './playerBlurbService.js'
 
 const NBA_SLOTS = ['PG1', 'PG2', 'SG1', 'SG2', 'SF1', 'SF2', 'PF1', 'PF2', 'C']
 
@@ -331,6 +332,7 @@ export async function refreshNBAInjuries(date, season) {
     .in('espn_player_id', [...injuryByPlayer.keys()])
 
   let refreshed = 0
+  const blurbedPlayers = new Set()
   for (const row of existing || []) {
     const next = injuryByPlayer.get(String(row.espn_player_id))
     if (!next) continue
@@ -341,13 +343,25 @@ export async function refreshNBAInjuries(date, season) {
       .eq('espn_player_id', row.espn_player_id)
       .eq('game_date', date)
       .eq('season', season)
-    if (!error) refreshed++
+    if (error) continue
+    refreshed++
+
+    // Fan ESPN's rich injury prose into player_blurbs (see WNBA equivalent
+    // for full rationale). writeEspnBlurb is idempotent on content.
+    if (blurbedPlayers.has(row.espn_player_id)) continue
+    if (next.injury_detail) {
+      await writeEspnBlurb({ playerId: row.espn_player_id, sport: 'nba', content: next.injury_detail })
+      blurbedPlayers.add(row.espn_player_id)
+    } else if (row.injury_status && !next.injury_status) {
+      await writeEspnBlurb({ playerId: row.espn_player_id, sport: 'nba', content: 'Cleared to play.' })
+      blurbedPlayers.add(row.espn_player_id)
+    }
   }
 
   if (refreshed > 0) {
-    logger.info({ refreshed, date }, 'NBA DFS injury statuses refreshed')
+    logger.info({ refreshed, blurbed: blurbedPlayers.size, date }, 'NBA DFS injury statuses refreshed')
   }
-  return { refreshed }
+  return { refreshed, blurbed: blurbedPlayers.size }
 }
 
 // Map ESPN generic positions to specific NBA positions
