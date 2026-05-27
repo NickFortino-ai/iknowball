@@ -277,6 +277,79 @@ export async function setNBASalaries(salaries) {
   return { updated: salaries.length }
 }
 
+// Refresh injury_status / injury_detail on already-generated salary rows
+// without recomputing salaries. nbaSalariesAreStale only flags game-time
+// changes, so once a date's salaries are written the injury fields never
+// refresh from ESPN — a player tagged DTD in the morning stays DTD all
+// day even after ESPN clears the injury. Same root cause as the WNBA bug.
+export async function refreshNBAInjuries(date, season) {
+  const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
+  const dateStr = date.replace(/-/g, '')
+
+  let events
+  try {
+    const res = await fetch(`${ESPN_BASE}/basketball/nba/scoreboard?dates=${dateStr}`)
+    if (!res.ok) return { refreshed: 0, reason: 'scoreboard fetch failed' }
+    const data = await res.json()
+    events = data.events || []
+  } catch {
+    return { refreshed: 0, reason: 'scoreboard fetch threw' }
+  }
+  if (!events.length) return { refreshed: 0, reason: 'no games' }
+
+  const teamIds = new Set()
+  for (const event of events) {
+    for (const c of event.competitions?.[0]?.competitors || []) {
+      if (c.team?.id) teamIds.add(c.team.id)
+    }
+  }
+  if (!teamIds.size) return { refreshed: 0, reason: 'no team ids' }
+
+  const injuryByPlayer = new Map()
+  for (const teamId of teamIds) {
+    try {
+      const res = await fetch(`${ESPN_BASE}/basketball/nba/teams/${teamId}/roster`)
+      if (!res.ok) continue
+      const roster = await res.json()
+      for (const athlete of roster.athletes || []) {
+        if (!athlete.id) continue
+        const injury = athlete.injuries?.[0]
+        injuryByPlayer.set(String(athlete.id), {
+          injury_status: injury?.status || null,
+          injury_detail: injury?.shortComment || null,
+        })
+      }
+    } catch { continue }
+  }
+  if (!injuryByPlayer.size) return { refreshed: 0, reason: 'no roster athletes' }
+
+  const { data: existing } = await supabase
+    .from('nba_dfs_salaries')
+    .select('espn_player_id, injury_status, injury_detail')
+    .eq('game_date', date)
+    .eq('season', season)
+    .in('espn_player_id', [...injuryByPlayer.keys()])
+
+  let refreshed = 0
+  for (const row of existing || []) {
+    const next = injuryByPlayer.get(String(row.espn_player_id))
+    if (!next) continue
+    if (row.injury_status === next.injury_status && row.injury_detail === next.injury_detail) continue
+    const { error } = await supabase
+      .from('nba_dfs_salaries')
+      .update(next)
+      .eq('espn_player_id', row.espn_player_id)
+      .eq('game_date', date)
+      .eq('season', season)
+    if (!error) refreshed++
+  }
+
+  if (refreshed > 0) {
+    logger.info({ refreshed, date }, 'NBA DFS injury statuses refreshed')
+  }
+  return { refreshed }
+}
+
 // Map ESPN generic positions to specific NBA positions
 function mapPosition(espnPos) {
   const pos = (espnPos || '').toUpperCase()

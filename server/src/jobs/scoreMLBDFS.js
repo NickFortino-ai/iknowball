@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
-import { generateMLBSalaries, isTwoWayPlayer, pitcherIdSuffix } from '../services/mlbDfsService.js'
+import { generateMLBSalaries, isTwoWayPlayer, pitcherIdSuffix, refreshMLBInjuries } from '../services/mlbDfsService.js'
 import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
@@ -500,6 +500,14 @@ export async function scoreMLBDFS() {
       logger.error({ err }, 'Failed to generate MLB DFS salaries')
     }
   }
+  // Always refresh injury fields — staleness check only fires on game-time
+  // changes, so without this the morning-fetched injury status sticks for
+  // the whole day even after ESPN clears it.
+  try {
+    await refreshMLBInjuries(today, season)
+  } catch (err) {
+    logger.error({ err }, 'Failed to refresh MLB DFS injuries (today)')
+  }
 
   // Same for tomorrow.
   const tomorrow = tomorrowSportsDay()
@@ -510,6 +518,11 @@ export async function scoreMLBDFS() {
     } catch (err) {
       logger.error({ err }, 'Failed to generate tomorrow MLB DFS salaries')
     }
+  }
+  try {
+    await refreshMLBInjuries(tomorrow, season)
+  } catch (err) {
+    logger.error({ err }, 'Failed to refresh MLB DFS injuries (tomorrow)')
   }
 
   // Tighten join locks to first pitch once salaries exist

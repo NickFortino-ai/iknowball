@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
-import { calculateWNBAFantasyPoints, generateWNBASalaries } from '../services/wnbaDfsService.js'
+import { calculateWNBAFantasyPoints, generateWNBASalaries, refreshWNBAInjuries } from '../services/wnbaDfsService.js'
 import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
@@ -330,6 +330,14 @@ export async function scoreWNBADFS() {
       logger.error({ err }, 'Failed to generate WNBA DFS salaries')
     }
   }
+  // Always refresh injury fields — the staleness check above only fires on
+  // game-time changes, so without this the morning-fetched injury status
+  // sticks for the whole day even after ESPN clears it.
+  try {
+    await refreshWNBAInjuries(today, season)
+  } catch (err) {
+    logger.error({ err }, 'Failed to refresh WNBA DFS injuries (today)')
+  }
 
   const tomorrow = tomorrowSportsDay()
   if (await wnbaSalariesAreStale(tomorrow, season)) {
@@ -338,6 +346,11 @@ export async function scoreWNBADFS() {
     } catch (err) {
       logger.error({ err }, 'Failed to generate tomorrow WNBA DFS salaries')
     }
+  }
+  try {
+    await refreshWNBAInjuries(tomorrow, season)
+  } catch (err) {
+    logger.error({ err }, 'Failed to refresh WNBA DFS injuries (tomorrow)')
   }
 
   await tightenJoinLocks()

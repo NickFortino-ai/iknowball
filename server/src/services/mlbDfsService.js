@@ -598,6 +598,89 @@ export async function generateMLBSalaries(date, season = 2026) {
   return { upserted, total: salaries.length, games: events.length }
 }
 
+// Refresh injury_status on already-generated salary rows without
+// recomputing salaries. mlbSalariesAreStale only flags game-time changes,
+// so once a date's salaries are written the injury fields stay frozen
+// even after ESPN updates them. MLB has the added wrinkle that two-way
+// players (Ohtani) get a pitcher row with id `${espnId}-P`, so we extend
+// the injury map to cover both forms.
+export async function refreshMLBInjuries(date, season) {
+  const dateStr = date.replace(/-/g, '')
+
+  let events
+  try {
+    const res = await fetch(`${ESPN_BASE}/baseball/mlb/scoreboard?dates=${dateStr}`)
+    if (!res.ok) return { refreshed: 0, reason: 'scoreboard fetch failed' }
+    const data = await res.json()
+    events = data.events || []
+  } catch {
+    return { refreshed: 0, reason: 'scoreboard fetch threw' }
+  }
+  if (!events.length) return { refreshed: 0, reason: 'no games' }
+
+  const teamIds = new Set()
+  for (const event of events) {
+    for (const c of event.competitions?.[0]?.competitors || []) {
+      if (c.team?.id) teamIds.add(c.team.id)
+    }
+  }
+  if (!teamIds.size) return { refreshed: 0, reason: 'no team ids' }
+
+  const injuryByPlayer = new Map()
+  for (const teamId of teamIds) {
+    try {
+      const res = await fetch(`${ESPN_BASE}/baseball/mlb/teams/${teamId}/roster`)
+      if (!res.ok) continue
+      const roster = await res.json()
+      // MLB roster groups athletes by position category — flatten if needed.
+      const groups = Array.isArray(roster.athletes) ? roster.athletes : []
+      const athletes = []
+      for (const g of groups) {
+        if (Array.isArray(g.items)) athletes.push(...g.items)
+        else if (g.id) athletes.push(g)
+      }
+      for (const athlete of athletes) {
+        if (!athlete.id) continue
+        const injury = athlete.injuries?.[0]
+        const fields = {
+          injury_status: injury?.status || null,
+          injury_detail: injury?.shortComment || null,
+        }
+        injuryByPlayer.set(String(athlete.id), fields)
+        // Two-way pitcher row uses suffixed id — mirror the same injury onto it.
+        injuryByPlayer.set(pitcherIdSuffix(String(athlete.id)), fields)
+      }
+    } catch { continue }
+  }
+  if (!injuryByPlayer.size) return { refreshed: 0, reason: 'no roster athletes' }
+
+  const { data: existing } = await supabase
+    .from('mlb_dfs_salaries')
+    .select('espn_player_id, injury_status, injury_detail')
+    .eq('game_date', date)
+    .eq('season', season)
+    .in('espn_player_id', [...injuryByPlayer.keys()])
+
+  let refreshed = 0
+  for (const row of existing || []) {
+    const next = injuryByPlayer.get(String(row.espn_player_id))
+    if (!next) continue
+    if (row.injury_status === next.injury_status && row.injury_detail === next.injury_detail) continue
+    const { error } = await supabase
+      .from('mlb_dfs_salaries')
+      .update(next)
+      .eq('espn_player_id', row.espn_player_id)
+      .eq('game_date', date)
+      .eq('season', season)
+    if (!error) refreshed++
+  }
+
+  if (refreshed > 0) {
+    logger.info({ refreshed, date }, 'MLB DFS injury statuses refreshed')
+  }
+  return { refreshed }
+}
+
 /**
  * Save MLB DFS roster.
  */

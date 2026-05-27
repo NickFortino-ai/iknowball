@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
-import { calculateNBAFantasyPoints, generateNBASalaries } from '../services/nbaDfsService.js'
+import { calculateNBAFantasyPoints, generateNBASalaries, refreshNBAInjuries } from '../services/nbaDfsService.js'
 import { todaySportsDay, tomorrowSportsDay, yesterdaySportsDay } from '../utils/sportsDay.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
@@ -428,6 +428,14 @@ export async function scoreNBADFS() {
       logger.error({ err }, 'Failed to generate NBA DFS salaries')
     }
   }
+  // Always refresh injury fields — staleness check only fires on game-time
+  // changes, so without this the morning-fetched injury status sticks for
+  // the whole day even after ESPN clears it.
+  try {
+    await refreshNBAInjuries(today, season)
+  } catch (err) {
+    logger.error({ err }, 'Failed to refresh NBA DFS injuries (today)')
+  }
 
   // Same for tomorrow so users can pick a day in advance.
   const tomorrow = tomorrowSportsDay()
@@ -438,6 +446,11 @@ export async function scoreNBADFS() {
     } catch (err) {
       logger.error({ err }, 'Failed to generate tomorrow NBA DFS salaries')
     }
+  }
+  try {
+    await refreshNBAInjuries(tomorrow, season)
+  } catch (err) {
+    logger.error({ err }, 'Failed to refresh NBA DFS injuries (tomorrow)')
   }
 
   // Tighten join locks to first tip-off once salaries exist
