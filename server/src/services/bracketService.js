@@ -1068,10 +1068,21 @@ async function cascadeResultToTournament(tournament, templateMatchup, winner, wi
         points_earned: points,
       })
       .eq('id', pick.id)
+  }
 
-    if (!isCorrect && pick.picked_team === losingTeam) {
-      await eliminateDownstreamPicks(pick.entry_id, losingTeam, templateMatchup.round_number, tournamentId)
-    }
+  // Sweep every entry's unscored picks for newly-dead teams. The old code
+  // only called eliminateDownstreamPicks for entries that picked the
+  // losing team IN THIS matchup — but an entry could have mispicked the
+  // loser in a LATER round (e.g. correctly picked the conf-semi winner,
+  // then absent-mindedly picked the conf-semi LOSER to win the finals).
+  // Those orphan picks were never flagged is_eliminated, so possible_points
+  // double-counted dead branches forever.
+  const { data: allEntries } = await supabase
+    .from('bracket_entries')
+    .select('id')
+    .eq('tournament_id', tournamentId)
+  for (const entry of allEntries || []) {
+    await eliminateAlreadyLostPicks(entry.id, tournament.template_id)
   }
 
   await recalculateEntryPoints(tournamentId, rounds, tournament.bracket_templates?.series_format === 'best_of_7')
