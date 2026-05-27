@@ -229,7 +229,7 @@ export async function checkUserReadiness(league, fantasySettings, userId) {
   if (format === 'wnba_dfs') return checkDailyDfs(league, userId, 'wnba')
   if (format === 'mlb_dfs') return checkDailyDfs(league, userId, 'mlb')
   if (format === 'three_point') return checkDailyPicks(league, userId, 'three_point_picks', 'nba', 'NBA 3-Point')
-  if (format === 'wnba_three_point') return checkDailyPicks(league, userId, 'wnba_three_point_picks', 'nba', 'WNBA 3-Point')
+  if (format === 'wnba_three_point') return checkDailyPicks(league, userId, 'wnba_three_point_picks', 'wnba', 'WNBA 3-Point')
   if (format === 'strikeouts') return checkDailyPicks(league, userId, 'strikeouts_picks', 'mlb', 'Strikeouts')
   if (format === 'hr_derby') return checkDailyPicks(league, userId, 'hr_derby_picks', 'mlb', 'HR Derby')
   if (format === 'sacks') return checkWeeklyNflPicks(league, userId, 'sacks_picks', 'Sacks', fantasySettings)

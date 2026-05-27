@@ -592,6 +592,9 @@ async function computeSurvivorReadiness(leagues, userId, result) {
 }
 
 async function computeHrDerbyReadiness(leagues, userId, todayET, result) {
+  // No-slate gate: skip readiness on MLB off-days so no red "you haven't
+  // picked" clip fires for a slate that doesn't exist.
+  if (!(await earliestDfsGameStart('mlb', todayET))) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
     .from('hr_derby_picks')
@@ -611,6 +614,7 @@ async function computeHrDerbyReadiness(leagues, userId, todayET, result) {
 }
 
 async function computeStrikeoutsReadiness(leagues, userId, todayET, result) {
+  if (!(await earliestDfsGameStart('mlb', todayET))) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
     .from('strikeouts_picks')
@@ -630,6 +634,7 @@ async function computeStrikeoutsReadiness(leagues, userId, todayET, result) {
 }
 
 async function computeThreePointReadiness(leagues, userId, todayET, result) {
+  if (!(await earliestDfsGameStart('nba', todayET))) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
     .from('three_point_picks')
@@ -649,6 +654,7 @@ async function computeThreePointReadiness(leagues, userId, todayET, result) {
 }
 
 async function computeWnbaThreePointReadiness(leagues, userId, todayET, result) {
+  if (!(await earliestDfsGameStart('wnba', todayET))) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
     .from('wnba_three_point_picks')
