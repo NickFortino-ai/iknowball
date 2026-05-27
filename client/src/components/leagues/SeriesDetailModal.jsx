@@ -63,10 +63,17 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-16" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{
+        paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))',
+        paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))',
+      }}
+      onClick={onClose}
+    >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative bg-bg-primary border border-text-primary/20 rounded-2xl w-full sm:max-w-md max-h-[calc(100vh-8rem)] overflow-y-auto"
+        className="relative bg-bg-primary border border-text-primary/20 rounded-2xl w-full sm:max-w-md max-h-full overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
