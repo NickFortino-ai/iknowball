@@ -885,7 +885,7 @@ import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, syncWeekly
 import { generateSalaries, setSalaries } from '../services/dfsService.js'
 import { generateNBASalaries, setNBASalaries } from '../services/nbaDfsService.js'
 import { generateWNBASalaries, setWNBASalaries } from '../services/wnbaDfsService.js'
-import { generateMLBSalaries } from '../services/mlbDfsService.js'
+import { generateMLBSalaries, setMLBSalaries } from '../services/mlbDfsService.js'
 
 router.post('/fantasy/sync-players', async (req, res) => {
   const result = await syncPlayers()
@@ -1129,12 +1129,185 @@ router.post('/nba-dfs/salaries', async (req, res) => {
   res.json(result)
 })
 
+// NBA DFS salary editor — list with filters
+router.get('/nba-dfs/salaries', async (req, res) => {
+  const date = req.query.date
+  const season = parseInt(req.query.season, 10)
+  if (!date || !Number.isInteger(season)) {
+    return res.status(400).json({ error: 'date (YYYY-MM-DD) and season query params required' })
+  }
+  const position = req.query.position && req.query.position !== 'ALL' ? String(req.query.position) : null
+  const search = req.query.search ? String(req.query.search).trim() : ''
+
+  let query = supabase
+    .from('nba_dfs_salaries')
+    .select('id, espn_player_id, player_name, team, position, salary, algorithm_salary, manually_set, headshot_url, injury_status, opponent, updated_at')
+    .eq('game_date', date)
+    .eq('season', season)
+    .order('salary', { ascending: false })
+    .limit(500)
+
+  if (position) query = query.eq('position', position)
+  if (search) query = query.ilike('player_name', `%${search}%`)
+
+  const { data, error } = await query
+  if (error) {
+    logger.error({ error, date, season }, 'Failed to fetch NBA DFS salaries')
+    return res.status(500).json({ error: error.message })
+  }
+  const rows = (data || []).map((r) => ({
+    id: r.id,
+    espn_player_id: r.espn_player_id,
+    full_name: r.player_name,
+    position: r.position,
+    team: r.team,
+    salary: r.salary,
+    algorithm_salary: r.algorithm_salary,
+    manually_set: r.manually_set,
+    headshot_url: r.headshot_url,
+    injury_status: r.injury_status,
+    opponent: r.opponent,
+    updated_at: r.updated_at,
+  }))
+  res.json({ rows, count: rows.length })
+})
+
+router.patch('/nba-dfs/salaries/:id', async (req, res) => {
+  const id = req.params.id
+  const salary = parseInt(req.body.salary, 10)
+  if (!Number.isInteger(salary) || salary < 0) {
+    return res.status(400).json({ error: 'salary must be a non-negative integer' })
+  }
+  const { data, error } = await supabase
+    .from('nba_dfs_salaries')
+    .update({ salary, manually_set: true, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, salary, manually_set, updated_at')
+    .single()
+  if (error) {
+    logger.error({ error, id, salary }, 'Failed to update NBA DFS salary')
+    return res.status(500).json({ error: error.message })
+  }
+  res.json(data)
+})
+
+router.post('/nba-dfs/salaries/:id/reset', async (req, res) => {
+  const id = req.params.id
+  const { data: existing, error: fetchErr } = await supabase
+    .from('nba_dfs_salaries')
+    .select('id, algorithm_salary')
+    .eq('id', id)
+    .single()
+  if (fetchErr || !existing) {
+    return res.status(404).json({ error: 'salary row not found' })
+  }
+  const restored = existing.algorithm_salary ?? 0
+  const { data, error } = await supabase
+    .from('nba_dfs_salaries')
+    .update({ salary: restored, manually_set: false, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, salary, manually_set, algorithm_salary, updated_at')
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
 // MLB DFS salary generation
 router.post('/mlb-dfs/generate-salaries', async (req, res) => {
   const { date, season } = req.body
   if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
   res.json({ message: 'MLB salary generation started', date })
   generateMLBSalaries(date, season || 2026).catch((err) => logger.error({ err, date }, 'Background MLB salary generation failed'))
+})
+
+router.post('/mlb-dfs/salaries', async (req, res) => {
+  const { salaries } = req.body
+  if (!salaries?.length) return res.status(400).json({ error: 'salaries array required' })
+  const result = await setMLBSalaries(salaries)
+  res.json(result)
+})
+
+// MLB DFS salary editor — list with filters
+router.get('/mlb-dfs/salaries', async (req, res) => {
+  const date = req.query.date
+  const season = parseInt(req.query.season, 10)
+  if (!date || !Number.isInteger(season)) {
+    return res.status(400).json({ error: 'date (YYYY-MM-DD) and season query params required' })
+  }
+  const position = req.query.position && req.query.position !== 'ALL' ? String(req.query.position) : null
+  const search = req.query.search ? String(req.query.search).trim() : ''
+
+  let query = supabase
+    .from('mlb_dfs_salaries')
+    .select('id, espn_player_id, player_name, team, position, salary, algorithm_salary, manually_set, headshot_url, injury_status, opponent, updated_at')
+    .eq('game_date', date)
+    .eq('season', season)
+    .order('salary', { ascending: false })
+    .limit(500)
+
+  if (position) query = query.eq('position', position)
+  if (search) query = query.ilike('player_name', `%${search}%`)
+
+  const { data, error } = await query
+  if (error) {
+    logger.error({ error, date, season }, 'Failed to fetch MLB DFS salaries')
+    return res.status(500).json({ error: error.message })
+  }
+  const rows = (data || []).map((r) => ({
+    id: r.id,
+    espn_player_id: r.espn_player_id,
+    full_name: r.player_name,
+    position: r.position,
+    team: r.team,
+    salary: r.salary,
+    algorithm_salary: r.algorithm_salary,
+    manually_set: r.manually_set,
+    headshot_url: r.headshot_url,
+    injury_status: r.injury_status,
+    opponent: r.opponent,
+    updated_at: r.updated_at,
+  }))
+  res.json({ rows, count: rows.length })
+})
+
+router.patch('/mlb-dfs/salaries/:id', async (req, res) => {
+  const id = req.params.id
+  const salary = parseInt(req.body.salary, 10)
+  if (!Number.isInteger(salary) || salary < 0) {
+    return res.status(400).json({ error: 'salary must be a non-negative integer' })
+  }
+  const { data, error } = await supabase
+    .from('mlb_dfs_salaries')
+    .update({ salary, manually_set: true, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, salary, manually_set, updated_at')
+    .single()
+  if (error) {
+    logger.error({ error, id, salary }, 'Failed to update MLB DFS salary')
+    return res.status(500).json({ error: error.message })
+  }
+  res.json(data)
+})
+
+router.post('/mlb-dfs/salaries/:id/reset', async (req, res) => {
+  const id = req.params.id
+  const { data: existing, error: fetchErr } = await supabase
+    .from('mlb_dfs_salaries')
+    .select('id, algorithm_salary')
+    .eq('id', id)
+    .single()
+  if (fetchErr || !existing) {
+    return res.status(404).json({ error: 'salary row not found' })
+  }
+  const restored = existing.algorithm_salary ?? 0
+  const { data, error } = await supabase
+    .from('mlb_dfs_salaries')
+    .update({ salary: restored, manually_set: false, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('id, salary, manually_set, algorithm_salary, updated_at')
+    .single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
 })
 
 // WNBA DFS salary generation

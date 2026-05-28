@@ -448,7 +448,8 @@ export async function generateMLBSalaries(date, season = 2026) {
               espn_player_id: espnId,
               game_date: date,
               season,
-              salary: batSalary,
+              salary: batSalary,                    // overwritten below if manually_set
+              algorithm_salary: batSalary,          // algo-computed price for reference
               opponent: opponentLabel,
               game_starts_at: gameStartsAt,
               headshot_url: headshot,
@@ -475,7 +476,8 @@ export async function generateMLBSalaries(date, season = 2026) {
               espn_player_id: pitcherIdSuffix(espnId),
               game_date: date,
               season,
-              salary: pitchSalary,
+              salary: pitchSalary,                  // overwritten below if manually_set
+              algorithm_salary: pitchSalary,        // algo-computed price for reference
               opponent: opponentLabel,
               game_starts_at: gameStartsAt,
               headshot_url: headshot,
@@ -528,7 +530,8 @@ export async function generateMLBSalaries(date, season = 2026) {
           espn_player_id: espnId,
           game_date: date,
           season,
-          salary,
+          salary,                    // overwritten below if manually_set
+          algorithm_salary: salary,  // algo-computed price for reference
           opponent: opponentLabel,
           game_starts_at: gameStartsAt,
           headshot_url: headshot,
@@ -569,6 +572,30 @@ export async function generateMLBSalaries(date, season = 2026) {
     }
   }
 
+  // Honor manual overrides — preserve admin-edited salaries across regens
+  // while still refreshing algorithm_salary underneath. Mirrors the NFL/WNBA
+  // pattern. The espn_player_id key naturally handles two-way players, whose
+  // pitcher row carries the `${id}-P` suffix and is overridden independently.
+  const { data: manualRows } = await supabase
+    .from('mlb_dfs_salaries')
+    .select('espn_player_id, salary')
+    .eq('season', season)
+    .eq('game_date', date)
+    .eq('manually_set', true)
+
+  if (manualRows?.length) {
+    const manualMap = new Map(manualRows.map((r) => [r.espn_player_id, r.salary]))
+    let preserved = 0
+    for (const s of salaries) {
+      if (manualMap.has(s.espn_player_id)) {
+        s.salary = manualMap.get(s.espn_player_id)
+        s.manually_set = true
+        preserved++
+      }
+    }
+    logger.info({ preserved, manually_set: manualRows.length, date }, 'Preserved MLB manual salary overrides')
+  }
+
   // Clear stale entries — see scoreNBADFS for rationale.
   if (salaries.length > 0) {
     const { error: delErr } = await supabase
@@ -597,6 +624,14 @@ export async function generateMLBSalaries(date, season = 2026) {
 
   logger.info({ upserted, total: salaries.length, date, games: events.length }, 'MLB DFS salary generation complete')
   return { upserted, total: salaries.length, games: events.length }
+}
+
+export async function setMLBSalaries(salaries) {
+  const { error } = await supabase
+    .from('mlb_dfs_salaries')
+    .upsert(salaries, { onConflict: 'espn_player_id,game_date,season' })
+  if (error) throw error
+  return { updated: salaries.length }
 }
 
 // Refresh injury_status on already-generated salary rows without

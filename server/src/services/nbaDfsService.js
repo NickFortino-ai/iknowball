@@ -539,7 +539,8 @@ export async function generateNBASalaries(date, season = 2026) {
           espn_player_id: espnId,
           game_date: date,
           season,
-          salary,
+          salary,                    // overwritten below if manually_set
+          algorithm_salary: salary,  // always the algo-computed price for reference
           opponent: `${isHome ? 'vs' : '@'} ${opponentAbbrev}`,
           game_starts_at: gameStartsAt,
           headshot_url: headshot,
@@ -548,6 +549,30 @@ export async function generateNBASalaries(date, season = 2026) {
         })
       }
     }
+  }
+
+  // Honor manual overrides — preserve admin-edited salaries across regens
+  // while still refreshing algorithm_salary underneath. Mirrors the NFL/WNBA
+  // pattern. Snapshot manually_set rows BEFORE the delete, then re-apply
+  // their salary onto the fresh rows.
+  const { data: manualRows } = await supabase
+    .from('nba_dfs_salaries')
+    .select('espn_player_id, salary')
+    .eq('season', season)
+    .eq('game_date', date)
+    .eq('manually_set', true)
+
+  if (manualRows?.length) {
+    const manualMap = new Map(manualRows.map((r) => [r.espn_player_id, r.salary]))
+    let preserved = 0
+    for (const s of salaries) {
+      if (manualMap.has(s.espn_player_id)) {
+        s.salary = manualMap.get(s.espn_player_id)
+        s.manually_set = true
+        preserved++
+      }
+    }
+    logger.info({ preserved, manually_set: manualRows.length, date }, 'Preserved NBA manual salary overrides')
   }
 
   // Clear stale entries (players whose teams aren't on the current schedule

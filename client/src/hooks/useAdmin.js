@@ -215,6 +215,64 @@ export function useResetWnbaDfsSalary() {
   })
 }
 
+export function useAdminNbaDfsSalaries({ date, season, position = 'ALL', search = '' }) {
+  return useQuery({
+    queryKey: ['admin', 'nba-dfs-salaries', date, season, position, search],
+    queryFn: () => {
+      const params = new URLSearchParams({ date, season: String(season), position })
+      if (search) params.set('search', search)
+      return api.get(`/admin/nba-dfs/salaries?${params.toString()}`)
+    },
+    enabled: !!date && Number.isInteger(season),
+    staleTime: 30_000,
+  })
+}
+
+export function useUpdateNbaDfsSalary() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, salary }) => api.patch(`/admin/nba-dfs/salaries/${id}`, { salary }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'nba-dfs-salaries'] }),
+  })
+}
+
+export function useResetNbaDfsSalary() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }) => api.post(`/admin/nba-dfs/salaries/${id}/reset`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'nba-dfs-salaries'] }),
+  })
+}
+
+export function useAdminMlbDfsSalaries({ date, season, position = 'ALL', search = '' }) {
+  return useQuery({
+    queryKey: ['admin', 'mlb-dfs-salaries', date, season, position, search],
+    queryFn: () => {
+      const params = new URLSearchParams({ date, season: String(season), position })
+      if (search) params.set('search', search)
+      return api.get(`/admin/mlb-dfs/salaries?${params.toString()}`)
+    },
+    enabled: !!date && Number.isInteger(season),
+    staleTime: 30_000,
+  })
+}
+
+export function useUpdateMlbDfsSalary() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, salary }) => api.patch(`/admin/mlb-dfs/salaries/${id}`, { salary }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'mlb-dfs-salaries'] }),
+  })
+}
+
+export function useResetMlbDfsSalary() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }) => api.post(`/admin/mlb-dfs/salaries/${id}/reset`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'mlb-dfs-salaries'] }),
+  })
+}
+
 export function useRecalculateRecords() {
   const queryClient = useQueryClient()
   return useMutation({

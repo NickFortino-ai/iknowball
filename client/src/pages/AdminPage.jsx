@@ -12,6 +12,8 @@ import PlayerPositionPanel from '../components/admin/PlayerPositionPanel'
 import BackdropSubmissionsPanel from '../components/admin/BackdropSubmissionsPanel'
 import NFLSalariesEditor from '../components/admin/NFLSalariesEditor'
 import WnbaSalariesEditor from '../components/admin/WnbaSalariesEditor'
+import NbaSalariesEditor from '../components/admin/NbaSalariesEditor'
+import MlbSalariesEditor from '../components/admin/MlbSalariesEditor'
 import PlayerBlurbsPanel from '../components/admin/PlayerBlurbsPanel'
 import AdminToolsPanel from '../components/admin/AdminToolsPanel'
 import DashboardPanel from '../components/admin/DashboardPanel'
@@ -268,6 +270,8 @@ export default function AdminPage() {
           { key: 'tools', label: 'Tools' },
           { key: 'overrides', label: 'Overrides' },
           { key: 'nflSalaries', label: 'NFL Salaries' },
+          { key: 'nbaSalaries', label: 'NBA Salaries' },
+          { key: 'mlbSalaries', label: 'MLB Salaries' },
           { key: 'wnbaSalaries', label: 'WNBA Salaries' },
           { key: 'surveys', label: 'Surveys' },
         ].filter((tab) => !(isHelperAdmin && (tab.key === 'dashboard' || tab.key === 'email'))).map((tab) => (
@@ -606,6 +610,8 @@ export default function AdminPage() {
       {adminSection === 'surveys' && <UserSurveysPanel />}
 
       {adminSection === 'nflSalaries' && <NFLSalariesEditor />}
+      {adminSection === 'nbaSalaries' && <NbaSalariesEditor />}
+      {adminSection === 'mlbSalaries' && <MlbSalariesEditor />}
       {adminSection === 'wnbaSalaries' && <WnbaSalariesEditor />}
 
       {adminSection === 'tools' && <AdminToolsPanel />}
