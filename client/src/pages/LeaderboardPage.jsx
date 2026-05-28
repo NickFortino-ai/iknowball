@@ -35,7 +35,10 @@ function LeaguesScoringModal({ open, onClose }) {
             <li><span className="text-text-primary font-semibold">Survivor Win</span> — bonus for winning a survivor league</li>
             <li><span className="text-text-primary font-semibold">Pick'em Earned</span> — points earned in pick'em leagues</li>
           </ul>
-          <p className="text-text-muted text-xs pt-1">Top Half % shows how often you finish with positive points. Wins count league and survivor victories.</p>
+          {/* Top Half % column is desktop-only (hidden md:inline on the table),
+              so only explain it at md+ to match what the user can actually see. */}
+          <p className="hidden md:block text-text-muted text-xs pt-1">Top Half % shows how often you finish with positive points.</p>
+          <p className="text-text-muted text-xs pt-1 md:pt-0">Wins count league and survivor victories.</p>
         </div>
       </div>
     </div>
