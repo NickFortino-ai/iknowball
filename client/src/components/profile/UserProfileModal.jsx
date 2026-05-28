@@ -595,14 +595,20 @@ export default function UserProfileModal({ userId, onClose }) {
             )}
 
             {/* Tier + Points + Rank */}
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-2">
               <TierBadge tier={getTier(user.total_points).name} size="md" />
-              {user.is_og && <OGBadge size="md" />}
               <span className="font-display text-2xl text-accent">{user.total_points} pts</span>
               <span className="text-text-muted text-sm ml-auto">
                 Rank #{user.rank} of {user.total_users}
               </span>
             </div>
+
+            {/* OG badge — own row beneath the tier */}
+            {user.is_og && (
+              <div className="mb-4">
+                <OGBadge size="sm" />
+              </div>
+            )}
 
             {/* Crowns */}
             {user.crowns?.length > 0 && (

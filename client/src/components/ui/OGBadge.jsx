@@ -1,6 +1,7 @@
-// OG badge — just the letters "OG" in display font, vertically
-// gradient from white at the top to the IKB accent orange at the
-// bottom. No container shape; reads as a typographic mark, on brand.
+// OG badge — just the letters "OG" in display font, with a metallic
+// gold gradient (pale highlight → gold → a reflective mid-band → deep
+// gold) so it reads as a shiny gold mark. No container shape; reads as
+// a typographic mark, on brand.
 
 const HEIGHT_PX = {
   xs: 14,
@@ -26,8 +27,11 @@ export default function OGBadge({ size = 'md', className = '' }) {
       <title>OG — one of the earliest IKB members</title>
       <defs>
         <linearGradient id="og-gradient" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="100%" stopColor="#FF4D00" />
+          <stop offset="0%" stopColor="#FFF7CC" />
+          <stop offset="20%" stopColor="#FBE48A" />
+          <stop offset="46%" stopColor="#E8B530" />
+          <stop offset="56%" stopColor="#F6D873" />
+          <stop offset="100%" stopColor="#B8860B" />
         </linearGradient>
       </defs>
       <text
