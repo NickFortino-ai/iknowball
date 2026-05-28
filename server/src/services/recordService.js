@@ -12,6 +12,42 @@ const TIER_THRESHOLDS = [
   { name: 'Baller', minPoints: 100 },
 ]
 
+// Format a record value with its unit. Mirrors formatRecordValue() in
+// client/src/pages/RecordBookPage.jsx so the email reads the same as the
+// record book ("4", "75%", "12 spots", "8 legs", etc.) instead of a bare
+// number. Keep the two in sync when adding record types.
+function formatRecordValue(recordKey, val) {
+  if (val == null) return '--'
+  switch (recordKey) {
+    case 'highest_prop_pct':
+    case 'biggest_dog_lover':
+    case 'highest_overall_win_pct':
+      return `${val}%`
+    case 'biggest_underdog_hit':
+      return `10 → ${Math.round(val / 10)}`
+    case 'best_futures_hit':
+      return val > 0 ? `+${val}` : `${val}`
+    case 'biggest_parlay':
+      return `10 → ${Math.round((val - 1) * 10)}`
+    case 'great_climb':
+      return `${val} spots`
+    case 'most_parlay_legs':
+      return `${val} legs`
+    case 'longest_crown_tenure':
+      return `${val} days`
+    case 'fewest_picks_to_baller':
+    case 'fewest_picks_to_elite':
+    case 'fewest_picks_to_hof':
+    case 'fewest_picks_to_goat':
+      return `${val} picks`
+    default:
+      if (recordKey.startsWith('best_futures_hit_')) {
+        return val > 0 ? `+${val}` : `${val}`
+      }
+      return `${val}`
+  }
+}
+
 // ── Update a record if the new value beats the current one ──────────────────
 async function updateRecord(key, holderId, value, metadata = {}) {
   // Safety guard: streak/pick-based records must have their value match
@@ -104,10 +140,10 @@ async function updateRecord(key, holderId, value, metadata = {}) {
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
           <h1 style="font-size: 24px; margin-bottom: 8px;">New Record Holder!</h1>
           <p style="color: #aaa; font-size: 16px; margin-bottom: 24px;">
-            You just set a new record for <strong>${recordName}</strong> with a value of <strong>${value}</strong>!
+            You just set a new <strong>${recordName}</strong> record at <strong>${formatRecordValue(key, value)}</strong>!
           </p>
           <p style="color: #888; font-size: 14px;">
-            ${previousValue !== null ? `Previous record: ${previousValue}` : 'This is the first record set!'}
+            ${previousValue !== null ? `Previous record: ${formatRecordValue(key, previousValue)}` : 'This is the first record set for this category!'}
           </p>
           <a href="${process.env.CLIENT_URL || 'https://iknowball.club'}/hall-of-fame?section=records"
              style="display: inline-block; margin-top: 24px; padding: 12px 24px; background-color: #4f8cff; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
