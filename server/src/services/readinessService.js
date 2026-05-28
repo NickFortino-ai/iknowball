@@ -562,6 +562,10 @@ async function computeSurvivorReadiness(leagues, userId, result) {
     (members || []).filter((m) => m.lives_remaining === 0).map((m) => m.league_id)
   )
 
+  // A pick whose status is one of these has had its games played and
+  // scored — the period is over and the user owes a pick for the NEXT one.
+  const isSettledPick = (status) => status !== 'pending' && status !== 'locked'
+
   for (const l of leagues) {
     if (eliminatedSet.has(l.id)) {
       set(result, l.id, 'ready', "You're eliminated — no action needed")
@@ -574,18 +578,44 @@ async function computeSurvivorReadiness(leagues, userId, result) {
       continue
     }
     const userPicks = picksByLeague[l.id] || []
-    const hasPickForCurrent = userPicks.some((p) => p.league_week_id === week.id)
-    if (hasPickForCurrent) {
+    const currentPick = userPicks.find((p) => p.league_week_id === week.id)
+
+    // If the current period's pick is already settled (games played, e.g.
+    // 'survived'), advance to the NEXT period and evaluate against that —
+    // mirroring getSurvivorBoard's pickWeek advancement. Without this, a
+    // settled pick keeps the card green into the early-morning hours of the
+    // next PT day (periods are ET-anchored, ending ~3 AM PT) even though the
+    // user still owes the next day's pick. We deliberately do NOT advance on
+    // 'locked' (game in progress) — the user has done their job for a period
+    // whose games are still playing, so the card stays green.
+    let pickWeek = week
+    let pickForWeek = currentPick
+    const advancedPastSettled = !!(currentPick && isSettledPick(currentPick.status))
+    if (advancedPastSettled) {
+      const wks = weeksByLeague[l.id] || []
+      const idx = wks.findIndex((w) => w.id === week.id)
+      const nextWeek = idx >= 0 ? wks[idx + 1] : null
+      if (!nextWeek) {
+        // No further period — nothing left to pick
+        set(result, l.id, 'ready', 'No upcoming period')
+        continue
+      }
+      pickWeek = nextWeek
+      pickForWeek = userPicks.find((p) => p.league_week_id === nextWeek.id)
+    }
+
+    if (pickForWeek) {
       set(result, l.id, 'ready', 'Survivor pick submitted')
       continue
     }
-    // Period exists but no pick yet. Only flag when the period has
-    // actually started. For leagues that don't begin until later this
-    // week (or between periods waiting for the next), don't set readiness
-    // at all so the card doesn't render any status flag — there's
-    // nothing for the user to do yet.
-    const isActiveNow = week.starts_at <= now && week.ends_at >= now
-    if (isActiveNow) {
+
+    // No pick for the period the user owes. Flag red when either (a) we
+    // advanced past a settled period (a fresh pick is genuinely due), or
+    // (b) the period is active now. Pre-start leagues — current period in
+    // the future with no settled prior pick — get no flag so the card stays
+    // clean before kickoff.
+    const isActiveNow = pickWeek.starts_at <= now && pickWeek.ends_at >= now
+    if (advancedPastSettled || isActiveNow) {
       set(result, l.id, 'action', "You haven't made this period's pick")
     }
   }
