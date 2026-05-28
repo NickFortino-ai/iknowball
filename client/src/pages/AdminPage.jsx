@@ -268,7 +268,7 @@ export default function AdminPage() {
           { key: 'playerblurbs', label: 'Blurbs' },
           { key: 'seasons', label: 'Seasons' },
           { key: 'tools', label: 'Tools' },
-          { key: 'overrides', label: 'Overrides' },
+          { key: 'overrides', label: 'Sync & Recompute' },
           { key: 'nflSalaries', label: 'NFL Salaries' },
           { key: 'nbaSalaries', label: 'NBA Salaries' },
           { key: 'mlbSalaries', label: 'MLB Salaries' },
