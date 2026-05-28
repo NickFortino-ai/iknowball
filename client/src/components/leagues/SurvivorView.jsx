@@ -50,6 +50,9 @@ export default function SurvivorView({ league }) {
   const [showPickForm, setShowPickForm] = useState(false)
   const [localPickTeam, setLocalPickTeam] = useState(null)
   const [localPickGameId, setLocalPickGameId] = useState(null)
+  // Optimistic removal: the game_id of a pick the user just toggled off, so
+  // the highlight clears immediately before the board refetch lands.
+  const [localRemovedGameId, setLocalRemovedGameId] = useState(null)
   // Collapsed sport sub-sections for All-Sports survivor. Stored as
   // "${dateKey}|${sportKey}" so collapsing one sport on Mar 5 doesn't
   // collapse the same sport on Mar 6.
@@ -60,25 +63,28 @@ export default function SurvivorView({ league }) {
   const pickWeek = board?.pick_week || currentWeek
   const usedTeamSet = useMemo(() => new Set(usedTeams || []), [usedTeams])
 
-  // Build a map of game_id -> picked team for ALL of the current user's
-  // pending picks across upcoming days. This lets multi-day picks
-  // (e.g. Sunday + Monday) each retain their own highlight, instead of
-  // only the single board.current_pick entry being visualized.
+  // Build a map of game_id -> { team_name, league_week_id } for ALL of the
+  // current user's pending picks across upcoming days. This lets multi-day
+  // picks (e.g. Sunday + Monday) each retain their own highlight, and lets a
+  // tap-to-remove delete the pick for the right period. Only PENDING picks
+  // appear here — locked/settled picks can't be toggled off.
   const userPicksByGameId = useMemo(() => {
     const map = {}
     const myEntry = board?.members?.find((m) => m.users?.id === currentUserId || m.user_id === currentUserId)
     for (const p of myEntry?.picks || []) {
       if (p.status === 'pending' && p.game_id && p.team_name) {
-        map[p.game_id] = p.team_name
+        map[p.game_id] = { team_name: p.team_name, league_week_id: p.league_week_id }
       }
     }
     // Layer in optimistic local state for the just-submitted pick so the UI
     // updates immediately before the board refetch lands.
     if (localPickGameId && localPickTeam) {
-      map[localPickGameId] = localPickTeam
+      map[localPickGameId] = { team_name: localPickTeam, league_week_id: pickWeek?.id }
     }
+    // Optimistically drop a just-removed pick.
+    if (localRemovedGameId) delete map[localRemovedGameId]
     return map
-  }, [board, currentUserId, localPickGameId, localPickTeam])
+  }, [board, currentUserId, localPickGameId, localPickTeam, localRemovedGameId, pickWeek?.id])
 
   // Winner detection
   const isWinner = board?.survivor_winner?.user_id === currentUserId
@@ -112,6 +118,26 @@ export default function SurvivorView({ league }) {
     if (!pickWeek) return
     const game = pickWeekGames.find((g) => g.id === gameId)
     const teamName = pickedTeam === 'home' ? game?.home_team : game?.away_team
+
+    // Tapping the team you already have picked for this game removes it
+    // (toggle off). Only pending picks land in userPicksByGameId, and the
+    // backend rejects deleting a locked/settled pick, so this is safe.
+    const existing = userPicksByGameId[gameId]
+    if (existing && existing.team_name === teamName) {
+      try {
+        await deletePick.mutateAsync({ leagueId: league.id, weekId: existing.league_week_id })
+        setLocalRemovedGameId(gameId)
+        if (localPickGameId === gameId) {
+          setLocalPickGameId(null)
+          setLocalPickTeam(null)
+        }
+        toast('Survivor pick removed', 'success')
+      } catch (err) {
+        toast(err.message || 'Failed to remove pick', 'error')
+      }
+      return
+    }
+
     try {
       await submitPick.mutateAsync({
         leagueId: league.id,
@@ -121,6 +147,7 @@ export default function SurvivorView({ league }) {
       })
       setLocalPickTeam(teamName)
       setLocalPickGameId(gameId)
+      if (localRemovedGameId === gameId) setLocalRemovedGameId(null)
       toast('Survivor pick submitted!', 'success')
     } catch (err) {
       toast(err.message || 'Failed to submit pick', 'error')
@@ -140,6 +167,17 @@ export default function SurvivorView({ league }) {
       setLocalPickGameId(null)
     }
   }, [board, currentUserId, localPickGameId, localPickTeam])
+
+  // Clear optimistic removal once the board no longer shows a pending pick
+  // for that game (the delete has landed server-side).
+  useEffect(() => {
+    if (!localRemovedGameId) return
+    const myEntry = board?.members?.find((m) => m.users?.id === currentUserId || m.user_id === currentUserId)
+    const stillPending = (myEntry?.picks || []).some(
+      (p) => p.game_id === localRemovedGameId && p.status === 'pending',
+    )
+    if (!stillPending) setLocalRemovedGameId(null)
+  }, [board, currentUserId, localRemovedGameId])
 
   // Auto-expand pick form if user hasn't picked yet
   useEffect(() => {
@@ -248,7 +286,7 @@ export default function SurvivorView({ league }) {
           const awayUsed = !poolExpanded && usedTeamSet.has(game.away_team)
           // Highlight per-game so multi-day picks (e.g. Sunday + Monday)
           // each keep their own visual selection.
-          const pickedTeamForThisGame = userPicksByGameId[game.id]
+          const pickedTeamForThisGame = userPicksByGameId[game.id]?.team_name
           const awayPicked = pickedTeamForThisGame === game.away_team
           const homePicked = pickedTeamForThisGame === game.home_team
 
@@ -260,7 +298,8 @@ export default function SurvivorView({ league }) {
             <div key={game.id} className="flex items-center gap-2">
               <button
                 onClick={() => handlePick(game.id, 'away')}
-                disabled={awayUsed || submitPick.isPending}
+                disabled={awayUsed || submitPick.isPending || deletePick.isPending}
+                title={awayPicked ? 'Tap again to remove this pick' : undefined}
                 className={`flex-1 py-3 px-3 rounded-lg text-sm font-semibold transition-colors flex flex-col items-center gap-1.5 ${
                   awayUsed
                     ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
@@ -278,7 +317,8 @@ export default function SurvivorView({ league }) {
               <span className="text-xs text-text-muted">@</span>
               <button
                 onClick={() => handlePick(game.id, 'home')}
-                disabled={homeUsed || submitPick.isPending}
+                disabled={homeUsed || submitPick.isPending || deletePick.isPending}
+                title={homePicked ? 'Tap again to remove this pick' : undefined}
                 className={`flex-1 py-3 px-3 rounded-lg text-sm font-semibold transition-colors flex flex-col items-center gap-1.5 ${
                   homeUsed
                     ? 'bg-bg-primary text-text-muted line-through cursor-not-allowed'
