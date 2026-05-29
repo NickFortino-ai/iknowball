@@ -473,6 +473,24 @@ function mapMlbStatToMarket(stats, marketKey) {
   return STAT_MAP[marketKey] ?? null
 }
 
+// NFL stats are Sleeper weekly stats (nfl_player_stats). Keep in sync with
+// the MARKET_STAT_MAP in jobs/settleNFLProps.js.
+function mapNflStatToMarket(stats, marketKey) {
+  const STAT_MAP = {
+    player_pass_yds: stats.pass_yd,
+    player_pass_tds: stats.pass_td,
+    player_pass_completions: stats.pass_cmp,
+    player_pass_attempts: stats.pass_att,
+    player_pass_interceptions: stats.pass_int,
+    player_rush_yds: stats.rush_yd,
+    player_rush_attempts: stats.rush_att,
+    player_reception_yds: stats.rec_yd,
+    player_receptions: stats.rec,
+    player_anytime_td: (stats.rush_td || 0) + (stats.rec_td || 0),
+  }
+  return STAT_MAP[marketKey] ?? null
+}
+
 async function enrichLockedPicksWithLiveStats(lockedPicks) {
   if (!lockedPicks.length) return
 
@@ -672,6 +690,31 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       }
     }
 
+    // NFL — Sleeper weekly stats (nfl_player_stats), keyed by (player_id,
+    // season, week) and matched to props by player name via nfl_players.
+    // Separate from the daily/ESPN basketball+baseball path above (NFL is
+    // weekly, not daily, and uses Sleeper ids rather than ESPN ids).
+    const nflByName = {}
+    const nflLockedPicks = lockedPicks.filter((p) => p.player_props?.games?.sports?.key === 'americanfootball_nfl')
+    if (nflLockedPicks.length) {
+      try {
+        const { getCurrentNflWeek } = await import('./tdPassService.js')
+        const { season, week } = await getCurrentNflWeek()
+        const { data: nflStats } = await supabase
+          .from('nfl_player_stats')
+          .select('player_id, pass_yd, pass_td, pass_cmp, pass_att, pass_int, rush_yd, rush_att, rec, rec_yd, rec_td, rush_td, nfl_players!inner(full_name)')
+          .eq('season', season)
+          .eq('week', week)
+        for (const s of nflStats || []) {
+          const name = s.nfl_players?.full_name
+          if (name) nflByName[normalizeName(name)] = s
+        }
+        logger.info({ rows: (nflStats || []).length, season, week }, 'Live stat enrichment: NFL weekly stats loaded')
+      } catch (err) {
+        logger.error({ err }, 'Live stat enrichment: NFL weekly stats load failed')
+      }
+    }
+
     // Attach live stats to each locked pick
     for (const pick of lockedPicks) {
       const playerName = pick.player_props?.player_name
@@ -683,6 +726,7 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       const nba = (espnId && nbaById[espnId]) || nbaByName[normName]
       const mlb = (espnId && mlbById[espnId]) || mlbByName[normName]
       const wnba = (espnId && wnbaById[espnId]) || wnbaByName[normName]
+      const nfl = nflByName[normName]
 
       if (nba) {
         const mapped = mapNbaStatToMarket(nba, marketKey)
@@ -697,6 +741,10 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
         const mapped = mapNbaStatToMarket(wnba, marketKey)
         pick.live_stat = mapped
         logger.info({ playerName, marketKey, mapped, gameStatus, raw: wnba }, 'Live stat enriched (WNBA)')
+      } else if (nfl) {
+        const mapped = mapNflStatToMarket(nfl, marketKey)
+        pick.live_stat = mapped
+        logger.info({ playerName, marketKey, mapped, gameStatus }, 'Live stat enriched (NFL)')
       } else {
         logger.warn({ playerName, espnId, marketKey, today, gameStatus, nbaByIdKeys: Object.keys(nbaById), nbaByNameKeys: Object.keys(nbaByName) }, 'Live stat enrichment: no stats found for player')
       }
