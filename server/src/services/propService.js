@@ -6,6 +6,7 @@ import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
 import { checkRecordAfterSettle } from './recordService.js'
 import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreNBADFS.js'
 import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreMLBDFS.js'
+import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
 
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
@@ -504,20 +505,23 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
 
     logger.info({ playerNames, today, yesterday, pickCount: lockedPicks.length }, 'Live stat enrichment starting')
 
-    // Look up ESPN IDs from DFS salaries (both NBA and MLB)
-    const [salaryRes1, salaryRes2] = await Promise.all([
+    // Look up ESPN IDs from DFS salaries (NBA, MLB, and WNBA)
+    const [salaryRes1, salaryRes2, salaryRes3] = await Promise.all([
       supabase.from('nba_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).in('game_date', lookupDates),
       supabase.from('mlb_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).in('game_date', lookupDates),
+      supabase.from('wnba_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).in('game_date', lookupDates),
     ])
 
     const nbaPlayers = salaryRes1.data || []
     const mlbPlayers = salaryRes2.data || []
+    const wnbaPlayers = salaryRes3.data || []
 
     if (salaryRes1.error) logger.error({ error: salaryRes1.error }, 'NBA salary lookup failed')
     if (salaryRes2.error) logger.error({ error: salaryRes2.error }, 'MLB salary lookup failed')
+    if (salaryRes3.error) logger.error({ error: salaryRes3.error }, 'WNBA salary lookup failed')
 
     const idMap = {}
-    for (const p of [...nbaPlayers, ...mlbPlayers]) {
+    for (const p of [...nbaPlayers, ...mlbPlayers, ...wnbaPlayers]) {
       idMap[p.player_name] = p.espn_player_id
     }
 
@@ -537,12 +541,19 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       // (handles "Jaime Jaquez Jr" vs "Jaime Jaquez Jr." and similar drift).
       supabase.from('nba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('game_date', lookupDates),
       supabase.from('mlb_dfs_player_stats').select('espn_player_id, player_name, hits, runs, home_runs, rbis, stolen_bases, walks, strikeouts, total_bases').in('game_date', lookupDates),
+      // WNBA — same basketball stat columns as NBA.
+      espnIds.length
+        ? supabase.from('wnba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('espn_player_id', espnIds).in('game_date', lookupDates)
+        : { data: [], error: null },
+      supabase.from('wnba_dfs_player_stats').select('espn_player_id, player_name, points, rebounds, assists, steals, blocks, turnovers, three_pointers_made').in('game_date', lookupDates),
     ])
 
     const nbaStats = queries[0].data || []
     const mlbStats = queries[1].data || []
     const nbaStatsByName = queries[2].data || []
     const mlbStatsByName = queries[3].data || []
+    const wnbaStats = queries[4].data || []
+    const wnbaStatsByName = queries[5].data || []
 
     for (const q of queries) {
       if (q.error) logger.error({ error: q.error }, 'Stats query failed in enrichment')
@@ -562,6 +573,11 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
     for (const s of mlbStats) mlbById[s.espn_player_id] = s
     for (const s of mlbStatsByName) mlbByName[normalizeName(s.player_name)] = s
 
+    const wnbaById = {}
+    const wnbaByName = {}
+    for (const s of wnbaStats) wnbaById[s.espn_player_id] = s
+    for (const s of wnbaStatsByName) wnbaByName[normalizeName(s.player_name)] = s
+
     // ESPN fallback — fire whenever we can't find stats for AT LEAST ONE locked
     // pick's player in the DB. We can't rely on "DB is empty" because the
     // scoring job might have picked up an earlier game's stats while a later
@@ -570,6 +586,7 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
     // ESPN directly. The fetched stats are merged into the in-memory maps.
     const nbaLockedPicks = lockedPicks.filter((p) => p.player_props?.games?.sports?.key === 'basketball_nba')
     const mlbLockedPicks = lockedPicks.filter((p) => p.player_props?.games?.sports?.key === 'baseball_mlb')
+    const wnbaLockedPicks = lockedPicks.filter((p) => p.player_props?.games?.sports?.key === 'basketball_wnba')
 
     const nbaMissing = nbaLockedPicks.some((p) => {
       const normName = normalizeName(p.player_props?.player_name)
@@ -580,6 +597,11 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       const normName = normalizeName(p.player_props?.player_name)
       const espnId = idMap[p.player_props?.player_name]
       return !((espnId && mlbById[espnId]) || mlbByName[normName])
+    })
+    const wnbaMissing = wnbaLockedPicks.some((p) => {
+      const normName = normalizeName(p.player_props?.player_name)
+      const espnId = idMap[p.player_props?.player_name]
+      return !((espnId && wnbaById[espnId]) || wnbaByName[normName])
     })
 
     if (nbaLockedPicks.length && nbaMissing) {
@@ -628,6 +650,28 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
       }
     }
 
+    if (wnbaLockedPicks.length && wnbaMissing) {
+      try {
+        const [todayStats, yesterdayStats] = await Promise.all([
+          fetchWnbaStatsFromEspn(today),
+          fetchWnbaStatsFromEspn(yesterday),
+        ])
+        const allStats = [...(todayStats.playerStats || []), ...(yesterdayStats.playerStats || [])]
+        for (const p of allStats) {
+          const row = {
+            espn_player_id: p.espnPlayerId,
+            player_name: p.playerName,
+            ...p.stats,
+          }
+          wnbaById[p.espnPlayerId] = row
+          wnbaByName[normalizeName(p.playerName)] = row
+        }
+        logger.info({ count: allStats.length }, 'Live stat enrichment: ESPN WNBA fallback fetched')
+      } catch (err) {
+        logger.error({ err }, 'Live stat enrichment: ESPN WNBA fallback failed')
+      }
+    }
+
     // Attach live stats to each locked pick
     for (const pick of lockedPicks) {
       const playerName = pick.player_props?.player_name
@@ -638,6 +682,7 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
 
       const nba = (espnId && nbaById[espnId]) || nbaByName[normName]
       const mlb = (espnId && mlbById[espnId]) || mlbByName[normName]
+      const wnba = (espnId && wnbaById[espnId]) || wnbaByName[normName]
 
       if (nba) {
         const mapped = mapNbaStatToMarket(nba, marketKey)
@@ -647,6 +692,11 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
         const mapped = mapMlbStatToMarket(mlb, marketKey)
         pick.live_stat = mapped
         logger.info({ playerName, marketKey, mapped, gameStatus }, 'Live stat enriched (MLB)')
+      } else if (wnba) {
+        // WNBA uses the same basketball stat shape + markets as NBA.
+        const mapped = mapNbaStatToMarket(wnba, marketKey)
+        pick.live_stat = mapped
+        logger.info({ playerName, marketKey, mapped, gameStatus, raw: wnba }, 'Live stat enriched (WNBA)')
       } else {
         logger.warn({ playerName, espnId, marketKey, today, gameStatus, nbaByIdKeys: Object.keys(nbaById), nbaByNameKeys: Object.keys(nbaByName) }, 'Live stat enrichment: no stats found for player')
       }

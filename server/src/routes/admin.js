@@ -529,7 +529,9 @@ router.post('/props/feature', async (req, res) => {
   let headshot = null
   if (prop?.player_name) {
     const sportKey = prop.games?.sports?.key || 'basketball_nba'
-    const sportPath = sportKey === 'baseball_mlb' ? 'baseball/mlb' : 'basketball/nba'
+    const sportPath = sportKey === 'baseball_mlb' ? 'baseball/mlb'
+      : sportKey === 'basketball_wnba' ? 'basketball/wnba'
+      : 'basketball/nba'
     await refreshPlayerHeadshotCache(sportPath)
     headshot = getPlayerHeadshotUrl(prop.player_name, sportPath)
   }
