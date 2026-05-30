@@ -133,6 +133,14 @@ const SPORT_TEAMS = {
     'hou', 'kc', 'laa', 'lad', 'mia', 'mil', 'min', 'nym', 'nyy', 'oak',
     'phi', 'pit', 'sd', 'sf', 'sea', 'stl', 'tb', 'tex', 'tor', 'wsh',
   ],
+  // WNBA — keyed by ESPN team IDs (from espnTeamMap.js) rather than
+  // abbreviations because the two expansion teams (Portland Fire, Toronto
+  // Tempo) have non-obvious ESPN IDs and using IDs guarantees roster URL
+  // resolution. Order matches espnTeamMap.basketball_wnba.
+  'basketball/wnba': [
+    '20', '19', '18', '3', '129689', '5', '17', '6', '8', '9',
+    '11', '132052', '14', '131935', '16',
+  ],
 }
 
 // In-memory cache of player name → headshot URL, keyed by sport
