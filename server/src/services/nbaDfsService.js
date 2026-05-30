@@ -358,7 +358,34 @@ export async function refreshNBAInjuries(date, season) {
     }
   }
 
-  if (refreshed > 0) {
+  // Lingering-blurb reconcile: catches the case where a player's blurb was
+  // written one day, the next day's fresh salary row was generated with
+  // injury_status=null (player already cleared by then), and so the
+  // row-update loop above never sees a transition to fire "Cleared to play."
+  // Without this, the old "game-time decision" prose lingers on the player
+  // modal for days. Scan currently-published ESPN blurbs for these players;
+  // if ESPN now reports no injury and the blurb isn't already a cleared
+  // notice, write one (which auto-archives the prior published row).
+  const espnIds = [...injuryByPlayer.keys()]
+  if (espnIds.length) {
+    const { data: liveBlurbs } = await supabase
+      .from('player_blurbs')
+      .select('player_id, content')
+      .eq('sport', 'nba')
+      .eq('generated_by', 'espn')
+      .eq('status', 'published')
+      .in('player_id', espnIds)
+    for (const b of liveBlurbs || []) {
+      if (blurbedPlayers.has(b.player_id)) continue
+      const espn = injuryByPlayer.get(String(b.player_id))
+      if (!espn || espn.injury_status) continue // still injured — leave the blurb
+      if (b.content === 'Cleared to play.') continue // already cleared
+      await writeEspnBlurb({ playerId: b.player_id, sport: 'nba', content: 'Cleared to play.' })
+      blurbedPlayers.add(b.player_id)
+    }
+  }
+
+  if (refreshed > 0 || blurbedPlayers.size > 0) {
     logger.info({ refreshed, blurbed: blurbedPlayers.size, date }, 'NBA DFS injury statuses refreshed')
   }
   return { refreshed, blurbed: blurbedPlayers.size }

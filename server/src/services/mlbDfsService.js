@@ -727,7 +727,30 @@ export async function refreshMLBInjuries(date, season) {
     }
   }
 
-  if (refreshed > 0) {
+  // Lingering-blurb reconcile — see NBA equivalent for full rationale.
+  // MLB blurbs may exist under both the raw id and the pitcher-suffix id
+  // for two-way players; the IN-list already includes both forms (the
+  // injuryByPlayer expansion handles that), so this naturally covers them.
+  const espnIds = [...injuryByPlayer.keys()]
+  if (espnIds.length) {
+    const { data: liveBlurbs } = await supabase
+      .from('player_blurbs')
+      .select('player_id, content')
+      .eq('sport', 'mlb')
+      .eq('generated_by', 'espn')
+      .eq('status', 'published')
+      .in('player_id', espnIds)
+    for (const b of liveBlurbs || []) {
+      if (blurbedPlayers.has(b.player_id)) continue
+      const espn = injuryByPlayer.get(String(b.player_id))
+      if (!espn || espn.injury_status) continue
+      if (b.content === 'Cleared to play.') continue
+      await writeEspnBlurb({ playerId: b.player_id, sport: 'mlb', content: 'Cleared to play.' })
+      blurbedPlayers.add(b.player_id)
+    }
+  }
+
+  if (refreshed > 0 || blurbedPlayers.size > 0) {
     logger.info({ refreshed, blurbed: blurbedPlayers.size, date }, 'MLB DFS injury statuses refreshed')
   }
   return { refreshed, blurbed: blurbedPlayers.size }

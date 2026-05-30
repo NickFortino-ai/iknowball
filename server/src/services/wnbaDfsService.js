@@ -584,7 +584,31 @@ export async function refreshWNBAInjuries(date, season) {
     }
   }
 
-  if (refreshed > 0) {
+  // Lingering-blurb reconcile — see NBA equivalent for full rationale.
+  // Catches a player whose injury blurb was written one day, then the
+  // next morning's fresh salary row was generated with injury_status=null
+  // (player already cleared), so the row-update loop above never fires
+  // the cleared transition.
+  const espnIds = [...injuryByPlayer.keys()]
+  if (espnIds.length) {
+    const { data: liveBlurbs } = await supabase
+      .from('player_blurbs')
+      .select('player_id, content')
+      .eq('sport', 'wnba')
+      .eq('generated_by', 'espn')
+      .eq('status', 'published')
+      .in('player_id', espnIds)
+    for (const b of liveBlurbs || []) {
+      if (blurbedPlayers.has(b.player_id)) continue
+      const espn = injuryByPlayer.get(String(b.player_id))
+      if (!espn || espn.injury_status) continue
+      if (b.content === 'Cleared to play.') continue
+      await writeEspnBlurb({ playerId: b.player_id, sport: 'wnba', content: 'Cleared to play.' })
+      blurbedPlayers.add(b.player_id)
+    }
+  }
+
+  if (refreshed > 0 || blurbedPlayers.size > 0) {
     logger.info({ refreshed, blurbed: blurbedPlayers.size, date }, 'WNBA DFS injury statuses refreshed')
   }
   return { refreshed, blurbed: blurbedPlayers.size }
