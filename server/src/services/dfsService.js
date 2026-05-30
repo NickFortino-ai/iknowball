@@ -546,6 +546,7 @@ export async function generateSalaries(week, season) {
       const projectionFppg = projectionMap.get(player.id) || 0
       const fppg = calcWeightedFppg(nflGameFpts, gameLog, projectionFppg, {
         recentN: 4, midN: 8, wRecent: 0.40, wMid: 0.35, wFull: 0.25,
+        cadence: 'weekly', // NFL — staleness thresholds tolerate a bye-week gap
       })
       salary = nflFppgToSalary(fppg, pos)
 

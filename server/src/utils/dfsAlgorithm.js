@@ -84,7 +84,7 @@ export async function fetchGameLog(espnId, sportPath, season) {
  * @returns {number} weighted FPPG
  */
 export function calcWeightedFppg(calcFppgForGame, gameLog, seasonAvgFppg, opts) {
-  const { recentN, midN, wRecent = 0.5, wMid = 0.3, wFull = 0.2 } = opts
+  const { recentN, midN, wRecent = 0.5, wMid = 0.3, wFull = 0.2, cadence = 'daily' } = opts
   const earlyFullThreshold = recentN // need at least this many games for full weighting
   const earlyBlendThreshold = Math.ceil(recentN * 0.3) // 3 for NBA/MLB, 2 for NFL
 
@@ -114,26 +114,46 @@ export function calcWeightedFppg(calcFppgForGame, gameLog, seasonAvgFppg, opts) 
     weighted = recentAvg * wRecent + midAvg * wMid + fullAvg * wFull
   }
 
-  return applyStalenessDiscount(weighted, gameLog)
+  return applyStalenessDiscount(weighted, gameLog, cadence)
 }
 
 // Recency-staleness discount. The played-games average overstates a
 // player's expected output when they haven't been on the floor recently
 // (typical case: healthy scratch / coach's-decision DNP — ESPN's gamelog
 // drops MIN=0 rows, so the model never sees that the team has been
-// playing without them). Discount tiers by days-since-most-recent-game.
-// Cap at 90 days so the cross-season gap doesn't crush prior-season
-// fallbacks at fall openers — applies to NBA / WNBA / MLB / NFL since
-// they all share this helper.
-function applyStalenessDiscount(weighted, gameLog) {
+// playing without them). Discount tiers by days-since-most-recent-game,
+// with a sport-aware cadence so NFL bye weeks don't get false-positived
+// as benchwarmer signal. Cap at 90 days so the cross-season gap doesn't
+// crush prior-season fallbacks at fall openers.
+//
+// Tier format: [{ daysAtLeast, factor }, ...] ordered by daysAtLeast desc.
+// First match wins. Implicit "below the smallest threshold → no discount."
+const STALENESS_TIERS = {
+  // NBA / WNBA / MLB — daily cadence, 1–2 day inter-game gap
+  daily: [
+    { daysAtLeast: 21, factor: 0 },
+    { daysAtLeast: 14, factor: 0.25 },
+    { daysAtLeast: 7,  factor: 0.50 },
+  ],
+  // NFL — weekly cadence, bye weeks add an expected ~7-day gap. A player
+  // returning from bye looks like a 14-day gap and shouldn't be punished.
+  weekly: [
+    { daysAtLeast: 31, factor: 0 },       // 4+ missed weeks (long absence)
+    { daysAtLeast: 24, factor: 0.25 },    // 3+ missed weeks
+    { daysAtLeast: 17, factor: 0.50 },    // 2+ missed weeks (more than just a bye)
+    // ≤17 days covers normal weekly cadence (≤9d) and post-bye (≤17d) — no discount.
+  ],
+}
+
+function applyStalenessDiscount(weighted, gameLog, cadence = 'daily') {
   const mostRecent = gameLog?.[0]?._gameDate || gameLog?.[0]?.gameDate
   if (!mostRecent) return weighted
   const daysSince = Math.max(0, (Date.now() - new Date(mostRecent).getTime()) / 86400000)
-  if (daysSince > 90) return weighted              // off-season / cross-season — don't discount
-  if (daysSince >= 21) return 0                    // long-term bench / inactive → floor
-  if (daysSince >= 14) return weighted * 0.25
-  if (daysSince >= 7)  return weighted * 0.50
-  return weighted                                  // played within the last week — current form
+  if (daysSince > 90) return weighted // off-season / cross-season — don't discount
+  for (const tier of STALENESS_TIERS[cadence] || STALENESS_TIERS.daily) {
+    if (daysSince >= tier.daysAtLeast) return weighted * tier.factor
+  }
+  return weighted // within normal cadence — current form
 }
 
 /**
