@@ -945,7 +945,7 @@ export default function NbaDfsView({ league, tab = 'roster' }) {
             {(9 - filledSlots) > 0 && (
               <span
                 key={`${remainingSalary}-${filledSlots}`}
-                className="text-xs text-text-muted shrink-0"
+                className="text-xs text-text-primary shrink-0"
               >
                 ${Math.round(remainingSalary / (9 - filledSlots)).toLocaleString()} avg/player
               </span>

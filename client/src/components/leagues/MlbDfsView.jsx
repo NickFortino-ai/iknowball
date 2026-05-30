@@ -633,7 +633,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
               // the sticky element until a scroll forced a layout pass.
               <span
                 key={`${remainingSalary}-${filledSlots}`}
-                className="text-xs text-text-muted shrink-0"
+                className="text-xs text-text-primary shrink-0"
               >
                 ${Math.round(remainingSalary / (SLOTS.length - filledSlots)).toLocaleString()} avg/player
               </span>
