@@ -273,6 +273,40 @@ async function applyInjuryDowngrades(byFormat, userId, todayET, result) {
     }
   }
 
+  // ── WNBA daily (Three-Point) ────────────────────────────────────
+  if (byFormat.wnba_three_point?.length) {
+    const leagueIds = byFormat.wnba_three_point.map((l) => l.id)
+    const { data: salaryRows } = await supabase
+      .from('wnba_dfs_salaries')
+      .select('espn_player_id, injury_status')
+      .eq('game_date', todayET)
+      .not('injury_status', 'is', null)
+    const outIds = []
+    const yellowIds = []
+    for (const r of salaryRows || []) {
+      if (r.injury_status === 'Out') outIds.push(r.espn_player_id)
+      else if (isYellowStatus(r.injury_status)) yellowIds.push(r.espn_player_id)
+    }
+    if (outIds.length || yellowIds.length) {
+      const { data: badPicks } = await supabase
+        .from('wnba_three_point_picks')
+        .select('league_id, espn_player_id')
+        .in('league_id', leagueIds)
+        .eq('user_id', userId)
+        .eq('game_date', todayET)
+        .in('espn_player_id', [...outIds, ...yellowIds])
+      const outSet = new Set(outIds)
+      const outHit = new Set()
+      const yellowHit = new Set()
+      for (const p of badPicks || []) {
+        if (outSet.has(p.espn_player_id)) outHit.add(p.league_id)
+        else yellowHit.add(p.league_id)
+      }
+      for (const id of outHit) set(result, id, 'action', 'Injured player on lineup — swap before tip-off')
+      for (const id of yellowHit) if (!outHit.has(id)) downgradeAttention(id, 'Questionable/DTD player on lineup')
+    }
+  }
+
   // ── MLB daily (HR Derby + Strikeouts) ───────────────────────────
   const mlbDaily = []
   if (byFormat.hr_derby?.length) mlbDaily.push({ table: 'hr_derby_picks', leagues: byFormat.hr_derby })
