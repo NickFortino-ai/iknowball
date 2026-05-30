@@ -2,14 +2,11 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { getCurrentNflWeek } from '../services/tdPassService.js'
+import { todaySportsDay } from '../utils/sportsDay.js'
 
 // Reusing nfl_injury_warning as the notification type so we don't need a
 // migration to add a new type. Body text describes the actual sport/format.
 const NOTIF_TYPE = 'nfl_injury_warning'
-
-function todayET() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-}
 
 /**
  * Sport-aware pronouns for notification copy. Default he/him for every
@@ -33,7 +30,10 @@ function pronounsForSport(sportKey) {
  * game_date for daily formats, or season-week for NFL.
  */
 export async function sendPickInjuryWarnings() {
-  const today = todayET()
+  // PT-anchored sports day — using ET here rolled over to "tomorrow" after
+  // 9 PM PT and fired "Out tonight" warnings on tomorrow-night picks
+  // (notif user saw 2026-05-29 night for their next-day 3-point pick).
+  const today = todaySportsDay()
 
   // Pull recent existing warnings (last 14 days) once so each format can
   // build its dedupe set against it.
