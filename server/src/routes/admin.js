@@ -534,6 +534,33 @@ router.post('/props/feature', async (req, res) => {
       : 'basketball/nba'
     await refreshPlayerHeadshotCache(sportPath)
     headshot = getPlayerHeadshotUrl(prop.player_name, sportPath)
+
+    // Fallback: ESPN's team-roster endpoint excludes some players we still
+    // want headshots for (40-man shuttle / IL / spot starts — e.g. J.T. Ginn
+    // pitching for the A's wasn't in the team roster). Our DFS salary sync
+    // uses the per-game scoreboard rosters (broader) and already stores the
+    // ESPN headshot URL, so check there as a backstop. Normalize-name match
+    // handles drift between odds-feed and ESPN spellings ("JT Ginn" vs
+    // "J.T. Ginn", etc.) — same rule the cache uses.
+    if (!headshot) {
+      const salaryTable = sportKey === 'baseball_mlb' ? 'mlb_dfs_salaries'
+        : sportKey === 'basketball_wnba' ? 'wnba_dfs_salaries'
+        : sportKey === 'basketball_nba' ? 'nba_dfs_salaries'
+        : null
+      if (salaryTable) {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+        const { data: salaryRows } = await supabase
+          .from(salaryTable)
+          .select('player_name, headshot_url')
+          .gte('game_date', today)
+          .not('headshot_url', 'is', null)
+          .limit(500)
+        const norm = (n) => (n || '').toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim()
+        const target = norm(prop.player_name)
+        const match = (salaryRows || []).find((r) => norm(r.player_name) === target)
+        if (match) headshot = match.headshot_url
+      }
+    }
   }
 
   const result = await featureProp(propId, featuredDate, headshot)
