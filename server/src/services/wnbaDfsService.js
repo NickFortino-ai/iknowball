@@ -287,6 +287,7 @@ async function fetchPlayerSeasonAvgs(espnId) {
       spg: get('STL'),
       bpg: get('BLK'),
       tpg: get('TO'),
+      mpg: get('MIN'),
       threes,
       gp: get('GP'),
     }
@@ -406,7 +407,12 @@ export async function generateWNBASalaries(date, season = 2026) {
         }
 
         const gameLog = await fetchGameLog(espnId, 'basketball/wnba', season)
-        const fppg = calcWeightedFppg(wnbaGameFpts, gameLog, seasonFppg, { recentN: 10, midN: 20 })
+        // starterSignal: 12 MPG → 0, 25 MPG → 1 (WNBA games are 40 min vs
+        // NBA's 48, so the threshold is scaled down). Heavy-minutes WNBA
+        // players returning from injury keep their pricing.
+        const mpg = avgs?.mpg || 0
+        const starterSignal = Math.min(1, Math.max(0, (mpg - 12) / 13))
+        const fppg = calcWeightedFppg(wnbaGameFpts, gameLog, seasonFppg, { recentN: 10, midN: 20, starterSignal })
 
         let salary = fantasyPointsToSalary(fppg)
         salary = applyDefensiveAdjustment(salary, opponentAbbrev, defRankings, 12) // 12 WNBA teams

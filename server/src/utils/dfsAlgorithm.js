@@ -84,7 +84,7 @@ export async function fetchGameLog(espnId, sportPath, season) {
  * @returns {number} weighted FPPG
  */
 export function calcWeightedFppg(calcFppgForGame, gameLog, seasonAvgFppg, opts) {
-  const { recentN, midN, wRecent = 0.5, wMid = 0.3, wFull = 0.2, cadence = 'daily' } = opts
+  const { recentN, midN, wRecent = 0.5, wMid = 0.3, wFull = 0.2, cadence = 'daily', starterSignal = 0 } = opts
   const earlyFullThreshold = recentN // need at least this many games for full weighting
   const earlyBlendThreshold = Math.ceil(recentN * 0.3) // 3 for NBA/MLB, 2 for NFL
 
@@ -114,7 +114,7 @@ export function calcWeightedFppg(calcFppgForGame, gameLog, seasonAvgFppg, opts) 
     weighted = recentAvg * wRecent + midAvg * wMid + fullAvg * wFull
   }
 
-  return applyStalenessDiscount(weighted, gameLog, cadence)
+  return applyStalenessDiscount(weighted, gameLog, cadence, starterSignal)
 }
 
 // Recency-staleness discount. The played-games average overstates a
@@ -145,13 +145,25 @@ const STALENESS_TIERS = {
   ],
 }
 
-function applyStalenessDiscount(weighted, gameLog, cadence = 'daily') {
+// starterSignal ∈ [0, 1]: 0 = no protection (full discount), 1 = full
+// protection (no discount), interpolated in between. Lets the caller pass
+// a sport-specific "is this a heavy-minutes/usage starter?" hint so an
+// elite player returning from injury isn't priced like a benchwarmer.
+// Carlson (~11 MPG when active) signals 0 → still discounted. A 32-MPG
+// starter back from a 2-week injury signals 1 → no discount, his prior
+// production stands.
+function applyStalenessDiscount(weighted, gameLog, cadence = 'daily', starterSignal = 0) {
   const mostRecent = gameLog?.[0]?._gameDate || gameLog?.[0]?.gameDate
   if (!mostRecent) return weighted
   const daysSince = Math.max(0, (Date.now() - new Date(mostRecent).getTime()) / 86400000)
   if (daysSince > 90) return weighted // off-season / cross-season — don't discount
+  const s = Math.min(1, Math.max(0, starterSignal))
   for (const tier of STALENESS_TIERS[cadence] || STALENESS_TIERS.daily) {
-    if (daysSince >= tier.daysAtLeast) return weighted * tier.factor
+    if (daysSince >= tier.daysAtLeast) {
+      // Interpolate: appliedFactor lerps from tier.factor (s=0) to 1 (s=1).
+      const appliedFactor = tier.factor + (1 - tier.factor) * s
+      return weighted * appliedFactor
+    }
   }
   return weighted // within normal cadence — current form
 }

@@ -415,6 +415,7 @@ async function fetchPlayerSeasonAvgs(espnId) {
       spg: get('STL'),
       bpg: get('BLK'),
       tpg: get('TO'),
+      mpg: get('MIN'),
       threes,
       gp: get('GP'),
     }
@@ -527,7 +528,12 @@ export async function generateNBASalaries(date, season = 2026) {
         }
 
         const gameLog = await fetchGameLog(espnId, 'basketball/nba', season)
-        const fppg = calcWeightedFppg(nbaGameFpts, gameLog, seasonFppg, { recentN: 10, midN: 20 })
+        // starterSignal: 15 MPG → 0 (full discount), 30 MPG → 1 (no discount).
+        // Heavy-minutes players who've been out are likely injury returns,
+        // not benchwarmers, so we don't punish their recency gap.
+        const mpg = avgs?.mpg || 0
+        const starterSignal = Math.min(1, Math.max(0, (mpg - 15) / 15))
+        const fppg = calcWeightedFppg(nbaGameFpts, gameLog, seasonFppg, { recentN: 10, midN: 20, starterSignal })
 
         let salary = fantasyPointsToSalary(fppg)
         salary = applyDefensiveAdjustment(salary, opponentAbbrev, defRankings, 30)
