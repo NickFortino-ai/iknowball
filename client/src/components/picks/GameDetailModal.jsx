@@ -29,10 +29,17 @@ export default function GameDetailModal({ gameId, onClose }) {
   const game = data?.game
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{
+        paddingTop: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-top) + 1rem))',
+        paddingBottom: 'max(1.5rem, calc(3.5rem + env(safe-area-inset-bottom) + 1rem))',
+      }}
+      onClick={onClose}
+    >
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-bg-primary/90 backdrop-blur-md border border-text-primary/20 w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-6 max-h-[90vh] md:max-h-[85vh] overflow-y-auto"
+        className="relative bg-bg-primary/90 backdrop-blur-md border border-text-primary/20 w-full md:max-w-lg rounded-2xl p-6 max-h-full overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         <button
