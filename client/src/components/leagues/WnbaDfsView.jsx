@@ -748,7 +748,7 @@ export default function WnbaDfsView({ league, tab = 'roster' }) {
           />
         </div>
         {(9 - filledSlots) > 0 && (
-          <div className="mt-2 text-xs text-text-muted text-right">
+          <div className="mt-2 text-xs text-text-primary text-right">
             ${Math.round(remainingSalary / (9 - filledSlots)).toLocaleString()} avg per player
           </div>
         )}

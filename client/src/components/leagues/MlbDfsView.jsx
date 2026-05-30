@@ -486,7 +486,7 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
             />
           </div>
           {(SLOTS.length - filledSlots) > 0 && (
-            <div className="mt-2 text-xs text-text-muted text-right">
+            <div className="mt-2 text-xs text-text-primary text-right">
               ${Math.round(remainingSalary / (SLOTS.length - filledSlots)).toLocaleString()} avg per player
             </div>
           )}
