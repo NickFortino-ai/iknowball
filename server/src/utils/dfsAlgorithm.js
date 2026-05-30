@@ -31,6 +31,11 @@ export async function fetchGameLog(espnId, sportPath, season) {
 
     const labels = data.labels || []
     const names = data.names || []
+    // ESPN exposes per-event metadata (including gameDate) keyed by eventId
+    // on data.events, while the actual stat rows live under
+    // seasonTypes[].categories[].events[]. Join the two so calcWeightedFppg
+    // can reason about recency below.
+    const eventsMap = data.events || {}
     const games = []
 
     for (const seasonType of (data.seasonTypes || [])) {
@@ -41,10 +46,25 @@ export async function fetchGameLog(espnId, sportPath, season) {
           const statMap = {}
           labels.forEach((l, i) => { statMap[l] = stats[i] })
           names.forEach((n, i) => { statMap[n] = stats[i] })
+          const meta = eventsMap[evt.eventId]
+          if (meta?.gameDate) statMap._gameDate = meta.gameDate
           games.push(statMap)
         }
       }
     }
+
+    // Sort most-recent-first so calcWeightedFppg's slice(0, recentN) is
+    // actually recent (ESPN's natural order is regular season → playoffs
+    // within each season type, which isn't strictly chronological). Games
+    // without a date fall to the end.
+    games.sort((a, b) => {
+      const da = a._gameDate || ''
+      const db = b._gameDate || ''
+      if (!da && !db) return 0
+      if (!da) return 1
+      if (!db) return -1
+      return db.localeCompare(da)
+    })
 
     return games
   } catch {
@@ -79,22 +99,41 @@ export function calcWeightedFppg(calcFppgForGame, gameLog, seasonAvgFppg, opts) 
 
   const avg = (arr) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0
 
+  let weighted
   if (gameFpts.length <= earlyBlendThreshold) {
     // Very few games — use available at 100%
-    return avg(gameFpts)
-  }
-
-  if (gameFpts.length < earlyFullThreshold) {
+    weighted = avg(gameFpts)
+  } else if (gameFpts.length < earlyFullThreshold) {
     // Blend available games 70%, season avg 30%
-    return avg(gameFpts) * 0.7 + (seasonAvgFppg || avg(gameFpts)) * 0.3
+    weighted = avg(gameFpts) * 0.7 + (seasonAvgFppg || avg(gameFpts)) * 0.3
+  } else {
+    // Full weighted formula
+    const recentAvg = avg(gameFpts.slice(0, recentN))
+    const midAvg = avg(gameFpts.slice(0, midN))
+    const fullAvg = seasonAvgFppg || avg(gameFpts)
+    weighted = recentAvg * wRecent + midAvg * wMid + fullAvg * wFull
   }
 
-  // Full weighted formula
-  const recentAvg = avg(gameFpts.slice(0, recentN))
-  const midAvg = avg(gameFpts.slice(0, midN))
-  const fullAvg = seasonAvgFppg || avg(gameFpts)
+  return applyStalenessDiscount(weighted, gameLog)
+}
 
-  return recentAvg * wRecent + midAvg * wMid + fullAvg * wFull
+// Recency-staleness discount. The played-games average overstates a
+// player's expected output when they haven't been on the floor recently
+// (typical case: healthy scratch / coach's-decision DNP — ESPN's gamelog
+// drops MIN=0 rows, so the model never sees that the team has been
+// playing without them). Discount tiers by days-since-most-recent-game.
+// Cap at 90 days so the cross-season gap doesn't crush prior-season
+// fallbacks at fall openers — applies to NBA / WNBA / MLB / NFL since
+// they all share this helper.
+function applyStalenessDiscount(weighted, gameLog) {
+  const mostRecent = gameLog?.[0]?._gameDate || gameLog?.[0]?.gameDate
+  if (!mostRecent) return weighted
+  const daysSince = Math.max(0, (Date.now() - new Date(mostRecent).getTime()) / 86400000)
+  if (daysSince > 90) return weighted              // off-season / cross-season — don't discount
+  if (daysSince >= 21) return 0                    // long-term bench / inactive → floor
+  if (daysSince >= 14) return weighted * 0.25
+  if (daysSince >= 7)  return weighted * 0.50
+  return weighted                                  // played within the last week — current form
 }
 
 /**
