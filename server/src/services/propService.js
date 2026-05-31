@@ -431,7 +431,7 @@ export async function deletePropPick(userId, propId) {
 export async function getPropPickById(propPickId) {
   const { data, error } = await supabase
     .from('prop_picks')
-    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, sports(key, name)))')
+    .select('*, player_props(*, games(id, home_team, away_team, starts_at, status, home_score, away_score, sports(key, name)))')
     .eq('id', propPickId)
     .single()
 
@@ -439,6 +439,38 @@ export async function getPropPickById(propPickId) {
     const err = new Error('Prop pick not found')
     err.status = 404
     throw err
+  }
+
+  // Attach live in-game stat when the pick is locked and the game is live.
+  if (data.status === 'locked') {
+    try {
+      await enrichLockedPicksWithLiveStats([data])
+    } catch (e) {
+      logger.warn({ err: e?.message, pickId: data.id }, 'Live stat enrichment failed for detail modal')
+    }
+  }
+
+  // Consensus over/under counts across all settled+locked picks for this prop.
+  try {
+    const [overCount, underCount] = await Promise.all([
+      supabase
+        .from('prop_picks')
+        .select('*', { count: 'exact', head: true })
+        .eq('prop_id', data.prop_id)
+        .eq('picked_side', 'over'),
+      supabase
+        .from('prop_picks')
+        .select('*', { count: 'exact', head: true })
+        .eq('prop_id', data.prop_id)
+        .eq('picked_side', 'under'),
+    ])
+    data.totalCounts = {
+      over: overCount.count || 0,
+      under: underCount.count || 0,
+    }
+  } catch (e) {
+    logger.warn({ err: e?.message, pickId: data.id }, 'Consensus lookup failed for detail modal')
+    data.totalCounts = { over: 0, under: 0 }
   }
 
   return data
