@@ -424,6 +424,54 @@ async function awardLeaguePickPoints(league) {
   logger.info({ winnerId, leagueId: league.id, bonus: memberCount, members: standings.length }, 'League pick points awarded')
 }
 
+async function getWNBADFSStandings(league) {
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('champion_metric')
+    .eq('league_id', league.id)
+    .single()
+
+  const { data: results } = await supabase
+    .from('wnba_dfs_nightly_results')
+    .select('user_id, total_points, is_night_winner')
+    .eq('league_id', league.id)
+
+  if (!results?.length) return []
+
+  const userMap = {}
+  for (const r of results) {
+    if (!userMap[r.user_id]) userMap[r.user_id] = { user_id: r.user_id, totalPoints: 0, wins: 0 }
+    userMap[r.user_id].totalPoints += Number(r.total_points)
+    if (r.is_night_winner) userMap[r.user_id].wins++
+  }
+
+  const standings = Object.values(userMap)
+  if (settings?.champion_metric === 'most_wins') {
+    standings.sort((a, b) => b.wins - a.wins || b.totalPoints - a.totalPoints)
+  } else {
+    standings.sort((a, b) => b.totalPoints - a.totalPoints)
+  }
+
+  const ranked = []
+  let i = 0
+  while (i < standings.length) {
+    let j = i
+    while (j < standings.length &&
+      (settings?.champion_metric === 'most_wins'
+        ? standings[j].wins === standings[i].wins && standings[j].totalPoints === standings[i].totalPoints
+        : standings[j].totalPoints === standings[i].totalPoints)) {
+      j++
+    }
+    const sharedRank = i + 1
+    for (let k = i; k < j; k++) {
+      ranked.push({ user_id: standings[k].user_id, rank: sharedRank })
+    }
+    i = j
+  }
+
+  return ranked
+}
+
 async function getMLBDFSStandings(league) {
   const { data: settings } = await supabase
     .from('fantasy_settings')
@@ -1080,6 +1128,20 @@ export async function completeLeagues() {
           const fraction = Math.min(1, nightsPlayed / 180)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
           await awardPositionBasedPoints(league, standings, 'MLB DFS', bonusFn, memberCount)
+        }
+      } else if (league.format === 'wnba_dfs') {
+        const memberCount = await getLeagueMemberCount(league.id)
+        const standings = await getWNBADFSStandings(league)
+        if (standings?.length > 0) {
+          // Prorate winner bonus by nights played vs ~120-night WNBA regular season
+          const { data: nightRows } = await supabase
+            .from('wnba_dfs_nightly_results')
+            .select('game_date')
+            .eq('league_id', league.id)
+          const nightsPlayed = new Set((nightRows || []).map((r) => r.game_date)).size
+          const fraction = Math.min(1, nightsPlayed / 120)
+          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          await awardPositionBasedPoints(league, standings, 'WNBA DFS', bonusFn, memberCount)
         }
       } else if (league.format === 'hr_derby') {
         const standings = await getHRDerbyStandings(league)

@@ -87,16 +87,16 @@ Commissioner controls: salary cap, team count, league duration, and lineup lock 
     description: 'Build a nightly WNBA lineup under a salary cap and compete for the highest score',
     details: `Build a nightly 9-player WNBA lineup (G, G, F, F, C, UTIL, UTIL, UTIL, UTIL) under a salary cap. Players are priced using a weighted algorithm that factors in recent performance and opponent defensive strength — so salaries shift nightly based on matchups and form. Scoring follows DraftKings-style WNBA rules. Your league tracks wins across every night of the duration.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of the WNBA regular season.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~120-night WNBA regular season.
 
 At the end of the season, the league generates a League Report — a full breakdown of every member's season including most played player, pick of the year, best value plays, worst investments, and league-wide awards for top scorer, most rostered player, and the most contrarian hit of the season.
 
 Commissioner controls: salary cap, team count, league duration, and lineup lock time. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'WNBA DFS Winner Bonus (Full Season)',
+      title: 'WNBA DFS Winner Bonus (Full Season, ~120 game nights)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus scales with how many nights your league runs out of the WNBA regular season. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many nights your league runs (out of ~120 in a full WNBA season). A 60-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
