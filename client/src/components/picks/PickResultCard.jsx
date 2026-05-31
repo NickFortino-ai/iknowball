@@ -70,14 +70,16 @@ export default function PickResultCard({ pick, game, totalCounts }) {
       <div className="border-t border-text-primary/10 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-              isPostponed ? 'text-yellow-500'
-              : isCorrect ? 'text-correct'
-              : isLost ? 'text-incorrect'
-              : 'text-text-muted'
-            }`}>
-              {isPostponed ? '⏸' : isPush ? '—' : isCorrect ? '✓' : isLost ? '✗' : '?'}
-            </span>
+            {(isPostponed || isPush || isCorrect || isLost) && (
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                isPostponed ? 'text-yellow-500'
+                : isCorrect ? 'text-correct'
+                : isLost ? 'text-incorrect'
+                : 'text-text-muted'
+              }`}>
+                {isPostponed ? '⏸' : isPush ? '—' : isCorrect ? '✓' : '✗'}
+              </span>
+            )}
             <span className="text-sm text-text-secondary">Picked</span>
             <span className="text-sm font-semibold text-text-primary truncate">{pickedTeam}</span>
           </div>
