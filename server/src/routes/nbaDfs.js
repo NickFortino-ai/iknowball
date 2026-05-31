@@ -418,6 +418,40 @@ router.get('/player/lookup', async (req, res) => {
   // Normalize: strip periods (C.J. → CJ) for matching
   const normalized = name.replace(/\./g, '')
 
+  // NFL players live in nfl_players, not a DFS salaries table. When the
+  // request is for NFL, look there first so the prop modal gets a real
+  // espn_player_id and the recent-games gamelog can fire.
+  if (sport === 'americanfootball_nfl') {
+    let { data } = await supabase
+      .from('nfl_players')
+      .select('espn_id, full_name, headshot_url, team, position')
+      .ilike('full_name', `%${name}%`)
+      .not('team', 'is', null)
+      .limit(1)
+      .maybeSingle()
+
+    if (!data && normalized !== name) {
+      const r = await supabase
+        .from('nfl_players')
+        .select('espn_id, full_name, headshot_url, team, position')
+        .ilike('full_name', `%${normalized}%`)
+        .not('team', 'is', null)
+        .limit(1)
+        .maybeSingle()
+      data = r.data
+    }
+
+    if (data) {
+      return res.json({
+        espn_player_id: data.espn_id,
+        player_name: data.full_name,
+        headshot_url: data.headshot_url,
+        team: data.team,
+        position: data.position,
+      })
+    }
+  }
+
   // Try the salaries table that matches the sport first, then fall back to
   // the other two. WNBA was previously missing here, so WNBA prop modals
   // fell through to the headshot-only branch and never got an espn_player_id
