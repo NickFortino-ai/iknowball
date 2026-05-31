@@ -78,7 +78,7 @@ Commissioner controls: salary cap, team count, league duration, and lineup lock 
       title: 'NBA DFS Winner Bonus (Full Season, ~180 game nights)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus prorated by nights_played / 180. A 90-night league earns 50% of the bonus; a 30-night league earns ~17%. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full NBA season). A 90-night league earns 50% of the bonus; a 30-night league earns about 17%. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -96,7 +96,7 @@ Commissioner controls: salary cap, team count, league duration, and lineup lock 
       title: 'WNBA DFS Winner Bonus (Full Season)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus prorated by nights_played out of the WNBA regular season. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many nights your league runs out of the WNBA regular season. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -114,7 +114,7 @@ Commissioner controls: salary cap, team count, league duration, lineup lock time
       title: 'MLB DFS Winner Bonus (Full Season, ~180 game nights)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus prorated by nights_played / 180. A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full MLB season). A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -194,7 +194,7 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
       title: 'Interceptions Contest Winner Bonus (Full Season, 18 weeks)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -210,7 +210,7 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
       title: 'Sacks Contest Winner Bonus (Full Season, 18 weeks)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -226,7 +226,7 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
       title: 'Tackles Contest Winner Bonus (Full Season, 18 weeks)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -242,7 +242,7 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
       title: 'Receptions Contest Winner Bonus (Full Season, 18 weeks)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -258,7 +258,7 @@ Commissioner controls: league length (defaults to full NFL season), team count. 
       title: 'TD Pass Winner Bonus (Full Season, 18 weeks)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Bonus prorated by weeks_played / 18. A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
+      footnote: 'Bonus scales with how many weeks your league runs (out of 18 in a full NFL regular season). A 9-week league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
