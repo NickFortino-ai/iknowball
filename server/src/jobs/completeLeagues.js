@@ -1144,26 +1144,31 @@ export async function completeLeagues() {
           await awardPositionBasedPoints(league, standings, 'WNBA DFS', bonusFn, memberCount)
         }
       } else if (league.format === 'hr_derby') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getHRDerbyStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'HR Derby')
+          await awardPositionBasedPoints(league, standings, 'HR Derby', undefined, memberCount)
         }
       } else if (league.format === 'strikeouts') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getStrikeoutsStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'Strikeouts Contest')
+          await awardPositionBasedPoints(league, standings, 'Strikeouts Contest', undefined, memberCount)
         }
       } else if (league.format === 'three_point') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getThreePointStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'NBA 3-Point Contest')
+          await awardPositionBasedPoints(league, standings, 'NBA 3-Point Contest', undefined, memberCount)
         }
       } else if (league.format === 'wnba_three_point') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getWnbaThreePointStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'WNBA 3-Point Contest')
+          await awardPositionBasedPoints(league, standings, 'WNBA 3-Point Contest', undefined, memberCount)
         }
       } else if (league.format === 'sacks') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getSacksStandings(league)
         if (standings?.length > 0) {
           // Prorate winner bonus by NFL weeks played (out of 18-week regular season)
@@ -1174,9 +1179,10 @@ export async function completeLeagues() {
           const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
           const fraction = Math.min(1, weeksPlayed / 18)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
-          await awardPositionBasedPoints(league, standings, 'Sacks Contest', bonusFn)
+          await awardPositionBasedPoints(league, standings, 'Sacks Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'ints') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getIntsStandings(league)
         if (standings?.length > 0) {
           const { data: pickRows } = await supabase
@@ -1186,9 +1192,10 @@ export async function completeLeagues() {
           const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
           const fraction = Math.min(1, weeksPlayed / 18)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
-          await awardPositionBasedPoints(league, standings, 'Interceptions Contest', bonusFn)
+          await awardPositionBasedPoints(league, standings, 'Interceptions Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'tackles') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getTacklesStandings(league)
         if (standings?.length > 0) {
           const { data: pickRows } = await supabase
@@ -1198,9 +1205,10 @@ export async function completeLeagues() {
           const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
           const fraction = Math.min(1, weeksPlayed / 18)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
-          await awardPositionBasedPoints(league, standings, 'Tackles Contest', bonusFn)
+          await awardPositionBasedPoints(league, standings, 'Tackles Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'receptions') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getReceptionsStandings(league)
         if (standings?.length > 0) {
           const { data: pickRows } = await supabase
@@ -1210,9 +1218,10 @@ export async function completeLeagues() {
           const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
           const fraction = Math.min(1, weeksPlayed / 18)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
-          await awardPositionBasedPoints(league, standings, 'Receptions Contest', bonusFn)
+          await awardPositionBasedPoints(league, standings, 'Receptions Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'td_pass') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getTdPassStandings(league)
         if (standings?.length > 0) {
           // Prorate winner bonus by NFL weeks played (out of 18-week regular season)
@@ -1223,7 +1232,7 @@ export async function completeLeagues() {
           const weeksPlayed = new Set((pickRows || []).map((r) => r.week)).size
           const fraction = Math.min(1, weeksPlayed / 18)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
-          await awardPositionBasedPoints(league, standings, 'TD Pass', bonusFn)
+          await awardPositionBasedPoints(league, standings, 'TD Pass', bonusFn, memberCount)
         }
       }
 
