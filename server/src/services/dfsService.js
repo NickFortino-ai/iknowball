@@ -1,7 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { calculateFantasyPoints } from './sleeperService.js'
-import { fetchGameLog, calcWeightedFppg, fetchDefensiveRankings, applyDefensiveAdjustment } from '../utils/dfsAlgorithm.js'
 
 const DFS_SLOTS = ['QB', 'RB1', 'RB2', 'WR1', 'WR2', 'WR3', 'TE', 'FLEX', 'DEF']
 const FLEX_ELIGIBLE = ['RB', 'WR', 'TE']
@@ -312,280 +311,93 @@ export async function scoreNflDfsWeek(week, season) {
 /**
  * Auto-generate salaries from player projections/rankings.
  */
-/**
- * Calculate NFL fantasy points from a single game stat map (ESPN gamelog).
- * Half-PPR scoring.
- *
- * Must read by semantic name (passingYards, rushingYards, receivingYards,
- * etc.) — never by short label. ESPN's NFL gamelog reuses labels (YDS, TD,
- * AVG, LNG) across passing/rushing/receiving groups, so label-keyed reads
- * silently capture the wrong group depending on player position:
- *   QB:  labels YDS/TD = rushing (overwrites passing)
- *   RB:  labels YDS/TD = receiving (overwrites rushing)
- *   WR/TE: labels YDS/TD = rushing (overwrites receiving)
- * The shared parser populates statMap by both labels and names; we always
- * read names here.
- */
-function nflGameFpts(statMap) {
-  const passYds = parseFloat(statMap['passingYards']) || 0
-  const passTD = parseFloat(statMap['passingTouchdowns']) || 0
-  const int = parseFloat(statMap['interceptions']) || 0
-  const rushYds = parseFloat(statMap['rushingYards']) || 0
-  const rushTD = parseFloat(statMap['rushingTouchdowns']) || 0
-  const rec = parseFloat(statMap['receptions']) || 0
-  const recYds = parseFloat(statMap['receivingYards']) || 0
-  const recTD = parseFloat(statMap['receivingTouchdowns']) || 0
-  const fumLost = parseFloat(statMap['fumblesLost']) || 0
-
-  // Treat a row with no real production as DNP (bye / inactive) — without
-  // this guard, all-zero rows would average into L4/L8 and drag down
-  // recency-weighted FPPG for healthy players who missed a single game.
-  const anyProduction = passYds || passTD || int || rushYds || rushTD
-    || rec || recYds || recTD || fumLost
-  if (!anyProduction) return null
-
-  return passYds * 0.04 + passTD * 4 - int * 2
-    + rushYds * 0.1 + rushTD * 6
-    + rec * 0.5 + recYds * 0.1 + recTD * 6
-    - fumLost * 2
-}
-
-/**
- * NFL salary from FPPG, with position-specific curves calibrated to
- * real FanDuel pricing data (verified against live FD board).
- *
- * Why per-position: QBs accumulate way more raw FPPG than RB/WR/TE
- * because of passing volume, so a single universal curve sends every
- * starter QB to the cap. Real DFS sites use different curves per
- * position; we mirror that here.
- *
- * Tuned to FanDuel \$60k cap, 9 slots (\$6.7k avg per slot):
- *
- *   QB:   floor \$5,500, cap \$9,000
- *     elite 27 FPPG → \$9,000 (Allen tier)
- *     strong 23 FPPG → \$8,500 (Burrow / Hurts tier)
- *     mid 18 FPPG → \$7,700 (Caleb Williams tier)
- *     streamer 15 FPPG → \$7,300 (Bo Nix / Jared Goff tier)
- *     replacement 8 FPPG → \$6,200
- *
- *   RB:   floor \$3,500, cap \$9,600
- *     elite 22 FPPG → \$9,600 (Bijan tier)
- *     strong 18 FPPG → \$8,800
- *     mid 14 FPPG → \$7,500
- *     value 10 FPPG → \$6,200
- *     bench 5 FPPG → \$4,600
- *
- *   WR:   floor \$3,500, cap \$9,900
- *     elite 22 FPPG → \$9,900 (Puka tier)
- *     strong 18 FPPG → \$8,800
- *     mid 14 FPPG → \$7,500
- *     value 10 FPPG → \$6,200
- *     bench 5 FPPG → \$4,600
- *
- *   TE:   floor \$3,000, cap \$8,200
- *     elite 16 FPPG → \$8,200 (McBride tier)
- *     mid 10 FPPG → \$6,500
- *     streamer 5 FPPG → \$4,500
- */
-function nflFppgToSalary(fppg, position) {
-  if (!fppg || fppg <= 0) {
-    if (position === 'QB') return 5500
-    if (position === 'TE') return 3500
-    return 3500
-  }
-
-  let raw, floor, cap
-  if (position === 'QB') {
-    raw = 5000 + fppg * 150
-    floor = 5500
-    cap = 10000
-  } else if (position === 'TE') {
-    raw = 3000 + fppg * 400
-    floor = 3500
-    cap = 8500
-  } else if (position === 'WR') {
-    raw = 3000 + fppg * 325
-    floor = 3500
-    cap = 9900
-  } else {
-    // RB
-    raw = 3000 + fppg * 325
-    floor = 3500
-    cap = 9600
-  }
-
-  const salary = Math.round(raw / 100) * 100
-  return Math.max(floor, Math.min(cap, salary))
-}
+// NFL DFS pricing: Value-Based Drafting (VBD) on Sleeper weekly projections.
+//
+// For each position, we rank players who Sleeper projects to play this week,
+// pick the player at REPLACEMENT_RANK[pos] as the "replacement-level" baseline,
+// and price everyone else by points-above-replacement. The position-specific
+// floors/caps come from FanDuel calibration. Bye-week / inactive / unprojected
+// players price at floor — they're not part of this week's slate.
+//
+// Why this replaces the old per-position FPPG curves: scarcity is what makes
+// elite TEs valuable, and scarcity changes weekly (bye distribution, injuries).
+// Sleeper's projection bakes in matchup, usage, opponent strength, and snap
+// share — there's no upside left to model on top of it. This is intentionally
+// simpler than the prior weighted-gamelog + staleness + starter-signal pipeline.
+const REPLACEMENT_RANK = { QB: 30, RB: 30, WR: 60, TE: 25, K: 20, DEF: 20 }
+const POS_FLOOR = { QB: 5500, RB: 4000, WR: 4000, TE: 3500, K: 4000, DEF: 3500 }
+const POS_CAP = { QB: 10000, RB: 9600, WR: 9900, TE: 8500, K: 5800, DEF: 5500 }
+// Per-position $ added per fantasy point above replacement. QB lower because
+// QB projection spread is tight (8-10 pt VBD for elites) and a flat slope
+// would send every starter to the cap. TEs steepest because the elite tier
+// is thinnest — TE12 vs TE25 is a real chasm.
+const SALARY_PER_VBD = { QB: 400, RB: 650, WR: 650, TE: 700, K: 650, DEF: 650 }
 
 export async function generateSalaries(week, season) {
   logger.info({ week, season }, 'Generating DFS salaries')
 
-  // Filter on team IS NOT NULL only — the retire-cleanup pass in
-  // sleeperService nulls team on retired players. Previously we also
-  // had .eq('status', 'Active') which silently excluded all defenses
-  // (Sleeper stores team defenses with status=null since they aren't
-  // real player records), so DEFs never reached the salary algorithm.
-  // It also dropped IR/PUP players entirely; we'd rather show those
-  // with their injury_status flagged so users can decide.
+  // Pull every player we might price. Filter on team IS NOT NULL so retired
+  // players (their team is nulled by the Sleeper sync) drop out; keep IR/PUP
+  // so the slate surfaces them with their injury_status flagged.
   const { data: players, error } = await supabase
     .from('nfl_players')
-    .select('id, position, search_rank, projected_pts_half_ppr, espn_id, team, injury_status, depth_chart_order')
+    .select('id, position, team, injury_status, depth_chart_order')
     .not('team', 'is', null)
-    .in('position', ['QB', 'RB', 'WR', 'TE', 'DEF'])
-    .order('search_rank', { ascending: true })
+    .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'])
 
   if (error) throw error
 
-  // Fetch defensive rankings (cached 6h)
-  const defRankings = await fetchDefensiveRankings('football/nfl')
-
-  // Fetch Sleeper's weekly point projections for this week+season — these
-  // are real per-week forecasts that already bake in matchup, opponent
-  // strength, recent usage, etc. They drive the season-level signal in
-  // calcWeightedFppg (the 25% fullAvg term). For Week 1 / cold-start
-  // situations where the gamelog is empty or sparse, the projection is
-  // effectively the whole price. We never have to overwrite a real
-  // gamelog with a projection — the weighted blend handles both.
+  // Sleeper weekly projections for THIS (season, week). This is the entire
+  // pricing signal — no gamelog blend, no staleness discount, no defensive
+  // multiplier. Sleeper already bakes in matchup, opponent, usage, snap share.
   const { data: projectionRows } = await supabase
     .from('nfl_player_projections')
     .select('player_id, pts_half_ppr')
     .eq('season', season)
     .eq('week', week)
-  const projectionMap = new Map((projectionRows || []).map((r) => [r.player_id, Number(r.pts_half_ppr) || 0]))
-  logger.info({ projections_loaded: projectionMap.size, week, season }, 'Loaded Sleeper weekly projections for pricing')
+  const projectionMap = new Map(
+    (projectionRows || []).map((r) => [r.player_id, Number(r.pts_half_ppr) || 0])
+  )
+  logger.info(
+    { projections_loaded: projectionMap.size, week, season },
+    'Loaded Sleeper weekly projections for pricing'
+  )
 
-  // TODO: We'd need to know each player's opponent this week for defensive adjustment.
-  // For now, fetch NFL schedule for this week to build team→opponent map.
-  let teamOpponentMap = {}
-  try {
-    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2&dates=${season}`)
-    if (res.ok) {
-      const data = await res.json()
-      for (const event of data.events || []) {
-        const comp = event.competitions?.[0]
-        if (!comp) continue
-        const teams = comp.competitors || []
-        if (teams.length === 2) {
-          const t0 = teams[0].team?.abbreviation
-          const t1 = teams[1].team?.abbreviation
-          if (t0 && t1) {
-            teamOpponentMap[t0] = t1
-            teamOpponentMap[t1] = t0
-          }
-        }
-      }
+  // Compute replacement-level projection per position. Only players Sleeper
+  // projects to actually play this week (projection > 0) enter the ranking
+  // — bye-week and inactive players would otherwise drag the baseline down.
+  const projByPos = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] }
+  for (const p of players || []) {
+    const proj = projectionMap.get(p.id)
+    if (proj != null && proj > 0 && projByPos[p.position]) {
+      projByPos[p.position].push(proj)
     }
-  } catch { /* ignore */ }
-
-  // When Sleeper projections exist for this (season, week), tighten the
-  // generated pool to (a) DEFs (rank-based, no projection needed), (b)
-  // players Sleeper actually projects to play, AND (c) any player in
-  // the top SEARCH_RANK_SAFETY_NET by Sleeper ADP — that last clause is
-  // a safety net so a star can never be silently dropped from pricing
-  // if Sleeper omits them from a given week's projection set.
-  //
-  // If projection coverage drops below MIN_PROJECTIONS_FOR_TIGHTEN (a
-  // Sleeper outage / partial degradation), abandon the tighten entirely
-  // and price the full pool. The gamelog cold-start fallback inside the
-  // loop will keep producing real prices in that scenario; without this
-  // guard a partial Sleeper failure would collapse the pool to ~50
-  // players instead of producing any kind of usable slate.
-  const MIN_PROJECTIONS_FOR_TIGHTEN = 200
-  const SEARCH_RANK_SAFETY_NET = 300
-  const pricingPool = projectionMap.size >= MIN_PROJECTIONS_FOR_TIGHTEN
-    ? (players || []).filter((p) =>
-        p.position === 'DEF'
-        || projectionMap.has(p.id)
-        || (p.search_rank && p.search_rank <= SEARCH_RANK_SAFETY_NET)
-      )
-    : (players || [])
-  logger.info({
-    total_players: players?.length || 0,
-    pricing_pool: pricingPool.length,
-    projections_available: projectionMap.size,
-  }, 'NFL DFS pool sized for pricing')
+  }
+  const replacementByPos = {}
+  for (const pos of Object.keys(REPLACEMENT_RANK)) {
+    const sorted = (projByPos[pos] || []).slice().sort((a, b) => b - a)
+    const rank = REPLACEMENT_RANK[pos]
+    replacementByPos[pos] = sorted.length >= rank ? sorted[rank - 1] : (sorted[sorted.length - 1] || 0)
+  }
+  logger.info({ replacementByPos, week, season }, 'NFL VBD replacement levels')
 
   const salaries = []
-
-  for (const player of pricingPool) {
+  for (const player of players || []) {
     const pos = player.position
-    let salary
+    if (!REPLACEMENT_RANK[pos]) continue // unknown position, skip
 
-    if (pos === 'DEF') {
-      // DEF: rank-based, no game log
-      const posCount = salaries.filter((s) => s._pos === 'DEF').length + 1
-      salary = Math.max(2500, Math.min(5000, 5000 - (posCount - 1) * 75))
-      salary = Math.round(salary / 100) * 100
-    } else if (player.espn_id) {
-      // Use weighted FPPG from game log. Season-level signal is derived
-      // from the gamelog itself — Sleeper's projections/{season}/0
-      // endpoint silently stopped populating pts_half_ppr in early 2026
-      // (every projection comes back null), so we no longer rely on it
-      // for pricing. calcWeightedFppg's `seasonAvgFppg || avg(gameFpts)`
-      // fallback handles the season-average computation when we pass 0.
-      // If Sleeper restores the field later, we can revisit whether to
-      // mix the pre-season projection back in.
-      //
-      // Recency weights tuned to NFL's 17-game sample: L4 is ~24% of
-      // the season, so the calcWeightedFppg default of 50% on L4 was
-      // too volatile — one big game spikes pricing for a month. 40/35/25
-      // keeps recency-aware while protecting against single-game noise.
-      // Cold-start fallback: if the current season has no gamelog yet
-      // (preseason, very early Week 1, or a player who hasn't played yet),
-      // use the prior season's gamelog as the reference. Without this,
-      // every player floors to the position minimum during the offseason
-      // and pricing is meaningless until ~Week 3 of the real season.
-      let gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season)
-      if (!gameLog?.length) {
-        gameLog = await fetchGameLog(player.espn_id, 'football/nfl', season - 1)
-      }
-      // Pass Sleeper's weekly projection as seasonFppg. calcWeightedFppg's
-      // fullAvg term (25%) uses it directly; for empty gamelog (rookie /
-      // pure cold start) it becomes 100% of the price.
-      const projectionFppg = projectionMap.get(player.id) || 0
-      const fppg = calcWeightedFppg(nflGameFpts, gameLog, projectionFppg, {
-        recentN: 4, midN: 8, wRecent: 0.40, wMid: 0.35, wFull: 0.25,
-        cadence: 'weekly', // NFL — staleness thresholds tolerate a bye-week gap
-      })
-      salary = nflFppgToSalary(fppg, pos)
+    const proj = projectionMap.get(player.id) || 0
+    const replacement = replacementByPos[pos] || 0
+    const vbd = Math.max(0, proj - replacement)
 
-      // Apply defensive adjustment
-      const opponent = teamOpponentMap[player.team]
-      if (opponent) {
-        salary = applyDefensiveAdjustment(salary, opponent, defRankings, 32)
-      }
-    } else {
-      // No ESPN ID — fall back to rank-based decay with position-aware caps.
-      // The previous implementation used a universal $4,500-$10,000 ceiling
-      // that ignored position curves; a TE without espn_id at search_rank 5
-      // would land at $9,600, well above the TE Path B cap of $8,500.
-      // Caps here intentionally sit BELOW each position's Path B cap — Path C
-      // means "we don't have real production data for this player," so the
-      // ceiling should be conservative (the algorithm-driven Path B tier is
-      // reserved for players we can actually price off of gamelogs).
-      const pathCParams = (
-        pos === 'QB' ? { cap: 8000, floor: 5500, step: 300 } :
-        pos === 'RB' ? { cap: 7500, floor: 3500, step: 250 } :
-        pos === 'WR' ? { cap: 7500, floor: 3500, step: 250 } :
-        pos === 'TE' ? { cap: 7000, floor: 3500, step: 200 } :
-                       { cap: 6500, floor: 3500, step: 150 }
-      )
-      const posCount = salaries.filter((s) => s._pos === pos).length + 1
-      const raw = pathCParams.cap - (posCount - 1) * pathCParams.step
-      salary = Math.max(pathCParams.floor, Math.min(pathCParams.cap, raw))
-      salary = Math.round(salary / 100) * 100
-    }
+    let salary = POS_FLOOR[pos] + vbd * (SALARY_PER_VBD[pos] || 500)
+    salary = Math.round(salary / 100) * 100
+    salary = Math.max(POS_FLOOR[pos], Math.min(POS_CAP[pos], salary))
 
-    // QB depth-chart override. Without this, a third-string QB hits the QB
-    // floor ($5,500) plus position decay and ends up ~$6,800 — well above
-    // any reasonable price for a player who won't see the field. Sleeper's
-    // depth_chart_order (1 = starter, 2 = backup, 3+ = third string)
-    // already tells us the answer. Null is left at the algorithm price so
-    // rookies and unassigned players aren't penalized; this kicks in only
-    // when Sleeper has explicitly ranked them behind another QB. If a
-    // starter goes down, Sleeper bumps the next QB to depth_chart_order=1
-    // pretty quickly, so this stays self-correcting.
+    // QB depth-chart override. Sleeper occasionally projects backup QBs
+    // generously (4-5 pts) which would put a third-stringer near the QB
+    // floor of $5,500. depth_chart_order >= 2 means Sleeper has flagged
+    // them as behind another QB; force a clearly-lower price.
     if (pos === 'QB' && player.depth_chart_order && player.depth_chart_order >= 2) {
       salary = player.depth_chart_order === 2 ? 5000 : 4000
     }
@@ -594,14 +406,10 @@ export async function generateSalaries(week, season) {
       player_id: player.id,
       nfl_week: week,
       season,
-      salary,                  // initial guess — overwritten below if manually set
-      algorithm_salary: salary, // always the algo-computed price for reference
-      _pos: pos,               // temp field for counting, not stored
+      salary,
+      algorithm_salary: salary,
     })
   }
-
-  // Remove temp field before upsert
-  for (const s of salaries) delete s._pos
 
   // Honor manual overrides — fetch existing rows that admins have edited
   // and preserve their salary value while still refreshing algorithm_salary.
