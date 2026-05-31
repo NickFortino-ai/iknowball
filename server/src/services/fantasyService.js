@@ -5111,7 +5111,10 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
     // Import bonus logic
     const { getTraditionalFantasyBonus } = await import('../jobs/completeLeagues.js')
 
-    const n = standings.length
+    // Scale position points by the real league size, not just the 1-4 finishers
+    // we materialized here. Without this, a 12-team champion's position points
+    // collapse from (12+1-2)=11 to (4+1-2)=3.
+    const n = league.member_count || standings.length
     for (let i = 0; i < standings.length; i++) {
       const rank = i + 1
       const positionPts = n + 1 - 2 * rank

@@ -109,8 +109,13 @@ async function notifyLeagueMembers(league, winnerId, winnerName, format) {
 // `bonusForRank` is an optional fn (rank, n) → bonus pts; defaults to
 // CHAMPION_BONUS for 1st only. Traditional fantasy passes a custom function
 // that scales 1st/2nd/3rd bonuses with league size.
-async function awardPositionBasedPoints(league, standings, formatLabel, bonusForRank) {
-  const n = standings.length
+//
+// `effectiveN` lets the caller override the N used in scaling — important for
+// formats that don't auto-eject no-participation members (NFL salary cap,
+// traditional fantasy, MLB DFS), where standings.length undercounts the real
+// league size. Defaults to standings.length when omitted.
+async function awardPositionBasedPoints(league, standings, formatLabel, bonusForRank, effectiveN) {
+  const n = Math.max(effectiveN || 0, standings.length)
   if (n === 0) return
 
   const computeBonus = bonusForRank || scaledBonusForRank
@@ -1019,6 +1024,7 @@ export async function completeLeagues() {
           logger.info({ leagueId: league.id }, 'Traditional fantasy with playoffs — skipping auto-completion (handled by playoff bracket)')
           continue
         }
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getFantasyLeagueStandings(league)
         if (standings?.length > 0) {
           const { data: settings } = await supabase
@@ -1059,9 +1065,10 @@ export async function completeLeagues() {
             const fraction = Math.min(1, nightsPlayed / 180)
             bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
           }
-          await awardPositionBasedPoints(league, standings, label, bonusFn)
+          await awardPositionBasedPoints(league, standings, label, bonusFn, memberCount)
         }
       } else if (league.format === 'mlb_dfs') {
+        const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getMLBDFSStandings(league)
         if (standings?.length > 0) {
           // Prorate winner bonus by nights played vs ~180-night MLB regular season
@@ -1072,7 +1079,7 @@ export async function completeLeagues() {
           const nightsPlayed = new Set((nightRows || []).map((r) => r.game_date)).size
           const fraction = Math.min(1, nightsPlayed / 180)
           const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
-          await awardPositionBasedPoints(league, standings, 'MLB DFS', bonusFn)
+          await awardPositionBasedPoints(league, standings, 'MLB DFS', bonusFn, memberCount)
         }
       } else if (league.format === 'hr_derby') {
         const standings = await getHRDerbyStandings(league)
