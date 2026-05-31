@@ -418,49 +418,43 @@ router.get('/player/lookup', async (req, res) => {
   // Normalize: strip periods (C.J. → CJ) for matching
   const normalized = name.replace(/\./g, '')
 
-  // Try DFS salaries table (NBA first, then MLB)
-  // Try exact name first, then normalized (handles C.J. vs CJ)
-  let { data } = await supabase
-    .from('nba_dfs_salaries')
-    .select('espn_player_id, player_name, headshot_url, team, position')
-    .ilike('player_name', `%${name}%`)
-    .order('game_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // Try the salaries table that matches the sport first, then fall back to
+  // the other two. WNBA was previously missing here, so WNBA prop modals
+  // fell through to the headshot-only branch and never got an espn_player_id
+  // — breaking the recent-games gamelog fetch.
+  const TABLE_BY_SPORT = {
+    basketball_nba: 'nba_dfs_salaries',
+    basketball_wnba: 'wnba_dfs_salaries',
+    baseball_mlb: 'mlb_dfs_salaries',
+  }
+  const primaryTable = TABLE_BY_SPORT[sport]
+  const allTables = ['nba_dfs_salaries', 'wnba_dfs_salaries', 'mlb_dfs_salaries']
+  const tableOrder = primaryTable
+    ? [primaryTable, ...allTables.filter((t) => t !== primaryTable)]
+    : allTables
 
-  if (!data && normalized !== name) {
-    const r = await supabase
-      .from('nba_dfs_salaries')
+  for (const table of tableOrder) {
+    let { data } = await supabase
+      .from(table)
       .select('espn_player_id, player_name, headshot_url, team, position')
-      .ilike('player_name', `%${normalized}%`)
+      .ilike('player_name', `%${name}%`)
       .order('game_date', { ascending: false })
       .limit(1)
       .maybeSingle()
-    data = r.data
+
+    if (!data && normalized !== name) {
+      const r = await supabase
+        .from(table)
+        .select('espn_player_id, player_name, headshot_url, team, position')
+        .ilike('player_name', `%${normalized}%`)
+        .order('game_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      data = r.data
+    }
+
+    if (data) return res.json(data)
   }
-
-  if (data) return res.json(data)
-
-  let { data: mlbData } = await supabase
-    .from('mlb_dfs_salaries')
-    .select('espn_player_id, player_name, headshot_url, team, position')
-    .ilike('player_name', `%${name}%`)
-    .order('game_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!mlbData && normalized !== name) {
-    const r = await supabase
-      .from('mlb_dfs_salaries')
-      .select('espn_player_id, player_name, headshot_url, team, position')
-      .ilike('player_name', `%${normalized}%`)
-      .order('game_date', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    mlbData = r.data
-  }
-
-  if (mlbData) return res.json(mlbData)
 
   // Fallback: look up headshot from ESPN cache for other sports
   const sportPath = ESPN_SPORT_PATHS[sport] || 'basketball/nba'
