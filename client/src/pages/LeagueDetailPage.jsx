@@ -274,12 +274,12 @@ function ScoringRulesDisplay({ rules, format }) {
 // Mirrors `scaledWinnerBonus` in server/src/jobs/completeLeagues.js — used by
 // bracket, NBA DFS, MLB DFS, HR Derby, and TD Pass leagues. Keep in sync.
 function scaledWinnerBonusClient(n) {
-  if (n >= 41) return 100
-  if (n >= 31) return 75
-  if (n >= 16) return 50
-  if (n >= 11) return 30
-  if (n >= 6) return 20
-  return 10
+  if (n >= 41) return 110
+  if (n >= 31) return 85
+  if (n >= 16) return 60
+  if (n >= 11) return 40
+  if (n >= 6) return 30
+  return 20
 }
 
 // Mirrors TRADITIONAL_FANTASY_BONUSES in server/src/jobs/completeLeagues.js
@@ -477,12 +477,12 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
 
     const memberCount = league.members?.length || 0
     function winnerBonus() {
-      if (memberCount >= 41) return 100
-      if (memberCount >= 31) return 75
-      if (memberCount >= 16) return 50
-      if (memberCount >= 11) return 30
-      if (memberCount >= 6) return 20
-      return 10
+      if (memberCount >= 41) return 110
+      if (memberCount >= 31) return 85
+      if (memberCount >= 16) return 60
+      if (memberCount >= 11) return 40
+      if (memberCount >= 6) return 30
+      return 20
     }
     const bonusText = `The winner earns a +${winnerBonus()} point bonus.`
 

@@ -1218,12 +1218,12 @@ async function checkSurvivorWinner(leagueId) {
       .eq('league_id', leagueId)
 
     let winnerBonus
-    if (memberCount >= 41) winnerBonus = 100
-    else if (memberCount >= 31) winnerBonus = 75
-    else if (memberCount >= 16) winnerBonus = 50
-    else if (memberCount >= 11) winnerBonus = 30
-    else if (memberCount >= 6) winnerBonus = 20
-    else winnerBonus = 10
+    if (memberCount >= 41) winnerBonus = 110
+    else if (memberCount >= 31) winnerBonus = 85
+    else if (memberCount >= 16) winnerBonus = 60
+    else if (memberCount >= 11) winnerBonus = 40
+    else if (memberCount >= 6) winnerBonus = 30
+    else winnerBonus = 20
 
     const outlasted = (memberCount || 1) - 1
 
@@ -1385,12 +1385,12 @@ async function checkSurvivorWinner(leagueId) {
         .eq('league_id', leagueId)
 
       let totalBonus
-      if (memberCount >= 41) totalBonus = 100
-      else if (memberCount >= 31) totalBonus = 75
-      else if (memberCount >= 16) totalBonus = 50
-      else if (memberCount >= 11) totalBonus = 30
-      else if (memberCount >= 6) totalBonus = 20
-      else totalBonus = 10
+      if (memberCount >= 41) totalBonus = 110
+      else if (memberCount >= 31) totalBonus = 85
+      else if (memberCount >= 16) totalBonus = 60
+      else if (memberCount >= 11) totalBonus = 40
+      else if (memberCount >= 6) totalBonus = 30
+      else totalBonus = 20
 
       const splitBonus = Math.round(totalBonus / aliveMembers.length)
       const outlasted = (memberCount || 1) - aliveMembers.length

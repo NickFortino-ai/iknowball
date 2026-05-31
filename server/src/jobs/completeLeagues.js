@@ -10,12 +10,12 @@ import { generateLeagueReport } from '../services/leagueReportService.js'
 // Scaled winner bonus based on league size — matches survivor pool structure.
 // Used by bracket, NBA DFS, MLB DFS, HR Derby, TD Pass.
 function scaledWinnerBonus(memberCount) {
-  if (memberCount >= 41) return 100
-  if (memberCount >= 31) return 75
-  if (memberCount >= 16) return 50
-  if (memberCount >= 11) return 30
-  if (memberCount >= 6) return 20
-  return 10
+  if (memberCount >= 41) return 110
+  if (memberCount >= 31) return 85
+  if (memberCount >= 16) return 60
+  if (memberCount >= 11) return 40
+  if (memberCount >= 6) return 30
+  return 20
 }
 
 function scaledBonusForRank(rank, n) {

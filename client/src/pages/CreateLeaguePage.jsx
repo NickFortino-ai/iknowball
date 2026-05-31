@@ -16,12 +16,12 @@ const WINNER_BONUS_COLUMNS = [
   { key: 'winner', label: 'Winner Bonus', align: 'center', color: 'text-correct' },
 ]
 const WINNER_BONUS_ROWS = [
-  { size: '5 or fewer', winner: '+10' },
-  { size: '6–10', winner: '+20' },
-  { size: '11–15', winner: '+30' },
-  { size: '16–30', winner: '+50' },
-  { size: '31–40', winner: '+75' },
-  { size: '41+', winner: '+100' },
+  { size: '5 or fewer', winner: '+20' },
+  { size: '6–10', winner: '+30' },
+  { size: '11–15', winner: '+40' },
+  { size: '16–30', winner: '+60' },
+  { size: '31–40', winner: '+85' },
+  { size: '41+', winner: '+110' },
 ]
 
 const FORMAT_OPTIONS = [
