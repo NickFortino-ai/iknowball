@@ -102,7 +102,8 @@ export async function saveDFSRoster(leagueId, userId, week, season, slots, salar
     throw err
   }
 
-  // Upsert roster
+  // Upsert roster. submitted_at is intentionally cleared on every save so
+  // any edit after Submit puts the lineup back into "needs resubmit" state.
   const { data: roster, error: rosterError } = await supabase
     .from('dfs_rosters')
     .upsert({
@@ -111,6 +112,7 @@ export async function saveDFSRoster(leagueId, userId, week, season, slots, salar
       nfl_week: week,
       season,
       total_salary: totalSalary,
+      submitted_at: null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'league_id,user_id,nfl_week,season' })
     .select()
@@ -144,6 +146,40 @@ export async function saveDFSRoster(leagueId, userId, week, season, slots, salar
   }
 
   return getDFSRoster(leagueId, userId, week, season)
+}
+
+/**
+ * Mark the current week's NFL salary cap roster as explicitly submitted.
+ * Requires a full 9/9 lineup. The next save() call will clear submitted_at.
+ */
+export async function submitDFSRoster(leagueId, userId, week, season) {
+  const { data: roster } = await supabase
+    .from('dfs_rosters')
+    .select('id, dfs_roster_slots(roster_slot)')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .eq('nfl_week', week)
+    .eq('season', season)
+    .maybeSingle()
+
+  if (!roster) {
+    const err = new Error('No roster to submit — add players first')
+    err.status = 400
+    throw err
+  }
+  if ((roster.dfs_roster_slots || []).length < DFS_SLOTS.length) {
+    const err = new Error(`Lineup incomplete — ${(roster.dfs_roster_slots || []).length}/${DFS_SLOTS.length} slots filled`)
+    err.status = 400
+    throw err
+  }
+
+  const submittedAt = new Date().toISOString()
+  const { error } = await supabase
+    .from('dfs_rosters')
+    .update({ submitted_at: submittedAt, updated_at: submittedAt })
+    .eq('id', roster.id)
+  if (error) throw error
+  return { submitted_at: submittedAt }
 }
 
 /**

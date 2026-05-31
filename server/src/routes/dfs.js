@@ -5,6 +5,7 @@ import {
   getPlayerPool,
   getDFSRoster,
   saveDFSRoster,
+  submitDFSRoster,
   getDFSStandings,
   getWeeklyResults,
 } from '../services/dfsService.js'
@@ -58,6 +59,18 @@ router.post('/roster', async (req, res) => {
 
   const data = await saveDFSRoster(league_id, req.user.id, week, season, slots || [], salaryCap)
   res.json(data)
+})
+
+// Submit DFS roster — explicit "I commit to this lineup" confirmation
+router.post('/roster/submit', async (req, res) => {
+  const { league_id, week, season } = req.body
+  if (!league_id || !week || !season) return res.status(400).json({ error: 'league_id, week, and season required' })
+  try {
+    const data = await submitDFSRoster(league_id, req.user.id, parseInt(week), parseInt(season))
+    res.json(data)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message || 'Failed to submit roster' })
+  }
 })
 
 // Get standings

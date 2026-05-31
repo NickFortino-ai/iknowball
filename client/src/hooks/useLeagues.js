@@ -1209,6 +1209,16 @@ export function useSaveNflDfsRoster() {
   })
 }
 
+export function useSubmitNflDfsRoster() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/dfs/roster/submit', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['nfl-dfs', variables.league_id, 'roster'] })
+    },
+  })
+}
+
 export function usePlayoffBracket(leagueId) {
   return useQuery({
     queryKey: ['playoff-bracket', leagueId],

@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
-import { useNflDfsPlayers, useNflDfsRoster, useSaveNflDfsRoster, useFantasySettings } from '../../hooks/useLeagues'
+import { useNflDfsPlayers, useNflDfsRoster, useSaveNflDfsRoster, useSubmitNflDfsRoster, useFantasySettings } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import PlayerHeadshot from '../ui/PlayerHeadshot'
 import PlayerDetailModal from './PlayerDetailModal'
+import { timeAgo } from '../../lib/time'
 
 const SLOTS = [
   { key: 'QB', label: 'QB', positions: ['QB'] },
@@ -30,6 +31,7 @@ export default function NflSalaryCapView({ league }) {
   const { data: players, isLoading: playersLoading } = useNflDfsPlayers(currentWeek, season)
   const { data: roster, isLoading: rosterLoading } = useNflDfsRoster(league.id, currentWeek, season)
   const saveRoster = useSaveNflDfsRoster()
+  const submitRoster = useSubmitNflDfsRoster()
 
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -100,6 +102,15 @@ export default function NflSalaryCapView({ league }) {
     }
   }
 
+  async function handleSubmit() {
+    try {
+      await submitRoster.mutateAsync({ league_id: league.id, week: currentWeek, season })
+      toast('Roster submitted!', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to submit roster', 'error')
+    }
+  }
+
   async function removeSlot(slotKey) {
     const newLineup = { ...lineup, [slotKey]: null }
     const slots = SLOTS.map((s) => {
@@ -144,6 +155,31 @@ export default function NflSalaryCapView({ league }) {
             </div>
           )}
         </div>
+
+        {/* Submit / status — auto-save runs on every pick, but the explicit
+            submit gives users the conventional DFS "I commit" moment. Any
+            edit clears submitted_at server-side so the badge resets. */}
+        {filledCount === SLOTS.length && remaining >= 0 && (
+          <div className="mb-4">
+            {roster?.submitted_at ? (
+              <div className="rounded-xl border border-correct/40 bg-correct/10 px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-correct">Submitted &middot; {timeAgo(roster.submitted_at)}</div>
+                  <div className="text-[11px] text-text-muted mt-0.5">Edits will require resubmit</div>
+                </div>
+                <span className="text-correct text-lg leading-none shrink-0">&#10003;</span>
+              </div>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={submitRoster.isPending}
+                className="w-full rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors px-4 py-3 text-sm font-bold text-white"
+              >
+                {submitRoster.isPending ? 'Submitting...' : 'Submit Roster'}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
