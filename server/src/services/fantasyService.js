@@ -2305,6 +2305,27 @@ export async function getRoster(leagueId, userId) {
         r.live_points = ptsByPlayer[r.player_id] ?? 0
         r.live_week = week
       }
+
+      // Weekly Sleeper projection for this (season, week) — drives the
+      // Set Lineup sit/start view. Zero for bye-week players.
+      const projCol = settings?.scoring_format === 'ppr' ? 'pts_ppr'
+        : settings?.scoring_format === 'standard' ? 'pts_std'
+        : 'pts_half_ppr'
+      const { data: projRows } = await supabase
+        .from('nfl_player_projections')
+        .select(`player_id, ${projCol}`)
+        .eq('season', season)
+        .eq('week', week)
+        .in('player_id', playerIds)
+      const projByPlayer = {}
+      for (const p of projRows || []) {
+        if (p[projCol] != null) projByPlayer[p.player_id] = Number(p[projCol])
+      }
+      for (const r of rows) {
+        const onBye = r.nfl_players?.bye_week === week
+        const raw = projByPlayer[r.player_id]
+        r.weekly_projection = onBye ? 0 : (raw != null ? Math.round(raw * 10) / 10 : null)
+      }
     }
   } catch (err) {
     logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with live points')
@@ -2469,6 +2490,31 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   }
   function ytd(id) { return statsByPlayer[id] || {} }
 
+  // Weekly Sleeper projection for the CURRENT (season, week) — surfaces
+  // "what's this player going to do for me this week?" alongside ADP +
+  // season totals. Empty map when we're out-of-season or Sleeper hasn't
+  // published the week yet; client should render null as a dash.
+  const weeklyProjMap = {}
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const { season: curSeason, week: curWeek } = await getCurrentNflWeek()
+    if (curWeek && curSeason) {
+      const projCol = scoringFormat === 'ppr' ? 'pts_ppr'
+        : scoringFormat === 'standard' ? 'pts_std'
+        : 'pts_half_ppr'
+      const { data: projRows } = await supabase
+        .from('nfl_player_projections')
+        .select(`player_id, ${projCol}`)
+        .eq('season', curSeason)
+        .eq('week', curWeek)
+      for (const p of projRows || []) {
+        if (p[projCol] != null) weeklyProjMap[p.player_id] = Number(p[projCol])
+      }
+    }
+  } catch (err) {
+    logger.warn({ err, leagueId }, 'Failed to load weekly projections for available players')
+  }
+
   // Players currently on waivers in this league
   const waiverLockedSet = await getWaiverLockedPlayerIds(leagueId)
 
@@ -2540,6 +2586,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       adp_rank: p.overall_rank || null,
       pos_rank: posRanks[p.id] || null,
       season_points: Math.round((s.pts || 0) * 10) / 10,
+      weekly_projection: weeklyProjMap[p.id] != null ? Math.round(weeklyProjMap[p.id] * 10) / 10 : null,
       stats: {
         pts: Math.round((s.pts || 0) * 10) / 10,
         pass_yd: Math.round(s.pass_yd || 0),

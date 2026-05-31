@@ -149,6 +149,11 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           <div className="text-right shrink-0 mr-1">
             <div className="text-lg font-display tabular-nums text-white leading-none">{(showSeasonStats && row.season_points != null ? row.season_points : row.live_points ?? 0).toFixed(2)}</div>
             <div className="text-[10px] uppercase text-text-muted">{showSeasonStats && row.season_points != null ? 'season' : 'pts'}</div>
+            {!showSeasonStats && row.weekly_projection != null && (
+              <div className="text-[10px] tabular-nums text-text-muted mt-0.5">
+                Proj {row.weekly_projection.toFixed(1)}
+              </div>
+            )}
           </div>
         )}
         {editMode && (canIR && !isInIR && onMoveToIR) && (

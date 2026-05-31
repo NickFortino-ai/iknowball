@@ -671,7 +671,9 @@ router.get('/matchup-week', async (req, res) => {
     if (m.away_user) m.away_user.fantasy_team_name = teamNameMap[m.away_user_id] || null
   }
 
-  // For future weeks: just return the schedule with season-long projections
+  // For future weeks: just return the schedule with weekly projections
+  // (Sleeper per-week) when available, falling back to season-projection/17
+  // for weeks Sleeper hasn't published yet.
   if (isFuture) {
     const userIds = [...new Set(matchups.flatMap((m) => [m.home_user_id, m.away_user_id]))]
     const { data: rosters } = await supabase
@@ -685,7 +687,23 @@ router.get('/matchup-week', async (req, res) => {
       .select('scoring_format, roster_slots')
       .eq('league_id', league_id)
       .single()
-    const projCol = { ppr: 'projected_pts_ppr', half_ppr: 'projected_pts_half_ppr', standard: 'projected_pts_std' }[settings?.scoring_format] || 'projected_pts_half_ppr'
+    const seasonProjCol = { ppr: 'projected_pts_ppr', half_ppr: 'projected_pts_half_ppr', standard: 'projected_pts_std' }[settings?.scoring_format] || 'projected_pts_half_ppr'
+    const weeklyProjCol = { ppr: 'pts_ppr', half_ppr: 'pts_half_ppr', standard: 'pts_std' }[settings?.scoring_format] || 'pts_half_ppr'
+
+    // Sleeper weekly projections for this future week, if available
+    const allFuturePlayerIds = [...new Set((rosters || []).map((r) => r.player_id).filter(Boolean))]
+    const weeklyProjMap = {}
+    if (allFuturePlayerIds.length) {
+      const { data: projRows } = await supabase
+        .from('nfl_player_projections')
+        .select(`player_id, ${weeklyProjCol}`)
+        .eq('season', s)
+        .eq('week', w)
+        .in('player_id', allFuturePlayerIds)
+      for (const p of projRows || []) {
+        if (p[weeklyProjCol] != null) weeklyProjMap[p.player_id] = Number(p[weeklyProjCol])
+      }
+    }
 
     const { starterSet: STARTER_SLOTS, slotOrder: SLOT_ORDER, slotLabels: SLOT_LABELS_F } = buildH2HSlotMeta(settings?.roster_slots)
     const enriched = matchups.map((m) => {
@@ -694,8 +712,11 @@ router.get('/matchup-week', async (req, res) => {
         const filled = userRows.map((r) => {
             const p = r.nfl_players || {}
             const onBye = p.bye_week === w
-            const seasonProj = onBye ? 0 : (Number(p[projCol]) || 0)
-            const weeklyEst = onBye ? 0 : Math.round((seasonProj / 17) * 100) / 100
+            const weeklyRaw = weeklyProjMap[r.player_id]
+            const seasonProj = Number(p[seasonProjCol]) || 0
+            const weeklyEst = onBye
+              ? 0
+              : (weeklyRaw != null ? Math.round(weeklyRaw * 100) / 100 : Math.round((seasonProj / 17) * 100) / 100)
             return {
               slot: r.slot, player_id: r.player_id,
               player_name: p.full_name || '?', position: p.position || '?',

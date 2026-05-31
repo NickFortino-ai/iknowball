@@ -16,6 +16,7 @@ const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
 // Sortable stat columns shown in the strip on the right of each row.
 // `key` matches the server-side sort param + the row.stats[key] field.
 const OFFENSE_STAT_COLUMNS = [
+  { key: 'weekly_proj', label: 'PROJ' },
   { key: 'pts', label: 'PTS' },
   { key: 'pass_yd', label: 'PA YD' },
   { key: 'pass_td', label: 'PA TD' },
@@ -33,6 +34,7 @@ const OFFENSE_STAT_COLUMNS = [
 ]
 
 const DEF_STAT_COLUMNS = [
+  { key: 'weekly_proj', label: 'PROJ' },
   { key: 'pts', label: 'PTS' },
   { key: 'def_sack', label: 'SK' },
   { key: 'def_int', label: 'INT' },
@@ -100,8 +102,8 @@ export default function FantasyPlayerBrowser({ league }) {
     let sorted = rawPlayers
     if (sortKey && sortKey !== 'rank') {
       sorted = [...rawPlayers].sort((a, b) => {
-        const av = a.stats?.[sortKey] || 0
-        const bv = b.stats?.[sortKey] || 0
+        const av = sortKey === 'weekly_proj' ? (a.weekly_projection ?? 0) : (a.stats?.[sortKey] || 0)
+        const bv = sortKey === 'weekly_proj' ? (b.weekly_projection ?? 0) : (b.stats?.[sortKey] || 0)
         return sortDir === 'desc' ? bv - av : av - bv
       })
     }
@@ -369,16 +371,21 @@ export default function FantasyPlayerBrowser({ league }) {
                   </div>
                 </div>
                 <div className="flex gap-1 items-center">
-                  {statColumns.map((col) => (
-                    <div
-                      key={col.key}
-                      className={`w-14 shrink-0 text-center text-xs tabular-nums py-1 rounded ${
-                        sortKey === col.key ? 'bg-accent/10 text-text-primary font-bold' : 'text-text-secondary'
-                      }`}
-                    >
-                      {pStats[col.key] ?? 0}
-                    </div>
-                  ))}
+                  {statColumns.map((col) => {
+                    const value = col.key === 'weekly_proj'
+                      ? (player.weekly_projection != null ? player.weekly_projection.toFixed(1) : '—')
+                      : (pStats[col.key] ?? 0)
+                    return (
+                      <div
+                        key={col.key}
+                        className={`w-14 shrink-0 text-center text-xs tabular-nums py-1 rounded ${
+                          sortKey === col.key ? 'bg-accent/10 text-text-primary font-bold' : 'text-text-secondary'
+                        }`}
+                      >
+                        {value}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )
