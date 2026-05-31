@@ -1217,13 +1217,16 @@ async function checkSurvivorWinner(leagueId) {
       .select('id', { count: 'exact', head: true })
       .eq('league_id', leagueId)
 
+    // Survivor pools typically resolve in a few weeks, so the bonus tiers
+    // are intentionally smaller than the shared scaledWinnerBonus used by
+    // long-format DFS/contests (which got a +10 bump in commit 3ef82b0f).
     let winnerBonus
-    if (memberCount >= 41) winnerBonus = 110
-    else if (memberCount >= 31) winnerBonus = 85
-    else if (memberCount >= 16) winnerBonus = 60
-    else if (memberCount >= 11) winnerBonus = 40
-    else if (memberCount >= 6) winnerBonus = 30
-    else winnerBonus = 20
+    if (memberCount >= 41) winnerBonus = 100
+    else if (memberCount >= 31) winnerBonus = 75
+    else if (memberCount >= 16) winnerBonus = 50
+    else if (memberCount >= 11) winnerBonus = 30
+    else if (memberCount >= 6) winnerBonus = 20
+    else winnerBonus = 10
 
     const outlasted = (memberCount || 1) - 1
 
@@ -1384,13 +1387,15 @@ async function checkSurvivorWinner(leagueId) {
         .select('id', { count: 'exact', head: true })
         .eq('league_id', leagueId)
 
+      // Survivor pools resolve in a few weeks, so use the original modest
+      // tiers — NOT the bumped scaledWinnerBonus used by long-format leagues.
       let totalBonus
-      if (memberCount >= 41) totalBonus = 110
-      else if (memberCount >= 31) totalBonus = 85
-      else if (memberCount >= 16) totalBonus = 60
-      else if (memberCount >= 11) totalBonus = 40
-      else if (memberCount >= 6) totalBonus = 30
-      else totalBonus = 20
+      if (memberCount >= 41) totalBonus = 100
+      else if (memberCount >= 31) totalBonus = 75
+      else if (memberCount >= 16) totalBonus = 50
+      else if (memberCount >= 11) totalBonus = 30
+      else if (memberCount >= 6) totalBonus = 20
+      else totalBonus = 10
 
       const splitBonus = Math.round(totalBonus / aliveMembers.length)
       const outlasted = (memberCount || 1) - aliveMembers.length

@@ -24,6 +24,17 @@ const WINNER_BONUS_ROWS = [
   { size: '41+', winner: '+110' },
 ]
 
+// Survivor pools resolve in a few weeks (never a full NBA/MLB season worth
+// of nightly attention), so they use the original pre-bump tiers.
+const SURVIVOR_BONUS_ROWS = [
+  { size: '5 or fewer', winner: '+10' },
+  { size: '6–10', winner: '+20' },
+  { size: '11–15', winner: '+30' },
+  { size: '16–30', winner: '+50' },
+  { size: '31–40', winner: '+75' },
+  { size: '41+', winner: '+100' },
+]
+
 const FORMAT_OPTIONS = [
   {
     value: 'fantasy',
@@ -301,7 +312,7 @@ Commissioner controls: sport, period frequency (daily or weekly), lives per play
         { key: 'size', label: 'League Size', align: 'left' },
         { key: 'winner', label: 'Survivor Bonus', align: 'center', color: 'text-correct' },
       ],
-      rows: WINNER_BONUS_ROWS,
+      rows: SURVIVOR_BONUS_ROWS,
       footnote: 'Eliminated players earn nothing. If multiple players survive to the end, the bonus is split evenly among them.',
     },
   },
