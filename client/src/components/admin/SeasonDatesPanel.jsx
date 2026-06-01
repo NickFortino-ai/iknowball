@@ -71,7 +71,7 @@ export default function SeasonDatesPanel() {
       </p>
 
       <div className="bg-bg-primary rounded-xl border border-text-primary/20 p-4 mb-6">
-        <div className="grid sm:grid-cols-5 gap-3 mb-3">
+        <div className="grid sm:grid-cols-6 gap-3 mb-3">
           <div>
             <label className="text-xs text-text-muted mb-1 block">Sport</label>
             <select
@@ -94,7 +94,7 @@ export default function SeasonDatesPanel() {
               className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
             />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <label className="text-xs text-text-muted mb-1 block">Regular Season End</label>
             <input
               type="datetime-local"
@@ -103,7 +103,7 @@ export default function SeasonDatesPanel() {
               className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
             />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <label className="text-xs text-text-muted mb-1 block">Playoff End (optional)</label>
             <input
               type="datetime-local"
@@ -112,16 +112,14 @@ export default function SeasonDatesPanel() {
               className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
             />
           </div>
-          <div className="flex items-end">
-            <button
-              onClick={handleSave}
-              disabled={saveMutation.isPending}
-              className="w-full bg-accent hover:bg-accent-hover text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
-            >
-              {saveMutation.isPending ? 'Saving...' : 'Save & Apply'}
-            </button>
-          </div>
         </div>
+        <button
+          onClick={handleSave}
+          disabled={saveMutation.isPending}
+          className="bg-accent hover:bg-accent-hover text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+        >
+          {saveMutation.isPending ? 'Saving...' : 'Save & Apply'}
+        </button>
       </div>
 
       {isLoading ? (

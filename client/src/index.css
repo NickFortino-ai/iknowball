@@ -50,8 +50,12 @@
   }
 }
 
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.7);
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  opacity: 1;
+  cursor: pointer;
 }
 
 /* iOS Safari reserves space for a native calendar/clock stub on date/time
