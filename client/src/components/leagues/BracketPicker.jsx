@@ -74,6 +74,13 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const rounds = tournament?.bracket_templates?.rounds || []
   const regions = tournament?.bracket_templates?.regions || []
   const isBestOf7 = tournament?.bracket_templates?.series_format === 'best_of_7'
+  const champPhrase = (() => {
+    const s = tournament?.bracket_templates?.sport
+    if (s === 'basketball_ncaab' || s === 'basketball_wncaab') return 'cut the nets down'
+    if (s === 'baseball_mlb') return 'win the World Series'
+    if (s === 'icehockey_nhl') return 'hoist the Cup'
+    return 'win the championship'
+  })()
 
   // Series length predictions (4/5/6/7) for best_of_7 brackets
   const [seriesLengths, setSeriesLengths] = useState(() => {
@@ -861,7 +868,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
             </div>
 
             <div className="relative z-10">
-              <div className="text-sm text-text-muted mb-1">{isBestOf7 ? 'Your pick to win the championship is' : 'Your pick to cut the nets down is'}</div>
+              <div className="text-sm text-text-muted mb-1">Your pick to {champPhrase} is</div>
               <div className="font-display text-3xl text-accent mt-2 mb-1 animate-pulse">
                 {championModal.team}
               </div>
