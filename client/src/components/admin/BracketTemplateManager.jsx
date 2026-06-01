@@ -16,6 +16,7 @@ const SPORT_LABELS = {
   basketball_wnba: 'WNBA',
   icehockey_nhl: 'NHL',
   soccer_usa_mls: 'MLS',
+  americanfootball_ufl: 'UFL',
 }
 
 // Internal data model uses "regions" for bracket groupings regardless
