@@ -79,7 +79,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     if (s === 'basketball_ncaab' || s === 'basketball_wncaab') return 'cut the nets down'
     if (s === 'baseball_mlb') return 'win the World Series'
     if (s === 'icehockey_nhl') return 'hoist the Cup'
-    return 'win the championship'
+    return 'win it all'
   })()
 
   // Series length predictions (4/5/6/7) for best_of_7 brackets
