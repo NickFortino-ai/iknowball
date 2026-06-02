@@ -132,7 +132,7 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 )}
               </div>
             </>
-          ) : weekStatus === 'future' && totalProj > 0 ? (
+          ) : totalProj > 0 ? (
             <>
               <span className="font-display text-xl md:text-3xl text-text-muted">{hProj.toFixed(1)}</span>
               <span className="text-text-muted text-xs md:text-sm">proj</span>
