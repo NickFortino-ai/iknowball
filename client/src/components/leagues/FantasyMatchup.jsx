@@ -114,13 +114,23 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           <Avatar user={matchup.home_user} size="2xl" className="!w-16 !h-16 md:!w-20 md:!h-20" />
           {hasScores || isCompleted ? (
             <>
-              <span className={`font-display text-2xl md:text-4xl ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
-                {(matchup.home_points || 0).toFixed(1)}
-              </span>
+              <div className="flex flex-col items-center">
+                <span className={`font-display text-2xl md:text-4xl ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
+                  {(matchup.home_points || 0).toFixed(1)}
+                </span>
+                {!isCompleted && hProj > 0 && (
+                  <span className="text-[10px] md:text-xs text-text-muted leading-tight">Proj {hProj.toFixed(1)}</span>
+                )}
+              </div>
               <span className="text-text-muted text-sm md:text-base">-</span>
-              <span className={`font-display text-2xl md:text-4xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
-                {(matchup.away_points || 0).toFixed(1)}
-              </span>
+              <div className="flex flex-col items-center">
+                <span className={`font-display text-2xl md:text-4xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
+                  {(matchup.away_points || 0).toFixed(1)}
+                </span>
+                {!isCompleted && aProj > 0 && (
+                  <span className="text-[10px] md:text-xs text-text-muted leading-tight">Proj {aProj.toFixed(1)}</span>
+                )}
+              </div>
             </>
           ) : weekStatus === 'future' && totalProj > 0 ? (
             <>
