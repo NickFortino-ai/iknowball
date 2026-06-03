@@ -331,12 +331,14 @@ export default function FantasyPlayerBrowser({ league }) {
                     {player.adp_rank || idx + 1}
                   </div>
                   <div className="w-[170px] lg:w-[230px] flex items-center gap-2 px-1 py-2.5">
-                    <PlayerHeadshot
-                      name={player.full_name}
-                      url={player.headshot_url}
-                      size="md"
-                      onClick={() => openPlayerDetail(player.id)}
-                    />
+                    <div className="hidden md:block">
+                      <PlayerHeadshot
+                        name={player.full_name}
+                        url={player.headshot_url}
+                        size="md"
+                        onClick={() => openPlayerDetail(player.id)}
+                      />
+                    </div>
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openPlayerDetail(player.id)}>
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-semibold text-text-primary truncate hover:text-accent transition-colors">{player.full_name}</span>
