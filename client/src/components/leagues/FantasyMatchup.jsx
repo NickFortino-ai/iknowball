@@ -102,6 +102,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
   const aProj = matchup.away_projected || 0
   const totalProj = hProj + aProj
   const homePct = totalProj > 0 ? Math.round((hProj / totalProj) * 100) : 50
+  // Pre-game projection survives the kickoff blend, so we can show what
+  // each team was projected to score even after games go final.
+  const hPregame = matchup.home_pregame_projected ?? hProj
+  const aPregame = matchup.away_pregame_projected ?? aProj
 
   return (
     <div className={`rounded-xl border overflow-hidden ${
@@ -118,8 +122,8 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 <span className={`font-display text-2xl md:text-4xl ${isCompleted && homeWinning ? 'text-correct' : 'text-white'}`}>
                   {(matchup.home_points || 0).toFixed(1)}
                 </span>
-                {!isCompleted && hProj > 0 && (
-                  <span className="text-[10px] md:text-xs text-text-muted leading-tight">Proj {hProj.toFixed(1)}</span>
+                {(!isCompleted ? hProj : hPregame) > 0 && (
+                  <span className="text-[10px] md:text-xs text-text-muted leading-tight">Proj {(isCompleted ? hPregame : hProj).toFixed(1)}</span>
                 )}
               </div>
               <span className="text-text-muted text-sm md:text-base">-</span>
@@ -127,8 +131,8 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                 <span className={`font-display text-2xl md:text-4xl ${isCompleted && !homeWinning ? 'text-correct' : 'text-white'}`}>
                   {(matchup.away_points || 0).toFixed(1)}
                 </span>
-                {!isCompleted && aProj > 0 && (
-                  <span className="text-[10px] md:text-xs text-text-muted leading-tight">Proj {aProj.toFixed(1)}</span>
+                {(!isCompleted ? aProj : aPregame) > 0 && (
+                  <span className="text-[10px] md:text-xs text-text-muted leading-tight">Proj {(isCompleted ? aPregame : aProj).toFixed(1)}</span>
                 )}
               </div>
             </>

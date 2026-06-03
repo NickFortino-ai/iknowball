@@ -565,6 +565,7 @@ router.get('/matchup-live', async (req, res) => {
       is_home: gs.isHome ?? null,
       points: pts,
       projected: Math.round(projected * 100) / 100,
+      pregame_projection: Math.round((onBye ? 0 : weeklyProj) * 100) / 100,
       stats: stat ? {
         pass_yds: Number(stat.pass_yd) || 0,
         pass_td: stat.pass_td || 0,
@@ -624,6 +625,8 @@ router.get('/matchup-live', async (req, res) => {
     const awayPoints = awayStarters.reduce((sum, s) => sum + (s.points || 0), 0)
     const homeProjected = homeStarters.reduce((sum, s) => sum + (s.projected || 0), 0)
     const awayProjected = awayStarters.reduce((sum, s) => sum + (s.projected || 0), 0)
+    const homePregameProjected = homeStarters.reduce((sum, s) => sum + (s.pregame_projection || 0), 0)
+    const awayPregameProjected = awayStarters.reduce((sum, s) => sum + (s.pregame_projection || 0), 0)
 
     // Win probability using projected point differential
     // Sigma ~20 pts represents typical fantasy score variance for a full roster
@@ -639,6 +642,8 @@ router.get('/matchup-live', async (req, res) => {
       away_points: Math.round(awayPoints * 100) / 100,
       home_projected: Math.round(homeProjected * 100) / 100,
       away_projected: Math.round(awayProjected * 100) / 100,
+      home_pregame_projected: Math.round(homePregameProjected * 100) / 100,
+      away_pregame_projected: Math.round(awayPregameProjected * 100) / 100,
       home_win_prob: homeWinProb,
       away_win_prob: 100 - homeWinProb,
       home_roster: homeRoster,
