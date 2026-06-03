@@ -145,14 +145,35 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             </div>
           )
         })()}
+        {row?.nfl_players && showSeasonStats && row.weekly_projection != null && (
+          <div className="hidden md:block text-right shrink-0 mr-3">
+            <div className="text-base font-display tabular-nums text-text-secondary leading-none">{row.weekly_projection.toFixed(1)}</div>
+            <div className="text-[10px] uppercase text-text-muted">proj</div>
+          </div>
+        )}
         {row?.nfl_players && (
           <div className="text-right shrink-0 mr-1">
-            <div className="text-lg font-display tabular-nums text-white leading-none">{(showSeasonStats && row.season_points != null ? row.season_points : row.live_points ?? 0).toFixed(2)}</div>
-            <div className="text-[10px] uppercase text-text-muted">{showSeasonStats && row.season_points != null ? 'season' : 'pts'}</div>
-            {!showSeasonStats && row.weekly_projection != null && (
-              <div className="text-[10px] tabular-nums text-text-muted mt-0.5">
-                Proj {row.weekly_projection.toFixed(1)}
-              </div>
+            {showSeasonStats && row.weekly_projection != null ? (
+              <>
+                <div className="md:hidden">
+                  <div className="text-lg font-display tabular-nums text-white leading-none">{row.weekly_projection.toFixed(1)}</div>
+                  <div className="text-[10px] uppercase text-text-muted">proj</div>
+                </div>
+                <div className="hidden md:block">
+                  <div className="text-lg font-display tabular-nums text-white leading-none">{(row.season_points ?? 0).toFixed(2)}</div>
+                  <div className="text-[10px] uppercase text-text-muted">season</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-lg font-display tabular-nums text-white leading-none">{(showSeasonStats && row.season_points != null ? row.season_points : row.live_points ?? 0).toFixed(2)}</div>
+                <div className="text-[10px] uppercase text-text-muted">{showSeasonStats && row.season_points != null ? 'season' : 'pts'}</div>
+                {!showSeasonStats && row.weekly_projection != null && (
+                  <div className="text-[10px] tabular-nums text-text-muted mt-0.5">
+                    Proj {row.weekly_projection.toFixed(1)}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
