@@ -121,23 +121,26 @@ router.get('/picks', async (req, res) => {
   const picks = data || []
   const stateByTeam = await buildMlbGameStateByTeam(date)
   const espnIds = [...new Set(picks.map((p) => p.espn_player_id).filter(Boolean))]
-  const injuryByEspnId = {}
+  const salaryByEspnId = {}
   if (espnIds.length) {
     const { data: salaryRows } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id, injury_status')
+      .select('espn_player_id, injury_status, lineup_status, batting_order')
       .eq('game_date', date)
       .in('espn_player_id', espnIds)
-    for (const r of salaryRows || []) injuryByEspnId[r.espn_player_id] = r.injury_status
+    for (const r of salaryRows || []) salaryByEspnId[r.espn_player_id] = r
   }
   const enriched = picks.map((p) => {
     const g = stateByTeam[(p.team || '').toUpperCase()]
+    const s = salaryByEspnId[p.espn_player_id] || {}
     return {
       ...p,
       game_state: g?.state || null,
       game_period: g?.period || null,
       game_starts_at: g?.startsAt || null,
-      injury_status: injuryByEspnId[p.espn_player_id] || null,
+      injury_status: s.injury_status || null,
+      lineup_status: s.lineup_status ?? null,
+      batting_order: s.batting_order ?? null,
     }
   })
 

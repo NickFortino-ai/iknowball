@@ -25,6 +25,28 @@ function formatDateLabel(dateStr) {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function LineupBadge({ status }) {
+  if (status === 'confirmed') {
+    return (
+      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-correct/20 text-correct" title="Confirmed starter">
+        ✓
+      </span>
+    )
+  }
+  if (status === 'not_starting') {
+    return (
+      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-incorrect" title="Not starting">
+        NS
+      </span>
+    )
+  }
+  return (
+    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="Lineup pending">
+      ?
+    </span>
+  )
+}
+
 function GameStatusBadge({ gameState, gamePeriod, gameStartsAt }) {
   if (gameState === 'in') {
     // MLB period from ESPN is already a friendly string ("Top 5th", "Bot 9th")
@@ -275,6 +297,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                                   <div className="flex items-center gap-1.5">
                                     <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
                                     <InjuryBadge status={pick.injury_status} />
+                                    {pick.game_state !== 'post' && <LineupBadge status={pick.lineup_status} />}
                                   </div>
                                   <div className="flex items-center gap-1.5 mt-0.5">
                                     <span className="text-[10px] lg:text-xs text-text-muted truncate">{pick.team}</span>
@@ -517,6 +540,7 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
                         <InjuryBadge status={player.injury_status} />
+                        <LineupBadge status={player.lineup_status} />
                       </div>
                       <div className="text-xs text-text-muted">
                         {player.position} · <span className="text-white">{player.team}</span> · {player.opponent}
