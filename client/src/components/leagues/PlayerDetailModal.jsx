@@ -161,6 +161,18 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
     return <p className="text-xs text-text-muted text-center py-3">No previous games.</p>
   }
   const columns = columnsFor(position, [...(previous || []), ...(currentWeek ? [currentWeek] : [])])
+  // Sum each column across all weeks for the season totals footer.
+  // def_pts_allowed reads as a sum of all per-game points allowed, which
+  // is informative enough for a season view; not worth special-casing.
+  const totals = {}
+  for (const c of columns) {
+    let sum = 0
+    for (const w of previous) {
+      const v = Number(w[c.key]) || 0
+      sum += v
+    }
+    totals[c.key] = sum
+  }
   return (
     <div className="overflow-x-auto -mx-2 px-2">
       <table className="min-w-full text-xs">
@@ -191,6 +203,19 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-text-primary/20 bg-bg-card/40">
+            <td className="px-2 py-2 font-semibold uppercase tracking-wider text-text-muted sticky left-0 bg-bg-card/40">Total</td>
+            {columns.map((c) => (
+              <td
+                key={c.key}
+                className={`px-2 py-2 text-right whitespace-nowrap font-semibold ${c.key === 'pts' ? 'text-accent' : 'text-text-primary'}`}
+              >
+                {c.key === 'pts' ? totals[c.key].toFixed(1) : totals[c.key]}
+              </td>
+            ))}
+          </tr>
+        </tfoot>
       </table>
     </div>
   )
