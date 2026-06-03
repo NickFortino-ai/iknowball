@@ -133,11 +133,15 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           </div>
           <div className="text-xs text-text-primary">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
         </div>
-        {/* Stat line — desktop only. Renders season totals on the current
-            week, single-week stats on past weeks (server returns the same
-            shape under the season_stats key for both). */}
-        {row?.season_stats && row?.nfl_players?.position && !editMode && (() => {
-          const statLine = formatSeasonStats(row.nfl_players.position, row.season_stats)
+        {/* Stat line — desktop only. Always the week being viewed:
+            week_stats on the current/live week, season_stats on past
+            weeks (server overloads season_stats with that-week's stats
+            in the lineup-history path). Season totals live in the
+            player detail modal. */}
+        {row?.nfl_players?.position && !editMode && (() => {
+          const source = showSeasonStats ? row.week_stats : row.season_stats
+          if (!source) return null
+          const statLine = formatSeasonStats(row.nfl_players.position, source)
           if (!statLine) return null
           return (
             <div className="hidden md:block shrink-0 mr-4">
@@ -145,30 +149,23 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             </div>
           )
         })()}
-        {row?.nfl_players && showSeasonStats && row.weekly_projection != null && (
-          <div className="hidden md:block text-right shrink-0 mr-3">
-            <div className="text-base font-display tabular-nums text-text-secondary leading-none">{row.weekly_projection.toFixed(1)}</div>
-            <div className="text-[10px] uppercase text-text-muted">proj</div>
-          </div>
-        )}
         {row?.nfl_players && (
           <div className="text-right shrink-0 mr-1">
             {showSeasonStats && row.weekly_projection != null ? (
               <>
-                <div className="md:hidden">
-                  <div className="text-lg font-display tabular-nums text-white leading-none">{row.weekly_projection.toFixed(1)}</div>
-                  <div className="text-[10px] uppercase text-text-muted">proj</div>
-                </div>
-                <div className="hidden md:block">
-                  <div className="text-lg font-display tabular-nums text-white leading-none">{(row.season_points ?? 0).toFixed(2)}</div>
-                  <div className="text-[10px] uppercase text-text-muted">season</div>
-                </div>
+                <div className="text-lg font-display tabular-nums text-white leading-none">{row.weekly_projection.toFixed(1)}</div>
+                <div className="text-[10px] uppercase text-text-muted">proj</div>
+                {row.live_points != null && row.live_points !== 0 && (
+                  <div className="text-[10px] tabular-nums text-text-muted mt-0.5">
+                    Pts {row.live_points.toFixed(1)}
+                  </div>
+                )}
               </>
             ) : (
               <>
-                <div className="text-lg font-display tabular-nums text-white leading-none">{(showSeasonStats && row.season_points != null ? row.season_points : row.live_points ?? 0).toFixed(2)}</div>
-                <div className="text-[10px] uppercase text-text-muted">{showSeasonStats && row.season_points != null ? 'season' : 'pts'}</div>
-                {!showSeasonStats && row.weekly_projection != null && (
+                <div className="text-lg font-display tabular-nums text-white leading-none">{(row.live_points ?? 0).toFixed(2)}</div>
+                <div className="text-[10px] uppercase text-text-muted">pts</div>
+                {row.weekly_projection != null && (
                   <div className="text-[10px] tabular-nums text-text-muted mt-0.5">
                     Proj {row.weekly_projection.toFixed(1)}
                   </div>
@@ -768,7 +765,6 @@ export default function FantasyMyTeam({ league }) {
           {editMode && (
             <span className="text-[10px] text-text-muted ml-3">Tap a slot or player to swap</span>
           )}
-          {isCurrentWeek && <span className="hidden md:block text-[10px] uppercase tracking-wider text-white/70 font-semibold ml-auto">Season Totals</span>}
         </div>
         <div className="p-3 space-y-2">
           {STARTER_SLOTS.map((slotDef) => {

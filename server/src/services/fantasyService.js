@@ -2298,11 +2298,18 @@ export async function getRoster(leagueId, userId) {
         .eq('season', season)
         .in('player_id', playerIds)
       const ptsByPlayer = {}
+      const statsByPlayer = {}
       for (const st of stats || []) {
         ptsByPlayer[st.player_id] = Math.round(applyScoringRules(st, rules) * 100) / 100
+        // fgm is a derived field that the client stat-line formatter expects
+        statsByPlayer[st.player_id] = {
+          ...st,
+          fgm: (st.fgm_0_39 || 0) + (st.fgm_40_49 || 0) + (st.fgm_50_plus || 0),
+        }
       }
       for (const r of rows) {
         r.live_points = ptsByPlayer[r.player_id] ?? 0
+        r.week_stats = statsByPlayer[r.player_id] || null
         r.live_week = week
       }
 
