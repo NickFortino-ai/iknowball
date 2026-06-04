@@ -407,7 +407,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                 src={templateImage}
                 alt=""
                 draggable={false}
-                className="max-w-[35%] max-h-[40%] md:max-w-[80%] md:max-h-full"
+                className="hidden md:block md:max-w-[80%] md:max-h-full"
                 style={{
                   position: 'absolute',
                   left: `${template.bracket_image_x ?? 50}%`,
