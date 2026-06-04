@@ -857,7 +857,7 @@ export async function completeLeagues() {
     // doesn't prematurely flip to active. Survivor and pickem activate
     // off starts_at / league_weeks directly, so they're not gated here.
     const DAILY_OPEN_FORMATS = new Set([
-      'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
+      'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
       'three_point', 'wnba_three_point',
     ])
     for (const league of openLeagues) {
@@ -900,7 +900,7 @@ export async function completeLeagues() {
   // last-minute joiners can't discover an 'active' league.
   {
     const DAILY_OPEN_FORMATS = [
-      'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
+      'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
       'three_point', 'wnba_three_point',
     ]
     const { data: prematurelyActive } = await supabase
@@ -966,7 +966,7 @@ export async function completeLeagues() {
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
-    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'])
+    .in('format', ['pickem', 'fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
     .lte('ends_at', earlyWindow)
@@ -1250,7 +1250,7 @@ export async function completeLeagues() {
       }
 
       // Generate league activity report for DFS, salary cap, and traditional fantasy
-      let generateReport = ['nba_dfs', 'mlb_dfs'].includes(league.format)
+      let generateReport = ['nba_dfs', 'wnba_dfs', 'mlb_dfs'].includes(league.format)
       if (!generateReport && league.format === 'fantasy') {
         generateReport = true
       }

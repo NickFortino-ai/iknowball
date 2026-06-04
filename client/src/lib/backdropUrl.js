@@ -13,6 +13,7 @@ const BACKDROP_VERSION = 'v5'
 export function getBackdropFilterKey(league) {
   if (!league) return undefined
   const { format, settings } = league
+  if (format === 'wnba_dfs') return 'wnba_dfs_contest'
   if (format === 'three_point') return 'three_point_contest'
   if (format === 'wnba_three_point') return 'wnba_three_point_contest'
   if (format === 'sacks') return 'sacks_contest'
