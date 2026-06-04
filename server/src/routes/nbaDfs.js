@@ -18,70 +18,70 @@ router.use(requireAuth)
 // the full team name. Canonical abbreviations match ESPN's own scoreboard
 // codes so they stay aligned with the rest of the app.
 const MLB_NAME_TO_ABBREV = {
-  'arizona diamondbacks': 'ARI', 'diamondbacks': 'ARI',
-  'atlanta braves': 'ATL', 'braves': 'ATL',
-  'baltimore orioles': 'BAL', 'orioles': 'BAL',
-  'boston red sox': 'BOS', 'red sox': 'BOS',
+  'arizona diamondbacks': 'ARI', 'diamondbacks': 'ARI', 'arizona': 'ARI', 'd-backs': 'ARI',
+  'atlanta braves': 'ATL', 'braves': 'ATL', 'atlanta': 'ATL',
+  'baltimore orioles': 'BAL', 'orioles': 'BAL', 'baltimore': 'BAL',
+  'boston red sox': 'BOS', 'red sox': 'BOS', 'boston': 'BOS',
   'chicago cubs': 'CHC', 'cubs': 'CHC',
   'chicago white sox': 'CHW', 'white sox': 'CHW',
-  'cincinnati reds': 'CIN', 'reds': 'CIN',
-  'cleveland guardians': 'CLE', 'guardians': 'CLE',
-  'colorado rockies': 'COL', 'rockies': 'COL',
-  'detroit tigers': 'DET', 'tigers': 'DET',
-  'houston astros': 'HOU', 'astros': 'HOU',
-  'kansas city royals': 'KC', 'royals': 'KC',
-  'los angeles angels': 'LAA', 'angels': 'LAA',
-  'los angeles dodgers': 'LAD', 'dodgers': 'LAD',
-  'miami marlins': 'MIA', 'marlins': 'MIA',
-  'milwaukee brewers': 'MIL', 'brewers': 'MIL',
-  'minnesota twins': 'MIN', 'twins': 'MIN',
-  'new york mets': 'NYM', 'mets': 'NYM',
-  'new york yankees': 'NYY', 'yankees': 'NYY',
-  'athletics': 'ATH', 'oakland athletics': 'ATH',
-  'philadelphia phillies': 'PHI', 'phillies': 'PHI',
-  'pittsburgh pirates': 'PIT', 'pirates': 'PIT',
-  'san diego padres': 'SD', 'padres': 'SD',
-  'san francisco giants': 'SF', 'giants': 'SF',
-  'seattle mariners': 'SEA', 'mariners': 'SEA',
-  'st. louis cardinals': 'STL', 'st louis cardinals': 'STL', 'cardinals': 'STL',
-  'tampa bay rays': 'TB', 'rays': 'TB',
-  'texas rangers': 'TEX', 'rangers': 'TEX',
-  'toronto blue jays': 'TOR', 'blue jays': 'TOR',
-  'washington nationals': 'WSH', 'nationals': 'WSH',
+  'cincinnati reds': 'CIN', 'reds': 'CIN', 'cincinnati': 'CIN',
+  'cleveland guardians': 'CLE', 'guardians': 'CLE', 'cleveland': 'CLE',
+  'colorado rockies': 'COL', 'rockies': 'COL', 'colorado': 'COL',
+  'detroit tigers': 'DET', 'tigers': 'DET', 'detroit': 'DET',
+  'houston astros': 'HOU', 'astros': 'HOU', 'houston': 'HOU',
+  'kansas city royals': 'KC', 'royals': 'KC', 'kansas city': 'KC',
+  'los angeles angels': 'LAA', 'angels': 'LAA', 'la angels': 'LAA',
+  'los angeles dodgers': 'LAD', 'dodgers': 'LAD', 'la dodgers': 'LAD',
+  'miami marlins': 'MIA', 'marlins': 'MIA', 'miami': 'MIA',
+  'milwaukee brewers': 'MIL', 'brewers': 'MIL', 'milwaukee': 'MIL',
+  'minnesota twins': 'MIN', 'twins': 'MIN', 'minnesota': 'MIN',
+  'new york mets': 'NYM', 'mets': 'NYM', 'ny mets': 'NYM',
+  'new york yankees': 'NYY', 'yankees': 'NYY', 'ny yankees': 'NYY',
+  'athletics': 'ATH', 'oakland athletics': 'ATH', 'oakland': 'ATH',
+  'philadelphia phillies': 'PHI', 'phillies': 'PHI', 'philadelphia': 'PHI',
+  'pittsburgh pirates': 'PIT', 'pirates': 'PIT', 'pittsburgh': 'PIT',
+  'san diego padres': 'SD', 'padres': 'SD', 'san diego': 'SD',
+  'san francisco giants': 'SF', 'giants': 'SF', 'san francisco': 'SF',
+  'seattle mariners': 'SEA', 'mariners': 'SEA', 'seattle': 'SEA',
+  'st. louis cardinals': 'STL', 'st louis cardinals': 'STL', 'cardinals': 'STL', 'st. louis': 'STL', 'st louis': 'STL',
+  'tampa bay rays': 'TB', 'rays': 'TB', 'tampa bay': 'TB',
+  'texas rangers': 'TEX', 'rangers': 'TEX', 'texas': 'TEX',
+  'toronto blue jays': 'TOR', 'blue jays': 'TOR', 'toronto': 'TOR',
+  'washington nationals': 'WSH', 'nationals': 'WSH', 'washington': 'WSH',
 }
 const NFL_NAME_TO_ABBREV = {
-  'arizona cardinals': 'ARI',
-  'atlanta falcons': 'ATL', 'falcons': 'ATL',
-  'baltimore ravens': 'BAL', 'ravens': 'BAL',
-  'buffalo bills': 'BUF', 'bills': 'BUF',
-  'carolina panthers': 'CAR', 'panthers': 'CAR',
-  'chicago bears': 'CHI', 'bears': 'CHI',
-  'cincinnati bengals': 'CIN', 'bengals': 'CIN',
-  'cleveland browns': 'CLE', 'browns': 'CLE',
-  'dallas cowboys': 'DAL', 'cowboys': 'DAL',
-  'denver broncos': 'DEN', 'broncos': 'DEN',
-  'detroit lions': 'DET', 'lions': 'DET',
-  'green bay packers': 'GB', 'packers': 'GB',
-  'houston texans': 'HOU', 'texans': 'HOU',
-  'indianapolis colts': 'IND', 'colts': 'IND',
-  'jacksonville jaguars': 'JAX', 'jaguars': 'JAX',
-  'kansas city chiefs': 'KC', 'chiefs': 'KC',
+  'arizona cardinals': 'ARI', 'arizona': 'ARI',
+  'atlanta falcons': 'ATL', 'falcons': 'ATL', 'atlanta': 'ATL',
+  'baltimore ravens': 'BAL', 'ravens': 'BAL', 'baltimore': 'BAL',
+  'buffalo bills': 'BUF', 'bills': 'BUF', 'buffalo': 'BUF',
+  'carolina panthers': 'CAR', 'panthers': 'CAR', 'carolina': 'CAR',
+  'chicago bears': 'CHI', 'bears': 'CHI', 'chicago': 'CHI',
+  'cincinnati bengals': 'CIN', 'bengals': 'CIN', 'cincinnati': 'CIN',
+  'cleveland browns': 'CLE', 'browns': 'CLE', 'cleveland': 'CLE',
+  'dallas cowboys': 'DAL', 'cowboys': 'DAL', 'dallas': 'DAL',
+  'denver broncos': 'DEN', 'broncos': 'DEN', 'denver': 'DEN',
+  'detroit lions': 'DET', 'lions': 'DET', 'detroit': 'DET',
+  'green bay packers': 'GB', 'packers': 'GB', 'green bay': 'GB',
+  'houston texans': 'HOU', 'texans': 'HOU', 'houston': 'HOU',
+  'indianapolis colts': 'IND', 'colts': 'IND', 'indianapolis': 'IND',
+  'jacksonville jaguars': 'JAX', 'jaguars': 'JAX', 'jacksonville': 'JAX',
+  'kansas city chiefs': 'KC', 'chiefs': 'KC', 'kansas city': 'KC',
   'los angeles chargers': 'LAC', 'chargers': 'LAC',
   'los angeles rams': 'LAR', 'rams': 'LAR',
-  'las vegas raiders': 'LV', 'raiders': 'LV',
-  'miami dolphins': 'MIA', 'dolphins': 'MIA',
-  'minnesota vikings': 'MIN', 'vikings': 'MIN',
-  'new england patriots': 'NE', 'patriots': 'NE',
-  'new orleans saints': 'NO', 'saints': 'NO',
+  'las vegas raiders': 'LV', 'raiders': 'LV', 'las vegas': 'LV',
+  'miami dolphins': 'MIA', 'dolphins': 'MIA', 'miami': 'MIA',
+  'minnesota vikings': 'MIN', 'vikings': 'MIN', 'minnesota': 'MIN',
+  'new england patriots': 'NE', 'patriots': 'NE', 'new england': 'NE',
+  'new orleans saints': 'NO', 'saints': 'NO', 'new orleans': 'NO',
   'new york giants': 'NYG',
   'new york jets': 'NYJ', 'jets': 'NYJ',
-  'philadelphia eagles': 'PHI', 'eagles': 'PHI',
-  'pittsburgh steelers': 'PIT', 'steelers': 'PIT',
-  'san francisco 49ers': 'SF', '49ers': 'SF',
-  'seattle seahawks': 'SEA', 'seahawks': 'SEA',
-  'tampa bay buccaneers': 'TB', 'buccaneers': 'TB',
-  'tennessee titans': 'TEN', 'titans': 'TEN',
-  'washington commanders': 'WSH', 'commanders': 'WSH',
+  'philadelphia eagles': 'PHI', 'eagles': 'PHI', 'philadelphia': 'PHI',
+  'pittsburgh steelers': 'PIT', 'steelers': 'PIT', 'pittsburgh': 'PIT',
+  'san francisco 49ers': 'SF', '49ers': 'SF', 'san francisco': 'SF',
+  'seattle seahawks': 'SEA', 'seahawks': 'SEA', 'seattle': 'SEA',
+  'tampa bay buccaneers': 'TB', 'buccaneers': 'TB', 'tampa bay': 'TB',
+  'tennessee titans': 'TEN', 'titans': 'TEN', 'tennessee': 'TEN',
+  'washington commanders': 'WSH', 'commanders': 'WSH', 'washington': 'WSH',
 }
 // NYG and "Cardinals" are intentionally not in NFL aliases — both would
 // be ambiguous (Giants vs Mets shorthand "giants"; Cardinals shared with
@@ -89,16 +89,23 @@ const NFL_NAME_TO_ABBREV = {
 
 function resolveOpponentAbbrev(opponent, sport) {
   if (!opponent) return '?'
-  // Trust ESPN's field when it's already a tidy 2-4 char code
-  const a = (opponent.abbreviation || '').trim()
-  if (a && a.length <= 4) return a.toUpperCase()
+  // Trust ESPN's field when it's already a tidy 2-4 char code. Some events
+  // nest the team under opponent.team; check that too.
+  const directAbbr = (opponent.abbreviation || opponent.team?.abbreviation || '').trim()
+  if (directAbbr && directAbbr.length <= 4) return directAbbr.toUpperCase()
   const map = sport === 'baseball_mlb' ? MLB_NAME_TO_ABBREV
     : sport === 'americanfootball_nfl' ? NFL_NAME_TO_ABBREV
     : null
   if (map) {
-    const candidates = [opponent.displayName, opponent.shortDisplayName, opponent.name].filter(Boolean)
-    for (const c of candidates) {
-      const hit = map[c.toLowerCase().trim()]
+    const raw = [
+      opponent.displayName, opponent.shortDisplayName, opponent.name,
+      opponent.team?.displayName, opponent.team?.shortDisplayName, opponent.team?.name,
+    ].filter(Boolean)
+    for (const c of raw) {
+      // Strip "@" / "vs" / "vs." prefixes ESPN sometimes injects into
+      // event-context displayNames.
+      const normalized = c.toLowerCase().trim().replace(/^(@|vs\.?)\s*/i, '').trim()
+      const hit = map[normalized]
       if (hit) return hit
     }
   }

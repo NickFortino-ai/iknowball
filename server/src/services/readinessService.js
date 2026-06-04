@@ -478,17 +478,20 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
   // whichever date the roster was found under.
   const knownPlayer = new Set()
   const injuryByPlayer = {}
+  const lineupByPlayer = {}
   if (allPlayerIds.size > 0) {
     const dates = [todayET]
     if (yesterdayET && yesterdayET !== todayET) dates.push(yesterdayET)
+    const lineupSelect = rosterTable === 'mlb_dfs_rosters' ? ', lineup_status' : ''
     const { data: salaries } = await supabase
       .from(salaryTable)
-      .select('espn_player_id, injury_status')
+      .select(`espn_player_id, injury_status${lineupSelect}`)
       .in('game_date', dates)
       .in('espn_player_id', [...allPlayerIds])
     for (const s of salaries || []) {
       knownPlayer.add(s.espn_player_id)
       if (s.injury_status) injuryByPlayer[s.espn_player_id] = s.injury_status
+      if ('lineup_status' in s) lineupByPlayer[s.espn_player_id] = s.lineup_status
     }
   }
 
@@ -516,21 +519,33 @@ async function computeDfsReadiness(leagues, userId, todayET, rosterTable, slotTa
     }
     const outPlayers = []
     const flagged = []
+    const notStarting = []
+    const lineupPending = []
+    const trackLineup = rosterTable === 'mlb_dfs_rosters'
     for (const slot of slots) {
       const status = injuryByPlayer[slot.espn_player_id]
       if (status === 'Out') outPlayers.push(status)
       else if (status && status !== 'Probable') flagged.push(status)
+      if (trackLineup) {
+        const ls = lineupByPlayer[slot.espn_player_id]
+        if (ls === 'not_starting') notStarting.push(slot.espn_player_id)
+        else if (ls == null) lineupPending.push(slot.espn_player_id)
+      }
     }
-    if (outPlayers.length > 0) {
-      const summary = outPlayers.length === 1
-        ? '1 Out player on your lineup'
-        : `${outPlayers.length} Out players on your lineup`
-      set(result, l.id, 'action', summary)
-    } else if (flagged.length > 0) {
-      const summary = flagged.length === 1
-        ? `1 ${flagged[0]} player on your lineup`
-        : `${flagged.length} flagged players on your lineup`
-      set(result, l.id, 'attention', summary)
+    // Severity order: Out players or NS lineup → action (red); injury flagged or
+    // lineup pending → attention (yellow); all clear → ready (green).
+    if (outPlayers.length > 0 || notStarting.length > 0) {
+      const parts = []
+      if (outPlayers.length > 0) parts.push(`${outPlayers.length} Out`)
+      if (notStarting.length > 0) parts.push(`${notStarting.length} not starting`)
+      set(result, l.id, 'action', `${parts.join(', ')} on your lineup`)
+    } else if (flagged.length > 0 || lineupPending.length > 0) {
+      const parts = []
+      if (flagged.length > 0) {
+        parts.push(flagged.length === 1 ? `1 ${flagged[0]}` : `${flagged.length} flagged`)
+      }
+      if (lineupPending.length > 0) parts.push(`${lineupPending.length} lineup pending`)
+      set(result, l.id, 'attention', `${parts.join(', ')} on your lineup`)
     } else {
       set(result, l.id, 'ready', 'Lineup set, no injuries')
     }
