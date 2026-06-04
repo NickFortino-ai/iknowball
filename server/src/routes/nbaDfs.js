@@ -691,7 +691,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
 
       return {
         date: detail.gameDate || null,
-        opponent: detail.opponent?.displayName || detail.opponent?.abbreviation || '?',
+        opponent: detail.opponent?.abbreviation || detail.opponent?.shortDisplayName || detail.opponent?.displayName || '?',
         result: detail.gameResult || null,
         ...colParser(statMap),
       }

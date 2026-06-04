@@ -116,7 +116,7 @@ function MLBPitcherGameLog({ games }) {
       {games.map((g, i) => (
         <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'}`}>{g.result}</span>
-          <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.ip}</span>
           <span className="text-xs text-text-secondary text-right">{g.h}</span>
           <span className="text-xs text-text-secondary text-right">{g.r}</span>
@@ -138,7 +138,7 @@ function NBAGameLog({ games }) {
       {games.map((g, i) => (
         <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
-          <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-secondary text-right">{g.min}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.pts}</span>
           <span className="text-xs text-text-secondary text-right">{g.reb}</span>
@@ -160,7 +160,7 @@ function MLBGameLog({ games }) {
       {games.map((g, i) => (
         <div key={i} className="grid grid-cols-[1.5rem_1fr_2rem_2rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
-          <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.ab}</span>
           <span className="text-xs text-text-secondary text-right">{g.h}</span>
           <span className="text-xs text-text-secondary text-right">{g.r}</span>
@@ -251,7 +251,7 @@ function NFLGameLog({ games, position }) {
       {games.map((g, i) => (
         <div key={i} className={`grid ${config.cols} gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center`}>
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
-          <span className="text-xs text-text-secondary truncate">{g.opponent?.split(' ').pop()}</span>
+          <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           {config.fields.map((f, j) => (
             <span key={f} className={`text-xs text-right ${j === 0 ? 'text-text-primary font-semibold' : 'text-text-secondary'}`}>{g[f] || 0}</span>
           ))}
