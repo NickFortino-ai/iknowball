@@ -350,6 +350,7 @@ const FULL_SEASON_DENOMINATOR = {
   ints: { unit: 'weeks', value: 18 },
   tackles: { unit: 'weeks', value: 18 },
   receptions: { unit: 'weeks', value: 18 },
+  td_pass: { unit: 'weeks', value: 18 },
 }
 
 function computeProrationFraction(league, leagueFormat) {
