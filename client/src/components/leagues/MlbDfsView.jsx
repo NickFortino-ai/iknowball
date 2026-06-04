@@ -36,6 +36,31 @@ const INJURY_COLORS = {
   'Day-To-Day': 'text-yellow-400',
 }
 
+// Headshot with built-in error fallback. ESPN occasionally serves dead
+// links for rookies / late call-ups; the inline `onError=display:none`
+// pattern left a blank circle. State-based swap keeps the position
+// placeholder visible even when the image 404s mid-load.
+function HeadshotWithFallback({ url, position, className = 'w-10 h-10', textClassName = 'text-xs' }) {
+  const [errored, setErrored] = useState(false)
+  if (url && !errored) {
+    return (
+      <img
+        src={url}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className={`${className} rounded-full object-cover bg-bg-secondary shrink-0`}
+        onError={() => setErrored(true)}
+      />
+    )
+  }
+  return (
+    <div className={`${className} rounded-full bg-bg-secondary shrink-0 flex items-center justify-center ${textClassName} text-text-muted font-bold`}>
+      {position}
+    </div>
+  )
+}
+
 function InjuryBadge({ status }) {
   if (!status) return null
   const label = status === 'Day-To-Day' ? 'DTD' : status === 'IR' ? 'IR' : status.charAt(0)
@@ -208,14 +233,12 @@ function MlbLiveView({ league, date: leagueDate }) {
                             <span className="flex-1 text-base text-text-muted font-mono">????</span>
                           ) : (
                             <>
-                              {slot.headshot_url ? (
-                                <img src={slot.headshot_url} alt="" width="44" height="44" className="w-11 h-11 rounded-full object-cover bg-bg-secondary shrink-0" loading="eager" decoding="async"
-                                  onError={(e) => { e.target.style.display = 'none' }} />
-                              ) : (
-                                <div className="w-11 h-11 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-sm text-text-muted font-bold">
-                                  {slot.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                                </div>
-                              )}
+                              <HeadshotWithFallback
+                                url={slot.headshot_url}
+                                position={slot.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?'}
+                                className="w-11 h-11"
+                                textClassName="text-sm"
+                              />
                               <div className="flex-1 min-w-0 lg:flex lg:items-center lg:gap-6">
                                 <div className="lg:w-44 lg:shrink-0 flex items-center gap-1.5">
                                   <span className="text-base font-bold text-text-primary truncate">{slot.player_name}</span>
@@ -515,22 +538,11 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                       onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player) }}
                       className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
                     >
-                      {player.headshot_url ? (
-                        <img
-                          src={player.headshot_url}
-                          alt=""
-                          width="32"
-                          height="32"
-                          loading="lazy"
-                          decoding="async"
-                          className="w-8 h-8 rounded-full object-cover bg-bg-secondary shrink-0"
-                          onError={(e) => { e.target.style.display = 'none' }}
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
-                          {player.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </div>
-                      )}
+                      <HeadshotWithFallback
+                        url={player.headshot_url}
+                        position={player.player_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?'}
+                        className="w-8 h-8"
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
@@ -656,22 +668,11 @@ export default function MlbDfsView({ league, tab = 'roster' }) {
                   onClick={() => setSelectedPlayer(player)}
                   className="flex items-center gap-3 flex-1 min-w-0 text-left hover:bg-text-primary/5 transition-colors -mx-1 px-1 rounded-lg"
                 >
-                  {player.headshot_url ? (
-                    <img
-                      src={player.headshot_url}
-                      alt=""
-                      width="40"
-                      height="40"
-                      loading="lazy"
-                      decoding="async"
-                      className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0"
-                      onError={(e) => { e.target.src = ''; e.target.style.display = 'none' }}
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 flex items-center justify-center text-xs text-text-muted font-bold">
-                      {player.position}
-                    </div>
-                  )}
+                  <HeadshotWithFallback
+                    url={player.headshot_url}
+                    position={player.position}
+                    className="w-10 h-10"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
