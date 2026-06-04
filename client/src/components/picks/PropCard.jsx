@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatOdds, calculateRiskPoints, calculateRewardPoints } from '../../lib/scoring'
 import { useNbaDfsPlayerLookup } from '../../hooks/useLeagues'
+import { getTeamAbbr } from '../../lib/teamLogos'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 
 const sideStyles = {
@@ -30,20 +31,13 @@ function getSideState(prop, pick, side) {
   return 'selected'
 }
 
-const TEAM_ABBREVS = {
-  'Oklahoma City Thunder': 'OKC',
-  'Brooklyn Nets': 'BKN',
-  'Golden State Warriors': 'GSW',
-  'New York Knicks': 'NYK',
-  'New Orleans Pelicans': 'NOP',
-  'Los Angeles Lakers': 'LAL',
-  'Los Angeles Clippers': 'LAC',
-  'San Antonio Spurs': 'SAS',
-  'Portland Trail Blazers': 'POR',
-}
-
 function abbreviateTeam(name) {
-  if (TEAM_ABBREVS[name]) return TEAM_ABBREVS[name]
+  if (!name) return ''
+  // Prefer the canonical ESPN abbreviation when we know the team. Falls
+  // back to a first-word / initials heuristic only for unrecognized names
+  // (e.g. exhibition teams, mock entries).
+  const known = getTeamAbbr(name)
+  if (known) return known
   const words = name.split(' ')
   if (words.length <= 2) return words[0].slice(0, 3).toUpperCase()
   return words.map((w) => w[0]).join('').toUpperCase()

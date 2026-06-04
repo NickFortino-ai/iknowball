@@ -117,6 +117,27 @@ const SPORT_MAP = {
   basketball_wncaab: { ids: NCAAF_IDS, sport: 'ncaa' },
 }
 
+// Build a flat name → UPPERCASE-abbreviation map across every sport. Team
+// names are unique strings (Toronto Raptors, Toronto Maple Leafs, Toronto
+// Blue Jays, Toronto Tempo are all distinct), so a single lookup works
+// without needing the sport key. NCAA teams use numeric IDs for logos but
+// don't need a 3-letter abbrev here.
+const FLAT_ABBR = (() => {
+  const out = {}
+  const sources = [NHL_ABBRS, NBA_ABBRS, MLB_ABBRS, NFL_ABBRS, WNBA_ABBRS, UFL_ABBRS]
+  for (const src of sources) {
+    for (const [name, abbr] of Object.entries(src)) {
+      if (!out[name]) out[name] = abbr.toUpperCase()
+    }
+  }
+  return out
+})()
+
+export function getTeamAbbr(teamName) {
+  if (!teamName) return ''
+  return FLAT_ABBR[teamName] || null
+}
+
 export function getTeamLogoUrl(teamName, sportKey) {
   const config = SPORT_MAP[sportKey]
   if (!config) return null
