@@ -13,6 +13,98 @@ import { getFantasySettings } from '../services/fantasyService.js'
 const router = Router()
 router.use(requireAuth)
 
+// ESPN's gamelog opponent.abbreviation is the source of truth, but for MLB
+// (and occasionally NFL relocations) it's intermittently missing or returns
+// the full team name. Canonical abbreviations match ESPN's own scoreboard
+// codes so they stay aligned with the rest of the app.
+const MLB_NAME_TO_ABBREV = {
+  'arizona diamondbacks': 'ARI', 'diamondbacks': 'ARI',
+  'atlanta braves': 'ATL', 'braves': 'ATL',
+  'baltimore orioles': 'BAL', 'orioles': 'BAL',
+  'boston red sox': 'BOS', 'red sox': 'BOS',
+  'chicago cubs': 'CHC', 'cubs': 'CHC',
+  'chicago white sox': 'CHW', 'white sox': 'CHW',
+  'cincinnati reds': 'CIN', 'reds': 'CIN',
+  'cleveland guardians': 'CLE', 'guardians': 'CLE',
+  'colorado rockies': 'COL', 'rockies': 'COL',
+  'detroit tigers': 'DET', 'tigers': 'DET',
+  'houston astros': 'HOU', 'astros': 'HOU',
+  'kansas city royals': 'KC', 'royals': 'KC',
+  'los angeles angels': 'LAA', 'angels': 'LAA',
+  'los angeles dodgers': 'LAD', 'dodgers': 'LAD',
+  'miami marlins': 'MIA', 'marlins': 'MIA',
+  'milwaukee brewers': 'MIL', 'brewers': 'MIL',
+  'minnesota twins': 'MIN', 'twins': 'MIN',
+  'new york mets': 'NYM', 'mets': 'NYM',
+  'new york yankees': 'NYY', 'yankees': 'NYY',
+  'athletics': 'ATH', 'oakland athletics': 'ATH',
+  'philadelphia phillies': 'PHI', 'phillies': 'PHI',
+  'pittsburgh pirates': 'PIT', 'pirates': 'PIT',
+  'san diego padres': 'SD', 'padres': 'SD',
+  'san francisco giants': 'SF', 'giants': 'SF',
+  'seattle mariners': 'SEA', 'mariners': 'SEA',
+  'st. louis cardinals': 'STL', 'st louis cardinals': 'STL', 'cardinals': 'STL',
+  'tampa bay rays': 'TB', 'rays': 'TB',
+  'texas rangers': 'TEX', 'rangers': 'TEX',
+  'toronto blue jays': 'TOR', 'blue jays': 'TOR',
+  'washington nationals': 'WSH', 'nationals': 'WSH',
+}
+const NFL_NAME_TO_ABBREV = {
+  'arizona cardinals': 'ARI',
+  'atlanta falcons': 'ATL', 'falcons': 'ATL',
+  'baltimore ravens': 'BAL', 'ravens': 'BAL',
+  'buffalo bills': 'BUF', 'bills': 'BUF',
+  'carolina panthers': 'CAR', 'panthers': 'CAR',
+  'chicago bears': 'CHI', 'bears': 'CHI',
+  'cincinnati bengals': 'CIN', 'bengals': 'CIN',
+  'cleveland browns': 'CLE', 'browns': 'CLE',
+  'dallas cowboys': 'DAL', 'cowboys': 'DAL',
+  'denver broncos': 'DEN', 'broncos': 'DEN',
+  'detroit lions': 'DET', 'lions': 'DET',
+  'green bay packers': 'GB', 'packers': 'GB',
+  'houston texans': 'HOU', 'texans': 'HOU',
+  'indianapolis colts': 'IND', 'colts': 'IND',
+  'jacksonville jaguars': 'JAX', 'jaguars': 'JAX',
+  'kansas city chiefs': 'KC', 'chiefs': 'KC',
+  'los angeles chargers': 'LAC', 'chargers': 'LAC',
+  'los angeles rams': 'LAR', 'rams': 'LAR',
+  'las vegas raiders': 'LV', 'raiders': 'LV',
+  'miami dolphins': 'MIA', 'dolphins': 'MIA',
+  'minnesota vikings': 'MIN', 'vikings': 'MIN',
+  'new england patriots': 'NE', 'patriots': 'NE',
+  'new orleans saints': 'NO', 'saints': 'NO',
+  'new york giants': 'NYG',
+  'new york jets': 'NYJ', 'jets': 'NYJ',
+  'philadelphia eagles': 'PHI', 'eagles': 'PHI',
+  'pittsburgh steelers': 'PIT', 'steelers': 'PIT',
+  'san francisco 49ers': 'SF', '49ers': 'SF',
+  'seattle seahawks': 'SEA', 'seahawks': 'SEA',
+  'tampa bay buccaneers': 'TB', 'buccaneers': 'TB',
+  'tennessee titans': 'TEN', 'titans': 'TEN',
+  'washington commanders': 'WSH', 'commanders': 'WSH',
+}
+// NYG and "Cardinals" are intentionally not in NFL aliases — both would
+// be ambiguous (Giants vs Mets shorthand "giants"; Cardinals shared with
+// MLB STL) so we lean on the full displayName key for those.
+
+function resolveOpponentAbbrev(opponent, sport) {
+  if (!opponent) return '?'
+  // Trust ESPN's field when it's already a tidy 2-4 char code
+  const a = (opponent.abbreviation || '').trim()
+  if (a && a.length <= 4) return a.toUpperCase()
+  const map = sport === 'baseball_mlb' ? MLB_NAME_TO_ABBREV
+    : sport === 'americanfootball_nfl' ? NFL_NAME_TO_ABBREV
+    : null
+  if (map) {
+    const candidates = [opponent.displayName, opponent.shortDisplayName, opponent.name].filter(Boolean)
+    for (const c of candidates) {
+      const hit = map[c.toLowerCase().trim()]
+      if (hit) return hit
+    }
+  }
+  return opponent.shortDisplayName || opponent.displayName || '?'
+}
+
 // Get player pool with salaries for tonight
 router.get('/players', async (req, res) => {
   const { date } = req.query
@@ -691,7 +783,7 @@ router.get('/player/:espnId/gamelog', async (req, res) => {
 
       return {
         date: detail.gameDate || null,
-        opponent: detail.opponent?.abbreviation || detail.opponent?.shortDisplayName || detail.opponent?.displayName || '?',
+        opponent: resolveOpponentAbbrev(detail.opponent, sport),
         result: detail.gameResult || null,
         ...colParser(statMap),
       }
