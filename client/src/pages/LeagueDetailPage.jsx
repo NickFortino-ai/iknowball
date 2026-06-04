@@ -321,7 +321,7 @@ function getSalaryCapFullSeasonBonusClient(rank, n) {
   return SALARY_CAP_FULL_SEASON_BONUSES[snapToClosestSize(SALARY_CAP_FULL_SEASON_BONUSES, n)][rank]
 }
 
-function buildBonusForRank({ leagueFormat, fantasyFormat, seasonType }) {
+function buildBonusForRank({ leagueFormat, fantasyFormat, seasonType, prorationFraction = 1 }) {
   if (leagueFormat === 'fantasy' && fantasyFormat === 'salary_cap') {
     if (seasonType === 'single_week') {
       return (rank, n) => (rank === 1 ? n + 1 : 0)
@@ -331,8 +331,36 @@ function buildBonusForRank({ leagueFormat, fantasyFormat, seasonType }) {
   if (leagueFormat === 'fantasy') {
     return getTraditionalFantasyBonusClient
   }
-  // Default: scaled winner bonus (bracket, NBA DFS, MLB DFS, HR Derby, TD Pass)
-  return (rank, n) => (rank === 1 ? scaledWinnerBonusClient(n) : 0)
+  // Default: scaled winner bonus (bracket, NBA DFS, MLB DFS, WNBA DFS,
+  // HR Derby, TD Pass, NFL stat contests). Multi-night/week formats
+  // prorate the bonus by their fraction of a full regular season to
+  // match the server's awardPositionBasedPoints math.
+  const fraction = Math.min(1, Math.max(0, prorationFraction))
+  return (rank, n) => (rank === 1 ? Math.round(scaledWinnerBonusClient(n) * fraction) : 0)
+}
+
+// Full-season denominators (in nights for DFS, weeks for NFL stat
+// contests) that the server uses to prorate the winner bonus. Mirror of
+// completeLeagues.js — keep in sync if those denominators move.
+const FULL_SEASON_DENOMINATOR = {
+  nba_dfs: { unit: 'days', value: 180 },
+  mlb_dfs: { unit: 'days', value: 180 },
+  wnba_dfs: { unit: 'days', value: 120 },
+  sacks: { unit: 'weeks', value: 18 },
+  ints: { unit: 'weeks', value: 18 },
+  tackles: { unit: 'weeks', value: 18 },
+  receptions: { unit: 'weeks', value: 18 },
+}
+
+function computeProrationFraction(league, leagueFormat) {
+  const denom = FULL_SEASON_DENOMINATOR[leagueFormat]
+  if (!denom || !league?.starts_at || !league?.ends_at) return 1
+  const start = new Date(league.starts_at)
+  const end = new Date(league.ends_at)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 1
+  const days = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)))
+  const span = denom.unit === 'weeks' ? Math.ceil(days / 7) : days
+  return Math.min(1, span / denom.value)
 }
 
 function ordinalSuffix(r) {
@@ -761,10 +789,15 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                   : f === 'bracket' && isBracketLocked && submittedBrackets >= 2
                     ? submittedBrackets
                     : liveMemberCount
-                const bonusFn = buildBonusForRank({ leagueFormat: f, fantasyFormat: fFormat, seasonType: sType })
-                const footnote = f === 'fantasy' && fFormat === 'salary_cap' && sType !== 'single_week'
-                  ? 'Bonuses scale by weeks played for mid-season runs.'
-                  : null
+                const prorationFraction = computeProrationFraction(league, f)
+                const bonusFn = buildBonusForRank({ leagueFormat: f, fantasyFormat: fFormat, seasonType: sType, prorationFraction })
+                const denom = FULL_SEASON_DENOMINATOR[f]
+                let footnote = null
+                if (f === 'fantasy' && fFormat === 'salary_cap' && sType !== 'single_week') {
+                  footnote = 'Bonuses scale by weeks played for mid-season runs.'
+                } else if (denom && prorationFraction < 1) {
+                  footnote = `Winner bonus prorated by league duration (${denom.unit === 'weeks' ? '~18-week NFL regular season' : `~${denom.value}-${denom.unit} ${f === 'wnba_dfs' ? 'WNBA' : f === 'mlb_dfs' ? 'MLB' : 'NBA'} regular season`}).`
+                }
                 return <GlobalPointsTable memberCount={tableMemberCount} bonusForRank={bonusFn} footnote={footnote} />
               })()}
             </>
