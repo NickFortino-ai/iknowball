@@ -117,25 +117,81 @@ const SPORT_MAP = {
   basketball_wncaab: { ids: NCAAF_IDS, sport: 'ncaa' },
 }
 
-// Build a flat name → UPPERCASE-abbreviation map across every sport. Team
-// names are unique strings (Toronto Raptors, Toronto Maple Leafs, Toronto
-// Blue Jays, Toronto Tempo are all distinct), so a single lookup works
-// without needing the sport key. NCAA teams use numeric IDs for logos but
-// don't need a 3-letter abbrev here.
-const FLAT_ABBR = (() => {
-  const out = {}
-  const sources = [NHL_ABBRS, NBA_ABBRS, MLB_ABBRS, NFL_ABBRS, WNBA_ABBRS, UFL_ABBRS]
-  for (const src of sources) {
-    for (const [name, abbr] of Object.entries(src)) {
-      if (!out[name]) out[name] = abbr.toUpperCase()
-    }
-  }
-  return out
-})()
+// Canonical 3-letter team abbreviations for display (e.g. prop card
+// headers). Distinct from the logo-URL slugs above because ESPN's logo
+// CDN uses shorter codes (gs, ny, no, sa, la, sj, tb) than the standard
+// sports-broadcast abbreviations (GSW, NYK, NOP, SAS, LAK, SJS, TBL).
+// Names are unique strings across sports so no sport key is needed.
+const CANONICAL_ABBRS = {
+  // NBA
+  'Atlanta Hawks': 'ATL', 'Boston Celtics': 'BOS', 'Brooklyn Nets': 'BKN',
+  'Charlotte Hornets': 'CHA', 'Chicago Bulls': 'CHI', 'Cleveland Cavaliers': 'CLE',
+  'Dallas Mavericks': 'DAL', 'Denver Nuggets': 'DEN', 'Detroit Pistons': 'DET',
+  'Golden State Warriors': 'GSW', 'Houston Rockets': 'HOU', 'Indiana Pacers': 'IND',
+  'LA Clippers': 'LAC', 'Los Angeles Clippers': 'LAC', 'Los Angeles Lakers': 'LAL',
+  'LA Lakers': 'LAL', 'Memphis Grizzlies': 'MEM', 'Miami Heat': 'MIA',
+  'Milwaukee Bucks': 'MIL', 'Minnesota Timberwolves': 'MIN', 'New Orleans Pelicans': 'NOP',
+  'New York Knicks': 'NYK', 'Oklahoma City Thunder': 'OKC', 'Orlando Magic': 'ORL',
+  'Philadelphia 76ers': 'PHI', 'Phoenix Suns': 'PHX', 'Portland Trail Blazers': 'POR',
+  'Sacramento Kings': 'SAC', 'San Antonio Spurs': 'SAS', 'Toronto Raptors': 'TOR',
+  'Utah Jazz': 'UTA', 'Washington Wizards': 'WAS',
+  // NHL
+  'Anaheim Ducks': 'ANA', 'Arizona Coyotes': 'ARI', 'Boston Bruins': 'BOS',
+  'Buffalo Sabres': 'BUF', 'Calgary Flames': 'CGY', 'Carolina Hurricanes': 'CAR',
+  'Chicago Blackhawks': 'CHI', 'Colorado Avalanche': 'COL', 'Columbus Blue Jackets': 'CBJ',
+  'Dallas Stars': 'DAL', 'Detroit Red Wings': 'DET', 'Edmonton Oilers': 'EDM',
+  'Florida Panthers': 'FLA', 'Los Angeles Kings': 'LAK', 'Minnesota Wild': 'MIN',
+  'Montreal Canadiens': 'MTL', 'Montréal Canadiens': 'MTL',
+  'Nashville Predators': 'NSH', 'New Jersey Devils': 'NJD',
+  'New York Islanders': 'NYI', 'New York Rangers': 'NYR', 'Ottawa Senators': 'OTT',
+  'Philadelphia Flyers': 'PHI', 'Pittsburgh Penguins': 'PIT', 'San Jose Sharks': 'SJS',
+  'Seattle Kraken': 'SEA', 'St. Louis Blues': 'STL', 'St Louis Blues': 'STL',
+  'Tampa Bay Lightning': 'TBL', 'Toronto Maple Leafs': 'TOR',
+  'Utah Hockey Club': 'UTA', 'Utah Mammoth': 'UTA',
+  'Vancouver Canucks': 'VAN', 'Vegas Golden Knights': 'VGK', 'Washington Capitals': 'WSH',
+  'Winnipeg Jets': 'WPG',
+  // MLB
+  'Arizona Diamondbacks': 'ARI', 'Atlanta Braves': 'ATL', 'Baltimore Orioles': 'BAL',
+  'Boston Red Sox': 'BOS', 'Chicago Cubs': 'CHC', 'Chicago White Sox': 'CHW',
+  'Cincinnati Reds': 'CIN', 'Cleveland Guardians': 'CLE', 'Colorado Rockies': 'COL',
+  'Detroit Tigers': 'DET', 'Houston Astros': 'HOU', 'Kansas City Royals': 'KC',
+  'Los Angeles Angels': 'LAA', 'Los Angeles Dodgers': 'LAD', 'Miami Marlins': 'MIA',
+  'Milwaukee Brewers': 'MIL', 'Minnesota Twins': 'MIN', 'New York Mets': 'NYM',
+  'New York Yankees': 'NYY', 'Oakland Athletics': 'ATH', 'Athletics': 'ATH',
+  'Philadelphia Phillies': 'PHI', 'Pittsburgh Pirates': 'PIT', 'San Diego Padres': 'SD',
+  'San Francisco Giants': 'SF', 'Seattle Mariners': 'SEA',
+  'St. Louis Cardinals': 'STL', 'St Louis Cardinals': 'STL',
+  'Tampa Bay Rays': 'TB', 'Texas Rangers': 'TEX', 'Toronto Blue Jays': 'TOR',
+  'Washington Nationals': 'WSH',
+  // NFL
+  'Arizona Cardinals': 'ARI', 'Atlanta Falcons': 'ATL', 'Baltimore Ravens': 'BAL',
+  'Buffalo Bills': 'BUF', 'Carolina Panthers': 'CAR', 'Chicago Bears': 'CHI',
+  'Cincinnati Bengals': 'CIN', 'Cleveland Browns': 'CLE', 'Dallas Cowboys': 'DAL',
+  'Denver Broncos': 'DEN', 'Detroit Lions': 'DET', 'Green Bay Packers': 'GB',
+  'Houston Texans': 'HOU', 'Indianapolis Colts': 'IND', 'Jacksonville Jaguars': 'JAX',
+  'Kansas City Chiefs': 'KC', 'Las Vegas Raiders': 'LV', 'Los Angeles Chargers': 'LAC',
+  'Los Angeles Rams': 'LAR', 'Miami Dolphins': 'MIA', 'Minnesota Vikings': 'MIN',
+  'New England Patriots': 'NE', 'New Orleans Saints': 'NO', 'New York Giants': 'NYG',
+  'New York Jets': 'NYJ', 'Philadelphia Eagles': 'PHI', 'Pittsburgh Steelers': 'PIT',
+  'San Francisco 49ers': 'SF', 'Seattle Seahawks': 'SEA', 'Tampa Bay Buccaneers': 'TB',
+  'Tennessee Titans': 'TEN', 'Washington Commanders': 'WSH',
+  // WNBA
+  'Atlanta Dream': 'ATL', 'Chicago Sky': 'CHI', 'Connecticut Sun': 'CONN',
+  'Dallas Wings': 'DAL', 'Golden State Valkyries': 'GSV', 'Indiana Fever': 'IND',
+  'Las Vegas Aces': 'LV', 'Los Angeles Sparks': 'LA', 'Minnesota Lynx': 'MIN',
+  'New York Liberty': 'NY', 'Phoenix Mercury': 'PHX', 'Portland Fire': 'POR',
+  'Seattle Storm': 'SEA', 'Toronto Tempo': 'TOR', 'Washington Mystics': 'WAS',
+  // UFL
+  'Birmingham Stallions': 'BHM', 'Columbus Aviators': 'CLB',
+  'DC Defenders': 'DC', 'DC DEFENDERS': 'DC',
+  'Dallas Renegades': 'DAL', 'Houston Gamblers': 'HOU',
+  'Louisville Kings': 'LOU', 'Orlando Storm': 'ORL',
+  'St. Louis Battlehawks': 'STL', 'St Louis Battlehawks': 'STL',
+}
 
 export function getTeamAbbr(teamName) {
   if (!teamName) return ''
-  return FLAT_ABBR[teamName] || null
+  return CANONICAL_ABBRS[teamName] || null
 }
 
 export function getTeamLogoUrl(teamName, sportKey) {
