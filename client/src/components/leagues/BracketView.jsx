@@ -407,14 +407,13 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
                 src={templateImage}
                 alt=""
                 draggable={false}
+                className="max-w-[35%] max-h-[40%] md:max-w-[80%] md:max-h-full"
                 style={{
                   position: 'absolute',
                   left: `${template.bracket_image_x ?? 50}%`,
                   top: `${template.bracket_image_y ?? 50}%`,
                   transform: `translate(-50%, -50%) scale(${template.bracket_image_scale ?? 1})`,
                   opacity: template.bracket_image_opacity ?? 0.4,
-                  maxWidth: '80%',
-                  maxHeight: '100%',
                   zIndex: template.bracket_image_position === 'above_finals' ? 20 : 1,
                   pointerEvents: 'none',
                   userSelect: 'none',
