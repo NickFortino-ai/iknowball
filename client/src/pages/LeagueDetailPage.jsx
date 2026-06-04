@@ -1057,7 +1057,7 @@ function LeagueSettingsEditor({ league, updateLeague, hasLockedPicks }) {
           formats (Pick'em, Squares, NBA DFS Salary Cap) keep the full
           set with This Week + Playoffs Only. */}
       {(() => {
-      const dailyContestFormats = ['three_point', 'wnba_three_point', 'hr_derby', 'strikeouts', 'mlb_dfs']
+      const dailyContestFormats = ['three_point', 'wnba_three_point', 'hr_derby', 'strikeouts', 'mlb_dfs', 'wnba_dfs', 'nba_dfs']
       const formatDurationOptions = dailyContestFormats.includes(league.format)
         ? [
             { value: 'full_season', label: 'Full Season' },
