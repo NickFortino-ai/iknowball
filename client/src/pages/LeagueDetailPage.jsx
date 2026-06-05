@@ -322,11 +322,16 @@ function getSalaryCapFullSeasonBonusClient(rank, n) {
 }
 
 function buildBonusForRank({ leagueFormat, fantasyFormat, seasonType, prorationFraction = 1 }) {
+  const fraction = Math.min(1, Math.max(0, prorationFraction))
   if (leagueFormat === 'fantasy' && fantasyFormat === 'salary_cap') {
     if (seasonType === 'single_week') {
+      // Server: rank === 1 ? n + 1 : 0 — no proration in single-week mode.
       return (rank, n) => (rank === 1 ? n + 1 : 0)
     }
-    return getSalaryCapFullSeasonBonusClient
+    // Full season run renders the table values as-is; a mid-season run
+    // prorates each row by weeksPlayed / 18 to match the server's
+    // getSalaryCapBonus().
+    return (rank, n) => Math.round(getSalaryCapFullSeasonBonusClient(rank, n) * fraction)
   }
   if (leagueFormat === 'fantasy') {
     return getTraditionalFantasyBonusClient
@@ -335,7 +340,6 @@ function buildBonusForRank({ leagueFormat, fantasyFormat, seasonType, prorationF
   // HR Derby, TD Pass, NFL stat contests). Multi-night/week formats
   // prorate the bonus by their fraction of a full regular season to
   // match the server's awardPositionBasedPoints math.
-  const fraction = Math.min(1, Math.max(0, prorationFraction))
   return (rank, n) => (rank === 1 ? Math.round(scaledWinnerBonusClient(n) * fraction) : 0)
 }
 
@@ -353,7 +357,22 @@ const FULL_SEASON_DENOMINATOR = {
   td_pass: { unit: 'weeks', value: 18 },
 }
 
-function computeProrationFraction(league, leagueFormat) {
+function computeProrationFraction(league, leagueFormat, fantasySettings) {
+  // Salary-cap fantasy: mirror getSalaryCapBonus's mid-season branch —
+  // prorate by weeksPlayed / 18 when not a full-season run. We approximate
+  // weeksPlayed from the configured date range. A full-season run (>=17
+  // weeks starting at week 1) renders the table values as-is.
+  const sType = fantasySettings?.season_type
+  if (leagueFormat === 'fantasy' && fantasySettings?.format === 'salary_cap' && sType !== 'single_week') {
+    if (!league?.starts_at || !league?.ends_at) return 1
+    const start = new Date(league.starts_at)
+    const end = new Date(league.ends_at)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 1
+    const days = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)))
+    const weeks = Math.max(1, Math.ceil(days / 7))
+    if (weeks >= 17) return 1
+    return Math.min(1, weeks / 18)
+  }
   const denom = FULL_SEASON_DENOMINATOR[leagueFormat]
   if (!denom || !league?.starts_at || !league?.ends_at) return 1
   const start = new Date(league.starts_at)
@@ -790,12 +809,13 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                   : f === 'bracket' && isBracketLocked && submittedBrackets >= 2
                     ? submittedBrackets
                     : liveMemberCount
-                const prorationFraction = computeProrationFraction(league, f)
+                const prorationFraction = computeProrationFraction(league, f, fantasySettings)
                 const bonusFn = buildBonusForRank({ leagueFormat: f, fantasyFormat: fFormat, seasonType: sType, prorationFraction })
                 const denom = FULL_SEASON_DENOMINATOR[f]
+                const isMidSeasonSalaryCap = f === 'fantasy' && fFormat === 'salary_cap' && sType !== 'single_week' && prorationFraction < 1
                 let footnote = null
-                if (f === 'fantasy' && fFormat === 'salary_cap' && sType !== 'single_week') {
-                  footnote = 'Bonuses scale by weeks played for mid-season runs.'
+                if (isMidSeasonSalaryCap) {
+                  footnote = 'Winner bonus prorated by weeks played in this mid-season run (~18-week NFL regular season).'
                 } else if (denom && prorationFraction < 1) {
                   footnote = `Winner bonus prorated by league duration (${denom.unit === 'weeks' ? '~18-week NFL regular season' : `~${denom.value}-${denom.unit} ${f === 'wnba_dfs' ? 'WNBA' : f === 'mlb_dfs' ? 'MLB' : 'NBA'} regular season`}).`
                 }
