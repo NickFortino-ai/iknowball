@@ -5,6 +5,7 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import InjuryBadge from '../ui/InjuryBadge'
+import LineupBadge from '../ui/LineupBadge'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
 import UserProfileModal from '../profile/UserProfileModal'
 import { todaySportsDay, tomorrowSportsDay } from '../../lib/sportsDay'
@@ -23,28 +24,6 @@ function formatDateLabel(dateStr) {
   if (dateStr === today) return 'Today'
   if (dateStr === tomorrow) return 'Tomorrow'
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function LineupBadge({ status }) {
-  if (status === 'confirmed') {
-    return (
-      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-correct/20 text-correct" title="Confirmed starter">
-        ✓
-      </span>
-    )
-  }
-  if (status === 'not_starting') {
-    return (
-      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-incorrect" title="Not starting">
-        NS
-      </span>
-    )
-  }
-  return (
-    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="Lineup pending">
-      ?
-    </span>
-  )
 }
 
 function GameStatusBadge({ gameState, gamePeriod, gameStartsAt }) {

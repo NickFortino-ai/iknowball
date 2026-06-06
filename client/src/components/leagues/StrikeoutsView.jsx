@@ -3,6 +3,7 @@ import { useStrikeoutsPlayers, useStrikeoutsPicks, useStrikeoutsUsed, useSubmitS
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import LineupBadge from '../ui/LineupBadge'
 import Avatar from '../ui/Avatar'
 import InjuryBadge from '../ui/InjuryBadge'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
@@ -391,9 +392,7 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                       <div className="flex items-center gap-1.5">
                         <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
                         {(poolEntry?.lineup_status === 'confirmed' || player.lineup_status === 'confirmed') && (
-                          <span title="Confirmed starting pitcher" className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-correct text-white">
-                            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          </span>
+                          <LineupBadge status="confirmed" />
                         )}
                         <InjuryBadge status={injuryStatus} />
                       </div>

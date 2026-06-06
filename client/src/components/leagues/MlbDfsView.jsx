@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useMlbDfsPlayers, useMlbDfsRoster, useSaveMlbDfsRoster, useMlbDfsStandings, useMlbDfsLive, useFantasySettings } from '../../hooks/useLeagues'
 import PlayerDetailModal from '../ui/PlayerDetailModal'
+import LineupBadge from '../ui/LineupBadge'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -67,29 +68,6 @@ function InjuryBadge({ status }) {
   return (
     <span className={`text-[12px] font-mono font-bold ${INJURY_COLORS[status] || 'text-text-muted'}`} title={status}>
       {label}
-    </span>
-  )
-}
-
-function LineupBadge({ status }) {
-  if (status === 'confirmed') {
-    return (
-      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-correct/20 text-correct" title="Confirmed starter">
-        ✓
-      </span>
-    )
-  }
-  if (status === 'not_starting') {
-    return (
-      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-incorrect" title="Not starting">
-        NS
-      </span>
-    )
-  }
-  // Null / undefined → lineup not yet announced for this player's team
-  return (
-    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500" title="Lineup pending">
-      ?
     </span>
   )
 }
