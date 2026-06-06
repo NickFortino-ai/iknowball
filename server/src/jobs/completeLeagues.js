@@ -1151,25 +1151,56 @@ export async function completeLeagues() {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getHRDerbyStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'HR Derby', undefined, memberCount)
+          // Prorate winner bonus by unique pick nights vs ~180-night MLB regular
+          // season — matches MLB DFS so a full-season HR Derby pays a full
+          // bonus and a short one pays a small slice.
+          const { data: pickRows } = await supabase
+            .from('hr_derby_picks')
+            .select('game_date')
+            .eq('league_id', league.id)
+          const nightsPlayed = new Set((pickRows || []).map((r) => r.game_date)).size
+          const fraction = Math.min(1, nightsPlayed / 180)
+          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          await awardPositionBasedPoints(league, standings, 'HR Derby', bonusFn, memberCount)
         }
       } else if (league.format === 'strikeouts') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getStrikeoutsStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'Strikeouts Contest', undefined, memberCount)
+          const { data: pickRows } = await supabase
+            .from('strikeouts_picks')
+            .select('game_date')
+            .eq('league_id', league.id)
+          const nightsPlayed = new Set((pickRows || []).map((r) => r.game_date)).size
+          const fraction = Math.min(1, nightsPlayed / 180)
+          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          await awardPositionBasedPoints(league, standings, 'Strikeouts Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'three_point') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getThreePointStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'NBA 3-Point Contest', undefined, memberCount)
+          const { data: pickRows } = await supabase
+            .from('three_point_picks')
+            .select('game_date')
+            .eq('league_id', league.id)
+          const nightsPlayed = new Set((pickRows || []).map((r) => r.game_date)).size
+          const fraction = Math.min(1, nightsPlayed / 180)
+          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          await awardPositionBasedPoints(league, standings, 'NBA 3-Point Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'wnba_three_point') {
         const memberCount = await getLeagueMemberCount(league.id)
         const standings = await getWnbaThreePointStandings(league)
         if (standings?.length > 0) {
-          await awardPositionBasedPoints(league, standings, 'WNBA 3-Point Contest', undefined, memberCount)
+          const { data: pickRows } = await supabase
+            .from('wnba_three_point_picks')
+            .select('game_date')
+            .eq('league_id', league.id)
+          const nightsPlayed = new Set((pickRows || []).map((r) => r.game_date)).size
+          const fraction = Math.min(1, nightsPlayed / 120)
+          const bonusFn = (rank, n) => rank === 1 ? Math.round(scaledWinnerBonus(n) * fraction) : 0
+          await awardPositionBasedPoints(league, standings, 'WNBA 3-Point Contest', bonusFn, memberCount)
         }
       } else if (league.format === 'sacks') {
         const memberCount = await getLeagueMemberCount(league.id)

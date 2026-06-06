@@ -134,14 +134,14 @@ Commissioner controls: salary cap, team count, league duration, lineup lock time
     description: 'Pick 3 pitchers per day — score points for every strikeout they throw',
     details: `Pick up to 3 MLB pitchers each day you think will rack up strikeouts. By default, each pitcher can only be used once per week — commissioners can flip that to unlimited. Total strikeouts determine standings; ties share rank. Just like HR Derby — no salaries, no lineups. Just: who's gonna deal tonight?
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night MLB regular season.
 
 Commissioner controls: league length, player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'Strikeouts Contest Winner Bonus',
+      title: 'Strikeouts Contest Winner Bonus (Full Season, ~180 game nights)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Position points (n+1−2×rank) are added on top of the winner bonus.',
+      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full MLB season). A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -150,14 +150,14 @@ Commissioner controls: league length, player reuse rule, team count. Custom back
     description: 'Pick 3 hitters per day — score points for every HR they hit',
     details: `Pick up to 3 hitters per day who you think will go yard. By default, each player can only be used once per week — commissioners can flip that to unlimited. Total home runs determine standings; ties share rank. No salaries, no lineups, no optimization required. Just: will this guy hit one tonight?
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night MLB regular season.
 
 Commissioner controls: league length, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'HR Derby Winner Bonus',
+      title: 'HR Derby Winner Bonus (Full Season, ~180 game nights)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Position points (n+1−2×rank) are added on top of the winner bonus.',
+      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full MLB season). A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -166,14 +166,14 @@ Commissioner controls: league length, team count. Custom backdrop from a curated
     description: 'Pick 3 NBA shooters per night — score points for every made 3-pointer',
     details: `Pick up to 3 NBA players per night you think will drain threes. By default, each player can only be used once per week — commissioners can flip that to unlimited. Total made 3-pointers determine standings; ties share rank. No salaries, no lineups — just pick the shooters.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~180-night NBA regular season.
 
 Commissioner controls: league length, player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'NBA 3-Point Contest Winner Bonus',
+      title: 'NBA 3-Point Contest Winner Bonus (Full Season, ~180 game nights)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Position points (n+1−2×rank) are added on top of the winner bonus.',
+      footnote: 'Bonus scales with how many nights your league runs (out of ~180 in a full NBA season). A 90-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
@@ -182,14 +182,14 @@ Commissioner controls: league length, player reuse rule, team count. Custom back
     description: 'Pick 3 WNBA shooters per night — score points for every made 3-pointer',
     details: `Pick up to 3 WNBA players per night you think will drain threes. By default, each player can only be used once per week — commissioners can flip that to unlimited. Total made 3-pointers determine standings; ties share rank. No salaries, no lineups — just pick the shooters.
 
-When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below.
+When the league ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how long the league actually ran out of a ~120-night WNBA regular season.
 
 Commissioner controls: league length, player reuse rule, team count. Custom backdrop from a curated library or upload your own.`,
     bonusTable: {
-      title: 'WNBA 3-Point Contest Winner Bonus',
+      title: 'WNBA 3-Point Contest Winner Bonus (Full Season, ~120 game nights)',
       columns: WINNER_BONUS_COLUMNS,
       rows: WINNER_BONUS_ROWS,
-      footnote: 'Position points (n+1−2×rank) are added on top of the winner bonus.',
+      footnote: 'Bonus scales with how many nights your league runs (out of ~120 in a full WNBA season). A 60-night league earns 50% of the bonus. Position points (n+1−2×rank) are added on top.',
     },
   },
   {
