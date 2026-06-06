@@ -138,11 +138,13 @@ const WNBA_NAME_TO_ABBREV = {
 
 function resolveOpponentAbbrev(opponent, sport) {
   if (!opponent) return '?'
-  // Trust ESPN's field when it's already a tidy 2-4 char code. Require
-  // length >= 2 — single letters slip through occasionally and aren't
-  // useful. Some events nest the team under opponent.team; check that too.
+  // Trust ESPN's field only when it's already in canonical form: 2-4
+  // ASCII letters with no periods, spaces, etc. ESPN occasionally
+  // serves abbreviated short forms like "S." / "C." / "L.A." that pass
+  // a naive length check but render uselessly. If the abbreviation
+  // fails the canonical regex, fall through to the name map.
   const directAbbr = (opponent.abbreviation || opponent.team?.abbreviation || '').trim()
-  if (directAbbr.length >= 2 && directAbbr.length <= 4) return directAbbr.toUpperCase()
+  if (/^[A-Za-z]{2,4}$/.test(directAbbr)) return directAbbr.toUpperCase()
   const map = sport === 'baseball_mlb' ? MLB_NAME_TO_ABBREV
     : sport === 'americanfootball_nfl' ? NFL_NAME_TO_ABBREV
     : sport === 'basketball_nba' ? NBA_NAME_TO_ABBREV
@@ -154,9 +156,13 @@ function resolveOpponentAbbrev(opponent, sport) {
       opponent.team?.displayName, opponent.team?.shortDisplayName, opponent.team?.name,
     ].filter(Boolean)
     for (const c of raw) {
-      // Strip "@" / "vs" / "vs." prefixes ESPN sometimes injects into
-      // event-context displayNames.
-      const normalized = c.toLowerCase().trim().replace(/^(@|vs\.?)\s*/i, '').trim()
+      // Strip "@" / "vs" / "vs." prefixes plus any internal periods
+      // (so "S. Antonio Spurs" matches the "san antonio spurs" key).
+      const normalized = c.toLowerCase().trim()
+        .replace(/^(@|vs\.?)\s*/i, '')
+        .replace(/\./g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
       const hit = map[normalized]
       if (hit) return hit
     }
