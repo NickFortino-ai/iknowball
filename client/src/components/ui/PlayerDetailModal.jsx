@@ -110,11 +110,11 @@ function MLBPitcherAverages({ averages }) {
 function MLBPitcherGameLog({ games }) {
   return (
     <div className="space-y-0">
-      <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+      <div className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
         <span></span><span>OPP</span><span className="text-right">IP</span><span className="text-right">H</span><span className="text-right">R</span><span className="text-right">ER</span><span className="text-right">BB</span><span className="text-right">K</span>
       </div>
       {games.map((g, i) => (
-        <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+        <div key={i} className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : g.result === 'L' ? 'text-incorrect' : 'text-text-muted'}`}>{g.result}</span>
           <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.ip}</span>
@@ -132,11 +132,11 @@ function MLBPitcherGameLog({ games }) {
 function NBAGameLog({ games }) {
   return (
     <div className="space-y-0">
-      <div className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+      <div className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
         <span></span><span>OPP</span><span className="text-right">MIN</span><span className="text-right">PTS</span><span className="text-right">REB</span><span className="text-right">AST</span><span className="text-right">STL</span><span className="text-right">BLK</span>
       </div>
       {games.map((g, i) => (
-        <div key={i} className="grid grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem_2.5rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+        <div key={i} className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem_2.25rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
           <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-secondary text-right">{g.min}</span>
@@ -154,11 +154,11 @@ function NBAGameLog({ games }) {
 function MLBGameLog({ games }) {
   return (
     <div className="space-y-0">
-      <div className="grid grid-cols-[1.5rem_1fr_2rem_2rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
+      <div className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem] gap-x-1 text-[10px] text-text-muted uppercase tracking-wider pb-2 border-b border-text-primary/10">
         <span></span><span>OPP</span><span className="text-right">AB</span><span className="text-right">H</span><span className="text-right">R</span><span className="text-right">HR</span><span className="text-right">RBI</span><span className="text-right">BB</span><span className="text-right">SO</span>
       </div>
       {games.map((g, i) => (
-        <div key={i} className="grid grid-cols-[1.5rem_1fr_2rem_2rem_2rem_2rem_2rem_2rem_2rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
+        <div key={i} className="grid grid-cols-[1.5rem_minmax(2.5rem,1fr)_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem_1.75rem] gap-x-1 py-2 border-b border-text-primary/5 last:border-b-0 items-center">
           <span className={`text-[10px] font-bold ${g.result === 'W' ? 'text-correct' : 'text-incorrect'}`}>{g.result}</span>
           <span className="text-xs text-text-secondary truncate">{g.opponent || '—'}</span>
           <span className="text-xs text-text-primary text-right font-semibold">{g.ab}</span>
@@ -218,10 +218,10 @@ const NFL_AVG_STATS = {
 }
 
 const NFL_LOG_COLS = {
-  qb: { cols: 'grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2.5rem]', headers: ['PaYD', 'TD', 'INT', 'RuYD'], fields: ['pass_yds', 'pass_td', 'int', 'rush_yds'] },
-  rb: { cols: 'grid-cols-[1.5rem_1fr_2.5rem_2rem_2rem_2.5rem]', headers: ['RuYD', 'RTD', 'REC', 'ReYD'], fields: ['rush_yds', 'rush_td', 'rec', 'rec_yds'] },
-  rec: { cols: 'grid-cols-[1.5rem_1fr_2rem_2.5rem_2rem_2.5rem]', headers: ['REC', 'ReYD', 'RTD', 'RuYD'], fields: ['rec', 'rec_yds', 'rec_td', 'rush_yds'] },
-  skill: { cols: 'grid-cols-[1.5rem_1fr_2.5rem_2.5rem_2rem_2rem]', headers: ['RuYD', 'ReYD', 'REC', 'TD'], fields: ['rush_yds', 'rec_yds', 'rec', 'rush_td'] },
+  qb: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_2rem_2rem_2.5rem]', headers: ['PaYD', 'TD', 'INT', 'RuYD'], fields: ['pass_yds', 'pass_td', 'int', 'rush_yds'] },
+  rb: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_2rem_2rem_2.5rem]', headers: ['RuYD', 'RTD', 'REC', 'ReYD'], fields: ['rush_yds', 'rush_td', 'rec', 'rec_yds'] },
+  rec: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2rem_2.5rem_2rem_2.5rem]', headers: ['REC', 'ReYD', 'RTD', 'RuYD'], fields: ['rec', 'rec_yds', 'rec_td', 'rush_yds'] },
+  skill: { cols: 'grid-cols-[1.5rem_minmax(2.5rem,1fr)_2.5rem_2.5rem_2rem_2rem]', headers: ['RuYD', 'ReYD', 'REC', 'TD'], fields: ['rush_yds', 'rec_yds', 'rec', 'rush_td'] },
 }
 
 function NFLaverages({ averages, position }) {
