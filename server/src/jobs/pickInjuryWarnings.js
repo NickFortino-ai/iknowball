@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 import { getCurrentNflWeek } from '../services/tdPassService.js'
 import { todaySportsDay } from '../utils/sportsDay.js'
+import { normalizeName } from '../utils/name.js'
 
 // Reusing nfl_injury_warning as the notification type so we don't need a
 // migration to add a new type. Body text describes the actual sport/format.
@@ -331,13 +332,20 @@ async function runWnbaThreePointWarnings({ label, today, sentSet }) {
   }
   if (!outNames.size) return 0
 
-  const { data: picks } = await supabase
+  // Fetch all of today's picks then JS-match on the accent-stripped
+  // name, so an injury report that says "Jovana Nogić" still matches
+  // a pick stored as "Jovana Nogic" (or vice versa).
+  const { data: todaysPicks } = await supabase
     .from('wnba_three_point_picks')
     .select('user_id, league_id, espn_player_id, player_name, leagues(name)')
     .eq('game_date', today)
-    .in('player_name', [...outNames])
 
-  if (!picks?.length) return 0
+  if (!todaysPicks?.length) return 0
+
+  const outKeys = new Set([...outNames].map(normalizeName))
+  const picks = todaysPicks.filter((p) => outKeys.has(normalizeName(p.player_name)))
+
+  if (!picks.length) return 0
 
   let sent = 0
   for (const p of picks) {

@@ -7,6 +7,7 @@ import { checkRecordAfterSettle } from './recordService.js'
 import { fetchCompletedGameStats as fetchNbaStatsFromEspn } from '../jobs/scoreNBADFS.js'
 import { fetchCompletedGameStats as fetchMlbStatsFromEspn } from '../jobs/scoreMLBDFS.js'
 import { fetchCompletedWNBAGameStats as fetchWnbaStatsFromEspn } from '../jobs/scoreWNBADFS.js'
+import { normalizeName } from '../utils/name.js'
 
 export async function syncPropsForGame(gameId, markets) {
   // Get game details
@@ -555,24 +556,35 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
 
     logger.info({ playerNames, today, yesterday, pickCount: lockedPicks.length }, 'Live stat enrichment starting')
 
-    // Look up ESPN IDs from DFS salaries (NBA, MLB, and WNBA)
+    // Look up ESPN IDs from DFS salaries (NBA, MLB, and WNBA). Fetch
+    // by date only and match in JS using accent-stripped names so a
+    // diacritic mismatch between the prop's stored player_name and the
+    // ESPN-roster-derived salary row (e.g. "Jovana Nogić" vs "Jovana
+    // Nogic") doesn't silently miss the player.
     const [salaryRes1, salaryRes2, salaryRes3] = await Promise.all([
-      supabase.from('nba_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).in('game_date', lookupDates),
-      supabase.from('mlb_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).in('game_date', lookupDates),
-      supabase.from('wnba_dfs_salaries').select('player_name, espn_player_id').in('player_name', playerNames).in('game_date', lookupDates),
+      supabase.from('nba_dfs_salaries').select('player_name, espn_player_id').in('game_date', lookupDates),
+      supabase.from('mlb_dfs_salaries').select('player_name, espn_player_id').in('game_date', lookupDates),
+      supabase.from('wnba_dfs_salaries').select('player_name, espn_player_id').in('game_date', lookupDates),
     ])
 
-    const nbaPlayers = salaryRes1.data || []
-    const mlbPlayers = salaryRes2.data || []
-    const wnbaPlayers = salaryRes3.data || []
+    const allSalaryRows = [...(salaryRes1.data || []), ...(salaryRes2.data || []), ...(salaryRes3.data || [])]
 
     if (salaryRes1.error) logger.error({ error: salaryRes1.error }, 'NBA salary lookup failed')
     if (salaryRes2.error) logger.error({ error: salaryRes2.error }, 'MLB salary lookup failed')
     if (salaryRes3.error) logger.error({ error: salaryRes3.error }, 'WNBA salary lookup failed')
 
+    // Build a normalized-name → espn_player_id lookup, then resolve each
+    // prop's player_name through it. Preserve the original-name key in
+    // idMap for downstream code that still maps by raw player_name.
+    const normalizedSalaryMap = {}
+    for (const r of allSalaryRows) {
+      const key = normalizeName(r.player_name)
+      if (key) normalizedSalaryMap[key] = r.espn_player_id
+    }
     const idMap = {}
-    for (const p of [...nbaPlayers, ...mlbPlayers, ...wnbaPlayers]) {
-      idMap[p.player_name] = p.espn_player_id
+    for (const name of playerNames) {
+      const id = normalizedSalaryMap[normalizeName(name)]
+      if (id) idMap[name] = id
     }
 
     const espnIds = Object.values(idMap).filter(Boolean)
