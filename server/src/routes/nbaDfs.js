@@ -165,6 +165,19 @@ function resolveOpponentAbbrev(opponent, sport) {
         .trim()
       const hit = map[normalized]
       if (hit) return hit
+      // ESPN sometimes returns city-abbreviated forms like "Chi. Cubs"
+      // or "L.A. Angels" without a clean `name`/`shortDisplayName`. The
+      // full normalized string ("chi cubs") isn't in the map, but the
+      // mascot suffix ("cubs") is. Slide a window from each subsequent
+      // word and return the first map hit — longer phrases first so a
+      // multi-word mascot like "white sox" still wins over the lone
+      // ambiguous "sox" (which isn't in the map by design).
+      const words = normalized.split(/\s+/).filter(Boolean)
+      for (let start = 1; start < words.length; start++) {
+        const sub = words.slice(start).join(' ')
+        const subHit = map[sub]
+        if (subHit) return subHit
+      }
     }
   }
   return opponent.shortDisplayName || opponent.displayName || '?'
