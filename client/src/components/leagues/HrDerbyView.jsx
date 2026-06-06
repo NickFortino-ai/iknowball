@@ -392,6 +392,9 @@ export default function HrDerbyView({ league, tab = 'picks' }) {
                       <div className="flex items-center gap-1.5">
                         <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
                         <InjuryBadge status={injuryStatus} />
+                        {gameState !== 'in' && gameState !== 'post' && (
+                          <LineupBadge status={savedPick?.lineup_status ?? null} />
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-xs truncate">

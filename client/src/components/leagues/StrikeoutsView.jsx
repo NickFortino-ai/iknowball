@@ -391,10 +391,10 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <div className="text-sm font-bold text-text-primary truncate">{player.player_name}</div>
-                        {(poolEntry?.lineup_status === 'confirmed' || player.lineup_status === 'confirmed') && (
-                          <LineupBadge status="confirmed" />
-                        )}
                         <InjuryBadge status={injuryStatus} />
+                        {gameState !== 'in' && gameState !== 'post' && (
+                          <LineupBadge status={savedPick?.lineup_status ?? poolEntry?.lineup_status ?? player.lineup_status ?? null} />
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-xs truncate">
@@ -521,11 +521,7 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-sm font-bold text-text-primary truncate">{player.player_name}</span>
-                        {player.lineup_status === 'confirmed' && (
-                          <span title="Confirmed starting pitcher" className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-correct text-white">
-                            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          </span>
-                        )}
+                        <LineupBadge status={player.lineup_status} />
                         <InjuryBadge status={player.injury_status} />
                       </div>
                       <div className="text-xs text-text-muted">

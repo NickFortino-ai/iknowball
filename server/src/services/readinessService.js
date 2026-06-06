@@ -670,46 +670,80 @@ async function computeSurvivorReadiness(leagues, userId, result) {
   }
 }
 
-async function computeHrDerbyReadiness(leagues, userId, todayET, result) {
-  // No-slate gate: skip readiness on MLB off-days so no red "you haven't
-  // picked" clip fires for a slate that doesn't exist.
+// Shared helper for HR Derby + Strikeouts readiness — both pull picks per
+// league, join lineup_status from mlb_dfs_salaries, and downgrade the
+// per-league state based on confirmed/pending/not_starting counts.
+//   no picks      → action (red, "you haven't picked")
+//   any NS pick   → action (red, "X not starting on your picks")
+//   any pending   → attention (yellow, "X lineup pending on your picks")
+//   all confirmed → ready (green)
+async function computeMlbContestReadiness(leagues, userId, todayET, result, opts) {
+  const { picksTable, noPickDetail, noun } = opts
   if (!(await earliestDfsGameStart('mlb', todayET))) return
   const leagueIds = leagues.map((l) => l.id)
   const { data: picks } = await supabase
-    .from('hr_derby_picks')
-    .select('league_id')
+    .from(picksTable)
+    .select('league_id, espn_player_id')
     .in('league_id', leagueIds)
     .eq('user_id', userId)
     .eq('game_date', todayET)
-  const countByLeague = {}
+
+  const picksByLeague = {}
+  const allEspnIds = new Set()
   for (const p of picks || []) {
-    countByLeague[p.league_id] = (countByLeague[p.league_id] || 0) + 1
+    if (!picksByLeague[p.league_id]) picksByLeague[p.league_id] = []
+    picksByLeague[p.league_id].push(p)
+    if (p.espn_player_id) allEspnIds.add(p.espn_player_id)
   }
+
+  const lineupByPlayer = {}
+  if (allEspnIds.size > 0) {
+    const { data: salaries } = await supabase
+      .from('mlb_dfs_salaries')
+      .select('espn_player_id, lineup_status')
+      .eq('game_date', todayET)
+      .in('espn_player_id', [...allEspnIds])
+    for (const s of salaries || []) lineupByPlayer[s.espn_player_id] = s.lineup_status
+  }
+
   for (const l of leagues) {
-    const n = countByLeague[l.id] || 0
-    if (n > 0) set(result, l.id, 'ready', `${n}/3 hitter${n === 1 ? '' : 's'} picked for today`)
-    else set(result, l.id, 'action', "You haven't picked today's hitters")
+    const leaguePicks = picksByLeague[l.id] || []
+    const n = leaguePicks.length
+    if (n === 0) {
+      set(result, l.id, 'action', noPickDetail)
+      continue
+    }
+    let notStarting = 0
+    let pending = 0
+    for (const p of leaguePicks) {
+      const ls = lineupByPlayer[p.espn_player_id]
+      if (ls === 'not_starting') notStarting++
+      else if (ls == null) pending++
+    }
+    if (notStarting > 0) {
+      set(result, l.id, 'action', `${notStarting} not starting on your picks`)
+    } else if (pending > 0) {
+      set(result, l.id, 'attention', `${pending} lineup pending on your picks`)
+    } else {
+      set(result, l.id, 'ready', `${n}/3 ${noun}${n === 1 ? '' : 's'} confirmed for today`)
+    }
   }
 }
 
+async function computeHrDerbyReadiness(leagues, userId, todayET, result) {
+  await computeMlbContestReadiness(leagues, userId, todayET, result, {
+    picksTable: 'hr_derby_picks',
+    noPickDetail: "You haven't picked today's hitters",
+    noun: 'hitter',
+  })
+}
+
 async function computeStrikeoutsReadiness(leagues, userId, todayET, result) {
-  if (!(await earliestDfsGameStart('mlb', todayET))) return
-  const leagueIds = leagues.map((l) => l.id)
-  const { data: picks } = await supabase
-    .from('strikeouts_picks')
-    .select('league_id')
-    .in('league_id', leagueIds)
-    .eq('user_id', userId)
-    .eq('game_date', todayET)
-  const countByLeague = {}
-  for (const p of picks || []) {
-    countByLeague[p.league_id] = (countByLeague[p.league_id] || 0) + 1
-  }
-  for (const l of leagues) {
-    const n = countByLeague[l.id] || 0
-    if (n > 0) set(result, l.id, 'ready', `${n}/3 pitcher${n === 1 ? '' : 's'} picked for today`)
-    else set(result, l.id, 'action', "You haven't picked today's pitchers")
-  }
+  await computeMlbContestReadiness(leagues, userId, todayET, result, {
+    picksTable: 'strikeouts_picks',
+    noPickDetail: "You haven't picked today's pitchers",
+    noun: 'pitcher',
+  })
 }
 
 async function computeThreePointReadiness(leagues, userId, todayET, result) {
