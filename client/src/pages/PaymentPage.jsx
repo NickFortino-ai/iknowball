@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '../stores/authStore'
 import { api } from '../lib/api'
+import { openExternalUrl } from '../lib/openExternalUrl'
 import {
   isIAPAvailable,
   getSubscriptionProducts,
@@ -362,12 +363,28 @@ export default function PaymentPage() {
           }
         </p>
 
-        {/* Terms + Privacy links (required by Apple guideline 3.1.2 for auto-renewing subscriptions) */}
-        <p className="text-[10px] text-white/65 text-center mb-4 leading-relaxed">
+        {/* Terms + Privacy links (required by Apple guideline 3.1.2 for
+            auto-renewing subscriptions). Open via SFSafariViewController
+            on native — plain <a target="_blank"> doesn't reliably open
+            outside the webview on iOS Capacitor builds, which is what
+            tripped the June 6 App Review rejection. */}
+        <p className="text-xs text-white/80 text-center mb-4 leading-relaxed">
           By subscribing you agree to our{' '}
-          <a href="https://iknowball.club/terms" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Terms of Use</a>
+          <button
+            type="button"
+            onClick={() => openExternalUrl('https://iknowball.club/terms')}
+            className="text-accent underline font-semibold"
+          >
+            Terms of Use
+          </button>
           {' '}and{' '}
-          <a href="https://iknowball.club/privacy" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Privacy Policy</a>.
+          <button
+            type="button"
+            onClick={() => openExternalUrl('https://iknowball.club/privacy')}
+            className="text-accent underline font-semibold"
+          >
+            Privacy Policy
+          </button>.
         </p>
 
         {/* Restore Purchases — native only */}
