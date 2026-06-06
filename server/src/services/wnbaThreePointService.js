@@ -138,11 +138,15 @@ async function fetchTeamRoster(teamId, teamAbbrev) {
         player_name: a.displayName,
         team: teamAbbrev,
         position: a.position?.abbreviation || a.position?.name || null,
-        // Only set headshot_url if ESPN actually gave us one. The
-        // constructed fallback URL frequently 404s for newer / less
-        // prominent players; better to let the client render initials
-        // immediately than wait for an HTTP failure.
-        headshot_url: a.headshot?.href || null,
+        // Prefer ESPN's roster headshot; fall back to the CDN convention
+        // when the roster API omits it (which happens for some otherwise
+        // high-profile players whose ESPN profile DOES have a headshot
+        // — e.g. names with diacritics that don't round-trip cleanly
+        // through their roster shape). The client has a state-based
+        // onError fallback that renders initials when the CDN URL 404s,
+        // so a missing image degrades gracefully rather than blocking.
+        headshot_url: a.headshot?.href
+          || `https://a.espncdn.com/i/headshots/wnba/players/full/${a.id}.png`,
         injury_status: a.injuries?.[0]?.status || null,
       }))
     rosterCache.set(teamId, { players, ts: Date.now() })
