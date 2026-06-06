@@ -1020,12 +1020,16 @@ export async function completeLeagues() {
           if (sportRow) sportId = sportRow.id
         }
 
+        // Treat postponed games as effectively done — they'll never finalize on
+        // this date, and their picks can't settle. Without this, a single
+        // rained-out MLB game in the league's date range blocks the entire
+        // league from completing.
         let unfinishedQuery = supabase
           .from('games')
           .select('id', { count: 'exact', head: true })
           .gte('starts_at', league.starts_at)
           .lte('starts_at', league.ends_at)
-          .neq('status', 'final')
+          .not('status', 'in', '(final,postponed)')
         if (sportId) unfinishedQuery = unfinishedQuery.eq('sport_id', sportId)
         const { count: unfinished } = await unfinishedQuery
 
