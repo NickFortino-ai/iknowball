@@ -957,8 +957,8 @@ export default function CreateLeaguePage() {
   // Surface the specific missing field so users aren't stuck staring at a
   // disabled Create button wondering why.
   function missingFieldHint() {
-    if (!name) return 'Add a league name above.'
     if (!format) return 'Pick a format above.'
+    if (!name) return 'Add a league name above.'
     if (!sport && !autoSportFormats.includes(format)) return 'Pick a sport above.'
     if (!noDurationFormats.includes(format) && !duration) return 'Pick a duration above.'
     if (format === 'bracket' && !templateId) return 'Pick a bracket template above.'
@@ -972,19 +972,6 @@ export default function CreateLeaguePage() {
       <h1 className="font-display text-3xl mb-6">Create a League</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* League Name */}
-        <div>
-          <label className="block text-sm font-semibold text-text-secondary mb-2">League Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="My Awesome League"
-            maxLength={50}
-            className="w-full bg-transparent border border-text-primary/20 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-          />
-        </div>
-
         {/* Format — grouped by sport category, top to bottom */}
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Format</label>
@@ -1155,6 +1142,19 @@ export default function CreateLeaguePage() {
             the user has decided what they're creating. */}
         {format && <>
         <div ref={settingsRef} aria-hidden="true" />
+
+        {/* League Name */}
+        <div>
+          <label className="block text-sm font-semibold text-text-secondary mb-2">League Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="My Awesome League"
+            maxLength={50}
+            className="w-full bg-transparent border border-text-primary/20 rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+          />
+        </div>
 
         {/* Sport (hidden for format-locked sports + sport-locked survivor/pickem presets) */}
         {!['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format)
