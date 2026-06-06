@@ -86,15 +86,67 @@ const NFL_NAME_TO_ABBREV = {
 // NYG and "Cardinals" are intentionally not in NFL aliases — both would
 // be ambiguous (Giants vs Mets shorthand "giants"; Cardinals shared with
 // MLB STL) so we lean on the full displayName key for those.
+const NBA_NAME_TO_ABBREV = {
+  'atlanta hawks': 'ATL', 'hawks': 'ATL', 'atlanta': 'ATL',
+  'boston celtics': 'BOS', 'celtics': 'BOS', 'boston': 'BOS',
+  'brooklyn nets': 'BKN', 'nets': 'BKN', 'brooklyn': 'BKN',
+  'charlotte hornets': 'CHA', 'hornets': 'CHA', 'charlotte': 'CHA',
+  'chicago bulls': 'CHI', 'bulls': 'CHI',
+  'cleveland cavaliers': 'CLE', 'cavaliers': 'CLE', 'cavs': 'CLE', 'cleveland': 'CLE',
+  'dallas mavericks': 'DAL', 'mavericks': 'DAL', 'mavs': 'DAL', 'dallas': 'DAL',
+  'denver nuggets': 'DEN', 'nuggets': 'DEN', 'denver': 'DEN',
+  'detroit pistons': 'DET', 'pistons': 'DET', 'detroit': 'DET',
+  'golden state warriors': 'GSW', 'warriors': 'GSW', 'golden state': 'GSW',
+  'houston rockets': 'HOU', 'rockets': 'HOU', 'houston': 'HOU',
+  'indiana pacers': 'IND', 'pacers': 'IND', 'indiana': 'IND',
+  'la clippers': 'LAC', 'los angeles clippers': 'LAC', 'clippers': 'LAC',
+  'los angeles lakers': 'LAL', 'la lakers': 'LAL', 'lakers': 'LAL',
+  'memphis grizzlies': 'MEM', 'grizzlies': 'MEM', 'memphis': 'MEM',
+  'miami heat': 'MIA', 'heat': 'MIA',
+  'milwaukee bucks': 'MIL', 'bucks': 'MIL',
+  'minnesota timberwolves': 'MIN', 'timberwolves': 'MIN', 'wolves': 'MIN',
+  'new orleans pelicans': 'NOP', 'pelicans': 'NOP', 'new orleans': 'NOP',
+  'new york knicks': 'NYK', 'knicks': 'NYK',
+  'oklahoma city thunder': 'OKC', 'thunder': 'OKC', 'oklahoma city': 'OKC',
+  'orlando magic': 'ORL', 'magic': 'ORL', 'orlando': 'ORL',
+  'philadelphia 76ers': 'PHI', '76ers': 'PHI', 'sixers': 'PHI', 'philadelphia': 'PHI',
+  'phoenix suns': 'PHX', 'suns': 'PHX', 'phoenix': 'PHX',
+  'portland trail blazers': 'POR', 'trail blazers': 'POR', 'blazers': 'POR', 'portland': 'POR',
+  'sacramento kings': 'SAC', 'kings': 'SAC', 'sacramento': 'SAC',
+  'san antonio spurs': 'SAS', 'spurs': 'SAS', 'san antonio': 'SAS',
+  'toronto raptors': 'TOR', 'raptors': 'TOR',
+  'utah jazz': 'UTA', 'jazz': 'UTA',
+  'washington wizards': 'WAS', 'wizards': 'WAS',
+}
+const WNBA_NAME_TO_ABBREV = {
+  'atlanta dream': 'ATL', 'dream': 'ATL',
+  'chicago sky': 'CHI', 'sky': 'CHI',
+  'connecticut sun': 'CONN', 'sun': 'CONN', 'connecticut': 'CONN',
+  'dallas wings': 'DAL', 'wings': 'DAL',
+  'golden state valkyries': 'GSV', 'valkyries': 'GSV',
+  'indiana fever': 'IND', 'fever': 'IND',
+  'las vegas aces': 'LV', 'aces': 'LV', 'las vegas': 'LV',
+  'los angeles sparks': 'LA', 'sparks': 'LA',
+  'minnesota lynx': 'MIN', 'lynx': 'MIN',
+  'new york liberty': 'NY', 'liberty': 'NY',
+  'phoenix mercury': 'PHX', 'mercury': 'PHX',
+  'portland fire': 'POR', 'fire': 'POR',
+  'seattle storm': 'SEA', 'storm': 'SEA', 'seattle': 'SEA',
+  'toronto tempo': 'TOR', 'tempo': 'TOR',
+  'washington mystics': 'WAS', 'mystics': 'WAS',
+}
 
 function resolveOpponentAbbrev(opponent, sport) {
   if (!opponent) return '?'
-  // Trust ESPN's field when it's already a tidy 2-4 char code. Some events
-  // nest the team under opponent.team; check that too.
+  // Trust ESPN's field when it's already a tidy 2-4 char code. Require
+  // length >= 2 — single letters slip through occasionally and aren't
+  // useful. Some events nest the team under opponent.team; check that too.
   const directAbbr = (opponent.abbreviation || opponent.team?.abbreviation || '').trim()
-  if (directAbbr && directAbbr.length <= 4) return directAbbr.toUpperCase()
+  if (directAbbr.length >= 2 && directAbbr.length <= 4) return directAbbr.toUpperCase()
   const map = sport === 'baseball_mlb' ? MLB_NAME_TO_ABBREV
     : sport === 'americanfootball_nfl' ? NFL_NAME_TO_ABBREV
+    : sport === 'basketball_nba' ? NBA_NAME_TO_ABBREV
+    : sport === 'basketball_wnba' ? WNBA_NAME_TO_ABBREV
     : null
   if (map) {
     const raw = [
