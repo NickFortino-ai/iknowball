@@ -158,7 +158,7 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                 // Sort by a stable category order so the football rows
                 // always read passing → rushing → receiving.
                 const topScorers = game.top_scorers || []
-                const CATEGORY_ORDER = { passing: 0, rushing: 1, receiving: 2, overall: 3 }
+                const CATEGORY_ORDER = { passing: 0, rushing: 1, receiving: 2, defensive: 3, overall: 4 }
                 const sortScorers = (arr) => [...arr].sort((a, b) =>
                   (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99)
                 )

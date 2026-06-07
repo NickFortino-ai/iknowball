@@ -264,50 +264,90 @@ const FOOTBALL_SPORT_KEYS = new Set([
   'americanfootball_ufl',
 ])
 
-// Pull top passer / rusher / receiver per team from a football box score.
-// Each ESPN football team's `statistics` array contains separate groups
-// (passing, rushing, receiving, defensive, fumbles, …). We pick the leader
-// by YDS in each of the three offensive groups and format a stat_line.
+// Pull top passer / rusher / receiver / tackler per team from a football
+// box score. Each ESPN football team's `statistics` array contains separate
+// groups (passing, rushing, receiving, defensive, fumbles, …). We pick the
+// leader in each of the four groups and format a human stat_line.
 function extractFootballTopPerformers(boxscore) {
   const results = []
-  const CATEGORY_NAMES = ['passing', 'rushing', 'receiving']
+  const OFFENSIVE = ['passing', 'rushing', 'receiving']
   for (const teamBox of boxscore.players || []) {
     const teamName = teamBox.team?.displayName || teamBox.team?.name || ''
     for (const stats of teamBox.statistics || []) {
       const name = (stats?.name || '').toLowerCase()
-      if (!CATEGORY_NAMES.includes(name)) continue
       if (!stats.athletes?.length) continue
       const labels = stats.labels || []
-      const ydsIdx = labels.indexOf('YDS')
-      const tdIdx = labels.indexOf('TD')
-      const recIdx = labels.indexOf('REC')
-      if (ydsIdx < 0) continue
 
-      let top = null
-      let topYds = -1
-      for (const athlete of stats.athletes) {
-        const aStats = athlete.stats || []
-        const yds = parseInt(aStats[ydsIdx] || '0', 10) || 0
-        if (yds <= topYds) continue
-        topYds = yds
-        const td = tdIdx >= 0 ? (parseInt(aStats[tdIdx] || '0', 10) || 0) : 0
-        const rec = recIdx >= 0 ? (parseInt(aStats[recIdx] || '0', 10) || 0) : 0
-        let statLine
-        if (name === 'receiving') {
-          statLine = `${rec} rec, ${yds} yds${td > 0 ? `, ${td} TD` : ''}`
-        } else {
-          statLine = `${yds} yds${td > 0 ? `, ${td} TD` : ''}`
+      if (OFFENSIVE.includes(name)) {
+        const ydsIdx = labels.indexOf('YDS')
+        const tdIdx = labels.indexOf('TD')
+        const recIdx = labels.indexOf('REC')
+        if (ydsIdx < 0) continue
+
+        let top = null
+        let topYds = -1
+        for (const athlete of stats.athletes) {
+          const aStats = athlete.stats || []
+          const yds = parseInt(aStats[ydsIdx] || '0', 10) || 0
+          if (yds <= topYds) continue
+          topYds = yds
+          const td = tdIdx >= 0 ? (parseInt(aStats[tdIdx] || '0', 10) || 0) : 0
+          const rec = recIdx >= 0 ? (parseInt(aStats[recIdx] || '0', 10) || 0) : 0
+          let statLine
+          if (name === 'receiving') {
+            statLine = `${rec} rec, ${yds} yds${td > 0 ? `, ${td} TD` : ''}`
+          } else {
+            statLine = `${yds} yds${td > 0 ? `, ${td} TD` : ''}`
+          }
+          top = {
+            team: teamName,
+            playerName: athlete.athlete?.displayName || '',
+            points: yds,
+            headshotUrl: athlete.athlete?.headshot?.href || null,
+            category: name,
+            statLine,
+          }
         }
-        top = {
-          team: teamName,
-          playerName: athlete.athlete?.displayName || '',
-          points: yds,
-          headshotUrl: athlete.athlete?.headshot?.href || null,
-          category: name,
-          statLine,
-        }
+        if (top && topYds > 0) results.push(top)
+        continue
       }
-      if (top && topYds > 0) results.push(top)
+
+      if (name === 'defensive') {
+        // ESPN's defensive group typically labels total tackles 'TOT'
+        // (solo + assists) and breaks out 'SOLO', 'SACKS', 'TFL'. We
+        // sort by TOT and fall back to SOLO when TOT isn't exposed.
+        const totIdx = labels.indexOf('TOT')
+        const soloIdx = labels.indexOf('SOLO')
+        const sacksIdx = labels.indexOf('SACKS')
+        const tflIdx = labels.indexOf('TFL')
+        const primaryIdx = totIdx >= 0 ? totIdx : soloIdx
+        if (primaryIdx < 0) continue
+
+        let top = null
+        let topTackles = -1
+        for (const athlete of stats.athletes) {
+          const aStats = athlete.stats || []
+          // ESPN sometimes returns SOLO formatted as "3-1" (solo-assist).
+          // parseInt handles the leading number cleanly for our purposes.
+          const tackles = parseInt(aStats[primaryIdx] || '0', 10) || 0
+          if (tackles <= topTackles) continue
+          topTackles = tackles
+          const sacks = sacksIdx >= 0 ? (parseFloat(aStats[sacksIdx] || '0') || 0) : 0
+          const tfl = tflIdx >= 0 ? (parseFloat(aStats[tflIdx] || '0') || 0) : 0
+          const parts = [`${tackles} tackles`]
+          if (sacks > 0) parts.push(`${sacks % 1 === 0 ? sacks.toFixed(0) : sacks} sack${sacks === 1 ? '' : 's'}`)
+          else if (tfl > 0) parts.push(`${tfl % 1 === 0 ? tfl.toFixed(0) : tfl} TFL`)
+          top = {
+            team: teamName,
+            playerName: athlete.athlete?.displayName || '',
+            points: tackles,
+            headshotUrl: athlete.athlete?.headshot?.href || null,
+            category: 'defensive',
+            statLine: parts.join(', '),
+          }
+        }
+        if (top && topTackles > 0) results.push(top)
+      }
     }
   }
   return results
