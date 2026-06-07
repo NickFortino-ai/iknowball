@@ -181,7 +181,9 @@ async function syncSportLiveScores(sportKey) {
                 player_name: s.playerName,
                 points: s.points,
                 headshot_url: s.headshotUrl,
-              }, { onConflict: 'game_id,team' })
+                category: s.category || 'overall',
+                stat_line: s.statLine || null,
+              }, { onConflict: 'game_id,team,category' })
           }
           logger.info({ gameId: game.id, count: scorers.length }, 'Stored top scorers from ESPN')
         } catch (err) {
@@ -242,7 +244,9 @@ async function retryStaleTopScorers() {
             player_name: s.playerName,
             points: s.points,
             headshot_url: s.headshotUrl,
-          }, { onConflict: 'game_id,team' })
+            category: s.category || 'overall',
+            stat_line: s.statLine || null,
+          }, { onConflict: 'game_id,team,category' })
       }
       refreshed++
       logger.info({ gameId: game.id, count: scorers.length }, 'Refreshed stale top scorers')

@@ -258,6 +258,61 @@ export async function findESPNEventId(sportKey, homeTeam, awayTeam, startsAt) {
  * Fetch the leading scorer per team from an ESPN game summary.
  * Returns: [{ team, playerName, points, headshotUrl }, ...]
  */
+const FOOTBALL_SPORT_KEYS = new Set([
+  'americanfootball_nfl',
+  'americanfootball_ncaaf',
+  'americanfootball_ufl',
+])
+
+// Pull top passer / rusher / receiver per team from a football box score.
+// Each ESPN football team's `statistics` array contains separate groups
+// (passing, rushing, receiving, defensive, fumbles, …). We pick the leader
+// by YDS in each of the three offensive groups and format a stat_line.
+function extractFootballTopPerformers(boxscore) {
+  const results = []
+  const CATEGORY_NAMES = ['passing', 'rushing', 'receiving']
+  for (const teamBox of boxscore.players || []) {
+    const teamName = teamBox.team?.displayName || teamBox.team?.name || ''
+    for (const stats of teamBox.statistics || []) {
+      const name = (stats?.name || '').toLowerCase()
+      if (!CATEGORY_NAMES.includes(name)) continue
+      if (!stats.athletes?.length) continue
+      const labels = stats.labels || []
+      const ydsIdx = labels.indexOf('YDS')
+      const tdIdx = labels.indexOf('TD')
+      const recIdx = labels.indexOf('REC')
+      if (ydsIdx < 0) continue
+
+      let top = null
+      let topYds = -1
+      for (const athlete of stats.athletes) {
+        const aStats = athlete.stats || []
+        const yds = parseInt(aStats[ydsIdx] || '0', 10) || 0
+        if (yds <= topYds) continue
+        topYds = yds
+        const td = tdIdx >= 0 ? (parseInt(aStats[tdIdx] || '0', 10) || 0) : 0
+        const rec = recIdx >= 0 ? (parseInt(aStats[recIdx] || '0', 10) || 0) : 0
+        let statLine
+        if (name === 'receiving') {
+          statLine = `${rec} rec, ${yds} yds${td > 0 ? `, ${td} TD` : ''}`
+        } else {
+          statLine = `${yds} yds${td > 0 ? `, ${td} TD` : ''}`
+        }
+        top = {
+          team: teamName,
+          playerName: athlete.athlete?.displayName || '',
+          points: yds,
+          headshotUrl: athlete.athlete?.headshot?.href || null,
+          category: name,
+          statLine,
+        }
+      }
+      if (top && topYds > 0) results.push(top)
+    }
+  }
+  return results
+}
+
 export async function fetchGameTopScorers(sportKey, espnEventId) {
   const sport = SPORT_TO_ESPN[sportKey]
   if (!sport || !espnEventId) return []
@@ -268,10 +323,14 @@ export async function fetchGameTopScorers(sportKey, espnEventId) {
     if (!res.ok) return []
     const data = await res.json()
 
-    const results = []
     const boxscore = data.boxscore
     if (!boxscore?.players) return []
 
+    if (FOOTBALL_SPORT_KEYS.has(sportKey)) {
+      return extractFootballTopPerformers(boxscore)
+    }
+
+    const results = []
     for (const teamBox of boxscore.players) {
       const teamName = teamBox.team?.displayName || teamBox.team?.name || ''
       // NHL splits players into separate "forwards" / "defenses" groups —
@@ -311,6 +370,8 @@ export async function fetchGameTopScorers(sportKey, espnEventId) {
               playerName: athlete.athlete?.displayName || '',
               points: pts,
               headshotUrl: athlete.athlete?.headshot?.href || null,
+              category: 'overall',
+              statLine: null,
             }
           }
         }

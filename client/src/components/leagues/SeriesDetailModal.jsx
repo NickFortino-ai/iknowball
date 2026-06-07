@@ -152,12 +152,21 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                 const topWon = (topIsHome && game.winner === 'home') || (!topIsHome && game.winner === 'away')
                 const gameDate = new Date(game.starts_at)
 
-                // Find top scorers for each team in this game
+                // Find top scorers for each team in this game. Football
+                // games carry up to 3 rows per team (passing/rushing/
+                // receiving); NBA + NHL carry a single 'overall' row.
+                // Sort by a stable category order so the football rows
+                // always read passing → rushing → receiving.
                 const topScorers = game.top_scorers || []
-                const homeScorer = topScorers.find((s) => stripAccents(s.team) === nHome)
-                const awayScorer = topScorers.find((s) => stripAccents(s.team) === nAway)
-                const scorerForTop = topIsHome ? homeScorer : awayScorer
-                const scorerForBottom = topIsHome ? awayScorer : homeScorer
+                const CATEGORY_ORDER = { passing: 0, rushing: 1, receiving: 2, overall: 3 }
+                const sortScorers = (arr) => [...arr].sort((a, b) =>
+                  (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99)
+                )
+                const homeScorers = sortScorers(topScorers.filter((s) => stripAccents(s.team) === nHome))
+                const awayScorers = sortScorers(topScorers.filter((s) => stripAccents(s.team) === nAway))
+                const scorersForTop = topIsHome ? homeScorers : awayScorers
+                const scorersForBottom = topIsHome ? awayScorers : homeScorers
+                const maxRows = Math.max(scorersForTop.length, scorersForBottom.length)
 
                 return (
                   <div
@@ -183,35 +192,44 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                       </div>
                     </div>
 
-                    {/* Top scorers row */}
-                    {(scorerForTop || scorerForBottom) && (
-                      <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-text-primary/5">
-                        <div className="flex-1 min-w-0">
-                          {scorerForTop && (
-                            <div className="flex items-center gap-2">
-                              {scorerForTop.headshot_url && (
-                                <img src={scorerForTop.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
-                              )}
-                              <div className="min-w-0">
-                                <div className="text-sm text-text-primary font-semibold truncate">{scorerForTop.player_name}</div>
-                                <div className="text-xs text-text-primary">{scorerForTop.points} pts</div>
+                    {/* Top performer rows — 3 stacked for football
+                        (passing/rushing/receiving), 1 for NBA/NHL. */}
+                    {maxRows > 0 && (
+                      <div className="mt-2 pt-2 border-t border-text-primary/5 space-y-2">
+                        {Array.from({ length: maxRows }).map((_, rowIdx) => {
+                          const topRow = scorersForTop[rowIdx]
+                          const bottomRow = scorersForBottom[rowIdx]
+                          return (
+                            <div key={rowIdx} className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                {topRow && (
+                                  <div className="flex items-center gap-2">
+                                    {topRow.headshot_url && (
+                                      <img src={topRow.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="text-sm text-text-primary font-semibold truncate">{topRow.player_name}</div>
+                                      <div className="text-xs text-text-primary truncate">{topRow.stat_line || `${topRow.points} pts`}</div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {bottomRow && (
+                                  <div className="flex items-center gap-2 justify-end">
+                                    <div className="min-w-0 text-right">
+                                      <div className="text-sm text-text-primary font-semibold truncate">{bottomRow.player_name}</div>
+                                      <div className="text-xs text-text-primary truncate">{bottomRow.stat_line || `${bottomRow.points} pts`}</div>
+                                    </div>
+                                    {bottomRow.headshot_url && (
+                                      <img src={bottomRow.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          {scorerForBottom && (
-                            <div className="flex items-center gap-2 justify-end">
-                              <div className="min-w-0 text-right">
-                                <div className="text-sm text-text-primary font-semibold truncate">{scorerForBottom.player_name}</div>
-                                <div className="text-xs text-text-primary">{scorerForBottom.points} pts</div>
-                              </div>
-                              {scorerForBottom.headshot_url && (
-                                <img src={scorerForBottom.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
-                              )}
-                            </div>
-                          )}
-                        </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>

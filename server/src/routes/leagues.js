@@ -959,7 +959,7 @@ router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
     const gameIds = filtered.map((g) => g.id)
     const { data: scorers } = await supabase
       .from('game_top_scorers')
-      .select('game_id, team, player_name, points, headshot_url')
+      .select('game_id, team, player_name, points, headshot_url, category, stat_line')
       .in('game_id', gameIds)
     const scorerMap = {}
     for (const s of scorers || []) {
@@ -985,7 +985,9 @@ router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
               player_name: s.playerName,
               points: s.points,
               headshot_url: s.headshotUrl,
-            }, { onConflict: 'game_id,team' })
+              category: s.category || 'overall',
+              stat_line: s.statLine || null,
+            }, { onConflict: 'game_id,team,category' })
         }
         scorerMap[g.id] = fetched.map((s) => ({
           game_id: g.id,
@@ -993,6 +995,8 @@ router.get('/:id/bracket/series-games', requireAuth, async (req, res) => {
           player_name: s.playerName,
           points: s.points,
           headshot_url: s.headshotUrl,
+          category: s.category || 'overall',
+          stat_line: s.statLine || null,
         }))
       } catch {}
     }
