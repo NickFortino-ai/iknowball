@@ -15,6 +15,14 @@ export function useFeaturedProps(date, { fallback = false } = {}) {
     queryKey: ['featuredProps', date, fallback],
     queryFn: () => api.get(`/props/featured?date=${date}${fallback ? '&fallback=true' : ''}`),
     enabled: !!date,
+    // Mirror useGames: poll every 30s so props whose games have just kicked
+    // off get dropped from the Picks page on the same cadence games do.
+    // Without this the client-side `starts_at <= now` filter sits inside a
+    // useMemo that only re-evaluates when `props` change — which means a
+    // prop loaded before its game started would linger on the page until
+    // navigation. Refetching gives the server a chance to also report the
+    // prop as `locked`, which the filter catches independently.
+    refetchInterval: 30_000,
   })
 }
 
