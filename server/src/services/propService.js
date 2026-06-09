@@ -589,7 +589,7 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
 
     const espnIds = Object.values(idMap).filter(Boolean)
 
-    logger.info({ salaryMatches: Object.keys(idMap).length, espnIds: espnIds.length, nbaPlayers: nbaPlayers.length, mlbPlayers: mlbPlayers.length }, 'Live stat enrichment: salary lookup done')
+    logger.info({ salaryMatches: Object.keys(idMap).length, espnIds: espnIds.length, salaryRows: allSalaryRows.length }, 'Live stat enrichment: salary lookup done')
 
     // Fetch stats from both tables (by ESPN ID if available, and by name as fallback)
     const queries = await Promise.all([
