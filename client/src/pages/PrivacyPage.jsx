@@ -2,13 +2,13 @@ export default function PrivacyPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <h1 className="font-display text-2xl text-text-primary mb-1">Privacy Policy</h1>
-      <p className="text-sm text-text-muted mb-6">Last Updated: May 15, 2026</p>
+      <p className="text-sm text-text-muted mb-6">Last Updated: June 8, 2026</p>
 
       <div className="space-y-6">
         <section className="bg-bg-card rounded-xl p-5">
           <h2 className="font-display text-lg text-text-primary mb-2">Overview</h2>
           <p className="text-sm text-text-secondary leading-relaxed">
-            I KNOW BALL ("the App") is a sports prediction competition platform. This privacy policy explains what information we collect, how we use it, and your rights regarding your data.
+            I KNOW BALL ("the App") is a sports prediction and fantasy sports competition platform where users make picks, build fantasy rosters, and compete in pick'em games, daily and season-long fantasy leagues, brackets, survivor pools, and player-prop contests. This privacy policy explains what information we collect, how we use it, and your rights regarding your data.
           </p>
         </section>
 
