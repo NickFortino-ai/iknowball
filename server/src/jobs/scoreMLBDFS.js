@@ -145,8 +145,12 @@ export async function fetchCompletedGameStats(date) {
       for (const statGroup of team.statistics || []) {
         const headers = statGroup.labels || []
 
-        const isBattingGroup = statGroup.name === 'batting' || headers.includes('AB')
-        const isPitchingGroup = statGroup.name === 'pitching' || headers.includes('IP')
+        // Exact name match only — the AB/IP header fallback used to catch
+        // season-splits stat groups that ESPN occasionally emits alongside
+        // the real game group, overwriting good game stats with season
+        // totals via the espnPlayerId dedup downstream.
+        const isBattingGroup = statGroup.name === 'batting'
+        const isPitchingGroup = statGroup.name === 'pitching'
 
         if (isBattingGroup) {
           for (const athlete of statGroup.athletes || []) {
