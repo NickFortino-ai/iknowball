@@ -891,7 +891,8 @@ export default function HotTakeFeedCard({ item, reactions, onUserTap, isBookmark
           {/* Lightbox */}
           {lightboxOpen && allImages.length > 0 && (
             <ImageLightbox
-              src={allImages[lightboxIndex]}
+              images={allImages}
+              initialIndex={lightboxIndex}
               onClose={() => setLightboxOpen(false)}
             />
           )}

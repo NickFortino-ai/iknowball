@@ -639,23 +639,27 @@ export default function HotTakeComposer({ initialTeamTags = [] }) {
                 </div>
               )}
 
+              {/* Tagging row — full width under the post box so the hint
+                  reads as one clean horizontal line instead of getting
+                  vertically wedged into the action row alongside icons. */}
+              {(selectedSport ? teamTags.length < 5 : true) && (
+                <div className="mt-2">
+                  {selectedSport ? (
+                    <TeamAutocomplete
+                      teams={(teams || []).filter((t) => !teamTags.includes(t))}
+                      onSelect={addTeamTag}
+                      inputValue={teamSearch}
+                      onInputChange={setTeamSearch}
+                      placeholder="Tag team..."
+                    />
+                  ) : (
+                    <span className="text-[11px] text-text-muted">Pick a sport to tag teams</span>
+                  )}
+                </div>
+              )}
+
               <div className="mt-2 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {/* Team autocomplete (when sport selected) */}
-                  {selectedSport && teamTags.length < 5 ? (
-                    <div className="w-32">
-                      <TeamAutocomplete
-                        teams={(teams || []).filter((t) => !teamTags.includes(t))}
-                        onSelect={addTeamTag}
-                        inputValue={teamSearch}
-                        onInputChange={setTeamSearch}
-                        placeholder="Tag team..."
-                      />
-                    </div>
-                  ) : !selectedSport ? (
-                    <span className="text-[10px] text-text-muted">Pick a sport to tag teams</span>
-                  ) : null}
-
                   {/* Image upload button */}
                   <button
                     onClick={() => fileInputRef.current?.click()}
