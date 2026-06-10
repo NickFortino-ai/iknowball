@@ -37,8 +37,7 @@ import GuidelinesPage from './pages/GuidelinesPage'
 import OnboardingTutorial from './components/onboarding/OnboardingTutorial'
 import HeroLayout from './components/layouts/HeroLayout'
 import InstallPrompt from './components/pwa/InstallPrompt'
-// Push notifications disabled until APNs backend is wired up
-// import { initPushNotifications } from './lib/pushNotifications'
+import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
 import { initIAPListener } from './lib/iapListener'
 import { useRealtimeGames } from './hooks/useRealtimeGames'
@@ -52,6 +51,7 @@ function AppRoutes() {
     initialize()
     initStatusBar()
     initIAPListener()
+    initPushNotifications()
   }, [initialize])
 
   return (
