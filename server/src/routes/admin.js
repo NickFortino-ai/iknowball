@@ -311,6 +311,29 @@ router.post('/score-games', async (req, res) => {
   res.json({ message: 'Game scoring complete' })
 })
 
+// One-shot backfill for dates whose MLB stats got zeroed out by the
+// 2026-06-09 stat-group matcher regression. POST { dates: ['YYYY-MM-DD', ...] }.
+router.post('/backfill-mlb-stats', async (req, res) => {
+  const { dates } = req.body || {}
+  if (!Array.isArray(dates) || !dates.length) {
+    return res.status(400).json({ error: 'dates array required (e.g. ["2026-06-08", "2026-06-09"])' })
+  }
+  const { fetchCompletedGameStats: fetchMlb, upsertPlayerStats: upsertMlb } = await import('../jobs/scoreMLBDFS.js')
+  const season = 2026
+  const results = []
+  for (const date of dates) {
+    try {
+      const { playerStats } = await fetchMlb(date)
+      if (playerStats.length) await upsertMlb(playerStats, date, season)
+      results.push({ date, rowsUpserted: playerStats.length })
+    } catch (err) {
+      logger.error({ err, date }, 'MLB stat backfill failed for date')
+      results.push({ date, error: err.message })
+    }
+  }
+  res.json({ message: 'MLB stat backfill complete', results })
+})
+
 router.post('/recalculate-points', async (req, res) => {
   const results = await recalculateAllUserPoints()
   res.json({ message: `Recalculated points for ${results.length} users`, corrections: results })

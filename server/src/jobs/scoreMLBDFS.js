@@ -245,7 +245,7 @@ export async function fetchCompletedGameStats(date) {
 /**
  * Store MLB player stats and calculate fantasy points.
  */
-async function upsertPlayerStats(playerStats, date, season) {
+export async function upsertPlayerStats(playerStats, date, season) {
   if (!playerStats.length) return
 
   // Deduplicate by (espn_player_id, is_pitcher). Two-way players like
