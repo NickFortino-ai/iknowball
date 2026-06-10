@@ -140,17 +140,26 @@ export async function fetchCompletedGameStats(date) {
       continue
     }
 
-    // Extract batting + pitching stats from box score
+    // Extract batting + pitching stats from box score.
+    //
+    // ESPN's `statGroup.name` is actually null in the live response — the
+    // groups are only identifiable by their header columns (AB for
+    // batting, IP for pitching). Match by header. Track per-team whether
+    // we've already processed a batting / pitching group so that the
+    // occasional second season-splits group ESPN emits doesn't overwrite
+    // the real per-game row via the espnPlayerId dedup downstream.
     for (const team of boxScore.boxscore?.players || []) {
+      let battingProcessed = false
+      let pitchingProcessed = false
       for (const statGroup of team.statistics || []) {
         const headers = statGroup.labels || []
 
-        // Exact name match only — the AB/IP header fallback used to catch
-        // season-splits stat groups that ESPN occasionally emits alongside
-        // the real game group, overwriting good game stats with season
-        // totals via the espnPlayerId dedup downstream.
-        const isBattingGroup = statGroup.name === 'batting'
-        const isPitchingGroup = statGroup.name === 'pitching'
+        const looksBatting = statGroup.name === 'batting' || headers.includes('AB')
+        const looksPitching = statGroup.name === 'pitching' || headers.includes('IP')
+        const isBattingGroup = looksBatting && !battingProcessed
+        const isPitchingGroup = looksPitching && !pitchingProcessed
+        if (isBattingGroup) battingProcessed = true
+        if (isPitchingGroup) pitchingProcessed = true
 
         if (isBattingGroup) {
           for (const athlete of statGroup.athletes || []) {
