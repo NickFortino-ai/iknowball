@@ -571,13 +571,20 @@ router.post('/props/feature', async (req, res) => {
         : sportKey === 'basketball_nba' ? 'nba_dfs_salaries'
         : null
       if (salaryTable) {
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+        // Search the last 7 days of salary rows (not just today onward)
+        // — recent call-ups like Nick Kurtz showed up in yesterday's
+        // salary sync but the prop was featured pre-game when today's
+        // run hadn't happened yet. Wider window catches those without
+        // weakening the most-recent-first ordering below.
+        const sevenDaysAgo = new Date(Date.now() - 7 * 86400e3)
+          .toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
         const { data: salaryRows } = await supabase
           .from(salaryTable)
-          .select('player_name, headshot_url')
-          .gte('game_date', today)
+          .select('player_name, headshot_url, game_date')
+          .gte('game_date', sevenDaysAgo)
           .not('headshot_url', 'is', null)
-          .limit(500)
+          .order('game_date', { ascending: false })
+          .limit(1000)
         const norm = (n) => (n || '').toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim()
         const target = norm(prop.player_name)
         const match = (salaryRows || []).find((r) => norm(r.player_name) === target)

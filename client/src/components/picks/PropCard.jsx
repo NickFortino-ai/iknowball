@@ -95,7 +95,7 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
       </div>
 
       <div className="flex items-center gap-3">
-        {prop.player_headshot_url && (
+        {prop.player_headshot_url ? (
           <button onClick={() => setShowPlayerModal(true)} className="shrink-0 cursor-pointer">
             <img
               src={prop.player_headshot_url}
@@ -103,6 +103,11 @@ export default function PropCard({ prop, pick, onPick, onUndoPick, isSubmitting,
               className="w-20 h-20 rounded-full object-cover bg-bg-secondary"
             />
           </button>
+        ) : (
+          // Placeholder so the card layout stays consistent when the
+          // headshot lookup whiffed (e.g. recent call-up not yet in
+          // the ESPN roster cache or the DFS salary salary table).
+          <div className="shrink-0 w-20 h-20 rounded-full bg-bg-secondary" />
         )}
         <div className="flex gap-2 flex-1">
           <button
