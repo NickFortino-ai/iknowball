@@ -394,6 +394,42 @@ function ordinalSuffix(r) {
   return `${r}${last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th'}`
 }
 
+// Survivor bonus structure is tier-based, not rank-based — only the
+// winner earns points, scaled to league size. Mirrors the table logic
+// in survivorService.js (`winnerBonus`).
+const SURVIVOR_BONUS_TIERS = [
+  { min: 41, label: '41+ members', bonus: 100 },
+  { min: 31, max: 40, label: '31–40 members', bonus: 75 },
+  { min: 16, max: 30, label: '16–30 members', bonus: 50 },
+  { min: 11, max: 15, label: '11–15 members', bonus: 30 },
+  { min: 6,  max: 10, label: '6–10 members', bonus: 20 },
+  { min: 0,  max: 5,  label: '5 or fewer members', bonus: 10 },
+]
+
+function SurvivorBonusTable({ memberCount }) {
+  return (
+    <div className="mt-3 rounded-lg border border-border overflow-hidden">
+      <div className="px-3 py-1.5 bg-bg-secondary text-xs font-semibold text-text-secondary uppercase tracking-wider">
+        Winner Bonus by League Size
+      </div>
+      <div className="px-3 py-2 text-sm space-y-0.5">
+        {SURVIVOR_BONUS_TIERS.map((tier) => {
+          const inTier = memberCount >= tier.min && (tier.max == null || memberCount <= tier.max)
+          return (
+            <div key={tier.label} className={`flex justify-between py-0.5 ${inTier ? '' : 'opacity-50'}`}>
+              <span className={inTier ? 'text-text-primary font-semibold' : 'text-text-muted'}>{tier.label}</span>
+              <span className={inTier ? 'text-correct font-semibold' : 'text-text-muted'}>+{tier.bonus}</span>
+            </div>
+          )
+        })}
+      </div>
+      <div className="px-3 py-1.5 border-t border-border bg-bg-secondary text-[11px] text-text-muted">
+        Only the last survivor earns points — eliminated players don't lose anything from their global score.
+      </div>
+    </div>
+  )
+}
+
 function GlobalPointsTable({ memberCount, bonusForRank, footnote }) {
   if (!memberCount || memberCount < 2) return null
   const computeBonus = bonusForRank || ((rank, n) => (rank === 1 ? scaledWinnerBonusClient(n) : 0))
@@ -785,6 +821,16 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 const fFormat = fantasySettings?.format
                 const isMultiNight = (f === 'nba_dfs' || f === 'wnba_dfs' || f === 'mlb_dfs') && sType !== 'single_week'
                 const showTable = isMultiNight || f === 'hr_derby' || f === 'strikeouts' || f === 'three_point' || f === 'wnba_three_point' || f === 'sacks' || f === 'ints' || f === 'tackles' || f === 'receptions' || f === 'td_pass' || f === 'bracket' || f === 'fantasy'
+                if (f === 'survivor') {
+                  // Survivor uses tier-based winner bonus instead of the
+                  // rank-tiered table used by DFS / bracket / fantasy. Render
+                  // the dedicated SurvivorBonusTable showing the active tier.
+                  const distinct = Array.isArray(league.members)
+                    ? new Set(league.members.map((m) => m.user_id).filter(Boolean)).size
+                    : 0
+                  const n = distinct > 0 ? distinct : (league.member_count || 0)
+                  return <SurvivorBonusTable memberCount={n} />
+                }
                 if (!showTable) return null
                 // Prefer the actual member array; if the detail endpoint
                 // didn't include it (some flows skip it), fall back to
