@@ -307,14 +307,31 @@ export async function upsertPlayerStats(playerStats, date, season) {
     }
   })
 
-  const CHUNK = 200
+  // Try a chunked upsert first for speed. If it fails (typically a
+  // single bad row poisoning the whole chunk via duplicate conflict
+  // key or constraint violation), fall back to per-row so the good
+  // rows still land AND we learn which row was the offender. Without
+  // this fallback a single bad row silently strands the entire late
+  // half of a daily slate.
+  const CHUNK = 100
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK)
     const { error } = await supabase
       .from('mlb_dfs_player_stats')
       .upsert(chunk, { onConflict: 'espn_player_id,game_date,season' })
 
-    if (error) logger.error({ error, offset: i }, 'Failed to upsert MLB DFS player stats')
+    if (error) {
+      logger.error({ error: error.message || error, offset: i, chunkSize: chunk.length }, 'MLB stat chunk upsert failed — falling back to per-row')
+      for (const row of chunk) {
+        const { error: rowErr } = await supabase
+          .from('mlb_dfs_player_stats')
+          .upsert(row, { onConflict: 'espn_player_id,game_date,season' })
+        if (rowErr) {
+          logger.error({ error: rowErr.message || rowErr, row: { espn_player_id: row.espn_player_id, player_name: row.player_name, is_pitcher: row.is_pitcher } }, 'MLB stat row upsert failed')
+        }
+      }
+      continue
+    }
   }
 
   logger.info({ count: rows.length, date }, 'Upserted MLB DFS player stats')
