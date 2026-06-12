@@ -87,11 +87,25 @@ function calculateMLBFantasyPoints(stats) {
  * Exported so the player-prop live-score enrichment can fall back to a direct
  * ESPN fetch when the mlb_dfs_player_stats table isn't populated for today.
  */
+// Helper: timeout-bounded fetch. ESPN's endpoints sometimes hang for
+// minutes under load; without a bound, a single slow call can prevent
+// the rest of the scrape pass from running and leave the late games of
+// the slate unprocessed even though every cron tick reattempts them.
+async function timedFetch(url, timeoutMs = 8000) {
+  const ctrl = new AbortController()
+  const id = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    return await fetch(url, { signal: ctrl.signal })
+  } finally {
+    clearTimeout(id)
+  }
+}
+
 export async function fetchCompletedGameStats(date) {
   const dateStr = date.replace(/-/g, '')
   let events
   try {
-    const res = await fetch(`${ESPN_BASE}/baseball/mlb/scoreboard?dates=${dateStr}`)
+    const res = await timedFetch(`${ESPN_BASE}/baseball/mlb/scoreboard?dates=${dateStr}`)
     if (!res.ok) throw new Error(`ESPN returned ${res.status}`)
     const data = await res.json()
     events = data.events || []
@@ -99,6 +113,7 @@ export async function fetchCompletedGameStats(date) {
     logger.error({ err, date }, 'Failed to fetch ESPN MLB scoreboard for DFS scoring')
     return { playerStats: [], allFinal: false, hasGames: false }
   }
+  logger.info({ date, eventCount: events.length }, 'MLB scrape: scoreboard fetched')
 
   if (!events.length) return { playerStats: [], allFinal: true, hasGames: false }
 
@@ -129,16 +144,17 @@ export async function fetchCompletedGameStats(date) {
     const gameId = event.id
     let boxScore
     try {
-      const res = await fetch(`${ESPN_BASE}/baseball/mlb/summary?event=${gameId}`)
+      const res = await timedFetch(`${ESPN_BASE}/baseball/mlb/summary?event=${gameId}`)
       if (!res.ok) {
         logger.warn({ gameId, status: res.status, date }, 'ESPN MLB summary returned non-OK, skipping game')
         continue
       }
       boxScore = await res.json()
     } catch (err) {
-      logger.warn({ err, gameId, date }, 'ESPN MLB summary fetch threw, skipping game')
+      logger.warn({ err: err.name === 'AbortError' ? 'timeout' : err.message, gameId, date }, 'ESPN MLB summary fetch failed, skipping game')
       continue
     }
+    logger.info({ gameId, date }, 'MLB scrape: processing box score')
 
     // Extract batting + pitching stats from box score.
     //
