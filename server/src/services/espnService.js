@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js'
+import { stripAccents } from '../utils/name.js'
 
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports'
 
@@ -148,7 +149,13 @@ const playerHeadshotCaches = {}
 const cacheLastRefreshedTimes = {}
 
 function normalizePlayerName(name) {
-  return name.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim()
+  // Strip accents FIRST so "Jovana Nogić" → "Jovana Nogic" before the
+  // a-z filter (which would otherwise drop "ć" entirely and leave
+  // "jovana nogi", silently missing the lookup against the
+  // ASCII-spelled version of the same player). Then lowercase, strip
+  // punctuation (periods in "T.D.", apostrophes in "D'Angelo"), and
+  // collapse whitespace.
+  return stripAccents(name || '').toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim()
 }
 
 export async function refreshPlayerHeadshotCache(sportPath = 'basketball/nba') {
