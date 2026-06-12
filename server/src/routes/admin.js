@@ -504,7 +504,17 @@ router.post('/games/override', async (req, res) => {
   const { game_id, status, winner, home_score, away_score } = req.body
   if (!game_id || !status) return res.status(400).json({ error: 'game_id and status required' })
 
-  const update = { status }
+  // Fetch sport_id so the downstream pickem/league/parlay scoring chain
+  // (mirrored from scoreGames.js) has the same context it does on a
+  // normal cron-driven final.
+  const { data: gameRow } = await supabase
+    .from('games')
+    .select('id, sport_id')
+    .eq('id', game_id)
+    .single()
+  if (!gameRow) return res.status(404).json({ error: 'game not found' })
+
+  const update = { status, updated_at: new Date().toISOString() }
   if (winner !== undefined) update.winner = winner
   if (home_score !== undefined) update.home_score = home_score
   if (away_score !== undefined) update.away_score = away_score
@@ -513,7 +523,42 @@ router.post('/games/override', async (req, res) => {
   if (error) throw error
 
   logger.info({ game_id, update, admin: req.user.id }, 'Admin game status override')
-  res.json({ success: true })
+
+  // If the override is flipping the game to final with a winner, mirror
+  // the downstream-scoring chain that scoreGames runs after a normal
+  // finalization. Without this, a stuck-postponed game corrected via
+  // override leaves survivor / pickem / parlay / bracket picks unsettled.
+  const downstreamRan = { picks: false, parlays: false, survivor: false, leaguePicks: false, bracket: false }
+  if (status === 'final' && winner) {
+    try {
+      const { scoreCompletedGame, scoreParlayLegs } = await import('../services/scoringService.js')
+      const { scoreSurvivorPicks } = await import('../services/survivorService.js')
+      const { scoreLeaguePicks } = await import('../services/leaguePickService.js')
+      const { scoreBracketMatchups } = await import('../services/bracketService.js')
+      await scoreCompletedGame(game_id, winner, gameRow.sport_id); downstreamRan.picks = true
+      await scoreParlayLegs(game_id, winner); downstreamRan.parlays = true
+      await scoreSurvivorPicks(game_id, winner); downstreamRan.survivor = true
+      await scoreLeaguePicks(game_id, winner); downstreamRan.leaguePicks = true
+      // Bracket scoring needs team names + scores; only attempt if we
+      // have both. Falls through silently if not relevant.
+      if (home_score != null && away_score != null) {
+        const { data: g } = await supabase
+          .from('games')
+          .select('home_team, away_team, sports!inner(key)')
+          .eq('id', game_id)
+          .single()
+        if (g) {
+          await scoreBracketMatchups(g.home_team, g.away_team, winner, home_score, away_score, g.sports.key)
+          downstreamRan.bracket = true
+        }
+      }
+    } catch (err) {
+      logger.error({ err, game_id }, 'Admin override downstream scoring failed')
+      return res.json({ success: true, downstreamRan, error: err.message })
+    }
+  }
+
+  res.json({ success: true, downstreamRan })
 })
 
 // Props management
