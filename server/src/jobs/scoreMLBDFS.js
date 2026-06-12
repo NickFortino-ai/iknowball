@@ -307,7 +307,7 @@ export async function upsertPlayerStats(playerStats, date, season) {
 /**
  * Score all MLB DFS rosters for the given date.
  */
-async function scoreRosters(date, season, allFinal = false) {
+export async function scoreRosters(date, season, allFinal = false) {
   const { data: stats } = await supabase
     .from('mlb_dfs_player_stats')
     .select('espn_player_id, fantasy_points')

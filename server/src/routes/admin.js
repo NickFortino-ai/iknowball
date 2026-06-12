@@ -318,14 +318,27 @@ router.post('/backfill-mlb-stats', async (req, res) => {
   if (!Array.isArray(dates) || !dates.length) {
     return res.status(400).json({ error: 'dates array required (e.g. ["2026-06-08", "2026-06-09"])' })
   }
-  const { fetchCompletedGameStats: fetchMlb, upsertPlayerStats: upsertMlb } = await import('../jobs/scoreMLBDFS.js')
+  const {
+    fetchCompletedGameStats: fetchMlb,
+    upsertPlayerStats: upsertMlb,
+    scoreRosters: scoreMlbRosters,
+  } = await import('../jobs/scoreMLBDFS.js')
   const season = 2026
   const results = []
   for (const date of dates) {
     try {
-      const { playerStats } = await fetchMlb(date)
+      const { playerStats, allFinal } = await fetchMlb(date)
       if (playerStats.length) await upsertMlb(playerStats, date, season)
-      results.push({ date, rowsUpserted: playerStats.length })
+      // Stats alone don't update users' MLB DFS league standings —
+      // scoreRosters reads mlb_dfs_player_stats and writes
+      // points_earned per roster slot + roster total_points + nightly
+      // results. Call it here so the backfill fully closes the loop.
+      let rostersUpdated = false
+      if (playerStats.length) {
+        await scoreMlbRosters(date, season, allFinal)
+        rostersUpdated = true
+      }
+      results.push({ date, rowsUpserted: playerStats.length, rostersUpdated, allFinal })
     } catch (err) {
       logger.error({ err, date }, 'MLB stat backfill failed for date')
       results.push({ date, error: err.message })
