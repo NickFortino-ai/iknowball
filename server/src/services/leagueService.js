@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createTournament, getBracketStandings } from './bracketService.js'
 import { getLeaguePickStandings } from './leaguePickService.js'
+import { toSportsDay } from '../utils/sportsDay.js'
 
 /**
  * Check whether a league is still joinable based on its format and start date.
@@ -171,23 +172,26 @@ export async function assertLeagueJoinable(league) {
     return
   }
 
-  // Find the start date boundaries (midnight to midnight in ET)
-  // starts_at is stored as a date string like "2026-04-13" or ISO timestamp
-  const dateStr = startDate.toISOString().split('T')[0]
-  const dayStartET = new Date(`${dateStr}T04:00:00Z`) // midnight ET = 4 AM UTC
-  const dayEndET = new Date(`${dateStr}T04:00:00Z`)
-  dayEndET.setDate(dayEndET.getDate() + 1) // next midnight ET
+  // Find games played on the start date's PT calendar day. Anchor to PT
+  // (not ET) because a 10pm PT game lives on the PT-current day but the
+  // NEXT ET day, and would be excluded from an ET-bound window.
+  const dateStr = toSportsDay(startDate)
+  // Wide UTC window covering this PT day (PST=UTC-8, PDT=UTC-7), then
+  // filter precisely with toSportsDay below.
+  const dayStartUtc = new Date(`${dateStr}T06:00:00Z`)
+  const dayEndUtc = new Date(`${dateStr}T00:00:00Z`)
+  dayEndUtc.setUTCDate(dayEndUtc.getUTCDate() + 1)
+  dayEndUtc.setUTCHours(14)
 
-  // Get the last game on the start date for this sport
-  const { data: lastGame } = await supabase
+  const { data: dayGames } = await supabase
     .from('games')
     .select('starts_at')
     .eq('sport_id', sportRow.id)
-    .gte('starts_at', dayStartET.toISOString())
-    .lt('starts_at', dayEndET.toISOString())
+    .gte('starts_at', dayStartUtc.toISOString())
+    .lt('starts_at', dayEndUtc.toISOString())
     .order('starts_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+
+  const lastGame = (dayGames || []).find((g) => toSportsDay(g.starts_at) === dateStr) || null
 
   if (lastGame) {
     // Allow joining until the last game kicks off
