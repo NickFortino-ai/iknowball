@@ -960,16 +960,19 @@ export async function completeLeagues() {
     }
   }
 
-  // Find non-bracket leagues that are either past their end date OR approaching
-  // it within 24h (so we can complete early if all games are already final).
-  const earlyWindow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  // Find non-bracket leagues whose end date has actually passed. End date is
+  // strictly inclusive: a commissioner-chosen end date of June 13 means the
+  // league runs through end of June 13 PT (ends_at is stored as next day 10:00
+  // UTC = 3 AM PT). No early-completion shortcut — the previous 24h lookahead
+  // window let leagues close prematurely when the final day's games hadn't yet
+  // been synced into the `games` table (unfinished count=0 misread as "done").
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
     .in('format', ['pickem', 'fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
-    .lte('ends_at', earlyWindow)
+    .lte('ends_at', now)
 
   if (error) {
     logger.error({ error }, 'Failed to fetch leagues for completion')
@@ -1007,9 +1010,10 @@ export async function completeLeagues() {
           continue
         }
       } else {
-        const isPastEndDate = new Date(league.ends_at) <= new Date(now)
-
-        // Non-bracket leagues: check for unfinished games within the league's date range
+        // Non-bracket leagues: end date has already passed (gated by the fetch
+        // query above). Still skip if any games in the range are unfinished —
+        // covers rainout / postponement edge cases where a game's actual play
+        // date drifts past the league's calendar end.
         let sportId = null
         if (league.sport && league.sport !== 'all') {
           const { data: sportRow } = await supabase
@@ -1036,24 +1040,6 @@ export async function completeLeagues() {
         if (unfinished > 0) {
           logger.info({ leagueId: league.id, unfinished }, 'Skipping league completion — unfinished games remain')
           continue
-        }
-
-        // Early completion: if ends_at hasn't passed yet, only complete if there
-        // are actual final games in the range (avoid closing on an empty range)
-        if (!isPastEndDate) {
-          let totalQuery = supabase
-            .from('games')
-            .select('id', { count: 'exact', head: true })
-            .gte('starts_at', league.starts_at)
-            .lte('starts_at', league.ends_at)
-          if (sportId) totalQuery = totalQuery.eq('sport_id', sportId)
-          const { count: totalGames } = await totalQuery
-
-          if (!totalGames || totalGames === 0) {
-            logger.info({ leagueId: league.id }, 'Skipping early completion — no games in range yet')
-            continue
-          }
-          logger.info({ leagueId: league.id, totalGames }, 'Early completion — all games final before ends_at')
         }
       }
 
