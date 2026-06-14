@@ -1341,6 +1341,12 @@ async function checkSurvivorWinner(leagueId) {
       if (eliminated?.length) {
         const latestWeek = eliminated[0].eliminated_week
         const toRevive = eliminated.filter((m) => m.eliminated_week === latestWeek)
+        const leagueName = league?.name || 'Survivor'
+        const isDaily = league?.settings?.pick_frequency === 'daily'
+        const periodLabel = isDaily ? 'Day' : 'Week'
+        const displayPeriodNum = latestWeek != null
+          ? await getDisplayPeriodNumber(leagueId, latestWeek)
+          : '?'
 
         for (const m of toRevive) {
           await supabase
@@ -1361,6 +1367,15 @@ async function checkSurvivorWinner(leagueId) {
             .eq('league_id', leagueId)
             .eq('user_id', m.user_id)
             .eq('status', 'eliminated')
+
+          // Notify each revived member. Critical for the first-eliminated
+          // member of the round: their original eliminated notification
+          // was sent before this revival fired (their game scored first,
+          // alive count wasn't yet zero), so they'd otherwise be left
+          // staring at a misleading "you were eliminated" message.
+          await createNotification(m.user_id, 'survivor_result',
+            `Everyone lost ${periodLabel} ${displayPeriodNum} of ${leagueName} — you all survive! Pick again next round.`,
+            { leagueId })
         }
 
         logger.info({ leagueId, revived: toRevive.length }, 'All eliminated — all survive rule applied')
