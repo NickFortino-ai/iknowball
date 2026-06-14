@@ -96,46 +96,25 @@ export async function assertLeagueJoinable(league) {
     return // joinable
   }
 
-  // Survivor: per-period gate. Allow joining until the last game of the
-  // current/next period kicks off. Once the last game of the current
-  // period starts, the period is unpickable and we don't want late
-  // joiners getting unfair immunity for it.
+  // Survivor: strict join-gate. Once the first period begins, the pool is
+  // closed to new members — no exceptions. Late joiners would get unfair
+  // immunity for every period before they joined (the missed-pick
+  // elimination logic correctly skips periods that started before
+  // joined_at), so a Day-N joiner could outlast Day-1 members purely by
+  // showing up late. Block them at the door instead.
   if (league.format === 'survivor') {
-    const nowIso = new Date().toISOString()
-    const { data: nextPeriod } = await supabase
+    const { data: firstPeriod } = await supabase
       .from('league_weeks')
-      .select('id, starts_at, ends_at')
+      .select('starts_at')
       .eq('league_id', league.id)
-      .gt('ends_at', nowIso)
-      .order('starts_at', { ascending: true })
+      .order('week_number', { ascending: true })
       .limit(1)
       .maybeSingle()
-
-    if (!nextPeriod) {
-      const err = new Error('This league has no more pickable periods — closed to new members')
+    const firstStart = firstPeriod?.starts_at || league.starts_at
+    if (firstStart && new Date(firstStart) <= new Date()) {
+      const err = new Error('This survivor pool has already started — no new members can join')
       err.status = 400
       throw err
-    }
-
-    if (league.sport && league.sport !== 'all') {
-      const { data: sportRow } = await supabase.from('sports').select('id').eq('key', league.sport).single()
-      if (sportRow) {
-        const { data: lastGame } = await supabase
-          .from('games')
-          .select('starts_at')
-          .eq('sport_id', sportRow.id)
-          .gte('starts_at', nextPeriod.starts_at)
-          .lte('starts_at', nextPeriod.ends_at)
-          .order('starts_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        if (lastGame && new Date(lastGame.starts_at) <= new Date()) {
-          const err = new Error('The current period has already started — survivor pool is closed to new members until the next period')
-          err.status = 400
-          throw err
-        }
-      }
     }
     return
   }
