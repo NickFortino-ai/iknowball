@@ -311,6 +311,22 @@ router.post('/score-games', async (req, res) => {
   res.json({ message: 'Game scoring complete' })
 })
 
+// One-shot APNs diagnostic. POST { userId, message? } → fires a notification
+// via createNotification so the full push fanout (web push + APNs) runs.
+// Returns the created notification row so we can confirm it landed.
+router.post('/test-push', async (req, res) => {
+  const { userId, message } = req.body || {}
+  if (!userId) return res.status(400).json({ error: 'userId required' })
+  const { createNotification } = await import('../services/notificationService.js')
+  const note = await createNotification(
+    userId,
+    'survivor_result',
+    message || 'Test push from I KNOW BALL server',
+    {}
+  )
+  res.json({ ok: true, note })
+})
+
 // One-shot backfill for dates whose MLB stats got zeroed out by the
 // 2026-06-09 stat-group matcher regression. POST { dates: ['YYYY-MM-DD', ...] }.
 router.post('/backfill-mlb-stats', async (req, res) => {
