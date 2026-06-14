@@ -31,7 +31,10 @@ function getProvider() {
  */
 export async function sendApnsToUser(userId, title, body, url) {
   const p = getProvider()
-  if (!p) return
+  if (!p) {
+    logger.warn({ userId }, 'APNs send skipped — provider not configured')
+    return
+  }
 
   const { data: tokens, error } = await supabase
     .from('device_tokens')
@@ -43,7 +46,11 @@ export async function sendApnsToUser(userId, title, body, url) {
     logger.error({ error, userId }, 'Failed to fetch device tokens for APNs')
     return
   }
-  if (!tokens?.length) return
+  if (!tokens?.length) {
+    logger.info({ userId }, 'APNs send skipped — no iOS device tokens for user')
+    return
+  }
+  logger.info({ userId, tokenCount: tokens.length, production: env.APNS_PRODUCTION, bundleId: env.APNS_BUNDLE_ID }, 'APNs send: attempting')
 
   const note = new apn.Notification()
   note.alert = { title, body }
@@ -62,6 +69,7 @@ export async function sendApnsToUser(userId, title, body, url) {
     logger.error({ err, userId }, 'APNs send threw')
     return
   }
+  logger.info({ userId, sent: result.sent?.length || 0, failed: result.failed?.length || 0, failures: result.failed }, 'APNs send: completed')
 
   // Clean up unregistered tokens — Apple tells us when a device has
   // uninstalled the app or revoked notifications so we can stop sending.
