@@ -26,6 +26,10 @@ function getTrophyImage(memberCount, sport, leagueId) {
 
 const PICK_STYLES = {
   survived: 'bg-correct/20 text-correct border border-correct/30',
+  // survived_wrong = pick lost but all_eliminated_survive revived the user.
+  // Shares the amber treatment with "missed" — same semantic: still alive,
+  // but didn't actually win the period.
+  survived_wrong: 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30',
   eliminated: 'bg-incorrect/20 text-incorrect border border-incorrect/30',
   locked: 'bg-white/10 text-text-primary border border-white/20',
   pending: 'bg-white/10 text-text-primary border border-white/20',
