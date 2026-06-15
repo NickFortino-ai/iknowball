@@ -69,7 +69,10 @@ function formatRecordValue(record) {
       // like a raw point value.
       return `10 → ${Math.round(val / 10)}`
     case 'best_futures_hit':
-      return val > 0 ? `+${val}` : `${val}`
+      // Stored as American odds (e.g. +900). Display as IKB points
+      // (odds / 10 = profit on the 10-point risk), since the record book
+      // is otherwise a points-tracking document.
+      return `+${Math.round(val / 10)} pts`
     case 'biggest_parlay':
       return `10 → ${Math.round((val - 1) * 10)}`
     case 'great_climb':
@@ -84,9 +87,10 @@ function formatRecordValue(record) {
     case 'fewest_picks_to_goat':
       return `${val} picks`
     default:
-      // Per-sport futures hits
+      // Per-sport futures hits — same odds→points conversion as the all-time
+      // best_futures_hit case above.
       if (record.record_key.startsWith('best_futures_hit_')) {
-        return val > 0 ? `+${val}` : `${val}`
+        return `+${Math.round(val / 10)} pts`
       }
       return `${val}`
   }
