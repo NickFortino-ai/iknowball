@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { supabase } from '../config/supabase.js'
+import { logger } from '../utils/logger.js'
 import { requireAuth } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import {
@@ -492,6 +493,9 @@ const deviceTokenSchema = z.object({
 })
 router.post('/me/device-token', requireAuth, validate(deviceTokenSchema), async (req, res) => {
   const { token, platform } = req.validated
+  // Temporary diagnostic log — root-cause investigation for APNs phone delivery.
+  // Remove once we've confirmed the auth race fix is delivering tokens reliably.
+  logger.info({ userId: req.user.id, platform, tokenSuffix: token.slice(-8) }, 'device-token POST received')
   const { error } = await supabase
     .from('device_tokens')
     .upsert(
