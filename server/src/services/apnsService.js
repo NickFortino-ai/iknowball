@@ -13,15 +13,21 @@ function getProvider() {
     logger.warn('APNs env not configured — native push disabled')
     return null
   }
-  provider = new apn.Provider({
-    token: {
-      key: env.APNS_KEY,
-      keyId: env.APNS_KEY_ID,
-      teamId: env.APNS_TEAM_ID,
-    },
-    production: env.APNS_PRODUCTION,
-  })
-  return provider
+  try {
+    provider = new apn.Provider({
+      token: {
+        key: env.APNS_KEY,
+        keyId: env.APNS_KEY_ID,
+        teamId: env.APNS_TEAM_ID,
+      },
+      production: env.APNS_PRODUCTION,
+    })
+    logger.info({ keyId: env.APNS_KEY_ID, teamId: env.APNS_TEAM_ID, production: env.APNS_PRODUCTION, keyLength: env.APNS_KEY?.length, keyStartsWith: env.APNS_KEY?.slice(0, 40), keyHasLiteralBackslashN: env.APNS_KEY?.includes('\\n') }, 'APNs provider initialized')
+    return provider
+  } catch (err) {
+    logger.error({ err: err.message, stack: err.stack, keyLength: env.APNS_KEY?.length, keyStartsWith: env.APNS_KEY?.slice(0, 40), keyHasLiteralBackslashN: env.APNS_KEY?.includes('\\n') }, 'APNs provider construction threw')
+    return null
+  }
 }
 
 /**
