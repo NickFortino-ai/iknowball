@@ -19,7 +19,12 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
               <th className="px-3 py-3 text-right font-medium w-20">Points</th>
               {!isCompleted && <th className="px-3 py-3 text-right font-medium w-20">Possible</th>}
               {hasActualScore && (
-                <th className="px-3 py-3 text-right font-medium w-16">TB</th>
+                <th
+                  className="px-3 py-3 text-right font-medium w-16"
+                  title="Tiebreaker — distance from your championship total guess to the actual total. Lower is better."
+                >
+                  TB
+                </th>
               )}
             </tr>
           </thead>
@@ -67,7 +72,9 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
                         distance === 0 ? (
                           <span className="text-correct font-semibold">Exact!</span>
                         ) : (
-                          <span className="text-text-secondary">+{distance}</span>
+                          <span className="text-text-secondary" title={`Off by ${distance} from the actual championship total`}>
+                            {distance}
+                          </span>
                         )
                       ) : (
                         <span className="text-text-muted">-</span>
