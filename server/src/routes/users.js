@@ -491,20 +491,33 @@ const deviceTokenSchema = z.object({
   token: z.string().min(10).max(500),
   platform: z.enum(['ios', 'android']),
 })
-router.post('/me/device-token', requireAuth, validate(deviceTokenSchema), async (req, res) => {
-  const { token, platform } = req.validated
-  // Temporary diagnostic log — root-cause investigation for APNs phone delivery.
-  // Remove once we've confirmed the auth race fix is delivering tokens reliably.
-  logger.info({ userId: req.user.id, platform, tokenSuffix: token.slice(-8) }, 'device-token POST received')
-  const { error } = await supabase
-    .from('device_tokens')
-    .upsert(
-      { user_id: req.user.id, token, platform, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id,token' }
-    )
-  if (error) throw error
-  res.status(204).end()
-})
+router.post(
+  '/me/device-token',
+  // Pre-auth diagnostic — fires BEFORE requireAuth so a 401 still shows up
+  // in the logs. Lets us distinguish "POST didn't happen at all" (no log)
+  // from "POST happened but auth failed" (this log appears, but the
+  // post-auth log below doesn't).
+  (req, res, next) => {
+    logger.info({ hasAuthHeader: !!req.headers.authorization }, 'device-token POST hit (pre-auth)')
+    next()
+  },
+  requireAuth,
+  validate(deviceTokenSchema),
+  async (req, res) => {
+    const { token, platform } = req.validated
+    // Post-auth diagnostic. If this appears alongside pre-auth, the request
+    // made it through and the upsert ran.
+    logger.info({ userId: req.user.id, platform, tokenSuffix: token.slice(-8) }, 'device-token POST received (post-auth)')
+    const { error } = await supabase
+      .from('device_tokens')
+      .upsert(
+        { user_id: req.user.id, token, platform, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,token' }
+      )
+    if (error) throw error
+    res.status(204).end()
+  }
+)
 
 // Deregister a device token. Called by the client on logout so we don't
 // keep pushing to a device that's no longer signed in.
