@@ -945,14 +945,22 @@ export async function completeLeagues() {
   if (seasonDates?.length) {
     const CLAMP_EXCLUDED = ['squares', 'bracket', 'survivor']
     for (const sd of seasonDates) {
+      // See admin.js POST /season-dates for the design notes — same logic.
+      // playoff_ends_at SET → sweep all formats. NOT set → only full_season.
+      // starts_at gate prevents stale rows from killing offseason leagues.
       const clampTarget = sd.playoff_ends_at || sd.regular_season_ends_at
-      const { data: overdue } = await supabase
+      const isPlayoffClamp = !!sd.playoff_ends_at
+      let overdueQuery = supabase
         .from('leagues')
         .select('id, format')
         .eq('sport', sd.sport_key)
-        .eq('duration', 'full_season')
         .neq('status', 'completed')
         .gt('ends_at', clampTarget)
+        .lte('starts_at', clampTarget)
+      if (!isPlayoffClamp) {
+        overdueQuery = overdueQuery.eq('duration', 'full_season')
+      }
+      const { data: overdue } = await overdueQuery
 
       if (!overdue?.length) continue
       for (const league of overdue) {

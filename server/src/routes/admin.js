@@ -1755,23 +1755,34 @@ router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message })
 
-  // Clamp full_season leagues in this sport. Two modes:
-  // - playoff_ends_at not set: leagues past regular_season_ends_at get
-  //   clamped to regular_season_ends_at (legacy behavior).
-  // - playoff_ends_at set: only leagues past playoff_ends_at get clamped,
-  //   to playoff_ends_at. Leagues ending between regular-season-end and
-  //   playoff-end are left alone since we can't tell if they were meant
-  //   to be regular-season-bound (mis-set) or playoff-extended (correct).
-  //   Admin owns that decision.
+  // Clamp leagues in this sport whose end date falls past the season-end
+  // signal. Two modes:
+  // - playoff_ends_at SET: sweep every league (any duration) ending past
+  //   playoff_ends_at. Custom-range contests tied to the season (3-point
+  //   contest, HR Derby, all-star events, etc.) should end when the
+  //   playoffs do — same impetus as full_season leagues.
+  // - playoff_ends_at NOT set: conservative — only full_season leagues
+  //   get clamped to regular_season_ends_at. Without a playoff signal we
+  //   can't tell whether a custom-range league was meant to be
+  //   regular-season-bound (mis-set) or playoff-extended (correct).
+  //
+  // Both modes additionally require `starts_at <= clampTarget` so a brand
+  // new offseason league (created AFTER the season ended) doesn't get
+  // swept up by stale season_dates rows.
   const clampTarget = playoff_ends_at || regular_season_ends_at
+  const isPlayoffClamp = !!playoff_ends_at
   const EXCLUDED_FORMATS = ['fantasy', 'squares', 'bracket', 'survivor']
-  const { data: leagues, error: leagueErr } = await supabase
+  let leagueQuery = supabase
     .from('leagues')
     .select('id, format, ends_at')
     .eq('sport', sport_key)
-    .eq('duration', 'full_season')
     .neq('status', 'completed')
     .gt('ends_at', clampTarget)
+    .lte('starts_at', clampTarget)
+  if (!isPlayoffClamp) {
+    leagueQuery = leagueQuery.eq('duration', 'full_season')
+  }
+  const { data: leagues, error: leagueErr } = await leagueQuery
 
   if (!leagueErr && leagues?.length) {
     let clamped = 0
