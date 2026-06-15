@@ -1,4 +1,5 @@
 import FeedCardWrapper from './FeedCardWrapper'
+import { formatRecordValue, formatRecordPreviousValue } from '../../lib/recordFormat'
 
 export default function RecordFeedCard({ item, reactions, onUserTap, onRecordTap }) {
   const { record } = item
@@ -24,10 +25,10 @@ export default function RecordFeedCard({ item, reactions, onUserTap, onRecordTap
       >
         <div className="font-semibold text-sm">{record.display_name}</div>
         <div className="flex items-center gap-2 mt-1 text-xs">
-          <span className="text-yellow-500 font-bold">{record.new_value}</span>
+          <span className="text-yellow-500 font-bold">{formatRecordValue(record)}</span>
           {record.previous_value != null && (
             <>
-              <span className="text-text-muted">was {record.previous_value}</span>
+              <span className="text-text-muted">was {formatRecordPreviousValue(record, record.previous_value)}</span>
               {record.previous_holder_username && (
                 <span className="text-text-muted">by @{record.previous_holder_username}</span>
               )}

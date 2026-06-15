@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { lockScroll, unlockScroll } from '../../lib/scrollLock'
 import { useRecordDetail } from '../../hooks/useRecords'
+import { formatRecordValue } from '../../lib/recordFormat'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
 function formatDate(dateStr) {
@@ -208,7 +209,13 @@ export default function RecordDetailModal({ recordHistoryId, onClose }) {
   if (!recordHistoryId) return null
 
   const displayName = data?.record?.records?.display_name || 'Record'
-  const newValue = data?.record?.new_value
+  const newValueRaw = data?.record?.new_value
+  // record_key lives on the joined `records` row; we need it for the formatter
+  // so e.g. futures odds render as IKB points instead of raw odds (+900 → +90 pts).
+  const recordKey = data?.record?.records?.record_key
+  const newValue = newValueRaw != null
+    ? formatRecordValue({ record_key: recordKey, new_value: newValueRaw })
+    : newValueRaw
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center px-0 md:px-4" onClick={onClose}>

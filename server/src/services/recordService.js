@@ -26,7 +26,8 @@ function formatRecordValue(recordKey, val) {
     case 'biggest_underdog_hit':
       return `10 → ${Math.round(val / 10)}`
     case 'best_futures_hit':
-      return val > 0 ? `+${val}` : `${val}`
+      // Stored as American odds; display as IKB points (odds / 10).
+      return `+${Math.round(val / 10)} pts`
     case 'biggest_parlay':
       return `10 → ${Math.round((val - 1) * 10)}`
     case 'great_climb':
@@ -42,7 +43,7 @@ function formatRecordValue(recordKey, val) {
       return `${val} picks`
     default:
       if (recordKey.startsWith('best_futures_hit_')) {
-        return val > 0 ? `+${val}` : `${val}`
+        return `+${Math.round(val / 10)} pts`
       }
       return `${val}`
   }

@@ -9,6 +9,7 @@ import Avatar from '../components/ui/Avatar'
 import GameCard from '../components/picks/GameCard'
 import ParlayCard from '../components/picks/ParlayCard'
 import FuturesPickCard from '../components/picks/FuturesPickCard'
+import { formatRecordValue } from '../lib/recordFormat'
 
 const CATEGORY_ORDER = ['streak', 'single_pick', 'percentage', 'efficiency', 'climb']
 
@@ -52,48 +53,6 @@ const TAPPABLE_FUTURES_RECORDS = ['best_futures_hit']
 
 function hasDetailCard(recordKey) {
   return TAPPABLE_PICK_RECORDS.includes(recordKey) || TAPPABLE_PARLAY_RECORDS.includes(recordKey) || TAPPABLE_FUTURES_RECORDS.includes(recordKey)
-}
-
-function formatRecordValue(record) {
-  const val = record.record_value
-  if (val == null) return '--'
-
-  switch (record.record_key) {
-    case 'highest_prop_pct':
-    case 'biggest_dog_lover':
-    case 'highest_overall_win_pct':
-      return `${val}%`
-    case 'biggest_underdog_hit':
-      // American odds (+750) reframed as profit-on-$10-stake so it reads
-      // the same way as biggest_parlay (risk → payout) instead of looking
-      // like a raw point value.
-      return `10 → ${Math.round(val / 10)}`
-    case 'best_futures_hit':
-      // Stored as American odds (e.g. +900). Display as IKB points
-      // (odds / 10 = profit on the 10-point risk), since the record book
-      // is otherwise a points-tracking document.
-      return `+${Math.round(val / 10)} pts`
-    case 'biggest_parlay':
-      return `10 → ${Math.round((val - 1) * 10)}`
-    case 'great_climb':
-      return `${val} spots`
-    case 'most_parlay_legs':
-      return `${val} legs`
-    case 'longest_crown_tenure':
-      return `${val} days`
-    case 'fewest_picks_to_baller':
-    case 'fewest_picks_to_elite':
-    case 'fewest_picks_to_hof':
-    case 'fewest_picks_to_goat':
-      return `${val} picks`
-    default:
-      // Per-sport futures hits — same odds→points conversion as the all-time
-      // best_futures_hit case above.
-      if (record.record_key.startsWith('best_futures_hit_')) {
-        return `+${Math.round(val / 10)} pts`
-      }
-      return `${val}`
-  }
 }
 
 function PickDetailCard({ pickId }) {
