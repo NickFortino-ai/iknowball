@@ -155,8 +155,16 @@ const DAILY_ELIGIBLE_SPORTS = new Set(['basketball_nba', 'basketball_ncaab', 'ba
 
 function toDateInputValue(isoStr) {
   if (!isoStr) return ''
-  const d = new Date(isoStr)
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+  // Stored end dates use "end of sports day PT" — next-day 10:00 UTC
+  // (= 3 AM PT next day). UTC getters would show that next day, not the
+  // commissioner-picked date. Shift back 12h so both that convention AND
+  // noon-PT-anchored start dates land squarely in the picked PT day, then
+  // format in the PT calendar.
+  const d = new Date(new Date(isoStr).getTime() - 12 * 60 * 60 * 1000)
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d)
 }
 
 const DURATION_OPTIONS = [
