@@ -923,9 +923,24 @@ export async function completeLeagues() {
   // Clamp full_season leagues to season end dates (if admin has set them).
   // When playoff_ends_at is set, that's the ceiling (so playoff-extended
   // leagues are honored); otherwise regular_season_ends_at is the ceiling.
-  const { data: seasonDates } = await supabase
+  //
+  // Only consider the LATEST season_year per sport. Old rows (e.g. last
+  // year's playoff_ends_at) are historical — if we applied them, a brand
+  // new next-season league with a future ends_at would match the old
+  // row's `ends_at > clampTarget` filter and get clamped back into the
+  // past, ending the league instantly. Keep one row per sport.
+  const { data: allSeasonDates } = await supabase
     .from('season_dates')
-    .select('sport_key, regular_season_ends_at, playoff_ends_at')
+    .select('sport_key, season_year, regular_season_ends_at, playoff_ends_at')
+    .order('season_year', { ascending: false })
+
+  const latestSeasonDatesPerSport = new Map()
+  for (const sd of allSeasonDates || []) {
+    if (!latestSeasonDatesPerSport.has(sd.sport_key)) {
+      latestSeasonDatesPerSport.set(sd.sport_key, sd)
+    }
+  }
+  const seasonDates = [...latestSeasonDatesPerSport.values()]
 
   if (seasonDates?.length) {
     const CLAMP_EXCLUDED = ['squares', 'bracket', 'survivor']
