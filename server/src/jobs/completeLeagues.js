@@ -1066,6 +1066,28 @@ export async function completeLeagues() {
         }
       }
 
+      // Atomic claim: flip status from 'active' to 'completed' BEFORE the
+      // format-specific scoring runs. Concurrent completeLeagues calls (the
+      // 15-min cron + the inline background call from POST /admin/season-dates)
+      // could otherwise both see status='active', both run awardPositionBasedPoints,
+      // both insert bonus_points rows, both call increment_user_points → double-credit.
+      // The conditional `.eq('status', 'active')` ensures only one process wins.
+      const { data: claimed, error: claimErr } = await supabase
+        .from('leagues')
+        .update({ status: 'completed', updated_at: new Date().toISOString() })
+        .eq('id', league.id)
+        .eq('status', 'active')
+        .select('id')
+
+      if (claimErr) {
+        logger.error({ err: claimErr, leagueId: league.id }, 'Failed to claim league for completion')
+        continue
+      }
+      if (!claimed?.length) {
+        logger.info({ leagueId: league.id }, 'Skipping league completion — already claimed by another process')
+        continue
+      }
+
       if (league.format === 'pickem') {
         await awardLeaguePickPoints(league)
       } else if (league.format === 'bracket') {
