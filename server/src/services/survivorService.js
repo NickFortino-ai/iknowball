@@ -909,6 +909,16 @@ export async function autoEliminateMissedPicks() {
       continue
     }
 
+    // Per-league safety net: re-check for a sole survivor every pass,
+    // independent of week processing. checkSurvivorWinner is otherwise
+    // only called at the end of each successfully-processed week below
+    // — meaning if a deciding game's `scoreSurvivorPicks` errored, or a
+    // postponed game in the period keeps `allFinal=false`, the league
+    // can stay 'active' forever after a clear winner has emerged. This
+    // safety net is cheap (a few SELECTs per league per 15 min) and
+    // ensures every survivor league self-heals.
+    await checkSurvivorWinner(league.id)
+
     const isDaily = league.settings?.pick_frequency === 'daily'
     const periodLabel = isDaily ? 'Day' : 'Week'
 
@@ -1164,7 +1174,7 @@ export async function settleSurvivorLeague(leagueId, userId) {
   return { points: bonusEntry.points, outlasted }
 }
 
-export async function checkSurvivorWinner(leagueId) {
+async function checkSurvivorWinner(leagueId) {
   const { data: aliveMembers } = await supabase
     .from('league_members')
     .select('user_id')

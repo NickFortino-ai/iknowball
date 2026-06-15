@@ -311,20 +311,6 @@ router.post('/score-games', async (req, res) => {
   res.json({ message: 'Game scoring complete' })
 })
 
-// Manually re-trigger checkSurvivorWinner for a survivor league. Used when
-// the sole-survivor check was deferred for a reason that's since resolved
-// (e.g. an old future-period pre-pick blocked declaration; the check now
-// filters those out, but existing stuck leagues need a manual nudge instead
-// of waiting for the next natural scoreSurvivorPicks call).
-// POST { leagueId }
-router.post('/recheck-survivor-winner', async (req, res) => {
-  const { leagueId } = req.body || {}
-  if (!leagueId) return res.status(400).json({ error: 'leagueId required' })
-  const { checkSurvivorWinner } = await import('../services/survivorService.js')
-  await checkSurvivorWinner(leagueId)
-  res.json({ ok: true })
-})
-
 // One-shot APNs diagnostic. POST { userId, message? } → fires a notification
 // via createNotification so the full push fanout (web push + APNs) runs.
 // Returns the created notification row so we can confirm it landed.
