@@ -1795,6 +1795,15 @@ router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
     logger.info({ sportKey: sport_key, seasonYear: season_year, clamped, total: leagues.length, clampTarget, mode: playoff_ends_at ? 'playoff' : 'regular' }, 'Clamped full_season league end dates')
   }
 
+  // Background-trigger completeLeagues so freshly-clamped leagues finalize
+  // right away (award points, send notifications, mark status=completed)
+  // instead of waiting up to 15 min for the next cron tick. Fire-and-forget
+  // — admin gets the response immediately; leagues complete in the
+  // background within a few seconds.
+  import('../jobs/completeLeagues.js').then(({ completeLeagues }) => {
+    completeLeagues().catch((err) => logger.error({ err }, 'Background completeLeagues after season_dates update failed'))
+  })
+
   res.json(data)
 })
 

@@ -16,6 +16,18 @@ const SPORT_OPTIONS = [
   { key: 'americanfootball_ufl', label: 'UFL' },
 ]
 
+// "End of today PT" as an ISO timestamp, in the same convention used by
+// parseEndDate on the server: next day 10:00 UTC = 3 AM PT next day.
+// Anything before this moment is "today PT or earlier" — the right cap
+// for "playoffs just ended, close out the leagues."
+function endOfTodayPtIso() {
+  const ptDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+  const d = new Date(`${ptDateStr}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  d.setUTCHours(10, 0, 0, 0)
+  return d.toISOString()
+}
+
 export default function SeasonDatesPanel() {
   const qc = useQueryClient()
   const { data: seasonDates, isLoading } = useQuery({
@@ -58,6 +70,19 @@ export default function SeasonDatesPanel() {
       season_year: Number(seasonYear),
       regular_season_ends_at: new Date(endsAt).toISOString(),
       playoff_ends_at: playoffEndsAt ? new Date(playoffEndsAt).toISOString() : null,
+    })
+  }
+
+  function handleMarkPlayoffsEnded(sd) {
+    const label = SPORT_OPTIONS.find((s) => s.key === sd.sport_key)?.label || sd.sport_key
+    if (!confirm(`Mark ${label} playoffs as ended (today)?\n\nAll full_season ${label} leagues with end dates beyond today will be clamped to today and completed within seconds.`)) {
+      return
+    }
+    saveMutation.mutate({
+      sport_key: sd.sport_key,
+      season_year: sd.season_year,
+      regular_season_ends_at: sd.regular_season_ends_at,
+      playoff_ends_at: endOfTodayPtIso(),
     })
   }
 
@@ -145,6 +170,14 @@ export default function SeasonDatesPanel() {
                     </div>
                   )}
                 </div>
+                <button
+                  onClick={() => handleMarkPlayoffsEnded(sd)}
+                  disabled={saveMutation.isPending}
+                  className="text-xs bg-accent/20 hover:bg-accent/30 text-accent border border-accent/40 rounded-lg px-3 py-1.5 font-semibold transition-colors disabled:opacity-50"
+                  title="Set playoff end to today and close out all full_season leagues for this sport"
+                >
+                  Mark playoffs ended
+                </button>
                 <button
                   onClick={() => deleteMutation.mutate(sd.id)}
                   className="text-xs text-incorrect hover:underline"
