@@ -1164,7 +1164,7 @@ export async function settleSurvivorLeague(leagueId, userId) {
   return { points: bonusEntry.points, outlasted }
 }
 
-async function checkSurvivorWinner(leagueId) {
+export async function checkSurvivorWinner(leagueId) {
   const { data: aliveMembers } = await supabase
     .from('league_members')
     .select('user_id')
@@ -1193,20 +1193,24 @@ async function checkSurvivorWinner(leagueId) {
   if (aliveMembers.length === 1 && !bonusExists) {
     const winnerId = aliveMembers[0].user_id
 
-    // Don't declare a winner if their current pick is still unsettled. A pick
-    // can be 'pending' (game not started) or 'locked' (game in progress) —
-    // both mean the outcome is still TBD. Only 'survived' or 'survived_wrong'
-    // means the pick is resolved in the winner's favor.
+    // Don't declare a winner if their current-or-past pick is still unsettled.
+    // 'pending' / 'locked' picks in periods that have ALREADY STARTED mean the
+    // outcome is genuinely TBD. But pre-emptive picks for future periods
+    // (e.g. user picked Day 9 the night Day 8 settled) shouldn't block a
+    // winner declaration — the league is over and those picks will be
+    // cleaned up below. Filter to started periods only.
+    const nowIso = new Date().toISOString()
     const { data: unsettledPicks } = await supabase
       .from('survivor_picks')
-      .select('id')
+      .select('id, league_weeks!inner(starts_at)')
       .eq('league_id', leagueId)
       .eq('user_id', winnerId)
       .in('status', ['pending', 'locked'])
+      .lte('league_weeks.starts_at', nowIso)
       .limit(1)
 
     if (unsettledPicks?.length > 0) {
-      logger.info({ leagueId, winnerId }, 'Last survivor standing has unsettled pick — waiting before declaring winner')
+      logger.info({ leagueId, winnerId }, 'Last survivor standing has unsettled pick in a started period — waiting before declaring winner')
       return
     }
 
