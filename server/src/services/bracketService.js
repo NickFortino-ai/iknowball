@@ -47,9 +47,28 @@ export async function getTemplates(filters = {}) {
     query = query.eq('sport', filters.sport)
   }
 
-  const { data, error } = await query
+  const { data: templates, error } = await query
   if (error) throw error
-  return data || []
+  if (!templates?.length) return []
+
+  // Annotate each template with whether the championship total has been
+  // entered. Sourced from bracket_tournaments (one per league using the
+  // template) — admin's "Save championship total" propagates to every
+  // tournament row, so any non-null row means the template has been
+  // finalized for at least one league.
+  const templateIds = templates.map((t) => t.id)
+  const { data: tournamentsWithScore } = await supabase
+    .from('bracket_tournaments')
+    .select('template_id')
+    .in('template_id', templateIds)
+    .not('championship_total_score', 'is', null)
+
+  const finalizedSet = new Set((tournamentsWithScore || []).map((t) => t.template_id))
+
+  return templates.map((t) => ({
+    ...t,
+    championship_score_set: finalizedSet.has(t.id),
+  }))
 }
 
 export async function getTemplateDetails(templateId) {

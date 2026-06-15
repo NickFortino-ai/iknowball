@@ -110,10 +110,17 @@ export default function BracketTemplateManager() {
       ) : (
         <div className="space-y-2">
           {templates.map((t) => (
-            <div key={t.id} className="bg-bg-card rounded-xl border border-border p-4">
+            <div key={t.id} className={`rounded-xl border p-4 ${t.championship_score_set ? 'bg-correct/5 border-correct/30' : 'bg-bg-card border-border'}`}>
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-sm">{t.name}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="font-semibold text-sm">{t.name}</div>
+                    {t.championship_score_set && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-correct/20 text-correct border border-correct/40">
+                        Finalized
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
                     <span className="text-accent font-semibold">
                       {SPORT_LABELS[t.sport]}
