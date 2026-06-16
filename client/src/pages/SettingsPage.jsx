@@ -168,6 +168,7 @@ export default function SettingsPage() {
   const [youtubeHandle, setYoutubeHandle] = useState('')
   const [venmoHandle, setVenmoHandle] = useState('')
   const [threadsHandle, setThreadsHandle] = useState('')
+  const [facebookHandle, setFacebookHandle] = useState('')
   const [backdropImage, setBackdropImage] = useState('')
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
@@ -202,6 +203,7 @@ export default function SettingsPage() {
       setYoutubeHandle(profile.youtube_handle || '')
       setVenmoHandle(profile.venmo_handle || '')
       setThreadsHandle(profile.threads_handle || '')
+      setFacebookHandle(profile.facebook_handle || '')
       setBackdropImage(profile.backdrop_image || '')
       // push_preferences now owned by NotificationPreferences component
     }
@@ -246,6 +248,7 @@ export default function SettingsPage() {
     youtubeHandle !== (profile.youtube_handle || '') ||
     venmoHandle !== (profile.venmo_handle || '') ||
     threadsHandle !== (profile.threads_handle || '') ||
+    facebookHandle !== (profile.facebook_handle || '') ||
     backdropImage !== (profile.backdrop_image || '') ||
     customBackdropFile !== null
   )
@@ -267,6 +270,7 @@ export default function SettingsPage() {
         youtube_handle: strip(youtubeHandle),
         venmo_handle: strip(venmoHandle),
         threads_handle: strip(threadsHandle),
+        facebook_handle: strip(facebookHandle),
         backdrop_image: backdropImage || null,
       })
       // Upload custom backdrop if selected
@@ -570,6 +574,7 @@ export default function SettingsPage() {
             { label: 'YouTube', value: youtubeHandle, set: setYoutubeHandle, placeholder: 'handle' },
             { label: 'Snapchat', value: snapchatHandle, set: setSnapchatHandle, placeholder: 'username' },
             { label: 'Threads', value: threadsHandle, set: setThreadsHandle, placeholder: 'username' },
+            { label: 'Facebook', value: facebookHandle, set: setFacebookHandle, placeholder: 'username' },
             { label: 'Venmo', value: venmoHandle, set: setVenmoHandle, placeholder: 'username' },
           ].map((s) => (
             <div key={s.label} className="flex items-center gap-3">

@@ -32,6 +32,7 @@ const CATEGORIES = [
       { key: 'survivor_result', label: 'Survivor daily results' },
       { key: 'survivor_pick_reminder', label: 'Survivor pick reminders' },
       { key: 'league_report', label: 'League reports' },
+      { key: 'bracket_published', label: 'Bracket published' },
     ],
   },
   {
@@ -43,7 +44,8 @@ const CATEGORIES = [
   {
     label: 'Reminders',
     types: [
-      { key: 'nfl_injury_warning', label: 'NFL injury warnings' },
+      { key: 'roster_reminder', label: 'Set your lineup reminders' },
+      { key: 'nfl_injury_warning', label: 'Injury warnings' },
     ],
   },
   {
@@ -55,6 +57,7 @@ const CATEGORIES = [
   {
     label: 'Fantasy football',
     types: [
+      { key: 'fantasy_draft_starting_soon', label: 'Draft starting soon' },
       { key: 'fantasy_trade_proposed', label: 'Trade proposed' },
       { key: 'fantasy_trade_accepted', label: 'Trade accepted' },
       { key: 'fantasy_trade_declined', label: 'Trade declined' },
