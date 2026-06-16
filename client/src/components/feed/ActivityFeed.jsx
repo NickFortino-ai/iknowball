@@ -382,18 +382,32 @@ function FeedCard({ item, getReactions, onUserTap, onStreakTap, onH2HTap, onReco
         />
       )
     case 'league_win':
-      return <LeagueWinFeedCard item={item} onUserTap={onUserTap} />
+      return (
+        <LeagueWinFeedCard
+          item={item}
+          reactions={getReactions('league_win', item.id)}
+          onUserTap={onUserTap}
+        />
+      )
     default:
       return null
   }
 }
 
-function LeagueWinFeedCard({ item, onUserTap }) {
+function LeagueWinFeedCard({ item, reactions, onUserTap }) {
   const { league_win } = item
   const formatLabel = league_win.format === 'bracket' ? 'bracket' : league_win.format === 'survivor' ? 'survivor pool' : 'league'
 
   return (
-    <FeedCardWrapper item={item} onUserTap={onUserTap} borderColor="gold">
+    <FeedCardWrapper
+      item={item}
+      onUserTap={onUserTap}
+      borderColor="gold"
+      targetType="league_win"
+      targetId={item.id}
+      reactions={reactions}
+      commentCount={item.commentCount}
+    >
       <div className="text-center space-y-2 py-2">
         <div className="text-3xl">{'\uD83C\uDFC6'}</div>
         <div className="text-sm font-semibold text-correct">

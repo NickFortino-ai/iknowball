@@ -1630,6 +1630,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
       return { key: `head_to_head-${item.id}`, target_type: 'head_to_head', target_id: item.id }
     } else if (item.type === 'hot_take_reminder') {
       return { key: `hot_take_reminder-${item.id}`, target_type: 'hot_take_reminder', target_id: item.id }
+    } else if (item.type === 'league_win' && item.id) {
+      return { key: `league_win-${item.id}`, target_type: 'league_win', target_id: item.id }
     }
     return null
   }

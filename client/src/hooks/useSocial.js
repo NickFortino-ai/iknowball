@@ -42,6 +42,7 @@ const COMMENT_ROUTES = {
   hot_take_reminder: (id) => `/social/hot-take-reminders/${id}/comments`,
   head_to_head: (id) => `/social/head-to-head/${id}/comments`,
   futures_pick: (id) => `/social/futures/${id}/comments`,
+  league_win: (id) => `/social/league-wins/${id}/comments`,
 }
 
 export function useComments(targetType, targetId) {

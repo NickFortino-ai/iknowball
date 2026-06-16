@@ -151,6 +151,18 @@ router.get('/head-to-head/:pickId/comments', requireAuth, async (req, res) => {
   res.json(comments)
 })
 
+// League win comments — the trophy cards on the Hub feed celebrating
+// a user winning a league / survivor pool / bracket.
+router.post('/league-wins/:winId/comments', requireAuth, validate(commentSchema), async (req, res) => {
+  const comment = await addComment(req.user.id, 'league_win', req.params.winId, req.validated.content, req.validated.parent_id)
+  res.status(201).json(comment)
+})
+
+router.get('/league-wins/:winId/comments', requireAuth, async (req, res) => {
+  const comments = await getComments('league_win', req.params.winId, req.user.id)
+  res.json(comments)
+})
+
 // Delete comment (generic — works for any target type)
 router.delete('/comments/:commentId', requireAuth, async (req, res) => {
   await deleteComment(req.user.id, req.params.commentId)
@@ -165,7 +177,7 @@ router.post('/comments/:commentId/like', requireAuth, async (req, res) => {
 
 // Feed reactions
 const feedReactionSchema = z.object({
-  target_type: z.enum(['pick', 'parlay', 'streak_event', 'record_history', 'hot_take', 'futures_pick']),
+  target_type: z.enum(['pick', 'parlay', 'streak_event', 'record_history', 'hot_take', 'futures_pick', 'league_win']),
   target_id: z.string().uuid(),
   reaction_type: z.enum(['fire', 'clown', 'goat', 'clap']),
 })
