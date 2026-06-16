@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
+import { createNotification } from './notificationService.js'
 
 // ============================================
 // Template Management (Admin)
@@ -95,9 +96,11 @@ export async function getTemplateDetails(templateId) {
 }
 
 export async function updateTemplate(templateId, userId, data) {
+  // Fetch the prior picks_available_at + name + sport in addition to created_by
+  // so we can detect the "bracket goes live" transition and notify members.
   const { data: template } = await supabase
     .from('bracket_templates')
-    .select('created_by')
+    .select('created_by, picks_available_at, name, sport')
     .eq('id', templateId)
     .single()
 
@@ -131,7 +134,56 @@ export async function updateTemplate(templateId, userId, data) {
     .single()
 
   if (error) throw error
+
+  // Publish detection: if the admin just set picks_available_at to now/past
+  // and it was previously null OR in the future, this is the "bracket goes
+  // live" moment. Fan out a notification to every league member using this
+  // template. Fire-and-forget — the update returns immediately; the fan-out
+  // runs in the background.
+  if (data.picks_available_at !== undefined) {
+    const wasUnavailable = !template.picks_available_at ||
+      new Date(template.picks_available_at).getTime() > Date.now()
+    const nowAvailable = data.picks_available_at &&
+      new Date(data.picks_available_at).getTime() <= Date.now()
+    if (wasUnavailable && nowAvailable) {
+      notifyBracketPublished(templateId, updated.name || template.name).catch((err) =>
+        logger.warn({ err, templateId }, 'bracket_published fan-out failed')
+      )
+    }
+  }
+
   return updated
+}
+
+// Notify every member of every league using this template that the bracket
+// is live and picks are open. Called from updateTemplate when picks_available_at
+// transitions to now/past.
+async function notifyBracketPublished(templateId, templateName) {
+  const { data: tournaments } = await supabase
+    .from('bracket_tournaments')
+    .select('league_id')
+    .eq('template_id', templateId)
+  if (!tournaments?.length) return
+
+  const leagueIds = [...new Set(tournaments.map((t) => t.league_id))]
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, league_id, leagues(name)')
+    .in('league_id', leagueIds)
+  if (!members?.length) return
+
+  const label = templateName || 'your bracket'
+  for (const m of members) {
+    const leagueName = m.leagues?.name || 'your league'
+    try {
+      await createNotification(m.user_id, 'bracket_published',
+        `${label} is live in ${leagueName} — make your picks before lock!`,
+        { leagueId: m.league_id, templateId })
+    } catch (err) {
+      logger.warn({ err, userId: m.user_id, leagueId: m.league_id }, 'bracket_published createNotification failed')
+    }
+  }
+  logger.info({ templateId, fanout: members.length }, 'bracket_published notifications fanned out')
 }
 
 export async function saveTemplateMatchups(templateId, userId, matchups) {

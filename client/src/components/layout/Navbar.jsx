@@ -203,6 +203,7 @@ function getNotificationRoute(notification) {
     case 'survivor_pick_reminder':
     case 'roster_reminder':
     case 'survey_invite':
+    case 'bracket_published':
       return metadata?.leagueId ? `/leagues/${metadata.leagueId}` : null
     case 'og_welcome':
       return '/hall-of-fame?section=royalty'
