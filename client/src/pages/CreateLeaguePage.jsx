@@ -2566,13 +2566,17 @@ export default function CreateLeaguePage() {
         )}
 
         {format === 'bracket' && (() => {
-          // Split into still-pickable templates (locks_at is in the future
-          // or unset) vs already-locked/past tournaments. Past ones get
-          // shown as historical reference only — not selectable — so the
-          // commissioner sees the full picture without confusion.
-          const now = Date.now()
-          const available = (bracketTemplates || []).filter((t) => !t.locks_at || new Date(t.locks_at).getTime() > now)
-          const past = (bracketTemplates || []).filter((t) => t.locks_at && new Date(t.locks_at).getTime() <= now)
+          // Split into still-pickable templates vs finalized ones. The signal
+          // is championship_score_set — set by the admin via "Save championship
+          // total" when the tournament concludes. Pre-launch templates (e.g.
+          // World Cup Bracket built before the group stage finishes) and
+          // mid-tournament ones both show as available; only finalized ones
+          // collapse into the "Past Brackets" section.
+          // (Earlier code checked t.locks_at which doesn't exist on templates —
+          // it's a per-tournament field — so every template was incorrectly
+          // classified as available.)
+          const available = (bracketTemplates || []).filter((t) => !t.championship_score_set)
+          const past = (bracketTemplates || []).filter((t) => t.championship_score_set)
           return (
           <div className="rounded-xl border border-text-primary/20 p-4 space-y-4">
             <h3 className="font-display text-sm text-text-primary mb-1">Bracket Settings</h3>
@@ -2622,7 +2626,7 @@ export default function CreateLeaguePage() {
                       >
                         <div className="font-semibold text-sm text-text-secondary">{t.name}</div>
                         <div className="text-xs text-text-muted mt-0.5">
-                          Locked {new Date(t.locks_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {t.team_count} teams &middot; settled
                         </div>
                       </div>
                     ))}
