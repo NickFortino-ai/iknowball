@@ -44,6 +44,7 @@ import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
 import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
+import { formatStartDateShort, formatEndDateShort } from '../lib/leagueDate'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
@@ -175,9 +176,8 @@ const DURATION_OPTIONS = [
 ]
 
 function formatDateRange(startsAt, endsAt) {
-  const opts = { month: 'short', day: 'numeric', timeZone: 'UTC' }
-  const start = startsAt ? new Date(startsAt).toLocaleDateString('en-US', opts) : null
-  const end = endsAt ? new Date(endsAt).toLocaleDateString('en-US', opts) : null
+  const start = formatStartDateShort(startsAt)
+  const end = formatEndDateShort(endsAt)
   if (start && end) return `${start} – ${end}`
   if (start) return `Starts ${start}`
   return null
@@ -523,7 +523,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       items.push({ label: 'Champion', value: fantasySettings.champion_metric === 'most_wins' ? 'Most Nightly Wins' : 'Most Total Points' })
     }
     if (league.starts_at) {
-      items.push({ label: 'Starts', value: league.format === 'fantasy' ? 'NFL Week 1' : new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }) })
+      items.push({ label: 'Starts', value: league.format === 'fantasy' ? 'NFL Week 1' : formatStartDateShort(league.starts_at) })
     }
     items.push({ label: 'Visibility', value: league.visibility === 'open' ? 'Open' : 'Invite Only' })
   } else {
@@ -602,7 +602,10 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       }
       // All-Sports with no explicit range — describe by end date alone
       if (league.ends_at) {
-        const endStr = new Date(league.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })
+        // Use the shared end-date formatter (shifts back 12h for the
+        // end-of-sports-day convention) and append the year for context.
+        const shifted = new Date(new Date(league.ends_at).getTime() - 12 * 60 * 60 * 1000)
+        const endStr = shifted.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' })
         return `This league runs through ${endStr}${endCondition ? ` or ${endCondition}` : ''}.`
       }
       return ''
@@ -659,7 +662,7 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
       const ppq = settings.points_per_quarter || [10, 10, 10, 10]
       const totalPts = ppq.reduce((s, q) => s + (q || 0), 0)
       const gameDate = league.starts_at
-        ? new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' })
+        ? new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })
         : null
       return `Claim squares on the 10x10 grid. Once all 100 are claimed, digits (0–9) are randomly assigned to each row and column. At the end of each quarter, the square where the last digits of each team's score intersect wins that quarter's payout (${ppq.map((p, i) => `Q${i + 1}: ${p}`).join(', ')} — ${totalPts} pts total).${gameDate ? ` Game day: ${gameDate}.` : ''}`
     }
