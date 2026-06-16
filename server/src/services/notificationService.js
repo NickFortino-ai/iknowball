@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { sendPushNotification } from './pushService.js'
-import { sendApnsToUser } from './apnsService.js'
+import { sendApnsToUser, sendApnsBadgeUpdate } from './apnsService.js'
 
 const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'poll_response_milestone', 'og_welcome']
 
@@ -84,6 +84,12 @@ export async function markAllRead(userId) {
     .eq('is_read', false)
 
   if (error) throw error
+
+  // Silently clear the app icon badge — fire-and-forget; failure to
+  // update the badge shouldn't fail the read operation.
+  sendApnsBadgeUpdate(userId, 0).catch((err) =>
+    logger.warn({ err, userId }, 'markAllRead: badge-clear push failed')
+  )
 }
 
 export async function markRead(userId, notificationId) {
@@ -94,4 +100,15 @@ export async function markRead(userId, notificationId) {
     .eq('user_id', userId)
 
   if (error) throw error
+
+  // Update the icon badge to the new unread count so the number on the
+  // app icon reflects what's left in the bell.
+  const { count } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_read', false)
+  sendApnsBadgeUpdate(userId, count || 0).catch((err) =>
+    logger.warn({ err, userId }, 'markRead: badge-update push failed')
+  )
 }

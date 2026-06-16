@@ -34,8 +34,16 @@ function getProvider() {
  * Send an APNs push to all device tokens registered for a user. Handles
  * token cleanup on 410 Unregistered responses so we don't retry dead
  * tokens forever.
+ *
+ * @param {string} userId
+ * @param {string} title
+ * @param {string} body
+ * @param {string} [url] — deep-link payload for tap handler
+ * @param {number} [badge] — badge count to set on the app icon. Defaults
+ *   to the user's current unread notification count; pass an explicit
+ *   value to override (e.g. 0 to clear).
  */
-export async function sendApnsToUser(userId, title, body, url) {
+export async function sendApnsToUser(userId, title, body, url, badge) {
   const p = getProvider()
   if (!p) {
     logger.warn({ userId }, 'APNs send skipped — provider not configured')
@@ -56,12 +64,27 @@ export async function sendApnsToUser(userId, title, body, url) {
     logger.info({ userId }, 'APNs send skipped — no iOS device tokens for user')
     return
   }
-  logger.info({ userId, tokenCount: tokens.length, production: env.APNS_PRODUCTION, bundleId: env.APNS_BUNDLE_ID }, 'APNs send: attempting')
+
+  // If caller didn't supply a badge, count current unread notifications so
+  // the icon badge reflects reality. Hardcoded badge=1 (the old behavior)
+  // caused the "icon always shows 1" complaint — every new push reset the
+  // count to 1, and nothing ever cleared it.
+  let badgeCount = badge
+  if (badgeCount == null) {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false)
+    badgeCount = count || 0
+  }
+
+  logger.info({ userId, tokenCount: tokens.length, badge: badgeCount, production: env.APNS_PRODUCTION, bundleId: env.APNS_BUNDLE_ID }, 'APNs send: attempting')
 
   const note = new apn.Notification()
   note.alert = { title, body }
   note.sound = 'default'
-  note.badge = 1
+  note.badge = badgeCount
   note.topic = env.APNS_BUNDLE_ID
   // Payload picked up by the client — used to deep-link when the user
   // taps the notification.
@@ -94,5 +117,36 @@ export async function sendApnsToUser(userId, title, body, url) {
     if (otherFailures.length) {
       logger.warn({ failures: otherFailures, userId }, 'APNs send had non-fatal failures')
     }
+  }
+}
+
+/**
+ * Send a silent push to update only the app icon badge — no alert, no
+ * sound. Used when the user marks notifications read in-app so the
+ * "1 stuck on the icon" effect clears without waiting for the next
+ * real notification. iOS treats this as a content-available push.
+ */
+export async function sendApnsBadgeUpdate(userId, count) {
+  const p = getProvider()
+  if (!p) return
+
+  const { data: tokens, error } = await supabase
+    .from('device_tokens')
+    .select('id, token')
+    .eq('user_id', userId)
+    .eq('platform', 'ios')
+
+  if (error || !tokens?.length) return
+
+  const note = new apn.Notification()
+  note.topic = env.APNS_BUNDLE_ID
+  note.contentAvailable = true
+  note.badge = count
+  // No alert / sound — this is a silent badge-only update.
+
+  try {
+    await p.send(note, tokens.map((t) => t.token))
+  } catch (err) {
+    logger.error({ err, userId }, 'APNs badge-update push threw')
   }
 }
