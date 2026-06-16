@@ -12,6 +12,7 @@ export const SPORT_LABELS = {
   basketball_wnba: 'WNBA',
   icehockey_nhl: 'NHL',
   soccer_usa_mls: 'MLS',
+  soccer_world_cup: 'World Cup',
   all: 'All Sports',
 }
 

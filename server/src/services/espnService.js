@@ -14,6 +14,7 @@ const SPORT_TO_ESPN = {
   baseball_mlb: { path: 'baseball/mlb' },
   icehockey_nhl: { path: 'hockey/nhl' },
   soccer_usa_mls: { path: 'soccer/usa.1' },
+  soccer_world_cup: { path: 'soccer/fifa.world' },
   americanfootball_ufl: { path: 'football/ufl' },
 }
 
