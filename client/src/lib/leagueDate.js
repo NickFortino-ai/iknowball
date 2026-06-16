@@ -6,6 +6,7 @@
 // without the shift, "end of June 19 PT" displays as "Jun 20".
 
 const SHORT = { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' }
+const LONG = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' }
 
 export function formatStartDateShort(isoStr) {
   if (!isoStr) return null
@@ -18,4 +19,12 @@ export function formatEndDateShort(isoStr) {
   // commissioner-picked PT day. Noon-anchored values are unaffected.
   const shifted = new Date(new Date(isoStr).getTime() - 12 * 60 * 60 * 1000)
   return shifted.toLocaleDateString('en-US', SHORT)
+}
+
+// Same as formatEndDateShort but includes the year — used in the
+// settings dialog header "Runs until Jun 19, 2026".
+export function formatEndDateLong(isoStr) {
+  if (!isoStr) return null
+  const shifted = new Date(new Date(isoStr).getTime() - 12 * 60 * 60 * 1000)
+  return shifted.toLocaleDateString('en-US', LONG)
 }

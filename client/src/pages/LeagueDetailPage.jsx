@@ -44,7 +44,7 @@ import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
 import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
-import { formatStartDateShort, formatEndDateShort } from '../lib/leagueDate'
+import { formatStartDateShort, formatEndDateShort, formatEndDateLong } from '../lib/leagueDate'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
@@ -2136,7 +2136,7 @@ export default function LeagueDetailPage() {
           <div className="mt-2 text-sm text-yellow-500 font-semibold">
             {league.format === 'fantasy' && fantasySettings?.format === 'salary_cap'
               ? 'Starts with NFL Week 1'
-              : `Starts ${new Date(league.starts_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}`}
+              : `Starts ${formatStartDateShort(league.starts_at)}`}
           </div>
         )}
         </div>
@@ -2588,7 +2588,7 @@ export default function LeagueDetailPage() {
             {notStartedYet && (
               <div className="rounded-xl border border-accent/30 bg-accent/5 backdrop-blur-sm p-4 mb-4 text-center max-w-md mx-auto">
                 <div className="text-sm text-text-primary font-semibold">
-                  League starts {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' })}
+                  League starts {new Date(league.starts_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles' })}
                 </div>
                 <div className="text-xs text-text-muted mt-1">You can pick early — picks lock when each game starts.</div>
               </div>
@@ -2776,7 +2776,7 @@ export default function LeagueDetailPage() {
                 <span className="text-sm font-semibold text-text-primary">
                   {league.format === 'survivor'
                     ? 'Last one standing'
-                    : new Date(league.ends_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}
+                    : formatEndDateLong(league.ends_at)}
                 </span>
               </div>
             )}
