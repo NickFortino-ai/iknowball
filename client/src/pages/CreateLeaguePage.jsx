@@ -665,6 +665,13 @@ export default function CreateLeaguePage() {
   const [locksAt, setLocksAt] = useState('')
   const { data: bracketTemplates } = useBracketTemplatesActive(sport !== 'all' ? sport : undefined)
 
+  // Separately fetch World Cup bracket templates so we can show/hide the
+  // entire Soccer category tab dynamically. Auto-hide when there's no
+  // active (non-finalized) WC bracket — keeps the tab from cluttering the
+  // 4-year gap between tournaments without requiring a new app build.
+  const { data: worldCupTemplates } = useBracketTemplatesActive('soccer_world_cup')
+  const hasActiveSoccerBracket = (worldCupTemplates || []).some((t) => !t.championship_score_set)
+
   // Format-specific settings
   const [lockOddsAt, setLockOddsAt] = useState('game_start')
   const [gamesPerWeek, setGamesPerWeek] = useState('')
@@ -1004,7 +1011,7 @@ export default function CreateLeaguePage() {
           <label className="block text-sm font-semibold text-text-secondary mb-2">Format</label>
 
           <div className="space-y-8">
-            {CATEGORIES.map((cat) => {
+            {CATEGORIES.filter((cat) => cat.key !== 'soccer' || hasActiveSoccerBracket).map((cat) => {
               const isCollapsed = collapsedCategories.has(cat.key)
               return (
               <div key={cat.key}>
