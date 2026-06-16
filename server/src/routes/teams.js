@@ -111,6 +111,45 @@ export const FALLBACK_TEAMS = {
     'San Diego FC', 'San Jose Earthquakes', 'Seattle Sounders FC', 'Sporting Kansas City',
     'St. Louis City SC', 'Toronto FC', 'Vancouver Whitecaps FC',
   ],
+  // FIFA member nations likely to feature in (or qualify for) the 2026
+  // World Cup. Names match ESPN's canonical display strings — the country
+  // flag URL resolver (client/src/lib/countryFlag.js) keys off these too.
+  soccer_world_cup: [
+    // Hosts + CONCACAF
+    'United States', 'Canada', 'Mexico',
+    'Costa Rica', 'Panama', 'Jamaica', 'Honduras', 'El Salvador',
+    'Guatemala', 'Haiti', 'Trinidad and Tobago', 'Cuba',
+    // CONMEBOL
+    'Argentina', 'Brazil', 'Uruguay', 'Colombia', 'Peru', 'Chile',
+    'Ecuador', 'Paraguay', 'Bolivia', 'Venezuela',
+    // UEFA
+    'Spain', 'France', 'Germany', 'England', 'Italy', 'Portugal',
+    'Netherlands', 'Belgium', 'Croatia', 'Switzerland', 'Denmark',
+    'Poland', 'Sweden', 'Serbia', 'Austria', 'Wales', 'Scotland',
+    'Northern Ireland', 'Republic of Ireland', 'Czech Republic',
+    'Hungary', 'Norway', 'Slovakia', 'Slovenia', 'Ukraine', 'Romania',
+    'Turkey', 'Greece', 'Iceland', 'Finland', 'Albania',
+    'Bosnia and Herzegovina', 'Bulgaria', 'Montenegro',
+    'North Macedonia', 'Georgia', 'Israel', 'Kosovo',
+    // CAF
+    'Senegal', 'Morocco', 'Tunisia', 'Egypt', 'Algeria', 'Cameroon',
+    'Ghana', 'Nigeria', 'Ivory Coast', 'South Africa', 'Mali',
+    'Burkina Faso', 'DR Congo', 'Cape Verde', 'Gabon', 'Guinea',
+    'Equatorial Guinea', 'Mozambique', 'Zambia', 'Zimbabwe', 'Uganda',
+    'Tanzania', 'Kenya', 'Angola', 'Madagascar', 'Mauritania', 'Sudan',
+    'Libya', 'Benin', 'Togo', 'Niger', 'Chad', 'Comoros',
+    'Sierra Leone', 'Namibia',
+    // AFC
+    'Japan', 'South Korea', 'Iran', 'Saudi Arabia', 'Australia',
+    'Qatar', 'United Arab Emirates', 'Iraq', 'Jordan', 'Lebanon',
+    'Syria', 'Bahrain', 'Kuwait', 'Oman', 'Uzbekistan', 'Tajikistan',
+    'Turkmenistan', 'Kyrgyzstan', 'Kazakhstan', 'China', 'Hong Kong',
+    'Chinese Taipei', 'Vietnam', 'Thailand', 'Indonesia', 'Malaysia',
+    'Singapore', 'Philippines', 'India',
+    // OFC
+    'New Zealand', 'Fiji', 'Papua New Guinea', 'Solomon Islands',
+    'Vanuatu', 'Tahiti', 'New Caledonia', 'Samoa',
+  ],
 }
 
 router.get('/', requireAuth, async (req, res) => {

@@ -9,6 +9,7 @@ import {
 import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { supabase } from '../../lib/supabase'
+import BracketDisplay from '../leagues/BracketDisplay'
 
 function TeamAutocomplete({ value, onChange, placeholder, disabled, teams }) {
   const [open, setOpen] = useState(false)
@@ -619,7 +620,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
 
       {/* Step indicator */}
       <div className="flex gap-1 mb-6">
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3, 4, 5].map((s) => (
           <button
             key={s}
             onClick={() => setStep(s)}
@@ -627,7 +628,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               step === s ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
             }`}
           >
-            {s === 1 ? 'Details' : s === 2 ? 'Rounds' : s === 3 ? 'Teams' : 'Image'}
+            {s === 1 ? 'Details' : s === 2 ? 'Rounds' : s === 3 ? 'Teams' : s === 4 ? 'Image' : 'Preview'}
           </button>
         ))}
       </div>
@@ -1159,6 +1160,49 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           <div className="flex gap-2">
             <button
               onClick={() => setStep(3)}
+              className="flex-1 py-3 rounded-xl font-display text-lg bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors"
+            >
+              Back
+            </button>
+            <button
+              onClick={() => setStep(5)}
+              className="flex-1 py-3 rounded-xl font-display text-lg bg-accent text-white hover:bg-accent-hover transition-colors"
+            >
+              Next: Preview
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 5: Preview — visual verification of the full bracket graph
+          before saving. Reuses the user-facing BracketDisplay component so
+          the admin sees exactly what users will see. */}
+      {step === 5 && (
+        <div className="space-y-4">
+          <div className="text-xs text-text-muted mb-2">
+            Verify the bracket structure looks right — matchup placement,
+            team assignments, seeds, and round connections — then save. After
+            saving, any league using this template will see the same layout.
+          </div>
+          {matchups.length === 0 ? (
+            <div className="text-center text-text-muted text-sm py-12 border border-text-primary/10 rounded-lg">
+              No matchups yet. Go back to Step 3 (Teams) and fill them in.
+            </div>
+          ) : (
+            <div className="border border-text-primary/10 rounded-lg overflow-hidden">
+              <BracketDisplay
+                matchups={matchups}
+                picks={[]}
+                rounds={rounds}
+                regions={regions}
+                seriesFormat={seriesFormat}
+                sportKey={sport}
+              />
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setStep(4)}
               className="flex-1 py-3 rounded-xl font-display text-lg bg-bg-card text-text-secondary hover:bg-bg-card-hover transition-colors"
             >
               Back

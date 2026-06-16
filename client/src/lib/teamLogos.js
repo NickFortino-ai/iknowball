@@ -1,6 +1,8 @@
 // ESPN CDN team logo URLs
 // Format: https://a.espncdn.com/i/teamlogos/{sport}/500/{abbr}.png
 
+import { getCountryFlagUrl } from './countryFlag'
+
 const NHL_ABBRS = {
   'Anaheim Ducks': 'ana', 'Arizona Coyotes': 'ari', 'Boston Bruins': 'bos',
   'Buffalo Sabres': 'buf', 'Calgary Flames': 'cgy', 'Carolina Hurricanes': 'car',
@@ -195,6 +197,12 @@ export function getTeamAbbr(teamName) {
 }
 
 export function getTeamLogoUrl(teamName, sportKey) {
+  // World Cup teams are countries — ESPN serves flags from a separate path
+  // (i/teamlogos/countries/...) and there's no "dark" variant. Delegate to the
+  // country-flag resolver so we don't end up looking for esp.png under nba/.
+  if (sportKey === 'soccer_world_cup') {
+    return getCountryFlagUrl(teamName)
+  }
   const config = SPORT_MAP[sportKey]
   if (!config) return null
   // NCAA uses numeric IDs: /i/teamlogos/ncaa/500/{id}.png
@@ -210,6 +218,10 @@ export function getTeamLogoUrl(teamName, sportKey) {
 
 // Standard (non-dark) URL as fallback
 export function getTeamLogoFallbackUrl(teamName, sportKey) {
+  if (sportKey === 'soccer_world_cup') {
+    // Countries already use the standard (non-dark) URL — no fallback variant.
+    return null
+  }
   const config = SPORT_MAP[sportKey]
   if (!config) return null
   if (config.ids) {
