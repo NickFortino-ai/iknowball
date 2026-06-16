@@ -140,12 +140,20 @@ export async function sendApnsBadgeUpdate(userId, count) {
 
   const note = new apn.Notification()
   note.topic = env.APNS_BUNDLE_ID
+  // iOS 13+ requires apns-push-type: background for silent updates,
+  // and Apple drops the push if the header is missing. The apn library
+  // doesn't set it automatically for content-available pushes — set
+  // both pushType and priority explicitly so iOS reliably processes
+  // the badge change.
+  note.pushType = 'background'
+  note.priority = 5
   note.contentAvailable = true
   note.badge = count
   // No alert / sound — this is a silent badge-only update.
 
   try {
-    await p.send(note, tokens.map((t) => t.token))
+    const result = await p.send(note, tokens.map((t) => t.token))
+    logger.info({ userId, badgeCount: count, sent: result.sent?.length || 0, failed: result.failed?.length || 0, failures: result.failed }, 'APNs badge-update: completed')
   } catch (err) {
     logger.error({ err, userId }, 'APNs badge-update push threw')
   }
