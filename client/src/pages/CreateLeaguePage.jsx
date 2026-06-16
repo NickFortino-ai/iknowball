@@ -356,6 +356,7 @@ const CATEGORIES = [
   { key: 'football', label: 'Football' },
   { key: 'basketball', label: 'Basketball' },
   { key: 'baseball', label: 'Baseball' },
+  { key: 'soccer', label: 'Soccer' },
   { key: 'all_sports', label: 'All Sports' },
 ]
 
@@ -505,6 +506,32 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       label: "MLB Pick'em",
       description: 'Pick the winners of MLB games. Most points at the end wins.',
       preset: { sport: 'baseball_mlb' },
+    },
+  ],
+  soccer: [
+    {
+      key: 'world-cup-bracket',
+      format: 'bracket',
+      label: 'World Cup Bracket',
+      description: 'Pick the knockout-stage winners. Round of 32 → Final, plus a goals-in-the-final tiebreaker.',
+      details: `A 32-team single-elimination bracket for the 2026 FIFA World Cup, starting with the Round of 32. Pick each matchup all the way through to the Champion, plus a tiebreaker: total goals scored in the Final match.
+
+The bracket is published the moment the group stage concludes — June 27, 2026 (evening PT) — and locks at the first R32 kickoff on June 28. Partial picks are saved automatically; you can come back later to finish.
+
+Penalty-shootout winners advance in the bracket (no need to predict the shootout itself).`,
+      bonusTable: {
+        title: 'World Cup Bracket Points',
+        intro: 'Points double per round. Maximum base score = 80 from picks alone; champion bonus scales with league size on top.',
+        rows: [
+          { size: 'Round of 32 (16 matchups)', first: '+1 each', second: '—', third: '—' },
+          { size: 'Round of 16 (8 matchups)', first: '+2 each', second: '—', third: '—' },
+          { size: 'Quarterfinals (4 matchups)', first: '+4 each', second: '—', third: '—' },
+          { size: 'Semifinals (2 matchups)', first: '+8 each', second: '—', third: '—' },
+          { size: 'Final (1 matchup)', first: '+16', second: '—', third: '—' },
+        ],
+        footnote: 'Champion bonus: position-based, scales with league size — mirrors the NBA Playoffs Bracket structure. Tiebreaker: closest guess to the actual total goals scored in the Final match.',
+      },
+      preset: { sport: 'soccer_world_cup' },
     },
   ],
 }
