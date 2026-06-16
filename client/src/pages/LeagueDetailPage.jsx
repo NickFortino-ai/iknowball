@@ -817,7 +817,16 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 )}
                 {isCommissioner && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setNarrativeText(narrative); setEditingNarrative(true) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // Array narratives render as bulleted lists. To preserve
+                      // that shape when round-tripping through the textarea,
+                      // join with newlines on enter, split on newlines on save.
+                      // This also fixes the "x.trim is not a function" crash that
+                      // happened when the array was passed straight to .trim().
+                      setNarrativeText(Array.isArray(narrative) ? narrative.join('\n') : (narrative || ''))
+                      setEditingNarrative(true)
+                    }}
                     className="shrink-0 text-text-muted hover:text-accent transition-colors mt-0.5"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -889,9 +898,12 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
               <textarea
                 value={narrativeText}
                 onChange={(e) => setNarrativeText(e.target.value)}
-                rows={4}
+                rows={Math.max(4, narrativeText.split('\n').length + 1)}
                 className="w-full bg-bg-input border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent resize-none"
               />
+              <p className="text-[10px] text-text-muted">
+                Each line renders as a bullet point. Single line shows as a paragraph.
+              </p>
               <div className="flex gap-2 justify-end">
                 {league.settings?.custom_narrative && (
                   <button
@@ -916,7 +928,17 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
                 <button
                   onClick={async () => {
                     try {
-                      await updateLeague.mutateAsync({ leagueId: league.id, settings: { ...league.settings, custom_narrative: narrativeText.trim() || null } })
+                      // Multi-line → store as array (renders as bulleted list).
+                      // Single line → store as string (renders as paragraph).
+                      // Empty → null (revert to default narrative).
+                      const raw = (narrativeText || '').trim()
+                      const lines = raw.split('\n').map((s) => s.trim()).filter(Boolean)
+                      const saved = lines.length === 0
+                        ? null
+                        : lines.length === 1
+                          ? lines[0]
+                          : lines
+                      await updateLeague.mutateAsync({ leagueId: league.id, settings: { ...league.settings, custom_narrative: saved } })
                       setEditingNarrative(false)
                       toast('Description updated', 'success')
                     } catch (err) { toast(err.message || 'Failed', 'error') }
