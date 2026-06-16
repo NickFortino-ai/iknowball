@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useOpenLeagues, useJoinOpenLeague } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
 import { getBackdropUrl } from '../../lib/backdropUrl'
+import { formatStartDateShort, formatEndDateShort } from '../../lib/leagueDate'
 import LeagueInfoModal from '../leagues/LeagueInfoModal'
 
 const FORMAT_LABELS = {
@@ -53,17 +54,12 @@ function getLeagueHeadline(league) {
   return `${formatLabel} League`
 }
 
-function formatStartDate(dateStr) {
-  if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
-}
-
 function formatRunsUntil(league) {
   if (league.format === 'survivor') return 'Last one standing'
   if (league.format === 'squares') return 'End of game'
   if (league.duration === 'full_season') return 'End of season'
   if (league.duration === 'playoffs_only') return 'End of playoffs'
-  if (league.ends_at) return formatStartDate(league.ends_at)
+  if (league.ends_at) return formatEndDateShort(league.ends_at)
   return null
 }
 
@@ -71,7 +67,7 @@ function formatRunsUntil(league) {
 // Already underway: just "Runs until Last one standing" — the start date stops
 // being useful once the league is rolling.
 function formatLeagueRuns(league) {
-  const start = formatStartDate(league.starts_at)
+  const start = formatStartDateShort(league.starts_at)
   const end = formatRunsUntil(league)
   const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
   if (notStartedYet && start && end) return `Runs ${start} – ${end}`

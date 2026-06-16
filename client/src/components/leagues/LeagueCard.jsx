@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { getBackdropUrl } from '../../lib/backdropUrl'
+import { formatStartDateShort, formatEndDateShort } from '../../lib/leagueDate'
 import DraftStartsIn from './DraftStartsIn'
 
 const FORMAT_LABELS = {
@@ -36,17 +37,12 @@ const SPORT_LABELS = {
   all: 'All Sports',
 }
 
-function formatShortDate(dateStr) {
-  if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
-}
-
 function formatRunsUntil(league) {
   if (league.format === 'survivor') return 'Last one standing'
   if (league.format === 'squares') return 'End of game'
   if (league.duration === 'full_season') return 'End of season'
   if (league.duration === 'playoffs_only') return 'End of playoffs'
-  if (league.ends_at) return formatShortDate(league.ends_at)
+  if (league.ends_at) return formatEndDateShort(league.ends_at)
   return null
 }
 
@@ -143,7 +139,7 @@ export default function LeagueCard({ league, noLink }) {
         {(() => {
           // Hide for fantasy leagues with a draft countdown — that block owns the bottom row.
           if (league.format === 'fantasy' && league.draft_date) return null
-          const start = formatShortDate(league.starts_at)
+          const start = formatStartDateShort(league.starts_at)
           const end = formatRunsUntil(league)
           const notStartedYet = league.starts_at && new Date(league.starts_at) > new Date()
           if (!start && !end) return null

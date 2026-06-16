@@ -4,6 +4,7 @@ import { useJoinLeague, useOpenLeagues, useJoinOpenLeague } from '../hooks/useLe
 import { toast } from '../components/ui/Toast'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { getBackdropUrl } from '../lib/backdropUrl'
+import { formatStartDateShort, formatEndDateShort } from '../lib/leagueDate'
 import LeagueInfoModal from '../components/leagues/LeagueInfoModal'
 
 const FORMAT_LABELS = {
@@ -53,10 +54,6 @@ function formatLockDate(dateStr) {
   return 'Locks soon'
 }
 
-function formatStartDate(dateStr) {
-  if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
-}
 
 function LeagueSettingsPreview({ league }) {
   const s = league.settings || {}
@@ -88,7 +85,7 @@ function formatRunsUntil(league) {
   if (league.duration === 'full_season') return 'End of season'
   if (league.duration === 'playoffs_only') return 'End of playoffs'
   if (league.ends_at) {
-    return formatStartDate(league.ends_at)
+    return formatEndDateShort(league.ends_at)
   }
   return null
 }
@@ -215,7 +212,7 @@ export default function JoinLeaguePage() {
                           <span className="text-xs">by {league.commissioner}</span>
                           {league.starts_at && (
                             <span className="text-sm text-yellow-500 font-semibold">
-                              {formatStartDate(league.starts_at)} – {formatRunsUntil(league) || 'TBD'}
+                              {formatStartDateShort(league.starts_at)} – {formatRunsUntil(league) || 'TBD'}
                             </span>
                           )}
                         </div>

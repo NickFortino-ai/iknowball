@@ -105,14 +105,22 @@ export async function computeLeagueReadiness(userId, leagues, userTz) {
     'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts',
     'three_point', 'wnba_three_point',
   ])
-  const activeLeagues = leagues.filter((l) =>
-    l.status === 'active' ||
-    (l.status === 'open' && (
-      l.format === 'bracket' ||
-      l.format === 'survivor' ||
-      DAILY_OPEN_FORMATS.has(l.format)
-    ))
-  )
+  // For daily-contest formats still in 'open' state, only compute readiness
+  // if the league's start date has actually arrived. A league set to start
+  // tomorrow shouldn't show a red "you haven't picked tonight" flag today —
+  // tonight isn't in the league's window. (For brackets / survivor, the
+  // pick window legitimately opens before status flips to 'active'.)
+  const nowMs = Date.now()
+  const activeLeagues = leagues.filter((l) => {
+    if (l.status === 'active') return true
+    if (l.status !== 'open') return false
+    if (l.format === 'bracket' || l.format === 'survivor') return true
+    if (DAILY_OPEN_FORMATS.has(l.format)) {
+      if (!l.starts_at) return true
+      return new Date(l.starts_at).getTime() <= nowMs
+    }
+    return false
+  })
   if (!activeLeagues.length) return result
 
   // Group by format for batched queries

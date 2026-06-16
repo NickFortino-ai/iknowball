@@ -2,17 +2,13 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useJoinLeague, useOpenLeagues, useJoinOpenLeague } from '../../hooks/useLeagues'
 import { toast } from '../ui/Toast'
+import { formatStartDateShort, formatEndDateShort } from '../../lib/leagueDate'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
 const DURATION_LABELS = {
   full_season: 'Full Season',
   playoffs_only: 'Playoffs Only',
   this_week: 'This Week',
-}
-
-function formatDateShort(dateStr) {
-  if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
 }
 
 function LeagueSettingsPreview({ league }) {
@@ -23,8 +19,8 @@ function LeagueSettingsPreview({ league }) {
   if (durLabel) {
     items.push(['Duration', durLabel])
   } else if (league.starts_at || league.ends_at) {
-    const start = formatDateShort(league.starts_at)
-    const end = formatDateShort(league.ends_at)
+    const start = formatStartDateShort(league.starts_at)
+    const end = formatEndDateShort(league.ends_at)
     items.push(['Dates', [start, end].filter(Boolean).join(' – ')])
   }
 
