@@ -75,6 +75,8 @@ const SPORT_OPTIONS = [
   { value: 'americanfootball_ncaaf', label: 'NCAAF' },
   { value: 'basketball_wnba', label: 'WNBA' },
   { value: 'icehockey_nhl', label: 'NHL' },
+  { value: 'soccer_usa_mls', label: 'MLS' },
+  { value: 'soccer_world_cup', label: 'World Cup' },
   { value: 'americanfootball_ufl', label: 'UFL' },
 ]
 
@@ -268,12 +270,17 @@ function generateMatchups(teamCount, regions, rounds) {
   return matchups
 }
 
-export default function BracketTemplateBuilder({ templateId, onClose }) {
+export default function BracketTemplateBuilder({ templateId, onClose, initialSport }) {
   const { data: existing, isLoading } = useBracketTemplate(templateId)
   const createTemplate = useCreateBracketTemplate()
   const updateTemplate = useUpdateBracketTemplate()
   const saveMatchups = useSaveBracketTemplateMatchups()
-  const [sport, setSport] = useState(existing?.sport || '')
+  const [sport, setSport] = useState(existing?.sport || initialSport || '')
+  // Sport is locked when we entered the builder with a pre-selected sport
+  // (admin clicked "New Template" from a filtered list) — no point asking
+  // them to pick again. Edits also lock the sport since changing it would
+  // invalidate matchups + teams.
+  const sportLocked = (!!templateId) || (!templateId && !!initialSport)
   const { data: apiTeams } = useTeamsForSport(sport)
 
   const [step, setStep] = useState(1)
@@ -649,23 +656,35 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
-            <div className="flex gap-2 flex-wrap">
-              {SPORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setSport(opt.value)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    sport === opt.value
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">
+              Sport{sportLocked && sport && (
+                <span className="ml-2 text-xs font-normal text-text-muted">
+                  · {SPORT_OPTIONS.find((o) => o.value === sport)?.label || sport}
+                </span>
+              )}
+            </label>
+            {sportLocked ? (
+              <p className="text-xs text-text-muted">
+                Sport is set from the filter you came in on. Cancel and switch the filter to change.
+              </p>
+            ) : (
+              <div className="flex gap-2 flex-wrap">
+                {SPORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSport(opt.value)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                      sport === opt.value
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
