@@ -789,16 +789,6 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         {useFacing ? (
           /* ── Facing bracket layout ── */
           <div className="relative flex min-w-max py-2">
-            {/* NCAA-themed bracket-ball backdrop. Hide for World Cup
-                (FIFA themed) and any sport with an admin-uploaded
-                template image — those should own the visual instead. */}
-            {!isBestOf7 && !isWorldCup && (
-              <img
-                src="/ncaa-bracket-ball.png"
-                alt=""
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[calc(100%+3rem)] w-[500px] h-auto opacity-50 pointer-events-none z-0"
-              />
-            )}
             <div className="relative z-10 flex min-w-max w-full">
               {renderBracketHalf(facingLayout.left, false, 'left')}
               {centerMatchups.ffLeft && renderCenterMatchup(centerMatchups.ffLeft, 'lg', centerMatchups.ffRound)}
