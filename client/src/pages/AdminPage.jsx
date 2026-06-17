@@ -19,6 +19,7 @@ import AdminToolsPanel from '../components/admin/AdminToolsPanel'
 import DashboardPanel from '../components/admin/DashboardPanel'
 import SeasonDatesPanel from '../components/admin/SeasonDatesPanel'
 import UserSurveysPanel from '../components/admin/UserSurveysPanel'
+import AppConfigPanel from '../components/admin/AppConfigPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import Avatar from '../components/ui/Avatar'
@@ -274,6 +275,7 @@ export default function AdminPage() {
           { key: 'mlbSalaries', label: 'MLB Salaries' },
           { key: 'wnbaSalaries', label: 'WNBA Salaries' },
           { key: 'surveys', label: 'Surveys' },
+          { key: 'config', label: 'Config' },
         ].filter((tab) => !(isHelperAdmin && (tab.key === 'dashboard' || tab.key === 'email'))).map((tab) => (
           <button
             key={tab.key}
@@ -608,6 +610,7 @@ export default function AdminPage() {
       {adminSection === 'seasons' && <SeasonDatesPanel />}
 
       {adminSection === 'surveys' && <UserSurveysPanel />}
+      {adminSection === 'config' && <AppConfigPanel />}
 
       {adminSection === 'nflSalaries' && <NFLSalariesEditor />}
       {adminSection === 'nbaSalaries' && <NbaSalariesEditor />}

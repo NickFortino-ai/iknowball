@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNews } from '../../hooks/useNews'
+import { useAppConfig } from '../../hooks/useAppConfig'
 import LoadingSpinner from '../ui/LoadingSpinner'
 
-const SPORT_TABS = [
-  { key: 'nba', label: 'NBA' },
-  { key: 'nfl', label: 'NFL' },
-  { key: 'mlb', label: 'MLB' },
-  { key: 'nhl', label: 'NHL' },
-]
+const TAB_DEFS = {
+  nba: { key: 'nba', label: 'NBA' },
+  nfl: { key: 'nfl', label: 'NFL' },
+  mlb: { key: 'mlb', label: 'MLB' },
+  nhl: { key: 'nhl', label: 'NHL' },
+}
+const FALLBACK_ORDER = ['nba', 'nfl', 'mlb', 'nhl']
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -21,7 +23,15 @@ function timeAgo(dateStr) {
 }
 
 export default function NewsFeed({ compact }) {
-  const [sport, setSport] = useState('nba')
+  const { data: cfg } = useAppConfig()
+  const sportTabs = useMemo(() => {
+    const order = Array.isArray(cfg?.news_tab_order) && cfg.news_tab_order.length
+      ? cfg.news_tab_order
+      : FALLBACK_ORDER
+    return order.map((k) => TAB_DEFS[k]).filter(Boolean)
+  }, [cfg?.news_tab_order])
+
+  const [sport, setSport] = useState(sportTabs[0]?.key || 'nba')
   const { data, isLoading } = useNews(sport)
   const articles = data?.articles || []
 
@@ -29,7 +39,7 @@ export default function NewsFeed({ compact }) {
     <div>
       {/* Sport tabs */}
       <div className="flex gap-1.5 mb-3">
-        {SPORT_TABS.map((tab) => (
+        {sportTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setSport(tab.key)}

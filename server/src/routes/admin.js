@@ -374,6 +374,28 @@ router.post('/recalculate-records', async (req, res) => {
   res.json({ message: `Record recalculation complete`, ...result })
 })
 
+// Set a single remote-config knob (e.g. news_tab_order). The client GET
+// /app-config endpoint is public + cacheable; this write goes through
+// admin and is bounded by `app_config` table's PK so payloads stay tiny.
+router.patch('/app-config', async (req, res) => {
+  const { key, value } = req.body || {}
+  if (!key || typeof key !== 'string') {
+    return res.status(400).json({ error: 'key is required' })
+  }
+  if (value === undefined) {
+    return res.status(400).json({ error: 'value is required' })
+  }
+  const { data, error } = await supabase
+    .from('app_config')
+    .upsert({ key, value, updated_at: new Date().toISOString(), updated_by: req.user.id }, { onConflict: 'key' })
+    .select()
+    .single()
+  if (error) {
+    return res.status(500).json({ error: 'Failed to update config' })
+  }
+  res.json(data)
+})
+
 router.post('/email-blast', requireFullAdmin, async (req, res) => {
   const { subject, body, scheduled_at } = req.body
   if (!subject || !body) {

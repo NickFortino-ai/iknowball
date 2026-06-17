@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useLeaderboard, useUserRankOnLeaderboard } from '../hooks/useLeaderboard'
 import { useAuth } from '../hooks/useAuth'
+import { useAppConfig } from '../hooks/useAppConfig'
 import TierBadge from '../components/ui/TierBadge'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import EmptyState from '../components/ui/EmptyState'
@@ -154,19 +155,25 @@ function labelsToTabs(labels) {
   return ordered
 }
 
-// Initial load uses (1) server-supplied order from the user profile if
-// present, (2) localStorage as a fallback for sessions before server sync
-// existed. Once profile.leaderboard_tab_order is set, the server value
-// wins on every render.
-function loadTabOrder(userId, serverOrder) {
+// Initial load priority:
+//   1. User's server-saved order (profile.leaderboard_tab_order)
+//   2. User's localStorage saved order
+//   3. Admin-set default from app_config (leaderboard_default_tab_order)
+//   4. Hardcoded DEFAULT_TABS as last resort
+// Once the user reorders for the first time, their personal order wins
+// every subsequent render — the admin default is only a starting point.
+function loadTabOrder(userId, serverOrder, adminDefaultOrder) {
   if (Array.isArray(serverOrder) && serverOrder.length) return labelsToTabs(serverOrder)
   try {
     const saved = localStorage.getItem(getOrderStorageKey(userId))
-    if (!saved) return DEFAULT_TABS
-    return labelsToTabs(JSON.parse(saved))
+    if (saved) return labelsToTabs(JSON.parse(saved))
   } catch {
-    return DEFAULT_TABS
+    // fall through
   }
+  if (Array.isArray(adminDefaultOrder) && adminDefaultOrder.length) {
+    return labelsToTabs(adminDefaultOrder)
+  }
+  return DEFAULT_TABS
 }
 
 function saveTabOrder(userId, tabs) {
@@ -296,7 +303,9 @@ export default function LeaderboardPage() {
   const { profile } = useAuth()
   const userId = profile?.id
   const serverOrder = profile?.leaderboard_tab_order
-  const [tabs, setTabs] = useState(() => loadTabOrder(userId, serverOrder))
+  const { data: appCfg } = useAppConfig()
+  const adminDefaultOrder = appCfg?.leaderboard_default_tab_order
+  const [tabs, setTabs] = useState(() => loadTabOrder(userId, serverOrder, adminDefaultOrder))
   const [activeLabel, setActiveLabel] = useState(tabs[0]?.label || 'Global')
   const [editMode, setEditMode] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState(null)
@@ -304,11 +313,11 @@ export default function LeaderboardPage() {
   const [searchedUser, setSearchedUser] = useState(null)
   const scrollRef = useRef(null)
 
-  // Reload order when userId arrives or when server-side order changes
-  // (e.g., user reordered on another device).
+  // Reload order when userId arrives, when server-side order changes
+  // (user reordered on another device), or when admin updates the default.
   useEffect(() => {
-    setTabs(loadTabOrder(userId, serverOrder))
-  }, [userId, JSON.stringify(serverOrder)])
+    setTabs(loadTabOrder(userId, serverOrder, adminDefaultOrder))
+  }, [userId, JSON.stringify(serverOrder), JSON.stringify(adminDefaultOrder)])
 
   const tab = useMemo(() => tabs.find((t) => t.label === activeLabel) || tabs[0], [tabs, activeLabel])
   const isLeaguesTab = tab.scope === 'leagues'
