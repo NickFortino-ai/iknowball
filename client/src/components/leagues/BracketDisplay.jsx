@@ -789,7 +789,10 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
         {useFacing ? (
           /* ── Facing bracket layout ── */
           <div className="relative flex min-w-max py-2">
-            {!isBestOf7 && (
+            {/* NCAA-themed bracket-ball backdrop. Hide for World Cup
+                (FIFA themed) and any sport with an admin-uploaded
+                template image — those should own the visual instead. */}
+            {!isBestOf7 && !isWorldCup && (
               <img
                 src="/ncaa-bracket-ball.png"
                 alt=""

@@ -1305,8 +1305,9 @@ function BracketImagePreview({ imageUrl, x, y, scale, opacity, position, onPosit
       onPointerUp={handlePointerUp}
       className={`relative w-full aspect-[16/10] rounded-xl border border-border bg-bg-primary overflow-hidden ${imageUrl ? 'cursor-grab active:cursor-grabbing' : ''}`}
     >
-      {/* Mock bracket layout */}
-      <div className="absolute inset-0 p-3 flex items-center justify-between">
+      {/* Mock bracket layout — sits at z-10 so the image toggle is
+          meaningful (image z=1 sits behind, image z=20 sits above). */}
+      <div className="absolute inset-0 p-3 flex items-center justify-between" style={{ zIndex: 10 }}>
         <div className="space-y-2">
           {[1,2,3,4].map((i) => <div key={i} className="w-16 h-3 rounded bg-bg-card border border-border" />)}
         </div>
@@ -1335,7 +1336,7 @@ function BracketImagePreview({ imageUrl, x, y, scale, opacity, position, onPosit
             opacity,
             maxWidth: '60%',
             maxHeight: '80%',
-            zIndex: position === 'above_finals' ? 20 : 5,
+            zIndex: position === 'above_finals' ? 20 : 1,
             pointerEvents: 'none',
             userSelect: 'none',
           }}
