@@ -1169,9 +1169,13 @@ async function computeSquaresReadiness(leagues, userId, result) {
  */
 async function computeBracketReadiness(leagues, userId, result) {
   const leagueIds = leagues.map((l) => l.id)
+  // Join in the template's picks_available_at so we can suppress the
+  // red "you haven't picked" flag before picks are even open. Without
+  // this, a World Cup bracket league created weeks before the bracket
+  // publishes shows red on every card the moment the league is joined.
   const { data: tournaments } = await supabase
     .from('bracket_tournaments')
-    .select('id, league_id, locks_at, status')
+    .select('id, league_id, locks_at, status, bracket_templates(picks_available_at)')
     .in('league_id', leagueIds)
   const tournamentByLeague = {}
   for (const t of tournaments || []) tournamentByLeague[t.league_id] = t
@@ -1215,9 +1219,17 @@ async function computeBracketReadiness(leagues, userId, result) {
     pickCountByEntry[p.entry_id] = (pickCountByEntry[p.entry_id] || 0) + 1
   }
 
+  const nowMs = Date.now()
   for (const l of leagues) {
     const t = tournamentByLeague[l.id]
     if (!t) continue // no tournament yet
+    // If the template hasn't reached its picks_available_at, the bracket
+    // isn't pickable yet — leave the clip off rather than red-flagging
+    // users for action they can't take.
+    const picksAvailableAt = t.bracket_templates?.picks_available_at
+    if (picksAvailableAt && new Date(picksAvailableAt).getTime() > nowMs) {
+      continue
+    }
     const totalMatchups = matchupCountByTournament[t.id] || 0
     if (totalMatchups === 0) {
       // Tournament exists but bracket isn't published yet
