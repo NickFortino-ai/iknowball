@@ -1190,9 +1190,9 @@ export default function CreateLeaguePage() {
           />
         </div>
 
-        {/* Sport (hidden for format-locked sports + sport-locked survivor/pickem presets) */}
+        {/* Sport (hidden for format-locked sports + sport-locked survivor/pickem/bracket presets) */}
         {!['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'].includes(format)
-          && !((format === 'survivor' || format === 'pickem') && sportPresetLocked) && <div>
+          && !((format === 'survivor' || format === 'pickem' || format === 'bracket') && sportPresetLocked) && <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Sport</label>
           <div className="flex gap-2 flex-wrap">
             {SPORT_OPTIONS.map((opt) => {
