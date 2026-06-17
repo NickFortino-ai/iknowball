@@ -281,6 +281,12 @@ export default function BracketTemplateBuilder({ templateId, onClose, initialSpo
   // them to pick again. Edits also lock the sport since changing it would
   // invalidate matchups + teams.
   const sportLocked = (!!templateId) || (!templateId && !!initialSport)
+  // Soccer World Cup halves don't have FIFA-issued names (unlike NBA
+  // conferences or NCAA regions). Suppress the admin region-picker UI
+  // and the user-facing region tabs. The bracket layout itself
+  // communicates the two-half structure. See memory:
+  // feedback_world_cup_no_half_names.
+  const isWorldCup = sport === 'soccer_world_cup'
   const { data: apiTeams } = useTeamsForSport(sport)
 
   const [step, setStep] = useState(1)
@@ -321,6 +327,16 @@ export default function BracketTemplateBuilder({ templateId, onClose, initialSpo
     return []
   })
   const [savedTemplateId, setSavedTemplateId] = useState(templateId)
+
+  // World Cup auto-fills two unnamed halves so the matchup generator and
+  // the facing left/right layout in BracketDisplay still work, but admin
+  // never has to invent labels. Internal placeholders only — suppressed
+  // in user UI by `isWorldCup` checks downstream.
+  useEffect(() => {
+    if (isWorldCup && regions.length === 0) {
+      setRegions(['Side 1', 'Side 2'])
+    }
+  }, [isWorldCup])
 
   // Sync state when existing template data loads (useState initializers run before async fetch completes)
   useEffect(() => {
@@ -761,7 +777,7 @@ export default function BracketTemplateBuilder({ templateId, onClose, initialSpo
             </div>
           </div>
 
-          <div>
+          <div className={isWorldCup ? 'hidden' : ''}>
             <label className="block text-sm font-semibold text-text-secondary mb-2">
               Conferences/Regions <span className="text-text-muted font-normal">(optional)</span>
             </label>

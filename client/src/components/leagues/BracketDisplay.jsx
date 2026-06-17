@@ -496,7 +496,12 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
   }, [picks])
 
   const hasPicks = picks && picks.length > 0
-  const showRegionTabs = regions && regions.length >= 2
+  // Soccer World Cup halves have no FIFA-issued names — internal
+  // placeholders ("Side 1" / "Side 2") drive the facing left/right
+  // layout but are never shown to users. See memory:
+  // feedback_world_cup_no_half_names.
+  const isWorldCup = sportKey === 'soccer_world_cup'
+  const showRegionTabs = !isWorldCup && regions && regions.length >= 2
 
   // ── Helper: render a matchup card with resolved data ──
 

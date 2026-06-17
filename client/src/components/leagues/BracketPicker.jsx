@@ -648,7 +648,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
           if (matchup.round_number === 0 && matchup.winner) {
             return (
               <div key={matchup.id} className="bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden opacity-70">
-                {matchup.region && !currentStep.region && (
+                {matchup.region && !currentStep.region && league.sport !== 'soccer_world_cup' && (
                   <div className="text-[10px] text-text-muted text-center pt-2">{matchup.region}</div>
                 )}
                 <div className="px-3 py-1 text-[10px] text-text-muted text-center">Result</div>
@@ -682,7 +682,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
 
           return (
             <div key={matchup.id} className="bg-bg-primary rounded-xl border border-text-primary/20 overflow-hidden">
-              {matchup.region && !currentStep.region && (
+              {matchup.region && !currentStep.region && league.sport !== 'soccer_world_cup' && (
                 <div className="text-[10px] text-text-muted text-center pt-2">{matchup.region}</div>
               )}
               <div className="p-1">

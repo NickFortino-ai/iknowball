@@ -24,8 +24,10 @@ const SPORT_LABELS = {
 // of sport. This helper picks the sport-appropriate display label:
 //   MLB → "leagues" (AL / NL)
 //   College (NCAA / WNCAA / CFP) → "regions"
+//   Soccer World Cup → null (halves have no FIFA-issued names; suppress)
 //   Everything else (NBA / NFL / NHL / WNBA / MLS) → "conferences"
 function groupingLabel(sport, count) {
+  if (sport === 'soccer_world_cup') return null
   const isCollege = sport === 'basketball_ncaab' || sport === 'basketball_wncaab' || sport === 'americanfootball_ncaaf'
   let noun
   if (sport === 'baseball_mlb') noun = 'league'
@@ -129,7 +131,9 @@ export default function BracketTemplateManager() {
                     </span>
                     <span>{t.team_count} teams</span>
                     <span>{t.rounds?.length || 0} rounds</span>
-                    {t.regions?.length > 0 && <span>{groupingLabel(t.sport, t.regions.length)}</span>}
+                    {t.regions?.length > 0 && groupingLabel(t.sport, t.regions.length) && (
+                      <span>{groupingLabel(t.sport, t.regions.length)}</span>
+                    )}
                   </div>
                   {t.description && (
                     <div className="text-xs text-text-muted mt-1">{t.description}</div>
