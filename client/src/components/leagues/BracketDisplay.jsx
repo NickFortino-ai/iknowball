@@ -203,7 +203,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   )
 }
 
-export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey }, ref) {
+export default forwardRef(function BracketDisplay({ matchups, picks, rounds, regions, onMatchupTap, initialRegion, seriesFormat, sportKey, containerized = false }, ref) {
   const isBestOf7 = seriesFormat === 'best_of_7'
   const [selectedRegion, setSelectedRegion] = useState(initialRegion ?? null)
 
@@ -746,10 +746,15 @@ export default forwardRef(function BracketDisplay({ matchups, picks, rounds, reg
     )
   }
 
-  // Desktop horizontal view — break out of parent max-w container to use full viewport width
+  // Desktop horizontal view — break out of parent max-w container to use
+  // full viewport width. When `containerized` is true (e.g. admin Step 5
+  // preview inside a narrower panel), skip the viewport-escape so the
+  // bracket fits its parent and scrolls horizontally if needed.
   return (
     <div
-      className={`xl:w-[calc(100vw-3rem)] ${useFacing ? '' : 'xl:max-w-[1400px]'} xl:-ml-[calc((100vw-3rem-100%)/2)] xl:self-center`}
+      className={containerized
+        ? 'w-full overflow-x-auto'
+        : `xl:w-[calc(100vw-3rem)] ${useFacing ? '' : 'xl:max-w-[1400px]'} xl:-ml-[calc((100vw-3rem-100%)/2)] xl:self-center`}
     >
       {/* Region tabs — glass-edge styling matched to the main league tabs */}
       {showRegionTabs && (
