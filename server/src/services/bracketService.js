@@ -17,6 +17,7 @@ export async function createTemplate(userId, data) {
       rounds: data.rounds || [],
       regions: data.regions || null,
       picks_available_at: data.picks_available_at || null,
+      ends_at: data.ends_at || null,
       series_format: data.series_format || 'single_elimination',
       bracket_image: data.bracket_image || null,
       bracket_image_x: data.bracket_image_x ?? 50,
@@ -118,6 +119,7 @@ export async function updateTemplate(templateId, userId, data) {
   if (data.rounds !== undefined) updates.rounds = data.rounds
   if (data.regions !== undefined) updates.regions = data.regions
   if (data.picks_available_at !== undefined) updates.picks_available_at = data.picks_available_at
+  if (data.ends_at !== undefined) updates.ends_at = data.ends_at
   if (data.series_format !== undefined) updates.series_format = data.series_format
   if (data.bracket_image !== undefined) updates.bracket_image = data.bracket_image
   if (data.bracket_image_x !== undefined) updates.bracket_image_x = data.bracket_image_x

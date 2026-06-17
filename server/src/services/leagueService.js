@@ -293,6 +293,19 @@ export async function createLeague(userId, data) {
     endsAt.setMonth(endsAt.getMonth() + 3)
   }
 
+  // Bracket: default ends_at to the template's championship date if the
+  // commissioner didn't pick one. Lets the league card show "Runs Jun 28
+  // – Jul 19" instead of "Jun 28 – TBD" without each commissioner having
+  // to know the date.
+  if (!endsAt && data.format === 'bracket' && data.settings?.template_id) {
+    const { data: tpl } = await supabase
+      .from('bracket_templates')
+      .select('ends_at')
+      .eq('id', data.settings.template_id)
+      .single()
+    if (tpl?.ends_at) endsAt = new Date(tpl.ends_at)
+  }
+
   // For custom ranges, keep noon UTC (safe for all US timezones)
   // No setHours — parseDate already gives noon which won't shift dates
 

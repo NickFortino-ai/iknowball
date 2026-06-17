@@ -301,6 +301,13 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     }
     return ''
   })
+  const [endsAt, setEndsAt] = useState(() => {
+    if (existing?.ends_at) {
+      const d = new Date(existing.ends_at)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+    return ''
+  })
   const [seriesFormat, setSeriesFormat] = useState(existing?.series_format || 'single_elimination')
   const [bracketImage, setBracketImage] = useState(existing?.bracket_image || '')
   const [bracketImageX, setBracketImageX] = useState(existing?.bracket_image_x ?? 50)
@@ -355,6 +362,10 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     if (existing.picks_available_at) {
       const d = new Date(existing.picks_available_at)
       setPicksAvailableAt(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)
+    }
+    if (existing.ends_at) {
+      const d = new Date(existing.ends_at)
+      setEndsAt(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
     }
     if (existing.rounds?.length) setRounds(existing.rounds)
     if (existing.matchups?.length) {
@@ -530,6 +541,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           rounds,
           regions: regions.length > 0 ? regions : undefined,
           picks_available_at: picksAvailableAt ? new Date(picksAvailableAt).toISOString() : null,
+          ends_at: endsAt ? new Date(`${endsAt}T23:59:59`).toISOString() : null,
           series_format: seriesFormat,
           bracket_image: bracketImage || null,
           bracket_image_x: bracketImageX,
@@ -550,6 +562,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
           rounds,
           regions: regions.length > 0 ? regions : undefined,
           picks_available_at: picksAvailableAt ? new Date(picksAvailableAt).toISOString() : null,
+          ends_at: endsAt ? new Date(`${endsAt}T23:59:59`).toISOString() : null,
           series_format: seriesFormat,
           bracket_image: bracketImage || null,
           bracket_image_x: bracketImageX,
@@ -773,6 +786,21 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
             />
             <div className="text-[10px] text-text-muted mt-1">
               When can users start making picks? Leave blank if picks should be available immediately.
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-text-secondary mb-2">
+              Tournament Ends <span className="text-text-muted font-normal">(optional)</span>
+            </label>
+            <input
+              type="date"
+              value={endsAt}
+              onChange={(e) => setEndsAt(e.target.value)}
+              className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            />
+            <div className="text-[10px] text-text-muted mt-1">
+              Date of the championship. Used as the default end date for leagues built from this template (so the league card shows the full run window).
             </div>
           </div>
 
