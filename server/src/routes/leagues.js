@@ -91,7 +91,7 @@ router.get('/preview/:code', async (req, res) => {
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
   format: z.enum(['pickem', 'survivor', 'squares', 'bracket', 'fantasy', 'nba_dfs', 'mlb_dfs', 'wnba_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass']),
-  sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'basketball_wncaab', 'icehockey_nhl', 'soccer_usa_mls', 'americanfootball_ufl', 'all']),
+  sport: z.enum(['americanfootball_nfl', 'basketball_nba', 'baseball_mlb', 'basketball_ncaab', 'americanfootball_ncaaf', 'basketball_wnba', 'basketball_wncaab', 'icehockey_nhl', 'soccer_usa_mls', 'soccer_world_cup', 'americanfootball_ufl', 'all']),
   duration: z.enum(['this_week', 'custom_range', 'full_season', 'playoffs_only']).optional(),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
