@@ -66,7 +66,6 @@ export default function BracketTemplateManager() {
     return (
       <BracketTemplateBuilder
         templateId={editingTemplate === 'new' ? null : editingTemplate}
-        initialSport={editingTemplate === 'new' ? (sportFilter || null) : null}
         onClose={() => setEditingTemplate(null)}
       />
     )

@@ -270,17 +270,16 @@ function generateMatchups(teamCount, regions, rounds) {
   return matchups
 }
 
-export default function BracketTemplateBuilder({ templateId, onClose, initialSport }) {
+export default function BracketTemplateBuilder({ templateId, onClose }) {
   const { data: existing, isLoading } = useBracketTemplate(templateId)
   const createTemplate = useCreateBracketTemplate()
   const updateTemplate = useUpdateBracketTemplate()
   const saveMatchups = useSaveBracketTemplateMatchups()
-  const [sport, setSport] = useState(existing?.sport || initialSport || '')
-  // Sport is locked when we entered the builder with a pre-selected sport
-  // (admin clicked "New Template" from a filtered list) — no point asking
-  // them to pick again. Edits also lock the sport since changing it would
-  // invalidate matchups + teams.
-  const sportLocked = (!!templateId) || (!templateId && !!initialSport)
+  const [sport, setSport] = useState(existing?.sport || '')
+  // Edits lock the sport since changing it would invalidate matchups +
+  // teams. New templates always show the picker — the manager list
+  // filter is a separate viewing concern and doesn't predict create intent.
+  const sportLocked = !!templateId
   // Soccer World Cup halves don't have FIFA-issued names (unlike NBA
   // conferences or NCAA regions). Suppress the admin region-picker UI
   // and the user-facing region tabs. The bracket layout itself
