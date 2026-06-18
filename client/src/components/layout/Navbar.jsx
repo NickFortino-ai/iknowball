@@ -682,6 +682,11 @@ export default function Navbar() {
                             <div className="text-sm font-medium truncate">{profile.display_name || profile.username}</div>
                             <div className="text-xs text-text-muted truncate">@{profile.username}</div>
                           </div>
+                          {notificationCount > 0 && (
+                            <span className="w-5 h-5 bg-incorrect text-white text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                              {notificationCount > 9 ? '9+' : notificationCount}
+                            </span>
+                          )}
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-correct flex-shrink-0">
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
@@ -899,6 +904,11 @@ export default function Navbar() {
                             <div className="text-sm font-medium truncate">{profile.display_name || profile.username}</div>
                             <div className="text-xs text-text-muted truncate">@{profile.username}</div>
                           </div>
+                          {notificationCount > 0 && (
+                            <span className="w-5 h-5 bg-incorrect text-white text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                              {notificationCount > 9 ? '9+' : notificationCount}
+                            </span>
+                          )}
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-correct flex-shrink-0">
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
