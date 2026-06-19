@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">I KNOW BALL</string>
+    <string name="title_activity_main">I KNOW BALL</string>
+    <string name="package_name">com.iknowball.app</string>
+    <string name="custom_url_scheme">com.iknowball.app</string>
+</resources>
