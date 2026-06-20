@@ -69,3 +69,13 @@ export function leagueEndSportsDay(endsAt) {
   const d = new Date(new Date(endsAt).getTime() - 12 * 60 * 60 * 1000)
   return d.toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
 }
+
+/**
+ * Recover the start date (PT YYYY-MM-DD) from a stored league.starts_at.
+ * Start dates are noon-PT anchored, so a plain PT format works without the
+ * 12h trick used for end dates.
+ */
+export function leagueStartSportsDay(startsAt) {
+  if (!startsAt) return null
+  return new Date(startsAt).toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
+}
