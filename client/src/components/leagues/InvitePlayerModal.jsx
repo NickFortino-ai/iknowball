@@ -3,6 +3,7 @@ import { useSearchUsers, useSendInvitation, useLeagueInvitations, useSendEmailIn
 import { useConnections } from '../../hooks/useConnections'
 import { toast } from '../ui/Toast'
 import Avatar from '../ui/Avatar'
+import { buildJoinLink } from '../../lib/shareLink'
 
 const STATUS_STYLES = {
   pending: 'text-accent',
@@ -20,7 +21,7 @@ export default function InvitePlayerModal({ leagueId, inviteCode, leagueName, fo
   const sendInvitation = useSendInvitation()
   const sendEmailInvitation = useSendEmailInvitation()
 
-  const inviteLink = `${window.location.origin}/join/${inviteCode}${format === 'bracket' ? '?t=bracket' : ''}`
+  const inviteLink = buildJoinLink(inviteCode, { isBracket: format === 'bracket' })
 
   async function handleInvite(username) {
     try {

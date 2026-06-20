@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useWnbaDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite, useSurveyStatus } from '../hooks/useLeagues'
 import SurveyModal from '../components/leagues/SurveyModal'
 import { useAcceptInvitation } from '../hooks/useInvitations'
+import { buildJoinLink } from '../lib/shareLink'
 import { useAuth } from '../hooks/useAuth'
 import MembersList from '../components/leagues/MembersList'
 import InvitePlayerModal from '../components/leagues/InvitePlayerModal'
@@ -2086,7 +2087,7 @@ export default function LeagueDetailPage() {
             <div className="flex items-center gap-5">
               <button
                 onClick={async () => {
-                  const url = `${window.location.origin}/join/${league.invite_code}`
+                  const url = buildJoinLink(league.invite_code)
                   await navigator.clipboard.writeText(url)
                   toast('Invite link copied!', 'success')
                 }}
@@ -2101,7 +2102,7 @@ export default function LeagueDetailPage() {
               {navigator.share && league.status !== 'open' && !(league.format === 'fantasy' && fantasySettings?.draft_status === 'pending') && (
                 <button
                   onClick={async () => {
-                    const url = `${window.location.origin}/join/${league.invite_code}`
+                    const url = buildJoinLink(league.invite_code)
                     try {
                       await navigator.share({ title: `Join ${league.name}`, url })
                     } catch {}
@@ -2216,7 +2217,7 @@ export default function LeagueDetailPage() {
         <div className="flex items-center justify-center gap-3 mb-4">
           <button
             onClick={async () => {
-              const url = `${window.location.origin}/join/${league.invite_code}?t=bracket`
+              const url = buildJoinLink(league.invite_code, { isBracket: true })
               await navigator.clipboard.writeText(url)
               toast('Invite link copied!', 'success')
             }}
@@ -2231,7 +2232,7 @@ export default function LeagueDetailPage() {
           {navigator.share && (
             <button
               onClick={async () => {
-                const url = `${window.location.origin}/join/${league.invite_code}?t=bracket`
+                const url = buildJoinLink(league.invite_code, { isBracket: true })
                 try {
                   await navigator.share({ title: `Join ${league.name}`, url })
                 } catch {}
