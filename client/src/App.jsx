@@ -25,6 +25,7 @@ import AdminPage from './pages/AdminPage'
 import PaymentPage from './pages/PaymentPage'
 import JoinPage from './pages/JoinPage'
 import PrivacyPage from './pages/PrivacyPage'
+import DeleteAccountPage from './pages/DeleteAccountPage'
 import TermsPage from './pages/TermsPage'
 import FAQPage from './pages/FAQPage'
 import UnsubscribePage from './pages/UnsubscribePage'
@@ -72,6 +73,7 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/delete-account" element={<DeleteAccountPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/guidelines" element={<GuidelinesPage />} />
