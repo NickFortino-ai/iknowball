@@ -57,3 +57,15 @@ export function toSportsDay(input) {
   const d = typeof input === 'string' ? new Date(input) : input
   return d.toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
 }
+
+/**
+ * Recover the commissioner-picked end date (PT YYYY-MM-DD) from a stored
+ * league.ends_at. Stored end dates use the "end of sports day PT" convention:
+ * next-day 10:00 UTC (= 3 AM PT next day). Shift back 12h so the picked date
+ * lands cleanly inside the PT calendar day.
+ */
+export function leagueEndSportsDay(endsAt) {
+  if (!endsAt) return null
+  const d = new Date(new Date(endsAt).getTime() - 12 * 60 * 60 * 1000)
+  return d.toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
+}

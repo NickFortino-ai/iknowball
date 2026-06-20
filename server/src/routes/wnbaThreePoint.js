@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { getWNBAPlayerPool, buildWnbaGameStateByTeam, getAllWnbaPlayers } from '../services/wnbaThreePointService.js'
+import { leagueEndSportsDay } from '../utils/sportsDay.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -120,6 +121,19 @@ router.post('/picks', async (req, res) => {
     .maybeSingle()
 
   if (!member) return res.status(403).json({ error: 'Not a member of this league' })
+
+  // Reject picks past the league's end date. Belt-and-suspenders against a
+  // stale client (the view also hides past-end dates) — without this, a user
+  // on an old bundle could still POST picks after the league window closed.
+  const { data: leagueRow } = await supabase
+    .from('leagues')
+    .select('starts_at, ends_at')
+    .eq('id', league_id)
+    .maybeSingle()
+  const leagueEnd = leagueEndSportsDay(leagueRow?.ends_at)
+  if (leagueEnd && date > leagueEnd) {
+    return res.status(400).json({ error: 'This league has ended' })
+  }
 
   const { data: settings } = await supabase
     .from('fantasy_settings')

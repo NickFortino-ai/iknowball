@@ -25,3 +25,21 @@ export function addDaysSportsDay(dateStr, days) {
   d.setDate(d.getDate() + days)
   return d.toLocaleDateString('en-CA')
 }
+
+// Recover the commissioner-picked end date (PT YYYY-MM-DD) from a stored
+// league.ends_at. Stored end dates use the "end of sports day PT" convention:
+// next-day 10:00 UTC (= 3 AM PT next day). Shift back 12h so the picked date
+// lands cleanly inside the PT calendar day.
+export function leagueEndSportsDay(endsAt) {
+  if (!endsAt) return null
+  const d = new Date(new Date(endsAt).getTime() - 12 * 60 * 60 * 1000)
+  return d.toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
+}
+
+// Recover the start date (PT YYYY-MM-DD) from a stored league.starts_at.
+// Start dates are noon-PT anchored, so a plain PT format works without the
+// 12h trick used for end dates.
+export function leagueStartSportsDay(startsAt) {
+  if (!startsAt) return null
+  return new Date(startsAt).toLocaleDateString('en-CA', { timeZone: SPORTS_TZ })
+}
