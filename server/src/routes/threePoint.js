@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { supabase } from '../config/supabase.js'
 import { getNBAPlayerPool } from '../services/nbaDfsService.js'
 import { fetchESPNScoreboard } from '../services/espnService.js'
+import { leagueEndSportsDay } from '../utils/sportsDay.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -221,6 +222,18 @@ router.post('/picks', async (req, res) => {
     .maybeSingle()
 
   if (!member) return res.status(403).json({ error: 'Not a member of this league' })
+
+  // Reject picks past league end date — belt-and-suspenders against a stale
+  // client. PT-anchored.
+  const { data: leagueRow } = await supabase
+    .from('leagues')
+    .select('ends_at')
+    .eq('id', league_id)
+    .maybeSingle()
+  const leagueEnd = leagueEndSportsDay(leagueRow?.ends_at)
+  if (leagueEnd && date > leagueEnd) {
+    return res.status(400).json({ error: 'This league has ended' })
+  }
 
   const { data: settings } = await supabase
     .from('fantasy_settings')

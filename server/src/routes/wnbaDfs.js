@@ -8,6 +8,7 @@ import {
   getWNBADFSStandings,
   getWNBANightlyResults,
 } from '../services/wnbaDfsService.js'
+import { leagueEndSportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
 import { getFantasySettings } from '../services/fantasyService.js'
 
 const router = Router()
@@ -31,17 +32,20 @@ router.post('/roster', async (req, res) => {
   const { league_id, date, season, slots } = req.body
   if (!league_id || !date) return res.status(400).json({ error: 'league_id and date required' })
 
+  // Gate roster submission to the league's PT-anchored window.
   const { data: league } = await supabase
     .from('leagues')
-    .select('starts_at')
+    .select('starts_at, ends_at')
     .eq('id', league_id)
     .single()
 
-  if (league?.starts_at) {
-    const leagueStart = new Date(league.starts_at).toISOString().split('T')[0]
-    if (date < leagueStart) {
-      return res.status(400).json({ error: 'Cannot submit a roster before the league start date' })
-    }
+  const leagueStart = leagueStartSportsDay(league?.starts_at)
+  if (leagueStart && date < leagueStart) {
+    return res.status(400).json({ error: 'Cannot submit a roster before the league start date' })
+  }
+  const leagueEnd = leagueEndSportsDay(league?.ends_at)
+  if (leagueEnd && date > leagueEnd) {
+    return res.status(400).json({ error: 'This league has ended' })
   }
 
   // Per-player locking — same pattern as NBA DFS. Players whose games have

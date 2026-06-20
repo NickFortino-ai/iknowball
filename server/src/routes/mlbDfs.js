@@ -7,6 +7,7 @@ import {
   saveMLBDFSRoster,
 } from '../services/mlbDfsService.js'
 import { getFantasySettings } from '../services/fantasyService.js'
+import { leagueEndSportsDay, leagueStartSportsDay } from '../utils/sportsDay.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -43,6 +44,22 @@ router.post('/roster', async (req, res) => {
     .maybeSingle()
 
   if (!member) return res.status(403).json({ error: 'Not a member of this league' })
+
+  // Gate roster submission to the league's PT-anchored window.
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('starts_at, ends_at')
+    .eq('id', league_id)
+    .single()
+
+  const leagueStart = leagueStartSportsDay(league?.starts_at)
+  if (leagueStart && date < leagueStart) {
+    return res.status(400).json({ error: 'Cannot submit a roster before the league start date' })
+  }
+  const leagueEnd = leagueEndSportsDay(league?.ends_at)
+  if (leagueEnd && date > leagueEnd) {
+    return res.status(400).json({ error: 'This league has ended' })
+  }
 
   // Verify salary cap
   const settings = await getFantasySettings(league_id)

@@ -7,7 +7,7 @@ import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
 import Avatar from '../ui/Avatar'
 import UserProfileModal from '../profile/UserProfileModal'
-import { todaySportsDay, tomorrowSportsDay } from '../../lib/sportsDay'
+import { todaySportsDay, tomorrowSportsDay, leagueStartSportsDay, leagueEndSportsDay } from '../../lib/sportsDay'
 
 const SLOTS = [
   { key: 'SP', label: 'SP', positions: ['SP'] },
@@ -262,16 +262,16 @@ function MlbLiveView({ league, date: leagueDate }) {
 export default function MlbDfsView({ league, tab = 'roster' }) {
   const { profile } = useAuth()
 
-  const leagueStart = league.starts_at
-    ? new Date(league.starts_at).toISOString().split('T')[0]
-    : todayLocal()
+  const leagueStart = leagueStartSportsDay(league.starts_at) || todayLocal()
+  const leagueEnd = leagueEndSportsDay(league.ends_at)
   const today = todayLocal()
   const tomorrow = tomorrowLocal()
 
+  const inWindow = (d) => d >= leagueStart && (!leagueEnd || d <= leagueEnd)
   const availableDates = []
-  if (today >= leagueStart) availableDates.push(today)
-  if (tomorrow >= leagueStart) availableDates.push(tomorrow)
-  if (!availableDates.length) availableDates.push(leagueStart)
+  if (inWindow(today)) availableDates.push(today)
+  if (inWindow(tomorrow)) availableDates.push(tomorrow)
+  if (!availableDates.length) availableDates.push(leagueEnd || leagueStart)
 
   const [selectedDate, setSelectedDate] = useState(availableDates[0])
   const date = selectedDate
