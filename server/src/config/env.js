@@ -41,4 +41,11 @@ export const env = {
   APNS_BUNDLE_ID: process.env.APNS_BUNDLE_ID || 'com.iknowball.app',
   APNS_KEY: process.env.APNS_KEY,
   APNS_PRODUCTION: process.env.APNS_PRODUCTION !== 'false',
+
+  // Firebase Cloud Messaging (FCM) — Android native push. Store the entire
+  // service account JSON (downloaded from Firebase console → Service
+  // accounts → Generate new private key) as a single env var. Lesson from
+  // the APNs PEM-marker incident — single-var JSON avoids the multi-line
+  // env escaping bug class entirely.
+  FIREBASE_SERVICE_ACCOUNT_JSON: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
 }

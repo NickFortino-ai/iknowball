@@ -39,14 +39,6 @@ async function tryPostDeviceToken() {
 export async function initPushNotifications() {
   if (!Capacitor.isNativePlatform()) return
 
-  // Android requires Firebase Cloud Messaging (FCM) configuration via
-  // google-services.json before PushNotifications.register() can complete.
-  // Without it the underlying Firebase initialization throws a native
-  // exception that crashes the app. Skip until FCM is wired in a
-  // dedicated Android push setup step.
-  // TODO(FCM): remove this guard once google-services.json is in place.
-  if (Capacitor.getPlatform() === 'android') return
-
   const permission = await PushNotifications.requestPermissions()
   if (permission.receive !== 'granted') return
 

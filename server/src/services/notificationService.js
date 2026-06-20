@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { sendPushNotification } from './pushService.js'
 import { sendApnsToUser, sendApnsBadgeUpdate } from './apnsService.js'
+import { sendFcmToUser } from './fcmService.js'
 
 const PUSH_ELIGIBLE_TYPES = ['parlay_result', 'streak_milestone', 'futures_result', 'squares_quarter_win', 'record_broken', 'survivor_result', 'survivor_win', 'survivor_pick_reminder', 'roster_reminder', 'league_win', 'league_invitation', 'direct_message', 'league_thread_mention', 'league_report', 'nfl_injury_warning', 'fantasy_trade_proposed', 'fantasy_trade_accepted', 'fantasy_trade_declined', 'fantasy_waiver_awarded', 'fantasy_stat_correction', 'fantasy_draft_starting_soon', 'poll_response_milestone', 'og_welcome', 'bracket_published']
 
@@ -37,12 +38,15 @@ export async function createNotification(userId, type, message, metadata = {}) {
         : type === 'poll_response_milestone' && metadata.hotTakeId
           ? `/hub?tab=highlights&scrollTo=hot_take-${metadata.hotTakeId}`
         : metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
-        // Fan out to both transports. Web push → desktop PWA and Safari
-        // users, APNs → native iOS app. Failures are logged but don't
-        // block the notification row from being created.
+        // Fan out to all three transports. Web push → desktop PWA and
+        // Safari users, APNs → native iOS app, FCM → native Android app.
+        // Each service filters by its own `platform` value on device_tokens
+        // so there's no double-delivery to a single device. Failures are
+        // logged but don't block the notification row from being created.
         await Promise.allSettled([
           sendPushNotification(userId, 'I KNOW BALL', message, pushUrl),
           sendApnsToUser(userId, 'I KNOW BALL', message, pushUrl),
+          sendFcmToUser(userId, 'I KNOW BALL', message, pushUrl),
         ])
       }
     } catch (pushError) {
