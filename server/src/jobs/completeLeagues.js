@@ -983,19 +983,28 @@ export async function completeLeagues() {
     }
   }
 
-  // Find non-bracket leagues whose end date has actually passed. End date is
-  // strictly inclusive: a commissioner-chosen end date of June 13 means the
-  // league runs through end of June 13 PT (ends_at is stored as next day 10:00
-  // UTC = 3 AM PT). No early-completion shortcut — the previous 24h lookahead
-  // window let leagues close prematurely when the final day's games hadn't yet
-  // been synced into the `games` table (unfinished count=0 misread as "done").
+  // Find non-bracket leagues that may be ready to complete. End date is
+  // stored as next-day 10:00 UTC (= 3 AM PT next day), so a strict
+  // `ends_at <= now` gate forces completion (and APNs fan-out) to fire
+  // sometime between 3 AM and the next cron tick — not a humane hour.
+  //
+  // Instead, allow early completion as soon as the league's last scheduled
+  // game has actually finalized. The per-league guardrail below requires
+  // (a) the games are synced into our games table, (b) the latest one has
+  // started, and (c) none are still unfinished — collectively preventing
+  // the bug that killed the previous 24h-lookahead attempt (count=0 misread
+  // as "done" when games hadn't been synced yet).
+  //
+  // The 14-day ceiling bounds the query while comfortably covering daily
+  // contests, weekly NFL contests, and salary-cap fantasy near season end.
+  const lookaheadIso = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
   const { data: nonBracketLeagues, error } = await supabase
     .from('leagues')
     .select('*')
     .in('format', ['pickem', 'fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'td_pass'])
     .neq('status', 'completed')
     .not('ends_at', 'is', null)
-    .lte('ends_at', now)
+    .lte('ends_at', lookaheadIso)
 
   if (error) {
     logger.error({ error }, 'Failed to fetch leagues for completion')
@@ -1033,10 +1042,16 @@ export async function completeLeagues() {
           continue
         }
       } else {
-        // Non-bracket leagues: end date has already passed (gated by the fetch
-        // query above). Still skip if any games in the range are unfinished —
-        // covers rainout / postponement edge cases where a game's actual play
-        // date drifts past the league's calendar end.
+        // Non-bracket leagues complete on the "last game in the window has
+        // finalized" signal, with the league's own ends_at as a safety net.
+        //
+        // Two paths:
+        //  - Past official end (now >= ends_at): just verify no games are
+        //    still unfinished (handles postponements drifting past end-date).
+        //  - Early completion (now < ends_at): the league's natural calendar
+        //    end hasn't arrived yet, but if every scheduled game has played
+        //    and finalized, complete now — and fire the APNs at the actual
+        //    end-of-slate hour instead of 3 AM PT.
         let sportId = null
         if (league.sport && league.sport !== 'all') {
           const { data: sportRow } = await supabase
@@ -1047,22 +1062,53 @@ export async function completeLeagues() {
           if (sportRow) sportId = sportRow.id
         }
 
-        // Treat postponed games as effectively done — they'll never finalize on
-        // this date, and their picks can't settle. Without this, a single
-        // rained-out MLB game in the league's date range blocks the entire
-        // league from completing.
-        let unfinishedQuery = supabase
+        // Pull the games in the league's window once and inspect them
+        // locally — we need both the unfinished count AND the latest
+        // scheduled start to apply the early-completion guardrail.
+        let rangeQuery = supabase
           .from('games')
-          .select('id', { count: 'exact', head: true })
+          .select('starts_at, status')
           .gte('starts_at', league.starts_at)
           .lte('starts_at', league.ends_at)
-          .not('status', 'in', '(final,postponed)')
-        if (sportId) unfinishedQuery = unfinishedQuery.eq('sport_id', sportId)
-        const { count: unfinished } = await unfinishedQuery
+        if (sportId) rangeQuery = rangeQuery.eq('sport_id', sportId)
+        const { data: rangeGames, error: rangeErr } = await rangeQuery
+        if (rangeErr) {
+          logger.error({ err: rangeErr, leagueId: league.id }, 'Failed to fetch range games for completion check')
+          continue
+        }
 
+        // Treat postponed games as effectively done — they'll never finalize
+        // on this date, and their picks can't settle. Without this, a single
+        // rained-out MLB game blocks the entire league from completing.
+        const unfinished = (rangeGames || []).filter(
+          (g) => g.status !== 'final' && g.status !== 'postponed',
+        ).length
         if (unfinished > 0) {
           logger.info({ leagueId: league.id, unfinished }, 'Skipping league completion — unfinished games remain')
           continue
+        }
+
+        // Early-completion guardrail. The previous 24h-lookahead attempt
+        // failed because count=0 was misread as "all games done" when in
+        // reality games hadn't been synced yet. Two checks together prevent
+        // that: (a) at least one game must exist in the range, (b) the
+        // latest scheduled game must already have started. If both hold and
+        // no game is unfinished, the slate is genuinely over.
+        const nowMs = Date.now()
+        const endsAtMs = new Date(league.ends_at).getTime()
+        if (nowMs < endsAtMs) {
+          if (!rangeGames?.length) {
+            logger.info({ leagueId: league.id }, 'Skipping early completion — no games yet synced for league window')
+            continue
+          }
+          const latestStartMs = Math.max(
+            ...rangeGames.map((g) => new Date(g.starts_at).getTime()),
+          )
+          if (latestStartMs > nowMs) {
+            logger.info({ leagueId: league.id, latestStartMs, nowMs }, 'Skipping early completion — latest scheduled game has not started')
+            continue
+          }
+          logger.info({ leagueId: league.id, endsAtMs, nowMs }, 'Early completion — all games finalized before official end')
         }
       }
 
