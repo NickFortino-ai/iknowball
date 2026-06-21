@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <link rel="preconnect" href="https://a.espncdn.com" crossorigin />
     <link rel="dns-prefetch" href="https://a.espncdn.com" />
     <title>I KNOW BALL</title>
@@ -37,19 +37,13 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      // Reset zoom on orientation change — iOS Safari auto-zooms on
-      // landscape and doesn't reset when returning to portrait.
-      window.addEventListener('orientationchange', function () {
-        var viewport = document.querySelector('meta[name=viewport]');
-        if (!viewport) return;
-        var original = viewport.getAttribute('content');
-        viewport.setAttribute('content', original + ', maximum-scale=1.0');
-        setTimeout(function () {
-          viewport.setAttribute('content', original);
-        }, 100);
-      });
-    </script>
+    <!-- Orientation-change zoom-reset hack removed — no longer needed
+         now that the viewport meta tag has user-scalable=no. HTML
+         viewport zoom is disabled; native WKWebView scrollView zoom
+         (configured in MainViewController.swift) handles pinch
+         gestures bidirectionally and bounded to 1x-5x, so the
+         can't-zoom-out-of-stuck-state bug goes away. -->
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
