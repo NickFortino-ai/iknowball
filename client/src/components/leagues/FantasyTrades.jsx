@@ -437,8 +437,8 @@ function TradeDropModal({ roster, trade, dropsNeeded, onConfirm, onCancel, isPen
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onCancel}>
-      <div className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 pt-20 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-4" onClick={onCancel}>
+      <div className="bg-bg-primary border border-text-primary/20 rounded-2xl w-full max-w-md max-h-full overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b border-text-primary/10">
           <h3 className="text-base font-bold text-text-primary">Drop {dropsNeeded} Player{dropsNeeded > 1 ? 's' : ''} to Accept</h3>
           <p className="text-sm text-text-primary/70 mt-1">
