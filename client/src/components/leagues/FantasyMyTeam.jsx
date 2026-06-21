@@ -197,17 +197,29 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
   )
 }
 
-function EmptySlot({ slotLabel, onTap, isSelected, editMode }) {
+function EmptySlot({ slotLabel, onTap, isSelected, editMode, isDropTarget }) {
+  // `isDropTarget` — set when a player is selected and this empty slot is
+  // a valid place to move them (bench slot always; starter slot only when
+  // position matches, handled by caller). Distinct from `isSelected`
+  // (which means "this slot is the cursor"). Visual: faint accent ring
+  // + nudge in the label so the user sees a place to drop the picked
+  // player without first picking a replacement.
   return (
     <button
       type="button"
       onClick={onTap}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed transition-colors text-left ${
-        isSelected ? 'border-accent bg-accent/10' : 'border-text-primary/20 bg-bg-primary/40 hover:bg-bg-card-hover'
+        isSelected
+          ? 'border-accent bg-accent/10'
+          : isDropTarget
+            ? 'border-accent/50 bg-accent/5 hover:bg-accent/10'
+            : 'border-text-primary/20 bg-bg-primary/40 hover:bg-bg-card-hover'
       }`}
     >
       <div className="w-9 h-9 rounded-full bg-bg-secondary/40 shrink-0" />
-      <div className="flex-1 text-xs text-text-muted">Empty {slotLabel}{editMode ? ' — tap to assign' : ''}</div>
+      <div className={`flex-1 text-xs ${isDropTarget ? 'text-accent' : 'text-text-muted'}`}>
+        Empty {slotLabel}{editMode ? (isDropTarget ? ' — tap to move here' : ' — tap to assign') : ''}
+      </div>
     </button>
   )
 }
@@ -785,7 +797,17 @@ export default function FantasyMyTeam({ league }) {
                       showSeasonStats={isCurrentWeek}
                     />
                   ) : (
-                    editMode ? <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} editMode /> : <EmptySlot slotLabel={slotDef.label} onTap={() => {}} isSelected={false} />
+                    editMode ? (
+                      (() => {
+                        // Highlight as drop target when a position-compatible
+                        // bench player is currently selected — gives the user
+                        // a clear "tap here to start" affordance.
+                        const selPlayer = selected?.type === 'player'
+                          ? roster.find((r) => r.player_id === selected.key) : null
+                        const isDropTarget = !!selPlayer && slotDef.positions.includes(selPlayer?.nfl_players?.position)
+                        return <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} editMode isDropTarget={isDropTarget} />
+                      })()
+                    ) : <EmptySlot slotLabel={slotDef.label} onTap={() => {}} isSelected={false} />
                   )}
                 </div>
               </div>
@@ -813,7 +835,18 @@ export default function FantasyMyTeam({ league }) {
             />
           ))}
           {Array.from({ length: emptyBenchCount }, (_, i) => (
-            <EmptySlot key={`bench-empty-${i}`} slotLabel="BN" onTap={editMode ? () => handleSlotTap('bench') : () => {}} isSelected={editMode && selected?.type === 'slot' && selected.key === 'bench'} editMode={editMode} />
+            <EmptySlot
+              key={`bench-empty-${i}`}
+              slotLabel="BN"
+              onTap={editMode ? () => handleSlotTap('bench') : () => {}}
+              isSelected={editMode && selected?.type === 'slot' && selected.key === 'bench'}
+              editMode={editMode}
+              // Any selected player can be benched regardless of position,
+              // so every empty bench slot lights up as a valid drop target
+              // when a player is selected. Lets the user park a starter on
+              // the bench without first finding a replacement.
+              isDropTarget={editMode && selected?.type === 'player'}
+            />
           ))}
         </div>
       </div>
