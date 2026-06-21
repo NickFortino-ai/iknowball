@@ -841,11 +841,11 @@ export default function FantasyMyTeam({ league }) {
               onTap={editMode ? () => handleSlotTap('bench') : () => {}}
               isSelected={editMode && selected?.type === 'slot' && selected.key === 'bench'}
               editMode={editMode}
-              // Any selected player can be benched regardless of position,
-              // so every empty bench slot lights up as a valid drop target
-              // when a player is selected. Lets the user park a starter on
-              // the bench without first finding a replacement.
-              isDropTarget={editMode && selected?.type === 'player'}
+              // Intentionally not setting isDropTarget — empty bench slots
+              // sit there as fallback drop targets but don't need to glow
+              // when a starter is selected. The typical flow is bench⇄
+              // starter swap; benching-without-replacement is the
+              // edge case.
             />
           ))}
         </div>
