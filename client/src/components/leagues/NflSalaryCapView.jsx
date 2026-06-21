@@ -224,7 +224,7 @@ export default function NflSalaryCapView({ league }) {
                     {isLocked ? (
                       <span className="text-sm font-display text-text-primary">{Math.round(pointsEarned * 10) / 10}</span>
                     ) : (
-                      <span className="text-xs font-bold text-correct">${(player.salary || 0).toLocaleString()}</span>
+                      <span className="text-sm font-bold text-correct">${(player.salary || 0).toLocaleString()}</span>
                     )}
                     {!isLocked && (
                       <button
