@@ -403,7 +403,7 @@ export default function FantasyPlayerBrowser({ league }) {
       {/* Add/drop confirm modal */}
       {addingPlayer && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={() => { setAddingPlayer(null); setBidAmount(0) }}>
-          <div className="bg-bg-secondary w-full md:max-w-md rounded-2xl mx-3 mb-16 md:mb-0 md:mx-0 p-5 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-bg-secondary w-full md:max-w-md rounded-2xl mx-3 mb-[calc(5.5rem+env(safe-area-inset-bottom))] md:mb-0 md:mx-0 p-5 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-lg mb-4">{addingPlayer?.on_waivers ? 'Claim' : 'Add'} {addingPlayer.full_name}</h3>
             {isFaab && (
               <div className="mb-4">
