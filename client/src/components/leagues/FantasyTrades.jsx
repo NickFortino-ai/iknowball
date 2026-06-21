@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useFantasyTrades, useRespondToTrade, useFantasyRoster, useProposeTrade, useFantasyTransactions } from '../../hooks/useLeagues'
+import { useFantasyTrades, useRespondToTrade, useFantasyRoster, useProposeTrade, useFantasyTransactions, useAddDropPlayer } from '../../hooks/useLeagues'
+import PlayerDetailModal from './PlayerDetailModal'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
@@ -128,7 +129,7 @@ function formatTimeAgo(ts) {
   return `${days}d ago`
 }
 
-function TransactionRow({ txn }) {
+function TransactionRow({ txn, onTapPlayer }) {
   const player = txn.nfl_players || {}
   const user = txn.users || {}
 
@@ -141,16 +142,22 @@ function TransactionRow({ txn }) {
   }
   const cfg = typeConfig[txn.type] || { icon: '?', color: 'text-text-muted', label: txn.type }
 
+  const handleTap = () => {
+    if (onTapPlayer && txn.player_id) onTapPlayer(txn.player_id, txn.type)
+  }
+
   return (
     <div className="flex items-center gap-3 py-3.5 border-b border-text-primary/10 last:border-0">
       <span className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold shrink-0 ${cfg.color}`}>
         {cfg.icon}
       </span>
-      {player.headshot_url ? (
-        <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0" onError={(e) => { e.target.style.display = 'none' }} />
-      ) : (
-        <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0" />
-      )}
+      <button type="button" onClick={handleTap} className="shrink-0">
+        {player.headshot_url ? (
+          <img src={player.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover bg-bg-secondary shrink-0 hover:ring-2 hover:ring-accent/40 transition-all" onError={(e) => { e.target.style.display = 'none' }} />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-bg-secondary shrink-0 hover:ring-2 hover:ring-accent/40 transition-all" />
+        )}
+      </button>
       <div className="flex-1 min-w-0">
         <div className="text-base text-text-primary">
           <span className="font-semibold">{user.display_name || user.username}</span>
@@ -548,6 +555,16 @@ export default function FantasyTrades({ league, fantasySettings }) {
   const [counterTrade, setCounterTrade] = useState(null)
   const [dropModal, setDropModal] = useState(null) // { tradeId, dropsNeeded }
   const [vetoModal, setVetoModal] = useState(null) // { tradeId }
+  // Player detail modal opened from a tap on a transaction-row headshot.
+  // ctx mirrors PlayerDetailModal's playerContext values — for now we use
+  // 'free_agent' on drop transactions (showing the Add button) and null
+  // (info-only) for everything else.
+  const [detailPlayer, setDetailPlayer] = useState(null) // { playerId, ctx }
+  const addDrop = useAddDropPlayer(league.id)
+  const handleTxnPlayerTap = (playerId, txnType) => {
+    const isDropType = txnType === 'drop' || txnType === 'waiver_drop'
+    setDetailPlayer({ playerId, ctx: isDropType ? 'free_agent' : null })
+  }
   const subtab = new URLSearchParams(window.location.search).get('subtab')
   const [activeView, setActiveView] = useState(subtab === 'trades' ? 'trades' : 'activity') // 'activity' | 'trades'
 
@@ -632,7 +649,7 @@ export default function FantasyTrades({ league, fantasySettings }) {
                       <TradeTransactionRow key={`trade-${txn.trade_id}`} items={tradeItems} timestamp={txn.created_at} />
                     )
                   } else {
-                    items.push(<TransactionRow key={txn.id} txn={txn} />)
+                    items.push(<TransactionRow key={txn.id} txn={txn} onTapPlayer={handleTxnPlayerTap} />)
                   }
                 }
                 return items
@@ -695,6 +712,33 @@ export default function FantasyTrades({ league, fantasySettings }) {
           onConfirm={(reason) => handleAction(vetoModal.tradeId, 'veto', null, reason)}
           onCancel={() => setVetoModal(null)}
           isPending={respond.isPending}
+        />
+      )}
+
+      {detailPlayer && (
+        <PlayerDetailModal
+          leagueId={league.id}
+          playerId={detailPlayer.playerId}
+          playerContext={detailPlayer.ctx}
+          onClose={() => setDetailPlayer(null)}
+          onAdd={async (pid) => {
+            try {
+              await addDrop.mutateAsync({ addPlayerId: pid, dropPlayerId: null })
+              toast('Player added', 'success')
+              setDetailPlayer(null)
+            } catch (err) {
+              // Common case: roster is full and a drop is needed. Direct
+              // the user to the Players tab where the full add-drop flow
+              // lives. Other errors (player not actually a free agent,
+              // on waivers, etc.) just toast the message.
+              const msg = err?.message || 'Failed to add player'
+              if (/full|drop/i.test(msg)) {
+                toast('Roster is full — head to the Players tab to add with a drop', 'error')
+              } else {
+                toast(msg, 'error')
+              }
+            }
+          }}
         />
       )}
     </div>
