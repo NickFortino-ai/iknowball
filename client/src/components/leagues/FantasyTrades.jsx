@@ -30,13 +30,16 @@ function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, 
   const proposerItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.proposer_user_id)
   const receiverItems = (trade.fantasy_trade_items || []).filter((i) => i.from_user_id === trade.receiver_user_id)
 
+  // Status colors are text-only (no background tints) since the status word
+  // now sits as plain text above the trade arrow rather than as a pill.
   const statusColors = {
     pending: 'text-yellow-500',
     pending_review: 'text-accent',
     accepted: 'text-correct',
-    declined: 'text-incorrect bg-incorrect/10',
-    cancelled: 'text-text-muted bg-text-primary/5',
-    vetoed: 'text-incorrect bg-incorrect/10',
+    declined: 'text-incorrect',
+    cancelled: 'text-text-muted',
+    countered: 'text-text-primary',
+    vetoed: 'text-incorrect',
   }
 
   const statusLabels = {
@@ -45,15 +48,25 @@ function TradeCard({ trade, currentUserId, isCommissioner, onAccept, onDecline, 
 
   return (
     <div className={`rounded-xl border border-text-primary/20 p-4 bg-bg-primary/40`}>
-      <div className="flex items-center gap-3 mb-4">
-        <Avatar user={trade.proposer} size="2xl" />
-        <svg className="w-7 h-7 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4-4 4M3 12h18" />
-        </svg>
-        <Avatar user={trade.receiver} size="2xl" />
-        <span className={`ml-auto text-xs font-bold px-2.5 py-1 rounded ${statusColors[trade.status] || ''}`}>
-          {statusLabels[trade.status] || trade.status}
-        </span>
+      {/* Top row: avatars sit centered over their respective player columns
+          (left = proposer, right = receiver). Status word + arrow stack
+          centered in the middle so the status is visually tied to the
+          direction of the trade. */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center mb-4">
+        <div className="flex justify-center">
+          <Avatar user={trade.proposer} size="2xl" />
+        </div>
+        <div className="flex flex-col items-center px-3">
+          <span className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${statusColors[trade.status] || ''}`}>
+            {statusLabels[trade.status] || trade.status}
+          </span>
+          <svg className="w-7 h-7 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4-4 4M3 12h18" />
+          </svg>
+        </div>
+        <div className="flex justify-center">
+          <Avatar user={trade.receiver} size="2xl" />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
