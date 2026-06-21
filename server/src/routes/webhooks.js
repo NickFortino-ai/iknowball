@@ -5,6 +5,7 @@ import { supabase } from '../config/supabase.js'
 import { env } from '../config/env.js'
 import { logger } from '../utils/logger.js'
 import { verifyNotification, verifyTransactionLoose, verifyRenewalInfo } from '../services/appleIapService.js'
+import { getSubscriptionState } from '../services/googleIapService.js'
 
 const router = Router()
 const stripe = new Stripe(env.STRIPE_SECRET_KEY)
@@ -377,6 +378,152 @@ router.post(
       res.json({ received: true })
     } catch (err) {
       logger.error({ err, type, subtype }, 'Apple notification handler error')
+      res.status(200).json({ received: true })
+    }
+  }
+)
+
+// Google Play Real-Time Developer Notifications (RTDN) webhook.
+//
+// Google Play forwards subscription lifecycle events to a Cloud Pub/Sub
+// topic, which we then have configured as a push subscription pointed
+// at this endpoint. Pub/Sub posts a JSON envelope wrapping a base64-
+// encoded payload describing the event.
+//
+// Pub/Sub expects 2xx on success and will retry indefinitely on non-2xx.
+// We always 2xx after parse-succeeds — if our DB update fails we log it
+// but don't ask Pub/Sub to retry, since the next event for the same
+// subscription will re-query Play and self-correct.
+//
+// Notification types we handle (numeric in payload.subscriptionNotification.notificationType):
+//   1  SUBSCRIPTION_RECOVERED        — was on hold/grace, now active
+//   2  SUBSCRIPTION_RENEWED          — successful renewal, extend expiry
+//   3  SUBSCRIPTION_CANCELED         — user cancelled (still active until expiry)
+//   4  SUBSCRIPTION_PURCHASED        — fresh purchase (also reaches us via verify-google-iap)
+//   5  SUBSCRIPTION_ON_HOLD          — payment failed, retry period
+//   6  SUBSCRIPTION_IN_GRACE_PERIOD  — payment failed, grace period
+//   7  SUBSCRIPTION_RESTARTED        — user resumed a cancelled subscription
+//   8  SUBSCRIPTION_PRICE_CHANGE_CONFIRMED
+//   9  SUBSCRIPTION_DEFERRED
+//   10 SUBSCRIPTION_PAUSED
+//   11 SUBSCRIPTION_PAUSE_SCHEDULE_CHANGED
+//   12 SUBSCRIPTION_REVOKED          — refunded/chargebacked, immediate revoke
+//   13 SUBSCRIPTION_EXPIRED          — final expiration, no auto-renew
+//
+// Strategy: for all events we re-fetch the authoritative subscription
+// state via Play Developer API (getSubscriptionState) and reconcile the
+// user record. Re-fetch is naturally idempotent so Pub/Sub re-deliveries
+// are safe.
+router.post(
+  '/google-rtdn',
+  express.json({ limit: '128kb' }),
+  async (req, res) => {
+    // Pub/Sub envelope: { message: { data, messageId, publishTime }, subscription }
+    const envelope = req.body
+    const messageData = envelope?.message?.data
+    if (!messageData) {
+      logger.warn('Google RTDN: missing message.data')
+      return res.status(400).json({ error: 'Invalid Pub/Sub envelope' })
+    }
+
+    let payload
+    try {
+      const decoded = Buffer.from(messageData, 'base64').toString('utf-8')
+      payload = JSON.parse(decoded)
+    } catch (err) {
+      logger.error({ err: err.message }, 'Google RTDN: payload decode/parse failed')
+      // ACK so Pub/Sub doesn't retry malformed payload
+      return res.status(200).json({ received: true })
+    }
+
+    // Test publish notifications (sent by Play Console when you press
+    // "Send a test notification") have payload.testNotification and no
+    // subscriptionNotification. ACK and skip.
+    if (payload.testNotification) {
+      logger.info({ payload }, 'Google RTDN: test notification received')
+      return res.status(200).json({ received: true })
+    }
+
+    const subNotif = payload.subscriptionNotification
+    if (!subNotif) {
+      // Other notification types (oneTimeProductNotification, voidedPurchaseNotification)
+      // — IKB doesn't use these, so log and ACK.
+      logger.info({ payload }, 'Google RTDN: non-subscription notification, skipping')
+      return res.status(200).json({ received: true })
+    }
+
+    const { notificationType, purchaseToken, subscriptionId } = subNotif
+    logger.info({ notificationType, subscriptionId, purchaseTokenPrefix: purchaseToken?.slice(0, 20) }, 'Google RTDN: subscription event')
+
+    try {
+      // Find the user that owns this purchase token. The original verify
+      // endpoint stored google_purchase_token on the user row.
+      const { data: user } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('google_purchase_token', purchaseToken)
+        .maybeSingle()
+
+      if (!user) {
+        // First-purchase notifications can arrive before our
+        // verify-google-iap endpoint has stored the token. ACK so Play
+        // doesn't retry — the client-driven verify will land soon and
+        // any later renewal/cancel events for this token will then find
+        // the user.
+        logger.info({ purchaseTokenPrefix: purchaseToken?.slice(0, 20), notificationType }, 'Google RTDN: no user for token yet, skipping')
+        return res.status(200).json({ received: true })
+      }
+
+      // Re-fetch authoritative state from Play. Cheaper than maintaining
+      // a parallel state machine on the notification type — Play's
+      // subscriptionState already encodes the resolved status.
+      const sub = await getSubscriptionState(purchaseToken)
+      const isYearly = sub.productId.includes('yearly') || sub.productId.includes('annual')
+
+      // Map Play state → our subscription_status / is_paid columns.
+      const ACTIVE_STATES = ['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD']
+      const isActive = ACTIVE_STATES.includes(sub.subscriptionState)
+
+      const update = {
+        google_product_id: sub.productId,
+        subscription_plan: isYearly ? 'yearly' : 'monthly',
+        subscription_expires_at: sub.expiryTime ? new Date(sub.expiryTime).toISOString() : null,
+      }
+
+      if (isActive) {
+        update.is_paid = true
+        update.subscription_status = sub.subscriptionState === 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD' ? 'in_grace_period' : 'active'
+      } else if (sub.subscriptionState === 'SUBSCRIPTION_STATE_CANCELED') {
+        // Cancelled but not yet expired — still grants access until expiryTime.
+        // hasAccess() in ProtectedRoute will keep them paid via the
+        // subscription_expires_at > now check until expiry hits.
+        update.subscription_status = 'cancelled'
+        update.is_paid = true
+      } else {
+        // EXPIRED, REVOKED, ON_HOLD, PAUSED — revoke access.
+        update.is_paid = false
+        update.subscription_status = sub.subscriptionState.replace('SUBSCRIPTION_STATE_', '').toLowerCase()
+      }
+
+      const { error: updateErr } = await supabase
+        .from('users')
+        .update(update)
+        .eq('id', user.id)
+
+      if (updateErr) {
+        logger.error({ err: updateErr, userId: user.id }, 'Google RTDN: user update failed')
+      } else {
+        logger.info({ userId: user.id, username: user.username, notificationType, state: sub.subscriptionState, isPaid: update.is_paid, plan: update.subscription_plan }, 'Google RTDN: user state reconciled')
+      }
+
+      // Always ACK after we've gotten this far — even if the DB update
+      // failed, the next event for this subscription will re-query and
+      // self-correct.
+      res.status(200).json({ received: true })
+    } catch (err) {
+      logger.error({ err: err.message, notificationType, purchaseTokenPrefix: purchaseToken?.slice(0, 20) }, 'Google RTDN: handler error')
+      // ACK anyway — Pub/Sub retry won't fix a Play API error, and the
+      // next legitimate event will reconcile state.
       res.status(200).json({ received: true })
     }
   }
