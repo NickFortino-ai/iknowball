@@ -11,11 +11,20 @@ export function isIAPAvailable() {
   return Capacitor.isNativePlatform()
 }
 
+// Capacitor's @capgo/native-purchases plugin defaults productType to
+// 'inapp' on Android, which silently filters our subscription products
+// out of the result. Explicitly request 'subs' so Play Billing actually
+// returns the IKB Monthly / Yearly subscriptions. iOS ignores
+// productType (StoreKit treats consumables / subscriptions identically
+// for this call), so passing it is safe across both platforms.
+const SUBSCRIPTION_PRODUCT_TYPE = 'subs'
+
 export async function getSubscriptionProducts() {
   if (!isIAPAvailable()) return { monthly: null, yearly: null }
   try {
     const result = await NativePurchases.getProducts({
       productIdentifiers: [PRODUCT_IDS.monthly, PRODUCT_IDS.yearly],
+      productType: SUBSCRIPTION_PRODUCT_TYPE,
     })
     const products = result.products || []
     return {
@@ -31,7 +40,10 @@ export async function getSubscriptionProducts() {
 export async function purchaseSubscription(plan) {
   const productId = PRODUCT_IDS[plan]
   if (!productId) throw new Error(`Invalid plan: ${plan}`)
-  const { transactions } = await NativePurchases.purchaseProduct({ productIdentifier: productId })
+  const { transactions } = await NativePurchases.purchaseProduct({
+    productIdentifier: productId,
+    productType: SUBSCRIPTION_PRODUCT_TYPE,
+  })
   return transactions && transactions.length > 0 ? transactions[0] : null
 }
 
