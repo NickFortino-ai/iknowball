@@ -4014,12 +4014,24 @@ export async function processLeagueWaivers(leagueId) {
     let addOk = false
     try {
       if (winner.drop_player_id) {
-        await supabase
+        // Same hardening pattern as the trade-drop fix (ee46615d):
+        // verify the delete actually removed the row before continuing.
+        // Without count tracking, a silent no-op (drop player not on
+        // roster at processing time — already dropped, traded, etc.)
+        // would let the add proceed without a drop and put the user
+        // over cap.
+        const { error: dropErr, count: deletedCount } = await supabase
           .from('fantasy_rosters')
-          .delete()
+          .delete({ count: 'exact' })
           .eq('league_id', leagueId)
           .eq('player_id', winner.drop_player_id)
           .eq('user_id', winner.user_id)
+        if (dropErr) throw dropErr
+        if ((deletedCount ?? 0) !== 1) {
+          const err = new Error('Drop player no longer on roster')
+          err.status = 400
+          throw err
+        }
         // Dropped player goes on waivers until next clearing
         await addToWaiverPool(leagueId, [winner.drop_player_id], 'dropped')
       }
