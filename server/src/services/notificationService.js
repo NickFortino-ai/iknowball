@@ -33,10 +33,21 @@ export async function createNotification(userId, type, message, metadata = {}) {
       const prefs = user?.push_preferences
       // null preferences = all on; otherwise check the specific type
       if (!prefs || prefs[type] !== false) {
+        // Trade-family notifications deep-link to the league's
+        // Transactions → Trades sub-tab so the recipient lands right on
+        // the approve/decline UI. Mirrors the Navbar in-app routing.
+        const isFantasyTradeNotif = type === 'fantasy_trade_proposed'
+          || type === 'fantasy_trade_accepted'
+          || type === 'fantasy_trade_declined'
+          || type === 'fantasy_trade_vetoed'
+          || type === 'fantasy_trade_approved'
+
         const pushUrl = type === 'direct_message' ? '/messages'
         : type === 'record_broken' ? '/hall-of-fame?section=records'
         : type === 'poll_response_milestone' && metadata.hotTakeId
           ? `/hub?tab=highlights&scrollTo=hot_take-${metadata.hotTakeId}`
+        : (isFantasyTradeNotif && metadata.leagueId)
+          ? `/leagues/${metadata.leagueId}?tab=Transactions&subtab=trades`
         : metadata.leagueId ? `/leagues/${metadata.leagueId}` : '/results'
         // Fan out to all three transports. Web push → desktop PWA and
         // Safari users, APNs → native iOS app, FCM → native Android app.
