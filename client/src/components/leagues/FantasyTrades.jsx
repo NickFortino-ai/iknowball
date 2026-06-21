@@ -154,7 +154,7 @@ function TransactionRow({ txn }) {
       <div className="flex-1 min-w-0">
         <div className="text-base text-text-primary">
           <span className="font-semibold">{user.display_name || user.username}</span>
-          {' '}<span className="text-text-primary/60">{cfg.label}</span>{' '}
+          {' '}<span>{cfg.label}</span>{' '}
           <span className="font-semibold">{player.full_name}</span>
         </div>
         <div className="text-xs text-text-muted">
