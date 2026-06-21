@@ -36,6 +36,11 @@ export default function NflSalaryCapView({ league }) {
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [detailPlayerId, setDetailPlayerId] = useState(null)
+  // When user taps "Edit Roster" after submitting, hide the Submitted
+  // badge so the Submit Roster button reappears and they can confirm
+  // their changes. Resets on successful resubmit (handleSubmit) so the
+  // badge comes back when they commit.
+  const [editingAfterSubmit, setEditingAfterSubmit] = useState(false)
 
   // Build current lineup from saved roster
   const lineup = useMemo(() => {
@@ -106,6 +111,7 @@ export default function NflSalaryCapView({ league }) {
     try {
       await submitRoster.mutateAsync({ league_id: league.id, week: currentWeek, season })
       toast('Roster submitted!', 'success')
+      setEditingAfterSubmit(false)
     } catch (err) {
       toast(err.message || 'Failed to submit roster', 'error')
     }
@@ -161,13 +167,18 @@ export default function NflSalaryCapView({ league }) {
             edit clears submitted_at server-side so the badge resets. */}
         {filledCount === SLOTS.length && remaining >= 0 && (
           <div className="mb-4">
-            {roster?.submitted_at ? (
+            {roster?.submitted_at && !editingAfterSubmit ? (
               <div className="rounded-xl border border-correct/40 bg-correct/10 px-4 py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-correct">Submitted &middot; {timeAgo(roster.submitted_at)}</div>
-                  <div className="text-[11px] text-text-muted mt-0.5">Edits will require resubmit</div>
+                  <div className="text-[11px] text-text-muted mt-0.5">Tap Edit Roster to change picks</div>
                 </div>
-                <span className="text-correct text-lg leading-none shrink-0">&#10003;</span>
+                <button
+                  onClick={() => setEditingAfterSubmit(true)}
+                  className="text-xs font-bold text-correct border border-correct/40 hover:bg-correct/10 transition-colors rounded-lg px-3 py-1.5 shrink-0"
+                >
+                  Edit Roster
+                </button>
               </div>
             ) : (
               <button
@@ -175,7 +186,7 @@ export default function NflSalaryCapView({ league }) {
                 disabled={submitRoster.isPending}
                 className="w-full rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors px-4 py-3 text-sm font-bold text-white"
               >
-                {submitRoster.isPending ? 'Submitting...' : 'Submit Roster'}
+                {submitRoster.isPending ? 'Submitting...' : roster?.submitted_at ? 'Resubmit Roster' : 'Submit Roster'}
               </button>
             )}
           </div>
