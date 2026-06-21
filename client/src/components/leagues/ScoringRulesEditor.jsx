@@ -263,7 +263,11 @@ export default function ScoringRulesEditor({ value, onChange }) {
               <div className="space-y-1">
                 {(rules.def_pa_brackets || []).map((b, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
-                    <span className="text-text-muted w-20">≤ {b.max} pts</span>
+                    <span className="text-text-muted w-20">
+                      {b.max >= 999
+                        ? `${((rules.def_pa_brackets[i - 1]?.max ?? -1) + 1)}+ pts`
+                        : `≤ ${b.max} pts`}
+                    </span>
                     <input
                       type="number"
                       step={1}
