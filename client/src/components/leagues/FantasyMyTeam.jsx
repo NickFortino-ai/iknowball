@@ -848,6 +848,27 @@ export default function FantasyMyTeam({ league }) {
               // edge case.
             />
           ))}
+          {editMode && emptyBenchCount === 0 && selected?.type === 'player' && (() => {
+            // Transient "bench without filling" slot: when the bench is full
+            // and the user has a starter selected, show a virtual empty bench
+            // row so they can bench the starter without filling the starter
+            // slot. Total roster size is preserved — the starter's slot just
+            // becomes empty until another bench player is moved up.
+            const selPlayer = roster.find((r) => r.player_id === selected.key)
+            const currentSlot = selPlayer ? slotByPlayer[selPlayer.player_id] : null
+            const isStarter = !!selPlayer && currentSlot && currentSlot !== 'bench' && currentSlot !== 'ir'
+            if (!isStarter) return null
+            return (
+              <EmptySlot
+                key="bench-empty-transient"
+                slotLabel="BN"
+                onTap={() => handleSlotTap('bench')}
+                isSelected={false}
+                editMode
+                isDropTarget
+              />
+            )
+          })()}
         </div>
       </div>
 
