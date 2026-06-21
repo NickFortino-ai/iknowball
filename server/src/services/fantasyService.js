@@ -4438,15 +4438,36 @@ export async function acceptTrade(tradeId, userId, dropPlayerIds = []) {
  * Called by acceptTrade (when no review) or approveTrade (commissioner approval).
  */
 async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
-  // Drop players if required to make room
+  // Drop players if required to make room. Mossyou hit a real incident on
+  // 2026-06-20: trade swap succeeded but the drop silently no-op'd, leaving
+  // them with an extra player past the roster cap. The prior version:
+  //   - missed a user_id filter (could nuke another user's row with the
+  //     same player_id in this league, or no-op if RLS or another guard
+  //     blocked the unscoped delete)
+  //   - didn't await the error or count, so any silent failure was lost
+  //   - inserted the drop transaction record regardless of whether the
+  //     actual delete worked, masking the failure in the audit log
   if (dropPlayerIds.length > 0) {
-    await supabase
+    const { error: dropErr, count: deletedCount } = await supabase
       .from('fantasy_rosters')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('league_id', trade.league_id)
+      .eq('user_id', actorId)
       .in('player_id', dropPlayerIds)
 
-    // Log drop transactions
+    if (dropErr) {
+      logger.error({ err: dropErr, tradeId, actorId, dropPlayerIds }, 'Trade drop: delete failed')
+      throw dropErr
+    }
+    if ((deletedCount ?? 0) !== dropPlayerIds.length) {
+      logger.error({ tradeId, actorId, dropPlayerIds, deletedCount }, 'Trade drop: deleted row count mismatch')
+      const err = new Error('Failed to drop the selected player(s) — refresh and try again')
+      err.status = 500
+      throw err
+    }
+
+    // Log drop transactions only AFTER successful delete so the audit log
+    // doesn't accumulate phantom drops on failure.
     const dropTxns = dropPlayerIds.map((pid) => ({
       league_id: trade.league_id,
       user_id: actorId,
