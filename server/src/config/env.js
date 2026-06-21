@@ -48,4 +48,10 @@ export const env = {
   // the APNs PEM-marker incident — single-var JSON avoids the multi-line
   // env escaping bug class entirely.
   FIREBASE_SERVICE_ACCOUNT_JSON: process.env.FIREBASE_SERVICE_ACCOUNT_JSON,
+
+  // Google Play Billing — Android IAP verification + subscription state.
+  // Same single-var JSON pattern as the FCM credential above; the entire
+  // service account JSON (downloaded from Cloud Console → IAM → Service
+  // Accounts → Keys → Add Key → JSON) goes here as one value.
+  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
 }

@@ -5,6 +5,7 @@ import { env } from '../config/env.js'
 import { requireAuth } from '../middleware/auth.js'
 import { logger } from '../utils/logger.js'
 import { verifyTransaction } from '../services/appleIapService.js'
+import { verifyAndAcknowledgePurchase } from '../services/googleIapService.js'
 
 const router = Router()
 const stripe = new Stripe(env.STRIPE_SECRET_KEY)
@@ -241,6 +242,81 @@ router.post('/verify-apple-iap', async (req, res) => {
   } catch (err) {
     logger.error({ err, userId: req.user.id }, 'Apple IAP verification failed')
     return res.status(400).json({ error: 'Transaction verification failed' })
+  }
+})
+
+// Verify Google Play Billing IAP purchase. Mirrors verify-apple-iap.
+// Body shape: { purchaseToken: string, productId: string }
+//   purchaseToken — the opaque token returned by Play Billing on
+//     successful purchase, included in @capgo/native-purchases'
+//     transaction.transactionId on Android
+//   productId — e.g. 'com.iknowball.app.monthly'
+router.post('/verify-google-iap', async (req, res) => {
+  const { purchaseToken, productId } = req.body
+  if (!purchaseToken || !productId) {
+    return res.status(400).json({ error: 'purchaseToken and productId are required' })
+  }
+
+  try {
+    // Verify with Play Developer API and acknowledge the purchase
+    // (acknowledgement must happen within 3 days or Play auto-refunds).
+    const sub = await verifyAndAcknowledgePurchase(productId, purchaseToken)
+
+    // Reject inactive subscriptions — Play returns the record even for
+    // expired/cancelled/on-hold subs, but those shouldn't grant access.
+    // ACTIVE and IN_GRACE_PERIOD are the states that should grant access.
+    const validStates = ['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD']
+    if (!validStates.includes(sub.subscriptionState)) {
+      logger.warn({ userId: req.user.id, purchaseToken, state: sub.subscriptionState }, 'Google IAP: subscription not active')
+      return res.status(400).json({ error: `Subscription is not active (state: ${sub.subscriptionState})` })
+    }
+
+    // Idempotency: if this purchase token was already processed, just
+    // return success. Repeated POSTs from a flaky client must not
+    // double-update the user record.
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('google_purchase_token', purchaseToken)
+      .maybeSingle()
+
+    if (existing) {
+      logger.info({ userId: existing.id, purchaseToken }, 'Google IAP already processed')
+      return res.json({ success: true })
+    }
+
+    const isYearly = sub.productId.includes('yearly') || sub.productId.includes('annual')
+
+    // Play's expiryTime is authoritative. Fall back to a hardcoded period
+    // ONLY if Play somehow didn't return it (shouldn't happen for any
+    // valid subscription, but keeps the path safe).
+    const expiresAt = sub.expiryTime
+      ? new Date(sub.expiryTime).toISOString()
+      : new Date(Date.now() + (isYearly ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString()
+
+    const { error } = await supabase
+      .from('users')
+      .update({
+        is_paid: true,
+        google_purchase_token: purchaseToken,
+        google_product_id: sub.productId,
+        payment_source: 'google',
+        subscription_status: 'active',
+        subscription_plan: isYearly ? 'yearly' : 'monthly',
+        subscription_expires_at: expiresAt,
+      })
+      .eq('id', req.user.id)
+
+    if (error) {
+      logger.error({ error, userId: req.user.id }, 'Failed to update user after Google IAP')
+      return res.status(500).json({ error: 'Database update failed' })
+    }
+
+    logger.info({ userId: req.user.id, productId: sub.productId, orderId: sub.orderId, expiryTime: sub.expiryTime }, 'User subscribed via Google IAP')
+    res.json({ success: true })
+  } catch (err) {
+    logger.error({ err: err.message, userId: req.user.id }, 'Google IAP verification failed')
+    return res.status(400).json({ error: 'Purchase verification failed' })
   }
 })
 

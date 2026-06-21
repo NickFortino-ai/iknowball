@@ -165,23 +165,43 @@ export default function PaymentPage() {
     return () => clearInterval(interval)
   }, [status, polling, fetchProfile, navigate])
 
-  // Native Apple IAP purchase
-  const handleApplePurchase = async () => {
+  // Native IAP purchase — routes through Apple (iOS) or Google Play (Android)
+  // based on platform. @capgo/native-purchases handles the platform-specific
+  // store interaction client-side; server verify endpoint differs by store.
+  const handleNativePurchase = async () => {
     setLoading(true)
     setError(null)
     try {
       const transaction = await purchaseSubscription(plan)
-      if (!transaction?.jwsRepresentation) {
+      if (!transaction) {
         throw new Error('No transaction returned')
       }
 
-      savePendingTransaction(transaction.jwsRepresentation)
+      const isAndroid = Capacitor.getPlatform() === 'android'
 
-      await api.post('/payments/verify-apple-iap', {
-        signedTransaction: transaction.jwsRepresentation,
-      })
+      if (isAndroid) {
+        // Android: transactionId is the Play Billing purchase token.
+        // productIdentifier comes back on the transaction record.
+        const purchaseToken = transaction.transactionId
+        const productId = transaction.productIdentifier
+        if (!purchaseToken || !productId) {
+          throw new Error('Missing purchaseToken or productId on Android transaction')
+        }
+        await api.post('/payments/verify-google-iap', { purchaseToken, productId })
+      } else {
+        // iOS: jwsRepresentation is the JWS-signed transaction Apple
+        // returns. savePendingTransaction stashes it so a retry after
+        // app reload can re-verify if the initial POST fails.
+        if (!transaction.jwsRepresentation) {
+          throw new Error('No jwsRepresentation on iOS transaction')
+        }
+        savePendingTransaction(transaction.jwsRepresentation)
+        await api.post('/payments/verify-apple-iap', {
+          signedTransaction: transaction.jwsRepresentation,
+        })
+        clearPendingTransaction()
+      }
 
-      clearPendingTransaction()
       await navigateAfterPayment(fetchProfile, navigate)
     } catch (err) {
       const msg = (err.message || '').toLowerCase()
@@ -194,20 +214,36 @@ export default function PaymentPage() {
     }
   }
 
-  // Restore purchases (native only)
+  // Restore purchases (native only) — Apple or Google depending on platform
   const handleRestore = async () => {
     setRestoringPurchase(true)
     setError(null)
     try {
       const transaction = await restoreSubscription()
-      if (!transaction?.jwsRepresentation) {
+      if (!transaction) {
         setError('No previous purchase found.')
         return
       }
 
-      await api.post('/payments/verify-apple-iap', {
-        signedTransaction: transaction.jwsRepresentation,
-      })
+      const isAndroid = Capacitor.getPlatform() === 'android'
+
+      if (isAndroid) {
+        const purchaseToken = transaction.transactionId
+        const productId = transaction.productIdentifier
+        if (!purchaseToken || !productId) {
+          setError('No previous purchase found.')
+          return
+        }
+        await api.post('/payments/verify-google-iap', { purchaseToken, productId })
+      } else {
+        if (!transaction.jwsRepresentation) {
+          setError('No previous purchase found.')
+          return
+        }
+        await api.post('/payments/verify-apple-iap', {
+          signedTransaction: transaction.jwsRepresentation,
+        })
+      }
 
       await navigateAfterPayment(fetchProfile, navigate)
     } catch (err) {
@@ -345,7 +381,7 @@ export default function PaymentPage() {
 
         {/* Purchase button */}
         <button
-          onClick={isNative ? handleApplePurchase : handleCheckout}
+          onClick={isNative ? handleNativePurchase : handleCheckout}
           disabled={loading || (isNative && !products[plan])}
           className="w-full bg-accent hover:bg-accent-hover text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 text-lg mb-3"
         >
