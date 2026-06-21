@@ -85,6 +85,7 @@ const SPORT_LABELS = {
   basketball_wnba: 'WNBA',
   icehockey_nhl: 'NHL',
   soccer_usa_mls: 'MLS',
+  soccer_world_cup: 'WORLD CUP',
 }
 
 export default async function handler(req) {
