@@ -263,12 +263,12 @@ export default function FuturesAdminPanel() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 overflow-x-auto -mx-4 px-4 scrollbar-hide">
         {sportTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setSportFilter(tab.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               sportFilter === tab.key
                 ? 'bg-accent text-white'
                 : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
