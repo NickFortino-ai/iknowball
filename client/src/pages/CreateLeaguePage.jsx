@@ -2654,6 +2654,22 @@ export default function CreateLeaguePage() {
               <div className="text-[10px] text-text-muted mt-1">
                 Users must submit brackets before this time
               </div>
+              {locksAt && (() => {
+                // Resolve the user-typed local time through the device timezone
+                // so the admin can see exactly what gets stored. Catches the
+                // "I'm traveling and my laptop is on ET" footgun before save.
+                const resolved = new Date(locksAt)
+                if (isNaN(resolved.getTime())) return null
+                const formatted = resolved.toLocaleString('en-US', {
+                  weekday: 'short', month: 'short', day: 'numeric',
+                  hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+                })
+                return (
+                  <div className="text-[11px] text-accent mt-1">
+                    Resolves to: <span className="font-semibold">{formatted}</span>
+                  </div>
+                )
+              })()}
             </div>
           </div>
           )
