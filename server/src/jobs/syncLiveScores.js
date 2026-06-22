@@ -18,6 +18,7 @@ const SPORTS = [
   'baseball_mlb',
   'icehockey_nhl',
   'soccer_usa_mls',
+  'soccer_world_cup',
 ]
 
 async function syncSportLiveScores(sportKey) {

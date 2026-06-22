@@ -4,6 +4,17 @@ import { logger } from '../utils/logger.js'
 const BASE_URL = 'https://api.the-odds-api.com/v4'
 const MAX_RETRIES = 3
 
+// Internal sport key → The Odds API sport key.
+// Most are 1:1. World Cup is an exception: our internal key is
+// provider-agnostic (`soccer_world_cup`) but The Odds API serves it
+// under `soccer_fifa_world_cup` (same convention as Qatar 2022).
+const ODDS_API_SPORT_KEY = {
+  soccer_world_cup: 'soccer_fifa_world_cup',
+}
+function toOddsApiSportKey(sportKey) {
+  return ODDS_API_SPORT_KEY[sportKey] || sportKey
+}
+
 async function fetchFromOddsApi(path, params = {}) {
   const url = new URL(`${BASE_URL}${path}`)
   url.searchParams.set('apiKey', env.ODDS_API_KEY)
@@ -44,7 +55,7 @@ async function fetchFromOddsApi(path, params = {}) {
 }
 
 export async function fetchOdds(sportKey = 'americanfootball_nfl') {
-  return fetchFromOddsApi(`/sports/${sportKey}/odds`, {
+  return fetchFromOddsApi(`/sports/${toOddsApiSportKey(sportKey)}/odds`, {
     regions: 'us',
     markets: 'h2h',
     oddsFormat: 'american',
@@ -52,7 +63,7 @@ export async function fetchOdds(sportKey = 'americanfootball_nfl') {
 }
 
 export async function fetchScores(sportKey = 'americanfootball_nfl') {
-  return fetchFromOddsApi(`/sports/${sportKey}/scores`, {
+  return fetchFromOddsApi(`/sports/${toOddsApiSportKey(sportKey)}/scores`, {
     daysFrom: 3,
   })
 }
