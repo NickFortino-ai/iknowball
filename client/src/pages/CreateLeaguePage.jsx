@@ -8,6 +8,7 @@ import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
 import { getSeasonEndDate, isSeasonUnderway, getNflWeekEnd, arePlayoffsUnderway, getFullSeasonLeagueEndDate, getPlayoffsButtonLabel, getPlayoffsHelperText } from '../lib/seasonDates'
+import { todaySportsDay, tomorrowSportsDay } from '../lib/sportsDay'
 
 // Winner-only tiered bonus (scaledWinnerBonus on server) — shared across
 // NBA DFS, MLB DFS, HR Derby, TD Pass, Bracket, and Survivor.
@@ -809,13 +810,9 @@ export default function CreateLeaguePage() {
   const [pickReuse, setPickReuse] = useState('weekly')
 
   function getDfsStartDate() {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const today = todaySportsDay()
     if (dfsStartOption === 'today') return today
-    if (dfsStartOption === 'tomorrow') {
-      const d = new Date()
-      d.setDate(d.getDate() + 1)
-      return d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    }
+    if (dfsStartOption === 'tomorrow') return tomorrowSportsDay()
     return dfsStartCustom || today
   }
 
@@ -1846,7 +1843,7 @@ export default function CreateLeaguePage() {
                   type="date"
                   value={dfsStartCustom}
                   onChange={(e) => setDfsStartCustom(e.target.value)}
-                  min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                  min={todaySportsDay()}
                   className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                 />
               )}
@@ -1980,7 +1977,7 @@ export default function CreateLeaguePage() {
                   type="date"
                   value={dfsStartCustom}
                   onChange={(e) => setDfsStartCustom(e.target.value)}
-                  min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                  min={todaySportsDay()}
                   className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                 />
               )}
@@ -2129,7 +2126,7 @@ export default function CreateLeaguePage() {
                     type="date"
                     value={dfsStartCustom}
                     onChange={(e) => setDfsStartCustom(e.target.value)}
-                    min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                    min={todaySportsDay()}
                     className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                   />
                 )}
@@ -2189,7 +2186,7 @@ export default function CreateLeaguePage() {
                       type="date"
                       value={nflContestStartDate}
                       onChange={(e) => setNflContestStartDate(e.target.value)}
-                      min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                      min={todaySportsDay()}
                       className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                     />
                   </div>
@@ -2199,7 +2196,7 @@ export default function CreateLeaguePage() {
                       type="date"
                       value={hrDerbyEndDate}
                       onChange={(e) => setHrDerbyEndDate(e.target.value)}
-                      min={nflContestStartDate || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}
+                      min={nflContestStartDate || todaySportsDay()}
                       className="w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
                     />
                   </div>
@@ -2448,7 +2445,7 @@ export default function CreateLeaguePage() {
                     type="date"
                     value={squaresDate}
                     onChange={(e) => { setSquaresDate(e.target.value); setGameId('') }}
-                    min={new Date().toLocaleDateString('en-CA')}
+                    min={todaySportsDay()}
                     className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent mb-3"
                   />
                   {squaresDate && squaresGames.length > 0 ? (

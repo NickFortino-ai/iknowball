@@ -23,6 +23,7 @@ import AppConfigPanel from '../components/admin/AppConfigPanel'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
 import { toast } from '../components/ui/Toast'
 import Avatar from '../components/ui/Avatar'
+import { todaySportsDay } from '../lib/sportsDay'
 
 const sportTabs = [
   { label: 'NBA', key: 'basketball_nba' },
@@ -955,7 +956,7 @@ export default function AdminPage() {
           </button>
           <button
             onClick={async () => {
-              const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+              const today = todaySportsDay()
               try {
                 await syncNBASalaries.mutateAsync(today)
                 toast('NBA salary generation started — runs in background', 'success')
@@ -968,7 +969,7 @@ export default function AdminPage() {
           </button>
           <button
             onClick={async () => {
-              const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+              const today = todaySportsDay()
               try {
                 await syncMLBSalaries.mutateAsync(today)
                 toast('MLB salary generation started — runs in background', 'success')
@@ -981,7 +982,7 @@ export default function AdminPage() {
           </button>
           <button
             onClick={async () => {
-              const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+              const today = todaySportsDay()
               const dateStr = window.prompt('WNBA salary date (YYYY-MM-DD)?', today)
               if (!dateStr) return
               try {
