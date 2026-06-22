@@ -144,10 +144,14 @@ export async function updatePickMultiplier(userId, gameId, multiplier) {
     await validateMultiplierBudget(userId, gameId, multiplier, game, pick.picked_team)
   }
 
-  // Recalculate risk/reward with new multiplier
-  const odds = pick.picked_team === 'home' ? game.home_odds : game.away_odds
-  const baseRisk = odds ? calculateRiskPoints(odds) : null
-  const baseReward = odds ? calculateRewardPoints(odds) : null
+  // Recalculate risk/reward with new multiplier. Use the LOCKED odds from
+  // when the pick was first submitted (odds_at_submission), not current
+  // market odds — otherwise toggling a multiplier silently overwrites the
+  // user's locked-in payout with whatever the line has drifted to. Fall
+  // back to current odds only if the pick somehow has no locked snapshot.
+  const lockedOdds = pick.odds_at_submission ?? (pick.picked_team === 'home' ? game.home_odds : game.away_odds)
+  const baseRisk = lockedOdds ? calculateRiskPoints(lockedOdds) : null
+  const baseReward = lockedOdds ? calculateRewardPoints(lockedOdds) : null
   const riskAtSubmission = baseRisk ? baseRisk * multiplier : null
   const rewardAtSubmission = baseReward ? baseReward * multiplier : null
 
