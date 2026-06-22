@@ -3955,6 +3955,17 @@ export async function processLeagueWaivers(leagueId) {
   const stateByUser = {}
   for (const s of stateRows) stateByUser[s.user_id] = s
 
+  // Roster cap (non-IR slots) — checked per-winner before INSERT so a claim
+  // submitted when the user had space but processed after they filled the
+  // roster (via FA add, trade accept, etc.) fails cleanly instead of putting
+  // them over cap.
+  const slots = settings?.roster_slots || {}
+  let rosterCap = 0
+  for (const [k, v] of Object.entries(slots)) {
+    if (k === 'ir') continue
+    rosterCap += Number(v) || 0
+  }
+
   let processed = 0
   for (const [playerId, playerClaims] of Object.entries(claimsByPlayer)) {
     // Confirm the player isn't already rostered (could have been added since claim)
@@ -4013,6 +4024,22 @@ export async function processLeagueWaivers(leagueId) {
     // Apply the winning claim: drop player if specified, then add new player
     let addOk = false
     try {
+      // Roster cap guard: if no drop is specified, verify the user actually
+      // has room. Their roster may have filled between claim submission and
+      // processing (e.g., they accepted a trade or added a free agent).
+      if (!winner.drop_player_id && rosterCap > 0) {
+        const { data: rosterRows } = await supabase
+          .from('fantasy_rosters')
+          .select('id, slot')
+          .eq('league_id', leagueId)
+          .eq('user_id', winner.user_id)
+        const active = (rosterRows || []).filter((r) => r.slot !== 'ir').length
+        if (active >= rosterCap) {
+          const err = new Error('Roster full at processing — no drop specified')
+          err.status = 400
+          throw err
+        }
+      }
       if (winner.drop_player_id) {
         // Same hardening pattern as the trade-drop fix (ee46615d):
         // verify the delete actually removed the row before continuing.
@@ -4052,9 +4079,12 @@ export async function processLeagueWaivers(leagueId) {
       await supabase.from('fantasy_transactions').insert(wTxns)
     } catch (err) {
       logger.error({ err, claimId: winner.id }, 'Failed to apply waiver claim')
+      // Surface specific validation messages (roster cap, missing drop) to
+      // the user. Generic DB errors stay opaque.
+      const failReason = err.status === 400 ? err.message : 'Roster update failed'
       await supabase
         .from('fantasy_waiver_claims')
-        .update({ status: 'failed', fail_reason: 'Roster update failed', processed_at: new Date().toISOString() })
+        .update({ status: 'failed', fail_reason: failReason, processed_at: new Date().toISOString() })
         .eq('id', winner.id)
       continue
     }
