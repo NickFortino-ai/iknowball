@@ -43,15 +43,15 @@ async function pickMlbGame() {
   }
 }
 
-async function pickNbaFutures() {
-  // Try in order: NBA championship → MLB World Series → NFL Super Bowl → NHL Stanley Cup.
-  // First market with priced outcomes wins.
+async function pickFeaturedFuturesMarket() {
+  // Priority: NFL Super Bowl → MLB World Series → NBA champion → NHL Stanley Cup.
+  // NBA is deprioritised post-Finals so the card stays fresh heading into football season.
   const candidates = [
-    { sport_key: 'basketball_nba', title: '%champion%' },
-    { sport_key: 'baseball_mlb', title: '%world series%' },
-    { sport_key: 'baseball_mlb', title: '%champion%' },
     { sport_key: 'americanfootball_nfl', title: '%super bowl%' },
     { sport_key: 'americanfootball_nfl', title: '%champion%' },
+    { sport_key: 'baseball_mlb', title: '%world series%' },
+    { sport_key: 'baseball_mlb', title: '%champion%' },
+    { sport_key: 'basketball_nba', title: '%champion%' },
     { sport_key: 'icehockey_nhl', title: '%stanley%' },
     { sport_key: 'icehockey_nhl', title: '%champion%' },
   ]
@@ -90,7 +90,7 @@ async function pickNbaFutures() {
 
 router.get('/landing-preview', async (req, res) => {
   try {
-    const [mlbGame, nbaFutures] = await Promise.all([pickMlbGame(), pickNbaFutures()])
+    const [mlbGame, nbaFutures] = await Promise.all([pickMlbGame(), pickFeaturedFuturesMarket()])
     res.set('Cache-Control', 'public, max-age=300')
     res.json({ mlbGame, nbaFutures })
   } catch (err) {
