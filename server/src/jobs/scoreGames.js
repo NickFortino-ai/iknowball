@@ -107,6 +107,17 @@ async function scoreSport(sportKey) {
     if (homePoints > awayPoints) winner = 'home'
     else if (awayPoints > homePoints) winner = 'away'
 
+    // World Cup knockout tied-score guard: from R16 onward there is no
+    // such thing as a draw — a tie means the match went to penalties.
+    // The Odds API may or may not include the shootout result in the
+    // score, and we'd rather wait for ESPN's `competitors[].winner: true`
+    // flag (handled in syncLiveScores) than finalize with winner=null
+    // and leave the bracket unsettleable. Skip and let ESPN catch it.
+    if (sportKey === 'soccer_world_cup' && winner === null) {
+      logger.warn({ gameId: game.id, home: game.home_team, away: game.away_team, homePoints, awayPoints }, 'World Cup knockout reported tied via Odds API — skipping, waiting for ESPN winner flag')
+      continue
+    }
+
     const { error } = await supabase
       .from('games')
       .update({

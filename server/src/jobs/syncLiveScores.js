@@ -120,6 +120,12 @@ async function syncSportLiveScores(sportKey) {
       let winner = null
       if (match.homeScore > match.awayScore) winner = 'home'
       else if (match.awayScore > match.homeScore) winner = 'away'
+      // Soccer knockout penalty-shootout tiebreaker: if regulation score
+      // is tied but ESPN flags one competitor as winner (PK shootout
+      // result), use that. Without this, World Cup R16-onward bracket
+      // picks would never auto-settle on shootout matches.
+      else if (match.homeWinner && !match.awayWinner) winner = 'home'
+      else if (match.awayWinner && !match.homeWinner) winner = 'away'
 
       // Only update if still live (prevents race with scoreGames)
       const { data: finalized, error } = await supabase

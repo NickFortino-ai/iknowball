@@ -93,6 +93,12 @@ export async function fetchESPNScoreboard(sportKey, date = null) {
       awayAbbrev: (awayComp.team?.abbreviation || '').toUpperCase(),
       homeScore: parseInt(homeComp.score || '0', 10),
       awayScore: parseInt(awayComp.score || '0', 10),
+      // Explicit winner flags from ESPN. For soccer knockouts that go to
+      // a penalty shootout, regulation score is tied (e.g., 1-1) but ESPN
+      // still marks the advancing team's competitor with `winner: true`.
+      // Downstream uses this as a tiebreaker when scores are equal.
+      homeWinner: homeComp.winner === true,
+      awayWinner: awayComp.winner === true,
       period,
       clock,
       state,

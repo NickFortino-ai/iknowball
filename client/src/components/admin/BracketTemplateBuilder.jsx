@@ -10,6 +10,7 @@ import LoadingSpinner from '../ui/LoadingSpinner'
 import { toast } from '../ui/Toast'
 import { supabase } from '../../lib/supabase'
 import BracketDisplay from '../leagues/BracketDisplay'
+import { isKnownCountry } from '../../lib/countryFlag'
 
 function TeamAutocomplete({ value, onChange, placeholder, disabled, teams }) {
   const [open, setOpen] = useState(false)
@@ -586,6 +587,24 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
     if (teamCount === 68 && hasAnyTeams && playInCount !== 4 && !savedTemplateId) {
       toast(`Must assign exactly 4 play-in games (currently ${playInCount})`, 'error')
       return
+    }
+
+    // World Cup country-name typo guard: flag fallback resolution + ESPN
+    // team matching both depend on canonical FIFA names (e.g. "United States"
+    // not "USA"). Block save if any team isn't in our recognized list — the
+    // admin can fix the typo or hit Cancel to override if it's a legit name
+    // we don't have mapped yet.
+    if (sport === 'soccer_world_cup') {
+      const round1 = matchups.filter((m) => m.round_number === 1)
+      const unknowns = []
+      for (const m of round1) {
+        if (m.team_top && !isKnownCountry(m.team_top)) unknowns.push(m.team_top)
+        if (m.team_bottom && !isKnownCountry(m.team_bottom)) unknowns.push(m.team_bottom)
+      }
+      if (unknowns.length > 0) {
+        const proceed = confirm(`Unrecognized country name(s): ${unknowns.join(', ')}.\n\nThis will break flag rendering and may break ESPN scoring. Save anyway?`)
+        if (!proceed) return
+      }
     }
 
     // Always save template metadata first so any in-flight Details edits
