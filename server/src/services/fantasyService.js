@@ -5229,7 +5229,15 @@ export async function advancePlayoffRound(leagueId, week) {
   for (const m of completedMatchups) {
     if (!m.home_user_id || !m.away_user_id) continue
 
-    const homeWon = Number(m.home_points) > Number(m.away_points)
+    // Tie-break by playoff seed (lower number = higher seed = advantage).
+    // No tiebreaker on points-for in playoffs because the matchup IS the
+    // points-for — the standard fantasy convention of bench points needs
+    // separate plumbing we don't have yet. Higher seed advancing is the
+    // most common rulebook fallback and matches what most third-party
+    // platforms do when the commissioner hasn't picked a tiebreaker.
+    const hp = Number(m.home_points)
+    const ap = Number(m.away_points)
+    const homeWon = hp > ap || (hp === ap && (m.seed_home ?? 99) <= (m.seed_away ?? 99))
     const winnerId = homeWon ? m.home_user_id : m.away_user_id
     const loserId = homeWon ? m.away_user_id : m.home_user_id
     const winnerSeed = homeWon ? m.seed_home : m.seed_away
@@ -5306,9 +5314,16 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
   const champMatch = playoffMatchups?.find(m => m.bracket_position === champBp && !m.is_consolation)
 
   // Build final standings: 1st = champ, 2nd = champ loser, 3rd/4th from consolation, etc.
+  // Tie-break by higher seed (lower seed number) — same convention used in
+  // advancePlayoffRound's main-bracket advancement above.
+  function pickHomeWon(matchup) {
+    const hp = Number(matchup.home_points)
+    const ap = Number(matchup.away_points)
+    return hp > ap || (hp === ap && (matchup.seed_home ?? 99) <= (matchup.seed_away ?? 99))
+  }
   const standings = []
   if (champMatch) {
-    const homeWon = Number(champMatch.home_points) > Number(champMatch.away_points)
+    const homeWon = pickHomeWon(champMatch)
     standings.push({ user_id: homeWon ? champMatch.home_user_id : champMatch.away_user_id }) // 1st
     standings.push({ user_id: homeWon ? champMatch.away_user_id : champMatch.home_user_id }) // 2nd
   }
@@ -5317,17 +5332,26 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
   const champRound = champMatch?.round
   const consolFinal = playoffMatchups?.find(m => m.round === champRound && m.is_consolation)
   if (consolFinal) {
-    const homeWon = Number(consolFinal.home_points) > Number(consolFinal.away_points)
+    const homeWon = pickHomeWon(consolFinal)
     standings.push({ user_id: homeWon ? consolFinal.home_user_id : consolFinal.away_user_id }) // 3rd
     standings.push({ user_id: homeWon ? consolFinal.away_user_id : consolFinal.home_user_id }) // 4th
   }
 
-  // Get league for bonus point calculation
+  // Get league for bonus point calculation. `member_count` is NOT a column
+  // on `leagues` — selecting it bombs the query with PostgREST 42703 and
+  // leaves `league` as null, which silently collapsed the entire bonus
+  // distribution. No champion notification, no league_win bonus_points
+  // row, no `status='completed'` flip. Source member count from the
+  // authoritative league_members table instead.
   const { data: league } = await supabase
     .from('leagues')
-    .select('id, name, member_count, format, sport')
+    .select('id, name, format, sport')
     .eq('id', leagueId)
     .single()
+  const { count: memberCountExact } = await supabase
+    .from('league_members')
+    .select('user_id', { count: 'exact', head: true })
+    .eq('league_id', leagueId)
 
   if (league && standings.length) {
     // Import bonus logic
@@ -5336,24 +5360,27 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
     // Scale position points by the real league size, not just the 1-4 finishers
     // we materialized here. Without this, a 12-team champion's position points
     // collapse from (12+1-2)=11 to (4+1-2)=3.
-    const n = league.member_count || standings.length
+    const n = memberCountExact || standings.length
     for (let i = 0; i < standings.length; i++) {
       const rank = i + 1
       const positionPts = n + 1 - 2 * rank
-      const bonus = getTraditionalFantasyBonus(rank, league.member_count || n)
+      const bonus = getTraditionalFantasyBonus(rank, n)
       const totalPts = positionPts + bonus
 
       if (totalPts !== 0) {
         const { incrementUserPoints } = await import('./scoringService.js')
         await incrementUserPoints(standings[i].user_id, totalPts)
 
-        // Log bonus
+        // Log bonus. bonus_points.type is NOT NULL (migration 022).
+        // Missing it silently failed the insert via the trailing catch;
+        // now we require it and log if the insert legitimately errors.
         await supabase.from('bonus_points').insert({
           user_id: standings[i].user_id,
           league_id: leagueId,
+          type: 'league_win',
           points: totalPts,
           label: `Fantasy #${rank}: ${positionPts} pos + ${bonus} bonus`,
-        }).catch(() => {})
+        }).catch((err) => logger.error({ err, leagueId, rank }, 'Failed to log fantasy bonus_points'))
       }
     }
 
