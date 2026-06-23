@@ -1516,7 +1516,7 @@ router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) 
         .eq('week', week),
       supabase
         .from('nfl_schedule')
-        .select('home_team, away_team')
+        .select('home_team, away_team, game_date')
         .eq('season', season)
         .eq('week', week),
     ])
@@ -1529,7 +1529,37 @@ router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) 
       if (r.home_team) opponents[r.home_team] = { opponent: r.away_team, is_home: true }
       if (r.away_team) opponents[r.away_team] = { opponent: r.home_team, is_home: false }
     }
-    res.json({ week, season, projections, opponents })
+    // Has any game in this week kicked off yet? Drives Live tab visibility
+    // on salary-cap leagues — Live only appears once there's actual live
+    // action to look at. Uses the games table (Odds API) for precise
+    // kickoff timestamps; falls back to game_date < today ET for any
+    // schedule row the games table is missing.
+    let liveStarted = false
+    const dates = [...new Set((schedRes.data || []).map((r) => r.game_date).filter(Boolean))].sort()
+    if (dates.length) {
+      const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+      for (const d of dates) {
+        if (d < todayET) { liveStarted = true; break }
+      }
+      if (!liveStarted) {
+        const { data: nflSport } = await supabase
+          .from('sports')
+          .select('id')
+          .eq('key', 'americanfootball_nfl')
+          .single()
+        if (nflSport?.id) {
+          const { count } = await supabase
+            .from('games')
+            .select('id', { count: 'exact', head: true })
+            .eq('sport_id', nflSport.id)
+            .gte('starts_at', `${dates[0]}T00:00:00Z`)
+            .lt('starts_at', `${dates[dates.length - 1]}T23:59:59Z`)
+            .lte('starts_at', new Date().toISOString())
+          if (count && count > 0) liveStarted = true
+        }
+      }
+    }
+    res.json({ week, season, projections, opponents, liveStarted })
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
   }

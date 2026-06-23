@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
-import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useWnbaDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite, useSurveyStatus } from '../hooks/useLeagues'
+import { useLeague, useLeagueStandings, useUpdateLeague, useDeleteLeague, useBracketTournament, useBracketEntries, useUpdateBracketTournament, useToggleAutoConnect, useThreadUnread, useFantasySettings, useUpdateFantasySettings, useNbaDfsLive, useMlbDfsLive, useWnbaDfsLive, useLeagueBackdrops, useFantasyMatchupLive, useFantasyTrades, useJoinOpenLeague, useRequestInvite, useSurveyStatus, useFantasyWeekProjections } from '../hooks/useLeagues'
 import SurveyModal from '../components/leagues/SurveyModal'
 import { useAcceptInvitation } from '../hooks/useInvitations'
 import { buildJoinLink } from '../lib/shareLink'
@@ -49,7 +49,7 @@ import { formatStartDateShort, formatEndDateShort, formatEndDateLong } from '../
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
-function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true) {
+function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true, salaryCapLiveStarted = false) {
   const isOpen = league.status === 'open'
   const isCompleted = league.status === 'completed'
   const memberOrStandings = isOpen ? 'Members' : 'Standings'
@@ -67,8 +67,11 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
     }
     if (league.format === 'fantasy') {
       const isSalaryCap = fantasySettings?.format === 'salary_cap'
+      // Hide Live on salary cap until at least one game in the league's
+      // relevant week has kicked off — there's nothing to look at before
+      // then. Other tabs unaffected.
       return isSalaryCap
-        ? ['Live', memberOrStandings, ...reportTab]
+        ? [...(salaryCapLiveStarted ? ['Live'] : []), memberOrStandings, ...reportTab]
         : ['Matchups', memberOrStandings, 'Players', ...reportTab]
     }
     if (['nba_dfs', 'wnba_dfs', 'mlb_dfs'].includes(league.format)) {
@@ -90,7 +93,9 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
     const isSalaryCap = fantasySettings?.format === 'salary_cap'
     let tabs
     if (isSalaryCap) {
-      tabs = ['Roster', 'Live', memberOrStandings, ...reportTab, 'Thread']
+      // Hide Live until at least one game in the league's relevant week
+      // has kicked off — nothing to look at before then.
+      tabs = ['Roster', ...(salaryCapLiveStarted ? ['Live'] : []), memberOrStandings, ...reportTab, 'Thread']
     } else {
       // Traditional: Matchups absorbs Live, no separate Live tab
       tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Draft']
@@ -1723,6 +1728,17 @@ export default function LeagueDetailPage() {
   const navigate = useNavigate()
   const { data: league, isLoading } = useLeague(id)
   const { data: fantasySettings } = useFantasySettings(league?.format === 'fantasy' ? id : null)
+  // For salary cap leagues, drive Live-tab visibility on whether the
+  // league's relevant week has any kicked-off game. Single-week leagues
+  // scope to their single_week; full-season scope to the current week.
+  const salaryCapRelevantWeek = (() => {
+    if (league?.format !== 'fantasy') return null
+    if (fantasySettings?.format !== 'salary_cap') return null
+    if (fantasySettings?.season_type === 'single_week') return fantasySettings?.single_week || null
+    return fantasySettings?.current_week || null
+  })()
+  const { data: salaryCapWeekContext } = useFantasyWeekProjections(league?.id, salaryCapRelevantWeek)
+  const salaryCapLiveStarted = !!salaryCapWeekContext?.liveStarted
   const { data: standings } = useLeagueStandings(id)
   const { data: bracketTournament } = useBracketTournament(league?.format === 'bracket' ? id : null)
   const { data: bracketEntries } = useBracketEntries(league?.format === 'bracket' ? id : null)
@@ -1884,7 +1900,7 @@ export default function LeagueDetailPage() {
   // Join CTA at the top.
   const isMember = league.is_member !== false
   const pendingInvitation = league.my_pending_invitation
-  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings, isMember)
+  const tabs = getLeagueTabs(league, isBracketLocked, fantasySettings, isMember, salaryCapLiveStarted)
   // Bracket leagues don't auto-fallback to a default arena — they should be black
   // unless the commissioner explicitly picks a backdrop. The bracket centerpiece
   // image lives on the bracket itself, not as a page-wide backdrop.
