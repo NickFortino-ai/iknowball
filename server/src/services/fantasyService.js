@@ -2747,30 +2747,14 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
     }
   }
 
-  // 3. Lock check — for any player whose team has already started a game this week,
-  // skip the assignment if it would change their existing slot.
-  // We use the most recent unfinished week from nfl_schedule.
-  const { data: settings } = await supabase
-    .from('fantasy_settings')
-    .select('season')
-    .eq('league_id', leagueId)
-    .single()
-  const season = settings?.season || new Date().getUTCFullYear()
-  const today = new Date().toISOString().split('T')[0]
-  const { data: playedToday } = await supabase
-    .from('nfl_schedule')
-    .select('home_team, away_team, status')
-    .eq('season', season)
-    .lte('game_date', today)
-    .neq('status', 'scheduled')
-
-  const lockedTeams = new Set()
-  for (const g of playedToday || []) {
-    if (g.status === 'in_progress' || g.status === 'complete') {
-      lockedTeams.add(g.home_team)
-      lockedTeams.add(g.away_team)
-    }
-  }
+  // 3. Per-player lock check. Source the locked-team set from the shared
+  // helper (kickoff-time signal lifted from games.starts_at via Odds API,
+  // scoped to current week, falling back to game_date<today ET) so this
+  // path uses the same lock signal as addDropPlayer / trade execution
+  // / waiver claims. The previous implementation queried nfl_schedule.status
+  // directly, which lagged behind actual kickoff whenever Sleeper's
+  // schedule sync ran late.
+  const lockedTeams = await getLockedTeamsForLeague(leagueId)
 
   // 4. Build the final slot map (default everything to bench, then apply assignments)
   const newSlotByPlayer = {}
