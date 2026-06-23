@@ -794,7 +794,7 @@ export default function FantasyMyTeam({ league }) {
                       onViewDetail={openPlayerDetail}
                       editMode={editMode}
                       blurbIds={blurbIds}
-                      showSeasonStats={isCurrentWeek}
+                      showSeasonStats={isCurrentWeek || isFutureWeek}
                     />
                   ) : (
                     editMode ? (
@@ -832,7 +832,7 @@ export default function FantasyMyTeam({ league }) {
               onMoveToIR={handleMoveToIR}
               editMode={editMode}
               blurbIds={blurbIds}
-              showSeasonStats={isCurrentWeek}
+              showSeasonStats={isCurrentWeek || isFutureWeek}
             />
           ))}
           {Array.from({ length: emptyBenchCount }, (_, i) => (
@@ -889,7 +889,7 @@ export default function FantasyMyTeam({ league }) {
                 onMoveOutOfIR={handleMoveOutOfIR}
                 editMode={editMode}
                 blurbIds={blurbIds}
-                showSeasonStats={isCurrentWeek}
+                showSeasonStats={isCurrentWeek || isFutureWeek}
               />
             ))}
           </div>
