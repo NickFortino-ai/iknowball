@@ -44,6 +44,11 @@ export default function NflSalaryCapView({ league }) {
     return { text: `${op.is_home ? 'vs' : '@'} ${op.opponent}`, isBye: false }
   }
 
+  // Edit mode: true when the user hasn't submitted yet OR has explicitly
+  // tapped "Edit Roster" after submit. Gates the X (remove) and + (add)
+  // affordances so the roster doesn't silently mutate after submit.
+  const isEditing = !roster?.submitted_at || editingAfterSubmit
+
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [detailPlayerId, setDetailPlayerId] = useState(null)
@@ -215,7 +220,7 @@ export default function NflSalaryCapView({ league }) {
                     ) : (
                       <span className="text-sm font-bold text-correct">${(player.salary || 0).toLocaleString()}</span>
                     )}
-                    {!isLocked && (
+                    {!isLocked && isEditing && (
                       <button
                         onClick={() => removeSlot(slot.key)}
                         className="text-text-muted hover:text-incorrect transition-colors text-lg leading-none"
@@ -334,12 +339,14 @@ export default function NflSalaryCapView({ league }) {
                   </div>
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${(player.salary || 0).toLocaleString()}</span>
                 </button>
-                <button
-                  onClick={() => addPlayer(player)}
-                  className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
-                >
-                  +
-                </button>
+                {isEditing && (
+                  <button
+                    onClick={() => addPlayer(player)}
+                    className="w-8 h-8 rounded-full border border-accent/40 text-accent hover:bg-accent hover:text-white transition-colors flex items-center justify-center shrink-0 text-lg font-bold leading-none"
+                  >
+                    +
+                  </button>
+                )}
               </div>
             ))}
           </div>
