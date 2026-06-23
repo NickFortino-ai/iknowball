@@ -137,7 +137,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             onError={(e) => { e.target.style.display = 'none' }}
           />
         )}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 md:flex-none md:basis-[30%] md:max-w-[30%]">
           <div className="flex items-center gap-1.5">
             <span className="text-base font-bold text-text-primary truncate">{row?.nfl_players?.full_name || 'Empty'}</span>
             <InjuryBadge status={row?.nfl_players?.injury_status} />
@@ -149,15 +149,19 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             week_stats on the current/live week, season_stats on past
             weeks (server overloads season_stats with that-week's stats
             in the lineup-history path). Season totals live in the
-            player detail modal. */}
+            player detail modal.
+            Sits in a flex-grow column with text-left so it reads
+            close to the player name (not jammed against the points
+            column on the right). Header above the table mirrors this
+            with a "Season Total" label aligned to the same column. */}
         {row?.nfl_players?.position && !editMode && (() => {
           const source = showSeasonStats ? row.week_stats : row.season_stats
           if (!source) return null
           const statLine = formatSeasonStats(row.nfl_players.position, source)
           if (!statLine) return null
           return (
-            <div className="hidden md:block shrink-0 mr-4">
-              <div className="text-sm text-white tabular-nums whitespace-nowrap">{statLine}</div>
+            <div className="hidden md:block md:flex-1 md:min-w-0 md:ml-3 md:mr-3">
+              <div className="text-sm text-text-secondary tabular-nums truncate">{statLine}</div>
             </div>
           )
         })()}
@@ -776,12 +780,20 @@ export default function FantasyMyTeam({ league }) {
       )}
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-border flex items-center gap-3">
           <h3 className="text-base font-semibold text-text-primary">Starting Lineup</h3>
+          {/* Column label for the season-total stat line that PlayerRow
+              renders on desktop. Hidden in edit mode (stat line is also
+              hidden when editMode is true). Sits to the left of the
+              Edit button so it visually anchors above where the stats
+              column begins in each row. */}
+          {!editMode && (
+            <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Season Total</span>
+          )}
           {(isCurrentWeek || isFutureWeek) && !editMode && (
             <button
               onClick={() => setEditMode(true)}
-              className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors px-3 py-1 rounded-lg border border-accent/30 hover:border-accent ml-3"
+              className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors px-3 py-1 rounded-lg border border-accent/30 hover:border-accent ml-auto md:ml-0"
             >
               Edit
             </button>
@@ -847,9 +859,12 @@ export default function FantasyMyTeam({ league }) {
       </div>
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-baseline justify-between">
+        <div className="px-4 py-3 border-b border-border flex items-baseline gap-3">
           <h3 className="text-base font-semibold text-text-primary">Bench</h3>
-          <span className="text-xs text-text-muted font-mono">{benchPlayers.length}/{benchSlots}</span>
+          {!editMode && (
+            <span className="hidden md:inline-block text-xs uppercase tracking-wider text-text-muted ml-auto mr-auto">Season Total</span>
+          )}
+          <span className="text-xs text-text-muted font-mono ml-auto md:ml-0">{benchPlayers.length}/{benchSlots}</span>
         </div>
         <div className="p-3 space-y-2">
           {(() => {
