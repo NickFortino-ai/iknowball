@@ -934,8 +934,8 @@ export default function FantasyMyTeam({ league }) {
       )}
 
       {confirmDrop && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center" onClick={() => setConfirmDrop(null)}>
-          <div className="bg-bg-secondary w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-4" onClick={() => setConfirmDrop(null)}>
+          <div className="bg-bg-secondary w-full max-w-md rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-lg mb-2">Drop {confirmDrop.nfl_players?.full_name}?</h3>
             <p className="text-sm text-text-secondary mb-4">
               They'll be placed on waivers until the next clearing (Wednesday 3:00 AM ET). Your roster slot will be left empty.
