@@ -32,6 +32,7 @@ import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
 import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.js'
 import { syncPlayers, syncProjections, syncWeeklyProjections, getNFLState } from '../services/sleeperService.js'
+import { generateSalaries as generateNflDfsSalaries } from '../services/dfsService.js'
 import { rolloverFantasyWeek } from '../services/fantasyService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
 import { sendPickInjuryWarnings } from './pickInjuryWarnings.js'
@@ -194,6 +195,17 @@ export function startScheduler() {
           }
         }
       } catch (err) { logger.error({ err }, 'NFL weekly projections sync failed') }
+      // Generate NFL DFS salaries for the CURRENT NFL week. Salary-cap
+      // "This Week" leagues only need this week's prices — no need to
+      // pre-price weeks the user can't enter yet. Runs after the
+      // projection sync so prices reflect the freshest Sleeper numbers.
+      try {
+        const state2 = await getNFLState()
+        if (state2?.season && state2?.week) {
+          try { await generateNflDfsSalaries(state2.week, state2.season) }
+          catch (err) { logger.error({ err, season: state2.season, week: state2.week }, 'NFL DFS salary generation failed') }
+        }
+      } catch (err) { logger.error({ err }, 'NFL DFS salary scheduler failed') }
       // Auto-rollover current_week for all active fantasy leagues
       try {
         const nflState = state || await getNFLState()
