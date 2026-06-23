@@ -3525,41 +3525,92 @@ export async function getPlayerDetail(leagueId, playerId) {
     .eq('season', season)
     .order('week', { ascending: true })
 
+  // Full season's nfl_schedule for this player's team — drives the opponent
+  // column on the modal's weekly table AND lets us emit upcoming weeks
+  // (schedule rows with no matching stats row yet) so users see who their
+  // player will face later in the year, not just what already happened.
+  // Empty when the player has no team (free agent / retired) or when the
+  // season's schedule hasn't been synced yet.
+  const scheduleByWeek = {}
+  if (player.team) {
+    const { data: schedRows } = await supabase
+      .from('nfl_schedule')
+      .select('week, home_team, away_team')
+      .eq('season', season)
+      .or(`home_team.eq.${player.team},away_team.eq.${player.team}`)
+    for (const s of schedRows || []) {
+      const isHome = s.home_team === player.team
+      scheduleByWeek[s.week] = {
+        opponent: isHome ? s.away_team : s.home_team,
+        is_home: isHome,
+      }
+    }
+  }
+
   // Apply this league's scoring rules to each week, so the per-week pts the
   // user sees in the modal exactly match what their team would have scored.
-  const weeklyStats = (weeks || []).map((w) => ({
-    week: w.week,
-    pts: applyScoringRules(w, leagueRules),
-    pass_att: w.pass_att || 0,
-    pass_cmp: w.pass_cmp || 0,
-    pass_yd: Number(w.pass_yd) || 0,
-    pass_td: w.pass_td || 0,
-    pass_int: w.pass_int || 0,
-    rush_att: w.rush_att || 0,
-    rush_yd: Number(w.rush_yd) || 0,
-    rush_td: w.rush_td || 0,
-    rec_tgt: w.rec_tgt || 0,
-    rec: w.rec || 0,
-    rec_yd: Number(w.rec_yd) || 0,
-    rec_td: w.rec_td || 0,
-    fum_lost: w.fum_lost || 0,
-    fgm: (w.fgm_0_39 || 0) + (w.fgm_40_49 || 0) + (w.fgm_50_plus || 0),
-    fgm_50_plus: w.fgm_50_plus || 0,
-    xpm: w.xpm || 0,
-    def_td: w.def_td || 0,
-    def_int: w.def_int || 0,
-    def_sack: Number(w.def_sack) || 0,
-    def_fum_rec: w.def_fum_rec || 0,
-    def_safety: w.def_safety || 0,
-    def_pts_allowed: w.def_pts_allowed,
-  }))
+  const playedWeeks = (weeks || []).map((w) => {
+    const sched = scheduleByWeek[w.week] || {}
+    return {
+      week: w.week,
+      played: true,
+      opponent: sched.opponent || null,
+      is_home: sched.is_home ?? null,
+      pts: applyScoringRules(w, leagueRules),
+      pass_att: w.pass_att || 0,
+      pass_cmp: w.pass_cmp || 0,
+      pass_yd: Number(w.pass_yd) || 0,
+      pass_td: w.pass_td || 0,
+      pass_int: w.pass_int || 0,
+      rush_att: w.rush_att || 0,
+      rush_yd: Number(w.rush_yd) || 0,
+      rush_td: w.rush_td || 0,
+      rec_tgt: w.rec_tgt || 0,
+      rec: w.rec || 0,
+      rec_yd: Number(w.rec_yd) || 0,
+      rec_td: w.rec_td || 0,
+      fum_lost: w.fum_lost || 0,
+      fgm: (w.fgm_0_39 || 0) + (w.fgm_40_49 || 0) + (w.fgm_50_plus || 0),
+      fgm_50_plus: w.fgm_50_plus || 0,
+      xpm: w.xpm || 0,
+      def_td: w.def_td || 0,
+      def_int: w.def_int || 0,
+      def_sack: Number(w.def_sack) || 0,
+      def_fum_rec: w.def_fum_rec || 0,
+      def_safety: w.def_safety || 0,
+      def_pts_allowed: w.def_pts_allowed,
+    }
+  })
 
-  const totalPts = weeklyStats.reduce((sum, w) => sum + w.pts, 0)
-  const gamesPlayed = weeklyStats.length
+  // Upcoming weeks: any schedule row beyond the latest played week, with
+  // no stat fields populated. Drives the "future games" rows in the
+  // modal's weekly table.
+  const playedWeekSet = new Set(playedWeeks.map((w) => w.week))
+  const upcomingWeeks = []
+  for (const wkStr of Object.keys(scheduleByWeek)) {
+    const wk = Number(wkStr)
+    if (playedWeekSet.has(wk)) continue
+    const sched = scheduleByWeek[wk]
+    upcomingWeeks.push({
+      week: wk,
+      played: false,
+      opponent: sched.opponent || null,
+      is_home: sched.is_home ?? null,
+      pts: null,
+    })
+  }
+
+  // Merged, week-sorted timeline of played + upcoming. Client distinguishes
+  // by the `played` flag — no need for two separate "Previous" / "Upcoming"
+  // headers since empty stat cells are self-explanatory.
+  const weeklyStats = [...playedWeeks, ...upcomingWeeks].sort((a, b) => a.week - b.week)
+
+  const totalPts = playedWeeks.reduce((sum, w) => sum + w.pts, 0)
+  const gamesPlayed = playedWeeks.length
   const avgPts = gamesPlayed > 0 ? totalPts / gamesPlayed : 0
 
   // Determine "current" week — most recent stat row, else fall back to season-high week
-  const currentWeek = weeklyStats.length ? weeklyStats[weeklyStats.length - 1] : null
+  const currentWeek = playedWeeks.length ? playedWeeks[playedWeeks.length - 1] : null
 
   // Look up the richer ESPN injury detail (body part + short comment) from
   // the team_intel table populated by the syncInjuries cron.

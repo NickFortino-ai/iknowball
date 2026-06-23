@@ -162,19 +162,23 @@ function CurrentWeekNarrative({ position, week }) {
 }
 
 function PreviousGamesTable({ position, weeks, currentWeek }) {
-  // Show all weeks that have stats
-  const previous = weeks || []
-  if (!previous.length) {
-    return <p className="text-xs text-text-muted text-center py-3">No previous games.</p>
+  // Combined played + upcoming weeks. Server emits an `opponent` and
+  // `is_home` on every row + a `played` boolean — upcoming weeks have
+  // null stats and muted styling so users see the full season's
+  // schedule at a glance.
+  const allWeeks = weeks || []
+  if (!allWeeks.length) {
+    return <p className="text-xs text-text-muted text-center py-3">No games scheduled.</p>
   }
-  const columns = columnsFor(position, [...(previous || []), ...(currentWeek ? [currentWeek] : [])])
-  // Sum each column across all weeks for the season totals footer.
+  const playedRows = allWeeks.filter((w) => w.played !== false)
+  const columns = columnsFor(position, [...(playedRows || []), ...(currentWeek ? [currentWeek] : [])])
+  // Sum each column across played weeks for the season totals footer.
   // def_pts_allowed reads as a sum of all per-game points allowed, which
   // is informative enough for a season view; not worth special-casing.
   const totals = {}
   for (const c of columns) {
     let sum = 0
-    for (const w of previous) {
+    for (const w of playedRows) {
       const v = Number(w[c.key]) || 0
       sum += v
     }
@@ -186,33 +190,53 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
         <thead>
           <tr className="text-[10px] uppercase text-text-muted">
             <th className="text-left font-semibold px-2 py-2 sticky left-0 bg-bg-secondary">Wk</th>
+            <th className="text-left font-semibold px-2 py-2 whitespace-nowrap">Opp</th>
             {columns.map((c) => (
               <th key={c.key} className="text-right font-semibold px-2 py-2 whitespace-nowrap">{c.label}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {previous.map((w) => (
-            <tr key={w.week} className="border-t border-text-primary/10">
-              <td className="px-2 py-2 font-semibold sticky left-0 bg-bg-secondary">{w.week}</td>
-              {columns.map((c) => {
-                const val = w[c.key]
-                const display = val == null ? '—' : c.key === 'pts' ? Number(val).toFixed(1) : val
-                return (
-                  <td
-                    key={c.key}
-                    className={`px-2 py-2 text-right whitespace-nowrap ${c.key === 'pts' ? 'text-white font-semibold' : 'text-text-primary'}`}
-                  >
-                    {display}
-                  </td>
-                )
-              })}
-            </tr>
-          ))}
+          {allWeeks.map((w) => {
+            const isPlayed = w.played !== false
+            const oppLabel = w.opponent
+              ? `${w.is_home ? 'vs' : '@'} ${w.opponent}`
+              : 'BYE'
+            const oppColor = !w.opponent
+              ? 'text-yellow-400 font-semibold'
+              : isPlayed ? 'text-text-primary' : 'text-text-muted'
+            return (
+              <tr key={w.week} className="border-t border-text-primary/10">
+                <td className={`px-2 py-2 font-semibold sticky left-0 bg-bg-secondary ${isPlayed ? '' : 'text-text-muted'}`}>{w.week}</td>
+                <td className={`px-2 py-2 whitespace-nowrap ${oppColor}`}>{oppLabel}</td>
+                {columns.map((c) => {
+                  const val = w[c.key]
+                  const display = !isPlayed
+                    ? '—'
+                    : val == null
+                      ? '—'
+                      : c.key === 'pts' ? Number(val).toFixed(1) : val
+                  return (
+                    <td
+                      key={c.key}
+                      className={`px-2 py-2 text-right whitespace-nowrap ${
+                        !isPlayed ? 'text-text-muted/60'
+                          : c.key === 'pts' ? 'text-white font-semibold'
+                          : 'text-text-primary'
+                      }`}
+                    >
+                      {display}
+                    </td>
+                  )
+                })}
+              </tr>
+            )
+          })}
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-text-primary/20 bg-bg-card/40">
             <td className="px-2 py-2 font-semibold uppercase tracking-wider text-text-muted sticky left-0 bg-bg-card/40">Total</td>
+            <td className="px-2 py-2" />{/* Opp column has no total */}
             {columns.map((c) => (
               <td
                 key={c.key}
@@ -378,9 +402,11 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
 
             <div className="border-t border-text-primary/10" />
 
-            {/* Previous games table */}
+            {/* Weekly table — played weeks above the line, upcoming
+                weeks below with empty stats. Header dropped since the
+                table is self-explanatory (past = filled, future =
+                muted blanks). */}
             <div>
-              <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">Previous Games</h3>
               <PreviousGamesTable
                 position={data.player.position}
                 weeks={data.weekly_stats}
