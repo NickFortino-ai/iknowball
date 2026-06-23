@@ -790,7 +790,23 @@ async function enrichLockedPicksWithLiveStats(lockedPicks) {
         pick.live_stat = mapped
         logger.info({ playerName, marketKey, mapped, gameStatus }, 'Live stat enriched (NFL)')
       } else {
-        logger.warn({ playerName, espnId, marketKey, today, gameStatus, nbaByIdKeys: Object.keys(nbaById), nbaByNameKeys: Object.keys(nbaByName) }, 'Live stat enrichment: no stats found for player')
+        // Basketball "haven't played yet" fallback: a bench player whose
+        // game is live but who hasn't checked in (or has checked in but
+        // recorded zero of the requested stat) won't appear in the DFS
+        // stats table or ESPN's box score. If we KNOW the player is in
+        // the system (matched an espn_player_id from salaries), default
+        // their live stat to 0 so the UI surfaces a real number instead
+        // of falling silent. Scoped to NBA/WNBA only — MLB and NFL
+        // bench/inactive semantics differ and defaulting to 0 could
+        // mislead.
+        const sportKey = pick.player_props?.games?.sports?.key
+        const isBasketball = sportKey === 'basketball_wnba' || sportKey === 'basketball_nba'
+        if (isBasketball && gameStatus === 'live' && espnId) {
+          pick.live_stat = 0
+          logger.info({ playerName, marketKey, sportKey, gameStatus }, 'Live stat defaulted to 0 (basketball player has not recorded the stat)')
+        } else {
+          logger.warn({ playerName, espnId, marketKey, today, gameStatus, sportKey, nbaByIdKeys: Object.keys(nbaById), nbaByNameKeys: Object.keys(nbaByName) }, 'Live stat enrichment: no stats found for player')
+        }
       }
     }
   } catch (err) {
