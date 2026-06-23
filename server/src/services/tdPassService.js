@@ -194,17 +194,75 @@ export async function getCurrentWeekLastKickoff() {
  * Used by every NFL pick-style contest (TD Pass, Sacks, Interceptions) to
  * lock players whose team has already kicked off.
  */
+const NFL_FULL_TO_ABBR_LOCK = {
+  'Arizona Cardinals': 'ARI', 'Atlanta Falcons': 'ATL', 'Baltimore Ravens': 'BAL',
+  'Buffalo Bills': 'BUF', 'Carolina Panthers': 'CAR', 'Chicago Bears': 'CHI',
+  'Cincinnati Bengals': 'CIN', 'Cleveland Browns': 'CLE', 'Dallas Cowboys': 'DAL',
+  'Denver Broncos': 'DEN', 'Detroit Lions': 'DET', 'Green Bay Packers': 'GB',
+  'Houston Texans': 'HOU', 'Indianapolis Colts': 'IND', 'Jacksonville Jaguars': 'JAX',
+  'Kansas City Chiefs': 'KC', 'Las Vegas Raiders': 'LV', 'Los Angeles Chargers': 'LAC',
+  'Los Angeles Rams': 'LAR', 'Miami Dolphins': 'MIA', 'Minnesota Vikings': 'MIN',
+  'New England Patriots': 'NE', 'New Orleans Saints': 'NO', 'New York Giants': 'NYG',
+  'New York Jets': 'NYJ', 'Philadelphia Eagles': 'PHI', 'Pittsburgh Steelers': 'PIT',
+  'San Francisco 49ers': 'SF', 'Seattle Seahawks': 'SEA', 'Tampa Bay Buccaneers': 'TB',
+  'Tennessee Titans': 'TEN', 'Washington Commanders': 'WAS',
+}
+
+/**
+ * Set of NFL team abbreviations whose CURRENT-WEEK game has already kicked off.
+ * Lock per-game-kickoff (not midnight ET of the game day) by lifting precise
+ * starts_at timestamps from the games table (Odds API). Falls back to the
+ * old date-based lock for rows the games table is missing, and scopes the
+ * lookup to the current NFL week so past weeks don't keep their teams locked
+ * forever once their game_date is in the past.
+ */
 export async function getLockedTeamSet() {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  const { data: lockedGames } = await supabase
+  const { season, week } = await getCurrentNflWeek()
+  const { data: weekRows } = await supabase
     .from('nfl_schedule')
-    .select('home_team, away_team')
-    .lte('game_date', today)
+    .select('home_team, away_team, game_date')
+    .eq('season', season)
+    .eq('week', week)
+  if (!weekRows?.length) return new Set()
+
   const teams = new Set()
-  for (const g of lockedGames || []) {
-    if (g.home_team) teams.add(g.home_team)
-    if (g.away_team) teams.add(g.away_team)
+  const dates = [...new Set(weekRows.map((r) => r.game_date).filter(Boolean))].sort()
+  if (dates.length) {
+    const minDate = dates[0]
+    const maxDate = dates[dates.length - 1]
+    const { data: nflSport } = await supabase
+      .from('sports')
+      .select('id')
+      .eq('key', 'americanfootball_nfl')
+      .single()
+    const nowIso = new Date().toISOString()
+    if (nflSport?.id) {
+      const { data: kickedOff } = await supabase
+        .from('games')
+        .select('home_team, away_team, starts_at')
+        .eq('sport_id', nflSport.id)
+        .gte('starts_at', `${minDate}T00:00:00Z`)
+        .lt('starts_at', `${maxDate}T23:59:59Z`)
+        .lte('starts_at', nowIso)
+      for (const g of kickedOff || []) {
+        const homeAbbr = NFL_FULL_TO_ABBR_LOCK[g.home_team]
+        const awayAbbr = NFL_FULL_TO_ABBR_LOCK[g.away_team]
+        if (homeAbbr) teams.add(homeAbbr)
+        if (awayAbbr) teams.add(awayAbbr)
+      }
+    }
   }
+
+  // Fallback: any week-row whose game_date is strictly BEFORE today ET is
+  // unambiguously past kickoff. Catches data gaps where games is missing rows.
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  for (const g of weekRows) {
+    if (g.game_date && g.game_date < todayET) {
+      if (g.home_team) teams.add(g.home_team)
+      if (g.away_team) teams.add(g.away_team)
+    }
+  }
+
   return teams
 }
 

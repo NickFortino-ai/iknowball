@@ -113,7 +113,25 @@ export function applyScoringRules(stat, rules) {
 
   // Misc
   pts += (stat.fum_lost || 0) * (r.fum_lost || 0)
-  pts += (stat.two_pt || 0) * (r.pass_2pt || 0) // approximate — Sleeper rolls 2pts together
+  // Two-point conversions. Sleeper rolls all 2pt types into a single
+  // `two_pt` field — no type distinction at the source. We infer the
+  // most-likely type from the same stat row's offensive activity:
+  // a passer (pass_att > 0) is presumed to have thrown the 2pt, a
+  // rusher (rush_att > 0) ran it, a receiver (rec_tgt > 0) caught it.
+  // For a row that ONLY has two_pt (rare — a 2pt-only appearance like
+  // a special-teams contributor), fall back to the average of the
+  // three rates. With default rules all three are 2 so this is a no-op
+  // for standard leagues; custom rules that differentiate types get
+  // approximated correctly when there's any other offensive activity
+  // and split the difference when there isn't.
+  if (stat.two_pt) {
+    let twoPtRate
+    if ((stat.pass_att || 0) > 0) twoPtRate = r.pass_2pt || 0
+    else if ((stat.rush_att || 0) > 0) twoPtRate = r.rush_2pt || 0
+    else if ((stat.rec_tgt || 0) > 0 || (stat.rec || 0) > 0) twoPtRate = r.rec_2pt || 0
+    else twoPtRate = ((r.pass_2pt || 0) + (r.rush_2pt || 0) + (r.rec_2pt || 0)) / 3
+    pts += stat.two_pt * twoPtRate
+  }
 
   // Kicker
   pts += (stat.fgm_0_39 || 0) * (r.fgm_0_39 || 0)
@@ -3636,31 +3654,101 @@ export function nextWaiverClearTime(from = new Date()) {
   return fallback
 }
 
+// Full-team-name → Sleeper team abbreviation. The games table (Odds API)
+// uses full names while nfl_schedule + nfl_players (Sleeper) use these
+// abbreviations — this map bridges them so kickoff-time lockdown can lift
+// precise starts_at from games and report the team in the format the rest
+// of fantasy already speaks.
+const NFL_FULL_TO_ABBR = {
+  'Arizona Cardinals': 'ARI', 'Atlanta Falcons': 'ATL', 'Baltimore Ravens': 'BAL',
+  'Buffalo Bills': 'BUF', 'Carolina Panthers': 'CAR', 'Chicago Bears': 'CHI',
+  'Cincinnati Bengals': 'CIN', 'Cleveland Browns': 'CLE', 'Dallas Cowboys': 'DAL',
+  'Denver Broncos': 'DEN', 'Detroit Lions': 'DET', 'Green Bay Packers': 'GB',
+  'Houston Texans': 'HOU', 'Indianapolis Colts': 'IND', 'Jacksonville Jaguars': 'JAX',
+  'Kansas City Chiefs': 'KC', 'Las Vegas Raiders': 'LV', 'Los Angeles Chargers': 'LAC',
+  'Los Angeles Rams': 'LAR', 'Miami Dolphins': 'MIA', 'Minnesota Vikings': 'MIN',
+  'New England Patriots': 'NE', 'New Orleans Saints': 'NO', 'New York Giants': 'NYG',
+  'New York Jets': 'NYJ', 'Philadelphia Eagles': 'PHI', 'Pittsburgh Steelers': 'PIT',
+  'San Francisco 49ers': 'SF', 'Seattle Seahawks': 'SEA', 'Tampa Bay Buccaneers': 'TB',
+  'Tennessee Titans': 'TEN', 'Washington Commanders': 'WAS',
+}
+
 /**
- * Set of NFL team abbreviations whose current-week game has already started.
- * Players on these teams are waiver-locked until the next waiver run.
+ * Set of NFL team abbreviations whose current-week game has already kicked off.
+ * Replaces the older "lock by game_date <= today" pattern which (a) locked the
+ * entire game day starting at midnight ET — ~20 hours pre-kickoff for Thursday
+ * night, ~13 hours pre-kickoff for late Sunday games — and (b) would have
+ * unioned every past week's games by mid-season, locking all 32 teams forever.
+ *
+ * New behavior: scoped to the league's current_week, lifts kickoff timestamps
+ * from the `games` table (populated by The Odds API with precise starts_at),
+ * locks only teams whose actual kickoff has passed. Falls back to the old
+ * game_date-based lock if no games row is found (data sync gap) so we never
+ * UNDER-lock — better to err on the side of locking too eagerly than letting
+ * a user move a player whose game has actually started.
  */
 export async function getLockedTeamsForLeague(leagueId) {
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('season')
+    .select('season, current_week')
     .eq('league_id', leagueId)
     .single()
   const season = settings?.season || new Date().getUTCFullYear()
-  // Use Eastern-time "today" so the lock flips at midnight ET, never lagging
-  // behind a status sync. Any game whose game_date is on or before today
-  // (Eastern) is considered locked for the rest of the day.
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  const { data: lockedGames } = await supabase
+  const week = settings?.current_week || 1
+
+  // Current-week schedule rows (date + teams) from Sleeper-sourced nfl_schedule
+  const { data: weekRows } = await supabase
     .from('nfl_schedule')
-    .select('home_team, away_team')
+    .select('home_team, away_team, game_date')
     .eq('season', season)
-    .lte('game_date', today)
+    .eq('week', week)
+
+  if (!weekRows?.length) return new Set()
+
+  // Look up the precise kickoff timestamps from the `games` table for this
+  // week's date range. Odds API gives us hour-level accuracy that Sleeper
+  // doesn't expose at the schedule endpoint.
+  const dates = [...new Set(weekRows.map((r) => r.game_date).filter(Boolean))].sort()
+  if (!dates.length) return new Set()
+  const minDate = dates[0]
+  const maxDate = dates[dates.length - 1]
+  const { data: nflSport } = await supabase
+    .from('sports')
+    .select('id')
+    .eq('key', 'americanfootball_nfl')
+    .single()
+
   const locked = new Set()
-  for (const g of lockedGames || []) {
-    if (g.home_team) locked.add(g.home_team)
-    if (g.away_team) locked.add(g.away_team)
+  const nowIso = new Date().toISOString()
+  if (nflSport?.id) {
+    const { data: kickedOff } = await supabase
+      .from('games')
+      .select('home_team, away_team, starts_at')
+      .eq('sport_id', nflSport.id)
+      .gte('starts_at', `${minDate}T00:00:00Z`)
+      .lt('starts_at', `${maxDate}T23:59:59Z`)
+      .lte('starts_at', nowIso)
+    for (const g of kickedOff || []) {
+      const homeAbbr = NFL_FULL_TO_ABBR[g.home_team]
+      const awayAbbr = NFL_FULL_TO_ABBR[g.away_team]
+      if (homeAbbr) locked.add(homeAbbr)
+      if (awayAbbr) locked.add(awayAbbr)
+    }
   }
+
+  // Fallback: any week-row whose game_date is strictly BEFORE today ET is
+  // unambiguously past kickoff (we'd never have a current-day game show as
+  // past in this branch). This covers data gaps where the games table is
+  // missing rows that nfl_schedule has. Doesn't apply to today's date, which
+  // depends on the kickoff-time check above.
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  for (const g of weekRows) {
+    if (g.game_date && g.game_date < todayET) {
+      if (g.home_team) locked.add(g.home_team)
+      if (g.away_team) locked.add(g.away_team)
+    }
+  }
+
   return locked
 }
 
