@@ -392,15 +392,21 @@ export default function PlayerDetailModal({ leagueId, playerId, onClose, playerC
               <div className="border-t border-text-primary/10" />
             )}
 
-            {/* Current week narrative */}
-            <div>
-              <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">
-                {data.current_week ? `Week ${data.current_week.week}` : 'This Week'}
-              </h3>
-              <CurrentWeekNarrative position={data.player.position} week={data.current_week} />
-            </div>
-
-            <div className="border-t border-text-primary/10" />
+            {/* Current week narrative — only render when there are
+                stats for the latest played week. Pre-season / DNP
+                players would otherwise show "This Week / No stats yet
+                this week" which is noise, not info. */}
+            {data.current_week && (
+              <>
+                <div>
+                  <h3 className="text-xs uppercase text-text-muted tracking-wider mb-2">
+                    Week {data.current_week.week}
+                  </h3>
+                  <CurrentWeekNarrative position={data.player.position} week={data.current_week} />
+                </div>
+                <div className="border-t border-text-primary/10" />
+              </>
+            )}
 
             {/* Weekly table — played weeks above the line, upcoming
                 weeks below with empty stats. Header dropped since the
