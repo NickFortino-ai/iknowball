@@ -2509,12 +2509,70 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // Read league settings so the ranking adapts to scoring + SuperFlex
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('scoring_format, roster_slots, draft_status, season')
+    .select('scoring_format, roster_slots, draft_status, season, format, season_type, single_week')
     .eq('league_id', leagueId)
     .single()
   const scoringFormat = settings?.scoring_format || 'half_ppr'
   const rosterSlots = settings?.roster_slots || {}
   const isSuperflex = (rosterSlots.superflex || 0) > 0 || (rosterSlots.qb || 0) >= 2
+
+  // Salary cap "This Week" leagues: the player pool collapses to only
+  // teams whose game IS this week AND hasn't kicked off yet. Bye-week
+  // teams disappear (they're not in the week's schedule at all),
+  // already-kicked-off teams disappear (their lock has tripped).
+  // Built once here and applied as a post-rank filter so ADP / overall
+  // ranks still reflect the full draftable pool, not the truncated slice.
+  let salaryCapWeekFilter = null
+  if (settings?.format === 'salary_cap' && settings?.season_type === 'single_week' && settings?.single_week && settings?.season) {
+    const wk = settings.single_week
+    const seasonYear = settings.season
+    const { data: schedRows } = await supabase
+      .from('nfl_schedule')
+      .select('home_team, away_team, game_date')
+      .eq('season', seasonYear)
+      .eq('week', wk)
+    const teamsThisWeek = new Set()
+    const dates = new Set()
+    for (const s of schedRows || []) {
+      if (s.home_team) teamsThisWeek.add(s.home_team)
+      if (s.away_team) teamsThisWeek.add(s.away_team)
+      if (s.game_date) dates.add(s.game_date)
+    }
+    // Lift kickoff timestamps from games table to determine which
+    // teams have already started.
+    const kickedOff = new Set()
+    const sortedDates = [...dates].sort()
+    if (sortedDates.length) {
+      const { data: nflSport } = await supabase
+        .from('sports')
+        .select('id')
+        .eq('key', 'americanfootball_nfl')
+        .single()
+      if (nflSport?.id) {
+        const minDate = sortedDates[0]
+        const maxDate = sortedDates[sortedDates.length - 1]
+        const nowIso = new Date().toISOString()
+        const { data: kicked } = await supabase
+          .from('games')
+          .select('home_team, away_team, starts_at')
+          .eq('sport_id', nflSport.id)
+          .gte('starts_at', `${minDate}T00:00:00Z`)
+          .lt('starts_at', `${maxDate}T23:59:59Z`)
+          .lte('starts_at', nowIso)
+        for (const g of kicked || []) {
+          // games table uses full team names; map to Sleeper abbrev
+          const home = NFL_FULL_TO_ABBR[g.home_team]
+          const away = NFL_FULL_TO_ABBR[g.away_team]
+          if (home) kickedOff.add(home)
+          if (away) kickedOff.add(away)
+        }
+      }
+    }
+    // Eligible teams = playing this week AND not yet kicked off
+    salaryCapWeekFilter = new Set(
+      [...teamsThisWeek].filter((t) => !kickedOff.has(t))
+    )
+  }
 
   // Pull the full draftable pool — we need to compute overall + positional
   // ranks across the entire available list, NOT just the post-filter slice.
@@ -2647,7 +2705,14 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // Rank the FULL pool by ADP (preseason) so each player's overall_rank stays
   // fixed even as players above them get drafted.
   const excludeSet = new Set(excludeIds)
-  const rankedAll = (allPlayers || [])
+  let poolPlayers = allPlayers || []
+  // Salary cap "This Week": collapse pool to teams playing this week
+  // AND not yet kicked off. Bye-week teams and Thursday-locked teams
+  // disappear so the user can't price a player who can't actually play.
+  if (salaryCapWeekFilter) {
+    poolPlayers = poolPlayers.filter((p) => p.team && salaryCapWeekFilter.has(p.team))
+  }
+  const rankedAll = poolPlayers
     .map((p) => ({ ...p, _adp: effectiveAdp(p), _stats: ytd(p.id) }))
     .sort((a, b) => a._adp - b._adp)
     .map((p, i) => ({ ...p, overall_rank: i + 1 }))
