@@ -2505,7 +2505,7 @@ export default function LeagueDetailPage() {
 
       {/* Tabs (hidden for locked bracket leagues — rendered inside BracketView hero instead) */}
       {!(league.format === 'bracket' && isBracketLocked) && (
-      <div className="relative z-10 mb-6 flex gap-2 overflow-x-auto no-scrollbar scroll-smooth px-2 md:px-0 md:justify-center md:flex-wrap" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="relative z-10 mb-6 flex gap-2 overflow-x-auto no-scrollbar scroll-smooth -mx-4 px-4 md:mx-0 md:px-0 md:justify-center md:flex-wrap" style={{ WebkitOverflowScrolling: 'touch' }}>
         {tabs.map((tab, i) => {
           const isLiveDisabled = tab === 'Live' && (league.format === 'nba_dfs' || league.format === 'wnba_dfs') && league.starts_at &&
             new Date(league.starts_at).toISOString().split('T')[0] > new Date().toLocaleDateString('en-CA')

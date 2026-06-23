@@ -343,12 +343,12 @@ export default function ResultsPage() {
                   bonuses?.length > 0 ? (
                     <div className="space-y-2 mb-6">
                       {bonuses.map((bonus) => (
-                        <div key={bonus.id} className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-3 flex items-center justify-between">
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-text-primary truncate">{bonus.label || bonus.type}</div>
+                        <div key={bonus.id} className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 px-4 py-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold text-text-primary break-words">{bonus.label || bonus.type}</div>
                             <div className="text-xs text-text-muted">{new Date(bonus.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                           </div>
-                          <span className={`font-display text-base ${bonus.points > 0 ? 'text-correct' : bonus.points < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
+                          <span className={`font-display text-base shrink-0 ${bonus.points > 0 ? 'text-correct' : bonus.points < 0 ? 'text-incorrect' : 'text-text-muted'}`}>
                             {bonus.points > 0 ? '+' : ''}{bonus.points}
                           </span>
                         </div>

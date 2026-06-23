@@ -6,6 +6,7 @@ import { SkeletonCard } from '../ui/Skeleton'
 import PlayerDetailModal from './PlayerDetailModal'
 import PlayoffBracket from './PlayoffBracket'
 import BlurbDot, { markBlurbSeen } from './BlurbDot'
+import InjuryBadge from '../ui/InjuryBadge'
 
 // Build the starter slot key set + labels from a league's roster_slots
 // config. Anything outside the configured set is treated as bench (e.g.
@@ -24,18 +25,6 @@ function buildSlotMeta(rosterSlots) {
   if ((slots.k || 0) >= 1) { keys.push('k'); labels.k = 'K' }
   if ((slots.def || 0) >= 1) { keys.push('def'); labels.def = 'DEF' }
   return { starterSet: new Set(keys), slotLabels: labels, slotOrder: keys }
-}
-
-function InjuryBadge({ status }) {
-  if (!status || status === 'Probable') return null
-  const colors = {
-    Out: 'text-incorrect',
-    IR: 'text-incorrect',
-    Questionable: 'text-yellow-400',
-    Doubtful: 'text-yellow-400',
-    'Day-To-Day': 'text-yellow-400',
-  }
-  return <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${colors[status] || 'text-yellow-400'}`}>{status[0]}</span>
 }
 
 // Strip " D/ST" suffix — slot label already shows position

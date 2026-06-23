@@ -4480,6 +4480,53 @@ export async function acceptTrade(tradeId, userId, dropPlayerIds = []) {
  * Called by acceptTrade (when no review) or approveTrade (commissioner approval).
  */
 async function _executeTrade(tradeId, trade, actorId, dropPlayerIds = []) {
+  // Defensive cap re-check at execution time. The client's drop-modal flow
+  // is the user-facing safeguard, but if anything bypasses or misbehaves
+  // (stale UI build, transient API error swallowed silently, commissioner
+  // approving a trade whose receiver's roster changed during review, etc.),
+  // we still refuse to put either side over the roster cap. Belt and
+  // suspenders — the silent over-cap bug from 2026-06-20 should never be
+  // possible to repeat even if the front-end ships a regression.
+  const { data: settings } = await supabase
+    .from('fantasy_settings')
+    .select('roster_slots')
+    .eq('league_id', trade.league_id)
+    .maybeSingle()
+  const slots = settings?.roster_slots
+  let rosterCap = 16
+  if (slots) {
+    rosterCap = 0
+    for (const [k, v] of Object.entries(slots)) {
+      if (k === 'ir') continue
+      rosterCap += Number(v) || 0
+    }
+  }
+  const items = trade.fantasy_trade_items || []
+  // Both sides could be affected — the receiver typically grows, but a
+  // swap could put either user over cap. We check both.
+  for (const userId of [trade.proposer_user_id, trade.receiver_user_id]) {
+    const gets = items.filter((i) => i.to_user_id === userId).length
+    const sends = items.filter((i) => i.from_user_id === userId).length
+    // Only this actor's selected drops apply — proposer's drops aren't
+    // captured anywhere because they pre-committed at proposal time.
+    const userDrops = userId === actorId ? dropPlayerIds.length : 0
+    const netGain = gets - sends - userDrops
+    if (netGain <= 0) continue
+    const { count: currentCount } = await supabase
+      .from('fantasy_rosters')
+      .select('id', { count: 'exact', head: true })
+      .eq('league_id', trade.league_id)
+      .eq('user_id', userId)
+      .neq('slot', 'ir')
+    const afterTrade = (currentCount || 0) + netGain
+    if (afterTrade > rosterCap) {
+      logger.error({ tradeId, userId, currentCount, netGain, rosterCap, afterTrade }, 'Trade execution: user would exceed roster cap — aborting')
+      const err = new Error('Trade would put a roster over the cap — refresh and retry')
+      err.status = 400
+      throw err
+    }
+  }
+
   // Drop players if required to make room. Mossyou hit a real incident on
   // 2026-06-20: trade swap succeeded but the drop silently no-op'd, leaving
   // them with an extra player past the roster cap. The prior version:
