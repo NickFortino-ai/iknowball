@@ -41,9 +41,11 @@ const POSITION_STAT_CONFIG = {
     { key: 'pass_yd', label: 'PYD', comma: true },
     { key: 'pass_td', label: 'PTD' },
     { key: 'pass_int', label: 'INT' },
+    { key: 'rush_att', label: 'CAR' },
     { key: 'rush_yd', label: 'RYD' },
   ],
   RB: [
+    { key: 'rush_att', label: 'CAR' },
     { key: 'rush_yd', label: 'RYD', comma: true },
     { key: 'rush_td', label: 'RTD' },
     { key: 'rec', label: 'REC' },
@@ -78,10 +80,14 @@ function formatSeasonStats(position, stats) {
   if (!stats || !position) return null
   const config = POSITION_STAT_CONFIG[position]
   if (!config) return null
-  const hasAny = config.some((c) => (stats[c.key] || 0) > 0)
-  if (!hasAny) return null
-  return config.map((c) => {
-    const val = stats[c.key] || 0
+  // Only render stat entries with a non-zero value — a row of "117 RYD ·
+  // 0 RTD · 0 REC · 0 REYD" reads as noise when only the rushing yards
+  // are meaningful. Keep the order from the config so what does show
+  // reads in the same canonical sequence.
+  const nonZero = config.filter((c) => (Number(stats[c.key]) || 0) > 0)
+  if (nonZero.length === 0) return null
+  return nonZero.map((c) => {
+    const val = Number(stats[c.key]) || 0
     return `${c.comma ? val.toLocaleString() : val} ${c.label}`
   }).join(' · ')
 }
