@@ -115,10 +115,10 @@ export function startScheduler() {
   logger.info('Solo-league processor scheduled: every 15 minutes')
 
   if (env.ENABLE_INJURY_SYNC) {
-    cron.schedule('*/10 * * * *', async () => {
+    cron.schedule('*/5 * * * *', async () => {
       try { await syncInjuries() } catch (err) { logger.error({ err }, 'Injury sync job failed') }
     })
-    logger.info('Injury sync scheduled: every 10 minutes')
+    logger.info('Injury sync scheduled: every 5 minutes')
   }
 
   // NBA/MLB DFS scoring jobs run unconditionally. The stats they scrape from
