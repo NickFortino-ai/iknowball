@@ -50,6 +50,8 @@ const POSITION_STAT_CONFIG = {
     { key: 'rush_td', label: 'RTD' },
     { key: 'rec', label: 'REC' },
     { key: 'rec_yd', label: 'REYD' },
+    { key: 'rec_td', label: 'RETD' },
+    { key: 'rec_tgt', label: 'TGT' },
   ],
   WR: [
     { key: 'rec', label: 'REC' },
