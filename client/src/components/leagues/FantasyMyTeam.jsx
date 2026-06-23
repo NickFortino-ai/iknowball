@@ -260,7 +260,7 @@ export default function FantasyMyTeam({ league }) {
   const isPastWeek = activeWeek < currentWeek
   const isFutureWeek = activeWeek > currentWeek
 
-  const { data: roster, isLoading } = useFantasyRoster(league.id)
+  const { data: rawRoster, isLoading } = useFantasyRoster(league.id)
   const { data: historyData } = useFantasyLineupHistory(league.id, isPastWeek ? activeWeek : null, isPastWeek ? season : null)
   const { data: weeklyLineupData } = useFantasyWeeklyLineup(league.id, isFutureWeek ? activeWeek : null)
   const setWeeklyLineup = useSetFantasyWeeklyLineup(league.id)
@@ -290,6 +290,38 @@ export default function FantasyMyTeam({ league }) {
   }, [activeWeek])
 
   // For past weeks, use lineup history; for future weeks with saved lineup, use that; otherwise current roster
+  // Fetch per-week projection + opponent context whenever the user
+  // is viewing a non-current week so we can overlay onto the roster
+  // rows (the downstream renderer reads weekly_projection +
+  // current_week_opponent directly off each row).
+  const { data: weekContextData } = useFantasyWeekProjections(league.id, !isCurrentWeek ? activeWeek : null)
+  const weekProjMap = weekContextData?.projections
+  const weekOppMap = weekContextData?.opponents
+  function applyWeekOverlay(arr) {
+    if (!arr || !weekContextData) return arr
+    return arr.map((r) => {
+      const overlay = {}
+      const wp = weekProjMap?.[r.player_id]
+      if (wp != null) overlay.weekly_projection = wp
+      const team = r.nfl_players?.team
+      if (team && weekOppMap) {
+        const op = weekOppMap[team]
+        if (op) {
+          overlay.current_week_opponent = op.opponent
+          overlay.current_week_is_home = op.is_home
+        } else {
+          // Team has no game this week — bye. Null opponent + the
+          // present-but-null current_week_opponent field triggers
+          // BYE label in PlayerRow.
+          overlay.current_week_opponent = null
+          overlay.current_week_is_home = null
+        }
+      }
+      return Object.keys(overlay).length > 0 ? { ...r, ...overlay } : r
+    })
+  }
+  const roster = useMemo(() => applyWeekOverlay(rawRoster), [rawRoster, weekContextData])
+
   const weeklyRoster = weeklyLineupData?.roster
   const hasWeeklyLineup = isFutureWeek && weeklyRoster && weeklyRoster.length > 0
   const baseDisplayRoster = isPastWeek && historyData?.roster?.length
@@ -297,38 +329,7 @@ export default function FantasyMyTeam({ league }) {
     : hasWeeklyLineup
       ? weeklyRoster
       : roster
-
-  // When the user scrolls to a non-current week, the underlying roster
-  // rows still carry the CURRENT week's weekly_projection and
-  // current_week_opponent (or no projection / no opponent at all if
-  // they came from lineup-history). Fetch the viewed week's
-  // projection + opponent map and overlay so both the PROJ subtitle
-  // and the "vs MIA" / "@ MIA" / BYE marker reflect the week the
-  // user is actually looking at.
-  const { data: weekContextData } = useFantasyWeekProjections(league.id, !isCurrentWeek ? activeWeek : null)
-  const weekProjMap = weekContextData?.projections
-  const weekOppMap = weekContextData?.opponents
-  const displayRoster = (weekContextData && baseDisplayRoster)
-    ? baseDisplayRoster.map((r) => {
-        const overlay = {}
-        const wp = weekProjMap?.[r.player_id]
-        if (wp != null) overlay.weekly_projection = wp
-        const team = r.nfl_players?.team
-        if (team && weekOppMap) {
-          const op = weekOppMap[team]
-          if (op) {
-            overlay.current_week_opponent = op.opponent
-            overlay.current_week_is_home = op.is_home
-          } else {
-            // Team has no game this week — bye. Null opponent triggers
-            // the BYE label in PlayerRow.
-            overlay.current_week_opponent = null
-            overlay.current_week_is_home = null
-          }
-        }
-        return Object.keys(overlay).length > 0 ? { ...r, ...overlay } : r
-      })
-    : baseDisplayRoster
+  const displayRoster = applyWeekOverlay(baseDisplayRoster)
 
   function openPlayerDetail(playerId) {
     if (playerId) markBlurbSeen(playerId)
