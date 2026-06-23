@@ -301,18 +301,26 @@ export default function FantasyMyTeam({ league }) {
     if (!arr || !weekContextData) return arr
     return arr.map((r) => {
       const overlay = {}
-      const wp = weekProjMap?.[r.player_id]
-      if (wp != null) overlay.weekly_projection = wp
       const team = r.nfl_players?.team
+      const isOnBye = team && weekOppMap && !weekOppMap[team]
+      // Bye-week players: force projection to 0. Sleeper occasionally
+      // returns a non-zero projection on a bye week (their model
+      // doesn't always cross-reference the schedule), which would
+      // otherwise show "23.8 PROJ" for a guy who's not playing.
+      if (isOnBye) {
+        overlay.weekly_projection = 0
+      } else {
+        const wp = weekProjMap?.[r.player_id]
+        if (wp != null) overlay.weekly_projection = wp
+      }
       if (team && weekOppMap) {
         const op = weekOppMap[team]
         if (op) {
           overlay.current_week_opponent = op.opponent
           overlay.current_week_is_home = op.is_home
         } else {
-          // Team has no game this week — bye. Null opponent + the
-          // present-but-null current_week_opponent field triggers
-          // BYE label in PlayerRow.
+          // Null opponent + the present-but-null current_week_opponent
+          // field triggers BYE label in PlayerRow.
           overlay.current_week_opponent = null
           overlay.current_week_is_home = null
         }

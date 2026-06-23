@@ -901,7 +901,12 @@ export default function CreateLeaguePage() {
       salary_cap: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
       season_type: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') ? seasonType : undefined,
       champion_metric: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'full_season' ? championMetric : undefined,
-      single_week: (format === 'nba_dfs' || format === 'wnba_dfs' || fantasyFormat === 'salary_cap') && seasonType === 'single_week' ? singleWeek : undefined,
+      // Salary cap "This Week" = always the current NFL week; server fills
+      // it in at creation time so the user doesn't have to pick. NBA/WNBA
+      // single-night still uses the chosen game date.
+      single_week: (format === 'nba_dfs' || format === 'wnba_dfs') && seasonType === 'single_week' ? singleWeek
+        : (fantasyFormat === 'salary_cap' && seasonType === 'single_week') ? null
+        : undefined,
     } : undefined
 
     try {
@@ -1520,7 +1525,10 @@ export default function CreateLeaguePage() {
                   <div className="flex gap-2">
                     {[
                       { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
-                      { value: 'single_week', label: sport === 'basketball_nba' ? 'Single Night' : 'Single Week' },
+                      // Salary cap single-week leagues are always "this NFL week" —
+                      // server resolves to the current NFL week at creation, no
+                      // user picker. NBA / WNBA single night still uses a date picker.
+                      { value: 'single_week', label: sport === 'basketball_nba' ? 'Single Night' : (fantasyFormat === 'salary_cap' ? 'This Week' : 'Single Week') },
                     ].map((opt) => (
                       <button
                         key={opt.value}
@@ -1535,7 +1543,7 @@ export default function CreateLeaguePage() {
                     ))}
                   </div>
                 </div>
-                {seasonType === 'single_week' && (
+                {seasonType === 'single_week' && fantasyFormat !== 'salary_cap' && (
                   <div>
                     <label className="text-xs text-text-muted block mb-1">{sport === 'basketball_nba' ? 'Game Date' : 'NFL Week'}</label>
                     <div className="flex gap-1 flex-wrap">

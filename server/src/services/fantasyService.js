@@ -240,7 +240,22 @@ export async function createFantasySettings(leagueId, settings = {}) {
       ...(salary_cap && { salary_cap }),
       ...(season_type && { season_type }),
       ...(champion_metric && { champion_metric }),
-      ...(single_week && { single_week }),
+      // Salary cap "This Week" leagues pass single_week=null from the
+      // client (no picker). Resolve to the current NFL week server-side
+      // so the league is always pegged to whatever week is in progress
+      // when it was created. NBA/WNBA single-night still pass an
+      // explicit single_week from the client's date picker.
+      ...(single_week
+        ? { single_week }
+        : (season_type === 'single_week' && dfsFormat !== 'nba_dfs' && dfsFormat !== 'wnba_dfs')
+          ? { single_week: (await (async () => {
+              try {
+                const { getCurrentNflWeek } = await import('./tdPassService.js')
+                const { week } = await getCurrentNflWeek()
+                return week
+              } catch { return 1 }
+            })()) }
+          : {}),
       ...(pick_reuse && { pick_reuse }),
     })
     .select()
