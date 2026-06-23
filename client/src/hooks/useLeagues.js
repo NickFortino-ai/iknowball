@@ -631,6 +631,19 @@ export function useFantasyLineupHistory(leagueId, week, season) {
   })
 }
 
+// Per-week projections map for the My Team weekly navigation. Returns
+// { [player_id]: projection } so the client can overlay the right
+// projection on whichever displayRoster source is active for the
+// viewed week.
+export function useFantasyWeekProjections(leagueId, week) {
+  return useQuery({
+    queryKey: ['leagues', leagueId, 'fantasy', 'weekProjections', week],
+    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/projections/week/${week}`),
+    enabled: !!leagueId && !!week,
+    staleTime: 5 * 60 * 1000, // projections shift slowly intra-day
+  })
+}
+
 export function useSetFantasyLineup(leagueId) {
   const queryClient = useQueryClient()
   return useMutation({

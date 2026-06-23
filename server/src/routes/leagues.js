@@ -1491,6 +1491,37 @@ router.get('/:id/fantasy/lineup/week/:week', requireAuth, async (req, res) => {
   }
 })
 
+// Per-week projections for the My Team weekly nav — returns
+// { [player_id]: projection } so the client can overlay the right
+// projection on top of whatever displayRoster source it's using
+// (current roster, lineup history, or pre-set weekly lineup) when
+// the user scrolls to a different week.
+router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) => {
+  try {
+    const settings = await getFantasySettings(req.params.id)
+    const season = settings?.season || new Date().getUTCFullYear()
+    const week = parseInt(req.params.week)
+    if (!Number.isInteger(week) || week < 1 || week > 18) {
+      return res.status(400).json({ error: 'week must be 1..18' })
+    }
+    const projCol = settings?.scoring_format === 'ppr' ? 'pts_ppr'
+      : settings?.scoring_format === 'standard' ? 'pts_std'
+      : 'pts_half_ppr'
+    const { data: rows } = await supabase
+      .from('nfl_player_projections')
+      .select(`player_id, ${projCol}`)
+      .eq('season', season)
+      .eq('week', week)
+    const map = {}
+    for (const r of rows || []) {
+      if (r[projCol] != null) map[r.player_id] = Math.round(Number(r[projCol]) * 10) / 10
+    }
+    res.json({ week, season, projections: map })
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
 // Save pre-set weekly lineup for a future week
 router.post('/:id/fantasy/lineup/week/:week', requireAuth, async (req, res) => {
   try {

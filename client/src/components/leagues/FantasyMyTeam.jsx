@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup } from '../../hooks/useLeagues'
+import { useFantasyRoster, useSetFantasyLineup, useDropRosterPlayer, useFantasyTrades, useRespondToTrade, useBlurbPlayerIds, useFantasySettings, useGlobalRank, useFantasyLineupHistory, useFantasyWeeklyLineup, useSetFantasyWeeklyLineup, useFantasyWeekProjections } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { SkeletonRows, SkeletonBlock } from '../ui/Skeleton'
 import { toast } from '../ui/Toast'
@@ -292,11 +292,29 @@ export default function FantasyMyTeam({ league }) {
   // For past weeks, use lineup history; for future weeks with saved lineup, use that; otherwise current roster
   const weeklyRoster = weeklyLineupData?.roster
   const hasWeeklyLineup = isFutureWeek && weeklyRoster && weeklyRoster.length > 0
-  const displayRoster = isPastWeek && historyData?.roster?.length
+  const baseDisplayRoster = isPastWeek && historyData?.roster?.length
     ? historyData.roster
     : hasWeeklyLineup
       ? weeklyRoster
       : roster
+
+  // When the user scrolls to a non-current week, the underlying roster
+  // rows still carry the CURRENT week's weekly_projection (or no
+  // projection at all if they came from lineup-history). Fetch the
+  // viewed week's projection map and overlay so the PROJ subtitle
+  // reflects that specific week — past or future.
+  const { data: weekProjData } = useFantasyWeekProjections(league.id, !isCurrentWeek ? activeWeek : null)
+  const weekProjMap = weekProjData?.projections
+  const displayRoster = (weekProjMap && baseDisplayRoster)
+    ? baseDisplayRoster.map((r) => {
+        // Bye-week players stay at 0 — the per-week projection map
+        // simply won't have them. null projection from server +
+        // bye-aware UI render works regardless.
+        const wp = weekProjMap[r.player_id]
+        if (wp == null) return r
+        return { ...r, weekly_projection: wp }
+      })
+    : baseDisplayRoster
 
   function openPlayerDetail(playerId) {
     if (playerId) markBlurbSeen(playerId)
