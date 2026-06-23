@@ -116,8 +116,8 @@ function CurrentWeekNarrative({ position, week }) {
     if (week.pass_int) parts.push(`${week.pass_int} interception${week.pass_int !== 1 ? 's' : ''}`)
     if (week.rush_yd) parts.push(`${week.rush_yd} rushing yards on ${week.rush_att || '?'} carries${week.rush_td ? `, ${week.rush_td} rushing TD` : ''}`)
   } else if (position === 'K') {
-    if (week.fgm != null) parts.push(`${week.fgm} field goal${week.fgm !== 1 ? 's' : ''} made${week.fgm_50_plus ? ` (${week.fgm_50_plus} from 50+)` : ''}`)
-    if (week.xpm != null) parts.push(`${week.xpm} extra point${week.xpm !== 1 ? 's' : ''} made`)
+    if (week.fgm) parts.push(`${week.fgm} field goal${week.fgm !== 1 ? 's' : ''} made${week.fgm_50_plus ? ` (${week.fgm_50_plus} from 50+)` : ''}`)
+    if (week.xpm) parts.push(`${week.xpm} extra point${week.xpm !== 1 ? 's' : ''} made`)
     // Trick-play stats — rare for kickers, but if they exist they contribute
     // to the total points, so surface them rather than leaving the user
     // wondering where the extra pts came from.
@@ -138,9 +138,16 @@ function CurrentWeekNarrative({ position, week }) {
     if (week.rec) parts.push(`${week.rec} reception${week.rec !== 1 ? 's' : ''} for ${week.rec_yd || 0} yards${week.rec_td ? `, ${week.rec_td} TD` : ''}`)
     if (week.fum_lost) parts.push(`${week.fum_lost} fumble${week.fum_lost !== 1 ? 's' : ''} lost`)
   } else {
-    // WR / TE
-    if (week.rec != null) parts.push(`${week.rec} reception${week.rec !== 1 ? 's' : ''} for ${week.rec_yd || 0} yards${week.rec_td ? `, ${week.rec_td} TD` : ''} on ${week.rec_tgt || '?'} targets`)
-    if (week.rush_yd) parts.push(`${week.rush_yd} rushing yards${week.rush_td ? `, ${week.rush_td} rushing TD` : ''}`)
+    // WR / TE — only render the receptions sentence when there was actual
+    // receiving activity (catches, yards, or targets). Without this guard
+    // a zero-activity row reads "0 receptions for 0 yards on ? targets"
+    // which is louder than just falling through to "No significant stats
+    // recorded."
+    if (week.rec || week.rec_yd || week.rec_tgt) {
+      const tgtStr = week.rec_tgt ? `${week.rec_tgt}` : '?'
+      parts.push(`${week.rec || 0} reception${week.rec !== 1 ? 's' : ''} for ${week.rec_yd || 0} yards${week.rec_td ? `, ${week.rec_td} TD` : ''} on ${tgtStr} targets`)
+    }
+    if (week.rush_yd || week.rush_att) parts.push(`${week.rush_yd || 0} rushing yards${week.rush_att ? ` on ${week.rush_att} carries` : ''}${week.rush_td ? `, ${week.rush_td} rushing TD` : ''}`)
     if (week.fum_lost) parts.push(`${week.fum_lost} fumble${week.fum_lost !== 1 ? 's' : ''} lost`)
   }
 
