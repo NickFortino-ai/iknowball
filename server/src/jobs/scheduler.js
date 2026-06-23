@@ -179,12 +179,19 @@ export function startScheduler() {
     cron.schedule('0 3 * * *', async () => {
       try { await syncPlayers() } catch (err) { logger.error({ err }, 'NFL syncPlayers job failed') }
       try { await syncProjections() } catch (err) { logger.error({ err }, 'NFL syncProjections job failed') }
-      // Sync weekly projections for the current and next NFL week
+      // Sync weekly projections for ALL 18 regular-season weeks so the
+      // My Team + player modal show projections continuously across the
+      // season (Yahoo-style). Sleeper's projections evolve through the
+      // week as injury news flows in, so the nightly resync keeps every
+      // future week's number fresh.
       try {
         const state = await getNFLState()
-        if (state?.week && state?.season) {
-          await syncWeeklyProjections(state.season, state.week)
-          if (state.week < 18) await syncWeeklyProjections(state.season, state.week + 1)
+        const season = state?.season
+        if (season) {
+          for (let w = 1; w <= 18; w++) {
+            try { await syncWeeklyProjections(season, w) }
+            catch (err) { logger.error({ err, season, week: w }, 'Weekly projections sync failed for week') }
+          }
         }
       } catch (err) { logger.error({ err }, 'NFL weekly projections sync failed') }
       // Auto-rollover current_week for all active fantasy leagues
