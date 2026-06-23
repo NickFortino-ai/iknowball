@@ -17,6 +17,7 @@ import { snapshotRanks } from './snapshotRanks.js'
 import { recalculateRecords } from './recalculateRecords.js'
 import { settleStuckParlays } from './settleStuckParlays.js'
 import { syncInjuries } from './syncInjuries.js'
+import { sendFantasyByeWarnings } from './sendFantasyByeWarnings.js'
 import { cleanupExpiredVideos } from './cleanupExpiredVideos.js'
 import { scoreNBADFS } from './scoreNBADFS.js'
 import { scoreWNBADFS } from './scoreWNBADFS.js'
@@ -216,6 +217,16 @@ export function startScheduler() {
       try { await sendPickInjuryWarnings() } catch (err) { logger.error({ err }, 'Pick injury warnings job failed') }
     })
     logger.info('Pick injury warnings scheduled: every hour at :17')
+
+    // Fantasy bye-week warning — one consolidated notification per manager
+    // per league per week, fired Thursday morning ET as the new NFL week
+    // gets underway. Self-dedupes so the cron firing more than once on a
+    // Thursday doesn't double-send.
+    // 14:00 UTC = 9 AM EST / 10 AM EDT — well before any TNF kickoff.
+    cron.schedule('0 14 * * 4', async () => {
+      try { await sendFantasyByeWarnings() } catch (err) { logger.error({ err }, 'Fantasy bye warnings job failed') }
+    })
+    logger.info('Fantasy bye warnings scheduled: Thursdays at 14:00 UTC')
 
     // Fantasy global rankings — recompute every night at 4:00 AM ET so users
     // can see how their team ranks against every other team across IKB with

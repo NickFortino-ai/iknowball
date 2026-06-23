@@ -3138,6 +3138,15 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
       acquired_via: 'free_agent',
     })
   if (insertErr) {
+    // Postgres unique violation = the (league_id, player_id) UNIQUE
+    // constraint blocked us, meaning a second manager beat this user to
+    // the add by milliseconds. Surface a friendly message instead of the
+    // raw "duplicate key value violates unique constraint" text.
+    if (insertErr.code === '23505') {
+      const err = new Error(`${addPlayer.full_name} was just claimed by another manager`)
+      err.status = 409
+      throw err
+    }
     logger.error({ insertErr, addPlayerId }, 'Failed to add player to roster')
     throw insertErr
   }
