@@ -485,6 +485,7 @@ export default function HubPage() {
           <div className="flex gap-1 overflow-x-auto flex-nowrap no-scrollbar">
             {[
               { key: 'all', label: 'All of IKB' },
+              { key: 'news', label: 'News', mobileOnly: true },
               { key: 'squad', label: 'My Squad' },
               { key: 'posts', label: 'Posts' },
               { key: 'polls', label: 'Polls' },
@@ -492,7 +493,6 @@ export default function HubPage() {
               { key: 'highlights', label: 'Me' },
               { key: 'user_feeds', label: 'User Feeds' },
               { key: 'receipts', label: 'Receipts' },
-              { key: 'news', label: 'News', mobileOnly: true },
             ].filter((tab) => !tab.mobileOnly || !window.matchMedia('(min-width: 1024px)').matches).map((tab) => (
               <button
                 key={tab.key}
