@@ -104,7 +104,7 @@ function InjuryBadge({ status }) {
   )
 }
 
-function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode, showSeasonStats = true }) {
+function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, onViewDetail, blurbIds, editMode, showSeasonStats = true, isDropTarget = false }) {
   const canIR = row?.nfl_players?.injury_status === 'Out' || row?.nfl_players?.injury_status === 'IR'
   const isInIR = row?.slot === 'ir'
 
@@ -122,7 +122,11 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
         type="button"
         onClick={handleRowClick}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border transition-colors text-left ${
-          isSelected ? 'border-accent bg-accent/10' : 'border-text-primary/10 bg-bg-primary/40 hover:bg-bg-card-hover'
+          isSelected
+            ? 'border-accent bg-accent/10'
+            : isDropTarget
+              ? 'border-accent/60 bg-accent/5 ring-1 ring-accent/40'
+              : 'border-text-primary/10 bg-bg-primary/40 hover:bg-bg-card-hover'
         } ${dimmed ? 'opacity-40' : ''}`}
       >
         {row?.nfl_players?.headshot_url && (
@@ -794,17 +798,35 @@ export default function FantasyMyTeam({ league }) {
               <div key={slotDef.key} className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-text-muted w-8 shrink-0">{slotDef.label}</span>
                 <div className="flex-1">
-                  {occupant ? (
-                    <PlayerRow
-                      row={occupant}
-                      isSelected={editMode && selected?.type === 'player' && selected.key === occupant.player_id}
-                      onTap={() => handlePlayerTap(occupant.player_id)}
-                      onViewDetail={openPlayerDetail}
-                      editMode={editMode}
-                      blurbIds={blurbIds}
-                      showSeasonStats={isCurrentWeek || isFutureWeek}
-                    />
-                  ) : (
+                  {occupant ? (() => {
+                    // Highlight occupied starter rows as drop targets when a
+                    // position-compatible bench (or IR) player is selected so
+                    // the user sees which slots a bench player can swap into.
+                    const isOccupantSelected = editMode && selected?.type === 'player' && selected.key === occupant.player_id
+                    const selPlayer = !isOccupantSelected && selected?.type === 'player'
+                      ? roster.find((r) => r.player_id === selected.key) : null
+                    const selPlayerIsBench = selPlayer && slotByPlayer[selPlayer.player_id] !== slotDef.key &&
+                      slotByPlayer[selPlayer.player_id] !== 'ir' === false ? false : true
+                    // Simpler: a non-self position-compatible player counts as a
+                    // potential swap target regardless of where they're coming
+                    // from — bench-to-starter, starter-to-starter (cross-slot),
+                    // or IR-to-starter. The position eligibility check carries
+                    // the meaning.
+                    const isDropTarget = editMode && !!selPlayer &&
+                      slotDef.positions.includes(selPlayer?.nfl_players?.position)
+                    return (
+                      <PlayerRow
+                        row={occupant}
+                        isSelected={isOccupantSelected}
+                        isDropTarget={isDropTarget}
+                        onTap={() => handlePlayerTap(occupant.player_id)}
+                        onViewDetail={openPlayerDetail}
+                        editMode={editMode}
+                        blurbIds={blurbIds}
+                        showSeasonStats={isCurrentWeek || isFutureWeek}
+                      />
+                    )
+                  })() : (
                     editMode ? (
                       (() => {
                         // Highlight as drop target when a position-compatible
