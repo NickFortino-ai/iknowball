@@ -127,12 +127,29 @@ export function applyScoringRules(stat, rules) {
   pts += (stat.def_fum_rec || 0) * (r.def_fum_rec || 0)
   pts += (stat.def_td || 0) * (r.def_td || 0)
   pts += (stat.def_safety || 0) * (r.def_safety || 0)
+  // Defense points-allowed bracket — gate on actual offensive activity so an
+  // offensive player whose nfl_player_stats row happens to have
+  // def_pts_allowed=0 (instead of null — seeder or sync gap) doesn't silently
+  // pick up the shutout bonus. A real DEF row has no offensive activity, so
+  // we only apply the bracket when pass/rush/rec activity is zero across
+  // the board. Sim league exposed this: Cook with 21 carries + 68 rush_yd
+  // + def_pts_allowed=0 was getting +10 pts (6.8 rushing + 10 shutout = 16.8).
   if (stat.def_pts_allowed != null && Array.isArray(r.def_pa_brackets)) {
-    const pa = stat.def_pts_allowed
-    for (const b of r.def_pa_brackets) {
-      if (pa <= (b.max ?? 999)) {
-        pts += (b.pts || 0)
-        break
+    const hasOffensiveActivity =
+      (Number(stat.pass_yd) || 0) > 0 || (Number(stat.rush_yd) || 0) > 0 ||
+      (Number(stat.rec_yd) || 0) > 0 || (stat.pass_td || 0) > 0 ||
+      (stat.rush_td || 0) > 0 || (stat.rec_td || 0) > 0 ||
+      (stat.rec || 0) > 0 || (stat.rec_tgt || 0) > 0 ||
+      (stat.rush_att || 0) > 0 || (stat.pass_att || 0) > 0 ||
+      (stat.fgm_0_39 || 0) > 0 || (stat.fgm_40_49 || 0) > 0 ||
+      (stat.fgm_50_plus || 0) > 0 || (stat.xpm || 0) > 0
+    if (!hasOffensiveActivity) {
+      const pa = stat.def_pts_allowed
+      for (const b of r.def_pa_brackets) {
+        if (pa <= (b.max ?? 999)) {
+          pts += (b.pts || 0)
+          break
+        }
       }
     }
   }
