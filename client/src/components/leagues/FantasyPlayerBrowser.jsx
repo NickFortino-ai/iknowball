@@ -301,13 +301,13 @@ export default function FantasyPlayerBrowser({ league }) {
             <div className="w-[135px] lg:w-[200px] px-1 py-1.5">Player</div>
             <div className="w-8" />
           </div>
-          <div className="flex gap-1 py-1.5">
+          <div className="flex gap-0.5 py-1.5">
             {statColumns.map((col) => (
               <button
                 key={col.key}
                 type="button"
                 onClick={() => handleSort(col.key)}
-                className={`w-14 shrink-0 text-center px-1 py-0.5 rounded transition-colors ${
+                className={`w-11 shrink-0 text-center px-0.5 py-0.5 rounded transition-colors ${
                   sortKey === col.key ? 'border border-accent text-accent' : 'hover:bg-bg-card'
                 }`}
               >
@@ -372,7 +372,7 @@ export default function FantasyPlayerBrowser({ league }) {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-1 items-center">
+                <div className="flex gap-0.5 items-center">
                   {statColumns.map((col) => {
                     const value = col.key === 'weekly_proj'
                       ? (player.weekly_projection != null ? player.weekly_projection.toFixed(1) : '—')
@@ -380,7 +380,7 @@ export default function FantasyPlayerBrowser({ league }) {
                     return (
                       <div
                         key={col.key}
-                        className={`w-14 shrink-0 text-center text-xs tabular-nums py-1 rounded ${
+                        className={`w-11 shrink-0 text-center text-xs tabular-nums py-1 rounded ${
                           sortKey === col.key ? 'bg-accent/10 text-text-primary font-bold' : 'text-text-secondary'
                         }`}
                       >
