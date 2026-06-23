@@ -173,7 +173,7 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           )
         })()}
         {row?.nfl_players && (
-          <div className="text-right shrink-0 mr-1">
+          <div className="text-right shrink-0 mr-1 ml-auto">
             {showSeasonStats && row.weekly_projection != null ? (
               <>
                 <div className="text-lg font-display tabular-nums text-white leading-none">{row.weekly_projection.toFixed(1)}</div>
