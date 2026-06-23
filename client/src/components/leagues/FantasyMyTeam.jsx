@@ -852,19 +852,39 @@ export default function FantasyMyTeam({ league }) {
           <span className="text-xs text-text-muted font-mono">{benchPlayers.length}/{benchSlots}</span>
         </div>
         <div className="p-3 space-y-2">
-          {benchPlayers.map((r) => (
-            <PlayerRow
-              key={r.id}
-              row={r}
-              isSelected={editMode && selected?.type === 'player' && selected.key === r.player_id}
-              onTap={() => handlePlayerTap(r.player_id)}
-              onViewDetail={openPlayerDetail}
-              onMoveToIR={handleMoveToIR}
-              editMode={editMode}
-              blurbIds={blurbIds}
-              showSeasonStats={isCurrentWeek || isFutureWeek}
-            />
-          ))}
+          {(() => {
+            // When a STARTER is selected, compute the eligible positions for
+            // that starter's slot so bench players who could fill it light up
+            // as swap targets. Mirrors the existing starter-side affordance.
+            let benchDropPositions = null
+            if (editMode && selected?.type === 'player') {
+              const selPlayer = roster.find((r) => r.player_id === selected.key)
+              const selSlot = selPlayer ? slotByPlayer[selPlayer.player_id] : null
+              if (selSlot && selSlot !== 'bench' && selSlot !== 'ir') {
+                const slotDef = STARTER_SLOTS.find((s) => s.key === selSlot)
+                if (slotDef) benchDropPositions = slotDef.positions
+              }
+            }
+            return benchPlayers.map((r) => {
+              const isRowSelected = editMode && selected?.type === 'player' && selected.key === r.player_id
+              const isDropTarget = !isRowSelected && benchDropPositions != null &&
+                benchDropPositions.includes(r?.nfl_players?.position)
+              return (
+                <PlayerRow
+                  key={r.id}
+                  row={r}
+                  isSelected={isRowSelected}
+                  isDropTarget={isDropTarget}
+                  onTap={() => handlePlayerTap(r.player_id)}
+                  onViewDetail={openPlayerDetail}
+                  onMoveToIR={handleMoveToIR}
+                  editMode={editMode}
+                  blurbIds={blurbIds}
+                  showSeasonStats={isCurrentWeek || isFutureWeek}
+                />
+              )
+            })
+          })()}
           {Array.from({ length: emptyBenchCount }, (_, i) => (
             <EmptySlot
               key={`bench-empty-${i}`}
