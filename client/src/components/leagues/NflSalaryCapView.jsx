@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNflDfsPlayers, useNflDfsRoster, useSaveNflDfsRoster, useSubmitNflDfsRoster, useFantasySettings } from '../../hooks/useLeagues'
+import { useNflDfsPlayers, useNflDfsRoster, useSaveNflDfsRoster, useSubmitNflDfsRoster, useFantasySettings, useFantasyWeekProjections } from '../../hooks/useLeagues'
 import { useAuth } from '../../hooks/useAuth'
 import { toast } from '../ui/Toast'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -32,6 +32,17 @@ export default function NflSalaryCapView({ league }) {
   const { data: roster, isLoading: rosterLoading } = useNflDfsRoster(league.id, currentWeek, season)
   const saveRoster = useSaveNflDfsRoster()
   const submitRoster = useSubmitNflDfsRoster()
+  // Per-week opponent map — drives the "vs MIA" / "@ MIA" / BYE
+  // marker on both rostered slots and the available-players list.
+  // Re-uses the same hook traditional fantasy uses.
+  const { data: weekContextData } = useFantasyWeekProjections(league.id, currentWeek || null)
+  const oppMap = weekContextData?.opponents
+  function oppLabel(team) {
+    if (!team || !oppMap) return null
+    const op = oppMap[team]
+    if (!op) return { text: 'BYE', isBye: true }
+    return { text: `${op.is_home ? 'vs' : '@'} ${op.opponent}`, isBye: false }
+  }
 
   const [posFilter, setPosFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -162,35 +173,6 @@ export default function NflSalaryCapView({ league }) {
           )}
         </div>
 
-        {/* Submit / status — auto-save runs on every pick, but the explicit
-            submit gives users the conventional DFS "I commit" moment. Any
-            edit clears submitted_at server-side so the badge resets. */}
-        {filledCount === SLOTS.length && remaining >= 0 && (
-          <div className="mb-4">
-            {roster?.submitted_at && !editingAfterSubmit ? (
-              <div className="rounded-xl border border-correct/40 bg-correct/10 px-4 py-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-correct">Submitted &middot; {timeAgo(roster.submitted_at)}</div>
-                  <div className="text-[11px] text-text-muted mt-0.5">Tap Edit Roster to change picks</div>
-                </div>
-                <button
-                  onClick={() => setEditingAfterSubmit(true)}
-                  className="text-xs font-bold text-correct border border-correct/40 hover:bg-correct/10 transition-colors rounded-lg px-3 py-1.5 shrink-0"
-                >
-                  Edit Roster
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={submitRoster.isPending}
-                className="w-full rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors px-4 py-3 text-sm font-bold text-white"
-              >
-                {submitRoster.isPending ? 'Submitting...' : roster?.submitted_at ? 'Resubmit Roster' : 'Submit Roster'}
-              </button>
-            )}
-          </div>
-        )}
 
         {/* My Roster */}
         <div className="rounded-xl border border-text-primary/20 overflow-hidden mb-4">
@@ -219,7 +201,14 @@ export default function NflSalaryCapView({ league }) {
                           </svg>
                         )}
                       </div>
-                      <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                      <div className="text-xs text-text-muted">
+                        {player.position} · {player.team || 'FA'}
+                        {(() => {
+                          const opp = oppLabel(player.team)
+                          if (!opp) return null
+                          return <span className={`ml-2 ${opp.isBye ? 'text-yellow-400 font-semibold' : ''}`}>{opp.text}</span>
+                        })()}
+                      </div>
                     </div>
                     {isLocked ? (
                       <span className="text-sm font-display text-text-primary">{Math.round(pointsEarned * 10) / 10}</span>
@@ -242,6 +231,35 @@ export default function NflSalaryCapView({ league }) {
             )
           })}
         </div>
+        {/* Action button — matches NBA DFS pattern: subtle Edit Roster
+            when the roster is submitted, accent Submit Roster when
+            building / changing picks. Auto-save runs on every pick so
+            the explicit submit is just the "I commit" moment. */}
+        {(() => {
+          const isViewMode = roster?.submitted_at && !editingAfterSubmit
+          if (isViewMode) {
+            return (
+              <button
+                onClick={() => setEditingAfterSubmit(true)}
+                className="w-full mt-3 py-3 rounded-xl font-display bg-bg-card text-text-primary border border-text-primary/20 hover:bg-text-primary/10 transition-colors"
+              >
+                Edit Roster
+              </button>
+            )
+          }
+          if (filledCount === SLOTS.length && remaining >= 0) {
+            return (
+              <button
+                onClick={handleSubmit}
+                disabled={submitRoster.isPending}
+                className="w-full mt-3 py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                {submitRoster.isPending ? 'Submitting...' : roster?.submitted_at ? 'Resubmit Roster' : 'Submit Roster'}
+              </button>
+            )
+          }
+          return null
+        })()}
       </div>
 
       {/* Right column: player pool */}
@@ -305,7 +323,14 @@ export default function NflSalaryCapView({ league }) {
                   <PlayerHeadshot name={player.full_name} url={player.headshot_url} size="md" />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-bold text-text-primary truncate block">{player.full_name}</span>
-                    <div className="text-xs text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                    <div className="text-xs text-text-muted">
+                      {player.position} · {player.team || 'FA'}
+                      {(() => {
+                        const opp = oppLabel(player.team)
+                        if (!opp) return null
+                        return <span className={`ml-2 ${opp.isBye ? 'text-yellow-400 font-semibold' : ''}`}>{opp.text}</span>
+                      })()}
+                    </div>
                   </div>
                   <span className="text-base font-semibold text-accent tabular-nums shrink-0">${(player.salary || 0).toLocaleString()}</span>
                 </button>
