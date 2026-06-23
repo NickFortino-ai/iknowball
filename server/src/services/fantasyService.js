@@ -2310,7 +2310,7 @@ export async function getRoster(leagueId, userId) {
     if (playerIds.length) {
       const { data: stats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
         .eq('week', week)
         .eq('season', season)
         .in('player_id', playerIds)
@@ -2368,7 +2368,7 @@ export async function getRoster(leagueId, userId) {
     if (playerIds.length) {
       const { data: allStats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
         .eq('season', season)
         .in('player_id', playerIds)
       const agg = {}
