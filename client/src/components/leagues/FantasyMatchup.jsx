@@ -232,7 +232,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         {hp?.injury_status && <InjuryBadge status={hp.injury_status} />}
                       </div>
                       {hStat && <div className="text-xs text-text-primary truncate">{hStat}</div>}
-                      {hp?.on_bye && <div className="text-[10px] text-text-muted font-bold">BYE</div>}
+                      {!hStat && hp?.opponent && (
+                        <div className="text-[11px] text-text-muted">{hp.is_home ? 'vs' : '@'} {hp.opponent}</div>
+                      )}
+                      {hp?.on_bye && <div className="text-[10px] text-yellow-400 font-bold">BYE</div>}
                     </div>
                   </div>
                   <div className="text-right text-text-primary/60 text-xs">{hp?.projected?.toFixed(1) || '--'}</div>
@@ -259,7 +262,10 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                         <span className="font-bold text-text-primary truncate">{displayName(ap?.player_name)}</span>
                       </div>
                       {aStat && <div className="text-xs text-text-primary truncate">{aStat}</div>}
-                      {ap?.on_bye && <div className="text-[10px] text-text-muted font-bold">BYE</div>}
+                      {!aStat && ap?.opponent && (
+                        <div className="text-[11px] text-text-muted">{ap.is_home ? 'vs' : '@'} {ap.opponent}</div>
+                      )}
+                      {ap?.on_bye && <div className="text-[10px] text-yellow-400 font-bold">BYE</div>}
                     </div>
                     {ap?.headshot_url ? (
                       <img src={ap.headshot_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" onError={(e) => { e.target.style.display = 'none' }} />

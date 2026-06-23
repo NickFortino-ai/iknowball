@@ -3508,7 +3508,7 @@ export async function getPlayerDetail(leagueId, playerId) {
 
   const { data: player } = await supabase
     .from('nfl_players')
-    .select('id, full_name, position, team, headshot_url, injury_status, injury_body_part, age, years_exp, college, height, weight, number, espn_id, projected_pts_half_ppr')
+    .select('id, full_name, position, team, headshot_url, injury_status, injury_body_part, age, years_exp, college, height, weight, number, espn_id, projected_pts_half_ppr, bye_week')
     .eq('id', playerId)
     .single()
 
@@ -3600,9 +3600,25 @@ export async function getPlayerDetail(leagueId, playerId) {
     })
   }
 
-  // Merged, week-sorted timeline of played + upcoming. Client distinguishes
-  // by the `played` flag — no need for two separate "Previous" / "Upcoming"
-  // headers since empty stat cells are self-explanatory.
+  // Bye week — emit a dedicated row so the full season's calendar shows
+  // continuously in the modal table. nfl_players.bye_week is the week
+  // number for the team's bye. We only emit it if it's not already a
+  // played or upcoming week (defensive).
+  const allKnownWeeks = new Set([...playedWeekSet, ...upcomingWeeks.map((w) => w.week)])
+  if (player.bye_week && !allKnownWeeks.has(player.bye_week)) {
+    upcomingWeeks.push({
+      week: player.bye_week,
+      played: false,
+      opponent: null,    // null + on_bye = BYE label client-side
+      is_home: null,
+      on_bye: true,
+      pts: null,
+    })
+  }
+
+  // Merged, week-sorted timeline of played + upcoming + bye. Client
+  // distinguishes by the `played` flag — no separate "Previous" /
+  // "Upcoming" headers since empty stat cells are self-explanatory.
   const weeklyStats = [...playedWeeks, ...upcomingWeeks].sort((a, b) => a.week - b.week)
 
   const totalPts = playedWeeks.reduce((sum, w) => sum + w.pts, 0)
