@@ -299,20 +299,34 @@ export default function FantasyMyTeam({ league }) {
       : roster
 
   // When the user scrolls to a non-current week, the underlying roster
-  // rows still carry the CURRENT week's weekly_projection (or no
-  // projection at all if they came from lineup-history). Fetch the
-  // viewed week's projection map and overlay so the PROJ subtitle
-  // reflects that specific week — past or future.
-  const { data: weekProjData } = useFantasyWeekProjections(league.id, !isCurrentWeek ? activeWeek : null)
-  const weekProjMap = weekProjData?.projections
-  const displayRoster = (weekProjMap && baseDisplayRoster)
+  // rows still carry the CURRENT week's weekly_projection and
+  // current_week_opponent (or no projection / no opponent at all if
+  // they came from lineup-history). Fetch the viewed week's
+  // projection + opponent map and overlay so both the PROJ subtitle
+  // and the "vs MIA" / "@ MIA" / BYE marker reflect the week the
+  // user is actually looking at.
+  const { data: weekContextData } = useFantasyWeekProjections(league.id, !isCurrentWeek ? activeWeek : null)
+  const weekProjMap = weekContextData?.projections
+  const weekOppMap = weekContextData?.opponents
+  const displayRoster = (weekContextData && baseDisplayRoster)
     ? baseDisplayRoster.map((r) => {
-        // Bye-week players stay at 0 — the per-week projection map
-        // simply won't have them. null projection from server +
-        // bye-aware UI render works regardless.
-        const wp = weekProjMap[r.player_id]
-        if (wp == null) return r
-        return { ...r, weekly_projection: wp }
+        const overlay = {}
+        const wp = weekProjMap?.[r.player_id]
+        if (wp != null) overlay.weekly_projection = wp
+        const team = r.nfl_players?.team
+        if (team && weekOppMap) {
+          const op = weekOppMap[team]
+          if (op) {
+            overlay.current_week_opponent = op.opponent
+            overlay.current_week_is_home = op.is_home
+          } else {
+            // Team has no game this week — bye. Null opponent triggers
+            // the BYE label in PlayerRow.
+            overlay.current_week_opponent = null
+            overlay.current_week_is_home = null
+          }
+        }
+        return Object.keys(overlay).length > 0 ? { ...r, ...overlay } : r
       })
     : baseDisplayRoster
 

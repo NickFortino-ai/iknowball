@@ -1491,11 +1491,12 @@ router.get('/:id/fantasy/lineup/week/:week', requireAuth, async (req, res) => {
   }
 })
 
-// Per-week projections for the My Team weekly nav — returns
-// { [player_id]: projection } so the client can overlay the right
-// projection on top of whatever displayRoster source it's using
-// (current roster, lineup history, or pre-set weekly lineup) when
-// the user scrolls to a different week.
+// Per-week projections + opponents for the My Team weekly nav — returns
+//   { projections: { [player_id]: number }, opponents: { [team]: { opponent, is_home } } }
+// so the client can overlay both onto whatever displayRoster source it
+// is using (current roster, lineup history, or pre-set weekly lineup)
+// when the user scrolls to a different week. Teams missing from the
+// opponents map = bye week that week.
 router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) => {
   try {
     const settings = await getFantasySettings(req.params.id)
@@ -1507,16 +1508,28 @@ router.get('/:id/fantasy/projections/week/:week', requireAuth, async (req, res) 
     const projCol = settings?.scoring_format === 'ppr' ? 'pts_ppr'
       : settings?.scoring_format === 'standard' ? 'pts_std'
       : 'pts_half_ppr'
-    const { data: rows } = await supabase
-      .from('nfl_player_projections')
-      .select(`player_id, ${projCol}`)
-      .eq('season', season)
-      .eq('week', week)
-    const map = {}
-    for (const r of rows || []) {
-      if (r[projCol] != null) map[r.player_id] = Math.round(Number(r[projCol]) * 10) / 10
+    const [projRes, schedRes] = await Promise.all([
+      supabase
+        .from('nfl_player_projections')
+        .select(`player_id, ${projCol}`)
+        .eq('season', season)
+        .eq('week', week),
+      supabase
+        .from('nfl_schedule')
+        .select('home_team, away_team')
+        .eq('season', season)
+        .eq('week', week),
+    ])
+    const projections = {}
+    for (const r of projRes.data || []) {
+      if (r[projCol] != null) projections[r.player_id] = Math.round(Number(r[projCol]) * 10) / 10
     }
-    res.json({ week, season, projections: map })
+    const opponents = {}
+    for (const r of schedRes.data || []) {
+      if (r.home_team) opponents[r.home_team] = { opponent: r.away_team, is_home: true }
+      if (r.away_team) opponents[r.away_team] = { opponent: r.home_team, is_home: false }
+    }
+    res.json({ week, season, projections, opponents })
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message })
   }
