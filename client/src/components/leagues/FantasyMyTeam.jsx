@@ -817,8 +817,9 @@ export default function FantasyMyTeam({ league }) {
       </div>
 
       <div className="rounded-xl border border-text-primary/20 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
+        <div className="px-4 py-3 border-b border-border flex items-baseline justify-between">
           <h3 className="text-base font-semibold text-text-primary">Bench</h3>
+          <span className="text-xs text-text-muted font-mono">{benchPlayers.length}/{benchSlots}</span>
         </div>
         <div className="p-3 space-y-2">
           {benchPlayers.map((r) => (
