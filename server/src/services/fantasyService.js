@@ -2414,7 +2414,53 @@ export async function getRoster(leagueId, userId) {
     logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with season stats')
   }
 
+  // Current-week opponent for each player. Drives the "vs MIA" / "@ MIA"
+  // marker on the My Team row so users can see who their starters face
+  // before kickoff. Null opponent (when the map IS populated) = bye week
+  // for that team. We deliberately leave the field undefined when the map
+  // is empty (offseason / no schedule loaded) so the client can tell
+  // "data not available" apart from "actually on bye" and not flag
+  // every player as BYE during the offseason.
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const { season: curSeason, week: curWeek } = await getCurrentNflWeek()
+    const oppMap = await getCurrentWeekMatchupMap(curSeason, curWeek)
+    if (oppMap.size > 0) {
+      for (const r of rows) {
+        const team = r.nfl_players?.team
+        const matchup = team ? oppMap.get(team) : null
+        r.current_week_opponent = matchup?.opponent || null
+        r.current_week_is_home = matchup?.is_home ?? null
+      }
+    }
+  } catch (err) {
+    logger.warn({ err, leagueId, userId }, 'Failed to enrich roster with current-week opponent')
+  }
+
   return rows
+}
+
+/**
+ * Build a Map<team_abbr, { opponent, is_home }> for one NFL week from the
+ * Sleeper-sourced nfl_schedule. Teams on bye that week are absent from
+ * the map (the caller can render BYE for them). Used by both getRoster
+ * and searchAvailablePlayers so the My Team row, the Available Players
+ * row, and the matchup view all surface the same opponent info pre-
+ * kickoff — without needing the live-scoreboard call.
+ */
+async function getCurrentWeekMatchupMap(season, week) {
+  if (!season || !week) return new Map()
+  const { data: rows } = await supabase
+    .from('nfl_schedule')
+    .select('home_team, away_team')
+    .eq('season', season)
+    .eq('week', week)
+  const map = new Map()
+  for (const row of rows || []) {
+    if (row.home_team) map.set(row.home_team, { opponent: row.away_team, is_home: true })
+    if (row.away_team) map.set(row.away_team, { opponent: row.home_team, is_home: false })
+  }
+  return map
 }
 
 /**
@@ -2560,6 +2606,17 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // Players currently on waivers in this league
   const waiverLockedSet = await getWaiverLockedPlayerIds(leagueId)
 
+  // Current-week opponent map, same as getRoster. Empty if pre-season or
+  // out of season.
+  let oppMap = new Map()
+  try {
+    const { getCurrentNflWeek } = await import('./tdPassService.js')
+    const { season: curSeason, week: curWeek } = await getCurrentNflWeek()
+    oppMap = await getCurrentWeekMatchupMap(curSeason, curWeek)
+  } catch (err) {
+    logger.warn({ err }, 'Failed to load current-week opponent map for available players')
+  }
+
   // Effective ADP — pick the column matching league scoring + boost QBs
   // 30 spots in SuperFlex / 2QB leagues so they match real-draft expectations.
   function effectiveAdp(p) {
@@ -2652,6 +2709,13 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         def_pts_allowed: s.def_pts_allowed || 0,
       },
       on_waivers: waiverLockedSet.has(p.id),
+      // Opponent / home-away for the current NFL week. Undefined when
+      // the opponent map is empty (offseason) so the client doesn't
+      // mark every player as BYE. Inside the map, missing team = bye.
+      ...(oppMap.size > 0 ? {
+        current_week_opponent: p.team ? (oppMap.get(p.team)?.opponent || null) : null,
+        current_week_is_home: p.team ? (oppMap.get(p.team)?.is_home ?? null) : null,
+      } : {}),
     }
   })
 }

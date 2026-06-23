@@ -351,7 +351,14 @@ export default function FantasyPlayerBrowser({ league }) {
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent" title="Pending claim">C</span>
                         )}
                       </div>
-                      <div className="text-[10px] text-text-muted">{player.position} · {player.team || 'FA'}</div>
+                      <div className="text-[10px] text-text-muted">
+                        {player.position} · {player.team || 'FA'}
+                        {player.current_week_opponent ? (
+                          <span className="ml-1.5">{player.current_week_is_home ? 'vs' : '@'} {player.current_week_opponent}</span>
+                        ) : ('current_week_opponent' in player && player.team) ? (
+                          <span className="ml-1.5 text-yellow-400 font-semibold">BYE</span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   <div className="w-8 flex items-center justify-center">

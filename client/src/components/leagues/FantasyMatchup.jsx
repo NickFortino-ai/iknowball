@@ -375,9 +375,16 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       <div className="text-[11px] text-text-primary">{gameScoreLine(hp)}</div>
                     ) : hp?.on_bye ? (
                       <div className="text-[11px] text-text-muted font-bold">BYE</div>
-                    ) : hp?.projected != null ? (
-                      <div className="text-[11px] text-text-primary/60">Proj: {hp.projected.toFixed(1)}</div>
-                    ) : null}
+                    ) : (
+                      <>
+                        {hp?.opponent && (
+                          <div className="text-[11px] text-text-muted">{hp.is_home ? 'vs' : '@'} {hp.opponent}</div>
+                        )}
+                        {hp?.projected != null && (
+                          <div className="text-[11px] text-text-primary/60">Proj: {hp.projected.toFixed(1)}</div>
+                        )}
+                      </>
+                    )}
                     {gameClockLine(hp) && (
                       <div className={`text-[11px] font-semibold ${hp.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
                         {gameClockLine(hp)}
@@ -431,9 +438,16 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
                       <div className="text-[11px] text-text-primary">{gameScoreLine(ap)}</div>
                     ) : ap?.on_bye ? (
                       <div className="text-[11px] text-text-muted font-bold">BYE</div>
-                    ) : ap?.projected != null ? (
-                      <div className="text-[11px] text-text-primary/60">Proj: {ap.projected.toFixed(1)}</div>
-                    ) : null}
+                    ) : (
+                      <>
+                        {ap?.opponent && (
+                          <div className="text-[11px] text-text-muted">{ap.is_home ? 'vs' : '@'} {ap.opponent}</div>
+                        )}
+                        {ap?.projected != null && (
+                          <div className="text-[11px] text-text-primary/60">Proj: {ap.projected.toFixed(1)}</div>
+                        )}
+                      </>
+                    )}
                     {gameClockLine(ap) && (
                       <div className={`text-[11px] font-semibold ${ap.game_status === 'live' ? 'text-accent' : 'text-text-muted'}`}>
                         {gameClockLine(ap)}

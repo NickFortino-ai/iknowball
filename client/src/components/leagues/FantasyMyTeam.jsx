@@ -143,7 +143,14 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             <InjuryBadge status={row?.nfl_players?.injury_status} />
             {blurbIds && <BlurbDot playerId={row?.player_id} blurbIds={blurbIds} />}
           </div>
-          <div className="text-xs text-text-primary">{row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}</div>
+          <div className="text-xs text-text-primary">
+            {row?.nfl_players?.position} · {row?.nfl_players?.team || 'FA'}
+            {row?.current_week_opponent ? (
+              <span className="text-text-muted ml-2">{row.current_week_is_home ? 'vs' : '@'} {row.current_week_opponent}</span>
+            ) : ('current_week_opponent' in (row || {}) && row?.nfl_players?.team) ? (
+              <span className="text-yellow-400 ml-2 font-semibold">BYE</span>
+            ) : null}
+          </div>
         </div>
         {/* Stat line — desktop only. Always the week being viewed:
             week_stats on the current/live week, season_stats on past
