@@ -174,6 +174,9 @@ export async function createReminder(actorId, hotTakeId, comment) {
       await createNotification(hotTake.user_id, 'hot_take_reminder', `${username} reminded you of your ${label}`, {
         actorId,
         hotTakeId,
+        reminderId: data?.id || null,
+        reminderComment: comment || null,
+        reminderUsername: username,
       })
     } catch (_) { /* notification is best-effort */ }
   }

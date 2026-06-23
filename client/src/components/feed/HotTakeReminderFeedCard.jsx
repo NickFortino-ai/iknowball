@@ -61,7 +61,7 @@ export default function HotTakeReminderFeedCard({ item, reactions, onUserTap }) 
               @{u.username}
             </span>
           ))}
-          <span className="text-[10px] text-text-muted">
+          <span className="text-xs font-semibold text-text-secondary">
             Originally posted {timeAgo(hot_take.created_at)}
           </span>
         </div>

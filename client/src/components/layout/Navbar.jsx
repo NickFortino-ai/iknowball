@@ -298,6 +298,11 @@ export default function Navbar() {
   const [selectedPropPickId, setSelectedPropPickId] = useState(null)
   const [leagueWinData, setLeagueWinData] = useState(null)
   const [selectedHotTakeId, setSelectedHotTakeId] = useState(null)
+  // Optional reminder context attached when the modal is opened from a
+  // hot_take_reminder notification — surfaces who reminded + their comment
+  // so the recipient can see why they were pinged without having to dig
+  // through their squad feed.
+  const [reminderContext, setReminderContext] = useState(null)
   const [selectedStreakId, setSelectedStreakId] = useState(null)
   const [selectedFuturesPickId, setSelectedFuturesPickId] = useState(null)
   const dropdownRef = useRef(null)
@@ -605,7 +610,19 @@ export default function Navbar() {
                                 else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                                 else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
                                 else if (isStreakMilestone) { setSelectedStreakId(n.metadata.streakId); setShowInvites(false) }
-                                else if (hotTakeId) { setSelectedHotTakeId(hotTakeId); setShowInvites(false) }
+                                else if (hotTakeId) {
+                                  // Surface reminder context if this notification came from a remind
+                                  if (n.type === 'hot_take_reminder' && (n.metadata?.reminderComment || n.metadata?.reminderUsername)) {
+                                    setReminderContext({
+                                      comment: n.metadata.reminderComment || null,
+                                      username: n.metadata.reminderUsername || null,
+                                    })
+                                  } else {
+                                    setReminderContext(null)
+                                  }
+                                  setSelectedHotTakeId(hotTakeId)
+                                  setShowInvites(false)
+                                }
                                 else if (isSurvivorWin) {
                                   if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
                                   setLeagueWinData({ mode: 'win', ...n.metadata })
@@ -1149,7 +1166,18 @@ export default function Navbar() {
                             else if (n.metadata?.parlayId) { setSelectedParlayId(n.metadata.parlayId); setShowInvites(false) }
                             else if (n.metadata?.propPickId) { setSelectedPropPickId(n.metadata.propPickId); setShowInvites(false) }
                             else if (isStreakMilestone) { setSelectedStreakId(n.metadata.streakId); setShowInvites(false) }
-                            else if (hotTakeId) { setSelectedHotTakeId(hotTakeId); setShowInvites(false) }
+                            else if (hotTakeId) {
+                              if (n.type === 'hot_take_reminder' && (n.metadata?.reminderComment || n.metadata?.reminderUsername)) {
+                                setReminderContext({
+                                  comment: n.metadata.reminderComment || null,
+                                  username: n.metadata.reminderUsername || null,
+                                })
+                              } else {
+                                setReminderContext(null)
+                              }
+                              setSelectedHotTakeId(hotTakeId)
+                              setShowInvites(false)
+                            }
                             else if (isSurvivorWin) {
                               if (n.metadata?.leagueId) navigate(`/leagues/${n.metadata.leagueId}`)
                               setLeagueWinData({ mode: 'win', ...n.metadata })
@@ -1192,7 +1220,7 @@ export default function Navbar() {
     <ParlayResultModal parlayId={selectedParlayId} onClose={() => setSelectedParlayId(null)} />
     <PropDetailModal propPickId={selectedPropPickId} onClose={() => setSelectedPropPickId(null)} />
     <LeagueWinModal data={leagueWinData} onClose={() => setLeagueWinData(null)} />
-    <HotTakeDetailModal hotTakeId={selectedHotTakeId} onClose={() => setSelectedHotTakeId(null)} />
+    <HotTakeDetailModal hotTakeId={selectedHotTakeId} reminderContext={reminderContext} onClose={() => { setSelectedHotTakeId(null); setReminderContext(null) }} />
     <StreakDetailModal streakId={selectedStreakId} onClose={() => setSelectedStreakId(null)} />
     <FuturesHitModalWrapper futuresPickId={selectedFuturesPickId} onClose={() => setSelectedFuturesPickId(null)} />
     </>
