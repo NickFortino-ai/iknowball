@@ -5,6 +5,13 @@ const PRODUCT_IDS = {
   monthly: 'com.iknowball.app.monthly',
   yearly: 'com.iknowball.app.yearly',
 }
+// Android-only: the base plan ID configured under each subscription in
+// Play Console. Required by @capgo/native-purchases when productType is
+// 'subs'; ignored on iOS.
+const BASE_PLAN_IDS = {
+  monthly: 'monthly',
+  yearly: 'yearly',
+}
 const PENDING_TX_KEY = 'pendingAppleTransaction'
 
 export function isIAPAvailable() {
@@ -49,19 +56,25 @@ export async function getSubscriptionProducts() {
 export async function purchaseSubscription(plan) {
   const productId = PRODUCT_IDS[plan]
   if (!productId) throw new Error(`Invalid plan: ${plan}`)
-  const { transactions } = await NativePurchases.purchaseProduct({
+  // @capgo/native-purchases resolves purchaseProduct() to a single
+  // transaction object (flat, not wrapped in `{ transactions: [...] }`).
+  // Shape differs by platform — iOS has jwsRepresentation, Android has
+  // transactionId + productIdentifier set to the purchase token + SKU.
+  const transaction = await NativePurchases.purchaseProduct({
     productIdentifier: productId,
+    planIdentifier: BASE_PLAN_IDS[plan],
     productType: SUBSCRIPTION_PRODUCT_TYPE,
   })
-  return transactions && transactions.length > 0 ? transactions[0] : null
+  return transaction || null
 }
 
 export async function restoreSubscription() {
-  const { transactions } = await NativePurchases.restorePurchases()
-  if (!transactions || transactions.length === 0) return null
+  const result = await NativePurchases.restorePurchases()
+  const list = result?.purchases || result?.transactions || []
+  if (list.length === 0) return null
   const validIds = new Set(Object.values(PRODUCT_IDS))
-  const match = transactions.find((t) => validIds.has(t.productIdentifier))
-  return match || transactions[0]
+  const match = list.find((t) => validIds.has(t.productIdentifier))
+  return match || list[0]
 }
 
 export function savePendingTransaction(jws) {
