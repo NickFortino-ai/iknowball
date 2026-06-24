@@ -56,16 +56,20 @@ export async function getSubscriptionProducts() {
 export async function purchaseSubscription(plan) {
   const productId = PRODUCT_IDS[plan]
   if (!productId) throw new Error(`Invalid plan: ${plan}`)
-  // @capgo/native-purchases resolves purchaseProduct() to a single
-  // transaction object (flat, not wrapped in `{ transactions: [...] }`).
-  // Shape differs by platform — iOS has jwsRepresentation, Android has
-  // transactionId + productIdentifier set to the purchase token + SKU.
-  const transaction = await NativePurchases.purchaseProduct({
+  const result = await NativePurchases.purchaseProduct({
     productIdentifier: productId,
     planIdentifier: BASE_PLAN_IDS[plan],
     productType: SUBSCRIPTION_PRODUCT_TYPE,
   })
-  return transaction || null
+  // Tolerate either a flat Transaction (current @capgo/native-purchases
+  // shape on both platforms) or a legacy { transactions: [...] } wrapper
+  // (older plugin builds). The pre-fix code assumed the wrapper, which
+  // broke when the plugin moved to the flat shape; this keeps working
+  // either way so we can't get bitten by another silent shape flip.
+  if (result?.transactions && result.transactions.length > 0) {
+    return result.transactions[0]
+  }
+  return result || null
 }
 
 export async function restoreSubscription() {
