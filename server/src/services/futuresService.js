@@ -5,6 +5,13 @@ import { calculateRiskPoints, calculateRewardPoints } from '../utils/scoring.js'
 import { createNotification } from './notificationService.js'
 import { checkRecordAfterSettle } from './recordService.js'
 
+// Override Odds-API-supplied titles where the official name is confusable
+// with another market (e.g. "The Open" is The Open Championship / British
+// Open, routinely mistaken for the US Open). Keyed by futuresSportKey.
+const TITLE_OVERRIDES = {
+  golf_the_open_championship_winner: 'British Open Winner',
+}
+
 export async function syncFuturesForSport(parentSportKey) {
   const futuresKeys = FUTURES_SPORT_KEYS[parentSportKey] || []
   if (!futuresKeys.length) return { synced: 0 }
@@ -42,7 +49,7 @@ export async function syncFuturesForSport(parentSportKey) {
             sport_key: parentSportKey,
             futures_sport_key: futuresKey,
             external_event_id: event.id,
-            title: event.sport_title || futuresKey.replace(/_/g, ' '),
+            title: TITLE_OVERRIDES[futuresKey] || event.sport_title || futuresKey.replace(/_/g, ' '),
             outcomes,
             last_synced_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
