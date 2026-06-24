@@ -19,6 +19,15 @@ export function isIAPAvailable() {
 // for this call), so passing it is safe across both platforms.
 const SUBSCRIPTION_PRODUCT_TYPE = 'subs'
 
+// On Android the plugin returns `identifier` as the base plan ID
+// (e.g. "monthly") and `planIdentifier` as the subscription product ID
+// (e.g. "com.iknowball.app.monthly"). On iOS only `identifier` exists
+// and it holds the product ID. Match against either so the same lookup
+// works on both platforms.
+function matchesProductId(product, productId) {
+  return product?.planIdentifier === productId || product?.identifier === productId
+}
+
 export async function getSubscriptionProducts() {
   if (!isIAPAvailable()) return { monthly: null, yearly: null }
   try {
@@ -28,8 +37,8 @@ export async function getSubscriptionProducts() {
     })
     const products = result.products || []
     return {
-      monthly: products.find((p) => p.identifier === PRODUCT_IDS.monthly) || null,
-      yearly: products.find((p) => p.identifier === PRODUCT_IDS.yearly) || null,
+      monthly: products.find((p) => matchesProductId(p, PRODUCT_IDS.monthly)) || null,
+      yearly: products.find((p) => matchesProductId(p, PRODUCT_IDS.yearly)) || null,
     }
   } catch (err) {
     console.error('[IAP] getProducts error:', err)
