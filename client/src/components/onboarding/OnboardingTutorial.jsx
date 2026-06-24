@@ -232,8 +232,23 @@ export default function OnboardingTutorial() {
       }
     }
 
-    // Mobile: bottom-sheet style above BottomTabBar
+    // Mobile: bottom-sheet style above BottomTabBar, EXCEPT when the
+    // spotlight target sits near the top of the screen — in that case
+    // the tooltip should anchor right under the target (otherwise the
+    // arrow/instruction text is hundreds of px away from the thing it
+    // describes, e.g. the home-logo step).
     if (window.innerWidth < 768) {
+      const targetNearTop = targetRect.y < window.innerHeight * 0.33
+      if (targetNearTop) {
+        return {
+          position: 'fixed',
+          top: `${targetRect.y + targetRect.height + 12}px`,
+          left: '1rem',
+          right: '1rem',
+          maxWidth: '24rem',
+          margin: '0 auto',
+        }
+      }
       return {
         position: 'fixed',
         bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 0.5rem)',
