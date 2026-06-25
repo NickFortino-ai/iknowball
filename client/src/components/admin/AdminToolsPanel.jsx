@@ -308,7 +308,7 @@ function GameOverride() {
               >
                 <div className="text-sm font-medium">{g.away_team} @ {g.home_team}</div>
                 <div className="text-xs text-text-muted">
-                  {new Date(g.starts_at).toLocaleDateString()} · <span className={g.status === 'completed' ? 'text-correct' : g.status === 'in_progress' ? 'text-accent' : 'text-text-muted'}>{g.status}</span>
+                  {new Date(g.starts_at).toLocaleDateString()} · <span className={g.status === 'final' ? 'text-correct' : g.status === 'live' ? 'text-accent' : g.status === 'postponed' ? 'text-incorrect' : 'text-text-muted'}>{g.status}</span>
                   {g.home_score != null && ` · ${g.away_score}-${g.home_score}`}
                 </div>
               </button>
@@ -328,8 +328,9 @@ function GameOverride() {
               <select value={form.status} onChange={(e) => setForm(f => ({ ...f, status: e.target.value }))}
                 className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent">
                 <option value="upcoming">Upcoming</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
+                <option value="live">Live</option>
+                <option value="final">Final</option>
+                <option value="postponed">Postponed</option>
               </select>
             </div>
             <div>
