@@ -80,7 +80,9 @@ export default function ThreePointView({ league, tab = 'picks' }) {
   const availableDates = []
   if (inWindow(today)) availableDates.push(today)
   if (inWindow(tomorrow)) availableDates.push(tomorrow)
-  if (!availableDates.length) availableDates.push(leagueEnd || leagueStart)
+  if (!availableDates.length) {
+    availableDates.push(today < leagueStart ? leagueStart : (leagueEnd || leagueStart))
+  }
 
   const [selectedDate, setSelectedDate] = useState(availableDates[0])
   const date = selectedDate
