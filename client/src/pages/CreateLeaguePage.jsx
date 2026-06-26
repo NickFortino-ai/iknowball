@@ -1740,7 +1740,6 @@ export default function CreateLeaguePage() {
               <div className="flex gap-2">
                 {[
                   { value: 'commissioner', label: 'Commissioner' },
-                  { value: 'league_vote', label: 'League Vote' },
                   { value: 'none', label: 'None' },
                 ].map((opt) => (
                   <button
