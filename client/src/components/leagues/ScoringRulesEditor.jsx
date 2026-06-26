@@ -284,7 +284,7 @@ export default function ScoringRulesEditor({ value, onChange }) {
 
           {/* Bonuses */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3 mb-2">
               <h4 className="text-sm font-bold uppercase tracking-wider text-text-primary">Bonuses</h4>
               <button
                 type="button"
