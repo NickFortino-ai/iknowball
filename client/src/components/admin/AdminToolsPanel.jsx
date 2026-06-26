@@ -101,9 +101,13 @@ function FormatVisibility() {
             {cards.map((card) => {
               const isVisible = !disabled.has(card.key)
               return (
-                <div key={card.key} className="flex items-center justify-between py-1.5">
+                <div
+                  key={card.key}
+                  className="flex items-center justify-between py-2 px-2 -mx-2 rounded-lg hover:bg-bg-primary/40 transition-colors cursor-pointer"
+                  onClick={() => !save.isPending && toggle(card.key)}
+                >
                   <div>
-                    <div className="text-sm text-text-primary">{cardLabel(card)}</div>
+                    <div className={`text-sm transition-colors ${isVisible ? 'text-text-primary' : 'text-text-muted'}`}>{cardLabel(card)}</div>
                     <div className="text-[10px] text-text-muted uppercase tracking-wider">{card.key}</div>
                   </div>
                   <button
@@ -112,7 +116,7 @@ function FormatVisibility() {
                     aria-checked={isVisible}
                     aria-label={`Toggle ${cardLabel(card)}`}
                     disabled={save.isPending}
-                    onClick={() => toggle(card.key)}
+                    onClick={(e) => { e.stopPropagation(); toggle(card.key) }}
                     className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
                       isVisible ? 'bg-accent' : 'bg-bg-secondary border border-text-primary/20'
                     }`}
