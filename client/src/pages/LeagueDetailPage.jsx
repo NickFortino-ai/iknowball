@@ -657,16 +657,16 @@ function LeagueConditions({ league, isCommissioner, updateLeague, bracketTournam
         return `Build a new NFL lineup each week under a ${cap} salary cap. Set your starters, watch live scoring update throughout Sunday, and compete to win the most points each week. Tap any player headshot or name to view their stat line, weekly history, injury status, and the latest news and analysis. Your finishing position impacts your global IKB score — see the table below.`
       }
       const waiverType = fantasySettings?.waiver_type
-      let waiverText = 'Dropped players go on waivers for 24 hours — during that window, any manager can place a claim.'
-      if (waiverType === 'faab') {
-        waiverText = 'Dropped players go on waivers for 24 hours — during that window, any manager can bid using their FAAB budget (highest bid wins).'
-      } else if (waiverType === 'priority' || waiverType === 'rolling') {
-        waiverText = 'Dropped players go on waivers for 24 hours — during that window, any manager can place a claim (highest waiver priority wins).'
-      }
+      let winnerRule = 'highest waiver priority wins'
+      if (waiverType === 'faab') winnerRule = 'highest FAAB bid wins'
+      else if (waiverType === 'priority') winnerRule = 'team with the worst record wins (waiver order resets each run based on inverse standings)'
+      else if (waiverType === 'rolling') winnerRule = 'best waiver priority wins (winner drops to last in priority for next time)'
+
+      const waiverText = `Dropped players go on waivers — any manager can place a claim during the clearing window, and the ${winnerRule}. Drops Sunday-Tuesday hold for the Wednesday 3 AM ET weekly clearing; drops Wednesday-Saturday clear in 24 hours. Pre-season drops and players on a roster less than 48 hours skip waivers and go straight to free agents.`
 
       const tradeReview = fantasySettings?.trade_review === 'commissioner' ? ' Trades require commissioner approval.' : ''
 
-      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster through trades, free-agent pickups, and IR moves.${tradeReview} ${waiverText} Unclaimed players become free agents. The weekly waiver run processes all pending claims Wednesday at 3 AM ET. Tap any player to view their stats, game log, injury status, and analysis. Your finishing position impacts your global IKB score — see the table below.`
+      return `Draft your team, set your starting lineup each week, and compete head-to-head. Manage your roster through trades, free-agent pickups, and IR moves.${tradeReview} ${waiverText} Tap any player to view their stats, game log, injury status, and analysis. Your finishing position impacts your global IKB score — see the table below.`
     }
 
     if (league.format === 'squares') {
