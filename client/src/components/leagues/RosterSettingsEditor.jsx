@@ -76,12 +76,11 @@ export default function RosterSettingsEditor({ value, onChange }) {
     }
   }
 
-  const visibleDefenseSlots = defenseMode === 'def'
-    ? [{ key: 'def', label: 'DEF' }]
+  const defenseSlotsForTotal = defenseMode === 'def'
+    ? [{ key: 'def' }]
     : IDP_SLOTS
-
-  const allCountedSlots = [...OFFENSIVE_SLOTS, ...visibleDefenseSlots]
-  const starterTotal = allCountedSlots.reduce((sum, s) => sum + (slots[s.key] || 0), 0)
+  const starterTotal = [...OFFENSIVE_SLOTS, ...defenseSlotsForTotal]
+    .reduce((sum, s) => sum + (slots[s.key] || 0), 0)
   const total = starterTotal + (slots.bench || 0)
 
   function renderRow(slot) {
@@ -122,29 +121,58 @@ export default function RosterSettingsEditor({ value, onChange }) {
       <div className="space-y-2">
         {OFFENSIVE_SLOTS.map(renderRow)}
 
-        {/* Defense mode toggle — sits where DEF used to live in the slot list */}
-        <div className="flex items-center justify-between pt-1">
-          <div className="text-[10px] uppercase tracking-wider text-text-muted">Defense</div>
-          <div className="flex gap-1.5">
-            {[
-              { value: 'def', label: 'Team DEF' },
-              { value: 'idp', label: 'IDP' },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setDefenseMode(opt.value)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  defenseMode === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+        {/* Defense row: label on left, mode toggle inline with the slot
+            controls. In DEF mode the +/- controls appear next to the
+            toggle. In IDP mode they're suppressed (DEF count is forced
+            to 0) and the four IDP slot rows render below. */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-text-primary">Defense</div>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1.5">
+              {[
+                { value: 'def', label: 'Team DEF' },
+                { value: 'idp', label: 'IDP' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDefenseMode(opt.value)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                    defenseMode === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {defenseMode === 'def' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => adjust('def', -1)}
+                  disabled={(slots.def || 0) === 0}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-secondary text-text-primary text-lg leading-none hover:bg-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Decrease DEF"
+                >
+                  −
+                </button>
+                <span className="text-sm font-semibold text-text-primary w-6 text-center tabular-nums">
+                  {slots.def || 0}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => adjust('def', 1)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-secondary text-text-primary text-lg leading-none hover:bg-border transition-colors"
+                  aria-label="Increase DEF"
+                >
+                  +
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {visibleDefenseSlots.map(renderRow)}
+        {defenseMode === 'idp' && IDP_SLOTS.map(renderRow)}
 
         {TAIL_SLOTS.map(renderRow)}
       </div>
