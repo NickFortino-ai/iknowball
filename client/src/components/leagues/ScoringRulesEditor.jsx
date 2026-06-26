@@ -201,7 +201,7 @@ export default function ScoringRulesEditor({ value, onChange }) {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Passing</h4>
             <div className="grid grid-cols-2 gap-3">
-              <NumberField label="Pts / Yard" value={rules.pass_yd} onChange={(v) => set('pass_yd', v)} step={0.01} hint="0.04 = 1 pt per 25 yds" />
+              <NumberField label="Pts per 25 Yds" value={Math.round(rules.pass_yd * 25 * 100) / 100} onChange={(v) => set('pass_yd', v / 25)} step={0.5} />
               <NumberField label="Pts per TD" value={rules.pass_td} onChange={(v) => set('pass_td', v)} step={1} />
               <NumberField label="Pts per INT" value={rules.pass_int} onChange={(v) => set('pass_int', v)} step={1} />
               <NumberField label="Pts per 2PT" value={rules.pass_2pt} onChange={(v) => set('pass_2pt', v)} step={1} />
