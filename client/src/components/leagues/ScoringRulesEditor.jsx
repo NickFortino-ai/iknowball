@@ -288,12 +288,19 @@ export default function ScoringRulesEditor({ value, onChange }) {
               <h4 className="text-sm font-bold uppercase tracking-wider text-text-primary">Bonuses</h4>
               <button
                 type="button"
+                role="switch"
+                aria-checked={rules.bonuses_enabled}
+                aria-label="Toggle bonuses"
                 onClick={() => set('bonuses_enabled', !rules.bonuses_enabled)}
-                className={`text-[10px] font-bold px-3 py-1 rounded-full transition-colors ${
-                  rules.bonuses_enabled ? 'bg-accent text-white' : 'bg-bg-secondary text-text-muted'
+                className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  rules.bonuses_enabled ? 'bg-accent' : 'bg-bg-secondary border border-text-primary/20'
                 }`}
               >
-                {rules.bonuses_enabled ? 'ON' : 'OFF'}
+                <span
+                  className={`inline-block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                    rules.bonuses_enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+                  }`}
+                />
               </button>
             </div>
             {rules.bonuses_enabled && (
