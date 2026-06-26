@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchUsers } from '../../hooks/useInvitations'
 import { useAdminUserLookup, useAdminSubscriptionOverride, useAdminGameSearch, useAdminGameOverride } from '../../hooks/useAdmin'
+import { api } from '../../lib/api'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 
@@ -8,14 +10,15 @@ const SUB_STATUSES = ['active', 'expired', 'cancelled', 'past_due', 'trialing']
 const PAYMENT_SOURCES = ['stripe', 'apple_iap', 'promo_code']
 
 export default function AdminToolsPanel() {
-  const [activeTab, setActiveTab] = useState('user') // user | games
+  const [activeTab, setActiveTab] = useState('user') // user | games | formats
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {[
           { key: 'user', label: 'User Lookup' },
           { key: 'games', label: 'Game Override' },
+          { key: 'formats', label: 'Format Visibility' },
         ].map((t) => (
           <button
             key={t.key}
@@ -31,6 +34,104 @@ export default function AdminToolsPanel() {
 
       {activeTab === 'user' && <UserLookup />}
       {activeTab === 'games' && <GameOverride />}
+      {activeTab === 'formats' && <FormatVisibility />}
+    </div>
+  )
+}
+
+// =====================================================================
+// Format Visibility — admin toggle per league format. Stored in
+// app_settings under key `disabled_formats` as a JSON array of values.
+// The CreateLeague page reads this and filters its picker accordingly.
+// Flip a toggle here and the change takes effect for every user on
+// their next page load — no client release needed.
+// =====================================================================
+
+const ALL_FORMATS = [
+  { value: 'fantasy', label: 'Fantasy Football', sport: 'NFL' },
+  { value: 'nba_dfs', label: 'NBA Daily Fantasy', sport: 'NBA' },
+  { value: 'wnba_dfs', label: 'WNBA Daily Fantasy', sport: 'WNBA' },
+  { value: 'mlb_dfs', label: 'MLB Daily Fantasy', sport: 'MLB' },
+  { value: 'strikeouts', label: 'Strikeouts Contest', sport: 'MLB' },
+  { value: 'hr_derby', label: 'Home Run Derby', sport: 'MLB' },
+  { value: 'three_point', label: '3-Point Contest', sport: 'NBA' },
+  { value: 'wnba_three_point', label: 'WNBA 3-Point Contest', sport: 'WNBA' },
+  { value: 'ints', label: 'Interceptions Contest', sport: 'NFL' },
+  { value: 'sacks', label: 'Sacks Contest', sport: 'NFL' },
+  { value: 'tackles', label: 'Tackles Contest', sport: 'NFL' },
+  { value: 'receptions', label: 'Receptions Contest', sport: 'NFL' },
+  { value: 'td_pass', label: 'TD Pass Contest', sport: 'NFL' },
+  { value: 'pickem', label: "Pick'em", sport: 'Any' },
+  { value: 'survivor', label: 'Survivor', sport: 'Any' },
+  { value: 'bracket', label: 'Bracket', sport: 'Any' },
+  { value: 'squares', label: 'Squares', sport: 'NFL' },
+]
+
+function FormatVisibility() {
+  const queryClient = useQueryClient()
+  const { data: setting } = useQuery({
+    queryKey: ['app-settings', 'disabled_formats'],
+    queryFn: () => api.get('/admin/app-settings/disabled_formats'),
+  })
+  const disabledList = (() => {
+    const raw = setting?.value
+    if (Array.isArray(raw)) return raw
+    if (Array.isArray(raw?.formats)) return raw.formats
+    return []
+  })()
+  const disabled = new Set(disabledList)
+
+  const save = useMutation({
+    mutationFn: (list) => api.put('/admin/app-settings/disabled_formats', { value: list }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['app-settings', 'disabled_formats'] })
+      toast('Saved', 'success')
+    },
+    onError: (err) => toast(err.message || 'Failed to save', 'error'),
+  })
+
+  function toggle(value) {
+    const next = disabled.has(value)
+      ? disabledList.filter((v) => v !== value)
+      : [...disabledList, value]
+    save.mutate(next)
+  }
+
+  return (
+    <div className="bg-bg-card rounded-xl border border-border p-4 space-y-3">
+      <div className="text-sm text-text-secondary">
+        Toggle a format <span className="font-semibold">OFF</span> to hide it from the Create League picker for everyone. Existing leagues of that format keep working — only NEW league creation is blocked. Changes take effect on every user's next page load, no app update required.
+      </div>
+      <div className="space-y-2">
+        {ALL_FORMATS.map((f) => {
+          const isVisible = !disabled.has(f.value)
+          return (
+            <div key={f.value} className="flex items-center justify-between py-1.5">
+              <div>
+                <div className="text-sm text-text-primary">{f.label}</div>
+                <div className="text-[10px] text-text-muted uppercase tracking-wider">{f.sport} · {f.value}</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isVisible}
+                aria-label={`Toggle ${f.label}`}
+                disabled={save.isPending}
+                onClick={() => toggle(f.value)}
+                className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
+                  isVisible ? 'bg-accent' : 'bg-bg-secondary border border-text-primary/20'
+                }`}
+              >
+                <span
+                  className={`inline-block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                    isVisible ? 'translate-x-[22px]' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

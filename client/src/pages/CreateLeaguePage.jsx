@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useNflSeasonOpener } from '../hooks/useLeagues'
 import { useTeamsForSport } from '../hooks/useHotTakes'
@@ -620,6 +621,21 @@ const DURATION_OPTIONS = [
 export default function CreateLeaguePage() {
   const navigate = useNavigate()
   const createLeague = useCreateLeague()
+  // Admin-controlled list of league format values that should not appear
+  // in the picker (e.g. WNBA contests in winter, NFL contests in summer).
+  // Stored in app_settings under key `disabled_formats` as a JSON array.
+  // Refetches whenever the page mounts so toggle flips take effect without
+  // a client release.
+  const { data: disabledFormatsSetting } = useQuery({
+    queryKey: ['app-settings', 'disabled_formats'],
+    queryFn: () => api.get('/admin/app-settings/disabled_formats'),
+    staleTime: 60_000,
+  })
+  const disabledFormats = useMemo(() => {
+    const raw = disabledFormatsSetting?.value
+    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.formats) ? raw.formats : []
+    return new Set(list)
+  }, [disabledFormatsSetting])
   // ?format=X[&sport=Y] from the landing page card-tap flow. Used once
   // on mount to pre-select the format and (optionally) sport so the user
   // lands directly on the right configuration step.
@@ -1021,7 +1037,12 @@ export default function CreateLeaguePage() {
           <label className="block text-sm font-semibold text-text-secondary mb-2">Format</label>
 
           <div className="space-y-8">
-            {CATEGORIES.filter((cat) => cat.key !== 'soccer' || hasActiveSoccerBracket).map((cat) => {
+            {CATEGORIES
+              .filter((cat) => cat.key !== 'soccer' || hasActiveSoccerBracket)
+              // Hide entire category headers when every format inside has
+              // been disabled by admin — avoids dangling empty sections.
+              .filter((cat) => (CATEGORY_CARDS[cat.key] || []).some((c) => !disabledFormats.has(c.format)))
+              .map((cat) => {
               const isCollapsed = collapsedCategories.has(cat.key)
               return (
               <div key={cat.key}>
@@ -1051,7 +1072,7 @@ export default function CreateLeaguePage() {
                 </button>
                 {!isCollapsed && (
                 <div className="space-y-2">
-                  {(CATEGORY_CARDS[cat.key] || []).map((card) => {
+                  {(CATEGORY_CARDS[cat.key] || []).filter((card) => !disabledFormats.has(card.format)).map((card) => {
                     const base = FORMAT_BY_VALUE[card.format] || {}
                     const label = card.label || base.label
                     const description = card.description || base.description
