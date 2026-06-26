@@ -758,7 +758,7 @@ export default function CreateLeaguePage() {
   const [scoringRules, setScoringRules] = useState(null) // null = use preset
   const [numTeams, setNumTeams] = useState(10)
   const [draftMode, setDraftMode] = useState('live') // 'live' or 'offline'
-  const [draftPickTimer, setDraftPickTimer] = useState(90)
+  const [draftPickTimer, setDraftPickTimer] = useState(60)
   const [draftDate, setDraftDate] = useState('') // datetime-local string in user's local TZ
   const [draftLocation, setDraftLocation] = useState('')
   const [irSpots, setIrSpots] = useState(1)
@@ -766,6 +766,10 @@ export default function CreateLeaguePage() {
   const [faabStartingBudget, setFaabStartingBudget] = useState(100)
   const [tradeReview, setTradeReview] = useState('commissioner')
   const [playoffTeams, setPlayoffTeams] = useState(4)
+  // Tracks whether the commissioner has hit a playoff-teams button. Until
+  // they do, the default mirrors numTeams (4 for <14 team leagues, 6 for
+  // 14+ since deep leagues conventionally play out 6-team brackets).
+  const [playoffTeamsManuallySet, setPlayoffTeamsManuallySet] = useState(false)
   const [championshipWeek, setChampionshipWeek] = useState(17)
   // Playoff start is derived from teams + championship week — no need for
   // a separate picker. Standard bracket sizing:
@@ -779,10 +783,13 @@ export default function CreateLeaguePage() {
 
   // Clamp playoff team count down if the user shrinks the league past it
   // (e.g. picked Top 8 then dropped league size to 6 → forces back to 6).
+  // Also follow the numTeams-driven default (4 for <14, 6 for 14+) until
+  // the commissioner explicitly picks a playoff-teams option.
   // Placed AFTER playoffTeams/numTeams declarations to avoid the TDZ.
   useEffect(() => {
     if (playoffTeams > numTeams) setPlayoffTeams(numTeams >= 6 ? 6 : 4)
-  }, [numTeams, playoffTeams])
+    else if (!playoffTeamsManuallySet) setPlayoffTeams(numTeams >= 14 ? 6 : 4)
+  }, [numTeams, playoffTeams, playoffTeamsManuallySet])
 
   const [championMetric, setChampionMetric] = useState('total_points')
   const [singleWeek, setSingleWeek] = useState(1)
@@ -1766,7 +1773,7 @@ export default function CreateLeaguePage() {
                       key={n}
                       type="button"
                       disabled={isDisabled}
-                      onClick={() => setPlayoffTeams(n)}
+                      onClick={() => { setPlayoffTeams(n); setPlayoffTeamsManuallySet(true) }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                         isDisabled
                           ? 'bg-bg-secondary/40 text-text-muted/40 cursor-not-allowed'
