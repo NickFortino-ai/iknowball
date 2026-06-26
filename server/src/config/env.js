@@ -29,6 +29,7 @@ export const env = {
   ENABLE_INJURY_SYNC: process.env.ENABLE_INJURY_SYNC === 'true',
   ENABLE_NBA_DFS: process.env.ENABLE_NBA_DFS === 'true',
   APPLE_BUNDLE_ID: process.env.APPLE_BUNDLE_ID || 'com.iknowball.app',
+  APPLE_APP_ID: process.env.APPLE_APP_ID,
   APPLE_IAP_ENVIRONMENT: process.env.APPLE_IAP_ENVIRONMENT || 'Production',
   STRIPE_MONTHLY_PRICE_ID: process.env.STRIPE_MONTHLY_PRICE_ID,
   STRIPE_YEARLY_PRICE_ID: process.env.STRIPE_YEARLY_PRICE_ID,

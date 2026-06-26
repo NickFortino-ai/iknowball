@@ -131,7 +131,8 @@ export default function PaymentPage() {
             return navigateAfterPayment(fetchProfile, navigate)
           })
           .catch(() => {
-            clearPendingTransaction()
+            // Keep the JWS for another retry — clearing on failure is what
+            // permanently lost purchases during the appAppleId-missing bug.
             setLoading(false)
           })
       }

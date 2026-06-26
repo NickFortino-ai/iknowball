@@ -20,16 +20,24 @@ function loadRootCerts() {
   return certFiles.map((f) => readFileSync(join(CERTS_DIR, f)))
 }
 
+// Production requires appAppleId — the app's numeric App Store ID — or
+// every verify call throws "appAppleId is required when the environment
+// is Production". Sandbox tolerates omission, which is why sandbox QA
+// passed but every live transaction silently failed until this was wired.
 function getProdVerifier() {
   if (prodVerifier) return prodVerifier
-  prodVerifier = new SignedDataVerifier(loadRootCerts(), true, Environment.PRODUCTION, env.APPLE_BUNDLE_ID)
-  logger.info({ environment: 'Production' }, 'Apple IAP production verifier initialized')
+  if (!env.APPLE_APP_ID) {
+    throw new Error('APPLE_APP_ID env var is required for Production Apple IAP verification')
+  }
+  prodVerifier = new SignedDataVerifier(loadRootCerts(), true, Environment.PRODUCTION, env.APPLE_BUNDLE_ID, Number(env.APPLE_APP_ID))
+  logger.info({ environment: 'Production', appAppleId: env.APPLE_APP_ID }, 'Apple IAP production verifier initialized')
   return prodVerifier
 }
 
 function getSandboxVerifier() {
   if (sandboxVerifier) return sandboxVerifier
-  sandboxVerifier = new SignedDataVerifier(loadRootCerts(), true, Environment.SANDBOX, env.APPLE_BUNDLE_ID)
+  const appAppleId = env.APPLE_APP_ID ? Number(env.APPLE_APP_ID) : undefined
+  sandboxVerifier = new SignedDataVerifier(loadRootCerts(), true, Environment.SANDBOX, env.APPLE_BUNDLE_ID, appAppleId)
   logger.info({ environment: 'Sandbox' }, 'Apple IAP sandbox verifier initialized')
   return sandboxVerifier
 }
