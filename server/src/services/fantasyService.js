@@ -4244,6 +4244,7 @@ export async function processLeagueWaivers(leagueId) {
   const settings = await getFantasySettings(leagueId)
   if (!settings) return { processed: 0 }
   const isFaab = settings.waiver_type === 'faab'
+  const isPriority = settings.waiver_type === 'priority'
 
   const { data: claims } = await supabase
     .from('fantasy_waiver_claims')
@@ -4257,6 +4258,36 @@ export async function processLeagueWaivers(leagueId) {
   for (const c of claims) {
     if (!claimsByPlayer[c.add_player_id]) claimsByPlayer[c.add_player_id] = []
     claimsByPlayer[c.add_player_id].push(c)
+  }
+
+  // Priority waivers: recompute every member's priority from current
+  // standings before processing this batch. Worst rank gets priority 1
+  // (first pick), best rank gets last priority. This is the inverse-of-
+  // standings reset that ESPN/Yahoo/Sleeper all call "Standard" or
+  // "Priority" waivers — distinct from rolling, where the winner of a
+  // claim drops to the bottom for next time.
+  //
+  // Pre-season fallback: if no team has played a completed matchup yet,
+  // keep the existing priority (which was set from reverse draft order
+  // when the draft completed). This handles Week 1 waivers gracefully.
+  if (isPriority) {
+    try {
+      const standings = await getFantasyStandings(leagueId)
+      const hasGamesPlayed = standings.some((s) => (s.games_played || 0) > 0)
+      if (hasGamesPlayed) {
+        const totalTeams = standings.length
+        for (const s of standings) {
+          const newPriority = totalTeams - s.rank + 1
+          await supabase
+            .from('fantasy_waiver_state')
+            .update({ priority: newPriority, updated_at: new Date().toISOString() })
+            .eq('league_id', leagueId)
+            .eq('user_id', s.user_id)
+        }
+      }
+    } catch (err) {
+      logger.error({ err, leagueId }, 'Priority waiver standings recompute failed — falling back to existing priorities')
+    }
   }
 
   // Get current waiver state for tiebreak / priority sort
@@ -4414,6 +4445,11 @@ export async function processLeagueWaivers(leagueId) {
         .eq('league_id', leagueId)
         .eq('user_id', winner.user_id)
       stateByUser[winner.user_id].faab_remaining = newRemaining
+    } else if (isPriority) {
+      // Priority (inverse-standings reset) waivers: do NOT shuffle. The
+      // batch-start recompute already set priorities based on current
+      // standings; winning a single claim doesn't change a team's spot.
+      // Priorities will be recomputed again on the next waiver run.
     } else {
       // Rolling priority: winner goes to the back, everyone else with worse
       // priority moves up by 1
