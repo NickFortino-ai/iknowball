@@ -1052,7 +1052,7 @@ export default function FantasyMyTeam({ league }) {
           <div className="bg-bg-secondary w-full max-w-md rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-lg mb-2">Drop {confirmDrop.nfl_players?.full_name}?</h3>
             <p className="text-sm text-text-secondary mb-4">
-              They'll be placed on waivers until the next clearing (Wednesday 3:00 AM ET). Your roster slot will be left empty.
+              Are you sure?
             </p>
             <div className="flex gap-2">
               <button
