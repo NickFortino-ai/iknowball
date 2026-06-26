@@ -513,7 +513,10 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
 export async function syncProjections(season = 2026) {
   logger.info({ season }, 'Syncing player projections from Sleeper')
 
-  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+  // IDP positions included so defensive individuals get projected points
+  // populated for draft prep in IDP-enabled leagues. Players whose roster
+  // never sees them just sit with the projection unread — harmless.
+  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'LB', 'DB']
   const posParams = positions.map((p) => `position[]=${p}`).join('&')
 
   let data
@@ -561,7 +564,7 @@ export async function syncProjections(season = 2026) {
 export async function syncWeeklyProjections(season, week) {
   logger.info({ season, week }, 'Syncing weekly player projections from Sleeper')
 
-  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'LB', 'DB']
   const posParams = positions.map((p) => `position[]=${p}`).join('&')
 
   let data

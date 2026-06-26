@@ -45,6 +45,18 @@ export const DEFAULT_SCORING_RULES = {
   def_fum_rec: 2,
   def_td: 6,
   def_safety: 2,
+  // IDP — applied only when a player has the corresponding idp_* stat, so
+  // having these in DEFAULT_SCORING_RULES is harmless for team-DEF leagues
+  // (their players have no idp_* stats and these contribute zero).
+  idp_tkl_solo: 1,
+  idp_tkl_ast: 0.5,
+  idp_tkl_loss: 1,
+  idp_sack: 2,
+  idp_int: 3,
+  idp_pass_def: 1,
+  idp_qb_hit: 1,
+  idp_ff: 2,
+  idp_fum_rec: 2,
   // Points allowed brackets (max points first)
   def_pa_brackets: [
     { max: 0,  pts: 10 },
@@ -171,6 +183,19 @@ export function applyScoringRules(stat, rules) {
       }
     }
   }
+
+  // IDP — only active when the player has individual-defensive stats.
+  // Team-DEF rows have no idp_* values, so every term contributes zero and
+  // this block is effectively a no-op for non-IDP leagues.
+  pts += (Number(stat.idp_tkl_solo) || 0) * (r.idp_tkl_solo || 0)
+  pts += (Number(stat.idp_tkl_ast) || 0) * (r.idp_tkl_ast || 0)
+  pts += (Number(stat.idp_tkl_loss) || 0) * (r.idp_tkl_loss || 0)
+  pts += (Number(stat.idp_sack) || 0) * (r.idp_sack || 0)
+  pts += (stat.idp_int || 0) * (r.idp_int || 0)
+  pts += (Number(stat.idp_pass_def) || 0) * (r.idp_pass_def || 0)
+  pts += (Number(stat.idp_qb_hit) || 0) * (r.idp_qb_hit || 0)
+  pts += (stat.idp_ff || 0) * (r.idp_ff || 0)
+  pts += (stat.idp_fum_rec || 0) * (r.idp_fum_rec || 0)
 
   // Yardage bonuses
   if (r.bonuses_enabled) {
@@ -757,6 +782,13 @@ export async function autoFillLineupsForLeague(leagueId) {
   if ((rosterSlots.superflex || 0) >= 1) starterPlan.push({ key: 'superflex', accepts: ['QB', 'RB', 'WR', 'TE'] })
   if ((rosterSlots.k || 0) >= 1) starterPlan.push({ key: 'k', accepts: ['K'] })
   if ((rosterSlots.def || 0) >= 1) starterPlan.push({ key: 'def', accepts: ['DEF'] })
+  // IDP slots — DL accepts the D-line family, LB the linebacker family,
+  // DB the corners, S the safeties. Position values mirror what Sleeper
+  // stamps on nfl_players.position.
+  for (let i = 1; i <= (rosterSlots.dl || 0); i++) starterPlan.push({ key: `dl${i}`, accepts: ['DE', 'DT', 'NT', 'DL'] })
+  for (let i = 1; i <= (rosterSlots.lb || 0); i++) starterPlan.push({ key: `lb${i}`, accepts: ['LB', 'ILB', 'OLB', 'MLB'] })
+  for (let i = 1; i <= (rosterSlots.db || 0); i++) starterPlan.push({ key: `db${i}`, accepts: ['CB', 'DB'] })
+  for (let i = 1; i <= (rosterSlots.s || 0); i++) starterPlan.push({ key: `s${i}`, accepts: ['S', 'FS', 'SS'] })
 
   // Picks in draft order — earliest pick at each position wins the starter slot.
   const { data: picks } = await supabase
@@ -844,6 +876,13 @@ async function fillEmptyStarterSlots(leagueId, userId) {
   if ((rosterSlots.superflex || 0) >= 1) starterPlan.push({ key: 'superflex', accepts: ['QB', 'RB', 'WR', 'TE'] })
   if ((rosterSlots.k || 0) >= 1) starterPlan.push({ key: 'k', accepts: ['K'] })
   if ((rosterSlots.def || 0) >= 1) starterPlan.push({ key: 'def', accepts: ['DEF'] })
+  // IDP slots — DL accepts the D-line family, LB the linebacker family,
+  // DB the corners, S the safeties. Position values mirror what Sleeper
+  // stamps on nfl_players.position.
+  for (let i = 1; i <= (rosterSlots.dl || 0); i++) starterPlan.push({ key: `dl${i}`, accepts: ['DE', 'DT', 'NT', 'DL'] })
+  for (let i = 1; i <= (rosterSlots.lb || 0); i++) starterPlan.push({ key: `lb${i}`, accepts: ['LB', 'ILB', 'OLB', 'MLB'] })
+  for (let i = 1; i <= (rosterSlots.db || 0); i++) starterPlan.push({ key: `db${i}`, accepts: ['CB', 'DB'] })
+  for (let i = 1; i <= (rosterSlots.s || 0); i++) starterPlan.push({ key: `s${i}`, accepts: ['S', 'FS', 'SS'] })
   const starterKeys = new Set(starterPlan.map((s) => s.key))
 
   const { data: roster } = await supabase
@@ -866,7 +905,7 @@ async function fillEmptyStarterSlots(leagueId, userId) {
     if (s === 'ir' || s.startsWith('ir')) return false
     // Slot looks like a starter key (qb / rb1 / wr1 / te / flex / etc.) but
     // isn't valid for this league — orphan.
-    return /^(qb|te|flex|superflex|k|def|rb[0-9]+|wr[0-9]+)$/.test(s)
+    return /^(qb|te|flex|superflex|k|def|rb[0-9]+|wr[0-9]+|dl[0-9]+|lb[0-9]+|db[0-9]+|s[0-9]+)$/.test(s)
   }
   for (const r of roster) {
     if (!isOrphanStarterSlot(r.slot)) continue
@@ -2577,11 +2616,24 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // Pull the full draftable pool — we need to compute overall + positional
   // ranks across the entire available list, NOT just the post-filter slice.
   // (Drops status='Active' filter so DEFs are included.)
-  // Two parallel queries so all 32 defenses are guaranteed in the pool —
-  // a unified query with limit 500 + ADP sort would sink DEFs (which all
+  // Parallel queries so all 32 defenses are guaranteed in the pool — a
+  // unified query with limit 500 + ADP sort would sink DEFs (which all
   // default to _adp=9999) below the slice cutoff and leave them out.
+  // IDP slots add a 4th branch so defensive individuals show up in the
+  // draft pool for leagues that have LB/DL/DB/S configured.
+  const hasIdp = (rosterSlots.lb || 0) + (rosterSlots.dl || 0)
+    + (rosterSlots.db || 0) + (rosterSlots.s || 0) > 0
   const PLAYER_SELECT = 'id, full_name, position, team, headshot_url, search_rank, injury_status, projected_pts_half_ppr, bye_week, adp_ppr, adp_half_ppr'
-  const [offensiveRes, kickerRes, defRes] = await Promise.all([
+  const idpQuery = hasIdp
+    ? supabase
+        .from('nfl_players')
+        .select(PLAYER_SELECT)
+        .in('position', ['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'S', 'FS', 'SS', 'DB'])
+        .not('team', 'is', null)
+        .order('search_rank', { ascending: true, nullsFirst: false })
+        .limit(500)
+    : Promise.resolve({ data: [], error: null })
+  const [offensiveRes, kickerRes, defRes, idpRes] = await Promise.all([
     supabase
       .from('nfl_players')
       .select(PLAYER_SELECT)
@@ -2599,11 +2651,18 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       .select(PLAYER_SELECT)
       .eq('position', 'DEF')
       .not('team', 'is', null),
+    idpQuery,
   ])
   if (offensiveRes.error) throw offensiveRes.error
   if (kickerRes.error) throw kickerRes.error
   if (defRes.error) throw defRes.error
-  const allPlayers = [...(offensiveRes.data || []), ...(kickerRes.data || []), ...(defRes.data || [])]
+  if (idpRes.error) throw idpRes.error
+  const allPlayers = [
+    ...(offensiveRes.data || []),
+    ...(kickerRes.data || []),
+    ...(defRes.data || []),
+    ...(idpRes.data || []),
+  ]
   const error = null
 
   // YTD aggregate stats for browse + sorting.

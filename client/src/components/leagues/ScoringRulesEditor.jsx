@@ -43,6 +43,18 @@ export const DEFAULT_RULES = {
     { max: 34,  pts: -1 },
     { max: 999, pts: -4 },
   ],
+  // IDP (individual defensive players). Industry-standard defaults; only
+  // apply when the player has the corresponding idp_* stat row, so leaving
+  // these in the rule set is a no-op for team-DEF leagues.
+  idp_tkl_solo: 1,
+  idp_tkl_ast: 0.5,
+  idp_tkl_loss: 1,
+  idp_sack: 2,
+  idp_int: 3,
+  idp_pass_def: 1,
+  idp_qb_hit: 1,
+  idp_ff: 2,
+  idp_fum_rec: 2,
   bonuses_enabled: false,
   pass_yd_bonuses: [
     { threshold: 300, points: 5 },
@@ -279,6 +291,22 @@ export default function ScoringRulesEditor({ value, onChange }) {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* IDP — Individual Defensive Players */}
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">IDP <span className="text-text-muted normal-case font-normal tracking-normal">(Individual Defensive Players)</span></h4>
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField label="Tackle (Solo)" value={rules.idp_tkl_solo} onChange={(v) => set('idp_tkl_solo', v)} step={0.5} />
+              <NumberField label="Tackle (Assist)" value={rules.idp_tkl_ast} onChange={(v) => set('idp_tkl_ast', v)} step={0.5} />
+              <NumberField label="Tackle for Loss" value={rules.idp_tkl_loss} onChange={(v) => set('idp_tkl_loss', v)} step={0.5} />
+              <NumberField label="Sack" value={rules.idp_sack} onChange={(v) => set('idp_sack', v)} step={0.5} />
+              <NumberField label="INT" value={rules.idp_int} onChange={(v) => set('idp_int', v)} step={1} />
+              <NumberField label="Pass Defended" value={rules.idp_pass_def} onChange={(v) => set('idp_pass_def', v)} step={0.5} />
+              <NumberField label="QB Hit" value={rules.idp_qb_hit} onChange={(v) => set('idp_qb_hit', v)} step={0.5} />
+              <NumberField label="Forced Fumble" value={rules.idp_ff} onChange={(v) => set('idp_ff', v)} step={1} />
+              <NumberField label="Fumble Recovery" value={rules.idp_fum_rec} onChange={(v) => set('idp_fum_rec', v)} step={1} />
             </div>
           </div>
 
