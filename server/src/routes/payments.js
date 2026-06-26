@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { logger } from '../utils/logger.js'
 import { verifyTransaction } from '../services/appleIapService.js'
 import { verifyAndAcknowledgePurchase } from '../services/googleIapService.js'
+import { sendAdminEmail } from '../services/emailService.js'
 
 const router = Router()
 const stripe = new Stripe(env.STRIPE_SECRET_KEY)
@@ -241,6 +242,14 @@ router.post('/verify-apple-iap', async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     logger.error({ err, userId: req.user.id }, 'Apple IAP verification failed')
+    // Alert admins — silent IAP failures cost real money. The 17-day
+    // appAppleId-missing window in June 2026 happened because warn-level
+    // log lines didn't reach anyone. Don't let admin email failure mask
+    // the original error.
+    sendAdminEmail(
+      'Apple IAP verify failed',
+      `User ${req.user.id} hit a verify-apple-iap failure.\n\nError: ${err.message || err}\n\nIf this is the first one in a while, check Render logs and the user's row to see if they should be granted access manually.`
+    ).catch(() => {})
     return res.status(400).json({ error: 'Transaction verification failed' })
   }
 })
@@ -316,6 +325,10 @@ router.post('/verify-google-iap', async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     logger.error({ err: err.message, userId: req.user.id }, 'Google IAP verification failed')
+    sendAdminEmail(
+      'Google IAP verify failed',
+      `User ${req.user.id} hit a verify-google-iap failure.\n\nError: ${err.message || err}\n\nIf this is the first one in a while, check Render logs and the user's row to see if they should be granted access manually.`
+    ).catch(() => {})
     return res.status(400).json({ error: 'Purchase verification failed' })
   }
 })
