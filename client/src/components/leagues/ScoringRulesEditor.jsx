@@ -192,7 +192,7 @@ export default function ScoringRulesEditor({ value, onChange }) {
         className="flex items-center gap-2 text-xs font-semibold text-accent hover:text-accent-hover"
       >
         <span className={`transition-transform ${advancedOpen ? 'rotate-90' : ''}`}>▶</span>
-        Advanced Scoring
+        Advanced
       </button>
 
       {advancedOpen && (

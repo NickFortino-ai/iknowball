@@ -7,6 +7,7 @@ import { getBackdropUrl } from '../lib/backdropUrl'
 import { useGames } from '../hooks/useGames'
 import { toast } from '../components/ui/Toast'
 import ScoringRulesEditor from '../components/leagues/ScoringRulesEditor'
+import RosterSettingsEditor, { DEFAULT_ROSTER_SLOTS } from '../components/leagues/RosterSettingsEditor'
 import { getSeasonEndDate, isSeasonUnderway, getNflWeekEnd, arePlayoffsUnderway, getFullSeasonLeagueEndDate, getPlayoffsButtonLabel, getPlayoffsHelperText } from '../lib/seasonDates'
 import { todaySportsDay, tomorrowSportsDay } from '../lib/sportsDay'
 
@@ -762,6 +763,7 @@ export default function CreateLeaguePage() {
   const [draftDate, setDraftDate] = useState('') // datetime-local string in user's local TZ
   const [draftLocation, setDraftLocation] = useState('')
   const [irSpots, setIrSpots] = useState(1)
+  const [rosterSlots, setRosterSlots] = useState(DEFAULT_ROSTER_SLOTS)
   const [waiverType, setWaiverType] = useState('priority')
   const [faabStartingBudget, setFaabStartingBudget] = useState(100)
   const [tradeReview, setTradeReview] = useState('commissioner')
@@ -896,7 +898,7 @@ export default function CreateLeaguePage() {
         ? new Date(draftDate).toISOString()
         : undefined,
       roster_slots: format === 'fantasy' && fantasyFormat === 'traditional'
-        ? { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6, ir: irSpots }
+        ? { ...rosterSlots, ir: irSpots }
         : undefined,
       waiver_type: format === 'fantasy' && fantasyFormat === 'traditional' ? waiverType : undefined,
       faab_starting_budget: format === 'fantasy' && fantasyFormat === 'traditional' && waiverType === 'faab' ? faabStartingBudget : undefined,
@@ -1594,13 +1596,21 @@ export default function CreateLeaguePage() {
               </>
             )}
 
+            {/* Roster Settings (traditional only — salary cap doesn't draft) */}
+            {fantasyFormat === 'traditional' && (
+              <div>
+                <label className="text-xs text-text-muted block mb-2">Roster Settings</label>
+                <RosterSettingsEditor value={rosterSlots} onChange={setRosterSlots} />
+              </div>
+            )}
+
             {/* Scoring */}
             {fantasyFormat === 'traditional' ? (
               // Traditional: ScoringRulesEditor is the single source of truth.
               // It has its own preset picker (PPR/Half/Std/Custom), so the
               // outer Scoring Format buttons would be redundant.
               <div>
-                <label className="text-xs text-text-muted block mb-2">Scoring</label>
+                <label className="text-xs text-text-muted block mb-2">Scoring Settings</label>
                 <ScoringRulesEditor value={scoringRules} onChange={setScoringRules} />
               </div>
             ) : (
