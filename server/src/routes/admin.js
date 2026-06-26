@@ -1036,7 +1036,7 @@ router.delete('/player-position-overrides/:id', async (req, res) => {
 // Fantasy Football - Sleeper Sync
 // ============================================
 
-import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, syncWeeklyProjections, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
+import { syncPlayers, syncSchedule, syncWeeklyStats, syncProjections, syncWeeklyProjections, syncByeWeeks, getNFLState, enrichEspnIds } from '../services/sleeperService.js'
 import { generateSalaries, setSalaries } from '../services/dfsService.js'
 import { generateNBASalaries, setNBASalaries } from '../services/nbaDfsService.js'
 import { generateWNBASalaries, setWNBASalaries } from '../services/wnbaDfsService.js'
@@ -1045,6 +1045,16 @@ import { generateMLBSalaries, setMLBSalaries } from '../services/mlbDfsService.j
 router.post('/fantasy/sync-players', async (req, res) => {
   const result = await syncPlayers()
   res.json(result)
+})
+
+// Derive and stamp each NFL team's bye week onto every player on that
+// team. Lets you populate bye_weeks immediately after an NFL schedule
+// publish or mid-season trade rather than waiting on the 3 AM cron.
+router.post('/fantasy/sync-bye-weeks', async (req, res) => {
+  const season = req.body?.season || (await getNFLState())?.season
+  if (!season) return res.status(400).json({ error: 'season unknown' })
+  const result = await syncByeWeeks(season)
+  res.json({ season, ...result })
 })
 
 // Fill in nfl_players.espn_id for active players Sleeper didn't have IDs for.

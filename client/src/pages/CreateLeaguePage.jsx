@@ -349,13 +349,13 @@ Commissioner controls: which game, max squares per user, points per quarter, and
 
 // Lookup so cards can inherit details + bonusTable from the canonical
 // FORMAT_OPTIONS entry without duplication.
-const FORMAT_BY_VALUE = Object.fromEntries(FORMAT_OPTIONS.map((o) => [o.value, o]))
+export const FORMAT_BY_VALUE = Object.fromEntries(FORMAT_OPTIONS.map((o) => [o.value, o]))
 
 // Sport-tab navigation for the Create flow. "All Sports" lists the formats
 // that aren't tied to one sport (Survivor, Pick'em, Squares, Bracket); the
 // per-sport tabs include those generic formats again with sport pre-selected
 // (e.g., NFL Pick'em jumps straight to the Pick'em config with sport=NFL).
-const CATEGORIES = [
+export const CATEGORIES = [
   { key: 'football', label: 'Football' },
   { key: 'basketball', label: 'Basketball' },
   { key: 'baseball', label: 'Baseball' },
@@ -367,7 +367,7 @@ const CATEGORIES = [
 // (Sacks Contest, INT Contest, MLB Strikeouts, Salary Cap Defense) get added
 // here when they ship. Each card resolves to a `format` slug; an optional
 // `preset` applies sport / fantasyFormat / survivorMode on click.
-const CATEGORY_CARDS = {
+export const CATEGORY_CARDS = {
   all_sports: [
     { key: 'survivor-generic', format: 'survivor', preset: { sport: 'all' } },
     { key: 'bracket', format: 'bracket' },
@@ -621,21 +621,21 @@ const DURATION_OPTIONS = [
 export default function CreateLeaguePage() {
   const navigate = useNavigate()
   const createLeague = useCreateLeague()
-  // Admin-controlled list of league format values that should not appear
-  // in the picker (e.g. WNBA contests in winter, NFL contests in summer).
-  // Stored in app_settings under key `disabled_formats` as a JSON array.
-  // Refetches whenever the page mounts so toggle flips take effect without
-  // a client release.
-  const { data: disabledFormatsSetting } = useQuery({
-    queryKey: ['app-settings', 'disabled_formats'],
-    queryFn: () => api.get('/admin/app-settings/disabled_formats'),
+  // Admin-controlled list of league-format CARD KEYS that should not appear
+  // in the picker (e.g. hide NBA Pick'em in summer without also hiding NFL
+  // Pick'em). Stored in app_settings under key `disabled_format_cards` as a
+  // JSON array. Refetches whenever the page mounts so toggle flips take
+  // effect without a client release.
+  const { data: disabledCardsSetting } = useQuery({
+    queryKey: ['app-settings', 'disabled_format_cards'],
+    queryFn: () => api.get('/admin/app-settings/disabled_format_cards'),
     staleTime: 60_000,
   })
-  const disabledFormats = useMemo(() => {
-    const raw = disabledFormatsSetting?.value
-    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.formats) ? raw.formats : []
+  const disabledCardKeys = useMemo(() => {
+    const raw = disabledCardsSetting?.value
+    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.keys) ? raw.keys : []
     return new Set(list)
-  }, [disabledFormatsSetting])
+  }, [disabledCardsSetting])
   // ?format=X[&sport=Y] from the landing page card-tap flow. Used once
   // on mount to pre-select the format and (optionally) sport so the user
   // lands directly on the right configuration step.
@@ -1041,7 +1041,7 @@ export default function CreateLeaguePage() {
               .filter((cat) => cat.key !== 'soccer' || hasActiveSoccerBracket)
               // Hide entire category headers when every format inside has
               // been disabled by admin — avoids dangling empty sections.
-              .filter((cat) => (CATEGORY_CARDS[cat.key] || []).some((c) => !disabledFormats.has(c.format)))
+              .filter((cat) => (CATEGORY_CARDS[cat.key] || []).some((c) => !disabledCardKeys.has(c.key)))
               .map((cat) => {
               const isCollapsed = collapsedCategories.has(cat.key)
               return (
@@ -1072,7 +1072,7 @@ export default function CreateLeaguePage() {
                 </button>
                 {!isCollapsed && (
                 <div className="space-y-2">
-                  {(CATEGORY_CARDS[cat.key] || []).filter((card) => !disabledFormats.has(card.format)).map((card) => {
+                  {(CATEGORY_CARDS[cat.key] || []).filter((card) => !disabledCardKeys.has(card.key)).map((card) => {
                     const base = FORMAT_BY_VALUE[card.format] || {}
                     const label = card.label || base.label
                     const description = card.description || base.description

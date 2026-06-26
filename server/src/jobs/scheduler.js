@@ -31,7 +31,7 @@ import { scoreSquares } from './scoreSquares.js'
 import { syncMLBLineups } from './syncMLBLineups.js'
 import { sendScheduledEmails } from './sendScheduledEmails.js'
 import { syncNflStatsCurrentWeek, startNflStatsTickLoop } from './syncNflStats.js'
-import { syncPlayers, syncProjections, syncWeeklyProjections, getNFLState } from '../services/sleeperService.js'
+import { syncPlayers, syncProjections, syncWeeklyProjections, syncByeWeeks, getNFLState } from '../services/sleeperService.js'
 import { generateSalaries as generateNflDfsSalaries } from '../services/dfsService.js'
 import { rolloverFantasyWeek } from '../services/fantasyService.js'
 import { sendNflInjuryWarnings } from './nflInjuryWarnings.js'
@@ -180,6 +180,13 @@ export function startScheduler() {
     cron.schedule('0 3 * * *', async () => {
       try { await syncPlayers() } catch (err) { logger.error({ err }, 'NFL syncPlayers job failed') }
       try { await syncProjections() } catch (err) { logger.error({ err }, 'NFL syncProjections job failed') }
+      // Derive each team's bye week from the synced schedule and stamp it
+      // onto every player's row. Runs after syncPlayers so newly-traded
+      // players inherit their new team's bye week within 24 hours.
+      try {
+        const state = await getNFLState()
+        if (state?.season) await syncByeWeeks(state.season)
+      } catch (err) { logger.error({ err }, 'NFL syncByeWeeks job failed') }
       // Sync weekly projections for ALL 18 regular-season weeks so the
       // My Team + player modal show projections continuously across the
       // season (Yahoo-style). Sleeper's projections evolve through the

@@ -320,6 +320,78 @@ export async function syncSchedule(season = 2026) {
 }
 
 /**
+ * Derive each NFL team's bye week from the synced nfl_schedule and stamp
+ * it onto every nfl_players row for that team. NFL teams play 17 of 18
+ * regular-season weeks; the one week they don't appear in the schedule is
+ * their bye. Skipping teams whose schedule isn't fully loaded yet (fewer
+ * than 17 game-weeks present) so we don't falsely flag a missing week as
+ * a bye before Sleeper has published the full season.
+ *
+ * Run daily after syncPlayers + syncSchedule so newly-traded players
+ * pick up their new team's bye week within 24 hours.
+ */
+export async function syncByeWeeks(season = 2026) {
+  const { data: schedule, error } = await supabase
+    .from('nfl_schedule')
+    .select('week, home_team, away_team')
+    .eq('season', season)
+
+  if (error) {
+    logger.error({ err: error, season }, 'syncByeWeeks: failed to fetch schedule')
+    return { updated: 0 }
+  }
+  if (!schedule?.length) {
+    logger.warn({ season }, 'syncByeWeeks: no schedule rows yet')
+    return { updated: 0 }
+  }
+
+  // team → Set<week> that team plays
+  const teamWeeks = {}
+  for (const g of schedule) {
+    for (const team of [g.home_team, g.away_team]) {
+      if (!team) continue
+      if (!teamWeeks[team]) teamWeeks[team] = new Set()
+      teamWeeks[team].add(g.week)
+    }
+  }
+
+  // For each team with a fully loaded schedule, find the missing week
+  const teamByeWeek = {}
+  for (const [team, weeks] of Object.entries(teamWeeks)) {
+    if (weeks.size !== 17) continue // incomplete schedule, skip
+    for (let w = 1; w <= 18; w++) {
+      if (!weeks.has(w)) {
+        teamByeWeek[team] = w
+        break
+      }
+    }
+  }
+
+  if (!Object.keys(teamByeWeek).length) {
+    logger.warn({ season }, 'syncByeWeeks: no teams have a complete 17-week schedule')
+    return { updated: 0 }
+  }
+
+  // Apply per team. Cheap — ~32 updates, each hitting an indexed `team` col.
+  let totalUpdated = 0
+  for (const [team, byeWeek] of Object.entries(teamByeWeek)) {
+    const { error: upErr, count } = await supabase
+      .from('nfl_players')
+      .update({ bye_week: byeWeek })
+      .eq('team', team)
+      .select('id', { count: 'exact', head: true })
+    if (upErr) {
+      logger.error({ err: upErr, team, byeWeek }, 'syncByeWeeks: update failed for team')
+      continue
+    }
+    totalUpdated += count || 0
+  }
+
+  logger.info({ season, teamsByeAssigned: Object.keys(teamByeWeek).length, playersUpdated: totalUpdated }, 'Bye weeks synced')
+  return { updated: totalUpdated, teamsByeAssigned: Object.keys(teamByeWeek).length }
+}
+
+/**
  * Sync weekly player stats from Sleeper.
  */
 /**

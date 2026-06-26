@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchUsers } from '../../hooks/useInvitations'
 import { useAdminUserLookup, useAdminSubscriptionOverride, useAdminGameSearch, useAdminGameOverride } from '../../hooks/useAdmin'
 import { api } from '../../lib/api'
+import { CATEGORIES, CATEGORY_CARDS, FORMAT_BY_VALUE } from '../../pages/CreateLeaguePage'
 import Avatar from '../ui/Avatar'
 import { toast } from '../ui/Toast'
 
@@ -40,98 +41,94 @@ export default function AdminToolsPanel() {
 }
 
 // =====================================================================
-// Format Visibility — admin toggle per league format. Stored in
-// app_settings under key `disabled_formats` as a JSON array of values.
-// The CreateLeague page reads this and filters its picker accordingly.
-// Flip a toggle here and the change takes effect for every user on
-// their next page load — no client release needed.
+// Format Visibility — admin toggle per league-format CARD (mirrors the
+// exact card list on the Create League page in the exact same order, so
+// per-sport variants like NBA Pick'em vs MLB Pick'em can be hidden
+// independently). Stored in app_settings under `disabled_format_cards`
+// as a JSON array of card keys. Flip a toggle here and the change takes
+// effect for every user on their next page load — no client release.
 // =====================================================================
 
-const ALL_FORMATS = [
-  { value: 'fantasy', label: 'Fantasy Football', sport: 'NFL' },
-  { value: 'nba_dfs', label: 'NBA Daily Fantasy', sport: 'NBA' },
-  { value: 'wnba_dfs', label: 'WNBA Daily Fantasy', sport: 'WNBA' },
-  { value: 'mlb_dfs', label: 'MLB Daily Fantasy', sport: 'MLB' },
-  { value: 'strikeouts', label: 'Strikeouts Contest', sport: 'MLB' },
-  { value: 'hr_derby', label: 'Home Run Derby', sport: 'MLB' },
-  { value: 'three_point', label: '3-Point Contest', sport: 'NBA' },
-  { value: 'wnba_three_point', label: 'WNBA 3-Point Contest', sport: 'WNBA' },
-  { value: 'ints', label: 'Interceptions Contest', sport: 'NFL' },
-  { value: 'sacks', label: 'Sacks Contest', sport: 'NFL' },
-  { value: 'tackles', label: 'Tackles Contest', sport: 'NFL' },
-  { value: 'receptions', label: 'Receptions Contest', sport: 'NFL' },
-  { value: 'td_pass', label: 'TD Pass Contest', sport: 'NFL' },
-  { value: 'pickem', label: "Pick'em", sport: 'Any' },
-  { value: 'survivor', label: 'Survivor', sport: 'Any' },
-  { value: 'bracket', label: 'Bracket', sport: 'Any' },
-  { value: 'squares', label: 'Squares', sport: 'NFL' },
-]
+function cardLabel(card) {
+  if (card.label) return card.label
+  const base = FORMAT_BY_VALUE[card.format]
+  return base?.label || card.format
+}
 
 function FormatVisibility() {
   const queryClient = useQueryClient()
   const { data: setting } = useQuery({
-    queryKey: ['app-settings', 'disabled_formats'],
-    queryFn: () => api.get('/admin/app-settings/disabled_formats'),
+    queryKey: ['app-settings', 'disabled_format_cards'],
+    queryFn: () => api.get('/admin/app-settings/disabled_format_cards'),
   })
   const disabledList = (() => {
     const raw = setting?.value
     if (Array.isArray(raw)) return raw
-    if (Array.isArray(raw?.formats)) return raw.formats
+    if (Array.isArray(raw?.keys)) return raw.keys
     return []
   })()
   const disabled = new Set(disabledList)
 
   const save = useMutation({
-    mutationFn: (list) => api.put('/admin/app-settings/disabled_formats', { value: list }),
+    mutationFn: (list) => api.put('/admin/app-settings/disabled_format_cards', { value: list }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['app-settings', 'disabled_formats'] })
+      queryClient.invalidateQueries({ queryKey: ['app-settings', 'disabled_format_cards'] })
       toast('Saved', 'success')
     },
     onError: (err) => toast(err.message || 'Failed to save', 'error'),
   })
 
-  function toggle(value) {
-    const next = disabled.has(value)
-      ? disabledList.filter((v) => v !== value)
-      : [...disabledList, value]
+  function toggle(key) {
+    const next = disabled.has(key)
+      ? disabledList.filter((k) => k !== key)
+      : [...disabledList, key]
     save.mutate(next)
   }
 
   return (
-    <div className="bg-bg-card rounded-xl border border-border p-4 space-y-3">
+    <div className="bg-bg-card rounded-xl border border-border p-4 space-y-4">
       <div className="text-sm text-text-secondary">
         Toggle a format <span className="font-semibold">OFF</span> to hide it from the Create League picker for everyone. Existing leagues of that format keep working — only NEW league creation is blocked. Changes take effect on every user's next page load, no app update required.
       </div>
-      <div className="space-y-2">
-        {ALL_FORMATS.map((f) => {
-          const isVisible = !disabled.has(f.value)
-          return (
-            <div key={f.value} className="flex items-center justify-between py-1.5">
-              <div>
-                <div className="text-sm text-text-primary">{f.label}</div>
-                <div className="text-[10px] text-text-muted uppercase tracking-wider">{f.sport} · {f.value}</div>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isVisible}
-                aria-label={`Toggle ${f.label}`}
-                disabled={save.isPending}
-                onClick={() => toggle(f.value)}
-                className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
-                  isVisible ? 'bg-accent' : 'bg-bg-secondary border border-text-primary/20'
-                }`}
-              >
-                <span
-                  className={`inline-block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                    isVisible ? 'translate-x-[22px]' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
+      {CATEGORIES.map((cat) => {
+        const cards = CATEGORY_CARDS[cat.key] || []
+        if (!cards.length) return null
+        return (
+          <div key={cat.key} className="space-y-2">
+            <div className="text-xs font-bold uppercase tracking-wider text-text-primary border-b border-text-primary/10 pb-1">
+              {cat.label}
             </div>
-          )
-        })}
-      </div>
+            {cards.map((card) => {
+              const isVisible = !disabled.has(card.key)
+              return (
+                <div key={card.key} className="flex items-center justify-between py-1.5">
+                  <div>
+                    <div className="text-sm text-text-primary">{cardLabel(card)}</div>
+                    <div className="text-[10px] text-text-muted uppercase tracking-wider">{card.key}</div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isVisible}
+                    aria-label={`Toggle ${cardLabel(card)}`}
+                    disabled={save.isPending}
+                    onClick={() => toggle(card.key)}
+                    className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
+                      isVisible ? 'bg-accent' : 'bg-bg-secondary border border-text-primary/20'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                        isVisible ? 'translate-x-[22px]' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }
