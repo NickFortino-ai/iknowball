@@ -1599,7 +1599,7 @@ export default function CreateLeaguePage() {
             {/* Roster Settings (traditional only — salary cap doesn't draft) */}
             {fantasyFormat === 'traditional' && (
               <div>
-                <label className="text-xs text-text-muted block mb-2">Roster Settings</label>
+                <label className="text-sm font-bold uppercase tracking-wider text-text-primary block mb-2">Roster Settings</label>
                 <RosterSettingsEditor value={rosterSlots} onChange={setRosterSlots} />
               </div>
             )}
@@ -1610,7 +1610,7 @@ export default function CreateLeaguePage() {
               // It has its own preset picker (PPR/Half/Std/Custom), so the
               // outer Scoring Format buttons would be redundant.
               <div>
-                <label className="text-xs text-text-muted block mb-2">Scoring Settings</label>
+                <label className="text-sm font-bold uppercase tracking-wider text-text-primary block mb-2">Scoring Settings</label>
                 <ScoringRulesEditor value={scoringRules} onChange={setScoringRules} />
               </div>
             ) : (

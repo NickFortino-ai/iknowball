@@ -62,7 +62,7 @@ export default function RosterSettingsEditor({ value, onChange }) {
                 type="button"
                 onClick={() => adjust(slot.key, -1)}
                 disabled={(slots[slot.key] || 0) === 0}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-bg-secondary text-text-primary text-lg leading-none hover:bg-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-secondary text-text-primary text-lg leading-none hover:bg-border disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 aria-label={`Decrease ${slot.label}`}
               >
                 −
@@ -73,7 +73,7 @@ export default function RosterSettingsEditor({ value, onChange }) {
               <button
                 type="button"
                 onClick={() => adjust(slot.key, 1)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-bg-secondary text-text-primary text-lg leading-none hover:bg-border transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-secondary text-text-primary text-lg leading-none hover:bg-border transition-colors"
                 aria-label={`Increase ${slot.label}`}
               >
                 +
@@ -82,9 +82,9 @@ export default function RosterSettingsEditor({ value, onChange }) {
           </div>
         ))}
       </div>
-      <div className="flex items-center justify-between pt-2 border-t border-text-primary/10 text-xs">
+      <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-text-primary/10 text-xs">
         <span className="text-text-muted uppercase tracking-wider">Roster size</span>
-        <span className="text-text-primary font-semibold tabular-nums">
+        <span className="text-text-primary font-semibold tabular-nums text-right">
           {starterTotal} starters · {slots.bench || 0} bench · {total} total
         </span>
       </div>
