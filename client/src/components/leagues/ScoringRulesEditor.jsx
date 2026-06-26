@@ -285,7 +285,7 @@ export default function ScoringRulesEditor({ value, onChange }) {
           {/* Bonuses */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">Yardage Bonuses</h4>
+              <h4 className="text-sm font-bold uppercase tracking-wider text-text-primary">Bonuses</h4>
               <button
                 type="button"
                 onClick={() => set('bonuses_enabled', !rules.bonuses_enabled)}
