@@ -161,7 +161,7 @@ export default function ScoringRulesEditor({ value, onChange }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-xl border border-text-primary/20 p-4 bg-bg-primary/40">
       {/* Preset picker (no inner label — the outer field already says "Scoring") */}
       <div>
         <div className="flex gap-2 flex-wrap">
@@ -189,14 +189,14 @@ export default function ScoringRulesEditor({ value, onChange }) {
       <button
         type="button"
         onClick={() => setAdvancedOpen(!advancedOpen)}
-        className="flex items-center gap-2 text-xs font-semibold text-accent hover:text-accent-hover"
+        className="flex items-center gap-2 text-sm font-semibold text-accent hover:text-accent-hover"
       >
         <span className={`transition-transform ${advancedOpen ? 'rotate-90' : ''}`}>▶</span>
         Advanced
       </button>
 
       {advancedOpen && (
-        <div className="space-y-5 rounded-xl border border-text-primary/20 p-4 bg-bg-primary/40">
+        <div className="space-y-5">
           {/* Passing */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Passing</h4>
