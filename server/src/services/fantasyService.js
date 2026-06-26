@@ -3221,7 +3221,7 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
   if (dropPlayerId) {
     const { data: dropRoster } = await supabase
       .from('fantasy_rosters')
-      .select('id, user_id, slot, nfl_players(team)')
+      .select('id, user_id, slot, acquired_at, nfl_players(team)')
       .eq('league_id', leagueId)
       .eq('player_id', dropPlayerId)
       .single()
@@ -3253,8 +3253,9 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
   // Drop first (if applicable), then add to bench
   if (dropRow) {
     await supabase.from('fantasy_rosters').delete().eq('id', dropRow.id)
-    // Dropped player goes onto waivers until next clearing
-    await addToWaiverPool(leagueId, [dropPlayerId], 'dropped')
+    // Dropped player goes onto waivers (or straight to FA per the pre-season /
+    // just-added rules baked into addToWaiverPool).
+    await addToWaiverPool(leagueId, [dropPlayerId], 'dropped', { [dropPlayerId]: dropRow.acquired_at })
   }
   const { error: insertErr } = await supabase
     .from('fantasy_rosters')
@@ -3301,7 +3302,7 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
   await assertNoIneligibleIR(leagueId, userId)
   const { data: row } = await supabase
     .from('fantasy_rosters')
-    .select('id, user_id, nfl_players(full_name, team)')
+    .select('id, user_id, acquired_at, nfl_players(full_name, team)')
     .eq('league_id', leagueId)
     .eq('player_id', playerId)
     .maybeSingle()
@@ -3318,7 +3319,7 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
   }
   const { error: delErr } = await supabase.from('fantasy_rosters').delete().eq('id', row.id)
   if (delErr) throw delErr
-  await addToWaiverPool(leagueId, [playerId], 'dropped')
+  await addToWaiverPool(leagueId, [playerId], 'dropped', { [playerId]: row.acquired_at })
   await supabase.from('fantasy_transactions').insert({ league_id: leagueId, user_id: userId, type: 'drop', player_id: playerId })
   return { dropped: row.nfl_players?.full_name || playerId }
 }
@@ -3858,6 +3859,37 @@ export function nextWaiverClearTime(from = new Date()) {
   return fallback
 }
 
+// True when `date` falls in the "weekly waiver" window — Sunday morning ET
+// through Wednesday 3 AM ET. Drops landing in this window get held until the
+// next Wednesday 3 AM ET clearing rather than the 24h rolling window, so the
+// post-game scramble for Sunday/Monday-game players resolves on the standard
+// fantasy weekly event.
+function isInWeeklyWaiverWindow(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'short',
+    hour: 'numeric',
+    hour12: false,
+  }).formatToParts(date)
+  const weekday = parts.find((p) => p.type === 'weekday').value
+  const hourStr = parts.find((p) => p.type === 'hour').value
+  const hour = hourStr === '24' ? 0 : Number(hourStr)
+  if (weekday === 'Sun' || weekday === 'Mon' || weekday === 'Tue') return true
+  if (weekday === 'Wed' && hour < 3) return true
+  return false
+}
+
+// Decide when a freshly-dropped player should clear waivers. Sunday-through-
+// Tuesday drops snap to Wednesday 3 AM ET (the weekly clearing event). Drops
+// outside that window use a 24h rolling clearance so Thursday/Wednesday-game
+// players can clear before kickoff.
+function calculateDropClearsAt(dropTime = new Date()) {
+  if (isInWeeklyWaiverWindow(dropTime)) {
+    return nextWaiverClearTime(dropTime)
+  }
+  return new Date(dropTime.getTime() + 24 * 60 * 60 * 1000)
+}
+
 // Full-team-name → Sleeper team abbreviation. The games table (Odds API)
 // uses full names while nfl_schedule + nfl_players (Sleeper) use these
 // abbreviations — this map bridges them so kickoff-time lockdown can lift
@@ -3986,23 +4018,47 @@ export async function getWaiverLockedPlayerIds(leagueId) {
  * Place one or more players into the league's waiver pool. Called from drop
  * and trade flows. Idempotent — upserts so re-dropping refreshes clears_at.
  */
-export async function addToWaiverPool(leagueId, playerIds, reason = 'dropped') {
+export async function addToWaiverPool(leagueId, playerIds, reason = 'dropped', acquiredAtByPlayer = {}) {
   if (!playerIds?.length) return
-  // Dropped players go on a 24-hour waiver window so other managers can claim.
-  // Other reasons (e.g. trade) use the next Wednesday clearing time.
-  const clearsAt = reason === 'dropped'
-    ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+  // Pre-season drops go straight to free agents — no waivers run during the
+  // off-/pre-season, so a stranded player would sit waiting on a clearing
+  // that never comes.
+  if (reason === 'dropped') {
+    try {
+      const { getCurrentNflWeek } = await import('./tdPassService.js')
+      const { isPreSeason } = await getCurrentNflWeek()
+      if (isPreSeason) return
+    } catch (err) {
+      logger.warn({ err: err.message, leagueId }, 'Pre-season check failed in addToWaiverPool, defaulting to in-season behavior')
+    }
+  }
+
+  const now = new Date()
+  const dropClearsAtIso = reason === 'dropped'
+    ? calculateDropClearsAt(now).toISOString()
     : nextWaiverClearTime().toISOString()
-  const rows = playerIds.map((pid) => ({
-    league_id: leagueId,
-    player_id: pid,
-    clears_at: clearsAt,
-    reason,
-  }))
-  const { error } = await supabase
-    .from('fantasy_waiver_pool')
-    .upsert(rows, { onConflict: 'league_id,player_id' })
-  if (error) logger.error({ error, leagueId, playerIds }, 'Failed to push players to waiver pool')
+
+  for (const pid of playerIds) {
+    // Just-added rule (in-season only — pre-season already returned above):
+    // a player who's been on this roster less than 48h skips waivers entirely
+    // when dropped. Lets managers quickly correct accidental adds and
+    // prevents the trolling pattern of claim-then-drop-to-block.
+    if (reason === 'dropped' && acquiredAtByPlayer[pid]) {
+      const tenureHours = (now.getTime() - new Date(acquiredAtByPlayer[pid]).getTime()) / (1000 * 60 * 60)
+      if (tenureHours < 48) continue
+    }
+
+    const { error } = await supabase
+      .from('fantasy_waiver_pool')
+      .upsert({
+        league_id: leagueId,
+        player_id: pid,
+        clears_at: dropClearsAtIso,
+        reason,
+      }, { onConflict: 'league_id,player_id' })
+    if (error) logger.error({ error, leagueId, playerId: pid }, 'Failed to push player to waiver pool')
+  }
 }
 
 /**
@@ -4380,7 +4436,19 @@ export async function processLeagueWaivers(leagueId) {
           throw err
         }
       }
+      let dropAcquiredAt = null
       if (winner.drop_player_id) {
+        // Read the row's acquired_at BEFORE deleting so the pre-/just-added
+        // tenure rule in addToWaiverPool can be evaluated correctly.
+        const { data: dropRow } = await supabase
+          .from('fantasy_rosters')
+          .select('acquired_at')
+          .eq('league_id', leagueId)
+          .eq('player_id', winner.drop_player_id)
+          .eq('user_id', winner.user_id)
+          .maybeSingle()
+        dropAcquiredAt = dropRow?.acquired_at || null
+
         // Same hardening pattern as the trade-drop fix (ee46615d):
         // verify the delete actually removed the row before continuing.
         // Without count tracking, a silent no-op (drop player not on
@@ -4399,8 +4467,9 @@ export async function processLeagueWaivers(leagueId) {
           err.status = 400
           throw err
         }
-        // Dropped player goes on waivers until next clearing
-        await addToWaiverPool(leagueId, [winner.drop_player_id], 'dropped')
+        // Dropped player goes on waivers (or straight to FA per pre-season
+        // / just-added rules baked into addToWaiverPool).
+        await addToWaiverPool(leagueId, [winner.drop_player_id], 'dropped', { [winner.drop_player_id]: dropAcquiredAt })
       }
       const { error: insertErr } = await supabase
         .from('fantasy_rosters')
