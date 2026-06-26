@@ -3,11 +3,9 @@
  *
  * Each row shows a label + minus / value / plus controls. Commissioners
  * can freely set any slot to any non-negative count — minus stops at 0.
- * IR is intentionally NOT in this list; CreateLeaguePage keeps its own
- * dedicated IR field beside the draft-mode pickers.
  *
  * Props:
- *   value: roster_slots object (qb, rb, wr, te, flex, superflex, k, def, bench)
+ *   value: roster_slots object (qb, rb, wr, te, flex, superflex, k, def, bench, ir)
  *   onChange(slots): called with the updated slots object on every adjust
  */
 
@@ -21,6 +19,7 @@ const SLOTS = [
   { key: 'k', label: 'K' },
   { key: 'def', label: 'DEF' },
   { key: 'bench', label: 'Bench' },
+  { key: 'ir', label: 'IR', sub: "Injured reserve — doesn't count toward your bench" },
 ]
 
 export const DEFAULT_ROSTER_SLOTS = {
@@ -33,6 +32,7 @@ export const DEFAULT_ROSTER_SLOTS = {
   k: 1,
   def: 1,
   bench: 6,
+  ir: 1,
 }
 
 export default function RosterSettingsEditor({ value, onChange }) {
@@ -44,7 +44,7 @@ export default function RosterSettingsEditor({ value, onChange }) {
   }
 
   const starterTotal = SLOTS
-    .filter((s) => s.key !== 'bench')
+    .filter((s) => s.key !== 'bench' && s.key !== 'ir')
     .reduce((sum, s) => sum + (slots[s.key] || 0), 0)
   const total = starterTotal + (slots.bench || 0)
 
@@ -85,7 +85,7 @@ export default function RosterSettingsEditor({ value, onChange }) {
       <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-text-primary/10 text-xs">
         <span className="text-text-muted uppercase tracking-wider">Roster size</span>
         <span className="text-text-primary font-semibold tabular-nums text-right">
-          {starterTotal} starters · {slots.bench || 0} bench · {total} total
+          {starterTotal} starters · {slots.bench || 0} bench · {total} total{(slots.ir || 0) > 0 ? ` + ${slots.ir} IR` : ''}
         </span>
       </div>
     </div>

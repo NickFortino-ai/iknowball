@@ -762,7 +762,6 @@ export default function CreateLeaguePage() {
   const [draftPickTimer, setDraftPickTimer] = useState(60)
   const [draftDate, setDraftDate] = useState('') // datetime-local string in user's local TZ
   const [draftLocation, setDraftLocation] = useState('')
-  const [irSpots, setIrSpots] = useState(1)
   const [rosterSlots, setRosterSlots] = useState(DEFAULT_ROSTER_SLOTS)
   const [waiverType, setWaiverType] = useState('priority')
   const [faabStartingBudget, setFaabStartingBudget] = useState(100)
@@ -898,7 +897,7 @@ export default function CreateLeaguePage() {
         ? new Date(draftDate).toISOString()
         : undefined,
       roster_slots: format === 'fantasy' && fantasyFormat === 'traditional'
-        ? { ...rosterSlots, ir: irSpots }
+        ? rosterSlots
         : undefined,
       waiver_type: format === 'fantasy' && fantasyFormat === 'traditional' ? waiverType : undefined,
       faab_starting_budget: format === 'fantasy' && fantasyFormat === 'traditional' && waiverType === 'faab' ? faabStartingBudget : undefined,
@@ -1627,96 +1626,83 @@ export default function CreateLeaguePage() {
             {/* Traditional-only settings */}
             {fantasyFormat === 'traditional' && <>
             <div>
-              <label className="text-xs text-text-muted block mb-1">Draft Type</label>
-              <div className="flex gap-2">
-                {[
-                  { value: 'live', label: 'Online Draft' },
-                  { value: 'offline', label: 'Offline Draft' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setDraftMode(opt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      draftMode === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+              <label className="text-sm font-bold uppercase tracking-wider text-text-primary block mb-2">Draft</label>
+              <div className="space-y-3 rounded-xl border border-text-primary/20 p-4 bg-bg-primary/40">
+                <div>
+                  <label className="text-xs text-text-muted block mb-1">Type</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'live', label: 'Online Draft' },
+                      { value: 'offline', label: 'Offline Draft' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setDraftMode(opt.value)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          draftMode === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-text-muted mt-1">
+                    {draftMode === 'live'
+                      ? 'Everyone drafts in real time with a pick timer. Auto-pick fills in if the clock runs out.'
+                      : 'Draft in person, then the commissioner enters the results. No timers or auto-pick.'}
+                  </p>
+                </div>
+                {draftMode === 'live' && (
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1">Pick Timer</label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: 60, label: '60s' },
+                        { value: 90, label: '90s' },
+                        { value: 120, label: '2min' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setDraftPickTimer(opt.value)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                            draftPickTimer === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-text-muted block mb-1">Date and Time</label>
+                  <input
+                    type="datetime-local"
+                    value={draftDate}
+                    onChange={(e) => setDraftDate(e.target.value)}
+                    className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent appearance-none [-webkit-appearance:none]"
+                  />
+                  <p className="text-[10px] text-text-muted mt-1">
+                    {draftMode === 'live'
+                      ? 'Pick the moment you want the draft to start. Every member sees this in their own local timezone. Leave blank to start the draft manually.'
+                      : 'When is the in-person draft? This is displayed to your league members.'}
+                  </p>
+                </div>
+                {draftMode === 'offline' && (
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1">Location (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mike's house, Buffalo Wild Wings"
+                      value={draftLocation}
+                      onChange={(e) => setDraftLocation(e.target.value)}
+                      className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                  </div>
+                )}
               </div>
-              <p className="text-[10px] text-text-muted mt-1">
-                {draftMode === 'live'
-                  ? 'Everyone drafts in real time with a pick timer. Auto-pick fills in if the clock runs out.'
-                  : 'Draft in person, then the commissioner enters the results. No timers or auto-pick.'}
-              </p>
-            </div>
-            {draftMode === 'live' && (
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Draft Pick Timer</label>
-              <div className="flex gap-2">
-                {[
-                  { value: 60, label: '60s' },
-                  { value: 90, label: '90s' },
-                  { value: 120, label: '2min' },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setDraftPickTimer(opt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      draftPickTimer === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            )}
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Draft Date & Time</label>
-              <input
-                type="datetime-local"
-                value={draftDate}
-                onChange={(e) => setDraftDate(e.target.value)}
-                className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent appearance-none [-webkit-appearance:none]"
-              />
-              <p className="text-[10px] text-text-muted mt-1">
-                {draftMode === 'live'
-                  ? 'Pick the moment you want the draft to start. Every member sees this in their own local timezone. Leave blank to start the draft manually.'
-                  : 'When is the in-person draft? This is displayed to your league members.'}
-              </p>
-            </div>
-            {draftMode === 'offline' && (
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Draft Location (optional)</label>
-              <input
-                type="text"
-                placeholder="e.g. Mike's house, Buffalo Wild Wings"
-                value={draftLocation}
-                onChange={(e) => setDraftLocation(e.target.value)}
-                className="w-full bg-bg-secondary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </div>
-            )}
-            <div>
-              <label className="text-xs text-text-muted block mb-1">IR Spots</label>
-              <div className="flex gap-2">
-                {[0, 1, 2, 3].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setIrSpots(n)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      irSpots === n ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[10px] text-text-muted mt-1">Injured-reserve spots per team. Players parked here don't count toward your bench.</p>
             </div>
             <div>
               <label className="text-xs text-text-muted block mb-1">Waiver System</label>
