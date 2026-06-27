@@ -41,7 +41,12 @@ function splitTeamName(fullName) {
 }
 
 function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecord, recordPosition = 'top', mirrored }) {
-  const { city, name } = splitTeamName(team)
+  // Soccer (World Cup, MLS) uses country/club names that are unitary —
+  // splitting "Bosnia and Herzegovina" into city/name renders "Bosnia"
+  // grayed-out above "and Herzegovina" bold, which reads as wrong.
+  // Skip the split and render the full name as a single bold line.
+  const isSoccer = sportKey?.startsWith('soccer_')
+  const { city, name } = isSoccer ? { city: '', name: team || 'TBD' } : splitTeamName(team)
   const padding = size === 'xl' ? 'px-3 py-2.5' : size === 'lg' ? 'px-2.5 py-2' : 'px-2 py-1.5'
 
   const logoEl = <TeamLogo team={team} sportKey={sportKey} size={size} />
@@ -50,7 +55,9 @@ function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecor
   )
   const nameEl = team ? (
     <div className={`flex flex-col min-w-0 flex-1 leading-tight ${mirrored ? 'items-end' : ''}`}>
-      <span className={`truncate ${size === 'xl' ? 'text-xs' : 'text-[11px]'} ${cityClass || 'text-text-muted'}`}>{city}</span>
+      {city && (
+        <span className={`truncate ${size === 'xl' ? 'text-xs' : 'text-[11px]'} ${cityClass || 'text-text-muted'}`}>{city}</span>
+      )}
       <span className={`truncate font-semibold ${size === 'xl' ? 'text-base' : 'text-sm'}`}>{name}</span>
     </div>
   ) : (
