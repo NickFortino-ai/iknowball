@@ -682,7 +682,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               step === s ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary hover:bg-bg-card-hover'
             }`}
           >
-            {s === 1 ? 'Details' : s === 2 ? 'Rounds' : s === 3 ? 'Teams' : s === 4 ? 'Image' : 'Preview'}
+            {s === 1 ? 'Details' : s === 2 ? 'Rounds' : s === 3 ? 'Teams' : s === 4 ? 'Image' : 'Finalize'}
           </button>
         ))}
       </div>
@@ -1249,7 +1249,7 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               onClick={() => setStep(5)}
               className="flex-1 py-3 rounded-xl font-display text-lg bg-accent text-white hover:bg-accent-hover transition-colors"
             >
-              Next: Preview
+              Next: Finalize
             </button>
           </div>
         </div>
@@ -1317,6 +1317,45 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
               {createTemplate.isPending || updateTemplate.isPending ? 'Saving...' : 'Save Template'}
             </button>
           </div>
+
+          {/* Publish Now — sets picks_available_at to current time. Server's
+              existing publish-detection logic in updateTemplate fans out
+              push notifications to every league member of every league
+              using this template when the boundary is crossed. Idempotent
+              against double-click: a second flip with an already-past
+              picks_available_at won't refire the notification. */}
+          {(() => {
+            const isAlreadyPublished = existing?.picks_available_at &&
+              new Date(existing.picks_available_at) <= new Date()
+            return (
+              <div className="pt-3 border-t border-text-primary/10">
+                <button
+                  onClick={async () => {
+                    if (!savedTemplateId) return
+                    if (!confirm('Publish bracket now and notify every league member using this template? This cannot be undone.')) return
+                    try {
+                      await updateTemplate.mutateAsync({
+                        templateId: savedTemplateId,
+                        picks_available_at: new Date().toISOString(),
+                      })
+                      toast('Bracket published — notifications sent', 'success')
+                    } catch (err) {
+                      toast(err.message || 'Failed to publish', 'error')
+                    }
+                  }}
+                  disabled={!savedTemplateId || isAlreadyPublished || updateTemplate.isPending}
+                  className="w-full py-3 rounded-xl font-display text-lg bg-correct text-white hover:bg-correct/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAlreadyPublished ? 'Already Published' : updateTemplate.isPending ? 'Publishing...' : 'Publish Now & Notify Members'}
+                </button>
+                {!savedTemplateId && (
+                  <div className="text-[10px] text-text-muted text-center mt-1.5">
+                    Save the template first to enable publish.
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>
