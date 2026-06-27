@@ -133,8 +133,12 @@ function NumberField({ label, value, onChange, step = 0.5, hint }) {
   )
 }
 
-export default function ScoringRulesEditor({ value, onChange }) {
+export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
   const rules = value || DEFAULT_RULES
+  // 'def' → only Team Defense, 'idp' → only IDP, anything else → both
+  // (back-compat: callers that don't pass the prop see both sections).
+  const showTeamDef = defenseMode !== 'idp'
+  const showIdp = defenseMode !== 'def'
   const [preset, setPreset] = useState(() => {
     if (rules.rec === 1) return 'ppr'
     if (rules.rec === 0.5) return 'half_ppr'
@@ -261,6 +265,7 @@ export default function ScoringRulesEditor({ value, onChange }) {
           </div>
 
           {/* Defense */}
+          {showTeamDef && (
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Team Defense</h4>
             <div className="grid grid-cols-2 gap-3">
@@ -293,8 +298,10 @@ export default function ScoringRulesEditor({ value, onChange }) {
               </div>
             </div>
           </div>
+          )}
 
           {/* IDP — Individual Defensive Players */}
+          {showIdp && (
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">IDP <span className="text-text-muted normal-case font-normal tracking-normal">(Individual Defensive Players)</span></h4>
             <div className="grid grid-cols-2 gap-3">
@@ -309,6 +316,7 @@ export default function ScoringRulesEditor({ value, onChange }) {
               <NumberField label="Fumble Recovery" value={rules.idp_fum_rec} onChange={(v) => set('idp_fum_rec', v)} step={1} />
             </div>
           </div>
+          )}
 
           {/* Bonuses */}
           <div>

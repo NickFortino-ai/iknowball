@@ -1631,7 +1631,15 @@ export default function CreateLeaguePage() {
               // outer Scoring Format buttons would be redundant.
               <div>
                 <label className="text-sm font-bold uppercase tracking-wider text-text-primary block mb-2">Scoring Settings</label>
-                <ScoringRulesEditor value={scoringRules} onChange={setScoringRules} />
+                <ScoringRulesEditor
+                  value={scoringRules}
+                  onChange={setScoringRules}
+                  defenseMode={
+                    ((rosterSlots.dl || 0) + (rosterSlots.lb || 0) + (rosterSlots.db || 0) + (rosterSlots.s || 0)) > 0
+                      ? 'idp'
+                      : 'def'
+                  }
+                />
               </div>
             ) : (
               // Salary Cap is locked to Half PPR because the salary algorithm
