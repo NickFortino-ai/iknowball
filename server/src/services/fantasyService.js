@@ -38,6 +38,9 @@ export const DEFAULT_SCORING_RULES = {
   fgm_0_39: 3,
   fgm_40_49: 4,
   fgm_50_plus: 5,
+  fgmiss_0_39: -3,
+  fgmiss_40_49: -2,
+  fgmiss_50_plus: -1,
   xpm: 1,
   // Team defense
   def_sack: 1,
@@ -149,6 +152,9 @@ export function applyScoringRules(stat, rules) {
   pts += (stat.fgm_0_39 || 0) * (r.fgm_0_39 || 0)
   pts += (stat.fgm_40_49 || 0) * (r.fgm_40_49 || 0)
   pts += (stat.fgm_50_plus || 0) * (r.fgm_50_plus || 0)
+  pts += (stat.fgmiss_0_39 || 0) * (r.fgmiss_0_39 || 0)
+  pts += (stat.fgmiss_40_49 || 0) * (r.fgmiss_40_49 || 0)
+  pts += (stat.fgmiss_50_plus || 0) * (r.fgmiss_50_plus || 0)
   pts += (stat.xpm || 0) * (r.xpm || 0)
 
   // Team defense
@@ -1658,7 +1664,8 @@ export async function getDraftPlayerDetail(playerId, { leagueId = null, scoringF
         'rush_att','rush_yd','rush_td',
         'rec_tgt','rec','rec_yd','rec_td',
         'fum_lost','two_pt',
-        'fgm','fga','fgm_0_39','fgm_40_49','fgm_50_plus','xpm','xpa',
+        'fgm','fga','fgm_0_39','fgm_40_49','fgm_50_plus',
+        'fgmiss_0_39','fgmiss_40_49','fgmiss_50_plus','xpm','xpa',
         'def_td','def_int','def_sack','def_fum_rec','def_safety',
       ]
       for (const k of numericKeys) totals[k] = 0
@@ -2382,7 +2389,7 @@ export async function getRoster(leagueId, userId) {
     if (playerIds.length) {
       const { data: stats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
         .eq('week', week)
         .eq('season', season)
         .in('player_id', playerIds)
@@ -2440,7 +2447,7 @@ export async function getRoster(leagueId, userId) {
     if (playerIds.length) {
       const { data: allStats } = await supabase
         .from('nfl_player_stats')
-        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+        .select('player_id, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec, rec_yd, rec_td, rec_tgt, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
         .eq('season', season)
         .in('player_id', playerIds)
       const agg = {}
@@ -3660,7 +3667,7 @@ export async function getPlayerDetail(leagueId, playerId) {
 
   const { data: weeks } = await supabase
     .from('nfl_player_stats')
-    .select('week, season, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+    .select('week, season, pass_att, pass_cmp, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
     .eq('player_id', playerId)
     .eq('season', season)
     .order('week', { ascending: true })
@@ -3814,7 +3821,7 @@ export async function getPlayerDetail(leagueId, playerId) {
       if (posPlayerIds.length) {
         const { data: posStats } = await supabase
           .from('nfl_player_stats')
-          .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
+          .select('player_id, pass_yd, pass_td, pass_int, rush_yd, rush_td, rec, rec_yd, rec_td, fum_lost, two_pt, fgm_0_39, fgm_40_49, fgm_50_plus, fgmiss_0_39, fgmiss_40_49, fgmiss_50_plus, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed')
           .eq('season', season)
           .in('player_id', posPlayerIds)
         const totals = {}

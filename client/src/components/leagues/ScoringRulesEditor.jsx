@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 
 /**
  * Reusable scoring-rules editor for NFL fantasy leagues.
@@ -28,6 +28,9 @@ export const DEFAULT_RULES = {
   fgm_0_39: 3,
   fgm_40_49: 4,
   fgm_50_plus: 5,
+  fgmiss_0_39: -3,
+  fgmiss_40_49: -2,
+  fgmiss_50_plus: -1,
   xpm: 1,
   def_sack: 1,
   def_int: 2,
@@ -253,13 +256,38 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
             </div>
           </div>
 
-          {/* Kicker */}
+          {/* Kicker — range × make/miss grid */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Kicker</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <NumberField label="FG 0–39" value={rules.fgm_0_39} onChange={(v) => set('fgm_0_39', v)} step={1} />
-              <NumberField label="FG 40–49" value={rules.fgm_40_49} onChange={(v) => set('fgm_40_49', v)} step={1} />
-              <NumberField label="FG 50+" value={rules.fgm_50_plus} onChange={(v) => set('fgm_50_plus', v)} step={1} />
+            <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-2 items-center">
+              <span />
+              <span className="text-[10px] uppercase tracking-wider text-text-muted text-center w-20">Make</span>
+              <span className="text-[10px] uppercase tracking-wider text-text-muted text-center w-20">Miss</span>
+              {[
+                { range: '0–39 yds', mk: 'fgm_0_39', ms: 'fgmiss_0_39' },
+                { range: '40–49 yds', mk: 'fgm_40_49', ms: 'fgmiss_40_49' },
+                { range: '50+ yds', mk: 'fgm_50_plus', ms: 'fgmiss_50_plus' },
+              ].map((row) => (
+                <Fragment key={row.range}>
+                  <span className="text-xs text-text-secondary">{row.range}</span>
+                  <input
+                    type="number"
+                    step={0.5}
+                    value={rules[row.mk] ?? 0}
+                    onChange={(e) => set(row.mk, parseFloat(e.target.value) || 0)}
+                    className="w-20 bg-bg-input border border-border rounded-lg px-2 py-1.5 text-sm text-text-primary text-center focus:outline-none focus:border-accent"
+                  />
+                  <input
+                    type="number"
+                    step={0.5}
+                    value={rules[row.ms] ?? 0}
+                    onChange={(e) => set(row.ms, parseFloat(e.target.value) || 0)}
+                    className="w-20 bg-bg-input border border-border rounded-lg px-2 py-1.5 text-sm text-text-primary text-center focus:outline-none focus:border-accent"
+                  />
+                </Fragment>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
               <NumberField label="Extra Point" value={rules.xpm} onChange={(v) => set('xpm', v)} step={1} />
             </div>
           </div>

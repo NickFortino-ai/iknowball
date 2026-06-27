@@ -473,6 +473,12 @@ export async function syncWeeklyStats(season = 2026, week = 1) {
         fgm_0_39: (s.fgm_0_19 || 0) + (s.fgm_20_29 || 0) + (s.fgm_30_39 || 0),
         fgm_40_49: s.fgm_40_49 || 0,
         fgm_50_plus: s.fgm_50_plus || 0,
+        // Sleeper splits misses across 5 buckets; collapse to the same 3
+        // ranges as fgm_* so the editor stays tidy. fgmiss_50p is Sleeper's
+        // own naming for 50+.
+        fgmiss_0_39: (s.fgmiss_0_19 || 0) + (s.fgmiss_20_29 || 0) + (s.fgmiss_30_39 || 0),
+        fgmiss_40_49: s.fgmiss_40_49 || 0,
+        fgmiss_50_plus: s.fgmiss_50p || 0,
         xpm: s.xpm || 0,
         xpa: s.xpa || 0,
         def_td: s.def_td || 0,
