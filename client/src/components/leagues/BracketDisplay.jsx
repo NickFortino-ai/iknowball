@@ -172,7 +172,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
     >
       <TeamRow
         team={matchup.team_top}
-        seed={matchup.seed_top}
+        seed={sportKey === 'soccer_world_cup' ? null : matchup.seed_top}
         sportKey={sportKey}
         size={size}
         mirrored={mirrored}
@@ -183,7 +183,7 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
       />
       <TeamRow
         team={matchup.team_bottom}
-        seed={matchup.seed_bottom}
+        seed={sportKey === 'soccer_world_cup' ? null : matchup.seed_bottom}
         sportKey={sportKey}
         size={size}
         mirrored={mirrored}

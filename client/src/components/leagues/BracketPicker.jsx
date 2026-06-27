@@ -74,6 +74,11 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
   const rounds = tournament?.bracket_templates?.rounds || []
   const regions = tournament?.bracket_templates?.regions || []
   const isBestOf7 = tournament?.bracket_templates?.series_format === 'best_of_7'
+  // World Cup teams are populated via group winners, not seeded brackets.
+  // The 1-16 numbers our generator assigns are an NCAA-style artifact that
+  // would mislead users (no FIFA equivalent). Hide them in user UI; admin
+  // tools still display them as a populate sanity-check.
+  const isWorldCup = league?.sport === 'soccer_world_cup'
   const champPhrase = (() => {
     const s = tournament?.bracket_templates?.sport
     if (s === 'basketball_ncaab' || s === 'basketball_wncaab') return 'cut the nets down'
@@ -454,7 +459,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
       if (championshipMatchup) {
         const champPick = picks[championshipMatchup.template_matchup_id]
         if (champPick) {
-          const seed = teamSeedMap[champPick] ?? null
+          const seed = isWorldCup ? null : (teamSeedMap[champPick] ?? null)
           setChampionModal({ team: champPick, seed })
           return // Don't close yet — modal will close and then call onClose
         }
@@ -655,7 +660,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                 <div className="p-1">
                   <div className="flex items-center gap-2 px-3 py-2.5 text-sm">
                     <PickerTeamLogo team={matchup.team_top} sportKey={league.sport} />
-                    {matchup.seed_top != null && (
+                    {!isWorldCup && matchup.seed_top != null && (
                       <span className="text-xs text-text-muted w-5 text-right">{matchup.seed_top}</span>
                     )}
                     <span className={`flex-1 text-left truncate ${matchup.winner === 'top' ? 'text-correct font-semibold' : 'text-text-muted line-through'}`}>
@@ -665,7 +670,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                   <div className="border-t border-text-primary/10 mx-3" />
                   <div className="flex items-center gap-2 px-3 py-2.5 text-sm">
                     <PickerTeamLogo team={matchup.team_bottom} sportKey={league.sport} />
-                    {matchup.seed_bottom != null && (
+                    {!isWorldCup && matchup.seed_bottom != null && (
                       <span className="text-xs text-text-muted w-5 text-right">{matchup.seed_bottom}</span>
                     )}
                     <span className={`flex-1 text-left truncate ${matchup.winner === 'bottom' ? 'text-correct font-semibold' : 'text-text-muted line-through'}`}>
@@ -698,7 +703,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                   }`}
                 >
                   <PickerTeamLogo team={top} sportKey={league.sport} />
-                  {seedTop != null && (
+                  {!isWorldCup && seedTop != null && (
                     <span className="text-xs text-text-muted w-5 text-right">{seedTop}</span>
                   )}
                   <span className="flex-1 text-left truncate">{top || 'Waiting...'}</span>
@@ -719,7 +724,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
                   }`}
                 >
                   <PickerTeamLogo team={bottom} sportKey={league.sport} />
-                  {seedBottom != null && (
+                  {!isWorldCup && seedBottom != null && (
                     <span className="text-xs text-text-muted w-5 text-right">{seedBottom}</span>
                   )}
                   <span className="flex-1 text-left truncate">{bottom || 'Waiting...'}</span>
