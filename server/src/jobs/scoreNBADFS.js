@@ -330,11 +330,17 @@ async function cleanupSingleNightNoRosters(date, season, allFinal) {
  * Runs after salaries are generated so we know game times.
  */
 async function tightenJoinLocks() {
-  // Find NBA DFS leagues where joins_locked_at hasn't been tightened to a game time yet
+  // Tighten joins_locked_at for NBA DFS + NBA 3-Point Contest leagues.
+  // Both pull from nba_dfs_salaries which carries game_starts_at for
+  // every scheduled NBA game on the date, so the same first-tipoff
+  // lookup works for either. The Members→Standings tab flip in
+  // LeagueDetailPage is gated on this lock being in the past — without
+  // covering three_point here, multi-day 3-Point contests stay on the
+  // "Members" tab for ~24h after start (end-of-sports-day PT default).
   const { data: leagues } = await supabase
     .from('leagues')
-    .select('id, starts_at, joins_locked_at')
-    .eq('format', 'nba_dfs')
+    .select('id, format, starts_at, joins_locked_at')
+    .in('format', ['nba_dfs', 'three_point'])
     // Only tighten OPEN leagues. Once active, the lock is set in stone.
     // Re-aligning to "next first tipoff" on day 2 would push the lock
     // forward and the open/active flip cron would demote back to 'open'.
@@ -371,7 +377,7 @@ async function tightenJoinLocks() {
         .update({ joins_locked_at: tipOff.toISOString() })
         .eq('id', league.id)
 
-      logger.info({ leagueId: league.id, tipOff: tipOff.toISOString() }, 'Aligned joins_locked_at to first tip-off')
+      logger.info({ leagueId: league.id, format: league.format, tipOff: tipOff.toISOString() }, 'Aligned joins_locked_at to first tip-off')
     }
   }
 }

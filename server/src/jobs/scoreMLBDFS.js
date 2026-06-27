@@ -411,13 +411,18 @@ export async function scoreRosters(date, season, allFinal = false) {
 }
 
 /**
- * Tighten joins_locked_at for MLB DFS leagues to the first pitch of their start date.
+ * Tighten joins_locked_at for MLB DFS + Strikeouts leagues to the first
+ * pitch of their start date. Strikeouts shares MLB's salary table so the
+ * same first-pitch lookup works for it. The Members→Standings tab flip
+ * is gated on this lock being in the past, so without this strikeouts
+ * leagues stay on "Members" for ~24h after start (end-of-sports-day PT
+ * default from create-league).
  */
 async function tightenMLBJoinLocks() {
   const { data: leagues } = await supabase
     .from('leagues')
-    .select('id, starts_at, joins_locked_at')
-    .eq('format', 'mlb_dfs')
+    .select('id, format, starts_at, joins_locked_at')
+    .in('format', ['mlb_dfs', 'strikeouts'])
     .in('status', ['open', 'active'])
 
   if (!leagues?.length) return
@@ -445,7 +450,7 @@ async function tightenMLBJoinLocks() {
         .update({ joins_locked_at: firstPitch.toISOString() })
         .eq('id', league.id)
 
-      logger.info({ leagueId: league.id, firstPitch: firstPitch.toISOString() }, 'Tightened MLB DFS joins_locked_at to first pitch')
+      logger.info({ leagueId: league.id, format: league.format, firstPitch: firstPitch.toISOString() }, 'Tightened MLB join lock to first pitch')
     }
   }
 }
