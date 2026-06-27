@@ -84,6 +84,7 @@ export default function BracketPicker({ league, tournament, matchups, existingPi
     if (s === 'basketball_ncaab' || s === 'basketball_wncaab') return 'cut the nets down'
     if (s === 'baseball_mlb') return 'win the World Series'
     if (s === 'icehockey_nhl') return 'hoist the Cup'
+    if (s === 'soccer_world_cup') return 'win the World Cup'
     return 'win it all'
   })()
 

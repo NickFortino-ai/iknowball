@@ -53,12 +53,19 @@ function TeamRow({ team, seed, sportKey, size, className, cityClass, seriesRecor
   const seedEl = seed != null && (
     <span className={`text-text-muted ${size === 'xl' ? 'w-5' : 'w-4'} ${mirrored ? 'text-left' : 'text-right'} shrink-0`}>{seed}</span>
   )
+  // Long names (>13 chars) get a smaller font so they fit on standard
+  // bracket cards without truncating — covers "Bosnia and Herzegovina",
+  // "Trinidad and Tobago", "United Arab Emirates", etc.
+  const isLongName = (name?.length || 0) > 13
+  const nameSize = size === 'xl'
+    ? (isLongName ? 'text-sm' : 'text-base')
+    : (isLongName ? 'text-[11px]' : 'text-sm')
   const nameEl = team ? (
     <div className={`flex flex-col min-w-0 flex-1 leading-tight ${mirrored ? 'items-end' : ''}`}>
       {city && (
         <span className={`truncate ${size === 'xl' ? 'text-xs' : 'text-[11px]'} ${cityClass || 'text-text-muted'}`}>{city}</span>
       )}
-      <span className={`truncate font-semibold ${size === 'xl' ? 'text-base' : 'text-sm'}`}>{name}</span>
+      <span className={`truncate font-semibold ${nameSize}`}>{name}</span>
     </div>
   ) : (
     <span className={`truncate flex-1 ${mirrored ? 'text-right' : ''}`}>TBD</span>
