@@ -1007,7 +1007,9 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                         {/* Top team slot */}
                         <div>
                           <div className="flex items-center gap-1 mb-1">
-                            <span className="text-[10px] text-text-muted">#{m.seed_top} seed</span>
+                            {m.seed_top != null && (
+                              <span className="text-[10px] text-text-muted">#{m.seed_top} seed</span>
+                            )}
                             {teamCount === 68 && !m.is_bye && (
                               <button
                                 type="button"
@@ -1050,7 +1052,9 @@ export default function BracketTemplateBuilder({ templateId, onClose }) {
                         {/* Bottom team slot */}
                         <div>
                           <div className="flex items-center gap-1 mb-1">
-                            <span className="text-[10px] text-text-muted">#{m.seed_bottom} seed</span>
+                            {m.seed_bottom != null && (
+                              <span className="text-[10px] text-text-muted">#{m.seed_bottom} seed</span>
+                            )}
                             {teamCount === 68 && !m.is_bye && (
                               <button
                                 type="button"
