@@ -47,6 +47,7 @@ import newsRouter from './routes/news.js'
 import publicLandingRouter from './routes/publicLanding.js'
 import surveysRouter from './routes/surveys.js'
 import appConfigRouter from './routes/appConfig.js'
+import appSettingsRouter from './routes/appSettings.js'
 
 const app = express()
 
@@ -68,6 +69,7 @@ app.use('/api/leagues', leaguesRouter)
 app.use('/api/mock-draft', mockDraftRouter)
 app.use('/api/draft-prep', draftPrepRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/app-settings', appSettingsRouter)
 app.use('/api/props', propsRouter)
 app.use('/api/payments', paymentsRouter)
 app.use('/api/connections', connectionsRouter)

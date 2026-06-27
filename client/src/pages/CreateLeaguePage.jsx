@@ -628,7 +628,7 @@ export default function CreateLeaguePage() {
   // effect without a client release.
   const { data: disabledCardsSetting } = useQuery({
     queryKey: ['app-settings', 'disabled_format_cards'],
-    queryFn: () => api.get('/admin/app-settings/disabled_format_cards'),
+    queryFn: () => api.get('/app-settings/disabled_format_cards'),
     staleTime: 60_000,
   })
   const disabledCardKeys = useMemo(() => {
