@@ -396,7 +396,7 @@ export default function PaymentPage() {
         <p className="text-[10px] text-white/65 text-center mb-2 leading-relaxed">
           {isNative
             ? 'Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage in Settings > Apple ID > Subscriptions.'
-            : `Your subscription will auto-renew at ${plan === 'yearly' ? '$10.00/year' : '$1.00/month'} until cancelled. You can manage or cancel anytime from your account settings.`
+            : 'Your subscription will auto-renew until cancelled. You can manage or cancel anytime from your account settings.'
           }
         </p>
 
