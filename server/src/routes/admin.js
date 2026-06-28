@@ -486,10 +486,18 @@ router.get('/users/lookup', async (req, res) => {
 
   const { data: user, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, avatar_emoji, email, total_points, tier, is_paid, is_lifetime, subscription_status, subscription_expires_at, subscription_plan, payment_source, stripe_customer_id, created_at')
+    .select('id, username, display_name, avatar_url, avatar_emoji, total_points, tier, is_paid, is_lifetime, subscription_status, subscription_expires_at, subscription_plan, payment_source, stripe_customer_id, created_at')
     .eq('id', user_id)
     .single()
   if (error) throw error
+
+  // Email lives on auth.users, not public.users — fetch it separately so
+  // the admin panel can display it (used when texting/emailing a user
+  // a temporary password). Non-fatal if it fails.
+  try {
+    const { data: authUser } = await supabase.auth.admin.getUserById(user_id)
+    if (authUser?.user?.email) user.email = authUser.user.email
+  } catch { /* swallow — email is best-effort */ }
 
   // Recent picks
   const { data: picks } = await supabase
