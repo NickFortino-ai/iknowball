@@ -341,6 +341,12 @@ export function useAdminSubscriptionOverride() {
   })
 }
 
+export function useAdminResetPassword() {
+  return useMutation({
+    mutationFn: ({ user_id, password }) => api.post(`/admin/users/${user_id}/set-password`, { password }),
+  })
+}
+
 // Game Override
 export function useAdminGameSearch(query) {
   return useQuery({

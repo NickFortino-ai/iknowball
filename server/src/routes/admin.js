@@ -534,6 +534,26 @@ router.post('/users/subscription', async (req, res) => {
 })
 
 // =====================================================================
+// Password Reset (admin-set new password for a user)
+// Used when a user can't receive recovery emails — admin types a
+// temporary password here and texts it to them. requireFullAdmin
+// because this can take over any account.
+// =====================================================================
+router.post('/users/:id/set-password', requireFullAdmin, async (req, res) => {
+  const { password } = req.body
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: 'password must be a string of at least 8 characters' })
+  }
+  const { error } = await supabase.auth.admin.updateUserById(req.params.id, { password })
+  if (error) {
+    logger.error({ err: error, user_id: req.params.id, admin: req.user.id }, 'Admin password reset failed')
+    return res.status(500).json({ error: error.message })
+  }
+  logger.info({ user_id: req.params.id, admin: req.user.id }, 'Admin set new password for user')
+  res.json({ success: true })
+})
+
+// =====================================================================
 // Game Status Override
 // =====================================================================
 router.get('/games/search', async (req, res) => {

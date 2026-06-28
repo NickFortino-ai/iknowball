@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchUsers } from '../../hooks/useInvitations'
-import { useAdminUserLookup, useAdminSubscriptionOverride, useAdminGameSearch, useAdminGameOverride } from '../../hooks/useAdmin'
+import { useAdminUserLookup, useAdminSubscriptionOverride, useAdminGameSearch, useAdminGameOverride, useAdminResetPassword } from '../../hooks/useAdmin'
 import { api } from '../../lib/api'
 import { CATEGORIES, CATEGORY_CARDS, FORMAT_BY_VALUE } from '../../pages/CreateLeaguePage'
 import Avatar from '../ui/Avatar'
@@ -146,9 +146,37 @@ function UserLookup() {
   const { data: searchResults } = useSearchUsers(search)
   const { data: userData, isLoading } = useAdminUserLookup(selectedUserId)
   const subOverride = useAdminSubscriptionOverride()
+  const resetPassword = useAdminResetPassword()
 
   const [editingSub, setEditingSub] = useState(false)
   const [subForm, setSubForm] = useState({})
+  const [newPassword, setNewPassword] = useState('')
+
+  // 12-char alphanumeric without ambiguous chars (no 0/O/1/l/I). Quick
+  // "tap to fill" so admin doesn't have to invent one when texting a
+  // user a temporary password.
+  function generatePassword() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+    let out = ''
+    for (let i = 0; i < 12; i++) out += chars.charAt(Math.floor(Math.random() * chars.length))
+    setNewPassword(out)
+  }
+
+  async function handleResetPassword() {
+    if (!newPassword || newPassword.length < 8) {
+      toast('Password must be at least 8 characters', 'error')
+      return
+    }
+    if (!confirm(`Set new password for @${user?.username}? You'll need to text this password to them.`)) return
+    try {
+      await resetPassword.mutateAsync({ user_id: selectedUserId, password: newPassword })
+      toast('Password updated', 'success')
+      // Keep the password in the field so admin can copy/text it.
+      // They'll close the panel or pick a different user to clear it.
+    } catch (err) {
+      toast(err.message || 'Failed to update password', 'error')
+    }
+  }
 
   function startEditSub() {
     const u = userData?.user
@@ -197,7 +225,7 @@ function UserLookup() {
             {searchResults.map((u) => (
               <button
                 key={u.id}
-                onClick={() => { setSelectedUserId(u.id); setSearch(''); setEditingSub(false) }}
+                onClick={() => { setSelectedUserId(u.id); setSearch(''); setEditingSub(false); setNewPassword('') }}
                 className="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-bg-card-hover transition-colors"
               >
                 <Avatar user={u} size="md" />
@@ -303,6 +331,37 @@ function UserLookup() {
                 <span>{user.is_lifetime ? 'Yes' : 'No'}</span>
               </div>
             )}
+          </div>
+
+          {/* Password Reset — for users who can't receive recovery emails. */}
+          <div className="bg-bg-card rounded-xl border border-border p-4">
+            <h3 className="font-semibold text-sm mb-3">Set New Password</h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Type or generate (min 8 chars)"
+                className="flex-1 bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+              />
+              <button
+                onClick={generatePassword}
+                type="button"
+                className="px-3 py-2 rounded-lg text-xs font-semibold bg-bg-primary border border-border text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Generate
+              </button>
+              <button
+                onClick={handleResetPassword}
+                disabled={resetPassword.isPending || !newPassword}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                {resetPassword.isPending ? 'Setting...' : 'Set Password'}
+              </button>
+            </div>
+            <div className="text-[10px] text-text-muted mt-2">
+              Bypasses email — text the new password to the user directly. Field stays filled after save so you can copy it.
+            </div>
           </div>
 
           {/* Recent Picks */}
