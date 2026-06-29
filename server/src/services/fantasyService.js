@@ -3747,6 +3747,30 @@ export async function getPlayerDetail(leagueId, playerId) {
     })
   }
 
+  // Forward-looking projections for upcoming weeks. The modal renders
+  // these in italic gray under the pts column so users see expected
+  // output for the rest of the season at a glance. Uses the league's
+  // scoring_format to pick the right pre-baked Sleeper column. Custom
+  // rule tweaks (IDP, kicker miss penalties, bonuses) are NOT reflected
+  // here yet — that needs rule-aware projections from raw stat fields.
+  if (upcomingWeeks.length) {
+    const projCol = settings?.scoring_format === 'ppr' ? 'pts_ppr'
+      : settings?.scoring_format === 'standard' ? 'pts_std'
+      : 'pts_half_ppr'
+    const { data: projRows } = await supabase
+      .from('nfl_player_projections')
+      .select(`week, ${projCol}`)
+      .eq('player_id', playerId)
+      .eq('season', season)
+      .in('week', upcomingWeeks.map((w) => w.week))
+    const projByWeek = {}
+    for (const r of projRows || []) projByWeek[r.week] = r[projCol]
+    for (const w of upcomingWeeks) {
+      const p = projByWeek[w.week]
+      if (p != null) w.projected_pts = Math.round(p * 10) / 10
+    }
+  }
+
   // Bye week — emit a dedicated row so the full season's calendar shows
   // continuously in the modal table. nfl_players.bye_week is the week
   // number for the team's bye. We only emit it if it's not already a

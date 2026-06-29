@@ -211,17 +211,26 @@ function PreviousGamesTable({ position, weeks, currentWeek }) {
                 <td className={`pl-1 pr-2 py-2 whitespace-nowrap ${oppColor}`}>{oppLabel}</td>
                 {columns.map((c) => {
                   const val = w[c.key]
+                  // For unplayed weeks: stat columns stay blank, but the
+                  // pts column shows the forward-looking projection
+                  // (italic + gray) so users see expected output for
+                  // upcoming games at a glance.
+                  const isPtsCol = c.key === 'pts'
+                  const projForCell = !isPlayed && isPtsCol && w.projected_pts != null
+                    ? Number(w.projected_pts).toFixed(1)
+                    : null
                   const display = !isPlayed
-                    ? '—'
+                    ? (projForCell ?? '—')
                     : val == null
                       ? '—'
-                      : c.key === 'pts' ? Number(val).toFixed(1) : val
+                      : isPtsCol ? Number(val).toFixed(1) : val
                   return (
                     <td
                       key={c.key}
                       className={`px-2 py-2 text-right whitespace-nowrap ${
-                        !isPlayed ? 'text-text-muted/60'
-                          : c.key === 'pts' ? 'text-white font-semibold'
+                        !isPlayed
+                          ? (projForCell ? 'italic text-text-secondary' : 'text-text-muted/60')
+                          : isPtsCol ? 'text-white font-semibold'
                           : 'text-text-primary'
                       }`}
                     >
