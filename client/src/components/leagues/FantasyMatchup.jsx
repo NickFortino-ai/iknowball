@@ -188,9 +188,13 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
           // For my matchup: orange = my probability. For others: orange = home.
           const myIsHome = matchup.home_user?.id === myId
           const orangePct = isMyMatchup ? (myIsHome ? winProb : 100 - winProb) : winProb
+          // Orange grows from the viewer's side so the visual matches who's
+          // ahead. When I'm the away user (right column), the bar starts
+          // empty on the left and fills toward the right.
+          const orangeOnRight = isMyMatchup && !myIsHome
           return (
-            <div className="mt-2 h-1.5 rounded-full bg-text-muted/30 overflow-hidden flex">
-              <div className="bg-accent/60 rounded-l-full transition-all" style={{ width: `${orangePct}%` }} />
+            <div className={`mt-2 h-1.5 rounded-full bg-text-muted/30 overflow-hidden flex ${orangeOnRight ? 'justify-end' : ''}`}>
+              <div className={`bg-accent/60 transition-all ${orangeOnRight ? 'rounded-r-full' : 'rounded-l-full'}`} style={{ width: `${orangePct}%` }} />
             </div>
           )
         })() : null}
