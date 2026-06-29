@@ -813,6 +813,37 @@ export async function getMyLeagues(userId, userTz) {
     }
   }
 
+  // For LOCKED bracket leagues, swap out total-joined-members for actual
+  // submitted-bracket count on the card. A bracket_entries row only exists
+  // after a user submits picks — joiners who never picked won't have one.
+  // Pre-lock we keep showing the joined count so the card grows as people
+  // join; once picks close, the "real" count is the entries that locked in.
+  const bracketLeagueIds = (leagues || [])
+    .filter((l) => l.format === 'bracket')
+    .map((l) => l.id)
+  const bracketSubmittedCount = {}
+  if (bracketLeagueIds.length) {
+    const { data: tournaments } = await supabase
+      .from('bracket_tournaments')
+      .select('id, league_id, locks_at')
+      .in('league_id', bracketLeagueIds)
+    const lockedTournamentIds = (tournaments || [])
+      .filter((t) => t.locks_at && new Date(t.locks_at) <= new Date())
+      .map((t) => t.id)
+    const tournamentLeagueMap = {}
+    for (const t of tournaments || []) tournamentLeagueMap[t.id] = t.league_id
+    if (lockedTournamentIds.length) {
+      const { data: entryRows } = await supabase
+        .from('bracket_entries')
+        .select('tournament_id')
+        .in('tournament_id', lockedTournamentIds)
+      for (const row of entryRows || []) {
+        const leagueId = tournamentLeagueMap[row.tournament_id]
+        if (leagueId) bracketSubmittedCount[leagueId] = (bracketSubmittedCount[leagueId] || 0) + 1
+      }
+    }
+  }
+
   const result = leagues.map((league) => ({
     ...league,
     member_count: countMap[league.id] || 0,
@@ -822,6 +853,7 @@ export async function getMyLeagues(userId, userTz) {
     draft_status: fantasyMeta[league.id]?.draft_status || null,
     survivor_alive: survivorAlive[league.id] ?? null,
     survivor_eliminated: league.format === 'survivor' && league.status === 'active' && aliveMap[league.id] === false ? true : undefined,
+    bracket_submitted_count: bracketSubmittedCount[league.id] ?? null,
   }))
 
   // Compute per-league readiness (green/yellow/red corner clip)

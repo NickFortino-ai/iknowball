@@ -132,7 +132,11 @@ export default function LeagueCard({ league, noLink }) {
           {!['nba_dfs', 'wnba_dfs', 'mlb_dfs'].includes(league.format) && (
             <span>{SPORT_LABELS[league.sport]}</span>
           )}
-          <span>{league.member_count} {league.member_count === 1 ? 'member' : 'members'}</span>
+          {league.format === 'bracket' && league.bracket_submitted_count != null ? (
+            <span>{league.bracket_submitted_count} {league.bracket_submitted_count === 1 ? 'entry' : 'entries'}</span>
+          ) : (
+            <span>{league.member_count} {league.member_count === 1 ? 'member' : 'members'}</span>
+          )}
           {league.my_role === 'commissioner' && (
             <span className="font-semibold text-tier-hof">Commish</span>
           )}
