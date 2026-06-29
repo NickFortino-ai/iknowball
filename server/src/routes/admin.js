@@ -1097,16 +1097,34 @@ router.post('/fantasy/enrich-espn-ids', async (req, res) => {
 // into nfl_player_projections. Used as the season-level signal for DFS
 // pricing, particularly for Week 1 cold start.
 router.post('/fantasy/sync-weekly-projections', async (req, res) => {
-  const week = parseInt(req.body.week, 10)
   const season = parseInt(req.body.season, 10)
-  if (!Number.isInteger(week) || !Number.isInteger(season)) {
-    return res.status(400).json({ error: 'week and season required (integers)' })
+  if (!Number.isInteger(season)) {
+    return res.status(400).json({ error: 'season required (integer)' })
   }
+  // If a specific week is provided, sync that one. Otherwise loop 1-18
+  // (the nightly cron's full pass) so admin can backfill all weekly
+  // projections with one click — useful after a schema change adds new
+  // columns (e.g. the idp_* fields in migration 232).
+  const week = req.body.week != null ? parseInt(req.body.week, 10) : null
   try {
-    const result = await syncWeeklyProjections(season, week)
-    res.json(result)
+    if (week != null && Number.isInteger(week)) {
+      const result = await syncWeeklyProjections(season, week)
+      return res.json(result)
+    }
+    const perWeek = []
+    for (let w = 1; w <= 18; w++) {
+      try {
+        const r = await syncWeeklyProjections(season, w)
+        perWeek.push({ week: w, ...r })
+      } catch (err) {
+        logger.error({ err, season, week: w }, 'Per-week projections sync failed')
+        perWeek.push({ week: w, error: err.message })
+      }
+    }
+    const totalUpdated = perWeek.reduce((sum, r) => sum + (r.updated || 0), 0)
+    res.json({ season, weeks_attempted: 18, total_updated: totalUpdated, per_week: perWeek })
   } catch (err) {
-    logger.error({ err, week, season }, 'Weekly projections sync failed')
+    logger.error({ err, season }, 'Weekly projections sync failed')
     res.status(500).json({ error: err.message })
   }
 })
