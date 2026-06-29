@@ -701,6 +701,19 @@ export async function syncWeeklyProjections(season, week) {
       pts_ppr: proj.stats.pts_ppr ?? null,
       pts_half_ppr: proj.stats.pts_half_ppr ?? null,
       pts_std: proj.stats.pts_std ?? null,
+      // IDP raw stat projections — Sleeper exposes these on every
+      // projection payload, including for offense players where they
+      // sit at 0. Stored as 0 fallback to keep downstream
+      // applyScoringRules happy without null guards.
+      idp_sack: proj.stats.idp_sack ?? 0,
+      idp_int: proj.stats.idp_int ?? 0,
+      idp_tkl_solo: proj.stats.idp_tkl_solo ?? 0,
+      idp_tkl_ast: proj.stats.idp_tkl_ast ?? 0,
+      idp_tkl_loss: proj.stats.idp_tkl_loss ?? 0,
+      idp_pass_def: proj.stats.idp_pass_def ?? 0,
+      idp_qb_hit: proj.stats.idp_qb_hit ?? 0,
+      idp_ff: proj.stats.idp_ff ?? 0,
+      idp_fum_rec: proj.stats.idp_fum_rec ?? 0,
       updated_at: new Date().toISOString(),
     }))
 

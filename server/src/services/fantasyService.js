@@ -222,6 +222,40 @@ export function applyScoringRules(stat, rules) {
   return Math.round(pts * 100) / 100
 }
 
+// IDP positions per Sleeper player.position values. Used by the
+// projection compute path to decide whether to derive points from
+// raw IDP stat projections instead of reading the offense-only
+// pre-baked total (which scores defenders as ~0).
+const IDP_POSITIONS = new Set([
+  'DL', 'DE', 'DT', 'NT',
+  'LB', 'ILB', 'OLB', 'MLB',
+  'DB', 'CB', 'S', 'FS', 'SS',
+])
+
+/**
+ * Returns projected points for a player for one week, choosing between:
+ *  - applyScoringRules over raw IDP stat fields (for defenders)
+ *  - pre-baked pts_* total (for everyone else)
+ * Falls back to the pre-baked total if no projection row exists.
+ */
+export function computeIdpAwareProjection(projRow, position, projCol, rules) {
+  if (!projRow) return null
+  if (IDP_POSITIONS.has(position)) {
+    return applyScoringRules({
+      idp_sack: projRow.idp_sack || 0,
+      idp_int: projRow.idp_int || 0,
+      idp_tkl_solo: projRow.idp_tkl_solo || 0,
+      idp_tkl_ast: projRow.idp_tkl_ast || 0,
+      idp_tkl_loss: projRow.idp_tkl_loss || 0,
+      idp_pass_def: projRow.idp_pass_def || 0,
+      idp_qb_hit: projRow.idp_qb_hit || 0,
+      idp_ff: projRow.idp_ff || 0,
+      idp_fum_rec: projRow.idp_fum_rec || 0,
+    }, rules)
+  }
+  return projRow[projCol]
+}
+
 /**
  * Create fantasy league settings after the league is created.
  */
@@ -2410,24 +2444,24 @@ export async function getRoster(leagueId, userId) {
       }
 
       // Weekly Sleeper projection for this (season, week) — drives the
-      // Set Lineup sit/start view. Zero for bye-week players.
+      // Set Lineup sit/start view. Zero for bye-week players. IDP
+      // defenders get points computed via applyScoringRules over raw
+      // idp_* stat projections so they don't show as 0 in IDP leagues.
       const projCol = settings?.scoring_format === 'ppr' ? 'pts_ppr'
         : settings?.scoring_format === 'standard' ? 'pts_std'
         : 'pts_half_ppr'
       const { data: projRows } = await supabase
         .from('nfl_player_projections')
-        .select(`player_id, ${projCol}`)
+        .select(`player_id, ${projCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
         .eq('season', season)
         .eq('week', week)
         .in('player_id', playerIds)
-      const projByPlayer = {}
-      for (const p of projRows || []) {
-        if (p[projCol] != null) projByPlayer[p.player_id] = Number(p[projCol])
-      }
+      const projRowByPlayer = {}
+      for (const p of projRows || []) projRowByPlayer[p.player_id] = p
       for (const r of rows) {
         const onBye = r.nfl_players?.bye_week === week
-        const raw = projByPlayer[r.player_id]
-        r.weekly_projection = onBye ? 0 : (raw != null ? Math.round(raw * 10) / 10 : null)
+        const computed = computeIdpAwareProjection(projRowByPlayer[r.player_id], r.nfl_players?.position, projCol, rules)
+        r.weekly_projection = onBye ? 0 : (computed != null ? Math.round(computed * 10) / 10 : null)
       }
     }
   } catch (err) {
@@ -2721,22 +2755,25 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   // "what's this player going to do for me this week?" alongside ADP +
   // season totals. Empty map when we're out-of-season or Sleeper hasn't
   // published the week yet; client should render null as a dash.
-  const weeklyProjMap = {}
+  // Store the raw projection row keyed by player_id so the projection
+  // compute (per-player below) can switch between pre-baked pts_* for
+  // offense and applyScoringRules for IDP defenders.
+  const weeklyProjRowMap = {}
+  let weeklyProjCol = 'pts_half_ppr'
+  const weeklyRules = settings?.scoring_rules || buildScoringRulesFromPreset(scoringFormat)
   try {
     const { getCurrentNflWeek } = await import('./tdPassService.js')
     const { season: curSeason, week: curWeek } = await getCurrentNflWeek()
     if (curWeek && curSeason) {
-      const projCol = scoringFormat === 'ppr' ? 'pts_ppr'
+      weeklyProjCol = scoringFormat === 'ppr' ? 'pts_ppr'
         : scoringFormat === 'standard' ? 'pts_std'
         : 'pts_half_ppr'
       const { data: projRows } = await supabase
         .from('nfl_player_projections')
-        .select(`player_id, ${projCol}`)
+        .select(`player_id, ${weeklyProjCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
         .eq('season', curSeason)
         .eq('week', curWeek)
-      for (const p of projRows || []) {
-        if (p[projCol] != null) weeklyProjMap[p.player_id] = Number(p[projCol])
-      }
+      for (const p of projRows || []) weeklyProjRowMap[p.player_id] = p
     }
   } catch (err) {
     logger.warn({ err, leagueId }, 'Failed to load weekly projections for available players')
@@ -2831,7 +2868,10 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       adp_rank: p.overall_rank || null,
       pos_rank: posRanks[p.id] || null,
       season_points: Math.round((s.pts || 0) * 10) / 10,
-      weekly_projection: weeklyProjMap[p.id] != null ? Math.round(weeklyProjMap[p.id] * 10) / 10 : null,
+      weekly_projection: (() => {
+        const computed = computeIdpAwareProjection(weeklyProjRowMap[p.id], p.position, weeklyProjCol, weeklyRules)
+        return computed != null ? Math.round(computed * 10) / 10 : null
+      })(),
       stats: {
         pts: Math.round((s.pts || 0) * 10) / 10,
         pass_yd: Math.round(s.pass_yd || 0),
@@ -3748,26 +3788,25 @@ export async function getPlayerDetail(leagueId, playerId) {
   }
 
   // Forward-looking projections for upcoming weeks. The modal renders
-  // these in italic gray under the pts column so users see expected
-  // output for the rest of the season at a glance. Uses the league's
-  // scoring_format to pick the right pre-baked Sleeper column. Custom
-  // rule tweaks (IDP, kicker miss penalties, bonuses) are NOT reflected
-  // here yet — that needs rule-aware projections from raw stat fields.
+  // these in italic gray under the pts column. For IDP defenders we
+  // compute via applyScoringRules over raw idp_* stat projections so
+  // the numbers aren't ~0 in IDP leagues. Custom kicker / bonus rules
+  // for offense are NOT projection-aware yet.
   if (upcomingWeeks.length) {
     const projCol = settings?.scoring_format === 'ppr' ? 'pts_ppr'
       : settings?.scoring_format === 'standard' ? 'pts_std'
       : 'pts_half_ppr'
     const { data: projRows } = await supabase
       .from('nfl_player_projections')
-      .select(`week, ${projCol}`)
+      .select(`week, ${projCol}, idp_sack, idp_int, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_pass_def, idp_qb_hit, idp_ff, idp_fum_rec`)
       .eq('player_id', playerId)
       .eq('season', season)
       .in('week', upcomingWeeks.map((w) => w.week))
     const projByWeek = {}
-    for (const r of projRows || []) projByWeek[r.week] = r[projCol]
+    for (const r of projRows || []) projByWeek[r.week] = r
     for (const w of upcomingWeeks) {
-      const p = projByWeek[w.week]
-      if (p != null) w.projected_pts = Math.round(p * 10) / 10
+      const computed = computeIdpAwareProjection(projByWeek[w.week], player.position, projCol, leagueRules)
+      if (computed != null) w.projected_pts = Math.round(computed * 10) / 10
     }
   }
 
