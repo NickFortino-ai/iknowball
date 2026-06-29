@@ -188,18 +188,12 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
           return (
             <div className="text-right shrink-0 mr-1 ml-auto">
               {hasPlayed ? (
-                <>
-                  <div className="text-lg font-display tabular-nums text-white leading-none">{(row.live_points ?? 0).toFixed(1)}</div>
-                  <div className="text-[10px] uppercase text-text-muted">pts</div>
-                </>
+                <div className="text-lg font-display tabular-nums text-white leading-none">{(row.live_points ?? 0).toFixed(1)}</div>
               ) : (
-                <>
-                  <div className="text-lg font-display tabular-nums text-text-muted leading-none">—</div>
-                  <div className="text-[10px] uppercase text-text-muted">pts</div>
-                </>
+                <div className="text-lg font-display tabular-nums text-text-muted leading-none">—</div>
               )}
               {showProj && (
-                <div className="text-[10px] tabular-nums text-text-secondary mt-0.5">
+                <div className="text-xs tabular-nums text-text-secondary mt-1">
                   Proj {row.weekly_projection.toFixed(1)}
                 </div>
               )}
