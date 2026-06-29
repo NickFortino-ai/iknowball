@@ -1396,7 +1396,7 @@ export default function CreateLeaguePage() {
               <div>
                 <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
                 <div className="flex gap-2">
-                  {['weekly', 'daily'].map((value) => {
+                  {['daily', 'weekly'].map((value) => {
                     const isAllowed = allowedFrequencies(sport).includes(value)
                     return (
                       <button
@@ -2399,7 +2399,7 @@ export default function CreateLeaguePage() {
               <div>
                 <label className="block text-xs text-text-muted mb-2">Pick Frequency</label>
                 <div className="flex gap-2">
-                  {['weekly', 'daily'].map((value) => {
+                  {['daily', 'weekly'].map((value) => {
                     const isAllowed = allowedFrequencies(sport).includes(value)
                     return (
                       <button
