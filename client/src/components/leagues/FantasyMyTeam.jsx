@@ -172,31 +172,40 @@ function PlayerRow({ row, onTap, isSelected, dimmed, onMoveToIR, onMoveOutOfIR, 
             </div>
           )
         })()}
-        {row?.nfl_players && (
-          <div className="text-right shrink-0 mr-1 ml-auto">
-            {showSeasonStats && row.weekly_projection != null ? (
-              <>
-                <div className="text-lg font-display tabular-nums text-white leading-none">{row.weekly_projection.toFixed(1)}</div>
-                <div className="text-[10px] uppercase text-text-muted">proj</div>
-                {row.live_points != null && row.live_points !== 0 && (
-                  <div className="text-[10px] tabular-nums text-text-muted mt-0.5">
-                    Pts {row.live_points.toFixed(1)}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="text-lg font-display tabular-nums text-white leading-none">{(row.live_points ?? 0).toFixed(2)}</div>
-                <div className="text-[10px] uppercase text-text-muted">pts</div>
-                {row.weekly_projection != null && (
-                  <div className="text-[10px] tabular-nums text-text-muted mt-0.5">
-                    Proj {row.weekly_projection.toFixed(1)}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+        {row?.nfl_players && (() => {
+          // Two-line layout: actual points (or — when player hasn't
+          // played) on top, projection below in muted small text.
+          // Mirrors the Matchup view's mental model so the user's eye
+          // learns one pattern instead of two — and a Thursday-final
+          // score never reads as a Monday projection at a glance.
+          // hasPlayed = the player has a stats row for this week, even
+          // if their actual score is 0 (real DEF/K zeros stay distinct
+          // from "game hasn't kicked off yet"). For past-week views the
+          // server overloads season_stats with that-week's data, so we
+          // check both sources.
+          const hasPlayed = showSeasonStats ? row.week_stats != null : row.season_stats != null
+          const showProj = row.weekly_projection != null
+          return (
+            <div className="text-right shrink-0 mr-1 ml-auto">
+              {hasPlayed ? (
+                <>
+                  <div className="text-lg font-display tabular-nums text-white leading-none">{(row.live_points ?? 0).toFixed(1)}</div>
+                  <div className="text-[10px] uppercase text-text-muted">pts</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-lg font-display tabular-nums text-text-muted leading-none">—</div>
+                  <div className="text-[10px] uppercase text-text-muted">pts</div>
+                </>
+              )}
+              {showProj && (
+                <div className="text-[10px] tabular-nums text-text-secondary mt-0.5">
+                  Proj {row.weekly_projection.toFixed(1)}
+                </div>
+              )}
+            </div>
+          )
+        })()}
         {editMode && (canIR && !isInIR && onMoveToIR) && (
           <span
             role="button"
