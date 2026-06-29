@@ -123,6 +123,37 @@ export default function FantasyPlayerBrowser({ league }) {
   const pendingClaims = (myClaims || []).filter((c) => c.status === 'pending')
   const claimedPlayerIds = new Set(pendingClaims.map((c) => c.add_player_id))
 
+  // Roster ordered the same way the My Team view orders it: starters in
+  // lineup-slot order (QB → RB1, RB2 → WR1, WR2 → TE → FLEX → SFLX → K →
+  // DEF), then bench, then IR. Drives the "Pick a player to drop" list
+  // below so it matches the user's mental layout of their roster.
+  const sortedRoster = useMemo(() => {
+    if (!roster?.length) return []
+    const slots = settings?.roster_slots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
+    const starterKeys = []
+    if ((slots.qb || 0) >= 1) starterKeys.push('qb')
+    for (let i = 1; i <= (slots.rb || 0); i++) starterKeys.push(`rb${i}`)
+    for (let i = 1; i <= (slots.wr || 0); i++) starterKeys.push(`wr${i}`)
+    if ((slots.te || 0) >= 1) starterKeys.push('te')
+    if ((slots.flex || 0) >= 1) starterKeys.push('flex')
+    if ((slots.superflex || 0) >= 1) starterKeys.push('superflex')
+    if ((slots.k || 0) >= 1) starterKeys.push('k')
+    if ((slots.def || 0) >= 1) starterKeys.push('def')
+    for (let i = 1; i <= (slots.dl || 0); i++) starterKeys.push(`dl${i}`)
+    for (let i = 1; i <= (slots.lb || 0); i++) starterKeys.push(`lb${i}`)
+    for (let i = 1; i <= (slots.db || 0); i++) starterKeys.push(`db${i}`)
+    for (let i = 1; i <= (slots.s || 0); i++) starterKeys.push(`s${i}`)
+    const orderIndex = (slot) => {
+      const s = (slot || '').toLowerCase()
+      const idx = starterKeys.indexOf(s)
+      if (idx !== -1) return idx
+      if (s === 'bench' || s.startsWith('bench')) return 1000
+      if (s === 'ir' || s.startsWith('ir')) return 2000
+      return 999
+    }
+    return [...roster].sort((a, b) => orderIndex(a.slot) - orderIndex(b.slot))
+  }, [roster, settings?.roster_slots])
+
   // Total roster capacity from settings (starters + bench, IR slots are excluded
   // because IR'd players don't count toward the active roster)
   const rosterCap = (() => {
@@ -429,7 +460,7 @@ export default function FantasyPlayerBrowser({ league }) {
               <>
                 <p className="text-sm text-text-secondary mb-3">Roster is full. Pick a player to drop:</p>
                 <div className="space-y-1 mb-4 max-h-60 overflow-y-auto">
-                  {(roster || []).map((r) => (
+                  {sortedRoster.map((r) => (
                     <button
                       key={r.id}
                       onClick={() => setDropPlayerId(r.player_id)}
