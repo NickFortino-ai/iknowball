@@ -694,7 +694,11 @@ export default function CreateLeaguePage() {
   const [lockOddsAt, setLockOddsAt] = useState('game_start')
   const [gamesPerWeek, setGamesPerWeek] = useState('')
   const [lives, setLives] = useState(1)
-  const [pickFrequency, setPickFrequency] = useState('weekly')
+  // Default to daily — fits multi-sport ('all') survivor leagues + NBA /
+  // MLB / NHL where games happen every day. When commissioner picks a
+  // football sport, the form auto-snaps this to 'weekly' (the only
+  // allowed frequency for football) via the sport-change handler below.
+  const [pickFrequency, setPickFrequency] = useState('daily')
   const [allEliminatedSurvive, setAllEliminatedSurvive] = useState(true)
   const [survivorMode, setSurvivorMode] = useState('standard')
   const [assignmentMethod, setAssignmentMethod] = useState('self_select')
