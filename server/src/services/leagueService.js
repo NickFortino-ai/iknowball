@@ -539,20 +539,29 @@ export async function generateLeagueWeeks(league) {
       current.setUTCDate(current.getUTCDate() + 1)
     }
   } else {
-    // Weekly mode: Mon 6 AM ET → next Mon 5:59 AM ET. Anchor Week 1 to
-    // the Monday of the ET week containing starts_at — same reason as
-    // daily mode: a starts_at like 2026-05-18T00:00Z (= Sun May 17 8 PM
-    // ET) should belong to the ET week ending on that Sunday, not get
-    // rolled forward to "next Monday UTC".
+    // Weekly mode: anchor day depends on sport.
+    //   Football (NFL/NCAAF/UFL) → Tue-Mon, aligned with the NFL's own
+    //     week (the week ends with Monday Night Football, then the next
+    //     week starts Tuesday). Without this, MNF games land in the
+    //     wrong week and survivor/pickem settle picks against the wrong
+    //     period.
+    //   Everything else → Mon-Sun calendar week.
+    // Periods always run anchorDay 6 AM ET → next anchorDay 5:59 AM ET.
+    // Anchor Week 1 to the anchorDay of the ET week containing
+    // starts_at, not "next anchorDay UTC", so a starts_at like Sun May
+    // 17 8 PM ET stays in the ET week ending on that Sunday.
+    const isFootball = league.sport === 'americanfootball_nfl'
+      || league.sport === 'americanfootball_ncaaf'
+      || league.sport === 'americanfootball_ufl'
+    const anchorDay = isFootball ? 2 : 1 // 0=Sun, 1=Mon, 2=Tue
     const startEtDate = new Date(league.starts_at).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    // Find the Monday of the ET week containing startEtDate.
     const [y, m, d] = startEtDate.split('-').map(Number)
     const probe = new Date(Date.UTC(y, m - 1, d, 12)) // noon UTC to dodge any DST boundary weirdness
     const probeDay = probe.getUTCDay() // 0=Sun..6=Sat
-    const daysBackToMon = (probeDay + 6) % 7 // 0 for Mon, 1 for Tue, ..., 6 for Sun
-    probe.setUTCDate(probe.getUTCDate() - daysBackToMon)
-    const mondayEtDate = probe.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    current.setTime(new Date(`${mondayEtDate}T10:00:00.000Z`).getTime())
+    const daysBackToAnchor = (probeDay - anchorDay + 7) % 7
+    probe.setUTCDate(probe.getUTCDate() - daysBackToAnchor)
+    const anchorEtDate = probe.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    current.setTime(new Date(`${anchorEtDate}T10:00:00.000Z`).getTime())
 
     while (current < end) {
       const weekEnd = new Date(current)
