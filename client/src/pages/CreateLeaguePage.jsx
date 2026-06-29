@@ -789,6 +789,19 @@ export default function CreateLeaguePage() {
       if (allowed.includes('daily')) setPickFrequency('daily')
     }
   }, [format, sport])
+
+  // Snap pickFrequency to whatever the current sport allows. The sport
+  // <button> handlers do this inline, but card presets (e.g. clicking
+  // 'NCAAF Survivor') just call setSport — without this effect, the
+  // form would still show 'daily' selected even though football sports
+  // only support 'weekly'.
+  useEffect(() => {
+    if (!sport) return
+    const allowed = allowedFrequencies(sport)
+    if (allowed.length && !allowed.includes(pickFrequency)) {
+      setPickFrequency(allowed[0])
+    }
+  }, [sport])
   const [scoringFormat, setScoringFormat] = useState('ppr')
   const [scoringRules, setScoringRules] = useState(null) // null = use preset
   const [numTeams, setNumTeams] = useState(10)
