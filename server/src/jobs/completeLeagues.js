@@ -819,7 +819,7 @@ export async function completeLeagues() {
   // (Members tab, no readiness flag).
   const { data: openByStart } = await supabase
     .from('leagues')
-    .select('id, format, joins_locked_at')
+    .select('id, format, sport, joins_locked_at')
     .eq('status', 'open')
     .not('starts_at', 'is', null)
     .lte('starts_at', now)
@@ -831,7 +831,7 @@ export async function completeLeagues() {
   // league_weeks signal to the formats that actually use it.
   const { data: openWeeks } = await supabase
     .from('league_weeks')
-    .select('league_id, leagues!inner(id, format, status)')
+    .select('league_id, leagues!inner(id, format, sport, status)')
     .eq('leagues.status', 'open')
     .in('leagues.format', ['survivor', 'pickem'])
     .lte('starts_at', now)
@@ -845,7 +845,7 @@ export async function completeLeagues() {
     const id = w.leagues?.id || w.league_id
     if (!id || seen.has(id)) continue
     seen.add(id)
-    openLeagues.push({ id, format: w.leagues?.format })
+    openLeagues.push({ id, format: w.leagues?.format, sport: w.leagues?.sport })
   }
 
   if (openLeagues.length) {
@@ -879,6 +879,41 @@ export async function completeLeagues() {
       if (DAILY_OPEN_FORMATS.has(league.format)) {
         if (!league.joins_locked_at) continue
         if (new Date(league.joins_locked_at).getTime() > nowMs) continue
+      }
+      // Survivor: stay 'open' until the first real game of period 1
+      // kicks off, not just when league_weeks Week/Day 1 nominally
+      // opens. league_weeks.starts_at can be days before the first
+      // game (Mon anchor for NFL Week 1 → first game Thursday), which
+      // is the right window for advance picks but the wrong moment to
+      // flip the card to 'active'. For sport='all' the gate is the
+      // earliest game across any sport in the period window.
+      if (league.format === 'survivor') {
+        const { data: week1 } = await supabase
+          .from('league_weeks')
+          .select('starts_at, ends_at')
+          .eq('league_id', league.id)
+          .order('week_number', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+        if (week1) {
+          let gameQ = supabase
+            .from('games')
+            .select('starts_at, sports!inner(key)')
+            .gte('starts_at', week1.starts_at)
+            .lte('starts_at', week1.ends_at)
+            .order('starts_at', { ascending: true })
+            .limit(1)
+          if (league.sport && league.sport !== 'all') {
+            gameQ = gameQ.eq('sports.key', league.sport)
+          }
+          const { data: firstGames } = await gameQ
+          const firstGameStart = firstGames?.[0]?.starts_at
+          // If a first game exists and hasn't started yet, stay open.
+          // If no game found at all (rare — pre-schedule edge case),
+          // fall through to the league_weeks.starts_at signal so the
+          // league doesn't get stuck open forever.
+          if (firstGameStart && new Date(firstGameStart).getTime() > nowMs) continue
+        }
       }
       toActivate.push(league.id)
     }

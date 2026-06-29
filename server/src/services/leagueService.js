@@ -528,15 +528,10 @@ export async function generateLeagueWeeks(league) {
       dayEnd.setUTCHours(9, 59, 59, 999)
 
       if (dayEnd.getTime() > startsAtMs) {
-        // Clamp Day 1's starts_at to never precede league.starts_at —
-        // otherwise an ET-anchored Day 1 can open on a calendar date
-        // earlier than the commissioner-picked start, which trips the
-        // league activation cron prematurely.
-        const clampedStart = Math.max(current.getTime(), startsAtMs)
         periods.push({
           league_id: league.id,
           week_number: periodNum++,
-          starts_at: new Date(clampedStart).toISOString(),
+          starts_at: current.toISOString(),
           ends_at: dayEnd.toISOString(),
         })
       }
@@ -565,18 +560,17 @@ export async function generateLeagueWeeks(league) {
       weekEnd.setUTCHours(9, 59, 59, 999)
 
       if (weekEnd.getTime() > startsAtMs) {
-        // Clamp Week 1's starts_at to never precede league.starts_at.
-        // The Mon-Sun calendar anchor can land 5+ days before the
-        // league's actual start (e.g. starts_at = Sat July 4, Week 1
-        // anchored to Mon June 29). Without clamping, league_weeks
-        // signals "Week 1 is open" days before the league should
-        // be active, and completeLeagues.js activates the league.
-        // Subsequent weeks keep the natural Mon cadence.
-        const clampedStart = Math.max(current.getTime(), startsAtMs)
+        // Week 1 anchors to the Monday of the ET week containing
+        // starts_at, which can land days before starts_at for sports
+        // with mid-week starts (NFL Week 1 Thursday → Week 1 anchored
+        // to Monday). This is intentional — picks open with lead time
+        // before the first game. The activation cron uses a separate
+        // first-game-in-period signal so the league stays 'open' until
+        // the first real game kicks off, not just when picks open.
         periods.push({
           league_id: league.id,
           week_number: periodNum++,
-          starts_at: new Date(clampedStart).toISOString(),
+          starts_at: current.toISOString(),
           ends_at: weekEnd.toISOString(),
         })
       }

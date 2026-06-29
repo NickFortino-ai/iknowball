@@ -34,11 +34,16 @@ export async function sendSurvivorPickReminders() {
 
   const nowIso = now.toISOString()
 
+  // 'open' leagues are included because survivor activation now waits
+  // for the first real game of period 1 (NFL Week 1 = Thursday), while
+  // league_weeks Week/Day 1 opens earlier (Monday anchor) so users can
+  // make picks in advance. Reminders should fire in that pre-activation
+  // window, gated by the league_weeks.starts_at check below.
   const { data: leagues } = await supabase
     .from('leagues')
     .select('id, name, sport, settings')
     .eq('format', 'survivor')
-    .eq('status', 'active')
+    .in('status', ['open', 'active'])
 
   if (!leagues?.length) return
 
