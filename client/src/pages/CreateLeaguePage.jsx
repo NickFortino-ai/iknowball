@@ -449,6 +449,20 @@ Commissioner controls: salary cap, season type (full season or single week), tea
       description: 'Pick the winners of NFL games. Most points at the end wins.',
       preset: { sport: 'americanfootball_nfl' },
     },
+    {
+      key: 'ncaaf-survivor',
+      format: 'survivor',
+      label: 'NCAAF Survivor',
+      description: 'Pick a single college football team to win each week. Last one standing wins',
+      preset: { sport: 'americanfootball_ncaaf', survivorMode: 'standard' },
+    },
+    {
+      key: 'ncaaf-pickem',
+      format: 'pickem',
+      label: "NCAAF Pick'em",
+      description: 'Pick the winners of college football games. Most points at the end wins.',
+      preset: { sport: 'americanfootball_ncaaf' },
+    },
   ],
   basketball: [
     {
