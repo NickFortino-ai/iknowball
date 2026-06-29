@@ -36,7 +36,7 @@ export async function sendSurvivorPickReminders() {
 
   const { data: leagues } = await supabase
     .from('leagues')
-    .select('id, name, settings')
+    .select('id, name, sport, settings')
     .eq('format', 'survivor')
     .eq('status', 'active')
 
@@ -96,7 +96,13 @@ export async function sendSurvivorPickReminders() {
     if (!toRemind.length) continue
 
     const isDaily = league.settings?.pick_frequency === 'daily'
-    const periodLabel = isDaily ? 'Day' : 'Week'
+    // Only football has a real "Week" cadence; other sports' weekly
+    // survivor periods read as "Round X" to avoid the football-only
+    // implication of "Week 1".
+    const isFootball = league.sport === 'americanfootball_nfl'
+      || league.sport === 'americanfootball_ncaaf'
+      || league.sport === 'americanfootball_ufl'
+    const periodLabel = isDaily ? 'Day' : (isFootball ? 'Week' : 'Round')
     const message = `${periodLabel} ${currentWeek.week_number}: make your pick in ${league.name}`
 
     for (const userId of toRemind) {
