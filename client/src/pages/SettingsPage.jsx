@@ -249,9 +249,43 @@ export default function SettingsPage() {
     venmoHandle !== (profile.venmo_handle || '') ||
     threadsHandle !== (profile.threads_handle || '') ||
     facebookHandle !== (profile.facebook_handle || '') ||
-    backdropImage !== (profile.backdrop_image || '') ||
-    customBackdropFile !== null
+    false // backdrop changes auto-save, no longer part of the dirty check
   )
+
+  // Backdrop selection auto-saves on click — matches avatar upload UX.
+  // Preset selection: PATCH /users/me with the new filename and toast.
+  // Click-the-selected-backdrop to clear it (filename === current → '').
+  async function saveBackdrop(filename) {
+    const next = filename || null
+    setBackdropImage(filename || '')
+    setCustomBackdropPreview(null)
+    try {
+      await api.patch('/users/me', { backdrop_image: next })
+      await refetch()
+      await fetchProfile()
+      toast(next ? 'Backdrop updated' : 'Backdrop removed', 'success')
+    } catch (err) {
+      toast(err.message || 'Failed to update backdrop', 'error')
+    }
+  }
+
+  // Custom backdrop upload auto-submits for admin review. Doesn't change
+  // the user's active backdrop — it adds a new entry to the queue for
+  // approval. Preview shows briefly to confirm the file went out.
+  async function uploadBackdrop(file) {
+    if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'error'); return }
+    setCustomBackdropPreview(URL.createObjectURL(file))
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      formData.append('type', 'user_backdrop')
+      await api.postForm('/backdrops/submit', formData)
+      toast('Custom backdrop submitted for review', 'info')
+    } catch (err) {
+      toast(err.message || 'Failed to submit backdrop', 'error')
+      setCustomBackdropPreview(null)
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -271,20 +305,7 @@ export default function SettingsPage() {
         venmo_handle: strip(venmoHandle),
         threads_handle: strip(threadsHandle),
         facebook_handle: strip(facebookHandle),
-        backdrop_image: backdropImage || null,
       })
-      // Upload custom backdrop if selected
-      if (customBackdropFile) {
-        const formData = new FormData()
-        formData.append('image', customBackdropFile)
-        formData.append('type', 'user_backdrop')
-        try {
-          await api.postForm('/backdrops/submit', formData)
-          toast('Custom backdrop submitted for review', 'info')
-        } catch { /* best effort */ }
-        setCustomBackdropFile(null)
-        setCustomBackdropPreview(null)
-      }
       await refetch()
       await fetchProfile()
       const uid = useAuthStore.getState().session?.user?.id
@@ -451,17 +472,14 @@ export default function SettingsPage() {
             onChange={(e) => {
               const file = e.target.files?.[0]
               if (!file) return
-              if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5MB', 'error'); return }
-              setCustomBackdropFile(file)
-              setCustomBackdropPreview(URL.createObjectURL(file))
-              setBackdropImage('')
+              uploadBackdrop(file)
             }}
           />
           {/* Remove option */}
-          {(backdropImage || customBackdropFile) && (
+          {backdropImage && (
             <button
               type="button"
-              onClick={() => { setBackdropImage(''); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
+              onClick={() => saveBackdrop('')}
               className="relative rounded-lg overflow-hidden border-2 border-dashed border-text-primary/20 hover:border-incorrect/50 transition-all aspect-[16/9] flex flex-col items-center justify-center gap-1 bg-bg-primary"
             >
               <svg className="w-5 h-5 text-incorrect" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -484,7 +502,7 @@ export default function SettingsPage() {
             <button
               key={b.filename}
               type="button"
-              onClick={() => { setBackdropImage(backdropImage === b.filename ? '' : b.filename); setCustomBackdropFile(null); setCustomBackdropPreview(null) }}
+              onClick={() => saveBackdrop(backdropImage === b.filename ? '' : b.filename)}
               className={`relative block w-full rounded-lg overflow-hidden border-2 transition-all ${
                 backdropImage === b.filename ? 'border-accent ring-1 ring-accent' : 'border-text-primary/20 hover:border-text-primary/40'
               }`}
