@@ -34,7 +34,7 @@ export default function BackdropSubmissionsPanel() {
                   {sub.users?.display_name || sub.users?.username || 'Unknown'}
                 </div>
                 <div className="text-xs text-text-muted">
-                  League: {sub.leagues?.name || 'No league'}
+                  {sub.leagues?.name ? `League: ${sub.leagues.name}` : 'Profile backdrop'}
                 </div>
                 <div className="text-xs text-text-muted">
                   {new Date(sub.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
