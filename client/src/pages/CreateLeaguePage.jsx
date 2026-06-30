@@ -626,7 +626,12 @@ const DURATION_OPTIONS = [
   { value: 'this_week', label: 'This Week Only' },
   { value: 'custom_range', label: 'Custom Date Range' },
   { value: 'full_season', label: 'Full Season' },
-  { value: 'playoffs_only', label: 'Playoffs Only' },
+  // 'playoffs_only' intentionally removed — picking it outside the actual
+  // playoff window started leagues immediately on regular-season /
+  // preseason games and ran them for 3 months, missing real playoffs
+  // entirely. Playoff-specific competition is handled by the bracket
+  // format. Server-side handlers for the value are kept defensively for
+  // any legacy leagues already created with this duration.
 ]
 
 // Season start/end helpers moved to lib/seasonDates.js so the league-edit
