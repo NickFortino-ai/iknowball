@@ -1295,7 +1295,7 @@ export default function CreateLeaguePage() {
 
         {/* League Name */}
         <div>
-          <label className="block text-sm font-semibold text-text-primary mb-2">League Name</label>
+          <label className="block text-base font-semibold text-text-primary mb-2">League Name</label>
           <input
             type="text"
             value={name}
