@@ -127,6 +127,18 @@ async function syncSportLiveScores(sportKey) {
       else if (match.homeWinner && !match.awayWinner) winner = 'home'
       else if (match.awayWinner && !match.homeWinner) winner = 'away'
 
+      // World Cup knockout tied-score guard: if regulation ended tied
+      // and ESPN hasn't yet flagged the shootout winner, DO NOT
+      // finalize. ESPN often takes 5-30 min (sometimes longer) to set
+      // competitor.winner=true after a PK shootout. Finalizing with
+      // winner=null strands the game in status='final' and skips this
+      // branch on every subsequent tick — the shootout result never
+      // gets picked up. Mirrors the same guard in scoreGames.js:116.
+      if (sportKey === 'soccer_world_cup' && winner === null) {
+        logger.warn({ gameId: game.id, home: game.home_team, away: game.away_team, homeScore: match.homeScore, awayScore: match.awayScore }, 'World Cup knockout reported tied via ESPN with no winner flag — leaving as live, will retry next tick')
+        continue
+      }
+
       // Only update if still live (prevents race with scoreGames)
       const { data: finalized, error } = await supabase
         .from('games')
