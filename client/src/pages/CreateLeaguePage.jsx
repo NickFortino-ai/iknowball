@@ -2211,11 +2211,25 @@ export default function CreateLeaguePage() {
                   // Label morphs across three states: preseason ("Full Season"),
                   // regular season ("Remainder of Regular Season"), and playoffs
                   // ("Through the Finals" / "Through the World Series" / etc.)
-                  const fullSeasonLabel = arePlayoffsUnderway(sport)
-                    ? getPlayoffsButtonLabel(sport)
-                    : isSeasonUnderway(sport)
-                      ? 'Remainder of Regular Season'
-                      : 'Full Season'
+                  //
+                  // NFL contest formats (td_pass / sacks / ints / tackles /
+                  // receptions) END at regular-season end — see ends_at logic
+                  // above (line 991). They can't extend through playoffs
+                  // because you can't repeat players (the qb / sack / int /
+                  // tackle / reception pool shrinks every week). So they
+                  // NEVER show the "Through the Super Bowl" playoff label —
+                  // would be misleading since the contest actually ends Jan 5.
+                  const isNflContest = format === 'td_pass' || format === 'sacks'
+                    || format === 'ints' || format === 'tackles' || format === 'receptions'
+                  const fullSeasonLabel = isNflContest
+                    ? (isSeasonUnderway(sport) || arePlayoffsUnderway(sport)
+                        ? 'Remainder of Regular Season'
+                        : 'Full Season')
+                    : arePlayoffsUnderway(sport)
+                      ? getPlayoffsButtonLabel(sport)
+                      : isSeasonUnderway(sport)
+                        ? 'Remainder of Regular Season'
+                        : 'Full Season'
                   if (format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') {
                     // NFL weekly contests get a "This Week Only" middle option;
                     // daily contests (hr_derby / strikeouts / 3-point) don't.
