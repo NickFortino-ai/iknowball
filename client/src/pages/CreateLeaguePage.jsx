@@ -1309,7 +1309,7 @@ export default function CreateLeaguePage() {
         {!['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions', 'squares', 'bracket', 'td_pass', 'survivor'].includes(format) && <>
         <div>
           <label className="block text-sm font-semibold text-text-secondary mb-2">Duration</label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {DURATION_OPTIONS.map((opt) => {
               // Auto-relabel "Full Season" to "Remainder of Regular Season"
               // once the sport's season is underway, so a mid-season league
@@ -1322,7 +1322,7 @@ export default function CreateLeaguePage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setDuration(opt.value)}
-                  className={`px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors ${
+                  className={`px-3 py-2.5 rounded-lg border text-xs sm:text-sm font-semibold transition-colors ${
                     duration === opt.value
                       ? 'bg-accent text-white border-accent'
                       : 'border-text-primary/20 text-text-primary hover:border-text-primary/40'
