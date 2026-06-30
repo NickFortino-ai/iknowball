@@ -199,7 +199,7 @@ Commissioner controls: league length, player reuse rule, team count. Custom back
     value: 'ints',
     label: 'Interceptions Contest',
     description: 'Pick 3 NFL defenders per week — score points for every interception they record',
-    details: `Pick up to 3 NFL defenders each week — DBs, LBs, anyone who can pick off a pass. Every interception each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to unlimited.
+    details: `Pick 3 NFL defenders each week — DBs, LBs, anyone who can pick off a pass. Every interception each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to unlimited.
 
 When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
 
@@ -215,7 +215,7 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
     value: 'sacks',
     label: 'Sacks Contest',
     description: 'Pick 3 NFL defenders per week — score points for every sack they record',
-    details: `Pick up to 3 NFL defenders each week — anyone who can rush the passer (DEs, DTs, edge rushers, blitzing LBs, even DBs). Every sack each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to unlimited.
+    details: `Pick 3 NFL defenders each week — anyone who can rush the passer (DEs, DTs, edge rushers, blitzing LBs, even DBs). Every sack each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to unlimited.
 
 When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
 
@@ -231,7 +231,7 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
     value: 'tackles',
     label: 'Tackles Contest',
     description: 'Pick 3 NFL defenders per week — score points for every tackle they record',
-    details: `Pick up to 3 NFL defenders each week — LBs, safeties, corners, anyone on defense. Every tackle each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
+    details: `Pick 3 NFL defenders each week — LBs, safeties, corners, anyone on defense. Every tackle each pick records adds to your league total. By default, each defender can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
 
 When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
 
@@ -247,7 +247,7 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
     value: 'receptions',
     label: 'Receptions Contest',
     description: 'Pick 3 NFL pass catchers per week — score points for every reception they record',
-    details: `Pick up to 3 NFL pass catchers each week — WRs, TEs, and pass-catching RBs. Every reception each pick records adds to your league total. By default, each player can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
+    details: `Pick 3 NFL pass catchers each week — WRs, TEs, and pass-catching RBs. Every reception each pick records adds to your league total. By default, each player can only be used once per season — commissioners can flip that to twice, three times, or unlimited.
 
 When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by NFL weeks played out of 18.
 

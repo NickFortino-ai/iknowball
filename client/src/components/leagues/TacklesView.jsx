@@ -139,7 +139,7 @@ export default function TacklesView({ league, tab = 'picks' }) {
   }
 
   async function handleSubmit() {
-    if (selected.length === 0) return
+    if (selected.length !== 3) return
     try {
       await submitPicks.mutateAsync({
         league_id: league.id,
@@ -289,7 +289,7 @@ export default function TacklesView({ league, tab = 'picks' }) {
           </div>
 
           {selected.length === 0 ? (
-            <p className="text-sm text-text-muted text-center py-4">Pick up to 3 defenders who you think will rack up tackles this week</p>
+            <p className="text-sm text-text-muted text-center py-4">Pick 3 defenders who you think will rack up tackles this week</p>
           ) : (
             <div className="space-y-2">
               {selected.map((player) => {
@@ -361,7 +361,7 @@ export default function TacklesView({ league, tab = 'picks' }) {
         ) : (
           <button
             onClick={handleSubmit}
-            disabled={selected.length === 0 || submitPicks.isPending}
+            disabled={selected.length !== 3 || submitPicks.isPending}
             className="w-full py-3 rounded-xl font-display bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
           >
             {submitPicks.isPending ? 'Saving...' : hasSavedPicks ? 'Save Picks' : 'Submit Picks'}

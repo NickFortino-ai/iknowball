@@ -165,8 +165,8 @@ router.post('/picks', async (req, res) => {
   if (!league_id || !players?.length) {
     return res.status(400).json({ error: 'league_id and players required' })
   }
-  if (players.length > 3) {
-    return res.status(400).json({ error: 'Maximum 3 picks per week' })
+  if (players.length !== 3) {
+    return res.status(400).json({ error: 'Exactly 3 picks required per week' })
   }
 
   const { data: member } = await supabase
