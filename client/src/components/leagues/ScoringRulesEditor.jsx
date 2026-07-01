@@ -56,7 +56,7 @@ export const DEFAULT_RULES = {
   idp_sack: 2,
   idp_int: 3,
   idp_pass_def: 1,
-  idp_qb_hit: 1,
+  idp_qb_hit: 0,
   idp_ff: 2,
   idp_fum_rec: 2,
   bonuses_enabled: false,
