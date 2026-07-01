@@ -3604,6 +3604,17 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
     throw err
   }
 
+  // Roster moves are gated on the draft actually being done. Before the
+  // draft, everyone starts with an empty roster and pre-populating from
+  // free agency would corrupt draft pool visibility + team fairness.
+  // Salary-cap leagues have no draft so this guard doesn't apply to them.
+  const gateSettings = await getFantasySettings(leagueId)
+  if (gateSettings?.format !== 'salary_cap' && gateSettings?.draft_status !== 'completed') {
+    const err = new Error("Can't add or drop players before the draft is completed")
+    err.status = 400
+    throw err
+  }
+
   await assertNoIneligibleIR(leagueId, userId)
 
   // Verify the added player exists and is a valid NFL player

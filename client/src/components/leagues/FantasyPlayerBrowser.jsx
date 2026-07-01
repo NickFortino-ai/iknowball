@@ -147,7 +147,13 @@ export default function FantasyPlayerBrowser({ league }) {
   const addDrop = useAddDropPlayer(league.id)
   const submitClaim = useSubmitWaiverClaim(league.id)
   const cancelClaim = useCancelWaiverClaim(league.id)
-  const isDraftPhase = league.status === 'open' || (league.status === 'active' && !roster?.length)
+  // Add/drop is gated on the draft being fully done (mirrors the
+  // server-side addDropPlayer guard). Trust settings.draft_status
+  // directly — league.status can drift (e.g. after draft starts but
+  // before it completes, status is 'active' but rosters are still
+  // draft-only). Salary cap leagues skip the draft entirely.
+  const draftDone = settings?.format === 'salary_cap' || settings?.draft_status === 'completed'
+  const isDraftPhase = !draftDone
   const isFaab = settings?.waiver_type === 'faab'
   const isWaiver = settings?.waiver_type === 'priority' || settings?.waiver_type === 'rolling' || isFaab
   const myWaiverState = waiverData?.me
@@ -530,20 +536,23 @@ export default function FantasyPlayerBrowser({ league }) {
       {detailPlayerId && (() => {
         const detailPlayer = players?.find((p) => p.id === detailPlayerId)
         const ctx = detailPlayer?.on_waivers ? 'waiver' : 'free_agent'
+        // Only expose Add / Claim once the draft is complete — mirrors
+        // the row plus-sign gating and the server addDropPlayer guard.
+        const canAddDrop = !isDraftPhase
         return (
           <PlayerDetailModal
             leagueId={league.id}
             playerId={detailPlayerId}
             onClose={() => setDetailPlayerId(null)}
             playerContext={ctx}
-            onClaim={(pid) => {
+            onClaim={canAddDrop ? (pid) => {
               const p = players?.find((pl) => pl.id === pid)
               if (p) { setDetailPlayerId(null); setAddingPlayer(p) }
-            }}
-            onAdd={(pid) => {
+            } : undefined}
+            onAdd={canAddDrop ? (pid) => {
               const p = players?.find((pl) => pl.id === pid)
               if (p) { setDetailPlayerId(null); setAddingPlayer(p) }
-            }}
+            } : undefined}
           />
         )
       })()}
