@@ -456,7 +456,9 @@ export default function FantasyMyTeam({ league }) {
       ? { qb: 1, rb: 2, wr: 3, te: 1, flex: 1, k: 1, def: 1 }
       : { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6 })
     const starterSlots = []
-    const slotExpansion = { qb: 'QB', rb: 'RB', wr: 'WR', te: 'TE', flex: 'FLEX', superflex: 'SFLEX', k: 'K', def: 'DEF' }
+    // Mirror buildStarterSlots order so pre-draft empty view matches
+    // the post-draft layout (including IDP families when configured).
+    const slotExpansion = { qb: 'QB', rb: 'RB', wr: 'WR', te: 'TE', flex: 'FLEX', superflex: 'SFLEX', k: 'K', def: 'DEF', dl: 'DL', lb: 'LB', db: 'DB', s: 'S' }
     for (const [key, label] of Object.entries(slotExpansion)) {
       for (let i = 0; i < (slots[key] || 0); i++) starterSlots.push(label)
     }
@@ -497,6 +499,22 @@ export default function FantasyMyTeam({ league }) {
           </div>
         </div>
         )}
+        {irCount > 0 && (
+        <div className="rounded-xl border border-text-primary/20 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-base font-semibold text-text-primary">IR (0/{irCount})</h3>
+          </div>
+          <div className="divide-y divide-text-primary/10">
+            {Array.from({ length: irCount }, (_, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                <span className="text-xs font-bold text-text-muted w-8 shrink-0">IR</span>
+                <div className="w-9 h-9 rounded-full border border-text-primary/20 shrink-0" />
+                <div className="flex-1 text-xs text-text-muted italic">Empty</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
       </div>
     )
   }
@@ -525,6 +543,8 @@ export default function FantasyMyTeam({ league }) {
   const benchSlots = fantasySettings?.roster_slots?.bench || 6
   const emptyBenchCount = Math.max(0, benchSlots - benchPlayers.length)
   const irPlayers = playersBySlot.ir || []
+  const irSlotCount = fantasySettings?.roster_slots?.ir || 0
+  const emptyIrCount = Math.max(0, irSlotCount - irPlayers.length)
 
   function ensureDraft() {
     if (draftSlots) return draftSlots
@@ -554,7 +574,7 @@ export default function FantasyMyTeam({ league }) {
       } else {
         const player = roster.find((r) => r.player_id === playerId)
         const slotDef = STARTER_SLOTS.find((s) => s.key === slotKey)
-        if (!slotDef?.positions.includes(player?.nfl_players?.position)) {
+        if (!isPositionEligibleForSlot(player?.nfl_players?.position, slotDef?.positions)) {
           toast(`${player?.nfl_players?.position || 'Player'} can't fill ${slotDef?.label || slotKey}`, 'error')
           return
         }
@@ -573,7 +593,7 @@ export default function FantasyMyTeam({ league }) {
       } else {
         const player = roster.find((r) => r.player_id === playerId)
         const slotDef = STARTER_SLOTS.find((s) => s.key === slotKey)
-        if (!slotDef?.positions.includes(player?.nfl_players?.position)) {
+        if (!isPositionEligibleForSlot(player?.nfl_players?.position, slotDef?.positions)) {
           toast(`${player?.nfl_players?.position || 'Player'} can't fill ${slotDef?.label || slotKey}`, 'error')
           return
         }
@@ -592,11 +612,11 @@ export default function FantasyMyTeam({ league }) {
       const playerB = roster.find((r) => r.player_id === b)
       const slotADef = STARTER_SLOTS.find((s) => s.key === slotB)
       const slotBDef = STARTER_SLOTS.find((s) => s.key === slotA)
-      if (slotADef && !slotADef.positions.includes(playerA?.nfl_players?.position)) {
+      if (slotADef && !isPositionEligibleForSlot(playerA?.nfl_players?.position, slotADef.positions)) {
         toast(`${playerA?.nfl_players?.position} can't fill ${slotADef.label}`, 'error')
         return
       }
-      if (slotBDef && !slotBDef.positions.includes(playerB?.nfl_players?.position)) {
+      if (slotBDef && !isPositionEligibleForSlot(playerB?.nfl_players?.position, slotBDef.positions)) {
         toast(`${playerB?.nfl_players?.position} can't fill ${slotBDef.label}`, 'error')
         return
       }
@@ -1027,10 +1047,10 @@ export default function FantasyMyTeam({ league }) {
         </div>
       </div>
 
-      {irPlayers.length > 0 && (
+      {irSlotCount > 0 && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-base font-semibold text-text-primary">IR ({irPlayers.length})</h3>
+            <h3 className="text-base font-semibold text-text-primary">IR ({irPlayers.length}/{irSlotCount})</h3>
           </div>
           <div className="p-3 space-y-2">
             {irPlayers.map((r) => (
@@ -1045,6 +1065,12 @@ export default function FantasyMyTeam({ league }) {
                 blurbIds={blurbIds}
                 showSeasonStats={isCurrentWeek || isFutureWeek}
               />
+            ))}
+            {Array.from({ length: emptyIrCount }).map((_, i) => (
+              <div key={`ir-empty-${i}`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-text-primary/10 bg-bg-primary/40">
+                <div className="w-9 h-9 rounded-full bg-bg-secondary/40 shrink-0" />
+                <div className="flex-1 text-xs text-text-muted italic">Empty — move an Out or IR player here from your bench</div>
+              </div>
             ))}
           </div>
         </div>
