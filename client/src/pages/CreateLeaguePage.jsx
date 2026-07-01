@@ -903,7 +903,11 @@ export default function CreateLeaguePage() {
   const [customBackdropFile, setCustomBackdropFile] = useState(null)
   const [customBackdropPreview, setCustomBackdropPreview] = useState(null)
   const fileInputRef = useRef(null)
-  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : format === 'wnba_dfs' ? 'wnba_dfs_contest' : format === 'hr_derby' ? 'hr_derby_contest' : format === 'mlb_dfs' ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'wnba_three_point' ? 'wnba_three_point_contest' : format === 'sacks' ? 'sacks_contest' : format === 'ints' ? 'ints_contest' : format === 'tackles' ? 'tackles_contest' : format === 'receptions' ? 'receptions_contest' : format === 'strikeouts' ? 'strikeouts_contest' : sport || undefined
+  // WNBA survivor + pick'em reuse the curated wnba_dfs_contest backdrop
+  // pool (Caitlin Clark / A'ja Wilson / Sabrina action shots) rather than
+  // the generic basketball_wnba pool — richer, more contest-specific.
+  const isWnbaContestReuse = (format === 'survivor' || format === 'pickem') && sport === 'basketball_wnba'
+  const backdropSport = format === 'nba_dfs' ? 'basketball_nba' : format === 'wnba_dfs' ? 'wnba_dfs_contest' : format === 'hr_derby' ? 'hr_derby_contest' : format === 'mlb_dfs' ? 'baseball_mlb' : (format === 'survivor' && survivorMode === 'touchdown') ? 'touchdown_survivor' : format === 'td_pass' ? 'td_pass_competition' : format === 'three_point' ? 'three_point_contest' : format === 'wnba_three_point' ? 'wnba_three_point_contest' : format === 'sacks' ? 'sacks_contest' : format === 'ints' ? 'ints_contest' : format === 'tackles' ? 'tackles_contest' : format === 'receptions' ? 'receptions_contest' : format === 'strikeouts' ? 'strikeouts_contest' : isWnbaContestReuse ? 'wnba_dfs_contest' : sport || undefined
   const { data: availableBackdrops } = useLeagueBackdrops(backdropSport)
 
   // NBA DFS start date
