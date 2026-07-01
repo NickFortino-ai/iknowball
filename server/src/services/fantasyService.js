@@ -293,7 +293,11 @@ export async function createFantasySettings(leagueId, settings = {}) {
     .insert({
       league_id: leagueId,
       scoring_format,
-      num_teams,
+      // Salary cap sends num_teams: null (no H2H schedule); DB has a
+      // NOT NULL constraint, so coerce null → 10 as a harmless
+      // placeholder. Destructuring default above only handles
+      // undefined, not null.
+      num_teams: num_teams ?? 10,
       roster_slots,
       draft_date,
       draft_pick_timer,
