@@ -2275,8 +2275,15 @@ export default function CreateLeaguePage() {
                   // would be misleading since the contest actually ends Jan 5.
                   const isNflContest = format === 'td_pass' || format === 'sacks'
                     || format === 'ints' || format === 'tackles' || format === 'receptions'
+                  // NFL contests only care about regular season — never
+                  // playoffs. Also intentionally ignore arePlayoffsUnderway
+                  // here because that helper currently returns true during
+                  // the entire offseason (bug: only checks now <= playoffEnd,
+                  // not now >= regular-season-end), which would flip the
+                  // preseason label from "Full Season" to "Remainder of
+                  // Regular Season" incorrectly.
                   const fullSeasonLabel = isNflContest
-                    ? (isSeasonUnderway(sport) || arePlayoffsUnderway(sport)
+                    ? (isSeasonUnderway(sport)
                         ? 'Remainder of Regular Season'
                         : 'Full Season')
                     : arePlayoffsUnderway(sport)
