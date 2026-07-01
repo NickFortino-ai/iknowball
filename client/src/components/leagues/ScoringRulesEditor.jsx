@@ -52,7 +52,7 @@ export const DEFAULT_RULES = {
   // these in the rule set is a no-op for team-DEF leagues.
   idp_tkl_solo: 1,
   idp_tkl_ast: 0.5,
-  idp_tkl_loss: 1,
+  idp_tkl_loss: 2,
   idp_sack: 2,
   idp_int: 3,
   idp_pass_def: 1,
@@ -353,7 +353,7 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
               <NumberField label="Tackle (Solo)" value={rules.idp_tkl_solo} onChange={(v) => set('idp_tkl_solo', v)} step={0.5} />
               <NumberField label="Tackle (Assist)" value={rules.idp_tkl_ast} onChange={(v) => set('idp_tkl_ast', v)} step={0.5} />
               <NumberField label="Tackle for Loss" value={rules.idp_tkl_loss} onChange={(v) => set('idp_tkl_loss', v)} step={0.5} />
-              <NumberField label="Sack" value={rules.idp_sack} onChange={(v) => set('idp_sack', v)} step={0.5} info="Sacks stack with solo tackle + tackle for loss. So a defender's sack actually nets Sack + Tackle (Solo) + Tackle for Loss points combined — at defaults that's 2 + 1 + 1 = 4 pts per sack." />
+              <NumberField label="Sack" value={rules.idp_sack} onChange={(v) => set('idp_sack', v)} step={0.5} info="Sacks stack with solo tackle + tackle for loss. So a defender's sack actually nets Sack + Tackle (Solo) + Tackle for Loss points combined — at defaults that's 2 + 1 + 2 = 5 pts per sack." />
               <NumberField label="INT" value={rules.idp_int} onChange={(v) => set('idp_int', v)} step={1} />
               <NumberField label="Pass Defended" value={rules.idp_pass_def} onChange={(v) => set('idp_pass_def', v)} step={0.5} />
               <NumberField label="QB Hit" value={rules.idp_qb_hit} onChange={(v) => set('idp_qb_hit', v)} step={0.5} />

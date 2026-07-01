@@ -54,7 +54,7 @@ export const DEFAULT_SCORING_RULES = {
   // (their players have no idp_* stats and these contribute zero).
   idp_tkl_solo: 1,
   idp_tkl_ast: 0.5,
-  idp_tkl_loss: 1,
+  idp_tkl_loss: 2,
   idp_sack: 2,
   idp_int: 3,
   idp_pass_def: 1,
