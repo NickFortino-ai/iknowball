@@ -40,7 +40,7 @@ const TAIL_SLOTS = [
 export const DEFAULT_ROSTER_SLOTS = {
   qb: 1,
   rb: 2,
-  wr: 2,
+  wr: 3,
   te: 1,
   flex: 1,
   superflex: 0,

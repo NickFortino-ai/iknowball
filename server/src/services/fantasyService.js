@@ -263,7 +263,7 @@ export async function createFantasySettings(leagueId, settings = {}) {
   const {
     scoring_format = 'half_ppr',
     num_teams = 10,
-    roster_slots = { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1, bench: 6, ir: 1 },
+    roster_slots = { qb: 1, rb: 2, wr: 3, te: 1, flex: 1, k: 1, def: 1, bench: 6, ir: 1 },
     draft_date = null,
     draft_pick_timer = 90,
     draft_mode = 'live',
