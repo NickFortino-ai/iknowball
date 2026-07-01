@@ -458,8 +458,12 @@ export async function updateFantasySettings(leagueId, updates) {
         .from('league_members')
         .select('user_id')
         .eq('league_id', leagueId)
+      // Render in PT (with zone label) so a UTC-hosted server doesn't
+      // shift the time forward. Members in other timezones see a labeled
+      // PT time — still unambiguous, just requires a mental convert.
       const when = new Date(updates.draft_date).toLocaleString('en-US', {
         weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        timeZone: 'America/Los_Angeles', timeZoneName: 'short',
       })
       const leaguePrefix = league?.name ? `${league.name}: ` : ''
       const message = isFirstTime
