@@ -119,7 +119,11 @@ const createLeagueSchema = z.object({
     format: z.enum(['traditional', 'salary_cap', 'hr_derby', 'strikeouts', 'three_point', 'wnba_three_point', 'sacks', 'ints', 'tackles', 'receptions']).optional(),
     pick_reuse: z.enum(['weekly', 'season', '1', '2', '3', '4', 'unlimited']).optional(),
     scoring_format: z.enum(['ppr', 'half_ppr', 'standard']).optional(),
-    num_teams: z.number().int().min(2).max(20).optional(),
+    // .nullable() so the client can explicitly send `null` to signal
+    // "no fixed team count" — salary-cap fantasy leaves this field
+    // deliberately null because H2H matchup shape doesn't apply. Same
+    // idea for single_week on salary-cap "This Week" leagues.
+    num_teams: z.number().int().min(2).max(20).nullable().optional(),
     draft_pick_timer: z.number().int().optional(),
     waiver_type: z.enum(['priority', 'rolling', 'faab']).optional(),
     faab_starting_budget: z.number().int().min(1).max(10000).optional(),
@@ -127,7 +131,7 @@ const createLeagueSchema = z.object({
     salary_cap: z.number().int().min(10000).max(200000).optional(),
     season_type: z.enum(['full_season', 'single_week', 'custom_range']).optional(),
     champion_metric: z.enum(['total_points', 'most_wins']).optional(),
-    single_week: z.number().int().min(1).max(18).optional(),
+    single_week: z.number().int().min(1).max(18).nullable().optional(),
     playoff_teams: z.number().int().optional(),
   }).optional(),
 })
