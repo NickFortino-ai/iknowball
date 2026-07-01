@@ -262,7 +262,7 @@ Commissioner controls: league length (defaults to full NFL season), player reuse
   {
     value: 'td_pass',
     label: 'TD Pass Competition',
-    description: 'Pick one QB per week — never repeat a QB. Most passing TDs across the season wins',
+    description: 'Pick one NFL QB per week — never repeat a QB. Most passing TDs across the season wins',
     details: `Season-long NFL league where you pick one quarterback per week — and you can never pick the same QB twice all season. Standings rank by total passing touchdowns accumulated across all your picks. Most TDs by season's end wins. Rushing TDs don't count. Ties split the bonus.
 
 When the season ends, your final position converts to global IKB points using the position formula (N+1−2×rank) — top half earns positive points, bottom half negative. The winner also earns a size-tiered bonus shown below, prorated by how many NFL weeks the league ran out of 18.
