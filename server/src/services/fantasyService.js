@@ -2609,6 +2609,16 @@ function normalizePosition(pos) {
 
 const IDP_FAMILIES = new Set(['DL', 'LB', 'DB', 'S'])
 
+// Split-aware position eligibility for a slot. Handles dual-position
+// admin overrides like "LB/DL" (either family is eligible). Mirrors the
+// client's isPositionEligibleForSlot in FantasyMyTeam.jsx so client and
+// server agree on which slots a hybrid player can fill.
+function isPositionEligibleForSlot(playerPosition, slotAllowed) {
+  if (!playerPosition || !slotAllowed) return false
+  const parts = playerPosition.split('/').map((p) => p.trim()).filter(Boolean)
+  return parts.some((p) => slotAllowed.includes(p))
+}
+
 // Fetch admin position overrides keyed by lowercased full_name so a
 // caller can overlay them onto nfl_players rows. The overrides table
 // is name-keyed (not id-keyed) because it's shared with DFS services
@@ -3092,6 +3102,11 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
   const lineupSettings = await getFantasySettings(leagueId)
   const { starterKeys: STARTER_SLOTS_TRAD, slotPositions: SLOT_POSITIONS } = buildLineupValidationMaps(lineupSettings?.roster_slots)
 
+  // Overlay admin position overrides so dual-eligible players ("LB/DL")
+  // pass slot validation. Without this a Micah Parsons override would
+  // pass client-side split-aware checks but get rejected here.
+  const overrides = await loadNflPositionOverrides()
+
   const rosterByPlayerId = {}
   for (const r of roster) rosterByPlayerId[r.player_id] = r
 
@@ -3109,8 +3124,10 @@ export async function setFantasyLineup(leagueId, userId, slotAssignments) {
       err.status = 400
       throw err
     }
-    if (!allowed.includes(r.nfl_players?.position)) {
-      const err = new Error(`Player ${r.nfl_players?.position} cannot fill slot ${a.slot}`)
+    const overridePos = overrides[(r.nfl_players?.full_name || '').toLowerCase()]
+    const effectivePosition = overridePos || r.nfl_players?.position
+    if (!isPositionEligibleForSlot(effectivePosition, allowed)) {
+      const err = new Error(`Player ${effectivePosition} cannot fill slot ${a.slot}`)
       err.status = 400
       throw err
     }
@@ -3210,10 +3227,12 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
     throw err
   }
 
-  // Get the user's current roster for ownership + position validation
+  // Get the user's current roster for ownership + position validation.
+  // full_name + injury_status pulled so we can apply position overrides
+  // and gate the IR slot on actual injury status (parallels setFantasyLineup).
   const { data: roster } = await supabase
     .from('fantasy_rosters')
-    .select('id, player_id, slot, nfl_players(id, position, team)')
+    .select('id, player_id, slot, nfl_players(id, position, team, full_name, injury_status)')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
 
@@ -3225,6 +3244,8 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
 
   const weeklySettings = await getFantasySettings(leagueId)
   const { starterKeys: STARTER_SLOTS_TRAD, slotPositions: SLOT_POSITIONS } = buildLineupValidationMaps(weeklySettings?.roster_slots)
+
+  const overrides = await loadNflPositionOverrides()
 
   const rosterByPlayerId = {}
   for (const r of roster) rosterByPlayerId[r.player_id] = r
@@ -3243,10 +3264,20 @@ export async function setFantasyWeeklyLineup(leagueId, userId, week, season, slo
       err.status = 400
       throw err
     }
-    if (!allowed.includes(r.nfl_players?.position)) {
-      const err = new Error(`Player ${r.nfl_players?.position} cannot fill slot ${a.slot}`)
+    const overridePos = overrides[(r.nfl_players?.full_name || '').toLowerCase()]
+    const effectivePosition = overridePos || r.nfl_players?.position
+    if (!isPositionEligibleForSlot(effectivePosition, allowed)) {
+      const err = new Error(`Player ${effectivePosition} cannot fill slot ${a.slot}`)
       err.status = 400
       throw err
+    }
+    if (a.slot === 'ir') {
+      const status = (r.nfl_players?.injury_status || '').toLowerCase()
+      if (status !== 'out' && status !== 'ir' && status !== 'injured reserve') {
+        const err = new Error(`${r.nfl_players?.full_name || 'Player'} isn't injured (Out or IR) and can't be placed on IR`)
+        err.status = 400
+        throw err
+      }
     }
   }
 
