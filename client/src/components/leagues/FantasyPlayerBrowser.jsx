@@ -10,7 +10,22 @@ import BlurbDot, { markBlurbSeen } from './BlurbDot'
 import FantasyMyRankings from './FantasyMyRankings'
 import PlayerHeadshot from '../ui/PlayerHeadshot'
 
-const POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF']
+const OFFENSE_POSITION_FILTERS = ['All', 'QB', 'RB', 'WR', 'TE', 'K']
+const IDP_POSITION_FILTERS = ['DL', 'LB', 'DB', 'S']
+
+function buildPositionFilters(rosterSlots) {
+  const idpCount = (rosterSlots?.dl || 0) + (rosterSlots?.lb || 0) + (rosterSlots?.db || 0) + (rosterSlots?.s || 0)
+  const isIdp = idpCount > 0
+  const filters = [...OFFENSE_POSITION_FILTERS]
+  if (isIdp) {
+    // IDP leagues: DEF is out, DL/LB/DB/S are in.
+    filters.push(...IDP_POSITION_FILTERS)
+  } else {
+    // Team-DEF leagues: DEF is included.
+    filters.push('DEF')
+  }
+  return filters
+}
 
 
 // Sortable stat columns shown in the strip on the right of each row.
@@ -44,6 +59,19 @@ const DEF_STAT_COLUMNS = [
   { key: 'def_pts_allowed', label: 'PA' },
 ]
 
+const IDP_STAT_COLUMNS = [
+  { key: 'weekly_proj', label: 'PROJ' },
+  { key: 'pts', label: 'PTS' },
+  { key: 'idp_tkl_solo', label: 'SOLO' },
+  { key: 'idp_tkl_ast', label: 'AST' },
+  { key: 'idp_tkl_loss', label: 'TFL' },
+  { key: 'idp_sack', label: 'SK' },
+  { key: 'idp_int', label: 'INT' },
+  { key: 'idp_pass_def', label: 'PD' },
+  { key: 'idp_ff', label: 'FF' },
+  { key: 'idp_fum_rec', label: 'FR' },
+]
+
 const INJURY_COLORS = {
   Out: 'text-incorrect',
   IR: 'text-incorrect',
@@ -68,7 +96,10 @@ export default function FantasyPlayerBrowser({ league }) {
   const [posFilter, setPosFilter] = useState('All')
   const [sortKey, setSortKey] = useState('rank')
   const [sortDir, setSortDir] = useState('desc') // 'desc' = highest first, 'asc' = lowest first
-  const statColumns = posFilter === 'DEF' ? DEF_STAT_COLUMNS : OFFENSE_STAT_COLUMNS
+  const isIdpFilter = posFilter === 'DL' || posFilter === 'LB' || posFilter === 'DB' || posFilter === 'S'
+  const statColumns = posFilter === 'DEF' ? DEF_STAT_COLUMNS
+    : isIdpFilter ? IDP_STAT_COLUMNS
+    : OFFENSE_STAT_COLUMNS
 
   function handleSort(key) {
     if (key === sortKey && key !== 'rank') {
@@ -295,7 +326,7 @@ export default function FantasyPlayerBrowser({ league }) {
           className="w-full bg-text-primary/5 border border-text-primary/15 rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
         />
         <div className="flex gap-1 mt-2 overflow-x-auto scrollbar-hide">
-          {POSITION_FILTERS.map((pos) => (
+          {buildPositionFilters(settings?.roster_slots).map((pos) => (
             <button
               key={pos}
               onClick={() => setPosFilter(pos)}

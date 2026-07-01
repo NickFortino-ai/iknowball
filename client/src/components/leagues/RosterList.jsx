@@ -32,6 +32,10 @@ function buildStarterKeyMeta(rosterSlots) {
   if ((slots.superflex || 0) >= 1) { keys.push('superflex'); labels.superflex = 'SFLX' }
   if ((slots.k || 0) >= 1) { keys.push('k'); labels.k = 'K' }
   if ((slots.def || 0) >= 1) { keys.push('def'); labels.def = 'DEF' }
+  for (let i = 1; i <= (slots.dl || 0); i++) { keys.push(`dl${i}`); labels[`dl${i}`] = 'DL' }
+  for (let i = 1; i <= (slots.lb || 0); i++) { keys.push(`lb${i}`); labels[`lb${i}`] = 'LB' }
+  for (let i = 1; i <= (slots.db || 0); i++) { keys.push(`db${i}`); labels[`db${i}`] = 'DB' }
+  for (let i = 1; i <= (slots.s || 0); i++) { keys.push(`s${i}`); labels[`s${i}`] = 'S' }
   return { keys, labels }
 }
 

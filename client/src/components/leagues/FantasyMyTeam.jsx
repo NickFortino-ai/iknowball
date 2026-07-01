@@ -33,6 +33,13 @@ function buildStarterSlots(rosterSlots) {
   if ((slots.superflex || 0) >= 1) result.push({ key: 'superflex', label: 'SFLEX', positions: ['QB', 'RB', 'WR', 'TE'] })
   if ((slots.k || 0) >= 1) result.push({ key: 'k', label: 'K', positions: ['K'] })
   if ((slots.def || 0) >= 1) result.push({ key: 'def', label: 'DEF', positions: ['DEF'] })
+  // IDP slots — DL accepts the D-line family (edge rushers, DTs), LB the
+  // linebacker family, DB the corners, S the safeties. Position codes
+  // mirror Sleeper's nfl_players.position values.
+  for (let i = 1; i <= (slots.dl || 0); i++) result.push({ key: `dl${i}`, label: 'DL', positions: ['DE', 'DT', 'NT', 'DL'] })
+  for (let i = 1; i <= (slots.lb || 0); i++) result.push({ key: `lb${i}`, label: 'LB', positions: ['LB', 'ILB', 'OLB', 'MLB'] })
+  for (let i = 1; i <= (slots.db || 0); i++) result.push({ key: `db${i}`, label: 'DB', positions: ['CB', 'DB'] })
+  for (let i = 1; i <= (slots.s || 0); i++) result.push({ key: `s${i}`, label: 'S', positions: ['S', 'FS', 'SS'] })
   return result
 }
 
@@ -76,6 +83,24 @@ const POSITION_STAT_CONFIG = {
     { key: 'def_fum_rec', label: 'FR' },
     { key: 'def_td', label: 'DTD' },
   ],
+}
+
+// IDP stat lines — Sleeper's nfl_players.position codes for defenders
+// are granular (DE / DT / NT / LB / ILB / OLB / MLB / CB / DB / S / FS
+// / SS). Map each family to the same stat template so the display is
+// consistent regardless of which specific position code is on file.
+const IDP_STAT_TEMPLATE = [
+  { key: 'idp_tkl_solo', label: 'SOLO' },
+  { key: 'idp_tkl_ast', label: 'AST' },
+  { key: 'idp_tkl_loss', label: 'TFL' },
+  { key: 'idp_sack', label: 'SCK' },
+  { key: 'idp_int', label: 'INT' },
+  { key: 'idp_pass_def', label: 'PD' },
+  { key: 'idp_ff', label: 'FF' },
+  { key: 'idp_fum_rec', label: 'FR' },
+]
+for (const pos of ['DL', 'DE', 'DT', 'NT', 'LB', 'ILB', 'OLB', 'MLB', 'DB', 'CB', 'S', 'FS', 'SS']) {
+  POSITION_STAT_CONFIG[pos] = IDP_STAT_TEMPLATE
 }
 
 function formatSeasonStats(position, stats) {

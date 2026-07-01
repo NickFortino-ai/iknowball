@@ -2570,7 +2570,25 @@ async function getCurrentWeekMatchupMap(season, week) {
 const STAT_COLUMNS = [
   'pts', 'pass_yd', 'pass_td', 'pass_int', 'rush_att', 'rush_yd', 'rush_td',
   'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'fum_lost', 'fgm', 'xpm',
+  // IDP stat columns for sort support in IDP leagues
+  'idp_tkl_solo', 'idp_tkl_ast', 'idp_tkl_loss', 'idp_sack', 'idp_int',
+  'idp_pass_def', 'idp_ff', 'idp_fum_rec',
 ]
+
+// Roll granular NFL position codes up into fantasy-slot families so
+// UI filters, stat displays, and roster-slot matching can work on a
+// single canonical value. DE / DT / NT collapse to DL; ILB / OLB /
+// MLB collapse to LB; CB collapses to DB; FS / SS collapse to S.
+// Non-defender positions pass through unchanged.
+function normalizePosition(pos) {
+  if (pos === 'DE' || pos === 'DT' || pos === 'NT') return 'DL'
+  if (pos === 'ILB' || pos === 'OLB' || pos === 'MLB') return 'LB'
+  if (pos === 'CB') return 'DB'
+  if (pos === 'FS' || pos === 'SS') return 'S'
+  return pos
+}
+
+const IDP_FAMILIES = new Set(['DL', 'LB', 'DB', 'S'])
 
 export async function searchAvailablePlayers(leagueId, query, position = null, sort = null) {
   // Get all rostered player IDs
@@ -2721,7 +2739,7 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   const statRows = await fetchAll(
     supabase
       .from('nfl_player_stats')
-      .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed`)
+      .select(`player_id, ${pointsCol}, pass_yd, pass_td, pass_int, rush_att, rush_yd, rush_td, rec_tgt, rec, rec_yd, rec_td, fum_lost, fgm, xpm, def_sack, def_int, def_fum_rec, def_td, def_safety, def_pts_allowed, idp_tkl_solo, idp_tkl_ast, idp_tkl_loss, idp_sack, idp_int, idp_pass_def, idp_ff, idp_fum_rec, idp_qb_hit`)
       .eq('season', statSeason)
   )
   // statsByPlayer[id] = { pts, pass_yd, pass_td, ... }
@@ -2731,6 +2749,8 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
       pts: 0, pass_yd: 0, pass_td: 0, pass_int: 0, rush_att: 0, rush_yd: 0, rush_td: 0,
       rec_tgt: 0, rec: 0, rec_yd: 0, rec_td: 0, fum_lost: 0, fgm: 0, xpm: 0,
       def_sack: 0, def_int: 0, def_fum_rec: 0, def_td: 0, def_safety: 0, def_pts_allowed: 0,
+      idp_tkl_solo: 0, idp_tkl_ast: 0, idp_tkl_loss: 0, idp_sack: 0, idp_int: 0,
+      idp_pass_def: 0, idp_ff: 0, idp_fum_rec: 0, idp_qb_hit: 0,
     }
     acc.pts += Number(r[pointsCol]) || 0
     acc.pass_yd += Number(r.pass_yd) || 0
@@ -2752,6 +2772,15 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     acc.def_td += Number(r.def_td) || 0
     acc.def_safety += Number(r.def_safety) || 0
     acc.def_pts_allowed += Number(r.def_pts_allowed) || 0
+    acc.idp_tkl_solo += Number(r.idp_tkl_solo) || 0
+    acc.idp_tkl_ast += Number(r.idp_tkl_ast) || 0
+    acc.idp_tkl_loss += Number(r.idp_tkl_loss) || 0
+    acc.idp_sack += Number(r.idp_sack) || 0
+    acc.idp_int += Number(r.idp_int) || 0
+    acc.idp_pass_def += Number(r.idp_pass_def) || 0
+    acc.idp_ff += Number(r.idp_ff) || 0
+    acc.idp_fum_rec += Number(r.idp_fum_rec) || 0
+    acc.idp_qb_hit += Number(r.idp_qb_hit) || 0
     statsByPlayer[r.player_id] = acc
   }
   function ytd(id) { return statsByPlayer[id] || {} }
@@ -2842,25 +2871,39 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     return a._adp - b._adp
   }
   const availableAll = rankedAll.filter((p) => !excludeSet.has(p.id))
+  const IDP_RAW = new Set(['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'DB', 'S', 'FS', 'SS'])
+  // IDP leagues drop team DEF entirely; team-DEF leagues drop IDPs.
+  // Both keep their respective slice in the returned pool.
   const offenseSlice = availableAll
-    .filter((p) => p.position !== 'K' && p.position !== 'DEF')
+    .filter((p) => !['K', 'DEF'].includes(p.position) && !IDP_RAW.has(p.position))
     .sort(sortFn)
     .slice(0, 268)
   const kickerSlice = availableAll.filter((p) => p.position === 'K').sort(sortFn)
-  const defSlice = availableAll.filter((p) => p.position === 'DEF').sort(sortFn)
-  const ranked = [...offenseSlice, ...kickerSlice, ...defSlice]
+  const defSlice = hasIdp ? [] : availableAll.filter((p) => p.position === 'DEF').sort(sortFn)
+  const idpSlice = hasIdp ? availableAll.filter((p) => IDP_RAW.has(p.position)).sort(sortFn) : []
+  const ranked = [...offenseSlice, ...kickerSlice, ...defSlice, ...idpSlice]
 
-  // Per-position rank from the same sort
+  // Per-position rank from the same sort, using the normalized family
+  // so 'DL' pos-rank counts across DE + DT + NT + DL, etc.
   const posRanks = {}
   const posCounters = {}
   for (const p of ranked) {
-    posCounters[p.position] = (posCounters[p.position] || 0) + 1
-    posRanks[p.id] = posCounters[p.position]
+    const family = normalizePosition(p.position)
+    posCounters[family] = (posCounters[family] || 0) + 1
+    posRanks[p.id] = posCounters[family]
   }
 
-  // Apply user filters AFTER ranks are assigned, so the numbers stay stable
+  // Apply user filters AFTER ranks are assigned, so the numbers stay stable.
+  // For IDP filters ('DL' / 'LB' / 'DB' / 'S') match the whole family;
+  // for other positions match exactly.
   let filtered = ranked
-  if (position) filtered = filtered.filter((p) => p.position === position)
+  if (position) {
+    if (IDP_FAMILIES.has(position)) {
+      filtered = filtered.filter((p) => normalizePosition(p.position) === position)
+    } else {
+      filtered = filtered.filter((p) => p.position === position)
+    }
+  }
   if (query) {
     const q = query.toLowerCase()
     filtered = filtered.filter((p) => p.full_name?.toLowerCase().includes(q))
@@ -2870,6 +2913,10 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     const s = p._stats || {}
     return {
       ...p,
+      // Roll up granular NFL codes (DE/DT/NT → DL, ILB/OLB/MLB → LB,
+      // CB → DB, FS/SS → S) so the UI shows the fantasy-slot family
+      // name that matches roster slots, filter tabs, and stat lines.
+      position: normalizePosition(p.position),
       adp_rank: p.overall_rank || null,
       pos_rank: posRanks[p.id] || null,
       season_points: Math.round((s.pts || 0) * 10) / 10,
@@ -2898,6 +2945,14 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
         def_td: s.def_td || 0,
         def_safety: s.def_safety || 0,
         def_pts_allowed: s.def_pts_allowed || 0,
+        idp_tkl_solo: Math.round((s.idp_tkl_solo || 0) * 10) / 10,
+        idp_tkl_ast: Math.round((s.idp_tkl_ast || 0) * 10) / 10,
+        idp_tkl_loss: Math.round((s.idp_tkl_loss || 0) * 10) / 10,
+        idp_sack: Math.round((s.idp_sack || 0) * 10) / 10,
+        idp_int: s.idp_int || 0,
+        idp_pass_def: s.idp_pass_def || 0,
+        idp_ff: s.idp_ff || 0,
+        idp_fum_rec: s.idp_fum_rec || 0,
       },
       on_waivers: waiverLockedSet.has(p.id),
       // Opponent / home-away for the current NFL week. Undefined when

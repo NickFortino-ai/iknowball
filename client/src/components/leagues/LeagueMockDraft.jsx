@@ -48,16 +48,31 @@ function maxByPos(rosterSlots) {
     TE: (rosterSlots.te || 0) + flex + 1,
     K: (rosterSlots.k || 0),
     DEF: (rosterSlots.def || 0),
+    // IDP families — server normalizes position to DL/LB/DB/S so we
+    // match on those keys. Cap generously (starter count + 1) so bots
+    // don't over-hoard defenders.
+    DL: (rosterSlots.dl || 0) + 1,
+    LB: (rosterSlots.lb || 0) + 1,
+    DB: (rosterSlots.db || 0) + 1,
+    S: (rosterSlots.s || 0) + 1,
   }
 }
 
 function eligiblePool(available, botRoster, rosterSlots, round) {
   const max = maxByPos(rosterSlots)
-  const have = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 }
+  const isIdpLeague = (rosterSlots.dl || 0) + (rosterSlots.lb || 0)
+    + (rosterSlots.db || 0) + (rosterSlots.s || 0) > 0
+  const have = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0, DL: 0, LB: 0, DB: 0, S: 0 }
   for (const p of botRoster) have[p.position] = (have[p.position] || 0) + 1
   return available.filter((p) => {
-    if (have[p.position] >= max[p.position]) return false
+    // IDP leagues never draft team DEF; team-DEF leagues never draft IDPs.
+    if (isIdpLeague && p.position === 'DEF') return false
+    if (!isIdpLeague && ['DL', 'LB', 'DB', 'S'].includes(p.position)) return false
+    if (have[p.position] >= (max[p.position] || 0)) return false
+    // K + DEF are late-round only in team-DEF leagues. Same for IDPs in
+    // IDP leagues — no need to spend a first-round pick on a linebacker.
     if ((p.position === 'K' || p.position === 'DEF') && round < 11) return false
+    if (isIdpLeague && ['DL', 'LB', 'DB', 'S'].includes(p.position) && round < 9) return false
     return true
   })
 }
