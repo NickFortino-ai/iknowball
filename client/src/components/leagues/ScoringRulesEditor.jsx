@@ -283,9 +283,9 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
               <span className="text-[10px] uppercase tracking-wider text-text-muted text-center w-20">Make</span>
               <span className="text-[10px] uppercase tracking-wider text-text-muted text-center w-20">Miss</span>
               {[
-                { range: '0–39 yds', mk: 'fgm_0_39', ms: 'fgmiss_0_39' },
-                { range: '40–49 yds', mk: 'fgm_40_49', ms: 'fgmiss_40_49' },
-                { range: '50+ yds', mk: 'fgm_50_plus', ms: 'fgmiss_50_plus' },
+                { range: 'FG 0–39 yds', mk: 'fgm_0_39', ms: 'fgmiss_0_39' },
+                { range: 'FG 40–49 yds', mk: 'fgm_40_49', ms: 'fgmiss_40_49' },
+                { range: 'FG 50+ yds', mk: 'fgm_50_plus', ms: 'fgmiss_50_plus' },
                 { range: 'Extra Point', mk: 'xpm', ms: 'xpmiss' },
               ].map((row) => (
                 <Fragment key={row.range}>
