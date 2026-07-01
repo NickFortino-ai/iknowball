@@ -45,7 +45,7 @@ import { toast } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { getBackdropUrl, getBackdropFilterKey } from '../lib/backdropUrl'
 import { getSeasonEndDate, isSeasonUnderway } from '../lib/seasonDates'
-import { formatStartDateShort, formatEndDateShort, formatEndDateLong } from '../lib/leagueDate'
+import { formatStartDateShort, formatEndDateShort, formatEndDateLong, formatDraftDateShort } from '../lib/leagueDate'
 
 const REPORT_FORMATS = ['fantasy', 'nba_dfs', 'wnba_dfs', 'mlb_dfs']
 
@@ -2154,13 +2154,27 @@ export default function LeagueDetailPage() {
             </div>
           )}
         </div>
-        {league.status === 'open' && league.starts_at && (
-          <div className="mt-2 text-sm text-yellow-500 font-semibold">
-            {league.format === 'fantasy' && fantasySettings?.format === 'salary_cap'
-              ? 'Starts with NFL Week 1'
-              : `Starts ${formatStartDateShort(league.starts_at)}`}
-          </div>
-        )}
+        {league.status === 'open' && league.starts_at && (() => {
+          // Traditional fantasy: starts_at is a soft creation-time
+          // default that doesn't reflect when the league actually
+          // begins (draft or NFL Week 1). Show the meaningful signal
+          // instead. Salary cap fantasy has always shown NFL Week 1.
+          let label
+          if (league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap') {
+            label = fantasySettings?.draft_date
+              ? `Drafts ${formatDraftDateShort(fantasySettings.draft_date)}`
+              : 'Starts with NFL Week 1'
+          } else if (league.format === 'fantasy' && fantasySettings?.format === 'salary_cap') {
+            label = 'Starts with NFL Week 1'
+          } else {
+            label = `Starts ${formatStartDateShort(league.starts_at)}`
+          }
+          return (
+            <div className="mt-2 text-sm text-yellow-500 font-semibold">
+              {label}
+            </div>
+          )
+        })()}
         </div>
       </div>
 

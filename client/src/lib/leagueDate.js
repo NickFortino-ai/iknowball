@@ -28,3 +28,14 @@ export function formatEndDateLong(isoStr) {
   const shifted = new Date(new Date(isoStr).getTime() - 12 * 60 * 60 * 1000)
   return shifted.toLocaleDateString('en-US', LONG)
 }
+
+// Concise date + time for banners like "Drafts Aug 24, 7:00 PM". Time
+// renders in the viewer's local zone so members see the moment they'll
+// need to be online, not the commissioner's PT clock.
+export function formatDraftDateShort(isoStr) {
+  if (!isoStr) return null
+  const d = new Date(isoStr)
+  const datePart = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const timePart = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${datePart}, ${timePart}`
+}
