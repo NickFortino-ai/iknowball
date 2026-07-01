@@ -43,6 +43,15 @@ function buildStarterSlots(rosterSlots) {
   return result
 }
 
+// Split-aware slot eligibility so admin overrides like "LB/DL" let a
+// hybrid edge player slot at either LB or DL. Mirrors the NBA DFS
+// isPlayerEligibleForSlot pattern.
+function isPositionEligibleForSlot(playerPosition, slotPositions) {
+  if (!playerPosition || !slotPositions) return false
+  const parts = playerPosition.split('/').map((p) => p.trim()).filter(Boolean)
+  return parts.some((p) => slotPositions.includes(p))
+}
+
 const POSITION_STAT_CONFIG = {
   QB: [
     { key: 'pass_yd', label: 'PYD', comma: true },
@@ -105,7 +114,11 @@ for (const pos of ['DL', 'DE', 'DT', 'NT', 'LB', 'ILB', 'OLB', 'MLB', 'DB', 'CB'
 
 function formatSeasonStats(position, stats) {
   if (!stats || !position) return null
-  const config = POSITION_STAT_CONFIG[position]
+  // Dual positions (e.g. "LB/DL"): use the first part's stat template
+  // since both IDP families share the same IDP_STAT_TEMPLATE anyway.
+  // For hybrid non-IDP (rare), first-part wins.
+  const lookupKey = position.includes('/') ? position.split('/')[0].trim() : position
+  const config = POSITION_STAT_CONFIG[lookupKey]
   if (!config) return null
   // Only render stat entries with a non-zero value — a row of "117 RYD ·
   // 0 RTD · 0 REC · 0 REYD" reads as noise when only the rushing yards
@@ -901,7 +914,7 @@ export default function FantasyMyTeam({ league }) {
                     // or IR-to-starter. The position eligibility check carries
                     // the meaning.
                     const isDropTarget = editMode && !!selPlayer &&
-                      slotDef.positions.includes(selPlayer?.nfl_players?.position)
+                      isPositionEligibleForSlot(selPlayer?.nfl_players?.position, slotDef.positions)
                     return (
                       <PlayerRow
                         row={occupant}
@@ -922,7 +935,7 @@ export default function FantasyMyTeam({ league }) {
                         // a clear "tap here to start" affordance.
                         const selPlayer = selected?.type === 'player'
                           ? roster.find((r) => r.player_id === selected.key) : null
-                        const isDropTarget = !!selPlayer && slotDef.positions.includes(selPlayer?.nfl_players?.position)
+                        const isDropTarget = !!selPlayer && isPositionEligibleForSlot(selPlayer?.nfl_players?.position, slotDef.positions)
                         return <EmptySlot slotLabel={slotDef.label} isSelected={isSlotSelected} onTap={() => handleSlotTap(slotDef.key)} editMode isDropTarget={isDropTarget} />
                       })()
                     ) : <EmptySlot slotLabel={slotDef.label} onTap={() => {}} isSelected={false} />

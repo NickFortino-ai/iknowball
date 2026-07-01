@@ -2411,6 +2411,12 @@ export async function getRoster(leagueId, userId) {
   const rows = data || []
   if (!rows.length) return rows
 
+  // Overlay admin position overrides (e.g. Micah Parsons → "LB/DL")
+  // so hybrid IDPs get dual-slot eligibility in the client. Silently
+  // no-op for players without an override.
+  const overrideMap = await loadNflPositionOverrides()
+  for (const r of rows) applyNflPositionOverride(r, overrideMap)
+
   // Enrich with live current-week fantasy points so the My Team view can
   // show running totals during games. We compute using the league's own
   // scoring rules (or preset) so the points match what the user will see
@@ -2580,15 +2586,57 @@ const STAT_COLUMNS = [
 // single canonical value. DE / DT / NT collapse to DL; ILB / OLB /
 // MLB collapse to LB; CB collapses to DB; FS / SS collapse to S.
 // Non-defender positions pass through unchanged.
-function normalizePosition(pos) {
+//
+// Dual-eligibility: an admin override of "LB/DL" (or "DE/LB", etc.)
+// splits on "/", maps each part, and joins the unique family results
+// back with "/". Enables hybrid edge / off-ball players (Micah Parsons
+// types) to slot at either family. Order preserved for stable display.
+function normalizeSinglePosition(pos) {
   if (pos === 'DE' || pos === 'DT' || pos === 'NT') return 'DL'
   if (pos === 'ILB' || pos === 'OLB' || pos === 'MLB') return 'LB'
   if (pos === 'CB') return 'DB'
   if (pos === 'FS' || pos === 'SS') return 'S'
   return pos
 }
+function normalizePosition(pos) {
+  if (!pos || !pos.includes('/')) return normalizeSinglePosition(pos)
+  const parts = pos.split('/').map((p) => normalizeSinglePosition(p.trim())).filter(Boolean)
+  const seen = new Set()
+  const dedup = []
+  for (const p of parts) { if (!seen.has(p)) { seen.add(p); dedup.push(p) } }
+  return dedup.join('/')
+}
 
 const IDP_FAMILIES = new Set(['DL', 'LB', 'DB', 'S'])
+
+// Fetch admin position overrides keyed by lowercased full_name so a
+// caller can overlay them onto nfl_players rows. The overrides table
+// is name-keyed (not id-keyed) because it's shared with DFS services
+// that historically matched by name.
+async function loadNflPositionOverrides() {
+  const { data } = await supabase
+    .from('player_position_overrides')
+    .select('player_name, position, sport_key')
+    .eq('sport_key', 'americanfootball_nfl')
+  const map = {}
+  for (const o of data || []) {
+    if (o.player_name && o.position) map[o.player_name.toLowerCase()] = o.position
+  }
+  return map
+}
+
+// Overlay one player's override onto their position field. Safe to
+// call with a row that lacks full_name (no-op).
+function applyNflPositionOverride(row, overrideMap) {
+  if (!row || !overrideMap) return row
+  const name = row.full_name || row.nfl_players?.full_name
+  if (!name) return row
+  const override = overrideMap[name.toLowerCase()]
+  if (!override) return row
+  if (row.position !== undefined) row.position = override
+  if (row.nfl_players?.position !== undefined) row.nfl_players.position = override
+  return row
+}
 
 export async function searchAvailablePlayers(leagueId, query, position = null, sort = null) {
   // Get all rostered player IDs
@@ -2728,6 +2776,12 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
     ...(idpRes.data || []),
   ]
   const error = null
+
+  // Overlay admin position overrides before anything downstream reads
+  // .position — including the IDP family split, per-position rank
+  // counter, filter matching, and the returned player rows.
+  const overrideMap = await loadNflPositionOverrides()
+  for (const p of allPlayers) applyNflPositionOverride(p, overrideMap)
 
   // YTD aggregate stats for browse + sorting.
   // Pre-draft: show last season's stats so users can evaluate players.
@@ -2872,36 +2926,49 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
   }
   const availableAll = rankedAll.filter((p) => !excludeSet.has(p.id))
   const IDP_RAW = new Set(['DE', 'DT', 'NT', 'DL', 'LB', 'ILB', 'OLB', 'MLB', 'CB', 'DB', 'S', 'FS', 'SS'])
+  // Split-aware helpers so admin overrides like "LB/DL" work everywhere.
+  // A player with any IDP part counts as IDP; the family check hits if
+  // ANY part normalizes to the family being asked about.
+  const positionParts = (pos) => (pos || '').split('/').map((p) => p.trim()).filter(Boolean)
+  const isIdpPlayer = (pos) => positionParts(pos).some((p) => IDP_RAW.has(p))
+  const isOffensePlayer = (pos) => positionParts(pos).some((p) => !['K', 'DEF'].includes(p) && !IDP_RAW.has(p))
+  const inFamily = (pos, family) => positionParts(pos).some((p) => normalizeSinglePosition(p) === family)
+
   // IDP leagues drop team DEF entirely; team-DEF leagues drop IDPs.
-  // Both keep their respective slice in the returned pool.
   const offenseSlice = availableAll
-    .filter((p) => !['K', 'DEF'].includes(p.position) && !IDP_RAW.has(p.position))
+    .filter((p) => isOffensePlayer(p.position) && !isIdpPlayer(p.position))
     .sort(sortFn)
     .slice(0, 268)
   const kickerSlice = availableAll.filter((p) => p.position === 'K').sort(sortFn)
   const defSlice = hasIdp ? [] : availableAll.filter((p) => p.position === 'DEF').sort(sortFn)
-  const idpSlice = hasIdp ? availableAll.filter((p) => IDP_RAW.has(p.position)).sort(sortFn) : []
+  const idpSlice = hasIdp ? availableAll.filter((p) => isIdpPlayer(p.position)).sort(sortFn) : []
   const ranked = [...offenseSlice, ...kickerSlice, ...defSlice, ...idpSlice]
 
-  // Per-position rank from the same sort, using the normalized family
-  // so 'DL' pos-rank counts across DE + DT + NT + DL, etc.
+  // Per-position rank from the same sort. Dual-eligible players count
+  // once per family they belong to (so a LB/DL player appears in both
+  // LB and DL rank counts).
   const posRanks = {}
   const posCounters = {}
   for (const p of ranked) {
-    const family = normalizePosition(p.position)
-    posCounters[family] = (posCounters[family] || 0) + 1
-    posRanks[p.id] = posCounters[family]
+    const families = [...new Set(positionParts(p.position).map(normalizeSinglePosition))]
+    // For single-family players, keep the same behavior as before.
+    // For dual, take the FIRST family for the rank display value
+    // (client shows one number; overall inclusion in each family
+    // list is handled by inFamily above).
+    const primary = families[0] || 'UNK'
+    posCounters[primary] = (posCounters[primary] || 0) + 1
+    posRanks[p.id] = posCounters[primary]
   }
 
-  // Apply user filters AFTER ranks are assigned, so the numbers stay stable.
-  // For IDP filters ('DL' / 'LB' / 'DB' / 'S') match the whole family;
-  // for other positions match exactly.
+  // Apply user filters AFTER ranks are assigned. For IDP families and
+  // 'DEF' match any-part; for offense positions (QB/RB/WR/TE/K) also
+  // any-part so an override like 'RB/WR' would appear in both filters.
   let filtered = ranked
   if (position) {
     if (IDP_FAMILIES.has(position)) {
-      filtered = filtered.filter((p) => normalizePosition(p.position) === position)
+      filtered = filtered.filter((p) => inFamily(p.position, position))
     } else {
-      filtered = filtered.filter((p) => p.position === position)
+      filtered = filtered.filter((p) => positionParts(p.position).includes(position))
     }
   }
   if (query) {
