@@ -1,6 +1,35 @@
-// REGULAR-season start and end dates by sport (approximate, updated yearly).
-// Full-season leagues run through the regular season only — playoff games
-// don't count.
+// REGULAR-season start and end dates by sport. Admin-defined via the
+// Season Dates panel (season_dates table); the client reads those via
+// the useSeasonDates() hook and stores in the react-query cache. When
+// admin hasn't set a row for a given (sport, year), the helpers fall
+// back to the hardcoded approximations below.
+import { queryClient } from './queryClient'
+
+// Read admin-defined season dates from the react-query cache. Returns
+// null if the primer hook hasn't run yet OR admin hasn't defined dates
+// for the given sport + year combination. Callers should fall back to
+// hardcoded defaults when this returns null.
+function getAdminSeasonDates(sportKey, year) {
+  const rows = queryClient.getQueryData(['season-dates'])
+  if (!Array.isArray(rows) || !rows.length) return null
+  // Prefer the row matching the current calendar year. If none exists for
+  // this year (rare — offseason before admin backfills next year), fall
+  // back to the most-recent row for this sport.
+  const forSport = rows.filter((r) => r.sport_key === sportKey)
+  if (!forSport.length) return null
+  const exact = forSport.find((r) => r.season_year === year)
+  if (exact) return exact
+  // Some sports span calendar years (NFL regular season ends in the year
+  // AFTER it began). If a row exists whose regular_season_ends_at is in
+  // the current or next year, prefer that.
+  const now = new Date()
+  const upcoming = forSport
+    .filter((r) => r.regular_season_ends_at && new Date(r.regular_season_ends_at) >= now)
+    .sort((a, b) => new Date(a.regular_season_ends_at) - new Date(b.regular_season_ends_at))
+  if (upcoming.length) return upcoming[0]
+  // Last resort — most recent row we have for this sport.
+  return forSport.sort((a, b) => b.season_year - a.season_year)[0]
+}
 
 export function getSeasonEndDate(sportKey) {
   const year = new Date().getFullYear()
@@ -44,10 +73,17 @@ export function getSeasonStartDate(sportKey) {
 
 export function isSeasonUnderway(sportKey) {
   if (!sportKey || sportKey === 'all') return false
+  const now = new Date()
+  const admin = getAdminSeasonDates(sportKey, now.getFullYear())
+  // Admin-defined dates take precedence when both boundaries are set.
+  if (admin?.regular_season_starts_at && admin?.regular_season_ends_at) {
+    return new Date(admin.regular_season_starts_at) <= now
+      && now <= new Date(admin.regular_season_ends_at)
+  }
+  // Hardcoded fallback for pre-admin-populated years.
   const start = getSeasonStartDate(sportKey)
   const end = getSeasonEndDate(sportKey)
   if (!start || !end) return false
-  const now = new Date()
   return new Date(start) <= now && now <= new Date(end)
 }
 
@@ -77,15 +113,27 @@ export function getPlayoffEndDate(sportKey) {
 }
 
 // True only between the regular-season end and the playoff end — i.e.,
-// playoffs are happening right now. During the regular season returns false;
-// after the championship round returns false.
+// playoffs are happening right now. During the regular season returns
+// false; after the championship round returns false. Prior version had
+// a bug where it returned true for the entire offseason (only checked
+// now <= playoffEnd, not that now >= regular_season_ends_at). The admin-
+// defined path here has both boundaries so it's naturally correct; the
+// hardcoded fallback path also now includes the missing check.
 export function arePlayoffsUnderway(sportKey) {
   if (!sportKey || sportKey === 'all') return false
   if (isSeasonUnderway(sportKey)) return false
-  const playoffEnd = getPlayoffEndDate(sportKey)
-  if (!playoffEnd) return false
   const now = new Date()
-  return now <= new Date(playoffEnd)
+  const admin = getAdminSeasonDates(sportKey, now.getFullYear())
+  if (admin?.regular_season_ends_at && admin?.playoff_ends_at) {
+    return now > new Date(admin.regular_season_ends_at)
+      && now <= new Date(admin.playoff_ends_at)
+  }
+  // Hardcoded fallback — check both endpoints so we don't false-positive
+  // during the offseason.
+  const seasonEnd = getSeasonEndDate(sportKey)
+  const playoffEnd = getPlayoffEndDate(sportKey)
+  if (!seasonEnd || !playoffEnd) return false
+  return now > new Date(seasonEnd) && now <= new Date(playoffEnd)
 }
 
 // End date used by Full Season DFS/contest leagues. During the regular

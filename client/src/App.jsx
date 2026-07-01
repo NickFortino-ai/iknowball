@@ -42,11 +42,15 @@ import { initPushNotifications } from './lib/pushNotifications'
 import { initStatusBar } from './lib/statusBar'
 import { initIAPListener } from './lib/iapListener'
 import { useRealtimeGames } from './hooks/useRealtimeGames'
+import { useSeasonDatesPrimer } from './hooks/useSeasonDates'
 
 function AppRoutes() {
   const initialize = useAuthStore((s) => s.initialize)
   const isAuthenticated = useAuthStore((s) => !!s.session)
   useRealtimeGames(isAuthenticated)
+  // Prime react-query cache so the synchronous isSeasonUnderway /
+  // arePlayoffsUnderway helpers can consult admin-defined dates.
+  useSeasonDatesPrimer()
 
   useEffect(() => {
     initialize()

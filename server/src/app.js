@@ -48,6 +48,7 @@ import publicLandingRouter from './routes/publicLanding.js'
 import surveysRouter from './routes/surveys.js'
 import appConfigRouter from './routes/appConfig.js'
 import appSettingsRouter from './routes/appSettings.js'
+import seasonDatesRouter from './routes/seasonDates.js'
 
 const app = express()
 
@@ -70,6 +71,7 @@ app.use('/api/mock-draft', mockDraftRouter)
 app.use('/api/draft-prep', draftPrepRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/app-settings', appSettingsRouter)
+app.use('/api/season-dates', seasonDatesRouter)
 app.use('/api/props', propsRouter)
 app.use('/api/payments', paymentsRouter)
 app.use('/api/connections', connectionsRouter)

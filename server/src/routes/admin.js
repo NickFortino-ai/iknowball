@@ -1814,7 +1814,7 @@ router.get('/season-dates', requireAuth, requireAdmin, async (req, res) => {
 })
 
 router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
-  const { sport_key, season_year, regular_season_ends_at, playoff_ends_at } = req.body
+  const { sport_key, season_year, regular_season_starts_at, regular_season_ends_at, playoff_ends_at } = req.body
   if (!sport_key || !season_year || !regular_season_ends_at) {
     return res.status(400).json({ error: 'sport_key, season_year, and regular_season_ends_at are required' })
   }
@@ -1824,6 +1824,7 @@ router.post('/season-dates', requireAuth, requireAdmin, async (req, res) => {
     .upsert({
       sport_key,
       season_year: Number(season_year),
+      regular_season_starts_at: regular_season_starts_at || null,
       regular_season_ends_at,
       playoff_ends_at: playoff_ends_at || null,
       updated_at: new Date().toISOString(),

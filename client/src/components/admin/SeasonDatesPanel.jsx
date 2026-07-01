@@ -37,6 +37,7 @@ export default function SeasonDatesPanel() {
 
   const [sportKey, setSportKey] = useState('')
   const [seasonYear, setSeasonYear] = useState(new Date().getFullYear())
+  const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
   const [playoffEndsAt, setPlayoffEndsAt] = useState('')
 
@@ -46,6 +47,7 @@ export default function SeasonDatesPanel() {
       qc.invalidateQueries({ queryKey: ['admin', 'season-dates'] })
       toast('Season dates saved — full_season leagues clamped', 'success')
       setSportKey('')
+      setStartsAt('')
       setEndsAt('')
       setPlayoffEndsAt('')
     },
@@ -68,6 +70,7 @@ export default function SeasonDatesPanel() {
     saveMutation.mutate({
       sport_key: sportKey,
       season_year: Number(seasonYear),
+      regular_season_starts_at: startsAt ? new Date(startsAt).toISOString() : null,
       regular_season_ends_at: new Date(endsAt).toISOString(),
       playoff_ends_at: playoffEndsAt ? new Date(playoffEndsAt).toISOString() : null,
     })
@@ -81,6 +84,7 @@ export default function SeasonDatesPanel() {
     saveMutation.mutate({
       sport_key: sd.sport_key,
       season_year: sd.season_year,
+      regular_season_starts_at: sd.regular_season_starts_at || null,
       regular_season_ends_at: sd.regular_season_ends_at,
       playoff_ends_at: endOfTodayPtIso(),
     })
@@ -116,6 +120,15 @@ export default function SeasonDatesPanel() {
               type="number"
               value={seasonYear}
               onChange={(e) => setSeasonYear(e.target.value)}
+              className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="text-xs text-text-muted mb-1 block">Regular Season Start (optional)</label>
+            <input
+              type="datetime-local"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
               className="w-full bg-bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-text-primary"
             />
           </div>
