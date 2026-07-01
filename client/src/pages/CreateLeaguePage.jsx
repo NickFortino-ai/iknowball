@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useNflSeasonOpener } from '../hooks/useLeagues'
+import { useCreateLeague, useBracketTemplatesActive, useLeagueBackdrops, useNflSeasonOpener, useCurrentNflWeek } from '../hooks/useLeagues'
 import { useTeamsForSport } from '../hooks/useHotTakes'
 import { api } from '../lib/api'
 import { getBackdropUrl } from '../lib/backdropUrl'
@@ -781,6 +781,9 @@ export default function CreateLeaguePage() {
   // kicks off. Once the first Week 1 game starts, only Salary Cap is
   // available.
   const { data: openerData } = useNflSeasonOpener()
+  // Current NFL week + first-game kickoff, for the salary-cap "Week N"
+  // button label and its "kicks off DATE" subtitle.
+  const { data: nflWeekData } = useCurrentNflWeek()
   const traditionalLocked = !!(
     openerData?.opener && new Date(openerData.opener).getTime() <= Date.now()
   )
@@ -1646,8 +1649,18 @@ export default function CreateLeaguePage() {
                       { value: 'full_season', label: isSeasonUnderway(sport) ? 'Remainder of Regular Season' : 'Full Season' },
                       // Salary cap single-week leagues are always "this NFL week" —
                       // server resolves to the current NFL week at creation, no
-                      // user picker. NBA / WNBA single night still uses a date picker.
-                      { value: 'single_week', label: sport === 'basketball_nba' ? 'Single Night' : (fantasyFormat === 'salary_cap' ? 'This Week' : 'Single Week') },
+                      // user picker. During the offseason "this NFL week" resolves
+                      // to Week 1 upcoming, so the button reads "Week 1" instead
+                      // of a vague "This Week". NBA / WNBA single night still
+                      // uses a date picker.
+                      {
+                        value: 'single_week',
+                        label: sport === 'basketball_nba'
+                          ? 'Single Night'
+                          : (fantasyFormat === 'salary_cap'
+                              ? (nflWeekData?.week ? `Week ${nflWeekData.week}` : 'This Week')
+                              : 'Single Week'),
+                      },
                     ].map((opt) => (
                       <button
                         key={opt.value}
@@ -1661,6 +1674,13 @@ export default function CreateLeaguePage() {
                       </button>
                     ))}
                   </div>
+                  {seasonType === 'single_week' && fantasyFormat === 'salary_cap' && nflWeekData?.firstKickoff && (
+                    <p className="text-[11px] text-text-secondary mt-1.5">
+                      Kicks off {new Date(nflWeekData.firstKickoff).toLocaleDateString('en-US', {
+                        weekday: 'short', month: 'short', day: 'numeric',
+                      })}
+                    </p>
+                  )}
                 </div>
                 {seasonType === 'single_week' && fantasyFormat !== 'salary_cap' && (
                   <div>

@@ -7,6 +7,7 @@ import {
   submitPick,
   getStandings,
   getCurrentNflWeek,
+  getCurrentWeekFirstKickoff,
   getSeasonOpenerKickoff,
 } from '../services/tdPassService.js'
 
@@ -16,7 +17,11 @@ router.use(requireAuth)
 router.get('/current-week', async (req, res, next) => {
   try {
     const data = await getCurrentNflWeek()
-    res.json(data)
+    // Attach the current week's first kickoff so callers (create-league,
+    // dashboards) can render a "Week N — kicks off DATE" line without a
+    // second round trip.
+    const firstKickoff = await getCurrentWeekFirstKickoff()
+    res.json({ ...data, firstKickoff })
   } catch (err) {
     next(err)
   }

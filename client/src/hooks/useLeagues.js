@@ -1684,6 +1684,17 @@ export function useReceptionsStandings(leagueId) {
 }
 
 // === TD Pass Competition ===
+// Current NFL week + first-game kickoff for that week. Used by the
+// create-league flow to render "Week N — kicks off DATE" instead of a
+// generic "This Week" label. Offseason returns Week 1 + its opener.
+export function useCurrentNflWeek() {
+  return useQuery({
+    queryKey: ['td-pass', 'current-week'],
+    queryFn: () => api.get('/td-pass/current-week'),
+    staleTime: 5 * 60_000,
+  })
+}
+
 export function useTdPassQbs(leagueId) {
   return useQuery({
     queryKey: ['td-pass', leagueId, 'qbs'],
