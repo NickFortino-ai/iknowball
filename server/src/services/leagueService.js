@@ -396,14 +396,36 @@ export async function createLeague(userId, data) {
   }
 
   // TD Pass: set starts_at to the first kickoff of the current NFL week
-  // NFL Survivor (standard or Touchdown mode): start at the first kickoff
-  // of the upcoming NFL week so the league doesn't appear "already
-  // started" before games begin. Falls back to Sept 9 placeholder if the
-  // schedule hasn't been loaded yet (offseason create).
-  if (league.format === 'survivor' && league.sport === 'americanfootball_nfl') {
+  // Football Survivor (NFL / NCAAF, standard or Touchdown mode): start at
+  // the first kickoff of the upcoming week so the league doesn't appear
+  // "already started" before games begin. Falls back to a season-start
+  // placeholder if the schedule hasn't been loaded yet (offseason create).
+  const isFootballSurvivor = league.format === 'survivor'
+    && (league.sport === 'americanfootball_nfl' || league.sport === 'americanfootball_ncaaf')
+  if (isFootballSurvivor) {
     try {
-      const { getCurrentWeekFirstKickoff } = await import('./tdPassService.js')
-      const firstKickoff = await getCurrentWeekFirstKickoff()
+      let firstKickoff = null
+      if (league.sport === 'americanfootball_nfl') {
+        const { getCurrentWeekFirstKickoff } = await import('./tdPassService.js')
+        firstKickoff = await getCurrentWeekFirstKickoff()
+      } else {
+        // NCAAF: find earliest upcoming game in the games table.
+        const { data: sport } = await supabase
+          .from('sports')
+          .select('id')
+          .eq('key', 'americanfootball_ncaaf')
+          .single()
+        if (sport?.id) {
+          const { data: nextGames } = await supabase
+            .from('games')
+            .select('starts_at')
+            .eq('sport_id', sport.id)
+            .gt('starts_at', new Date().toISOString())
+            .order('starts_at', { ascending: true })
+            .limit(1)
+          firstKickoff = nextGames?.[0]?.starts_at || null
+        }
+      }
       const nowMs = Date.now()
       const isFutureKickoff = firstKickoff && new Date(firstKickoff).getTime() > nowMs
       const startsAtMs = league.starts_at ? new Date(league.starts_at).getTime() : 0
@@ -413,15 +435,19 @@ export async function createLeague(userId, data) {
       if (startsAtMs <= nowMs) {
         let newStartsAt = isFutureKickoff ? firstKickoff : null
         if (!newStartsAt) {
+          // Offseason placeholder: sport-appropriate opener date.
           const today = new Date()
           const yr = today.getFullYear()
-          const candidate = new Date(yr, 8, 9)
-          newStartsAt = (candidate > today ? candidate : new Date(yr + 1, 8, 9)).toISOString()
+          const [openerMonth, openerDay] = league.sport === 'americanfootball_ncaaf'
+            ? [7, 23]  // late-Aug college opener
+            : [8, 9]   // early-Sept NFL opener
+          const candidate = new Date(yr, openerMonth, openerDay)
+          newStartsAt = (candidate > today ? candidate : new Date(yr + 1, openerMonth, openerDay)).toISOString()
         }
         updates.starts_at = newStartsAt
         league.starts_at = newStartsAt
       }
-      // Joins close at the next NFL kickoff. Letting late joiners in after
+      // Joins close at the next kickoff. Letting late joiners in after
       // a game has already started would mean they're picking from a smaller
       // information-disadvantaged team pool. Skip if joins are already
       // locked to a future moment by the user.
@@ -434,7 +460,7 @@ export async function createLeague(userId, data) {
         await supabase.from('leagues').update(updates).eq('id', league.id)
       }
     } catch (err) {
-      logger.error({ err, leagueId: league.id }, 'Failed to set NFL survivor starts_at / joins_locked_at')
+      logger.error({ err, leagueId: league.id, sport: league.sport }, 'Failed to set football survivor starts_at / joins_locked_at')
     }
   }
 

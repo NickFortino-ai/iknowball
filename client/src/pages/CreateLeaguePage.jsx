@@ -2552,18 +2552,36 @@ export default function CreateLeaguePage() {
                 className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
             </div>
-            {survivorMode !== 'touchdown' && (
-              <div>
-                <label className="text-xs text-text-muted block mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={startsAt}
-                  onChange={(e) => setStartsAt(e.target.value)}
-                  className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
-                />
-                <p className="text-[10px] text-text-muted mt-1">Defaults to today if left blank. League runs until there's one survivor left or the end of the season.</p>
-              </div>
-            )}
+            {survivorMode !== 'touchdown' && (() => {
+              // Football survivor (NFL / NCAAF) never asks for a start date —
+              // there's exactly one correct answer (first kickoff of the
+              // upcoming week), and the server fills it in. Show a note in
+              // white instead. MLB / NBA / WNBA keep the manual date input
+              // because their seasons have staggered starts and daily-vs-
+              // weekly cadence choice.
+              const isFootball = sport === 'americanfootball_nfl' || sport === 'americanfootball_ncaaf'
+              if (isFootball) {
+                const sportLabel = sport === 'americanfootball_nfl' ? 'NFL' : 'college football'
+                const noteText = isSeasonUnderway(sport)
+                  ? `Runs through the remainder of the ${sportLabel} regular season. Preseason and playoffs excluded.`
+                  : `Runs the full ${sportLabel} regular season, starting at the first kickoff of Week 1. Preseason and playoffs excluded.`
+                return (
+                  <p className="text-sm text-white leading-relaxed">{noteText}</p>
+                )
+              }
+              return (
+                <div>
+                  <label className="text-xs text-text-muted block mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={startsAt}
+                    onChange={(e) => setStartsAt(e.target.value)}
+                    className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+                  />
+                  <p className="text-[10px] text-text-muted mt-1">Defaults to today if left blank. League runs until there's one survivor left or the end of the season.</p>
+                </div>
+              )
+            })()}
             {survivorMode === 'touchdown' && (
               <p className="text-sm text-white">League starts at the next NFL kickoff and runs until there's one survivor left or the end of the season.</p>
             )}
