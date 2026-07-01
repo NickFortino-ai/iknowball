@@ -32,6 +32,7 @@ export const DEFAULT_RULES = {
   fgmiss_40_49: -2,
   fgmiss_50_plus: -1,
   xpm: 1,
+  xpmiss: -1,
   def_sack: 1,
   def_int: 2,
   def_fum_rec: 2,
@@ -267,6 +268,7 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
                 { range: '0–39 yds', mk: 'fgm_0_39', ms: 'fgmiss_0_39' },
                 { range: '40–49 yds', mk: 'fgm_40_49', ms: 'fgmiss_40_49' },
                 { range: '50+ yds', mk: 'fgm_50_plus', ms: 'fgmiss_50_plus' },
+                { range: 'Extra Point', mk: 'xpm', ms: 'xpmiss' },
               ].map((row) => (
                 <Fragment key={row.range}>
                   <span className="text-xs text-text-secondary">{row.range}</span>
@@ -286,9 +288,6 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
                   />
                 </Fragment>
               ))}
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <NumberField label="Extra Point" value={rules.xpm} onChange={(v) => set('xpm', v)} step={1} />
             </div>
           </div>
 

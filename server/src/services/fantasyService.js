@@ -42,6 +42,7 @@ export const DEFAULT_SCORING_RULES = {
   fgmiss_40_49: -2,
   fgmiss_50_plus: -1,
   xpm: 1,
+  xpmiss: -1,
   // Team defense
   def_sack: 1,
   def_int: 2,
@@ -156,6 +157,10 @@ export function applyScoringRules(stat, rules) {
   pts += (stat.fgmiss_40_49 || 0) * (r.fgmiss_40_49 || 0)
   pts += (stat.fgmiss_50_plus || 0) * (r.fgmiss_50_plus || 0)
   pts += (stat.xpm || 0) * (r.xpm || 0)
+  // xpa (attempts) - xpm (made) = misses. No dedicated xpmiss field
+  // needed since we already sync both from Sleeper.
+  const xpMisses = Math.max(0, (Number(stat.xpa) || 0) - (Number(stat.xpm) || 0))
+  pts += xpMisses * (r.xpmiss || 0)
 
   // Team defense
   pts += (Number(stat.def_sack) || 0) * (r.def_sack || 0)
