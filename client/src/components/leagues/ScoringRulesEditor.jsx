@@ -90,7 +90,8 @@ function buildFromPreset(preset) {
   return base
 }
 
-function NumberField({ label, value, onChange, step = 0.5, hint }) {
+function NumberField({ label, value, onChange, step = 0.5, hint, info }) {
+  const [showInfo, setShowInfo] = useState(false)
   // Keep a local string so the input can transiently be empty (or just "-"
   // or ".") while the user is typing without snapping back to 0. Previous
   // controlled-with-parseFloat approach turned "" → 0 on every keystroke,
@@ -110,7 +111,24 @@ function NumberField({ label, value, onChange, step = 0.5, hint }) {
 
   return (
     <label className="block">
-      <span className="text-[10px] uppercase text-text-muted tracking-wider block mb-1">{label}</span>
+      <span className="text-[10px] uppercase text-text-muted tracking-wider mb-1 flex items-center gap-1">
+        {label}
+        {info && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); setShowInfo(!showInfo) }}
+            aria-label={`About ${label}`}
+            className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-text-muted/40 text-[9px] font-bold text-text-muted hover:text-text-primary hover:border-text-primary/60 transition-colors"
+          >
+            i
+          </button>
+        )}
+      </span>
+      {info && showInfo && (
+        <div className="text-[10px] text-text-secondary bg-bg-primary/50 border border-text-primary/10 rounded px-2 py-1.5 mb-1 leading-snug">
+          {info}
+        </div>
+      )}
       <input
         type="number"
         step={step}
@@ -335,7 +353,7 @@ export default function ScoringRulesEditor({ value, onChange, defenseMode }) {
               <NumberField label="Tackle (Solo)" value={rules.idp_tkl_solo} onChange={(v) => set('idp_tkl_solo', v)} step={0.5} />
               <NumberField label="Tackle (Assist)" value={rules.idp_tkl_ast} onChange={(v) => set('idp_tkl_ast', v)} step={0.5} />
               <NumberField label="Tackle for Loss" value={rules.idp_tkl_loss} onChange={(v) => set('idp_tkl_loss', v)} step={0.5} />
-              <NumberField label="Sack" value={rules.idp_sack} onChange={(v) => set('idp_sack', v)} step={0.5} />
+              <NumberField label="Sack" value={rules.idp_sack} onChange={(v) => set('idp_sack', v)} step={0.5} info="Sacks stack with solo tackle + tackle for loss. So a defender's sack actually nets Sack + Tackle (Solo) + Tackle for Loss points combined — at defaults that's 2 + 1 + 1 = 4 pts per sack." />
               <NumberField label="INT" value={rules.idp_int} onChange={(v) => set('idp_int', v)} step={1} />
               <NumberField label="Pass Defended" value={rules.idp_pass_def} onChange={(v) => set('idp_pass_def', v)} step={0.5} />
               <NumberField label="QB Hit" value={rules.idp_qb_hit} onChange={(v) => set('idp_qb_hit', v)} step={0.5} />
