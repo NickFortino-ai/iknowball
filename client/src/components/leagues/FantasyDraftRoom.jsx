@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft, useUpdateFantasySettings } from '../../hooks/useLeagues'
+import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useReorderDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft, useUpdateFantasySettings } from '../../hooks/useLeagues'
 import DraftPlayerPreview from './DraftPlayerPreview'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
@@ -146,6 +146,7 @@ export default function FantasyDraftRoom({ league }) {
   const setAutoDraftMut = useSetAutoDraft()
   const cancelAutoDraftMut = useCancelAutoDraft()
   const updateFantasySettings = useUpdateFantasySettings()
+  const reorderDraft = useReorderDraft()
   const [autoDraftPrompt, setAutoDraftPrompt] = useState(null)
   const presentUserIds = useRealtimeDraft(league.id, profile?.id)
 
@@ -472,24 +473,82 @@ export default function FantasyDraftRoom({ league }) {
         </div>
 
         {/* Draft order */}
-        {hasPickSlots && (
-          <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4">
-            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Draft Order</div>
-            <div className="space-y-1.5">
-              {settings?.draft_order?.map((userId, i) => {
-                const member = picks.find((p) => p.user_id === userId)?.users
-                const isYou = userId === profile?.id
-                return (
-                  <div key={userId} className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg ${isYou ? 'bg-accent/10' : ''}`}>
-                    <span className={`text-sm font-display w-6 ${isYou ? 'text-accent' : 'text-text-muted'}`}>{i + 1}</span>
-                    {member && <Avatar user={member} size="xs" />}
-                    <span className={`text-sm ${isYou ? 'text-accent font-semibold' : 'text-text-primary'}`}>{member?.display_name || member?.username || 'Unknown'}{isYou ? ' (you)' : ''}</span>
-                  </div>
-                )
-              })}
+        {hasPickSlots && (() => {
+          const currentOrder = settings?.draft_order || []
+          const canReorder = isCommissioner && draftStatus === 'pending'
+          const moveSlot = async (fromIdx, dir) => {
+            const toIdx = fromIdx + dir
+            if (toIdx < 0 || toIdx >= currentOrder.length) return
+            const next = [...currentOrder]
+            ;[next[fromIdx], next[toIdx]] = [next[toIdx], next[fromIdx]]
+            try {
+              await reorderDraft.mutateAsync({ leagueId: league.id, order: next })
+            } catch (err) {
+              toast(err.message || 'Failed to reorder', 'error')
+            }
+          }
+          const randomizeAgain = async () => {
+            const shuffled = [...currentOrder].sort(() => Math.random() - 0.5)
+            try {
+              await reorderDraft.mutateAsync({ leagueId: league.id, order: shuffled })
+              toast('Draft order re-randomized', 'success')
+            } catch (err) {
+              toast(err.message || 'Failed to randomize', 'error')
+            }
+          }
+          return (
+            <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4">
+              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Draft Order</div>
+              <div className="space-y-1.5">
+                {currentOrder.map((userId, i) => {
+                  const member = picks.find((p) => p.user_id === userId)?.users
+                  const isYou = userId === profile?.id
+                  return (
+                    <div key={userId} className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg ${isYou ? 'bg-accent/10' : ''}`}>
+                      <span className={`text-sm font-display w-6 ${isYou ? 'text-accent' : 'text-text-muted'}`}>{i + 1}</span>
+                      {member && <Avatar user={member} size="xs" />}
+                      <span className={`flex-1 text-sm truncate ${isYou ? 'text-accent font-semibold' : 'text-text-primary'}`}>{member?.display_name || member?.username || 'Unknown'}{isYou ? ' (you)' : ''}</span>
+                      {canReorder && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => moveSlot(i, -1)}
+                            disabled={i === 0 || reorderDraft.isPending}
+                            className="w-7 h-7 rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            aria-label="Move up"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveSlot(i, 1)}
+                            disabled={i === currentOrder.length - 1 || reorderDraft.isPending}
+                            className="w-7 h-7 rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            aria-label="Move down"
+                          >
+                            ↓
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {canReorder && (
+                <div className="mt-3 pt-3 border-t border-text-primary/10">
+                  <button
+                    type="button"
+                    onClick={randomizeAgain}
+                    disabled={reorderDraft.isPending}
+                    className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-bg-secondary text-text-primary hover:bg-border transition-colors disabled:opacity-50"
+                  >
+                    {reorderDraft.isPending ? 'Updating…' : 'Randomize again'}
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Pre-draft player browser — visible once draft order is set */}
         {hasPickSlots && <PreDraftBrowser leagueId={league.id} />}

@@ -1097,6 +1097,7 @@ import {
   getFantasySettings,
   updateFantasySettings,
   initializeDraft,
+  reorderDraft,
   startDraft,
   makeDraftPick,
   makeOfflineDraftPick,
@@ -1161,6 +1162,17 @@ router.patch('/:id/fantasy/settings', requireAuth, async (req, res) => {
 router.post('/:id/fantasy/draft/init', requireAuth, async (req, res) => {
   const result = await initializeDraft(req.params.id)
   res.json(result)
+})
+
+// Reorder draft (commissioner only, pre-start). Body: { order: [user_id...] }
+// Handles both manual reorder and "randomize again" (client shuffles + sends).
+router.post('/:id/fantasy/draft/reorder', requireAuth, async (req, res) => {
+  try {
+    const result = await reorderDraft(req.params.id, req.user.id, req.body?.order)
+    res.json(result)
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message })
+  }
 })
 
 // Underfill state for the commissioner banner / modal

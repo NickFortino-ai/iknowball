@@ -813,6 +813,16 @@ export function useInitDraft() {
   })
 }
 
+export function useReorderDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ leagueId, order }) => api.post(`/leagues/${leagueId}/fantasy/draft/reorder`, { order }),
+    onSuccess: (_data, { leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues', leagueId, 'fantasy'] })
+    },
+  })
+}
+
 export function useStartDraft() {
   const queryClient = useQueryClient()
   return useMutation({

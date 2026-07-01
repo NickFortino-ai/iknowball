@@ -580,6 +580,108 @@ export async function initializeDraft(leagueId) {
 }
 
 /**
+ * Rebuild the draft order + pick slots from a commissioner-supplied
+ * ordered array of user_ids. Used for manual reorder AND "randomize
+ * again" (client shuffles + sends). Only valid while draft_status is
+ * 'pending' — once the draft has started, positions are locked.
+ */
+export async function reorderDraft(leagueId, commissionerId, order) {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('commissioner_id, name')
+    .eq('id', leagueId)
+    .single()
+  if (!league || league.commissioner_id !== commissionerId) {
+    const err = new Error('Only the commissioner can reorder the draft')
+    err.status = 403
+    throw err
+  }
+  const settings = await getFantasySettings(leagueId)
+  if (settings?.draft_status !== 'pending') {
+    const err = new Error('Draft has already started — order is locked')
+    err.status = 400
+    throw err
+  }
+  if (!Array.isArray(order) || !order.length) {
+    const err = new Error('order (array of user_ids) required')
+    err.status = 400
+    throw err
+  }
+
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+
+  const memberSet = new Set((members || []).map((m) => m.user_id))
+  const orderSet = new Set(order)
+  // Must be a permutation of the current member set — same length, same
+  // members, no duplicates. Prevents kicking someone out of the draft or
+  // adding a stranger via a hand-crafted payload.
+  if (orderSet.size !== order.length) {
+    const err = new Error('order contains duplicate user_ids')
+    err.status = 400
+    throw err
+  }
+  if (orderSet.size !== memberSet.size || [...orderSet].some((id) => !memberSet.has(id))) {
+    const err = new Error('order must contain every league member exactly once')
+    err.status = 400
+    throw err
+  }
+
+  const numTeams = order.length
+  const rosterSlots = settings.roster_slots
+  const totalRosterSize = Object.entries(rosterSlots).reduce((a, [k, v]) => a + (k === 'ir' ? 0 : v), 0)
+
+  // Rebuild snake picks with the new order
+  const picks = []
+  let pickNum = 1
+  for (let round = 1; round <= totalRosterSize; round++) {
+    const isReverse = round % 2 === 0
+    const roundOrder = isReverse ? [...order].reverse() : order
+    for (const userId of roundOrder) {
+      picks.push({
+        league_id: leagueId,
+        round,
+        pick_number: pickNum++,
+        user_id: userId,
+      })
+    }
+  }
+
+  await supabase.from('fantasy_draft_picks').delete().eq('league_id', leagueId)
+  const { error: insertErr } = await supabase.from('fantasy_draft_picks').insert(picks)
+  if (insertErr) throw insertErr
+
+  await supabase
+    .from('fantasy_settings')
+    .update({ draft_order: order, num_teams: numTeams })
+    .eq('league_id', leagueId)
+
+  // Notify each member of their new slot. Reuses fantasy_draft_order_set
+  // (already in the notif type constraint from initializeDraft's first
+  // fire). Members can silence via notification preferences if the
+  // commish is trigger-happy.
+  try {
+    const leagueName = league?.name || 'your league'
+    const { createNotification } = await import('./notificationService.js')
+    for (let i = 0; i < order.length; i++) {
+      await createNotification(
+        order[i],
+        'fantasy_draft_order_set',
+        `${leagueName} draft order updated — you're now picking #${i + 1} of ${numTeams}.`,
+        { leagueId, slot: i + 1, total: numTeams },
+      )
+    }
+  } catch (err) {
+    logger.error({ err, leagueId }, 'Failed to send draft-reorder notifications')
+  }
+
+  logger.info({ leagueId, numTeams, totalPicks: picks.length }, 'Draft reordered')
+  return { numTeams, totalPicks: picks.length, draftOrder: order }
+}
+
+/**
  * Make a draft pick.
  */
 export async function makeDraftPick(leagueId, userId, playerId) {
