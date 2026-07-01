@@ -3214,9 +3214,12 @@ export async function searchAvailablePlayers(leagueId, query, position = null, s
 function buildLineupValidationMaps(rosterSlots) {
   const slots = rosterSlots || { qb: 1, rb: 2, wr: 2, te: 1, flex: 1, k: 1, def: 1 }
   const starterKeys = []
+  // Bench and IR accept anything a starter slot can hold, so include
+  // every IDP family too — without this an IDP league can't bench or
+  // IR an IDP because the allowlist rejects DE/LB/CB/S codes.
   const slotPositions = {
-    bench: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
-    ir: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
+    bench: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'DE', 'DT', 'NT', 'LB', 'ILB', 'OLB', 'MLB', 'DB', 'CB', 'S', 'FS', 'SS'],
+    ir: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'DE', 'DT', 'NT', 'LB', 'ILB', 'OLB', 'MLB', 'DB', 'CB', 'S', 'FS', 'SS'],
   }
   if ((slots.qb || 0) >= 1) { starterKeys.push('qb'); slotPositions.qb = ['QB'] }
   for (let i = 1; i <= (slots.rb || 0); i++) { starterKeys.push(`rb${i}`); slotPositions[`rb${i}`] = ['RB'] }
@@ -3226,6 +3229,12 @@ function buildLineupValidationMaps(rosterSlots) {
   if ((slots.superflex || 0) >= 1) { starterKeys.push('superflex'); slotPositions.superflex = ['QB', 'RB', 'WR', 'TE'] }
   if ((slots.k || 0) >= 1) { starterKeys.push('k'); slotPositions.k = ['K'] }
   if ((slots.def || 0) >= 1) { starterKeys.push('def'); slotPositions.def = ['DEF'] }
+  // IDP starter slots — position codes mirror Sleeper's nfl_players.position
+  // values. Client-side buildStarterSlots uses the same allowlists.
+  for (let i = 1; i <= (slots.dl || 0); i++) { starterKeys.push(`dl${i}`); slotPositions[`dl${i}`] = ['DE', 'DT', 'NT', 'DL'] }
+  for (let i = 1; i <= (slots.lb || 0); i++) { starterKeys.push(`lb${i}`); slotPositions[`lb${i}`] = ['LB', 'ILB', 'OLB', 'MLB'] }
+  for (let i = 1; i <= (slots.db || 0); i++) { starterKeys.push(`db${i}`); slotPositions[`db${i}`] = ['CB', 'DB'] }
+  for (let i = 1; i <= (slots.s || 0); i++) { starterKeys.push(`s${i}`); slotPositions[`s${i}`] = ['S', 'FS', 'SS'] }
   return { starterKeys, slotPositions }
 }
 
