@@ -833,12 +833,13 @@ export default function CreateLeaguePage() {
     }
   }, [format, fantasyFormat])
 
-  // NBA / MLB / All-Sports survivor and pick'em default to daily (games run
-  // every day, not just on weekends). NFL stays on the weekly default.
-  // Weekly remains selectable in all cases — this is just the default.
+  // NBA / WNBA / MLB / All-Sports survivor and pick'em default to daily
+  // (games run every day, not just on weekends). NFL stays on the weekly
+  // default. Weekly remains selectable in all cases — this is just the
+  // default.
   useEffect(() => {
     if ((format === 'survivor' || format === 'pickem')
-      && (sport === 'basketball_nba' || sport === 'baseball_mlb' || sport === 'all')) {
+      && (sport === 'basketball_nba' || sport === 'basketball_wnba' || sport === 'baseball_mlb' || sport === 'all')) {
       const allowed = allowedFrequencies(sport)
       if (allowed.includes('daily')) setPickFrequency('daily')
     }
