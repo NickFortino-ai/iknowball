@@ -133,7 +133,12 @@ const createLeagueSchema = z.object({
     champion_metric: z.enum(['total_points', 'most_wins']).optional(),
     single_week: z.number().int().min(1).max(18).nullable().optional(),
     playoff_teams: z.number().int().optional(),
-  }).optional(),
+  }).passthrough().optional(),
+  // .passthrough() so client-side fields like draft_date, draft_mode,
+  // draft_location, roster_slots, scoring_rules, playoff_start_week,
+  // and championship_week survive parsing instead of being silently
+  // stripped. createFantasySettings picks out the fields it knows about
+  // and ignores the rest — no risk from unknown keys sneaking through.
 })
 
 router.post('/', requireAuth, validate(createLeagueSchema), async (req, res) => {
