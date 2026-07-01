@@ -3,9 +3,16 @@ import { logger } from '../utils/logger.js'
 import { createNotification } from '../services/notificationService.js'
 
 // Squares is single-game and explicitly never awards a global bonus, so we
-// don't run the warning/auto-cancel flow on it. Every other format requires
-// at least 2 distinct members for a competitive league.
-const EXEMPT_FORMATS = new Set(['squares'])
+// don't run the warning/auto-cancel flow on it.
+//
+// Fantasy is exempt because `starts_at` for a fantasy league is a soft
+// creation-time default — it doesn't line up with when the league
+// actually "begins" (draft date + NFL Week 1). A fantasy league created
+// at 11:45 PM would default starts_at to that same day, then get
+// auto-cancelled 15 minutes later at midnight even though it's months
+// before the NFL season. Fantasy has its own draft-scheduling flow;
+// commissioners can cancel manually if a league sits empty for too long.
+const EXEMPT_FORMATS = new Set(['squares', 'fantasy'])
 
 const WARNING_LEAD_MS = 6 * 60 * 60 * 1000 // 6 hours before starts_at
 
