@@ -487,15 +487,6 @@ export default function FantasyDraftRoom({ league }) {
               toast(err.message || 'Failed to reorder', 'error')
             }
           }
-          const randomizeAgain = async () => {
-            const shuffled = [...currentOrder].sort(() => Math.random() - 0.5)
-            try {
-              await reorderDraft.mutateAsync({ leagueId: league.id, order: shuffled })
-              toast('Draft order re-randomized', 'success')
-            } catch (err) {
-              toast(err.message || 'Failed to randomize', 'error')
-            }
-          }
           return (
             <div className="rounded-xl border border-text-primary/20 bg-bg-primary/60 backdrop-blur-sm p-4">
               <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Draft Order</div>
@@ -534,18 +525,6 @@ export default function FantasyDraftRoom({ league }) {
                   )
                 })}
               </div>
-              {canReorder && (
-                <div className="mt-3 pt-3 border-t border-text-primary/10">
-                  <button
-                    type="button"
-                    onClick={randomizeAgain}
-                    disabled={reorderDraft.isPending}
-                    className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-bg-secondary text-text-primary hover:bg-border transition-colors disabled:opacity-50"
-                  >
-                    {reorderDraft.isPending ? 'Updating…' : 'Randomize again'}
-                  </button>
-                </div>
-              )}
             </div>
           )
         })()}
