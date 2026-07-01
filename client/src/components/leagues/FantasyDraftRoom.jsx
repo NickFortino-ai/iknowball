@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft } from '../../hooks/useLeagues'
+import { useDraftBoard, useAvailablePlayers, useMakeDraftPick, useInitDraft, useStartDraft, useStartOfflineDraft, useRealtimeDraft, useDraftQueue, useSetDraftQueue, usePauseDraft, useResumeDraft, useMakeOfflineDraftPick, useUndoDraftPick, useMyRankings, useSetAutoDraft, useCancelAutoDraft, useUpdateFantasySettings } from '../../hooks/useLeagues'
 import DraftPlayerPreview from './DraftPlayerPreview'
 import { useAuth } from '../../hooks/useAuth'
 import Avatar from '../ui/Avatar'
@@ -85,6 +85,50 @@ function DraftCountdown({ date }) {
   )
 }
 
+// Format an ISO date into the value shape <input type="datetime-local">
+// expects: YYYY-MM-DDTHH:MM in the user's local zone.
+function toDateTimeLocalValue(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// Inline draft-date editor rendered right in the pre-draft view so the
+// commissioner doesn't have to detour through gear settings. Members see
+// the placeholder note; commissioners get the input.
+function DraftDatePrompt({ league, settings, isCommissioner, updateFantasySettings }) {
+  if (!isCommissioner) {
+    return (
+      <div className="rounded-2xl border border-text-primary/15 bg-bg-primary/40 p-5 text-center">
+        <div className="text-sm text-text-secondary">
+          The commissioner hasn't set a draft date yet. You'll get a notification once it's scheduled.
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-2xl border border-accent/40 bg-accent/5 backdrop-blur-sm p-5">
+      <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-2">Schedule the Draft</div>
+      <input
+        type="datetime-local"
+        defaultValue={toDateTimeLocalValue(settings?.draft_date)}
+        onBlur={(e) => {
+          const v = e.target.value
+          updateFantasySettings.mutateAsync({
+            leagueId: league.id,
+            draft_date: v ? new Date(v).toISOString() : null,
+          }).then(() => toast('Draft time set', 'success'))
+            .catch((err) => toast(err.message || 'Failed to set draft time', 'error'))
+        }}
+        className="w-full bg-bg-primary border border-text-primary/20 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+      />
+      <p className="text-[11px] text-text-secondary mt-2 leading-snug">
+        Shown in your local time. Every member sees it in their own timezone. Leave blank to start the draft manually.
+      </p>
+    </div>
+  )
+}
+
 export default function FantasyDraftRoom({ league }) {
   const { profile } = useAuth()
   const { data: draftData, isLoading } = useDraftBoard(league.id)
@@ -101,6 +145,7 @@ export default function FantasyDraftRoom({ league }) {
   const resumeDraftMut = useResumeDraft()
   const setAutoDraftMut = useSetAutoDraft()
   const cancelAutoDraftMut = useCancelAutoDraft()
+  const updateFantasySettings = useUpdateFantasySettings()
   const [autoDraftPrompt, setAutoDraftPrompt] = useState(null)
   const presentUserIds = useRealtimeDraft(league.id, profile?.id)
 
@@ -374,7 +419,9 @@ export default function FantasyDraftRoom({ league }) {
           </div>
         ) : draftDateValid ? (
           <DraftCountdown date={draftDate} />
-        ) : null}
+        ) : (
+          <DraftDatePrompt league={league} settings={settings} isCommissioner={isCommissioner} updateFantasySettings={updateFantasySettings} />
+        )}
 
         {/* Commissioner actions */}
         <div className="text-center space-y-3">
