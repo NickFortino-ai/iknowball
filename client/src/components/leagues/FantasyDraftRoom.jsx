@@ -475,7 +475,7 @@ export default function FantasyDraftRoom({ league }) {
         {/* Draft order */}
         {hasPickSlots && (() => {
           const currentOrder = settings?.draft_order || []
-          const canReorder = isCommissioner && draftStatus === 'pending'
+          const canReorder = isCommissioner && draftStatus === 'pending' && settings?.draft_mode === 'offline'
           const moveSlot = async (fromIdx, dir) => {
             const toIdx = fromIdx + dir
             if (toIdx < 0 || toIdx >= currentOrder.length) return

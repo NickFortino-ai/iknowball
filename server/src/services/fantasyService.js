@@ -602,6 +602,14 @@ export async function reorderDraft(leagueId, commissionerId, order) {
     err.status = 400
     throw err
   }
+  // Manual reorder is only exposed for offline drafts, where the
+  // commissioner may need to enter a real-world randomization (out of
+  // a hat, dice, etc.). Live drafts stick with the initial randomize.
+  if (settings?.draft_mode !== 'offline') {
+    const err = new Error('Manual reorder is only available for offline drafts')
+    err.status = 400
+    throw err
+  }
   if (!Array.isArray(order) || !order.length) {
     const err = new Error('order (array of user_ids) required')
     err.status = 400
