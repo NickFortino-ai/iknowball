@@ -442,6 +442,43 @@ export async function updateFantasySettings(leagueId, updates) {
     }
   }
 
+  // If draft_date changed (first-time set OR reschedule), notify every
+  // member. First-time set gets "scheduled" wording; reschedule gets
+  // "rescheduled" wording. Skip if the field wasn't in updates at all,
+  // or if the value is unchanged, or if being cleared to null.
+  if (Object.prototype.hasOwnProperty.call(updates, 'draft_date') && updates.draft_date && updates.draft_date !== current?.draft_date) {
+    try {
+      const isFirstTime = !current?.draft_date
+      const { data: league } = await supabase
+        .from('leagues')
+        .select('name')
+        .eq('id', leagueId)
+        .single()
+      const { data: members } = await supabase
+        .from('league_members')
+        .select('user_id')
+        .eq('league_id', leagueId)
+      const when = new Date(updates.draft_date).toLocaleString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+      })
+      const leaguePrefix = league?.name ? `${league.name}: ` : ''
+      const message = isFirstTime
+        ? `${leaguePrefix}Draft scheduled for ${when}`
+        : `${leaguePrefix}Draft rescheduled to ${when}`
+      const { createNotification } = await import('./notificationService.js')
+      for (const m of members || []) {
+        await createNotification(m.user_id, 'fantasy_draft_scheduled', message, {
+          leagueId,
+          leagueName: league?.name,
+          draftDate: updates.draft_date,
+          isReschedule: !isFirstTime,
+        })
+      }
+    } catch (err) {
+      logger.error({ err, leagueId }, 'Failed to send draft-scheduled notifications')
+    }
+  }
+
   return data
 }
 

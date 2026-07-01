@@ -502,7 +502,7 @@ export default function FantasyMyTeam({ league }) {
         {irCount > 0 && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-base font-semibold text-text-primary">IR (0/{irCount})</h3>
+            <h3 className="text-base font-semibold text-text-primary">IR</h3>
           </div>
           <div className="divide-y divide-text-primary/10">
             {Array.from({ length: irCount }, (_, i) => (
@@ -1050,7 +1050,7 @@ export default function FantasyMyTeam({ league }) {
       {irSlotCount > 0 && (
         <div className="rounded-xl border border-text-primary/20 overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <h3 className="text-base font-semibold text-text-primary">IR ({irPlayers.length}/{irSlotCount})</h3>
+            <h3 className="text-base font-semibold text-text-primary">IR</h3>
           </div>
           <div className="p-3 space-y-2">
             {irPlayers.map((r) => (
