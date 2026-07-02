@@ -1693,13 +1693,24 @@ export async function setDraftQueue(leagueId, userId, playerIds) {
  * Sorted by wins DESC, then PF DESC as the tiebreaker.
  */
 export async function getFantasyStandings(leagueId) {
-  // Pull league members for the base list (so 0-game teams still show up)
+  // Pull league members for the base list (so 0-game teams still show up).
+  // final_rank is set by finalizeFantasyChampion and drives the sort order
+  // on completed leagues; null for active/open leagues.
   const { data: members } = await supabase
     .from('league_members')
-    .select('user_id, fantasy_team_name, fantasy_clinched_at, fantasy_eliminated_at, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .select('user_id, fantasy_team_name, fantasy_clinched_at, fantasy_eliminated_at, final_rank, users(id, username, display_name, avatar_url, avatar_emoji)')
     .eq('league_id', leagueId)
 
   if (!members?.length) return []
+
+  // Detect completed state so we can override the wins-DESC sort with
+  // playoff-aware final placement (see the sort branch below).
+  const { data: leagueRow } = await supabase
+    .from('leagues')
+    .select('status')
+    .eq('id', leagueId)
+    .maybeSingle()
+  const isCompleted = leagueRow?.status === 'completed'
 
   // For salary_cap leagues, sort respects champion_metric. Traditional
   // fantasy uses the H2H record (wins DESC, PF tiebreak) regardless.
@@ -1731,6 +1742,7 @@ export async function getFantasyStandings(leagueId) {
       fantasy_team_name: m.fantasy_team_name || null,
       fantasy_clinched_at: m.fantasy_clinched_at || null,
       fantasy_eliminated_at: m.fantasy_eliminated_at || null,
+      final_rank: m.final_rank || null,
       wins: 0,
       losses: 0,
       ties: 0,
@@ -1779,6 +1791,9 @@ export async function getFantasyStandings(leagueId) {
     user: t.user,
     user_id: t.user_id,
     fantasy_team_name: t.fantasy_team_name,
+    fantasy_clinched_at: t.fantasy_clinched_at,
+    fantasy_eliminated_at: t.fantasy_eliminated_at,
+    final_rank: t.final_rank,
     wins: t.wins,
     losses: t.losses,
     ties: t.ties,
@@ -1788,11 +1803,23 @@ export async function getFantasyStandings(leagueId) {
     games_played: t.wins + t.losses + t.ties,
   }))
 
-  // Sort. Default: wins DESC, then PF DESC as tiebreaker (traditional
-  // H2H fantasy + salary_cap leagues with champion_metric='most_wins').
-  // For salary_cap leagues with champion_metric='total_points', sort by
-  // points (pf) DESC instead, wins as tiebreak.
-  if (isSalaryCap && championMetric === 'total_points') {
+  // Sort. Default cases:
+  //   - Completed traditional fantasy: sort by final_rank ASC (playoff-
+  //     aware placement set by finalizeFantasyChampion). Members without
+  //     a final_rank (shouldn't happen post-finalize, but fall through
+  //     safely) drop to the bottom.
+  //   - Salary cap w/ total_points metric: PF DESC, wins tiebreak
+  //   - Everything else: wins DESC, PF tiebreak
+  if (isCompleted && !isSalaryCap) {
+    standings.sort((a, b) => {
+      const aR = a.final_rank ?? 999
+      const bR = b.final_rank ?? 999
+      if (aR !== bR) return aR - bR
+      // Same-rank fallback (shouldn't happen): wins DESC
+      if (b.wins !== a.wins) return b.wins - a.wins
+      return b.pf - a.pf
+    })
+  } else if (isSalaryCap && championMetric === 'total_points') {
     standings.sort((a, b) => {
       if (b.pf !== a.pf) return b.pf - a.pf
       return b.wins - a.wins
@@ -6293,10 +6320,10 @@ export async function advancePlayoffRound(leagueId, week) {
 async function finalizeFantasyChampion(leagueId, championUserId, settings) {
   const { createNotification } = await import('./notificationService.js')
 
-  // Get all playoff matchups to determine placement
+  // Get all playoff matchups (all rounds) to determine placement
   const { data: playoffMatchups } = await supabase
     .from('fantasy_matchups')
-    .select('bracket_position, home_user_id, away_user_id, home_points, away_points, is_consolation, status, round')
+    .select('bracket_position, home_user_id, away_user_id, home_points, away_points, seed_home, seed_away, is_consolation, status, round')
     .eq('league_id', leagueId)
     .not('round', 'is', null)
     .eq('status', 'completed')
@@ -6321,13 +6348,85 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
     standings.push({ user_id: homeWon ? champMatch.away_user_id : champMatch.home_user_id }) // 2nd
   }
 
-  // 3rd place from consolation final (same round as championship)
+  // 3rd place from consolation final (same round as championship, is_consolation=true)
   const champRound = champMatch?.round
-  const consolFinal = playoffMatchups?.find(m => m.round === champRound && m.is_consolation)
-  if (consolFinal) {
-    const homeWon = pickHomeWon(consolFinal)
-    standings.push({ user_id: homeWon ? consolFinal.home_user_id : consolFinal.away_user_id }) // 3rd
-    standings.push({ user_id: homeWon ? consolFinal.away_user_id : consolFinal.home_user_id }) // 4th
+  // 3rd/4th and 5th/6th (in 8-team) are BOTH consolation matches in the final round.
+  // The 3/4 game is bracket_position 4 (4-team), 7 (6-team), or 10 (8-team) per BRACKET_DEFS.
+  // The 5/6 game (8-team only) is bracket_position 11.
+  const consolFinals = (playoffMatchups || []).filter(m => m.round === champRound && m.is_consolation)
+  // The lower bracket_position among the consolations is 3rd/4th (higher-stakes placement)
+  const consol34 = consolFinals.slice().sort((a, b) => (a.bracket_position || 0) - (b.bracket_position || 0))[0]
+  const consol56 = consolFinals.slice().sort((a, b) => (a.bracket_position || 0) - (b.bracket_position || 0))[1]
+  if (consol34) {
+    const homeWon = pickHomeWon(consol34)
+    standings.push({ user_id: homeWon ? consol34.home_user_id : consol34.away_user_id }) // 3rd
+    standings.push({ user_id: homeWon ? consol34.away_user_id : consol34.home_user_id }) // 4th
+  }
+  if (consol56) {
+    // 6-team: this is actually the 5/6 game (bp5) which is scheduled the same
+    // round as the semis, not the championship. So this branch only fires for
+    // 8-team leagues where bp11 (5th place game) shares the championship round.
+    const homeWon = pickHomeWon(consol56)
+    standings.push({ user_id: homeWon ? consol56.home_user_id : consol56.away_user_id }) // 5th
+    standings.push({ user_id: homeWon ? consol56.away_user_id : consol56.home_user_id }) // 6th
+  }
+
+  // 6-team edge case: the 5th/6th game (bp5 in BRACKET_DEFS[6]) is played in
+  // round 2 (semis round), NOT the championship round. Pull it separately.
+  if (playoffTeams === 6) {
+    const bp5 = (playoffMatchups || []).find(m => m.bracket_position === 5)
+    if (bp5 && bp5.home_user_id && bp5.away_user_id) {
+      const homeWon = pickHomeWon(bp5)
+      standings.push({ user_id: homeWon ? bp5.home_user_id : bp5.away_user_id }) // 5th
+      standings.push({ user_id: homeWon ? bp5.away_user_id : bp5.home_user_id }) // 6th
+    }
+  }
+
+  // 8-team: 7th/8th are the losers of consolation R1 (bp7 and bp8). No 7/8
+  // matchup exists (by design — Nick opted out). Rank them by total points
+  // scored across the season (regular + playoffs) since they didn't play
+  // each other. Higher points = 7th.
+  if (playoffTeams === 8) {
+    const bp7 = (playoffMatchups || []).find(m => m.bracket_position === 7)
+    const bp8 = (playoffMatchups || []).find(m => m.bracket_position === 8)
+    // Loser of bp7 and bp8 didn't advance to bp11; they finish 7th/8th
+    const bp7Loser = bp7 ? (pickHomeWon(bp7) ? bp7.away_user_id : bp7.home_user_id) : null
+    const bp8Loser = bp8 ? (pickHomeWon(bp8) ? bp8.away_user_id : bp8.home_user_id) : null
+    const candidates = [bp7Loser, bp8Loser].filter(Boolean)
+    if (candidates.length === 2) {
+      // Fetch season total points for both
+      const { data: allMatchupsForPoints } = await supabase
+        .from('fantasy_matchups')
+        .select('home_user_id, away_user_id, home_points, away_points, status')
+        .eq('league_id', leagueId)
+        .eq('status', 'completed')
+      const totalPoints = {}
+      for (const m of allMatchupsForPoints || []) {
+        totalPoints[m.home_user_id] = (totalPoints[m.home_user_id] || 0) + Number(m.home_points || 0)
+        totalPoints[m.away_user_id] = (totalPoints[m.away_user_id] || 0) + Number(m.away_points || 0)
+      }
+      const [aId, bId] = candidates
+      const aPts = totalPoints[aId] || 0
+      const bPts = totalPoints[bId] || 0
+      if (aPts >= bPts) {
+        standings.push({ user_id: aId }) // 7th
+        standings.push({ user_id: bId }) // 8th
+      } else {
+        standings.push({ user_id: bId })
+        standings.push({ user_id: aId })
+      }
+    }
+  }
+
+  // Fill remaining positions (non-playoff teams, plus 5th-6th for 4-team)
+  // by regular-season wins DESC, PF DESC as tiebreaker. Pulls once and
+  // filters out anyone already placed.
+  const placedIds = new Set(standings.map(s => s.user_id))
+  const regStandings = await getFantasyStandings(leagueId)
+  for (const s of regStandings) {
+    if (placedIds.has(s.user_id)) continue
+    standings.push({ user_id: s.user_id })
+    placedIds.add(s.user_id)
   }
 
   // Get league for bonus point calculation. `member_count` is NOT a column
@@ -6359,6 +6458,15 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
       const positionPts = n + 1 - 2 * rank
       const bonus = getTraditionalFantasyBonus(rank, n)
       const totalPts = positionPts + bonus
+
+      // Stamp final_rank on the member row regardless of whether their
+      // point delta rounded to zero — the rank itself is meaningful for
+      // completed-league standings display.
+      await supabase
+        .from('league_members')
+        .update({ final_rank: rank })
+        .eq('league_id', leagueId)
+        .eq('user_id', standings[i].user_id)
 
       if (totalPts !== 0) {
         const { incrementUserPoints } = await import('./scoringService.js')
