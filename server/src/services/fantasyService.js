@@ -3653,6 +3653,24 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
     throw err
   }
 
+  // Playoff elimination lock: a team can no longer add/drop once their
+  // season is over — either they missed the playoffs entirely, or they
+  // lost a playoff matchup with no consolation slot remaining. Only
+  // applies to traditional fantasy (salary cap doesn't have this concept).
+  if (gateSettings?.format !== 'salary_cap') {
+    const { data: membership } = await supabase
+      .from('league_members')
+      .select('fantasy_eliminated_at')
+      .eq('league_id', leagueId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (membership?.fantasy_eliminated_at) {
+      const err = new Error('Your season is over — your roster is locked for the rest of the league.')
+      err.status = 400
+      throw err
+    }
+  }
+
   await assertNoIneligibleIR(leagueId, userId)
 
   // Verify the added player exists and is a valid NFL player
@@ -4628,6 +4646,19 @@ export async function submitWaiverClaim(leagueId, userId, addPlayerId, dropPlaye
     throw err
   }
 
+  // Playoff elimination lock: eliminated managers can't submit new claims.
+  const { data: claimMembership } = await supabase
+    .from('league_members')
+    .select('fantasy_eliminated_at')
+    .eq('league_id', leagueId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (claimMembership?.fantasy_eliminated_at) {
+    const err = new Error('Your season is over — your roster is locked for the rest of the league.')
+    err.status = 400
+    throw err
+  }
+
   await assertNoIneligibleIR(leagueId, userId)
 
   // Check the player isn't already rostered
@@ -4796,9 +4827,32 @@ export async function processLeagueWaivers(leagueId) {
     .eq('status', 'pending')
   if (!claims?.length) return { processed: 0 }
 
+  // Fail out any pending claims from members who got eliminated between
+  // claim submission and processing (e.g. claim on Sunday, lose playoff
+  // Sunday afternoon, waivers process Tuesday). Reason recorded so the
+  // client can render a clear failure message.
+  const { data: eliminatedMembers } = await supabase
+    .from('league_members')
+    .select('user_id')
+    .eq('league_id', leagueId)
+    .not('fantasy_eliminated_at', 'is', null)
+  const eliminatedSet = new Set((eliminatedMembers || []).map(m => m.user_id))
+  const stillActiveClaims = []
+  for (const c of claims) {
+    if (eliminatedSet.has(c.user_id)) {
+      await supabase
+        .from('fantasy_waiver_claims')
+        .update({ status: 'failed', fail_reason: 'Your season is over', processed_at: new Date().toISOString() })
+        .eq('id', c.id)
+    } else {
+      stillActiveClaims.push(c)
+    }
+  }
+  if (!stillActiveClaims.length) return { processed: 0 }
+
   // Group by add_player_id
   const claimsByPlayer = {}
-  for (const c of claims) {
+  for (const c of stillActiveClaims) {
     if (!claimsByPlayer[c.add_player_id]) claimsByPlayer[c.add_player_id] = []
     claimsByPlayer[c.add_player_id].push(c)
   }
@@ -5139,6 +5193,26 @@ export async function proposeTrade(leagueId, proposerUserId, receiverUserId, pro
 
   await assertNoIneligibleIR(leagueId, proposerUserId)
 
+  // Playoff elimination lock: either party being eliminated kills the
+  // trade. Check both proposer and receiver.
+  const { data: memberships } = await supabase
+    .from('league_members')
+    .select('user_id, fantasy_eliminated_at')
+    .eq('league_id', leagueId)
+    .in('user_id', [proposerUserId, receiverUserId])
+  const proposerMembership = memberships?.find(m => m.user_id === proposerUserId)
+  const receiverMembership = memberships?.find(m => m.user_id === receiverUserId)
+  if (proposerMembership?.fantasy_eliminated_at) {
+    const err = new Error('Your season is over — you can no longer propose trades.')
+    err.status = 400
+    throw err
+  }
+  if (receiverMembership?.fantasy_eliminated_at) {
+    const err = new Error("That manager's season is over — they can't accept trades.")
+    err.status = 400
+    throw err
+  }
+
   // Check trade deadline
   const { data: settings } = await supabase
     .from('fantasy_settings')
@@ -5260,6 +5334,23 @@ export async function acceptTrade(tradeId, userId, dropPlayerIds = []) {
   if (trade.receiver_user_id !== userId) {
     const err = new Error('Only the receiver can accept this trade')
     err.status = 403
+    throw err
+  }
+
+  // Playoff elimination lock: if either party got eliminated between
+  // trade proposal and acceptance, block the accept. Common edge case:
+  // trade proposed Sunday morning, receiver's team loses that afternoon,
+  // receiver tries to accept Monday.
+  const { data: acceptMemberships } = await supabase
+    .from('league_members')
+    .select('user_id, fantasy_eliminated_at')
+    .eq('league_id', trade.league_id)
+    .in('user_id', [trade.proposer_user_id, trade.receiver_user_id])
+  const proposerEliminated = acceptMemberships?.find(m => m.user_id === trade.proposer_user_id)?.fantasy_eliminated_at
+  const receiverEliminated = acceptMemberships?.find(m => m.user_id === trade.receiver_user_id)?.fantasy_eliminated_at
+  if (proposerEliminated || receiverEliminated) {
+    const err = new Error("This trade can no longer be accepted — one of the parties' season is over.")
+    err.status = 400
     throw err
   }
 
@@ -5960,10 +6051,10 @@ export async function generatePlayoffBracket(leagueId) {
   }
 
   // Send clinched/missed notifications
+  const allUserIds = Object.values(userStats).map(s => s.user_id)
+  const playoffUserIds = new Set(seeds.map(s => s.user_id))
   try {
     const { createNotification } = await import('./notificationService.js')
-    const allUserIds = Object.values(userStats).map(s => s.user_id)
-    const playoffUserIds = new Set(seeds.map(s => s.user_id))
 
     for (const uid of allUserIds) {
       if (playoffUserIds.has(uid)) {
@@ -5979,6 +6070,20 @@ export async function generatePlayoffBracket(leagueId) {
     }
   } catch (err) {
     logger.error({ err }, 'Failed to send playoff clinch/miss notifications')
+  }
+
+  // Mark non-playoff members as eliminated — they can't add/drop/trade
+  // for the rest of the league. Playoff qualifiers get their elimination
+  // stamp later, at the end of their last playoff week if they lose out
+  // (see advancePlayoffRound).
+  const nonPlayoffUserIds = allUserIds.filter(uid => !playoffUserIds.has(uid))
+  if (nonPlayoffUserIds.length) {
+    await supabase
+      .from('league_members')
+      .update({ fantasy_eliminated_at: new Date().toISOString() })
+      .eq('league_id', leagueId)
+      .in('user_id', nonPlayoffUserIds)
+      .is('fantasy_eliminated_at', null)
   }
 
   logger.info({ leagueId, playoffTeams, startWeek, generated: inserts.length }, 'Full playoff bracket generated')
@@ -6079,6 +6184,24 @@ export async function advancePlayoffRound(leagueId, week) {
       await createNotification(loserId, 'fantasy_playoff_eliminated',
         'Your playoff run is over. You\'ll play in the consolation bracket.',
         { leagueId, week }).catch(() => {})
+    }
+
+    // Elimination stamp: loser is done if they have no downstream
+    // bracket slot. Two cases hit this:
+    //   1. Main-bracket loser with no consolation entry in def.losers
+    //      (rare in current brackets — mostly the 8-team missing 7/8 game)
+    //   2. Consolation-bracket loser (def.losers doesn't map consolation
+    //      matchup positions to further slots)
+    // Championship losers are handled elsewhere — they hit the `continue`
+    // above and the league finalizes right after.
+    const hasDownstream = !!loseTarget && !m.is_consolation
+    if (!hasDownstream) {
+      await supabase
+        .from('league_members')
+        .update({ fantasy_eliminated_at: new Date().toISOString() })
+        .eq('league_id', leagueId)
+        .eq('user_id', loserId)
+        .is('fantasy_eliminated_at', null)
     }
   }
 
