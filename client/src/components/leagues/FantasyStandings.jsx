@@ -28,6 +28,8 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
         user: s.user,
         userId: s.user_id,
         fantasyTeamName: s.fantasy_team_name || null,
+        clinched: !!s.fantasy_clinched_at,
+        eliminated: !!s.fantasy_eliminated_at,
         wins: s.wins,
         losses: s.losses,
         ties: s.ties,
@@ -41,11 +43,14 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
         user: m.users,
         userId: m.user_id,
         fantasyTeamName: m.fantasy_team_name || null,
+        clinched: false,
+        eliminated: false,
         wins: 0, losses: 0, ties: 0,
         pointsFor: 0, pointsAgainst: 0,
         streak: '--',
         gamesPlayed: 0,
       }))
+  const anyClinched = standings.some((s) => s.clinched)
 
   // Pre-season: no games played yet — show user on top, no rank numbers
   const seasonStarted = standings.some((s) => s.gamesPlayed > 0 || s.wins > 0 || s.losses > 0 || s.pointsFor > 0)
@@ -130,6 +135,7 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
                         <div className="min-w-0 overflow-hidden flex-1">
                           <div className="font-bold text-sm md:text-base text-text-primary truncate">
                             {s.user?.display_name || s.user?.username}
+                            {s.clinched && <span className="text-correct font-bold ml-1" title="Clinched playoff spot">*</span>}
                           </div>
                           {s.fantasyTeamName && (
                             <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
@@ -214,7 +220,10 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
                           <Avatar user={s.user} size="lg" />
                         </button>
                         <div className="min-w-0 overflow-hidden flex-1">
-                          <div className="font-bold text-sm text-text-primary truncate">{s.user?.display_name || s.user?.username}</div>
+                          <div className="font-bold text-sm text-text-primary truncate">
+                            {s.user?.display_name || s.user?.username}
+                            {s.clinched && <span className="text-correct font-bold ml-1" title="Clinched playoff spot">*</span>}
+                          </div>
                           {s.fantasyTeamName && (
                             <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
                           )}
@@ -244,6 +253,13 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
 
       {sortedStandings.length === 0 && (
         <div className="text-center py-8 text-text-muted text-sm">No members yet</div>
+      )}
+
+      {anyClinched && (
+        <div className="mt-3 text-xs text-text-muted flex items-center gap-1.5 justify-center">
+          <span className="text-correct font-bold">*</span>
+          <span>Clinched playoff spot</span>
+        </div>
       )}
 
       {hasGlobalRank && (

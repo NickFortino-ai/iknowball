@@ -1696,7 +1696,7 @@ export async function getFantasyStandings(leagueId) {
   // Pull league members for the base list (so 0-game teams still show up)
   const { data: members } = await supabase
     .from('league_members')
-    .select('user_id, fantasy_team_name, users(id, username, display_name, avatar_url, avatar_emoji)')
+    .select('user_id, fantasy_team_name, fantasy_clinched_at, fantasy_eliminated_at, users(id, username, display_name, avatar_url, avatar_emoji)')
     .eq('league_id', leagueId)
 
   if (!members?.length) return []
@@ -1729,6 +1729,8 @@ export async function getFantasyStandings(leagueId) {
       user_id: m.user_id,
       user: m.users,
       fantasy_team_name: m.fantasy_team_name || null,
+      fantasy_clinched_at: m.fantasy_clinched_at || null,
+      fantasy_eliminated_at: m.fantasy_eliminated_at || null,
       wins: 0,
       losses: 0,
       ties: 0,
@@ -5943,6 +5945,78 @@ const BRACKET_DEFS = {
   },
 }
 
+/**
+ * After a regular-season week settles, check whether any team has
+ * mathematically clinched a playoff spot — meaning they'd make the
+ * playoffs even if they lose every remaining regular-season game.
+ *
+ * Conservative check (no false positives): a team X is clinched iff
+ * fewer than playoff_teams other teams could catch or pass X's current
+ * win total by regular-season end. Ignores tiebreakers on the safe
+ * side — a team tied to X on wins is treated as "could pass X".
+ *
+ * Sets fantasy_clinched_at on league_members (only once) and sends
+ * a fantasy_playoff_clinched notification on the moment it flips.
+ */
+export async function checkAndMarkClinch(leagueId, weekJustCompleted) {
+  const settings = await getFantasySettings(leagueId)
+  if (!settings || settings.format === 'salary_cap') return
+  const playoffTeams = settings.playoff_teams || 4
+  const startWeek = settings.playoff_start_week || 15
+  const weeksRemaining = startWeek - weekJustCompleted - 1
+  if (weeksRemaining < 0) return // Playoffs already generated or in progress
+
+  const standings = await getFantasyStandings(leagueId)
+  if (!standings?.length) return
+
+  // Pull current clinch stamps to skip already-clinched teams
+  const { data: members } = await supabase
+    .from('league_members')
+    .select('user_id, fantasy_clinched_at')
+    .eq('league_id', leagueId)
+  const clinchedMap = new Map((members || []).map(m => [m.user_id, m.fantasy_clinched_at]))
+
+  const newlyClinched = []
+  for (const s of standings) {
+    if (clinchedMap.get(s.user_id)) continue
+    // Count teams (excluding s) that could finish with wins >= s.wins.
+    // If fewer than playoff_teams such teams exist, s is guaranteed a
+    // playoff spot — everyone else can't possibly pass them.
+    let couldCatchCount = 0
+    for (const other of standings) {
+      if (other.user_id === s.user_id) continue
+      const otherMax = (other.wins || 0) + weeksRemaining
+      if (otherMax >= (s.wins || 0)) couldCatchCount++
+    }
+    if (couldCatchCount < playoffTeams) {
+      newlyClinched.push(s.user_id)
+    }
+  }
+
+  if (!newlyClinched.length) return
+
+  const stampAt = new Date().toISOString()
+  await supabase
+    .from('league_members')
+    .update({ fantasy_clinched_at: stampAt })
+    .eq('league_id', leagueId)
+    .in('user_id', newlyClinched)
+    .is('fantasy_clinched_at', null)
+
+  try {
+    const { createNotification } = await import('./notificationService.js')
+    for (const uid of newlyClinched) {
+      await createNotification(uid, 'fantasy_playoff_clinched',
+        "You've clinched a playoff spot! Congrats.",
+        { leagueId, week: weekJustCompleted, earlyClinch: true })
+    }
+  } catch (err) {
+    logger.error({ err, leagueId }, 'Failed to send early-clinch notifications')
+  }
+
+  logger.info({ leagueId, week: weekJustCompleted, count: newlyClinched.length }, 'Early playoff clinch fired')
+}
+
 export async function generatePlayoffBracket(leagueId) {
   const settings = await getFantasySettings(leagueId)
   if (!settings || settings.format === 'salary_cap') return null
@@ -6585,6 +6659,13 @@ export async function scoreFantasyMatchupsWeek(week, season) {
           await advancePlayoffRound(leagueId, week)
         } catch (err) {
           logger.error({ err, leagueId }, 'Failed to advance playoff round')
+        }
+      } else {
+        // Mid-regular-season week → check if anyone just clinched
+        try {
+          await checkAndMarkClinch(leagueId, week)
+        } catch (err) {
+          logger.error({ err, leagueId }, 'Failed to check playoff clinch')
         }
       }
     }
