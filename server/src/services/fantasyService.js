@@ -262,6 +262,18 @@ export function computeIdpAwareProjection(projRow, position, projCol, rules) {
 }
 
 /**
+ * Playoff start week is derived from bracket size + championship week, not
+ * commish-picked. 4 teams = 2 rounds (semis, finals). 6-8 teams = 3 rounds
+ * (wild card / quarters, semis, finals). Fewer than 3 or more than 8 falls
+ * back to a safe 3-round default. Server is authoritative — client sends
+ * are ignored on both create and update.
+ */
+function derivePlayoffStartWeek(playoffTeams, championshipWeek) {
+  const rounds = playoffTeams <= 2 ? 1 : playoffTeams <= 4 ? 2 : 3
+  return championshipWeek - (rounds - 1)
+}
+
+/**
  * Create fantasy league settings after the league is created.
  */
 export async function createFantasySettings(leagueId, settings = {}) {
@@ -276,7 +288,6 @@ export async function createFantasySettings(leagueId, settings = {}) {
     waiver_type = 'priority',
     trade_review = 'commissioner',
     playoff_teams = 4,
-    playoff_start_week = 15,
     championship_week = 17,
     season = 2026,
     format: dfsFormat,
@@ -306,7 +317,8 @@ export async function createFantasySettings(leagueId, settings = {}) {
       waiver_type,
       trade_review,
       playoff_teams,
-      playoff_start_week,
+      // Server-authoritative — ignore any incoming client value.
+      playoff_start_week: derivePlayoffStartWeek(playoff_teams, championship_week),
       championship_week,
       season,
       scoring_rules: scoring_rules || buildScoringRulesFromPreset(scoring_format),
@@ -422,6 +434,19 @@ export async function updateFantasySettings(leagueId, updates) {
       .update({ max_members: updates.num_teams })
       .eq('id', leagueId)
     if (leagueErr) throw leagueErr
+  }
+
+  // If playoff_teams or championship_week is being changed, recompute
+  // playoff_start_week from them. Server is authoritative — a client
+  // that tries to send playoff_start_week directly is overridden.
+  if (updates.playoff_teams != null || updates.championship_week != null) {
+    const nextTeams = updates.playoff_teams ?? current?.playoff_teams ?? 4
+    const nextChamp = updates.championship_week ?? current?.championship_week ?? 17
+    updates.playoff_start_week = derivePlayoffStartWeek(nextTeams, nextChamp)
+  } else if (updates.playoff_start_week != null) {
+    // Client tried to set it directly without changing teams/champ_week —
+    // ignore. Fields it should recompute from didn't change, so no update needed.
+    delete updates.playoff_start_week
   }
 
   const { data, error } = await supabase

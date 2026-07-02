@@ -1012,7 +1012,7 @@ export default function CreateLeaguePage() {
       faab_starting_budget: format === 'fantasy' && fantasyFormat === 'traditional' && waiverType === 'faab' ? faabStartingBudget : undefined,
       trade_review: format === 'fantasy' && fantasyFormat === 'traditional' ? tradeReview : undefined,
       playoff_teams: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffTeams : undefined,
-      playoff_start_week: format === 'fantasy' && fantasyFormat === 'traditional' ? playoffStartWeek : undefined,
+      // playoff_start_week is derived server-side from playoff_teams + championship_week.
       championship_week: format === 'fantasy' && fantasyFormat === 'traditional' ? championshipWeek : undefined,
       scoring_rules: format === 'fantasy' && fantasyFormat === 'traditional' && scoringRules ? scoringRules : undefined,
       salary_cap: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'mlb_dfs' || fantasyFormat === 'salary_cap') ? salaryCap : undefined,
