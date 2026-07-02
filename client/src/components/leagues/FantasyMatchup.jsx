@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useFantasyMatchupLive, useFantasyMatchupWeek, useBlurbPlayerIds, usePlayoffBracket } from '../../hooks/useLeagues'
 import Avatar from '../ui/Avatar'
@@ -565,6 +565,18 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const isLoading = isCurrent ? liveQuery.isLoading : weekQuery.isLoading
   const matchups = data?.matchups || []
   const weekStatus = isCurrent ? 'current' : (viewWeek < currentWeek ? 'past' : 'future')
+
+  // Playoff-week fallback: an eliminated (or bye-week) user has no
+  // matchup this week — showing 'No matchup found for you' as the
+  // default is a dead-end. Flip them to 'all' automatically so they
+  // still see the championship + consolation cards. User can still
+  // manually toggle back if they want.
+  useEffect(() => {
+    if (!isPlayoffWeek || !matchups.length) return
+    const myMatchup = matchups.find((m) => m.home_user?.id === profile?.id || m.away_user?.id === profile?.id)
+    if (!myMatchup && matchupView === 'mine') setMatchupView('all')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewWeek, matchups.length, isPlayoffWeek])
 
   // Playoff weeks: drop TBD placeholders (matchups awaiting winner
   // assignment from a lower round), then sort by stakes:
