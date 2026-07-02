@@ -6493,7 +6493,15 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
       `You are the ${league.name} champion!`,
       { leagueId, leagueName: league.name }).catch(() => {})
 
-    // Notify all members
+    // Notify all members — non-champions get the winner's name mentioned
+    // so they know who to congratulate/blame, not just their own placement.
+    const { data: champUser } = await supabase
+      .from('users')
+      .select('display_name, username')
+      .eq('id', championUserId)
+      .maybeSingle()
+    const champName = champUser?.display_name || champUser?.username || 'the champion'
+
     const { data: members } = await supabase
       .from('league_members')
       .select('user_id')
@@ -6502,9 +6510,10 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
     for (const m of members || []) {
       if (m.user_id === championUserId) continue
       const rank = standings.findIndex(s => s.user_id === m.user_id)
+      const rankLine = rank >= 0 ? ` You finished #${rank + 1}.` : ''
       await createNotification(m.user_id, 'league_win',
-        rank >= 0 ? `${league.name} is complete! You finished #${rank + 1}.` : `${league.name} is complete!`,
-        { leagueId, leagueName: league.name, isWinner: false }).catch(() => {})
+        `${league.name} is complete! Congrats to ${champName}.${rankLine}`,
+        { leagueId, leagueName: league.name, isWinner: false, championName: champName }).catch(() => {})
     }
 
     logger.info({ leagueId, championUserId }, 'Fantasy champion finalized')
