@@ -51,6 +51,19 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
         gamesPlayed: 0,
       }))
   const anyClinched = standings.some((s) => s.clinched)
+  const isCompleted = league.status === 'completed'
+
+  // Podium treatment for completed leagues: 1st/2nd/3rd get colored
+  // accents on their standings row. 2nd + 3rd rows also get more
+  // vertical breathing room to visually promote them above 4th-Nth
+  // (1st is already featured in the Trophy Card above the tabs).
+  function podium(rank) {
+    if (!isCompleted || rank > 3 || !rank) return null
+    if (rank === 1) return { accent: 'border-yellow-500', text: 'text-yellow-400', bg: 'bg-yellow-500/5', label: '1st Place', bigger: false }
+    if (rank === 2) return { accent: 'border-slate-300', text: 'text-slate-300', bg: 'bg-slate-300/5', label: '2nd Place', bigger: true }
+    if (rank === 3) return { accent: 'border-amber-600', text: 'text-amber-500', bg: 'bg-amber-600/5', label: '3rd Place', bigger: true }
+    return null
+  }
 
   // Pre-season: no games played yet — show user on top, no rank numbers
   const seasonStarted = standings.some((s) => s.gamesPlayed > 0 || s.wins > 0 || s.losses > 0 || s.pointsFor > 0)
@@ -115,35 +128,41 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
           <tbody>
             {sortedStandings.map((s) => {
               const isExpanded = expandedUserId === s.userId
+              const p = podium(s.rank)
+              const rowPad = p?.bigger ? 'py-5' : 'py-3.5'
               return (
                 <Fragment key={s.userId}>
                   <tr
                     onClick={() => toggleExpand(s.userId)}
-                    className={`border-b border-text-primary/10 hover:bg-text-primary/5 transition-colors cursor-pointer ${isExpanded ? 'bg-text-primary/5' : ''}`}
+                    className={`border-b border-text-primary/10 hover:bg-text-primary/5 transition-colors cursor-pointer ${
+                      isExpanded ? 'bg-text-primary/5' : ''
+                    } ${p ? `${p.bg} border-l-4 ${p.accent}` : ''}`}
                   >
-                    <td className="py-3.5 px-2 text-center w-8">
-                      <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
+                    <td className={`${rowPad} px-2 text-center w-8`}>
+                      <span className={`font-display text-xl ${p ? p.text : seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
                     </td>
-                    <td className="py-3.5 px-2">
+                    <td className={`${rowPad} px-2`}>
                       <div className="flex items-center gap-2.5 min-w-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); setProfileUserId(s.userId) }}
                           className="shrink-0"
                         >
-                          <Avatar user={s.user} size="lg" />
+                          <Avatar user={s.user} size={p?.bigger ? '2xl' : 'lg'} />
                         </button>
                         <div className="min-w-0 overflow-hidden flex-1">
                           <div className="font-bold text-sm md:text-base text-text-primary truncate">
                             {s.user?.display_name || s.user?.username}
                             {s.clinched && <span className="text-correct font-bold ml-1" title="Clinched playoff spot">*</span>}
                           </div>
-                          {s.fantasyTeamName && (
+                          {p ? (
+                            <div className={`text-[10px] uppercase tracking-widest font-bold ${p.text}`}>{p.label}</div>
+                          ) : s.fantasyTeamName ? (
                             <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-3 text-center text-text-primary text-sm md:text-base font-semibold whitespace-nowrap">
+                    <td className={`${rowPad} px-3 text-center text-text-primary text-sm md:text-base font-semibold whitespace-nowrap`}>
                       {isSalaryCap
                         ? (s.wins > 0 ? s.wins : '--')
                         : (s.wins || s.losses || s.ties ? `${s.wins}-${s.losses}${s.ties ? `-${s.ties}` : ''}` : '--')}
@@ -201,15 +220,17 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
           {/* Rows */}
           {sortedStandings.map((s) => {
             const isExpanded = expandedUserId === s.userId
+            const p = podium(s.rank)
+            const rowHeight = p?.bigger ? 'h-20' : 'h-16'
             return (
-              <div key={s.userId} className="border-b border-text-primary/10">
+              <div key={s.userId} className={`border-b border-text-primary/10 ${p ? `${p.bg} border-l-4 ${p.accent}` : ''}`}>
                 <div
                   onClick={() => toggleExpand(s.userId)}
-                  className="flex items-stretch hover:bg-text-primary/5 transition-colors cursor-pointer h-16"
+                  className={`flex items-stretch hover:bg-text-primary/5 transition-colors cursor-pointer ${rowHeight}`}
                 >
-                  <div className="sticky left-0 z-10 bg-bg-primary/40 backdrop-blur-sm shrink-0 flex items-center">
+                  <div className={`sticky left-0 z-10 backdrop-blur-sm shrink-0 flex items-center ${p ? p.bg : 'bg-bg-primary/40'}`}>
                     <div className="px-2 text-center w-8">
-                      <span className={`font-display text-xl ${seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
+                      <span className={`font-display text-xl ${p ? p.text : seasonStarted && s.rank <= 3 ? 'text-accent' : 'text-text-muted'}`}>{seasonStarted ? s.rank : '--'}</span>
                     </div>
                     <div className="px-2 w-44">
                       <div className="flex items-center gap-2 min-w-0">
@@ -217,16 +238,18 @@ export default function FantasyStandings({ league, isSalaryCap, championMetric }
                           onClick={(e) => { e.stopPropagation(); setProfileUserId(s.userId) }}
                           className="shrink-0"
                         >
-                          <Avatar user={s.user} size="lg" />
+                          <Avatar user={s.user} size={p?.bigger ? 'xl' : 'lg'} />
                         </button>
                         <div className="min-w-0 overflow-hidden flex-1">
                           <div className="font-bold text-sm text-text-primary truncate">
                             {s.user?.display_name || s.user?.username}
                             {s.clinched && <span className="text-correct font-bold ml-1" title="Clinched playoff spot">*</span>}
                           </div>
-                          {s.fantasyTeamName && (
+                          {p ? (
+                            <div className={`text-[10px] uppercase tracking-widest font-bold ${p.text}`}>{p.label}</div>
+                          ) : s.fantasyTeamName ? (
                             <div className="text-xs text-text-primary italic uppercase tracking-wide truncate">{s.fantasyTeamName}</div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
