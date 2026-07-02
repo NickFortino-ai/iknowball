@@ -880,6 +880,28 @@ export async function completeLeagues() {
         if (!league.joins_locked_at) continue
         if (new Date(league.joins_locked_at).getTime() > nowMs) continue
       }
+      // Traditional fantasy: stay 'open' until the league fills to its
+      // designated num_teams (or the commissioner shrinks num_teams to
+      // match). starts_at for a fresh fantasy league is a soft
+      // creation-time default that doesn't reflect draft-readiness —
+      // flipping to 'active' at that moment lies to the UI. Salary cap
+      // fantasy has no draft, so 'full' isn't the right gate for it;
+      // it falls through to the normal starts_at path.
+      if (league.format === 'fantasy') {
+        const { data: fs } = await supabase
+          .from('fantasy_settings')
+          .select('format, num_teams')
+          .eq('league_id', league.id)
+          .maybeSingle()
+        if (fs && fs.format !== 'salary_cap') {
+          const { count: memberCount } = await supabase
+            .from('league_members')
+            .select('id', { count: 'exact', head: true })
+            .eq('league_id', league.id)
+          const targetCount = fs.num_teams || 10
+          if ((memberCount || 0) < targetCount) continue
+        }
+      }
       // Survivor: stay 'open' until the first real game of period 1
       // kicks off, not just when league_weeks Week/Day 1 nominally
       // opens. league_weeks.starts_at can be days before the first
