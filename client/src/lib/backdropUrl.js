@@ -3,7 +3,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 // Bump when any preset backdrop image is added, renamed, or re-encoded
 // so browsers invalidate their cached copies. Custom (user-uploaded)
 // backdrops have unique UUID filenames and don't need versioning.
-const BACKDROP_VERSION = 'v5'
+const BACKDROP_VERSION = 'v6'
 
 // Some league formats have their own exclusive backdrop set (e.g. legends
 // of the 3-point shot, sack leaders, etc.) tagged with a synthetic format
