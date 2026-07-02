@@ -29,10 +29,31 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Semantic aliases: source filenames that use team names map to the
+# repo's color-coded targets. Add entries here as new aliased shots
+# land in the Desktop folder.
+alias_target() {
+  local key
+  key=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+  case "$key" in
+    "metlife giants") echo "nfl-metlife-blue.webp" ;;
+    "metlife jets")   echo "nfl-metlife-green.webp" ;;
+    "sofi rams")      echo "nfl-sofi-blue.webp" ;;
+    "sofi chargers")  echo "nfl-sofi-bolt.webp" ;;
+    *) echo "" ;;
+  esac
+}
+
 # Filename transform: strip extension, lowercase, & → and, drop apostrophes,
 # spaces / underscores → hyphens, strip other punctuation, prepend nfl-.
 normalize() {
   local base="${1%.*}"
+  local aliased
+  aliased=$(alias_target "$base")
+  if [[ -n "$aliased" ]]; then
+    echo "$aliased"
+    return
+  fi
   base=$(echo "$base" | tr '[:upper:]' '[:lower:]')  # lowercase (portable, macOS bash 3.2 lacks ${,,})
   base=$(echo "$base" | sed 's/&/and/g')             # & → and
   base=$(echo "$base" | sed "s/'//g")                # drop apostrophes
@@ -96,6 +117,14 @@ for src in "$SRC_DIR"/*; do
     ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
     if [[ "$ext" == "webp" ]]; then
       cp "$src" "$dst"
+    elif [[ "$ext" == "avif" || "$ext" == "heic" ]]; then
+      # cwebp can't read avif/heic; use ImageMagick as a pass-through
+      # encoder. Same resize + quality behavior as the cwebp branch.
+      if [[ -n "$resize_arg" ]]; then
+        magick "$src" -resize "${MAX_WIDTH}x" -quality "$QUALITY" "$dst" 2>/dev/null
+      else
+        magick "$src" -quality "$QUALITY" "$dst" 2>/dev/null
+      fi
     else
       cwebp -q "$QUALITY" $resize_arg "$src" -o "$dst" 2>/dev/null
     fi
