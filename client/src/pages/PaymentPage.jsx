@@ -82,7 +82,7 @@ export default function PaymentPage() {
   const [polling, setPolling] = useState(false)
   const [products, setProducts] = useState({ monthly: null, yearly: null })
   const [restoringPurchase, setRestoringPurchase] = useState(false)
-  const [plan, setPlan] = useState('yearly') // default to yearly (better value)
+  const [plan, setPlan] = useState('monthly') // default to $0.99/mo — lower sticker price anchors first
   const pollCount = useRef(0)
   const pendingRecoveryAttempted = useRef(false)
 
