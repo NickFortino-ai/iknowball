@@ -22,7 +22,6 @@ import FantasyPlayerBrowser from '../components/leagues/FantasyPlayerBrowser'
 import FantasyTrades from '../components/leagues/FantasyTrades'
 import FantasyStandings from '../components/leagues/FantasyStandings'
 import FantasyMatchup from '../components/leagues/FantasyMatchup'
-import FantasyPlayoffBracket from '../components/leagues/FantasyPlayoffBracket'
 import FantasyLiveView from '../components/leagues/FantasyLiveView'
 import NbaDfsView from '../components/leagues/NbaDfsView'
 import WnbaDfsView from '../components/leagues/WnbaDfsView'
@@ -98,11 +97,10 @@ function getLeagueTabs(league, isBracketLocked, fantasySettings, isMember = true
       // has kicked off — nothing to look at before then.
       tabs = ['Roster', ...(salaryCapLiveStarted ? ['Live'] : []), memberOrStandings, ...reportTab, 'Thread']
     } else {
-      // Traditional: Matchups absorbs Live, no separate Live tab.
-      // Bracket appears post-draft and shows an empty state until
-      // playoff matchups are generated (last regular-season week).
-      const bracketTab = draftDone ? ['Bracket'] : []
-      tabs = ['My Team', 'Matchups', ...bracketTab, memberOrStandings, 'Players', 'Transactions', 'Draft']
+      // Traditional: Matchups absorbs Live during regular season and
+      // becomes the bracket view during playoff weeks. No separate
+      // Bracket / Live tabs — everything match-related lives there.
+      tabs = ['My Team', 'Matchups', memberOrStandings, 'Players', 'Transactions', 'Draft']
     }
     if (!isSalaryCap && !draftDone && tabs.includes('Draft')) {
       tabs.splice(tabs.indexOf('Draft') + 1, 0, 'Mock Draft')
@@ -2706,10 +2704,6 @@ export default function LeagueDetailPage() {
 
       {tabs[activeTab] === 'Matchups' && league.format === 'fantasy' && (
         <div className="relative z-10"><FantasyMatchup league={league} fantasySettings={fantasySettings} /></div>
-      )}
-
-      {tabs[activeTab] === 'Bracket' && league.format === 'fantasy' && fantasySettings?.format !== 'salary_cap' && (
-        <div className="relative z-10"><FantasyPlayoffBracket league={league} /></div>
       )}
 
       {(tabs[activeTab] === 'Roster' || tabs[activeTab] === 'Live' || tabs[activeTab] === 'Standings') && league.format === 'nba_dfs' && (

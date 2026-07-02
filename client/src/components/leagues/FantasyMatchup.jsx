@@ -78,7 +78,7 @@ function buildStatLine(stats, position) {
   return parts.length ? parts.join(', ') : null
 }
 
-function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds, starterSet, slotLabels }) {
+function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayerClick, blurbIds, starterSet, slotLabels, isChampionship }) {
   const isMyMatchup = matchup.home_user?.id === myId || matchup.away_user?.id === myId
   const isCompleted = matchup.status === 'completed' || weekStatus === 'past'
   const homeWinning = (matchup.home_points || 0) >= (matchup.away_points || 0)
@@ -101,9 +101,16 @@ function MatchupCard({ matchup, myId, weekStatus, isExpanded, onToggle, onPlayer
   const aPregame = matchup.away_pregame_projected ?? aProj
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${
-      isMyMatchup ? 'border-accent/40' : 'border-text-primary/20'
+    <div className={`rounded-xl border-2 overflow-hidden ${
+      isChampionship
+        ? 'border-yellow-400 shadow-[0_0_18px_-4px_rgba(250,204,21,0.55)]'
+        : isMyMatchup ? 'border-accent/40' : 'border-text-primary/20'
     }`}>
+      {isChampionship && (
+        <div className="bg-yellow-400/15 text-yellow-400 text-[10px] uppercase tracking-widest font-bold text-center py-1">
+          Championship
+        </div>
+      )}
       {/* Matchup header — always visible */}
       <button onClick={onToggle} className="w-full p-4 hover:bg-text-primary/5 transition-colors">
         {/* Avatars + scores row — prominent, top */}
@@ -559,14 +566,29 @@ export default function FantasyMatchup({ league, fantasySettings }) {
   const matchups = data?.matchups || []
   const weekStatus = isCurrent ? 'current' : (viewWeek < currentWeek ? 'past' : 'future')
 
-  // Sort user's matchup first
-  const sorted = [...matchups].sort((a, b) => {
-    const aIsMe = a.home_user?.id === profile?.id || a.away_user?.id === profile?.id
-    const bIsMe = b.home_user?.id === profile?.id || b.away_user?.id === profile?.id
-    if (aIsMe && !bIsMe) return -1
-    if (bIsMe && !aIsMe) return 1
-    return 0
-  })
+  // Playoff weeks: drop TBD placeholders (matchups awaiting winner
+  // assignment from a lower round), then sort by stakes:
+  //   1. Non-consolation ahead of consolation (main bracket first)
+  //   2. Higher round ahead of lower (championship ahead of semis)
+  //   3. Bracket position ASC as final tiebreak
+  // Regular season: existing "my matchup first" behavior.
+  const maxRound = matchups.reduce((mx, m) => Math.max(mx, m.round || 0), 0)
+  const sorted = [...matchups]
+    .filter((m) => (isPlayoffWeek ? m.home_user && m.away_user : true))
+    .sort((a, b) => {
+      if (isPlayoffWeek) {
+        const aCons = a.is_consolation ? 1 : 0
+        const bCons = b.is_consolation ? 1 : 0
+        if (aCons !== bCons) return aCons - bCons
+        if ((b.round || 0) !== (a.round || 0)) return (b.round || 0) - (a.round || 0)
+        return (a.bracket_position || 0) - (b.bracket_position || 0)
+      }
+      const aIsMe = a.home_user?.id === profile?.id || a.away_user?.id === profile?.id
+      const bIsMe = b.home_user?.id === profile?.id || b.away_user?.id === profile?.id
+      if (aIsMe && !bIsMe) return -1
+      if (bIsMe && !aIsMe) return 1
+      return 0
+    })
 
   // Matchup result banner (current week, completed)
   const myMatchup = matchups.find((m) => m.status === 'completed' && (m.home_user?.id === profile?.id || m.away_user?.id === profile?.id))
@@ -684,6 +706,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               blurbIds={blurbIds}
               starterSet={starterSet}
               slotLabels={slotLabels}
+              isChampionship={isPlayoffWeek && !mine.is_consolation && mine.round === maxRound}
             />
           ) : (
             <div className="text-center py-8 text-sm text-text-muted">No matchup found for you this week.</div>
@@ -694,6 +717,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
         sorted.map((matchup) => {
           const isMyMatchup = matchup.home_user?.id === profile?.id || matchup.away_user?.id === profile?.id
           const isExpanded = (isMyMatchup && !expandedMatchups.has(`collapse-${matchup.id}`)) || expandedMatchups.has(matchup.id)
+          const isChampionship = isPlayoffWeek && !matchup.is_consolation && matchup.round === maxRound
           return (
             <MatchupCard
               key={matchup.id}
@@ -717,6 +741,7 @@ export default function FantasyMatchup({ league, fantasySettings }) {
               blurbIds={blurbIds}
               starterSet={starterSet}
               slotLabels={slotLabels}
+              isChampionship={isChampionship}
             />
           )
         })

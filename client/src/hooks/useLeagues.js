@@ -813,18 +813,6 @@ export function useInitDraft() {
   })
 }
 
-// Fantasy playoff bracket — all matchups where round is set, enriched
-// with user profile info for rendering the bracket tree.
-export function useFantasyPlayoffBracket(leagueId) {
-  return useQuery({
-    queryKey: ['leagues', leagueId, 'fantasy', 'playoff-bracket'],
-    queryFn: () => api.get(`/leagues/${leagueId}/fantasy/playoff-bracket`),
-    enabled: !!leagueId,
-    staleTime: 30_000,
-    refetchInterval: 120_000,
-  })
-}
-
 export function useReorderDraft() {
   const queryClient = useQueryClient()
   return useMutation({
