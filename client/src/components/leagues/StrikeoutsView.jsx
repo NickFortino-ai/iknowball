@@ -279,6 +279,7 @@ export default function StrikeoutsView({ league, tab = 'picks' }) {
                                   <div className="flex items-center gap-1.5">
                                     <div className="text-xs lg:text-sm font-bold text-text-primary truncate">{pick.player_name}</div>
                                     <InjuryBadge status={pick.injury_status} />
+                                    <LineupBadge status={pick.lineup_status} />
                                   </div>
                                   <div className="flex items-center gap-1.5 mt-0.5">
                                     <span className="text-[10px] lg:text-xs text-text-muted truncate">{pick.team}</span>

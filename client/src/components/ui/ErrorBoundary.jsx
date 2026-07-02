@@ -10,6 +10,16 @@ export default class ErrorBoundary extends Component {
     return { hasError: true, error }
   }
 
+  // Log the raw error + React component stack so the DevTools console
+  // shows exactly where the crash came from. Source maps (enabled in
+  // vite.config.js) map the minified frame back to real file:line so
+  // "Cannot access 'E' before initialization" tells us which symbol
+  // and which file.
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary]', error)
+    console.error('[ErrorBoundary] component stack:', info?.componentStack)
+  }
+
   render() {
     if (this.state.hasError) {
       return (
