@@ -1768,6 +1768,40 @@ router.post('/:id/fantasy/matchups/generate', requireAuth, async (req, res) => {
   res.json(result)
 })
 
+// Fantasy playoff bracket — all matchups where round is set, enriched
+// with user profile info for rendering. Returns [] if the bracket
+// hasn't been generated yet.
+router.get('/:id/fantasy/playoff-bracket', requireAuth, async (req, res) => {
+  try {
+    const { data: matchups } = await supabase
+      .from('fantasy_matchups')
+      .select(`
+        id, week, round, bracket_position,
+        home_user_id, away_user_id,
+        home_points, away_points,
+        seed_home, seed_away,
+        is_consolation, status,
+        home:users!fantasy_matchups_home_user_id_fkey(id, username, display_name, avatar_url, avatar_emoji),
+        away:users!fantasy_matchups_away_user_id_fkey(id, username, display_name, avatar_url, avatar_emoji)
+      `)
+      .eq('league_id', req.params.id)
+      .not('round', 'is', null)
+      .order('round', { ascending: true })
+      .order('bracket_position', { ascending: true })
+    const { data: settings } = await supabase
+      .from('fantasy_settings')
+      .select('playoff_teams, playoff_start_week, championship_week')
+      .eq('league_id', req.params.id)
+      .maybeSingle()
+    res.json({
+      matchups: matchups || [],
+      settings: settings || null,
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Auto-fill starting lineups from draft order (commissioner backfill — runs
 // automatically post-draft via makeDraftPick, this endpoint is for re-running
 // it on already-drafted leagues that drafted before the fix shipped).
