@@ -29,6 +29,7 @@ const sportTabs = [
   { label: 'NFL', key: 'americanfootball_nfl' },
   { label: 'NHL', key: 'icehockey_nhl' },
   { label: 'MLS', key: 'soccer_usa_mls' },
+  { label: 'WC', key: 'soccer_world_cup' },
   { label: 'WNBA', key: 'basketball_wnba' },
   { label: 'NCAAF', key: 'americanfootball_ncaaf' },
 ]
