@@ -1,13 +1,18 @@
 import { supabase } from '../config/supabase.js'
 import { fetchAll } from '../utils/fetchAll.js'
 
+// Cap every leaderboard scope at this many rows. Raise as the user base
+// grows — the raw aggregations already scan every settled pick / parlay,
+// so the cap is only about payload size + client render, not query cost.
+const LEADERBOARD_MAX = 500
+
 export async function getLeaderboard(scope = 'global', sportKey) {
   if (scope === 'global') {
     const { data, error } = await supabase
       .from('users')
       .select('id, username, display_name, avatar_url, avatar_emoji, total_points, tier')
       .order('total_points', { ascending: false })
-      .limit(100)
+      .limit(LEADERBOARD_MAX)
 
     if (error) throw error
     return data.map((u, i) => ({ ...u, rank: i + 1 }))
@@ -41,7 +46,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
 
     return Object.values(statsMap)
       .sort((a, b) => b.pick_points - a.pick_points)
-      .slice(0, 100)
+      .slice(0, LEADERBOARD_MAX)
       .map((u, i) => ({ ...u, rank: i + 1 }))
   }
 
@@ -71,7 +76,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
 
     return Object.values(statsMap)
       .sort((a, b) => b.prop_points - a.prop_points)
-      .slice(0, 100)
+      .slice(0, LEADERBOARD_MAX)
       .map((u, i) => ({ ...u, rank: i + 1 }))
   }
 
@@ -101,7 +106,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
 
     return Object.values(statsMap)
       .sort((a, b) => b.parlay_points - a.parlay_points)
-      .slice(0, 100)
+      .slice(0, LEADERBOARD_MAX)
       .map((u, i) => ({ ...u, rank: i + 1 }))
   }
 
@@ -119,7 +124,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
       .select('*, users(id, username, display_name, avatar_url, avatar_emoji, tier)')
       .eq('sport_id', sport.id)
       .order('total_points', { ascending: false })
-      .limit(100)
+      .limit(LEADERBOARD_MAX)
 
     if (error) throw error
 
@@ -139,7 +144,7 @@ export async function getLeaderboard(scope = 'global', sportKey) {
 
 /**
  * Find a user's rank + row on a specific leaderboard, whether or not
- * they're in the top 100. Returns the same shape that getLeaderboard
+ * they're in the top slice. Returns the same shape that getLeaderboard
  * returns per row (so the client can render the result with the same
  * row component). Returns null if the user hasn't appeared on that
  * leaderboard yet (e.g. hasn't made a pick for that sport).
@@ -199,20 +204,21 @@ export async function getUserRankOnLeaderboard(userId, scope = 'global', sportKe
 
   if (scope === 'picks' || scope === 'props' || scope === 'parlays') {
     const board = await getLeaderboard(scope)
-    // getLeaderboard slices to top 100 — but the aggregation inside
-    // processes all users, so if the target isn't in the slice we
-    // need to re-aggregate without the slice. Cheapest approach:
+    // getLeaderboard slices to LEADERBOARD_MAX — but the aggregation
+    // inside processes all users, so if the target isn't in the slice
+    // we need to re-aggregate without the slice. Cheapest approach:
     // compute it fresh here.
     const table = scope === 'picks' ? 'picks' : scope === 'props' ? 'prop_picks' : 'parlays'
     const pointsField = scope === 'picks' ? 'pick_points' : scope === 'props' ? 'prop_points' : 'parlay_points'
     const countField = scope === 'parlays' ? 'total_parlays' : 'total_picks'
     const correctField = scope === 'parlays' ? 'correct_parlays' : 'correct_picks'
 
-    // Fast path: user is in top 100 → use that row directly
+    // Fast path: user is in the top slice → use that row directly
     const inBoard = board.find((u) => u.id === userId)
     if (inBoard) return inBoard
 
-    // Slow path: re-aggregate from the raw picks / parlays
+    // Slow path (user ranked below the top slice): re-aggregate from
+    // the raw picks / parlays to find their true rank.
     const data = await fetchAll(
       supabase
         .from(table)
