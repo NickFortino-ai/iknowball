@@ -68,6 +68,16 @@ input[type="time"] {
   appearance: none;
 }
 
+/* iOS Safari auto-zooms the viewport when focusing any input whose computed
+   font-size is under 16px. Many of our styled inputs use text-sm (14px) for
+   compactness on desktop — force 16px on touch devices to prevent the zoom
+   without changing the desktop look. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Hide horizontal scrollbars globally — content still scrollable via touch/trackpad */
 .overflow-x-auto, .overflow-x-scroll {
   -ms-overflow-style: none;
