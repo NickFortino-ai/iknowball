@@ -228,6 +228,20 @@ function formatWithSport(league) {
   return `${label} · ${sport}`
 }
 
+function ordinal(n) {
+  const v = n % 100
+  if (v >= 11 && v <= 13) return `${n}th`
+  const last = n % 10
+  return `${n}${last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th'}`
+}
+
+function rankColor(rank) {
+  if (rank === 1) return 'text-yellow-500'
+  if (rank === 2) return 'text-slate-300'
+  if (rank === 3) return 'text-amber-600'
+  return 'text-text-primary'
+}
+
 function MyActiveLeagues() {
   const { data: leagues, isLoading } = useMyLeagues()
 
@@ -268,7 +282,16 @@ function MyActiveLeagues() {
               <div className="font-semibold text-sm text-white truncate mb-1">{league.name}</div>
               <div className="text-xs text-text-muted mb-2">{formatWithSport(league)}</div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted">{league.member_count} members</span>
+                <span className="text-xs text-text-muted">
+                  {league.format === 'bracket' && league.bracket_submitted_count != null
+                    ? `${league.bracket_submitted_count} ${league.bracket_submitted_count === 1 ? 'entry' : 'entries'}`
+                    : `${league.member_count} ${league.member_count === 1 ? 'member' : 'members'}`}
+                </span>
+                {league.format === 'fantasy' && league.my_fantasy_rank != null && (
+                  <span className={`text-xs font-semibold ${rankColor(league.my_fantasy_rank)}`}>
+                    {ordinal(league.my_fantasy_rank)}
+                  </span>
+                )}
               </div>
               {league.format === 'survivor' && league.status === 'active' && league.survivor_alive != null && (
                 <div className="mt-2 text-xs text-correct font-semibold text-right">{league.survivor_alive} still alive</div>
