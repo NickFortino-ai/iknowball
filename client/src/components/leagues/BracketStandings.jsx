@@ -11,16 +11,16 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
   return (
     <div>
       <div className="bg-bg-primary/50 backdrop-blur-sm rounded-xl border border-text-primary/20 overflow-x-auto text-sm">
-        <table className="w-full min-w-[420px]">
+        <table className="w-full min-w-[360px] sm:min-w-[420px]">
           <thead>
             <tr className="border-b border-text-primary/10 text-text-muted text-xs uppercase tracking-wider">
-              <th className="px-3 py-3 text-left font-medium w-10">#</th>
-              <th className="px-3 py-3 text-left font-medium">Player</th>
-              <th className="px-3 py-3 text-right font-medium w-20">Points</th>
-              {!isCompleted && <th className="px-3 py-3 text-right font-medium w-20">Possible</th>}
+              <th className="px-2 sm:px-3 py-3 text-left font-medium w-8 sm:w-10">#</th>
+              <th className="px-2 sm:px-3 py-3 text-left font-medium">Player</th>
+              <th className="px-2 sm:px-3 py-3 text-right font-medium w-14 sm:w-20">Points</th>
+              {!isCompleted && <th className="px-2 sm:px-3 py-3 text-right font-medium w-16 sm:w-20">Possible</th>}
               {hasActualScore && (
                 <th
-                  className="px-3 py-3 text-right font-medium w-16"
+                  className="px-2 sm:px-3 py-3 text-right font-medium w-12 sm:w-16"
                   title="Tiebreaker — distance from your championship total guess to the actual total. Lower is better."
                 >
                   TB
@@ -38,9 +38,9 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
                   onClick={onViewBracket ? () => onViewBracket(e.user_id) : undefined}
                   className={`${i < entries.length - 1 ? 'border-b border-text-primary/10' : ''} ${onViewBracket ? 'hover:bg-text-primary/5 cursor-pointer' : ''} transition-colors`}
                 >
-                  <td className="px-3 py-3 text-accent font-semibold">{i + 1}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <td className="px-2 sm:px-3 py-3 text-accent font-semibold">{i + 1}</td>
+                  <td className="px-2 sm:px-3 py-3">
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                       {onUserTap ? (
                         <button
                           onClick={(ev) => { ev.stopPropagation(); onUserTap(e.user_id) }}
@@ -51,7 +51,7 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
                       ) : (
                         <Avatar user={e.users} size="lg" />
                       )}
-                      <span className="font-semibold truncate max-w-[140px] sm:max-w-none">
+                      <span className="font-semibold truncate max-w-[100px] sm:max-w-none">
                         {e.users?.display_name || e.users?.username}
                       </span>
                       {onViewBracket && (
@@ -64,10 +64,10 @@ export default function BracketStandings({ entries, championshipTotalScore, onVi
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-right font-semibold text-white text-base whitespace-nowrap">{e.total_points}</td>
-                  {!isCompleted && <td className="px-3 py-3 text-right text-text-primary whitespace-nowrap">{e.possible_points}</td>}
+                  <td className="px-2 sm:px-3 py-3 text-right font-semibold text-white text-base whitespace-nowrap">{e.total_points}</td>
+                  {!isCompleted && <td className="px-2 sm:px-3 py-3 text-right text-text-primary whitespace-nowrap">{e.possible_points}</td>}
                   {hasActualScore && (
-                    <td className="px-3 py-3 text-right whitespace-nowrap">
+                    <td className="px-2 sm:px-3 py-3 text-right whitespace-nowrap">
                       {distance != null ? (
                         distance === 0 ? (
                           <span className="text-correct font-semibold">Exact!</span>
