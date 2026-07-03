@@ -34,7 +34,7 @@ function splitTeamName(fullName) {
   return { city: words[0], name: words.slice(1).join(' ') }
 }
 
-export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose }) {
+export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingleGame = false, onClose }) {
   const teamTop = matchup.team_top
   const teamBottom = matchup.team_bottom
   const { data: games, isLoading } = useSeriesGames(leagueId, teamTop, teamBottom)
@@ -42,15 +42,38 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
   const topInfo = splitTeamName(teamTop)
   const bottomInfo = splitTeamName(teamBottom)
 
+  // For single-game brackets (World Cup, HR Derby), derive header score
+  // from the actual game rather than series wins.
+  const stripAccentsForHeader = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const singleGame = isSingleGame ? games?.[0] : null
+  const singleGameTopIsHome = singleGame
+    ? stripAccentsForHeader(singleGame.home_team) === stripAccentsForHeader(teamTop)
+    : false
+  const displayScoreTop = isSingleGame
+    ? (singleGame ? (singleGameTopIsHome ? singleGame.home_score : singleGame.away_score) : null)
+    : (matchup.series_wins_top || 0)
+  const displayScoreBottom = isSingleGame
+    ? (singleGame ? (singleGameTopIsHome ? singleGame.away_score : singleGame.home_score) : null)
+    : (matchup.series_wins_bottom || 0)
+
   const seriesWinsTop = matchup.series_wins_top || 0
   const seriesWinsBottom = matchup.series_wins_bottom || 0
   const seriesOver = seriesWinsTop >= 4 || seriesWinsBottom >= 4
-  const topLeading = seriesWinsTop > seriesWinsBottom
-  const bottomLeading = seriesWinsBottom > seriesWinsTop
+  const topLeading = isSingleGame
+    ? (displayScoreTop != null && displayScoreBottom != null && displayScoreTop > displayScoreBottom)
+    : (seriesWinsTop > seriesWinsBottom)
+  const bottomLeading = isSingleGame
+    ? (displayScoreTop != null && displayScoreBottom != null && displayScoreBottom > displayScoreTop)
+    : (seriesWinsBottom > seriesWinsTop)
   const tied = seriesWinsTop === seriesWinsBottom
 
   let seriesLabel = ''
-  if (seriesOver) {
+  if (isSingleGame) {
+    if (singleGame) {
+      const winnerName = topLeading ? topInfo.name : bottomLeading ? bottomInfo.name : ''
+      seriesLabel = winnerName ? `${winnerName} win` : 'Final'
+    }
+  } else if (seriesOver) {
     const winnerName = seriesWinsTop >= 4 ? topInfo.name : bottomInfo.name
     seriesLabel = `${winnerName} win ${Math.max(seriesWinsTop, seriesWinsBottom)}-${Math.min(seriesWinsTop, seriesWinsBottom)}`
   } else if (seriesWinsTop === 0 && seriesWinsBottom === 0) {
@@ -103,14 +126,16 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
             <div className="flex flex-col items-center shrink-0">
               <div className="flex items-center gap-3 mb-1">
                 <span className={`text-3xl font-bold ${topLeading ? 'text-text-primary' : 'text-text-muted'}`}>
-                  {seriesWinsTop}
+                  {displayScoreTop != null ? displayScoreTop : '—'}
                 </span>
                 <span className="text-lg text-text-muted">-</span>
                 <span className={`text-3xl font-bold ${bottomLeading ? 'text-text-primary' : 'text-text-muted'}`}>
-                  {seriesWinsBottom}
+                  {displayScoreBottom != null ? displayScoreBottom : '—'}
                 </span>
               </div>
-              <span className="text-xs text-text-primary text-center">{seriesLabel}</span>
+              {seriesLabel && (
+                <span className="text-xs text-text-primary text-center">{seriesLabel}</span>
+              )}
             </div>
 
             {/* Bottom team */}
@@ -173,24 +198,29 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, onClose
                     key={game.id}
                     className="bg-bg-primary/60 border border-text-primary/10 rounded-lg px-4 py-3"
                   >
-                    {/* Game label centered */}
+                    {/* Game label centered — hide "Game N" for single-game brackets */}
                     <div className="text-center mb-2">
-                      <span className="text-sm font-semibold text-text-primary">Game {idx + 1}</span>
-                      <span className="text-xs text-text-muted ml-2">
+                      {!isSingleGame && (
+                        <span className="text-sm font-semibold text-text-primary">Game {idx + 1}</span>
+                      )}
+                      <span className={`text-xs text-text-muted ${isSingleGame ? '' : 'ml-2'}`}>
                         {gameDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
 
-                    {/* Scores aligned under team headers */}
-                    <div className="flex items-center">
-                      <div className="flex-1 text-center">
-                        <span className={`text-2xl font-bold ${topWon ? 'text-text-primary' : 'text-text-muted opacity-60'}`}>{scoreTop}</span>
+                    {/* Scores aligned under team headers — hidden for single-game
+                        (already in the header) */}
+                    {!isSingleGame && (
+                      <div className="flex items-center">
+                        <div className="flex-1 text-center">
+                          <span className={`text-2xl font-bold ${topWon ? 'text-text-primary' : 'text-text-muted opacity-60'}`}>{scoreTop}</span>
+                        </div>
+                        <span className="text-text-muted text-sm px-2">-</span>
+                        <div className="flex-1 text-center">
+                          <span className={`text-2xl font-bold ${!topWon ? 'text-text-primary' : 'text-text-muted opacity-60'}`}>{scoreBottom}</span>
+                        </div>
                       </div>
-                      <span className="text-text-muted text-sm px-2">-</span>
-                      <div className="flex-1 text-center">
-                        <span className={`text-2xl font-bold ${!topWon ? 'text-text-primary' : 'text-text-muted opacity-60'}`}>{scoreBottom}</span>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Top performer rows — 3 stacked for football
                         (passing/rushing/receiving), 1 for NBA/NHL. */}

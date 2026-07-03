@@ -469,6 +469,7 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
           matchup={seriesMatchup}
           sportKey={league.sport}
           leagueId={league.id}
+          isSingleGame={!isBestOf7}
           onClose={() => setSeriesMatchup(null)}
         />
       )}
