@@ -54,6 +54,20 @@ const STATUS_STYLES = {
   archived: 'text-text-muted',
 }
 
+function ordinal(n) {
+  const v = n % 100
+  if (v >= 11 && v <= 13) return `${n}th`
+  const last = n % 10
+  return `${n}${last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th'}`
+}
+
+function rankColor(rank) {
+  if (rank === 1) return 'text-yellow-500'
+  if (rank === 2) return 'text-slate-300'
+  if (rank === 3) return 'text-amber-600'
+  return 'text-text-primary'
+}
+
 export default function LeagueCard({ league, noLink }) {
   const hasBackdrop = !!league.backdrop_image
   const Wrapper = noLink ? 'div' : Link
@@ -139,6 +153,12 @@ export default function LeagueCard({ league, noLink }) {
           )}
           {league.my_role === 'commissioner' && (
             <span className="font-semibold text-tier-hof">Commish</span>
+          )}
+          {league.format === 'fantasy' && league.my_fantasy_rank != null && (
+            <span className={`font-semibold ${rankColor(league.my_fantasy_rank)}`}>
+              {ordinal(league.my_fantasy_rank)}
+              {league.fantasy_total_teams ? ` of ${league.fantasy_total_teams}` : ''}
+            </span>
           )}
         </div>
         {(() => {

@@ -855,6 +855,34 @@ export async function getMyLeagues(userId, userTz) {
     }
   }
 
+  // Compute my current rank in each active or completed fantasy league so
+  // the card can show a "3rd" badge. Pre-draft leagues have no meaningful
+  // standings; skip them. Runs getFantasyStandings in parallel — one query
+  // group per fantasy league, but typically only a few leagues per user.
+  const rankedFantasyLeagues = (leagues || []).filter(
+    (l) => l.format === 'fantasy' && (l.status === 'active' || l.status === 'completed')
+  )
+  const myFantasyRank = {}
+  const fantasyTotalTeams = {}
+  if (rankedFantasyLeagues.length) {
+    const { getFantasyStandings } = await import('./fantasyService.js')
+    const results = await Promise.all(
+      rankedFantasyLeagues.map(async (l) => {
+        try {
+          const standings = await getFantasyStandings(l.id)
+          const me = standings.find((s) => s.user_id === userId)
+          return [l.id, me?.rank ?? null, standings.length]
+        } catch {
+          return [l.id, null, 0]
+        }
+      })
+    )
+    for (const [id, rank, total] of results) {
+      if (rank != null) myFantasyRank[id] = rank
+      if (total > 0) fantasyTotalTeams[id] = total
+    }
+  }
+
   // For LOCKED bracket leagues, swap out total-joined-members for actual
   // submitted-bracket count on the card. A bracket_entries row only exists
   // after a user submits picks — joiners who never picked won't have one.
@@ -896,6 +924,8 @@ export async function getMyLeagues(userId, userTz) {
     survivor_alive: survivorAlive[league.id] ?? null,
     survivor_eliminated: league.format === 'survivor' && league.status === 'active' && aliveMap[league.id] === false ? true : undefined,
     bracket_submitted_count: bracketSubmittedCount[league.id] ?? null,
+    my_fantasy_rank: myFantasyRank[league.id] ?? null,
+    fantasy_total_teams: fantasyTotalTeams[league.id] ?? null,
   }))
 
   // Compute per-league readiness (green/yellow/red corner clip)
