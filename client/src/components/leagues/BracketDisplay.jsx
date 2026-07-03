@@ -102,8 +102,11 @@ function MatchupCard({ matchup, pick, pickData, eliminated, eliminatedTeams, sho
   const hasSeriesRecord = isBestOf7 && matchup.status === 'completed' && matchup.series_wins_top != null && matchup.series_wins_bottom != null
   // Live series: series has started (at least 1 win) but not yet completed
   const hasLiveSeries = isBestOf7 && matchup.status !== 'completed' && (matchup.series_wins_top > 0 || matchup.series_wins_bottom > 0)
-  // Only show tap affordance for matchups with series data (at least 1 game played)
-  const hasCompletedScore = !isBestOf7 && matchup.status === 'completed' && matchup.score_top != null
+  // Single-game matchups: tap once completed. The modal pulls the actual
+  // score from the games table via useSeriesGames, so we don't gate on
+  // matchup.score_top — some paths (admin populate, edge-case auto-settle)
+  // leave that field null even though the game itself has scores.
+  const hasCompletedScore = !isBestOf7 && matchup.status === 'completed'
   const canTap = !!onTap && (hasLiveSeries || hasSeriesRecord || hasCompletedScore)
 
   // Series length prediction color: white during series, green/yellow/red
