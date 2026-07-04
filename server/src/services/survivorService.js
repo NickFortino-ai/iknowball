@@ -470,33 +470,6 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
     }
   }
 
-  // Diagnostic log — pickWeek advance logic sometimes leaves users seeing
-  // Day N+1 games when Day N should still be the pool. Log the key state
-  // for a manual pull from Render when a user reports it.
-  logger.info({
-    leagueId,
-    userId: requestingUserId,
-    now,
-    weeksCount: weeks?.length ?? 0,
-    weeksFirstThree: (weeks || []).slice(0, 3).map((w) => ({
-      week_number: w.week_number,
-      starts_at: w.starts_at,
-      ends_at: w.ends_at,
-    })),
-    currentWeekId,
-    currentWeek_starts_at: currentWeek?.starts_at,
-    currentWeek_ends_at: currentWeek?.ends_at,
-    currentWeek_week_number: currentWeek?.week_number,
-    userCurrentPick_status: userCurrentPick?.status ?? null,
-    userCurrentPick_league_week_id: userCurrentPick?.league_week_id ?? null,
-    pickWeekId: pickWeek?.id ?? null,
-    pickWeek_starts_at: pickWeek?.starts_at ?? null,
-    pickWeek_ends_at: pickWeek?.ends_at ?? null,
-    pickWeek_week_number: pickWeek?.week_number ?? null,
-    pickWeekUserHasPicked,
-    displayPeriodNumber,
-  }, 'Survivor board pickWeek diagnostic')
-
   return {
     members: (members || []).map((m) => ({
       ...m,
