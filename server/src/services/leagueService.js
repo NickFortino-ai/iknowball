@@ -1272,6 +1272,20 @@ export async function updateLeague(leagueId, userId, data) {
     }
   }
 
+  // Also regenerate if pick_frequency changed on a survivor/pickem league.
+  // The dangerous-settings guard above already blocks this once picks lock,
+  // so we're only in the safe pre-lock window here — clean delete + regen.
+  const oldFrequency = league.settings?.pick_frequency
+  const newFrequency = updates.settings?.pick_frequency
+  const frequencyChanged =
+    newFrequency !== undefined &&
+    newFrequency !== oldFrequency &&
+    (league.format === 'survivor' || league.format === 'pickem')
+  if (frequencyChanged && !updates.starts_at && !updates.ends_at && !data.duration) {
+    await supabase.from('league_weeks').delete().eq('league_id', leagueId)
+    await generateLeagueWeeks(updated)
+  }
+
   return updated
 }
 

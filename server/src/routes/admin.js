@@ -368,6 +368,20 @@ router.post('/recalculate-points', async (req, res) => {
   res.json({ message: `Recalculated points for ${results.length} users`, corrections: results })
 })
 
+// One-off repair: regenerate league_weeks for a survivor league using the
+// current settings.pick_frequency, remapping existing picks to the new
+// periods. Handles the "toggled weekly ↔ daily after generation" case.
+router.post('/leagues/:id/regenerate-survivor-periods', async (req, res) => {
+  const { regenerateSurvivorPeriods } = await import('../services/survivorService.js')
+  try {
+    const result = await regenerateSurvivorPeriods(req.params.id)
+    res.json({ message: 'Survivor periods regenerated', ...result })
+  } catch (err) {
+    logger.error({ err, leagueId: req.params.id }, 'Failed to regenerate survivor periods')
+    res.status(500).json({ error: err.message })
+  }
+})
+
 router.post('/recalculate-records', async (req, res) => {
   await snapshotRanks()
   const result = await recalculateAllRecords()

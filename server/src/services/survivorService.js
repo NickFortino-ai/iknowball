@@ -511,6 +511,126 @@ export async function getSurvivorBoard(leagueId, requestingUserId) {
   }
 }
 
+/**
+ * Regenerate league_weeks for a survivor league using the current
+ * settings.pick_frequency, remapping any existing picks to the new
+ * periods by matching each pick's game.starts_at to the new window.
+ *
+ * Existed to unblock leagues that were toggled weekly ↔ daily after
+ * league_weeks was already generated — the setting flipped but the
+ * periods didn't, leaving users with the wrong-length windows.
+ *
+ * Only safe when every existing pick's game falls inside exactly one
+ * new period. That's naturally true for the daily case since daily
+ * periods are strict subsets of weekly ones.
+ */
+export async function regenerateSurvivorPeriods(leagueId) {
+  const { data: league, error: leagueErr } = await supabase
+    .from('leagues')
+    .select('id, format, starts_at, ends_at, sport, settings')
+    .eq('id', leagueId)
+    .single()
+  if (leagueErr || !league) throw new Error('League not found')
+  if (league.format !== 'survivor') throw new Error('Not a survivor league')
+
+  // Import generateLeagueWeeks lazily to avoid a cycle
+  const { generateLeagueWeeks } = await import('./leagueService.js')
+
+  const { data: existingPicks } = await supabase
+    .from('survivor_picks')
+    .select('id, game_id, league_week_id, games!inner(starts_at)')
+    .eq('league_id', leagueId)
+
+  const { data: oldWeeks } = await supabase
+    .from('league_weeks')
+    .select('id, week_number')
+    .eq('league_id', leagueId)
+
+  // Insert new periods with a temporary week_number offset so they can
+  // coexist with the old ones long enough to remap picks.
+  const OFFSET = 100000
+  const { data: preCount } = await supabase
+    .from('league_weeks')
+    .select('week_number')
+    .eq('league_id', leagueId)
+    .order('week_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const startingOffset = OFFSET + (preCount?.week_number ?? 0)
+
+  // Generate new periods into a temp array by calling generateLeagueWeeks
+  // then shifting week_numbers. generateLeagueWeeks writes directly to
+  // the table, so first snapshot the ids that already exist, run it,
+  // then diff.
+  const oldIds = new Set((oldWeeks || []).map((w) => w.id))
+  await generateLeagueWeeks(league)
+  const { data: allWeeks } = await supabase
+    .from('league_weeks')
+    .select('*')
+    .eq('league_id', leagueId)
+    .order('week_number', { ascending: true })
+  const newPeriods = (allWeeks || []).filter((w) => !oldIds.has(w.id))
+  if (!newPeriods.length) throw new Error('Failed to generate new periods')
+
+  // Shift the freshly-generated rows into the sentinel range so their
+  // 1..N numbering doesn't collide with the still-present old rows.
+  for (let i = 0; i < newPeriods.length; i++) {
+    const target = startingOffset + i + 1
+    await supabase
+      .from('league_weeks')
+      .update({ week_number: target })
+      .eq('id', newPeriods[i].id)
+    newPeriods[i].week_number = target
+  }
+
+  // Remap each existing pick by matching game.starts_at to a new period
+  for (const pick of existingPicks || []) {
+    const gameStart = pick.games?.starts_at
+    if (!gameStart) continue
+    const match = newPeriods.find((p) => gameStart >= p.starts_at && gameStart <= p.ends_at)
+    if (!match) {
+      logger.warn({ pickId: pick.id, gameStart, leagueId }, 'No matching new period for pick — leaving on old period')
+      continue
+    }
+    if (match.id === pick.league_week_id) continue
+    await supabase
+      .from('survivor_picks')
+      .update({ league_week_id: match.id })
+      .eq('id', pick.id)
+  }
+
+  // Delete the old periods (cascade would drop any pick still on them,
+  // which by this point is only the "no match" cases we warned about).
+  if (oldIds.size) {
+    await supabase
+      .from('league_weeks')
+      .delete()
+      .in('id', Array.from(oldIds))
+  }
+
+  // Renumber the new periods to 1..N in order
+  for (let i = 0; i < newPeriods.length; i++) {
+    await supabase
+      .from('league_weeks')
+      .update({ week_number: i + 1 })
+      .eq('id', newPeriods[i].id)
+  }
+
+  logger.info({
+    leagueId,
+    pickFrequency: league.settings?.pick_frequency,
+    oldPeriodCount: oldIds.size,
+    newPeriodCount: newPeriods.length,
+    picksRemapped: (existingPicks || []).length,
+  }, 'Regenerated survivor periods')
+
+  return {
+    old_period_count: oldIds.size,
+    new_period_count: newPeriods.length,
+    picks_remapped: (existingPicks || []).length,
+  }
+}
+
 export async function getUsedTeams(leagueId, userId) {
   const { data, error } = await supabase
     .from('survivor_picks')
