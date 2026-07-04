@@ -313,14 +313,14 @@ router.get('/standings', async (req, res) => {
   const stateByTeam = await buildMlbGameStateByTeam(today)
 
   const todayEspnIds = [...new Set((picks || []).filter((p) => p.game_date === today).map((p) => p.espn_player_id).filter(Boolean))]
-  const injuryByEspnId = {}
+  const salaryByEspnId = {}
   if (todayEspnIds.length) {
     const { data: salaryRows } = await supabase
       .from('mlb_dfs_salaries')
-      .select('espn_player_id, injury_status')
+      .select('espn_player_id, injury_status, lineup_status')
       .eq('game_date', today)
       .in('espn_player_id', todayEspnIds)
-    for (const r of salaryRows || []) injuryByEspnId[r.espn_player_id] = r.injury_status
+    for (const r of salaryRows || []) salaryByEspnId[r.espn_player_id] = r
   }
 
   const now = Date.now()
@@ -343,7 +343,8 @@ router.get('/standings', async (req, res) => {
       game_state: hideFromOpponent ? null : (g?.state || null),
       game_period: hideFromOpponent ? null : (g?.period || null),
       game_starts_at: hideFromOpponent ? null : (g?.startsAt || null),
-      injury_status: hideFromOpponent ? null : (isToday ? (injuryByEspnId[p.espn_player_id] || null) : null),
+      injury_status: hideFromOpponent ? null : (isToday ? (salaryByEspnId[p.espn_player_id]?.injury_status ?? null) : null),
+      lineup_status: hideFromOpponent ? null : (isToday ? (salaryByEspnId[p.espn_player_id]?.lineup_status ?? null) : null),
       hidden: hideFromOpponent,
     })
   }
