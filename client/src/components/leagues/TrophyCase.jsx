@@ -15,7 +15,9 @@ function pickVariant(winId, count) {
 const BASKETBALL_SPORTS = ['basketball_nba', 'basketball_ncaab', 'basketball_wncaab', 'basketball_wnba']
 const FOOTBALL_SPORTS = ['americanfootball_nfl', 'americanfootball_ncaaf']
 const BASEBALL_SPORTS = ['baseball_mlb']
-const SOCCER_SPORTS = ['soccer_world_cup', 'soccer_usa_mls']
+// MLS Cup trophy is completely different from the FIFA WC trophy —
+// keep MLS on the basketball fallback until we have a dedicated asset.
+const SOCCER_SPORTS = ['soccer_world_cup']
 
 function getTrophyImage(win) {
   const { member_count, league_sport, id } = win
