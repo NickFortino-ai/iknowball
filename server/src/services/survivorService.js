@@ -545,43 +545,30 @@ export async function regenerateSurvivorPeriods(leagueId) {
     .from('league_weeks')
     .select('id, week_number')
     .eq('league_id', leagueId)
+    .order('week_number', { ascending: true })
 
-  // Insert new periods with a temporary week_number offset so they can
-  // coexist with the old ones long enough to remap picks.
-  const OFFSET = 100000
-  const { data: preCount } = await supabase
-    .from('league_weeks')
-    .select('week_number')
-    .eq('league_id', leagueId)
-    .order('week_number', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  const startingOffset = OFFSET + (preCount?.week_number ?? 0)
-
-  // Generate new periods into a temp array by calling generateLeagueWeeks
-  // then shifting week_numbers. generateLeagueWeeks writes directly to
-  // the table, so first snapshot the ids that already exist, run it,
-  // then diff.
   const oldIds = new Set((oldWeeks || []).map((w) => w.id))
+
+  // Shift every old row's week_number into the negative range so the
+  // fresh insert from generateLeagueWeeks (1..N) doesn't collide with
+  // the UNIQUE(league_id, week_number) constraint. Old week_numbers are
+  // always ≥ 1 so -w.week_number gives us -1..-N, distinct + negative.
+  for (const w of oldWeeks || []) {
+    await supabase
+      .from('league_weeks')
+      .update({ week_number: -w.week_number })
+      .eq('id', w.id)
+  }
+
   await generateLeagueWeeks(league)
+
   const { data: allWeeks } = await supabase
     .from('league_weeks')
     .select('*')
     .eq('league_id', leagueId)
     .order('week_number', { ascending: true })
-  const newPeriods = (allWeeks || []).filter((w) => !oldIds.has(w.id))
+  const newPeriods = (allWeeks || []).filter((w) => !oldIds.has(w.id) && w.week_number > 0)
   if (!newPeriods.length) throw new Error('Failed to generate new periods')
-
-  // Shift the freshly-generated rows into the sentinel range so their
-  // 1..N numbering doesn't collide with the still-present old rows.
-  for (let i = 0; i < newPeriods.length; i++) {
-    const target = startingOffset + i + 1
-    await supabase
-      .from('league_weeks')
-      .update({ week_number: target })
-      .eq('id', newPeriods[i].id)
-    newPeriods[i].week_number = target
-  }
 
   // Remap each existing pick by matching game.starts_at to a new period
   for (const pick of existingPicks || []) {
@@ -608,13 +595,7 @@ export async function regenerateSurvivorPeriods(leagueId) {
       .in('id', Array.from(oldIds))
   }
 
-  // Renumber the new periods to 1..N in order
-  for (let i = 0; i < newPeriods.length; i++) {
-    await supabase
-      .from('league_weeks')
-      .update({ week_number: i + 1 })
-      .eq('id', newPeriods[i].id)
-  }
+  // No renumber needed — generateLeagueWeeks already inserted with 1..N.
 
   logger.info({
     leagueId,
