@@ -15,6 +15,7 @@ function pickVariant(winId, count) {
 const BASKETBALL_SPORTS = ['basketball_nba', 'basketball_ncaab', 'basketball_wncaab', 'basketball_wnba']
 const FOOTBALL_SPORTS = ['americanfootball_nfl', 'americanfootball_ncaaf']
 const BASEBALL_SPORTS = ['baseball_mlb']
+const SOCCER_SPORTS = ['soccer_world_cup', 'soccer_usa_mls']
 
 function getTrophyImage(win) {
   const { member_count, league_sport, id } = win
@@ -23,6 +24,7 @@ function getTrophyImage(win) {
     // Large sport-specific trophy
     if (FOOTBALL_SPORTS.includes(league_sport)) return '/trophies/large-football.webp'
     if (BASEBALL_SPORTS.includes(league_sport)) return '/trophies/large-baseball.webp'
+    if (SOCCER_SPORTS.includes(league_sport)) return '/trophies/large-soccer.webp'
     // Default to basketball for NBA, NCAA, WNBA, or any other sport
     return '/trophies/large-basketball.webp'
   }
