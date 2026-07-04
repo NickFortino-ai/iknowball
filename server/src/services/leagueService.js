@@ -857,8 +857,11 @@ export async function getMyLeagues(userId, userTz) {
 
   // Compute my current rank in each active or completed fantasy league so
   // the card can show a "3rd" badge. Pre-draft leagues have no meaningful
-  // standings; skip them. Runs getFantasyStandings in parallel — one query
-  // group per fantasy league, but typically only a few leagues per user.
+  // standings; skip them. Also skip drafted-but-no-games-played leagues —
+  // getFantasyStandings will happily return arbitrary rank order when every
+  // team is 0-0-0 (based on tiebreaker only), but that's misleading. Runs
+  // getFantasyStandings in parallel — one query group per fantasy league,
+  // but typically only a few leagues per user.
   const rankedFantasyLeagues = (leagues || []).filter(
     (l) => l.format === 'fantasy' && (l.status === 'active' || l.status === 'completed')
   )
@@ -870,6 +873,9 @@ export async function getMyLeagues(userId, userTz) {
       rankedFantasyLeagues.map(async (l) => {
         try {
           const standings = await getFantasyStandings(l.id)
+          // No games played yet → rank has no meaning (everyone tied at 0)
+          const anyGamesPlayed = standings.some((s) => (s.games_played || 0) > 0)
+          if (!anyGamesPlayed) return [l.id, null, standings.length]
           const me = standings.find((s) => s.user_id === userId)
           return [l.id, me?.rank ?? null, standings.length]
         } catch {
