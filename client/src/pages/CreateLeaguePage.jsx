@@ -2607,9 +2607,35 @@ export default function CreateLeaguePage() {
               const isFootball = sport === 'americanfootball_nfl' || sport === 'americanfootball_ncaaf'
               if (isFootball) {
                 const sportLabel = sport === 'americanfootball_nfl' ? 'NFL' : 'college football'
-                const noteText = isSeasonUnderway(sport)
-                  ? `Runs through the remainder of the ${sportLabel} regular season. Preseason and playoffs excluded.`
-                  : `Runs the full ${sportLabel} regular season, starting at the first kickoff of Week 1. Preseason and playoffs excluded.`
+                const isNfl = sport === 'americanfootball_nfl'
+                // For NFL we have the real current-week + first-kickoff data
+                // from the /td-pass/current-week endpoint. Interpolate it so
+                // the commissioner sees exactly when Thursday-night lock is.
+                let kickoffLabel = null
+                if (isNfl && nflWeekData?.firstKickoff) {
+                  try {
+                    kickoffLabel = new Date(nflWeekData.firstKickoff).toLocaleString('en-US', {
+                      weekday: 'short', month: 'short', day: 'numeric',
+                      hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+                    })
+                  } catch { /* fall through to generic copy */ }
+                }
+                let noteText
+                if (isSeasonUnderway(sport)) {
+                  if (isNfl && nflWeekData?.week && kickoffLabel) {
+                    noteText = `Starts at the first kickoff of Week ${nflWeekData.week} (${kickoffLabel}). Runs through the end of the NFL regular season. Preseason and playoffs excluded.`
+                  } else if (isNfl && nflWeekData?.week) {
+                    noteText = `Starts at the first kickoff of Week ${nflWeekData.week}. Runs through the end of the NFL regular season. Preseason and playoffs excluded.`
+                  } else {
+                    noteText = `Starts at the first kickoff of the current ${sportLabel} week. Runs through the end of the regular season. Preseason and playoffs excluded.`
+                  }
+                } else {
+                  if (isNfl && kickoffLabel) {
+                    noteText = `Runs the full NFL regular season, starting at the first kickoff of Week 1 (${kickoffLabel}). Preseason and playoffs excluded.`
+                  } else {
+                    noteText = `Runs the full ${sportLabel} regular season, starting at the first kickoff of Week 1. Preseason and playoffs excluded.`
+                  }
+                }
                 return (
                   <p className="text-sm text-white leading-relaxed">{noteText}</p>
                 )
