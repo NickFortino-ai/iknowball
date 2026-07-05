@@ -916,6 +916,11 @@ export default function CreateLeaguePage() {
   // NBA DFS start date
   const [dfsStartOption, setDfsStartOption] = useState('today')
   const [dfsStartCustom, setDfsStartCustom] = useState('')
+  // Survivor start date (MLB / NBA / WNBA — non-football survivor).
+  // Football survivor auto-anchors to the first kickoff of the upcoming
+  // week server-side, so no picker there.
+  const [survivorStartOption, setSurvivorStartOption] = useState('tomorrow')
+  const [survivorStartCustom, setSurvivorStartCustom] = useState('')
   // HR Derby + 3-Point Contest custom end date — used when seasonType === 'custom_range'
   const [hrDerbyEndDate, setHrDerbyEndDate] = useState('')
   // NFL contests (sacks / ints / tackles / receptions / td_pass) custom start date.
@@ -931,6 +936,13 @@ export default function CreateLeaguePage() {
     if (dfsStartOption === 'today') return today
     if (dfsStartOption === 'tomorrow') return tomorrowSportsDay()
     return dfsStartCustom || today
+  }
+
+  function getSurvivorStartDate() {
+    const tomorrow = tomorrowSportsDay()
+    if (survivorStartOption === 'today') return todaySportsDay()
+    if (survivorStartOption === 'tomorrow') return tomorrow
+    return survivorStartCustom || tomorrow
   }
 
   async function handleSubmit(e) {
@@ -1047,6 +1059,7 @@ export default function CreateLeaguePage() {
           : (format === 'td_pass' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions') ? new Date().toISOString()
           : format === 'squares' && gameId ? squaresGames?.find((g) => g.id === gameId)?.starts_at || undefined
           : format === 'bracket' ? (locksAt ? new Date(locksAt).toISOString() : undefined)
+          : format === 'survivor' && survivorMode !== 'touchdown' && sport !== 'americanfootball_nfl' && sport !== 'americanfootball_ncaaf' ? getSurvivorStartDate()
           : startsAt || undefined,
         ends_at: (format === 'nba_dfs' || format === 'wnba_dfs' || format === 'hr_derby' || format === 'strikeouts' || format === 'three_point' || format === 'wnba_three_point' || format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'custom_range' ? (hrDerbyEndDate || undefined)
           : (format === 'sacks' || format === 'ints' || format === 'tackles' || format === 'receptions' || format === 'td_pass') && seasonType === 'single_week' ? getNflWeekEnd()
@@ -2603,14 +2616,35 @@ export default function CreateLeaguePage() {
               }
               return (
                 <div>
-                  <label className="text-xs text-text-muted block mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={startsAt}
-                    onChange={(e) => setStartsAt(e.target.value)}
-                    className="w-full bg-bg-input border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent"
-                  />
-                  <p className="text-[10px] text-text-muted mt-1">Defaults to today if left blank. League runs until there's one survivor left or the end of the season.</p>
+                  <label className="text-xs text-text-muted block mb-1">League Starts</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'today', label: 'Today' },
+                      { value: 'tomorrow', label: 'Tomorrow' },
+                      { value: 'custom', label: 'Select Date' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSurvivorStartOption(opt.value)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          survivorStartOption === opt.value ? 'bg-accent text-white' : 'bg-bg-secondary text-text-secondary hover:bg-border'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {survivorStartOption === 'custom' && (
+                    <input
+                      type="date"
+                      value={survivorStartCustom}
+                      onChange={(e) => setSurvivorStartCustom(e.target.value)}
+                      min={todaySportsDay()}
+                      className="mt-2 w-full bg-bg-input border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent"
+                    />
+                  )}
+                  <p className="text-[10px] text-text-muted mt-1">League runs until there's one survivor left or the end of the season.</p>
                 </div>
               )
             })()}
