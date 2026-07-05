@@ -14,7 +14,7 @@ const NEWS_OPTIONS = [
 // Mirror of DEFAULT_TABS in LeaderboardPage. Keep in sync when adding
 // leaderboard scopes — admin can hide/reorder by editing this knob.
 const LEADERBOARD_OPTIONS = [
-  'Global', 'NBA', 'NCAAB', 'WNCAAB', 'MLB', 'NHL', 'MLS',
+  'Global', 'NBA', 'NCAAB', 'WNCAAB', 'MLB', 'NHL', 'MLS', 'WC',
   'Picks', 'Props', 'Parlays', 'Leagues',
   'NFL', 'NCAAF', 'UFL', 'WNBA',
 ]

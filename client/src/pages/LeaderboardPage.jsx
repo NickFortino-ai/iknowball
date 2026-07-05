@@ -126,6 +126,7 @@ const DEFAULT_TABS = [
   { label: 'MLB', scope: 'sport', sport: 'baseball_mlb' },
   { label: 'NHL', scope: 'sport', sport: 'icehockey_nhl' },
   { label: 'MLS', scope: 'sport', sport: 'soccer_usa_mls' },
+  { label: 'WC', scope: 'sport', sport: 'soccer_world_cup' },
   { label: 'Picks', scope: 'picks', sport: null },
   { label: 'Props', scope: 'props', sport: null },
   { label: 'Parlays', scope: 'parlays', sport: null },
