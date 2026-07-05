@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMyLeagues, useReorderLeagues } from '../hooks/useLeagues'
+import { useAppConfig } from '../hooks/useAppConfig'
 import LeagueCard from '../components/leagues/LeagueCard'
 import StatusFlagsBanner from '../components/leagues/StatusFlagsBanner'
 import TrophyCase from '../components/leagues/TrophyCase'
@@ -215,6 +216,7 @@ function DraggableLeagueList({ leagues }) {
 
 export default function LeaguesPage() {
   const { data: leagues, isLoading, isError, refetch } = useMyLeagues()
+  const { data: appConfig } = useAppConfig()
   const [showCompleted, setShowCompleted] = useState(false)
 
   const { active, completed } = useMemo(() => {
@@ -243,7 +245,7 @@ export default function LeaguesPage() {
           >
             Create League
           </Link>
-          {isDraftPrepSeason() && (
+          {isDraftPrepSeason() && !appConfig?.draft_prep_hidden && (
             <Link
               to="/leagues/draft-prep"
               className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/5 backdrop-blur text-text-secondary hover:bg-white/10 transition-colors border border-accent text-center"

@@ -59,6 +59,7 @@ export default function AppConfigPanel() {
 
   const [newsOrder, setNewsOrder] = useState([])
   const [leaderboardOrder, setLeaderboardOrder] = useState([])
+  const [draftPrepHidden, setDraftPrepHidden] = useState(false)
 
   useEffect(() => {
     if (!cfg) return
@@ -70,6 +71,7 @@ export default function AppConfigPanel() {
       : LEADERBOARD_OPTIONS
     setNewsOrder(initialNews)
     setLeaderboardOrder(initialLb)
+    setDraftPrepHidden(!!cfg.draft_prep_hidden)
   }, [cfg])
 
   async function save(key, value, label) {
@@ -106,6 +108,30 @@ export default function AppConfigPanel() {
           className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
         >
           Save news order
+        </button>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold text-text-primary mb-2">FF Draft Prep visibility</h3>
+        <p className="text-xs text-text-muted mb-3">
+          The FF Draft Prep link on the Leagues page normally shows April–September.
+          Flip this on to hide it early — e.g. once NFL kicks off and draft season is over.
+        </p>
+        <label className="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-primary border border-text-primary/20 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={draftPrepHidden}
+            onChange={(e) => setDraftPrepHidden(e.target.checked)}
+            className="accent-accent"
+          />
+          <span className="text-sm text-text-primary">Hide FF Draft Prep</span>
+        </label>
+        <button
+          onClick={() => save('draft_prep_hidden', draftPrepHidden, 'draft prep visibility')}
+          disabled={updateCfg.isPending}
+          className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50"
+        >
+          Save
         </button>
       </section>
 
