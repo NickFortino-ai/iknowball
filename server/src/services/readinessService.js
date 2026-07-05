@@ -847,7 +847,7 @@ async function isNflWeekDone(week, season) {
     // Get all NFL games that have fantasy stats for this week
     const { data: stats } = await supabase
       .from('nfl_player_stats')
-      .select('game_id')
+      .select('player_id')
       .eq('week', week)
       .eq('season', season)
       .limit(1)
