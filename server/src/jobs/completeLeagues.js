@@ -36,7 +36,7 @@ async function getLeagueMemberCount(leagueId) {
   return count || 1
 }
 
-async function awardUserPoints(userId, league, points, label, type) {
+export async function awardUserPoints(userId, league, points, label, type) {
   const { error } = await supabase.rpc('increment_user_points', {
     user_row_id: userId,
     points_delta: points,

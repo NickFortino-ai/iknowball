@@ -6469,20 +6469,22 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
         .eq('user_id', standings[i].user_id)
 
       if (totalPts !== 0) {
-        const { incrementUserPoints } = await import('./scoringService.js')
-        await incrementUserPoints(standings[i].user_id, totalPts)
-
         // Only the champion earns a 'league_win' row — that's what the
         // Trophy Case (`/my-wins`) surfaces. Every other finisher still
         // gets their points credited (via a 'league_finish' row), but
         // no trophy. Mirrors how DFS/pickem/bracket standings are awarded.
-        await supabase.from('bonus_points').insert({
-          user_id: standings[i].user_id,
-          league_id: leagueId,
-          type: rank === 1 ? 'league_win' : 'league_finish',
-          points: totalPts,
-          label: `Fantasy #${rank}: ${positionPts} pos + ${bonus} bonus`,
-        }).catch((err) => logger.error({ err, leagueId, rank }, 'Failed to log fantasy bonus_points'))
+        //
+        // awardUserPoints handles: increment_user_points (global),
+        // bonus_points insert (Leagues sub-tab + Trophy Case), and
+        // add_sport_points_only (NFL sport sub-tab) in one call.
+        const { awardUserPoints } = await import('../jobs/completeLeagues.js')
+        await awardUserPoints(
+          standings[i].user_id,
+          league,
+          totalPts,
+          `Fantasy #${rank}: ${positionPts} pos + ${bonus} bonus`,
+          rank === 1 ? 'league_win' : 'league_finish',
+        )
       }
     }
 
