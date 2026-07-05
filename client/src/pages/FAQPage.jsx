@@ -148,7 +148,7 @@ The multiplier is only available on straight picks in the global competition. It
       },
       {
         q: 'What is the trophy case?',
-        a: 'The trophy case on the My Leagues page displays awards for every league you\u2019ve won. Medals are awarded for small leagues (4 or fewer members), small trophies for 5\u20138 members, medium trophies for 9\u201313 members, and large sport-specific trophies for 14+ member leagues. Tapping a trophy takes you to that league\u2019s page.',
+        a: 'The trophy case on the My Leagues page displays awards for every league you\u2019ve won. Medals are awarded for small leagues (4 or fewer members), small trophies for 5\u20138 members, medium trophies for 9\u201311 members, and large sport-specific trophies for 12+ member leagues. Tapping a trophy takes you to that league\u2019s page.',
       },
     ],
   },

@@ -22,7 +22,7 @@ const SOCCER_SPORTS = ['soccer_world_cup']
 function getTrophyImage(win) {
   const { member_count, league_sport, id } = win
 
-  if (member_count >= 14) {
+  if (member_count >= 12) {
     // Large sport-specific trophy
     if (FOOTBALL_SPORTS.includes(league_sport)) return '/trophies/large-football.webp'
     if (BASEBALL_SPORTS.includes(league_sport)) return '/trophies/large-baseball.webp'
