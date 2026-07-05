@@ -360,6 +360,9 @@ export default function LeaderboardPage() {
         <p className="text-[10px] text-text-muted -mt-4 mb-4 px-1">Drag tabs to reorder. Tap the dots again when finished.</p>
       )}
 
+      {tab.sport === 'soccer_world_cup' && (
+        <h2 className="font-display text-2xl text-text-primary -mt-4 mb-1">World Cup</h2>
+      )}
       {tab.scope === 'sport' && (
         <p className="text-xs text-text-muted -mt-4 mb-4">Straight picks only</p>
       )}

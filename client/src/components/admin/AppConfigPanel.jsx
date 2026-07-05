@@ -66,8 +66,12 @@ export default function AppConfigPanel() {
     const initialNews = Array.isArray(cfg.news_tab_order) && cfg.news_tab_order.length
       ? cfg.news_tab_order
       : NEWS_OPTIONS.map((o) => o.key)
-    const initialLb = Array.isArray(cfg.leaderboard_default_tab_order) && cfg.leaderboard_default_tab_order.length
-      ? cfg.leaderboard_default_tab_order
+    // Merge any newly-added tabs (e.g. 'WC') into the stored order so the
+    // admin can position them — otherwise a stored order saved before the
+    // tab existed would hide it from the reorder list forever.
+    const storedLb = Array.isArray(cfg.leaderboard_default_tab_order) ? cfg.leaderboard_default_tab_order : []
+    const initialLb = storedLb.length
+      ? [...storedLb, ...LEADERBOARD_OPTIONS.filter((o) => !storedLb.includes(o))]
       : LEADERBOARD_OPTIONS
     setNewsOrder(initialNews)
     setLeaderboardOrder(initialLb)
