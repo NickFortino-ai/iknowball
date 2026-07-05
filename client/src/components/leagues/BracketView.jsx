@@ -324,9 +324,9 @@ export default function BracketView({ league, tab = 'bracket', onTabChange, tabs
           )}
 
           {isLocked && !hasSubmitted && !entryLoading && (
-            <div className={`${showCourtBg ? '' : 'bg-bg-card border border-border rounded-xl'} p-5 text-center`}>
-              <div className="text-sm text-text-primary font-semibold mb-2">Bracket not submitted in time</div>
-              <div className="text-xs text-text-muted leading-relaxed">
+            <div className="bg-bg-primary/40 backdrop-blur-sm border border-text-primary/20 rounded-xl p-6 text-center">
+              <div className="text-lg text-text-primary font-bold mb-3">Bracket not submitted in time</div>
+              <div className="text-sm text-text-primary/90 leading-relaxed">
                 You didn't get your bracket in before this tournament locked. But don't worry — I KNOW BALL has plenty of ways to compete and showcase your sports prediction powers!
               </div>
             </div>
