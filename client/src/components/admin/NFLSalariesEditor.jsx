@@ -110,8 +110,8 @@ export default function NFLSalariesEditor() {
       )}
 
       {rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-text-primary/20">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border border-text-primary/20">
+          <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-bg-primary/60 text-xs uppercase text-text-muted">
               <tr>
                 <th className="px-3 py-2 text-left">Player</th>
