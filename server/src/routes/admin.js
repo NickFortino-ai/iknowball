@@ -382,6 +382,81 @@ router.post('/leagues/:id/regenerate-survivor-periods', async (req, res) => {
   }
 })
 
+// Debug: look up a user's survivor picks in a specific league, with the
+// pick timestamps side-by-side with each period's window. Lets us
+// investigate "I thought I picked on time but the app says I missed it"
+// reports without needing raw DB access.
+// Query params: league_name (case-insensitive contains) + username.
+router.get('/survivor/pick-history', async (req, res) => {
+  const { league_name, username } = req.query
+  if (!league_name || !username) {
+    return res.status(400).json({ error: 'league_name and username required' })
+  }
+  const { data: leagueRows } = await supabase
+    .from('leagues')
+    .select('id, name, format, starts_at, settings')
+    .eq('format', 'survivor')
+    .ilike('name', `%${league_name}%`)
+    .limit(5)
+  const league = (leagueRows || [])[0]
+  if (!league) return res.status(404).json({ error: 'League not found', matches: leagueRows })
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, username, display_name')
+    .ilike('username', username)
+    .maybeSingle()
+  if (!user) return res.status(404).json({ error: 'User not found' })
+
+  const { data: member } = await supabase
+    .from('league_members')
+    .select('lives_remaining, is_alive, joined_at')
+    .eq('league_id', league.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const { data: weeks } = await supabase
+    .from('league_weeks')
+    .select('id, week_number, starts_at, ends_at')
+    .eq('league_id', league.id)
+    .order('week_number', { ascending: true })
+
+  const { data: picks } = await supabase
+    .from('survivor_picks')
+    .select('id, league_week_id, team_name, status, created_at, updated_at, games(starts_at, home_team, away_team, winner)')
+    .eq('league_id', league.id)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+
+  const picksByWeek = {}
+  for (const p of picks || []) picksByWeek[p.league_week_id] = p
+
+  const timeline = (weeks || []).slice(0, 10).map((w) => {
+    const p = picksByWeek[w.id]
+    return {
+      week_number: w.week_number,
+      starts_at: w.starts_at,
+      ends_at: w.ends_at,
+      pick: p ? {
+        team: p.team_name,
+        status: p.status,
+        created_at: p.created_at,
+        game_starts_at: p.games?.starts_at,
+        game_winner: p.games?.winner,
+      } : null,
+    }
+  })
+
+  res.json({
+    league: { id: league.id, name: league.name, starts_at: league.starts_at, pick_frequency: league.settings?.pick_frequency },
+    user: { id: user.id, username: user.username, display_name: user.display_name },
+    member,
+    total_periods: (weeks || []).length,
+    total_picks: (picks || []).length,
+    timeline,
+  })
+})
+
 router.post('/recalculate-records', async (req, res) => {
   await snapshotRanks()
   const result = await recalculateAllRecords()
