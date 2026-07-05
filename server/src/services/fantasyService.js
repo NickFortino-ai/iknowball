@@ -6472,13 +6472,14 @@ async function finalizeFantasyChampion(leagueId, championUserId, settings) {
         const { incrementUserPoints } = await import('./scoringService.js')
         await incrementUserPoints(standings[i].user_id, totalPts)
 
-        // Log bonus. bonus_points.type is NOT NULL (migration 022).
-        // Missing it silently failed the insert via the trailing catch;
-        // now we require it and log if the insert legitimately errors.
+        // Only the champion earns a 'league_win' row — that's what the
+        // Trophy Case (`/my-wins`) surfaces. Every other finisher still
+        // gets their points credited (via a 'league_finish' row), but
+        // no trophy. Mirrors how DFS/pickem/bracket standings are awarded.
         await supabase.from('bonus_points').insert({
           user_id: standings[i].user_id,
           league_id: leagueId,
-          type: 'league_win',
+          type: rank === 1 ? 'league_win' : 'league_finish',
           points: totalPts,
           label: `Fantasy #${rank}: ${positionPts} pos + ${bonus} bonus`,
         }).catch((err) => logger.error({ err, leagueId, rank }, 'Failed to log fantasy bonus_points'))
