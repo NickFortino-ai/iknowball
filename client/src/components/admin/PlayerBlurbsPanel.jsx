@@ -342,13 +342,24 @@ export default function PlayerBlurbsPanel() {
                         {player.seasonPoints} pts · {player.gamesPlayed} GP · {player.avgPoints} avg
                       </div>
                     )}
+                    {/* Mobile: drop Published/Draft badge under the name row so
+                        it doesn't compete for horizontal space with the
+                        injury badge. Desktop still shows it in the right
+                        column with Edit. */}
+                    {blurb && (
+                      <span className={`sm:hidden inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 ${
+                        blurb.status === 'published' ? 'bg-correct/20 text-correct' : 'bg-yellow-500/20 text-yellow-500'
+                      }`}>
+                        {blurb.status === 'published' ? 'Published' : 'Draft'}
+                      </span>
+                    )}
                   </div>
 
                   {/* Blurb status indicator */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     {blurb && (
                       <>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        <span className={`hidden sm:inline-block text-[10px] font-bold px-1.5 py-0.5 rounded ${
                           blurb.status === 'published' ? 'bg-correct/20 text-correct' : 'bg-yellow-500/20 text-yellow-500'
                         }`}>
                           {blurb.status === 'published' ? 'Published' : 'Draft'}
