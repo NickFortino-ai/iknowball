@@ -14,6 +14,7 @@ export default function BracketTemplateResults({ templateId, onClose }) {
   const [champScore, setChampScore] = useState('')
 
   const isBestOf7 = template?.series_format === 'best_of_7'
+  const isSingleGame = !isBestOf7
 
   if (isLoading) return <LoadingSpinner />
 
@@ -39,6 +40,10 @@ export default function BracketTemplateResults({ templateId, onClose }) {
     const matchupSeriesWins = seriesWins[matchupId]
     const swTop = matchupSeriesWins?.top !== '' && matchupSeriesWins?.top != null ? matchupSeriesWins.top : undefined
     const swBottom = matchupSeriesWins?.bottom !== '' && matchupSeriesWins?.bottom != null ? matchupSeriesWins.bottom : undefined
+    if (isSingleGame && (scoreTop == null || scoreBottom == null)) {
+      toast('Enter both final scores before saving', 'error')
+      return
+    }
     try {
       await enterResult.mutateAsync({ templateId, templateMatchupId: matchupId, winner, scoreTop, scoreBottom, seriesWinsTop: swTop, seriesWinsBottom: swBottom })
       toast('Result entered and synced to all tournaments', 'success')
@@ -188,7 +193,9 @@ export default function BracketTemplateResults({ templateId, onClose }) {
                                 className="w-16 bg-bg-input border border-border rounded px-2 py-1 text-text-primary text-xs focus:outline-none focus:border-accent"
                               />
                             </div>
-                            <span className="text-[10px] italic shrink-0">(optional)</span>
+                            <span className="text-[10px] italic shrink-0">
+                              {isSingleGame ? '(required)' : '(optional)'}
+                            </span>
                           </div>
                           {isBestOf7 && (
                             <div className="flex gap-2 items-center text-xs text-text-muted">
@@ -219,22 +226,29 @@ export default function BracketTemplateResults({ templateId, onClose }) {
                               <span className="text-[10px] italic shrink-0">series</span>
                             </div>
                           )}
-                          <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEnterResult(m.id, 'top')}
-                            disabled={enterResult.isPending}
-                            className="flex-1 py-2 rounded-lg text-sm font-semibold bg-correct/20 text-correct hover:bg-correct/30 disabled:opacity-50"
-                          >
-                            {m.team_top} Wins
-                          </button>
-                          <button
-                            onClick={() => handleEnterResult(m.id, 'bottom')}
-                            disabled={enterResult.isPending}
-                            className="flex-1 py-2 rounded-lg text-sm font-semibold bg-correct/20 text-correct hover:bg-correct/30 disabled:opacity-50"
-                          >
-                            {m.team_bottom} Wins
-                          </button>
-                          </div>
+                          {(() => {
+                            const st = scores[m.id]?.top
+                            const sb = scores[m.id]?.bottom
+                            const missingScores = isSingleGame && (st === '' || st == null || sb === '' || sb == null)
+                            return (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleEnterResult(m.id, 'top')}
+                                  disabled={enterResult.isPending || missingScores}
+                                  className="flex-1 py-2 rounded-lg text-sm font-semibold bg-correct/20 text-correct hover:bg-correct/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {m.team_top} Wins
+                                </button>
+                                <button
+                                  onClick={() => handleEnterResult(m.id, 'bottom')}
+                                  disabled={enterResult.isPending || missingScores}
+                                  className="flex-1 py-2 rounded-lg text-sm font-semibold bg-correct/20 text-correct hover:bg-correct/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {m.team_bottom} Wins
+                                </button>
+                              </div>
+                            )
+                          })()}
                         </div>
                       )}
                     </div>
