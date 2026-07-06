@@ -89,13 +89,18 @@ export async function submitSurvivorPick(leagueId, userId, weekId, gameId, picke
 
   const teamName = pickedTeam === 'home' ? game.home_team : game.away_team
 
-  // Check if team has been used before in this league
+  // Check if team has been used before in this league. Include 'pending'
+  // so pre-picked future days count too — otherwise a user could stack
+  // the same team on multiple future days while all are still pending and
+  // slip through. Exclude the current week's own row so editing your own
+  // pending pick still works.
   const { data: usedPicks } = await supabase
     .from('survivor_picks')
     .select('team_name')
     .eq('league_id', leagueId)
     .eq('user_id', userId)
-    .in('status', ['locked', 'survived', 'survived_wrong', 'eliminated'])
+    .in('status', ['pending', 'locked', 'survived', 'survived_wrong', 'eliminated'])
+    .neq('league_week_id', resolvedWeekId)
 
   const usedTeams = (usedPicks || []).map((p) => p.team_name)
   if (usedTeams.includes(teamName)) {
