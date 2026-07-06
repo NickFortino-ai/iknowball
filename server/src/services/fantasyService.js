@@ -3868,7 +3868,7 @@ export async function generateMatchups(leagueId) {
   }
 
   // Round-robin schedule generation
-  const regularSeasonWeeks = settings.playoff_start_week - 1
+  const regularSeasonWeeks = (settings.playoff_start_week || 15) - 1
   const matchups = []
 
   // If odd number of teams, add a bye placeholder

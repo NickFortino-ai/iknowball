@@ -47,13 +47,17 @@ export async function awardUserPoints(userId, league, points, label, type) {
     return
   }
 
-  await supabase.from('bonus_points').insert({
+  const { error: bonusError } = await supabase.from('bonus_points').insert({
     user_id: userId,
     league_id: league.id,
     type,
     label,
     points,
   })
+  if (bonusError) {
+    logger.error({ error: bonusError, userId, leagueId: league.id, type },
+      'Failed to log bonus_points entry — points landed via RPC but /my-wins will be missing this row')
+  }
 
   if (league.sport && league.sport !== 'all') {
     const { data: sport } = await supabase
@@ -65,11 +69,15 @@ export async function awardUserPoints(userId, league, points, label, type) {
     if (sport) {
       // Use add_sport_points_only so league finishes don't get counted as
       // picks in W/L. Points still flow to the sport's total.
-      await supabase.rpc('add_sport_points_only', {
+      const { error: sportError } = await supabase.rpc('add_sport_points_only', {
         p_user_id: userId,
         p_sport_id: sport.id,
         p_points: points,
       })
+      if (sportError) {
+        logger.error({ error: sportError, userId, leagueId: league.id, sport: league.sport },
+          'Failed to credit sport-tab leaderboard — global points landed but sport board missed')
+      }
     }
   }
 }
