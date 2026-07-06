@@ -2,6 +2,20 @@ import { supabase } from '../config/supabase.js'
 import { logger } from '../utils/logger.js'
 import { createNotification } from './notificationService.js'
 
+// NFL division-winner futures keys carry the pattern `_(afc|nfc)_(east|west|
+// north|south)`. Division picks are quiet in the global feed — squad only.
+function isNflDivisionFutures(key) {
+  return typeof key === 'string' && /_(afc|nfc)_(east|west|north|south)(_|$)/.test(key)
+}
+
+// Player-based futures markets (MVP, awards). These need a player headshot
+// instead of a team logo when rendered. Extend the list as new player-award
+// markets get added.
+function isPlayerFuturesMarket(key) {
+  if (typeof key !== 'string') return false
+  return /_(mvp|opoy|dpoy|coy|roy|oroy|droy|comeback_player)$/.test(key)
+}
+
 export async function connectUsers(userA, userB, source) {
   // Canonicalize ordering so user_id_1 < user_id_2
   const user_id_1 = userA < userB ? userA : userB
@@ -556,7 +570,7 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     skipForHotTakes ||
     applyBefore(filterByUser(supabase
       .from('futures_picks')
-      .select('id, user_id, picked_outcome, odds_at_submission, risk_at_submission, reward_at_submission, status, is_correct, points_earned, created_at, updated_at, futures_markets(title, sport_key)'),
+      .select('id, user_id, picked_outcome, odds_at_submission, risk_at_submission, reward_at_submission, status, is_correct, points_earned, created_at, updated_at, futures_markets(title, sport_key, futures_sport_key)'),
       'user_id', connectedIds), 'created_at')
       .order('created_at', { ascending: false })
       .limit(50),
@@ -798,10 +812,35 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
     })
   }
 
+  // Batch-lookup NFL player headshots for MVP / individual-award picks so
+  // the client can render a headshot instead of a team logo. One query per
+  // feed request rather than one per pick.
+  const playerFuturesNames = new Set()
+  for (const fp of futuresPicks.data || []) {
+    if (isPlayerFuturesMarket(fp.futures_markets?.futures_sport_key) && fp.picked_outcome) {
+      playerFuturesNames.add(fp.picked_outcome)
+    }
+  }
+  const headshotByName = {}
+  if (playerFuturesNames.size) {
+    const { data: nflRows } = await supabase
+      .from('nfl_players')
+      .select('full_name, headshot_url')
+      .in('full_name', [...playerFuturesNames])
+    for (const row of nflRows || []) headshotByName[row.full_name] = row.headshot_url
+  }
+
   // Process futures picks
   for (const fp of futuresPicks.data || []) {
     const user = userMap[fp.user_id]
     if (!user) continue
+
+    const futuresSportKey = fp.futures_markets?.futures_sport_key
+    // NFL division picks are quiet in the global feed — squad only.
+    if (isAll && isNflDivisionFutures(futuresSportKey)) continue
+
+    const isPlayerMarket = isPlayerFuturesMarket(futuresSportKey)
+    const playerHeadshotUrl = isPlayerMarket ? (headshotByName[fp.picked_outcome] || null) : null
 
     if (fp.status === 'settled' && fp.is_correct) {
       // 2-week rule: pick must have been made at least 14 days before settlement
@@ -824,6 +863,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
           picked_outcome: fp.picked_outcome,
           market_title: fp.futures_markets?.title,
           sport_key: fp.futures_markets?.sport_key,
+          futures_sport_key: futuresSportKey,
+          player_headshot_url: playerHeadshotUrl,
           odds_at_submission: fp.odds_at_submission,
           points_earned: fp.points_earned,
           pick_date: fp.created_at,
@@ -844,6 +885,8 @@ export async function getConnectionActivity(userId, before, scope = 'squad', tar
           picked_outcome: fp.picked_outcome,
           market_title: fp.futures_markets?.title,
           sport_key: fp.futures_markets?.sport_key,
+          futures_sport_key: futuresSportKey,
+          player_headshot_url: playerHeadshotUrl,
           odds_at_submission: fp.odds_at_submission,
           reward_at_submission: fp.reward_at_submission,
           points_earned: fp.points_earned,

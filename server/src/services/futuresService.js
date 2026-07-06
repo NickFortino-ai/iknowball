@@ -207,6 +207,13 @@ export async function getUserFuturesPickHistory(userId) {
   return data || []
 }
 
+// Player-based futures markets (MVP, OPOY, DPOY, etc.) — the picked_outcome
+// is a player name, so we look up the headshot for the client to render.
+function isPlayerFuturesMarket(key) {
+  if (typeof key !== 'string') return false
+  return /_(mvp|opoy|dpoy|coy|roy|oroy|droy|comeback_player)$/.test(key)
+}
+
 export async function getFuturesPickById(pickId) {
   const { data: pick, error } = await supabase
     .from('futures_picks')
@@ -223,7 +230,23 @@ export async function getFuturesPickById(pickId) {
     .eq('id', pick.user_id)
     .single()
 
-  return { pick, market: pick.futures_markets, user }
+  // Attach player headshot for player-based markets so the modal can render
+  // it in place of the team logo.
+  let playerHeadshotUrl = null
+  if (isPlayerFuturesMarket(pick.futures_markets?.futures_sport_key) && pick.picked_outcome) {
+    const { data: playerRow } = await supabase
+      .from('nfl_players')
+      .select('headshot_url')
+      .eq('full_name', pick.picked_outcome)
+      .maybeSingle()
+    playerHeadshotUrl = playerRow?.headshot_url || null
+  }
+
+  return {
+    pick: { ...pick, player_headshot_url: playerHeadshotUrl },
+    market: pick.futures_markets,
+    user,
+  }
 }
 
 export async function closeFuturesMarket(marketId) {

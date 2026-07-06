@@ -1,7 +1,15 @@
 import FeedCardWrapper from './FeedCardWrapper'
 import Avatar from '../ui/Avatar'
+import PlayerHeadshot from '../ui/PlayerHeadshot'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import { getPronouns } from '../../lib/pronouns'
+
+// Player-based futures markets (MVP + individual awards). Matches server-side
+// isPlayerFuturesMarket — extend both together when new markets are added.
+function isPlayerFuturesMarket(key) {
+  if (typeof key !== 'string') return false
+  return /_(mvp|opoy|dpoy|coy|roy|oroy|droy|comeback_player)$/.test(key)
+}
 
 function formatPickDate(dateStr) {
   if (!dateStr) return ''
@@ -12,7 +20,9 @@ function formatPickDate(dateStr) {
 export default function FuturesFeedCard({ item, reactions, onUserTap }) {
   const { futures } = item
   const isHit = item.type === 'futures_hit'
-  const logoUrl = getTeamLogoUrl(futures.picked_outcome, futures.sport_key)
+  const isPlayerMarket = isPlayerFuturesMarket(futures.futures_sport_key)
+  const logoUrl = isPlayerMarket ? null : getTeamLogoUrl(futures.picked_outcome, futures.sport_key)
+  const headshotUrl = isPlayerMarket ? futures.player_headshot_url : null
   const pronouns = getPronouns(item.title_preference)
 
   if (isHit) {
@@ -33,9 +43,13 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
           </span>
         </div>
 
-        {/* Centered team logo / visual */}
+        {/* Centered team logo / player headshot / trophy fallback */}
         <div className="flex flex-col items-center py-4 bg-gradient-to-b from-yellow-500/10 to-transparent rounded-xl mb-3">
-          {logoUrl ? (
+          {isPlayerMarket ? (
+            <div className="mb-3">
+              <PlayerHeadshot url={headshotUrl} name={futures.picked_outcome} size="lg" className="w-20 h-20 text-xl" />
+            </div>
+          ) : logoUrl ? (
             <img src={logoUrl} alt="" className="w-20 h-20 object-contain mb-3" onError={(e) => { const fb = getTeamLogoFallbackUrl(futures.picked_outcome, futures.sport_key); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />
           ) : (
             <div className="text-5xl mb-3">{'\uD83C\uDFC6'}</div>
@@ -84,7 +98,11 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
 
       <div className="bg-bg-primary border border-text-primary/20 rounded-xl px-4 py-4">
         <div className="flex flex-col items-center text-center">
-          {logoUrl && (
+          {isPlayerMarket ? (
+            <div className="mb-2">
+              <PlayerHeadshot url={headshotUrl} name={futures.picked_outcome} size="lg" />
+            </div>
+          ) : logoUrl && (
             <img src={logoUrl} alt="" className="w-12 h-12 object-contain mb-2" onError={(e) => { const fb = getTeamLogoFallbackUrl(futures.picked_outcome, futures.sport_key); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />
           )}
           <div className="font-display text-lg text-text-primary">{futures.picked_outcome}</div>
@@ -105,8 +123,13 @@ export default function FuturesFeedCard({ item, reactions, onUserTap }) {
  */
 export function FuturesHitModal({ pick, market, user, onClose }) {
   const isHit = pick.is_correct === true
-  const userLogoUrl = getTeamLogoUrl(pick.picked_outcome, market?.sport_key)
-  const winnerLogoUrl = market?.winning_outcome
+  const isPlayerMarket = isPlayerFuturesMarket(market?.futures_sport_key)
+  const userLogoUrl = isPlayerMarket ? null : getTeamLogoUrl(pick.picked_outcome, market?.sport_key)
+  const userHeadshotUrl = isPlayerMarket ? (pick.player_headshot_url || null) : null
+  // Winner outcome for the loss card. If the market is player-based the
+  // winning_outcome is also a player name — team logo lookup returns null and
+  // we fall back to initials via PlayerHeadshot.
+  const winnerLogoUrl = market?.winning_outcome && !isPlayerMarket
     ? getTeamLogoUrl(market.winning_outcome, market.sport_key)
     : null
   const pickDate = formatPickDate(pick.created_at)
@@ -124,7 +147,11 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
           <div className="bg-gradient-to-b from-incorrect/15 to-transparent px-6 pt-6 pb-4 text-center">
             <div className="text-xs font-bold text-incorrect uppercase tracking-wider mb-3">Futures Result</div>
 
-            {userLogoUrl ? (
+            {isPlayerMarket ? (
+              <div className="mx-auto mb-3 opacity-50 w-fit">
+                <PlayerHeadshot url={userHeadshotUrl} name={pick.picked_outcome} size="lg" className="w-20 h-20 text-xl" />
+              </div>
+            ) : userLogoUrl ? (
               <img
                 src={userLogoUrl}
                 alt=""
@@ -165,18 +192,22 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
             </p>
           </div>
 
-          {market?.winning_outcome && winnerLogoUrl && (
+          {market?.winning_outcome && (isPlayerMarket || winnerLogoUrl) && (
             <div className="px-6 pb-4 flex items-center justify-center gap-2">
-              <img
-                src={winnerLogoUrl}
-                alt=""
-                className="w-10 h-10 object-contain"
-                onError={(e) => {
-                  const fb = getTeamLogoFallbackUrl(market.winning_outcome, market.sport_key)
-                  if (fb && e.target.src !== fb) e.target.src = fb
-                  else e.target.style.display = 'none'
-                }}
-              />
+              {isPlayerMarket ? (
+                <PlayerHeadshot name={market.winning_outcome} size="md" />
+              ) : (
+                <img
+                  src={winnerLogoUrl}
+                  alt=""
+                  className="w-10 h-10 object-contain"
+                  onError={(e) => {
+                    const fb = getTeamLogoFallbackUrl(market.winning_outcome, market.sport_key)
+                    if (fb && e.target.src !== fb) e.target.src = fb
+                    else e.target.style.display = 'none'
+                  }}
+                />
+              )}
               <span className="text-sm font-semibold text-text-primary">{market.winning_outcome}</span>
             </div>
           )}
@@ -210,8 +241,12 @@ export function FuturesHitModal({ pick, market, user, onClose }) {
             {userName} called this on {pickDate}!
           </div>
 
-          {/* Team logo or trophy */}
-          {userLogoUrl ? (
+          {/* Player headshot / team logo / trophy fallback */}
+          {isPlayerMarket ? (
+            <div className="mx-auto mb-3 w-fit">
+              <PlayerHeadshot url={userHeadshotUrl} name={pick.picked_outcome} size="lg" className="w-24 h-24 text-2xl" />
+            </div>
+          ) : userLogoUrl ? (
             <img src={userLogoUrl} alt="" className="w-24 h-24 object-contain mx-auto mb-3" onError={(e) => { const fb = getTeamLogoFallbackUrl(pick.picked_outcome, market?.sport_key); if (fb && e.target.src !== fb) e.target.src = fb; else e.target.style.display = 'none' }} />
           ) : (
             <div className="text-6xl mb-3">{'🏆'}</div>

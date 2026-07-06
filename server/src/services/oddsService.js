@@ -96,6 +96,14 @@ export const FUTURES_SPORT_KEYS = {
   ],
   americanfootball_nfl: [
     'americanfootball_nfl_super_bowl_winner',
+    // MVP + division-winner keys light up closer to the season (usually
+    // August). Add them here when the Odds API starts publishing them:
+    //   americanfootball_nfl_mvp
+    //   americanfootball_nfl_afc_{east,north,south,west}
+    //   americanfootball_nfl_nfc_{east,north,south,west}
+    // The client + feed already have the rendering paths (headshot for
+    // MVP, quiet-in-global for divisions) — they activate as soon as
+    // markets with these keys exist.
   ],
   baseball_mlb: [
     'baseball_mlb_world_series_winner',
