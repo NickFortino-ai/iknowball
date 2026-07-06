@@ -951,13 +951,24 @@ export async function undoLastDraftPick(leagueId, commissionerId) {
     throw err
   }
 
-  // Remove player from roster
-  await supabase
+  // Remove player from roster. Delete is by (league_id, user_id, player_id)
+  // not primary key, so verify the row count as a silent-noop guard.
+  const { error: rosterDelErr, count: rosterDeletedCount } = await supabase
     .from('fantasy_rosters')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('league_id', leagueId)
     .eq('user_id', lastPick.user_id)
     .eq('player_id', lastPick.player_id)
+  if (rosterDelErr) {
+    logger.error({ err: rosterDelErr, leagueId, lastPick }, 'undo draft pick: roster delete failed')
+    throw rosterDelErr
+  }
+  if ((rosterDeletedCount ?? 0) !== 1) {
+    logger.error({ leagueId, lastPick, rosterDeletedCount }, 'undo draft pick: expected to delete 1 roster row but did not')
+    const err = new Error('Failed to undo the draft pick — refresh and try again')
+    err.status = 500
+    throw err
+  }
 
   // Clear the pick slot
   await supabase
@@ -2403,11 +2414,20 @@ export async function resizeFantasyLeague(leagueId, options = {}) {
   const { reason = 'underfilled' } = options
   const { data: settings } = await supabase
     .from('fantasy_settings')
-    .select('league_id, num_teams, format')
+    .select('league_id, num_teams, format, draft_status')
     .eq('league_id', leagueId)
     .single()
   if (!settings || settings.format !== 'traditional') {
     const err = new Error('Only traditional fantasy leagues can be resized')
+    err.status = 400
+    throw err
+  }
+  // Resize can only run before rosters exist. Post-draft, dropping a member
+  // would orphan their fantasy_rosters rows (no code path here cleans them
+  // up + returns their players to the pool). If mid-season member removal
+  // is ever needed, build a separate flow that also handles roster cleanup.
+  if (settings.draft_status === 'completed') {
+    const err = new Error('Cannot resize a league after the draft has completed')
     err.status = 400
     throw err
   }
@@ -3772,7 +3792,20 @@ export async function addDropPlayer(leagueId, userId, addPlayerId, dropPlayerId)
 
   // Drop first (if applicable), then add to bench
   if (dropRow) {
-    await supabase.from('fantasy_rosters').delete().eq('id', dropRow.id)
+    const { error: dropErr, count: droppedCount } = await supabase
+      .from('fantasy_rosters')
+      .delete({ count: 'exact' })
+      .eq('id', dropRow.id)
+    if (dropErr) {
+      logger.error({ err: dropErr, leagueId, userId, dropPlayerId }, 'add-drop: delete failed')
+      throw dropErr
+    }
+    if ((droppedCount ?? 0) !== 1) {
+      logger.error({ leagueId, userId, dropPlayerId, droppedCount }, 'add-drop: expected to delete 1 row but did not')
+      const err = new Error('Failed to drop the selected player — refresh and try again')
+      err.status = 500
+      throw err
+    }
     // Dropped player goes onto waivers (or straight to FA per the pre-season /
     // just-added rules baked into addToWaiverPool).
     await addToWaiverPool(leagueId, [dropPlayerId], 'dropped', { [dropPlayerId]: dropRow.acquired_at })
@@ -3837,8 +3870,20 @@ export async function dropRosterPlayer(leagueId, userId, playerId) {
     err.status = 400
     throw err
   }
-  const { error: delErr } = await supabase.from('fantasy_rosters').delete().eq('id', row.id)
-  if (delErr) throw delErr
+  const { error: delErr, count: deletedCount } = await supabase
+    .from('fantasy_rosters')
+    .delete({ count: 'exact' })
+    .eq('id', row.id)
+  if (delErr) {
+    logger.error({ err: delErr, leagueId, userId, playerId }, 'drop: delete failed')
+    throw delErr
+  }
+  if ((deletedCount ?? 0) !== 1) {
+    logger.error({ leagueId, userId, playerId, deletedCount }, 'drop: expected to delete 1 row but did not')
+    const err = new Error('Failed to drop the selected player — refresh and try again')
+    err.status = 500
+    throw err
+  }
   await addToWaiverPool(leagueId, [playerId], 'dropped', { [playerId]: row.acquired_at })
   await supabase.from('fantasy_transactions').insert({ league_id: leagueId, user_id: userId, type: 'drop', player_id: playerId })
   return { dropped: row.nfl_players?.full_name || playerId }
