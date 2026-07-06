@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTeamLogoUrl, getTeamLogoFallbackUrl } from '../../lib/teamLogos'
 import { useSeriesGames } from '../../hooks/useLeagues'
+import PlayerHeadshot from '../ui/PlayerHeadshot'
 
 function TeamLogo({ team, sportKey, className }) {
   const [src, setSrc] = useState(() => getTeamLogoUrl(team, sportKey))
@@ -90,9 +91,7 @@ function SingleGameFooter({ isLoading, singleGame, matchup, teamTop, isFootball 
                   <div className="flex-1 min-w-0">
                     {topRow ? (
                       <div className="flex items-center gap-2">
-                        {topRow.headshot_url && (
-                          <img src={topRow.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
-                        )}
+                        <PlayerHeadshot url={topRow.headshot_url} name={topRow.player_name} size="lg" />
                         <div className="min-w-0">
                           <div className="text-sm text-text-primary font-semibold truncate">{topRow.player_name}</div>
                           <div className="text-xs text-text-primary truncate">{topRow.stat_line || `${topRow.points}`}</div>
@@ -109,9 +108,7 @@ function SingleGameFooter({ isLoading, singleGame, matchup, teamTop, isFootball 
                           <div className="text-sm text-text-primary font-semibold truncate">{bottomRow.player_name}</div>
                           <div className="text-xs text-text-primary truncate">{bottomRow.stat_line || `${bottomRow.points}`}</div>
                         </div>
-                        {bottomRow.headshot_url && (
-                          <img src={bottomRow.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
-                        )}
+                        <PlayerHeadshot url={bottomRow.headshot_url} name={bottomRow.player_name} size="lg" />
                       </div>
                     ) : (
                       <div className="text-xs text-text-muted text-right">—</div>
@@ -365,9 +362,7 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
                               <div className="flex-1 min-w-0">
                                 {topRow && (
                                   <div className="flex items-center gap-2">
-                                    {topRow.headshot_url && (
-                                      <img src={topRow.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
-                                    )}
+                                    <PlayerHeadshot url={topRow.headshot_url} name={topRow.player_name} size="lg" />
                                     <div className="min-w-0">
                                       <div className="text-sm text-text-primary font-semibold truncate">{topRow.player_name}</div>
                                       <div className="text-xs text-text-primary truncate">{topRow.stat_line || `${topRow.points} pts`}</div>
@@ -382,9 +377,7 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
                                       <div className="text-sm text-text-primary font-semibold truncate">{bottomRow.player_name}</div>
                                       <div className="text-xs text-text-primary truncate">{bottomRow.stat_line || `${bottomRow.points} pts`}</div>
                                     </div>
-                                    {bottomRow.headshot_url && (
-                                      <img src={bottomRow.headshot_url} alt="" className="w-11 h-11 rounded-full object-cover shrink-0" />
-                                    )}
+                                    <PlayerHeadshot url={bottomRow.headshot_url} name={bottomRow.player_name} size="lg" />
                                   </div>
                                 )}
                               </div>
