@@ -248,9 +248,9 @@ export default function LeaguesPage() {
           {isDraftPrepSeason() && !appConfig?.draft_prep_hidden && (
             <Link
               to="/leagues/draft-prep"
-              className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/5 backdrop-blur text-text-secondary hover:bg-white/10 transition-colors border border-accent text-center"
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-white/5 backdrop-blur text-text-secondary hover:bg-white/10 transition-colors border border-accent text-center leading-tight"
             >
-              FF Draft Prep
+              Fantasy Football<br />Draft Preparation
             </Link>
           )}
         </div>
