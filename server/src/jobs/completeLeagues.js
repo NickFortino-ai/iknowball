@@ -341,6 +341,13 @@ async function getFantasyLeagueStandings(league) {
   }
 
   for (const m of matchups) {
+    // Playoff bracket slots can be pre-generated with NULL user_ids while
+    // waiting on advancement. Skip any completed row that never got a real
+    // pairing — otherwise userMap[null] becomes a phantom standings row
+    // and the later awardUserPoints call crashes on the increment_user_points
+    // RPC's NOT NULL FK on user_id.
+    if (!m.home_user_id || !m.away_user_id) continue
+
     ensureUser(m.home_user_id)
     ensureUser(m.away_user_id)
 
