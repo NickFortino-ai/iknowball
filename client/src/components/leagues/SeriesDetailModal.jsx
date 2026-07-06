@@ -42,18 +42,27 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
   const topInfo = splitTeamName(teamTop)
   const bottomInfo = splitTeamName(teamBottom)
 
+  // Sports with no meaningful seeding — knockout-only tournaments.
+  const hideSeed = sportKey === 'soccer_world_cup'
+
   // For single-game brackets (World Cup, HR Derby), derive header score
-  // from the actual game rather than series wins.
+  // from the actual game rather than series wins. Fall back to the
+  // admin-entered matchup score when no game record exists (e.g. World
+  // Cup KO matches decided on penalties, entered manually).
   const stripAccentsForHeader = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
   const singleGame = isSingleGame ? games?.[0] : null
   const singleGameTopIsHome = singleGame
     ? stripAccentsForHeader(singleGame.home_team) === stripAccentsForHeader(teamTop)
     : false
   const displayScoreTop = isSingleGame
-    ? (singleGame ? (singleGameTopIsHome ? singleGame.home_score : singleGame.away_score) : null)
+    ? (singleGame
+        ? (singleGameTopIsHome ? singleGame.home_score : singleGame.away_score)
+        : (matchup.score_top ?? null))
     : (matchup.series_wins_top || 0)
   const displayScoreBottom = isSingleGame
-    ? (singleGame ? (singleGameTopIsHome ? singleGame.away_score : singleGame.home_score) : null)
+    ? (singleGame
+        ? (singleGameTopIsHome ? singleGame.away_score : singleGame.home_score)
+        : (matchup.score_bottom ?? null))
     : (matchup.series_wins_bottom || 0)
 
   const seriesWinsTop = matchup.series_wins_top || 0
@@ -115,7 +124,7 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
             {/* Top team */}
             <div className="flex flex-col items-center flex-1 min-w-0">
               <TeamLogo team={teamTop} sportKey={sportKey} className="w-14 h-14 mb-2" />
-              {matchup.seed_top != null && (
+              {!hideSeed && matchup.seed_top != null && (
                 <span className="text-xs text-text-primary mb-0.5">#{matchup.seed_top} seed</span>
               )}
               <span className="text-sm text-text-primary">{topInfo.city}</span>
@@ -141,7 +150,7 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
             {/* Bottom team */}
             <div className="flex flex-col items-center flex-1 min-w-0">
               <TeamLogo team={teamBottom} sportKey={sportKey} className="w-14 h-14 mb-2" />
-              {matchup.seed_bottom != null && (
+              {!hideSeed && matchup.seed_bottom != null && (
                 <span className="text-xs text-text-primary mb-0.5">#{matchup.seed_bottom} seed</span>
               )}
               <span className="text-sm text-text-primary">{bottomInfo.city}</span>
@@ -150,6 +159,21 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
           </div>
         </div>
 
+        {/* Single-game brackets (World Cup, HR Derby): header already
+            carries the score + winner. Show a compact date footer and
+            skip the boxed game list entirely. */}
+        {isSingleGame ? (
+          <div className="px-5 pb-5 text-center text-xs text-text-muted">
+            {isLoading
+              ? 'Loading…'
+              : singleGame
+                ? new Date(singleGame.starts_at).toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric',
+                  })
+                : (matchup.winner ? 'Result entered by admin' : 'Not yet played')}
+          </div>
+        ) : (
+          <>
         {/* Divider */}
         <div className="border-t border-border mx-4" />
 
@@ -268,6 +292,8 @@ export default function SeriesDetailModal({ matchup, sportKey, leagueId, isSingl
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   )
